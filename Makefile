@@ -65,6 +65,9 @@ generate-dev-data: ## Generate the development dataset (Phase 3)
 ingest-graph: ## Ingest the development dataset into Neo4j (Phase 4)
 	$(UV) run python -m app.graph --wipe
 
+index-vector: ## Build the document vector index in Qdrant (Phase 8)
+	$(UV) run python -m app.retrieval.standard
+
 run-benchmark: ## Run the benchmark suite (Phase 10)
 	@echo "run-benchmark is not implemented yet; it arrives with Phase 10 (benchmark and evaluation, HITL-09 approved)." >&2
 	@exit 1

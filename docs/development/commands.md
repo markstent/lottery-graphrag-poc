@@ -14,6 +14,7 @@ services-up
 services-down
 generate-dev-data
 ingest-graph
+index-vector
 test-graph
 run-benchmark
 demo-reset
