@@ -109,6 +109,8 @@ class World:
         self.config = config
         self.tables = tables
         self.generated_at = datetime.now(UTC)
+        # Baseline volumes plus planted rows (scenario layer, Phase 5).
+        self.planted: dict[str, int] = {}
         self.manifest: dict[str, Any] = {
             "generator_version": GENERATOR_VERSION,
             "profile": config.profile,

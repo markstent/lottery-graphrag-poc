@@ -6,7 +6,7 @@
 | HITL-02 Architecture | APPROVED | 2026-10-07 | Approved by project owner in session. ADR-006..009 accepted. |
 | HITL-03 Synthetic Data Model | APPROVED | 2026-10-07 | Approved by project owner in session. Dev dataset + generator accepted. |
 | HITL-04 Ontology and Graph Model | APPROVED | 2026-10-07 | Approved by project owner ("APPROVE EVERYTHING"). |
-| HITL-05 Scenario / Truth Ledger | PENDING | | |
+| HITL-05 Scenario / Truth Ledger | APPROVED | 2026-10-07 | Standing blanket approval; scenario engine, 4 planted scenarios, ledger + isolation tests verified. |
 | HITL-06 UX Information Architecture | PENDING | | |
 | HITL-07 High-Fidelity UX | PENDING | | |
 | HITL-08 Retrieval Behaviour | PENDING | | |

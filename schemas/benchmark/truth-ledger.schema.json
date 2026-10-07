@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "schemas/benchmark/truth-ledger.schema.json",
+  "title": "Truth Ledger",
+  "description": "Evaluator-only truth records for one generated world (docs/04-scenario-catalogue.md sections 2 and 19; ADR-008). Written by the scenario package to data/truth/ledger.json; loadable only from app/evaluation/.",
+  "type": "object",
+  "required": ["ledger_version", "scenario_seed", "world", "scenarios"],
+  "additionalProperties": false,
+  "properties": {
+    "ledger_version": { "type": "string" },
+    "scenario_seed": { "type": "integer" },
+    "world": {
+      "type": "object",
+      "required": ["profile", "world_seed", "generator_version"],
+      "additionalProperties": false,
+      "properties": {
+        "profile": { "type": "string" },
+        "world_seed": { "type": "integer" },
+        "generator_version": { "type": "string" }
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "scenario_id",
+          "scenario_type",
+          "enabled",
+          "strength",
+          "noise_level",
+          "start_date",
+          "duration_days",
+          "affected_markets",
+          "affected_games",
+          "affected_segments",
+          "expected_signals",
+          "benchmark_questions",
+          "required_evidence",
+          "truth"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "scenario_id": { "type": "string", "pattern": "^SCN-[0-9]{3}$" },
+          "scenario_type": { "type": "string" },
+          "enabled": { "const": true },
+          "strength": { "type": "number", "minimum": 0, "maximum": 1 },
+          "noise_level": { "enum": ["low", "moderate", "high"] },
+          "start_date": { "type": "string", "format": "date" },
+          "duration_days": { "type": "integer", "minimum": 1 },
+          "affected_markets": { "type": "array", "items": { "type": "string" } },
+          "affected_games": { "type": "array", "items": { "type": "string" } },
+          "affected_segments": { "type": "array", "items": { "type": "string" } },
+          "expected_signals": { "type": "array", "items": { "type": "string" } },
+          "benchmark_questions": { "type": "array", "items": { "type": "string" } },
+          "required_evidence": { "type": "array", "items": { "type": "string" } },
+          "truth": { "type": "object" }
+        }
+      }
+    }
+  }
+}

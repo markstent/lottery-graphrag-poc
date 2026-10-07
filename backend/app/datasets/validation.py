@@ -212,7 +212,7 @@ def _volume_errors(world: World) -> list[str]:
     return [
         f"volume: {name} has {len(world.tables[name])} rows, expected {count}"
         for name, count in expected.items()
-        if len(world.tables[name]) != count
+        if len(world.tables[name]) != count + world.planted.get(name, 0)
     ]
 
 

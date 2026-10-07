@@ -14,6 +14,7 @@ services-up
 services-down
 generate-dev-data
 ingest-graph
+test-graph
 run-benchmark
 demo-reset
 ```

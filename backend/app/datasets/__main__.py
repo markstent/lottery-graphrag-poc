@@ -1,7 +1,10 @@
 """CLI entry point: ``uv run python -m app.datasets``.
 
-Generates one deterministic world, validates it and writes Parquet datasets
-plus a reproducibility manifest under data/generated/.
+Generates one deterministic world, plants the enabled scenarios, validates
+the combined world and writes Parquet datasets plus a reproducibility
+manifest under data/generated/. The evaluator-only ledger is written by the
+scenario package into the isolated truth directory (ADR-008); this module
+never reads it back.
 """
 
 from __future__ import annotations
@@ -15,6 +18,8 @@ from app.datasets.config import DEFAULT_OUTPUT_DIR, PROFILES, GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.validation import validate_world
 from app.datasets.world import TABLE_SCHEMAS, build_data_dictionary, build_world
+from app.scenarios.engine import apply_scenarios
+from app.scenarios.ledger import DEFAULT_TRUTH_PATH, build_ledger, write_ledger
 
 _ALLOWED_PROFILES = ("tiny", "dev")  # demo/stress scaling requires HITL-03 approval
 
@@ -23,12 +28,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.datasets", description=__doc__)
     parser.add_argument("--profile", choices=_ALLOWED_PROFILES, default="dev")
     parser.add_argument("--world-seed", type=int, default=2026)
-    parser.add_argument("--scenario-seed", type=int, default=0)
+    parser.add_argument("--scenario-seed", type=int, default=2026)
+    parser.add_argument(
+        "--no-scenarios",
+        action="store_true",
+        help="Generate the baseline world without planted scenarios.",
+    )
     parser.add_argument(
         "--output-dir",
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
         help="Directory for generated datasets and the manifest.",
+    )
+    parser.add_argument(
+        "--truth-path",
+        type=Path,
+        default=DEFAULT_TRUTH_PATH,
+        help=argparse.SUPPRESS,  # evaluator-only location; surfaced for tests
     )
     args = parser.parse_args(argv)
 
@@ -41,6 +57,8 @@ def main(argv: list[str] | None = None) -> int:
         profile=args.profile, world_seed=args.world_seed, scenario_seed=args.scenario_seed
     )
     world = build_world(config)
+
+    applied = [] if args.no_scenarios else apply_scenarios(world)
 
     errors = validate_world(world)
     if errors:
@@ -56,11 +74,19 @@ def main(argv: list[str] | None = None) -> int:
     dictionary_path = world_dir / "_data_dictionary.json"
     dictionary_path.write_text(json.dumps(build_data_dictionary(), indent=2) + "\n")
 
+    ledger_path = None
+    if applied:
+        ledger_path = write_ledger(args.truth_path, build_ledger(applied, world))
+
     print(f"generated {config.profile} world seed={config.world_seed} into {world_dir}")
     for name in sorted(world.tables):
         print(f"  {name}: {len(world.tables[name])} rows")
+    for outcome in applied:
+        print(f"  scenario {outcome.spec.scenario_id}: {outcome.spec.scenario_type} planted")
     print(f"manifest: {manifest_path}")
     print(f"data dictionary: {dictionary_path}")
+    if ledger_path is not None:
+        print(f"truth ledger (evaluator only): {ledger_path}")
     return 0
 
 
