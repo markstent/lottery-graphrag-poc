@@ -1,32 +1,59 @@
-# React + TypeScript + Vite
+# Frontend — Semantic Context Lab
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+High-fidelity UX prototype (Phase 7 / HITL-07). Implements the approved
+information architecture (`docs/ux/information-architecture.md`) with mocked
+retrieval telemetry; no backend integration yet (Phase 9 wires the API).
 
-Currently, two official plugins are available:
+## Purpose
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Demonstrate the comparison story — Current Approach versus + Graph & Ontology —
+with real event-driven visuals, replayable execution, evidence inspection and
+presentation mode, before production retrieval is connected.
 
-## React Compiler
+## Architecture
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```text
+src/
+  app/          shell (header, nav, settings drawer), settings context, hash router
+  components/   panes, graph canvas, timeline, score strip, answer block
+  views/        seven IA screens (Live Lab, Experiment Home, Scenario Lab,
+                Evidence Explorer, Benchmark, Results, Semantic Layer)
+  state/        useRunPlayback: merged-timeline playback with exact rewind
+  mock/         telemetry events (docs/07 sections 7-11), content, evidence
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Key principle: the UI renders only prefixes of a merged telemetry timeline.
+Every visible change corresponds to an event, so replay and rewind are exact
+and no activity is ever fabricated.
+
+## Operation
+
+- `pnpm dev` — dev server.
+- `pnpm test` — Vitest + Testing Library (13 tests: projections, playback,
+  shell).
+- `pnpm e2e` — Playwright smoke (the CI set).
+- `pnpm e2e:visual` — visual regression against committed baselines
+  (`e2e/visual.spec.ts-snapshots/`). Local only: fonts differ across
+  platforms. Regenerate with `pnpm e2e:visual -- --update-snapshots` after
+  approved visual changes.
+
+## Configuration
+
+Design tokens live in `src/index.css` (`@theme`): the docs/06 section 19
+palette, type scale, radii and motion durations. Presentation mode and
+reduced motion are runtime toggles (settings drawer; `prefers-reduced-motion`
+is honoured automatically).
+
+## Extension points
+
+- Replace `src/mock/*` with API clients (Phase 9): `useRunPlayback` consumes
+  any event stream in the docs/07 shapes; views stay unchanged.
+- Graph canvas: add node kinds in `telemetry.ts` plus a shape in
+  `graph-canvas.tsx`; layout is deterministic layered BFS.
+
+## Failure modes
+
+Error states are specified (`docs/ux/screen-specifications.md` section 1.4)
+but not yet reachable with mocked telemetry; the backend-integration phase
+must surface docs/07 section 11 error events in the failing pane while the
+other pane continues.

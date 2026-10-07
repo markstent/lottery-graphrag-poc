@@ -1,0 +1,59 @@
+/**
+ * Minimal hash router for the seven IA routes
+ * (docs/ux/information-architecture.md section 2).
+ *
+ * Chosen over adding react-router: seven static routes with one query
+ * parameter each; a 40-line module keeps the dependency count down
+ * (DECISIONS.md D-011). Deep links survive refresh by design.
+ */
+
+import { useEffect, useState } from 'react'
+
+export type RouteName =
+  | 'lab'
+  | 'experiment'
+  | 'scenarios'
+  | 'evidence'
+  | 'benchmark'
+  | 'results'
+  | 'semantic'
+
+export interface Route {
+  name: RouteName
+  params: URLSearchParams
+}
+
+const ROUTES: RouteName[] = [
+  'lab',
+  'experiment',
+  'scenarios',
+  'evidence',
+  'benchmark',
+  'results',
+  'semantic',
+]
+
+export function parseHash(hash: string): Route {
+  const raw = hash.replace(/^#\/?/, '')
+  const [path, query = ''] = raw.split('?')
+  const name = (ROUTES as string[]).includes(path) ? (path as RouteName) : 'lab'
+  return { name, params: new URLSearchParams(query) }
+}
+
+export function hrefFor(
+  name: RouteName,
+  params?: Record<string, string>,
+): string {
+  const query = params ? `?${new URLSearchParams(params).toString()}` : ''
+  return `#/${name}${query}`
+}
+
+export function useRoute(): Route {
+  const [route, setRoute] = useState(() => parseHash(window.location.hash))
+  useEffect(() => {
+    const onChange = () => setRoute(parseHash(window.location.hash))
+    window.addEventListener('hashchange', onChange)
+    return () => window.removeEventListener('hashchange', onChange)
+  }, [])
+  return route
+}

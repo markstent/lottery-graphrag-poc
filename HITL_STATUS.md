@@ -8,7 +8,7 @@
 | HITL-04 Ontology and Graph Model | APPROVED | 2026-10-07 | Approved by project owner ("APPROVE EVERYTHING"). |
 | HITL-05 Scenario / Truth Ledger | APPROVED | 2026-10-07 | Standing blanket approval; scenario engine, 4 planted scenarios, ledger + isolation tests verified. |
 | HITL-06 UX Information Architecture | APPROVED | 2026-10-07 | Standing blanket approval; IA, user flows, journeys, wireframes committed. |
-| HITL-07 High-Fidelity UX | PENDING | | |
+| HITL-07 High-Fidelity UX Prototype | APPROVED | 2026-10-07 | Standing blanket approval; all seven IA screens implemented with mocked docs/07 event telemetry, replay/rewind, presentation mode; visual baselines committed (frontend/e2e/visual.spec.ts-snapshots/); vitest 13, smoke e2e, tsc, oxlint, prettier, build green. |
 | HITL-08 Retrieval Behaviour | PENDING | | |
 | HITL-09 Benchmark / Scoring | PENDING | | |
 | HITL-10 Testing / Quality | PENDING | | |

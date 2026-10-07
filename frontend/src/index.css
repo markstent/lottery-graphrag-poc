@@ -1,1 +1,119 @@
 @import 'tailwindcss';
+
+/*
+ * Design tokens (docs/06-ux-spec.md section 19).
+ * Restrained dark research-lab aesthetic: calm, high contrast, sparse accents.
+ */
+@theme {
+  --color-background: #0b0e14;
+  --color-surface: #11151d;
+  --color-surface-raised: #171c26;
+  --color-border: #232a37;
+
+  --color-text-primary: #e8ebf1;
+  --color-text-secondary: #a8b0bf;
+  --color-text-muted: #6b7382;
+
+  --color-baseline: #8a93a6;
+  --color-graph: #56a8ab;
+  --color-ontology: #b58bd8;
+  --color-success: #6fbf8b;
+  --color-warning: #d9a662;
+  --color-error: #d97b7b;
+
+  --color-market-uk: #6a8fd8;
+  --color-market-gr: #6fbf8b;
+  --color-market-at: #d9a662;
+  --color-market-cz: #d97b7b;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.8438rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.7285rem;
+  --text-3xl: 2.25rem;
+
+  --radius-card: 0.5rem;
+  --radius-chip: 0.25rem;
+
+  --duration-micro: 140ms;
+  --duration-panel: 200ms;
+  --duration-node: 240ms;
+  --duration-edge: 300ms;
+  --duration-result: 260ms;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--color-graph);
+  outline-offset: 2px;
+}
+
+/* Presentation mode: larger type and spacing (docs/06 section 17). */
+.presentation {
+  font-size: 112.5%;
+}
+
+/* Reduced motion: transitions collapse to opacity-only, near-instant
+   (docs/ux/accessibility.md). Applied for the media query and the manual
+   settings toggle alike. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}
+
+.reduced-motion *,
+.reduced-motion *::before,
+.reduced-motion *::after {
+  transition-duration: 1ms !important;
+  animation-duration: 1ms !important;
+}
+
+/* Progressive graph reveal (docs/ux/animation-specification.md: 180-300ms). */
+@keyframes node-reveal {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.node-reveal {
+  animation: node-reveal var(--duration-node) ease-out;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Readable labels over edges: dark halo behind the glyphs. */
+.label-halo {
+  paint-order: stroke;
+  stroke: var(--color-background);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+@keyframes panel-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.panel-reveal {
+  animation: panel-reveal var(--duration-result) ease-out;
+}
