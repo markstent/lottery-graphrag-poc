@@ -1,0 +1,29 @@
+# Phase 0 skeleton: local service dependencies only.
+# The backend and frontend run directly on the host during development
+# (make dev). Application services are not containerised in Phase 0.
+#
+# Neo4j and Qdrant are consumed from later phases (graph ingestion,
+# vector retrieval). Image versions are pinned; bump deliberately.
+
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    ports:
+      - "7474:7474" # HTTP browser/API
+      - "7687:7687" # Bolt
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-devpassword}
+    volumes:
+      - neo4j_data:/data
+
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    ports:
+      - "6333:6333" # REST
+      - "6334:6334" # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  neo4j_data:
+  qdrant_data:

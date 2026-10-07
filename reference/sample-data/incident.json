@@ -1,0 +1,8 @@
+{
+  "incident_id": "INC_GR_021",
+  "market_id": "MKT_GR",
+  "platform_version_id": "PLATVER_4_8_2",
+  "incident_type": "CHECKOUT_CONVERSION",
+  "severity": "HIGH",
+  "summary": "Synthetic checkout completion degradation after a mobile platform release."
+}

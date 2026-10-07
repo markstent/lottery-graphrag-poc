@@ -1,0 +1,19 @@
+SEMANTIC LAYER
+
+ Structured Data      Documents        Telemetry        Support
+       │                  │                │               │
+       └──────────────────┴───────┬────────┴───────────────┘
+                                  ▼
+                           ENTITY MAPPING
+                                  │
+                                  ▼
+                              ONTOLOGY
+                    concepts • hierarchy • meaning
+                                  │
+                                  ▼
+                          KNOWLEDGE GRAPH
+                    entities • relationships • provenance
+                                  │
+                                  ▼
+                              AI AGENT
+                    retrieves source facts + graph context

@@ -1,0 +1,16 @@
+RESULTS
+
+Configuration A: Existing data + RAG
+Configuration B: + Graph
+Configuration C: + Graph + Ontology
+
+QUALITY BY COMPLEXITY
+Fact         A ██████████  B ██████████  C ██████████
+Semantic     A █████████   B █████████   C ██████████
+2-hop        A ███████     B █████████   C ██████████
+Multi-hop    A ██████      B █████████   C ██████████
+Cross-market A █████       B ████████    C ██████████
+Ontology     A ████        B ███████     C ██████████
+
+Secondary panels:
+Evidence recall | Grounding | Latency | Tokens | Failure analysis

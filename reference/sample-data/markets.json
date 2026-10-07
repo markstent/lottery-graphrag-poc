@@ -1,0 +1,30 @@
+[
+  {
+    "market_id": "MKT_GR",
+    "market_code": "GR",
+    "market_name": "Greece",
+    "currency_code": "EUR",
+    "primary_language": "el"
+  },
+  {
+    "market_id": "MKT_UK",
+    "market_code": "UK",
+    "market_name": "United Kingdom",
+    "currency_code": "GBP",
+    "primary_language": "en"
+  },
+  {
+    "market_id": "MKT_AT",
+    "market_code": "AT",
+    "market_name": "Austria",
+    "currency_code": "EUR",
+    "primary_language": "de"
+  },
+  {
+    "market_id": "MKT_CZ",
+    "market_code": "CZ",
+    "market_name": "Czech Republic",
+    "currency_code": "CZK",
+    "primary_language": "cs"
+  }
+]

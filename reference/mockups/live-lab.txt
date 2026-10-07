@@ -1,0 +1,27 @@
+LIVE LAB
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ Semantic Context Lab    Demo World 04    LOCAL MODEL    UK GR AT CZ         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ Ask: Why did digital conversion fall in Greece, and have we seen it        │
+│ elsewhere?                                                    [ RUN ]       │
+├────────────────────────────────┬────────────────────────────────────────────┤
+│ CURRENT APPROACH               │ + GRAPH & ONTOLOGY                         │
+│                                │                                            │
+│ Query embedding                │ Seed: Greek Game 04                       │
+│ 12 candidate chunks            │      │ RUNS_ON                            │
+│ 5 selected                     │      ▼                                    │
+│                                │ Mobile Platform                           │
+│ [chunk] 0.91                   │      │ VERSION                            │
+│ [chunk] 0.87                   │      ▼                                    │
+│ [chunk] 0.82                   │ Release 5.3 ──► Incident ──► Austria       │
+│                                │                                            │
+│ Context: 7,880 tok             │ 31 nodes / 42 edges / 4 evidence paths    │
+├────────────────────────────────┼────────────────────────────────────────────┤
+│ ANSWER                         │ ANSWER                                     │
+│ ...                            │ ...                                        │
+├────────────────────────────────┴────────────────────────────────────────────┤
+│ Correctness | Evidence Recall | Grounding | Latency | Tokens               │
+├─────────────────────────────────────────────────────────────────────────────┤
+│ TIMELINE  query ●────seed────traverse────evidence────answer                 │
+└─────────────────────────────────────────────────────────────────────────────┘

@@ -1,0 +1,171 @@
+benchmark_version: 0.1-draft
+questions:
+- id: Q01
+  category: FACT
+  scope: UK
+  question: What is the configured ticket price of the synthetic UK flagship draw
+    game?
+  binding_key: game_price
+- id: Q02
+  category: FACT
+  scope: GR
+  question: Which channels offer the selected Greek high-frequency game?
+  binding_key: game_channels
+- id: Q03
+  category: FACT
+  scope: AT
+  question: What platform version was active for the selected Austrian digital game
+    on the target date?
+  binding_key: platform_version
+- id: Q04
+  category: FACT
+  scope: CZ
+  question: How many synthetic support cases were recorded for the selected Czech
+    game in the target week?
+  binding_key: support_count
+- id: Q05
+  category: SEMANTIC
+  scope: UK
+  question: Summarise the mechanics of the synthetic UK annuity-style game.
+  binding_key: product_mechanics
+- id: Q06
+  category: SEMANTIC
+  scope: GR
+  question: Which support documents are most relevant to checkout problems for the
+    selected Greek game?
+  binding_key: support_retrieval
+- id: Q07
+  category: SEMANTIC
+  scope: AT
+  question: Which release note best explains changes to the selected Austrian mobile
+    flow?
+  binding_key: release_retrieval
+- id: Q08
+  category: SEMANTIC
+  scope: CZ
+  question: Which synthetic experiment report is most relevant to the selected Czech
+    product?
+  binding_key: experiment_retrieval
+- id: Q09
+  category: RELATIONSHIP
+  scope: UK
+  question: Which player segment has the strongest affinity with the selected game
+    mechanic?
+  binding_key: segment_mechanic
+- id: Q10
+  category: RELATIONSHIP
+  scope: GR
+  question: Which platform supports the selected Greek digital game?
+  binding_key: game_platform
+- id: Q11
+  category: RELATIONSHIP
+  scope: AT
+  question: Which campaign promoted the selected Austrian game during the target period?
+  binding_key: campaign_game
+- id: Q12
+  category: RELATIONSHIP
+  scope: CZ
+  question: Which incidents are directly connected to the selected Czech platform?
+  binding_key: platform_incident
+- id: Q13
+  category: TWO_HOP
+  scope: UK
+  question: Which games run on the platform associated with the selected UK incident?
+  binding_key: incident_platform_games
+- id: Q14
+  category: TWO_HOP
+  scope: GR
+  question: Which player segments were affected by the incident linked to the selected
+    Greek app version?
+  binding_key: version_incident_segment
+- id: Q15
+  category: TWO_HOP
+  scope: AT
+  question: Which game mechanics are shared by games targeted by the selected Austrian
+    campaign?
+  binding_key: campaign_games_mechanics
+- id: Q16
+  category: TWO_HOP
+  scope: CZ
+  question: Which support cases relate to incidents affecting the selected Czech game?
+  binding_key: game_incident_support
+- id: Q17
+  category: MULTI_HOP
+  scope: GR
+  question: Why did digital conversion fall for the selected Greek game after the
+    target release?
+  binding_key: app_release_conversion_failure
+- id: Q18
+  category: MULTI_HOP
+  scope: AT
+  question: Which other products may have been affected by the same underlying platform
+    issue as the selected Austrian game?
+  binding_key: shared_platform_issue
+- id: Q19
+  category: MULTI_HOP
+  scope: UK
+  question: Did the selected campaign cause players to migrate between product families?
+  binding_key: promotion_product_migration
+- id: Q20
+  category: MULTI_HOP
+  scope: CZ
+  question: Is the selected product launch cannibalising another structurally similar
+    Czech game?
+  binding_key: product_cannibalisation
+- id: Q21
+  category: CROSS_DOMAIN
+  scope: GR
+  question: Did support complaints provide an earlier signal of the selected Greek
+    incident than KPI reporting?
+  binding_key: support_precursor
+- id: Q22
+  category: CROSS_DOMAIN
+  scope: UK
+  question: Did a large jackpot create measurable halo activity in related synthetic
+    UK products?
+  binding_key: jackpot_halo
+- id: Q23
+  category: CROSS_DOMAIN
+  scope: AT
+  question: Why did the selected Austrian campaign underperform despite high exposure?
+  binding_key: campaign_mismatch
+- id: Q24
+  category: CROSS_DOMAIN
+  scope: CZ
+  question: What best explains the selected regional retailer anomaly?
+  binding_key: retailer_anomaly
+- id: Q25
+  category: CROSS_MARKET
+  scope: GR,AT,CZ,UK
+  question: Have we seen the selected Greek platform problem in another market?
+  binding_key: cross_market_platform_incident
+- id: Q26
+  category: ONTOLOGY
+  scope: UK,AT
+  question: Which Austrian product is structurally most similar to the synthetic UK
+    flagship draw game, and why?
+  binding_key: cross_market_product_similarity
+- id: Q27
+  category: ONTOLOGY
+  scope: GR,CZ
+  question: Which Czech product is most comparable to the selected Greek high-frequency
+    game based on canonical mechanics?
+  binding_key: ontology_equivalence
+- id: Q28
+  category: PATTERN
+  scope: ALL
+  question: Are there unusual account clusters connected through shared devices or
+    payment instruments?
+  binding_key: shared_identity_cluster
+- id: Q29
+  category: CROSS_MARKET
+  scope: AT,CZ
+  question: Which successful Austrian campaign appears most transferable to a Czech
+    product and segment?
+  binding_key: campaign_transferability
+- id: Q30
+  category: TEMPORAL_ONTOLOGY
+  scope: ALL
+  question: Where do current structured facts conflict with older documentation, and
+    which source should be treated as authoritative?
+  binding_key: document_structured_conflict

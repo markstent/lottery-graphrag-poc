@@ -1,0 +1,63 @@
+ontology_version: 0.1-draft
+concepts:
+- id: LotteryProduct
+  parent: BusinessObject
+- id: DrawGame
+  parent: LotteryProduct
+- id: NationalDrawGame
+  parent: DrawGame
+- id: MultinationalDrawGame
+  parent: DrawGame
+- id: HighFrequencyGame
+  parent: LotteryProduct
+- id: InstantGame
+  parent: LotteryProduct
+- id: DigitalInstantGame
+  parent: InstantGame
+- id: AddOnGame
+  parent: LotteryProduct
+- id: GameMechanic
+  parent: BusinessConcept
+- id: NumberSelection
+  parent: GameMechanic
+- id: Jackpot
+  parent: GameMechanic
+- id: Rollover
+  parent: GameMechanic
+- id: Multiplier
+  parent: GameMechanic
+- id: InstantReveal
+  parent: GameMechanic
+- id: Incident
+  parent: BusinessEvent
+- id: PaymentIncident
+  parent: Incident
+- id: ApplicationIncident
+  parent: Incident
+- id: PlatformIncident
+  parent: Incident
+- id: Campaign
+  parent: BusinessEvent
+- id: PlayerSegment
+  parent: BusinessActor
+- id: Platform
+  parent: BusinessCapability
+relationships:
+- INSTANCE_OF
+- IS_A
+- HAS_MECHANIC
+- HAS_PRIZE_TYPE
+- AVAILABLE_VIA
+- OPERATES_IN
+- RUNS_ON
+- DEPENDS_ON
+- PROMOTES
+- TARGETS
+- AFFECTS
+- CAUSES
+- CORRELATES_WITH
+- RELATED_TO
+- MAPS_TO
+- EQUIVALENT_TO
+- SUPPORTED_BY
+- MEASURED_BY

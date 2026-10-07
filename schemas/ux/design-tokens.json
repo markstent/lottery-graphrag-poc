@@ -1,0 +1,33 @@
+{
+  "version": "0.1-draft",
+  "color_tokens": {
+    "background": "TBD_AT_HITL_07",
+    "surface": "TBD_AT_HITL_07",
+    "surface_raised": "TBD_AT_HITL_07",
+    "border": "TBD_AT_HITL_07",
+    "text_primary": "TBD_AT_HITL_07",
+    "text_secondary": "TBD_AT_HITL_07",
+    "text_muted": "TBD_AT_HITL_07",
+    "baseline_accent": "TBD_AT_HITL_07",
+    "graph_accent": "TBD_AT_HITL_07",
+    "ontology_accent": "TBD_AT_HITL_07"
+  },
+  "motion_ms": {
+    "micro": [
+      120,
+      180
+    ],
+    "panel": [
+      180,
+      240
+    ],
+    "node_reveal": [
+      180,
+      300
+    ],
+    "edge_traversal": [
+      220,
+      400
+    ]
+  }
+}

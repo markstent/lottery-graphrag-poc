@@ -1,0 +1,34 @@
+[
+  {
+    "game_id": "GAME_UK_01",
+    "market_id": "MKT_UK",
+    "game_name": "Crown Six",
+    "game_category_code": "NATIONAL_DRAW",
+    "ticket_price": 2.0,
+    "currency_code": "GBP"
+  },
+  {
+    "game_id": "GAME_GR_04",
+    "market_id": "MKT_GR",
+    "game_name": "Helios Rapid",
+    "game_category_code": "HIGH_FREQUENCY",
+    "ticket_price": 1.0,
+    "currency_code": "EUR"
+  },
+  {
+    "game_id": "GAME_AT_02",
+    "market_id": "MKT_AT",
+    "game_name": "Alpen Six",
+    "game_category_code": "NATIONAL_DRAW",
+    "ticket_price": 1.5,
+    "currency_code": "EUR"
+  },
+  {
+    "game_id": "GAME_CZ_07",
+    "market_id": "MKT_CZ",
+    "game_name": "Bohemia Ten",
+    "game_category_code": "HIGH_FREQUENCY",
+    "ticket_price": 30.0,
+    "currency_code": "CZK"
+  }
+]

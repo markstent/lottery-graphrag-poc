@@ -1,0 +1,69 @@
+schema_version: 0.1-draft
+node_types:
+- Market
+- Region
+- Channel
+- Supplier
+- Platform
+- PlatformVersion
+- AppVersion
+- Game
+- GameFamily
+- GameCategory
+- GameMechanic
+- Rule
+- PlayerSegment
+- Device
+- PaymentMethod
+- Campaign
+- Incident
+- SupportCase
+- Experiment
+- Document
+- DocumentChunk
+- BusinessConcept
+- Language
+- Currency
+relationship_types:
+- INSTANCE_OF
+- BELONGS_TO
+- HAS_MECHANIC
+- AVAILABLE_IN
+- AVAILABLE_VIA
+- SIMILAR_TO
+- PLAYS
+- USES
+- USES_PAYMENT
+- PREFERS
+- PROMOTES
+- TARGETS
+- EXPOSED_TO
+- RUNS_ON
+- VERSION_OF
+- DEPLOYED_TO
+- RELATED_TO
+- RELATED_TO_VERSION
+- RELATED_TO_APP_VERSION
+- AFFECTS
+- AFFECTS_MARKET
+- CONCERNS
+- FROM_MARKET
+- DESCRIBES
+- REFERENCES
+- DEFINES
+- ABOUT
+- HAS_CHUNK
+- MAPS_TO
+- IS_A
+- EQUIVALENT_TO
+required_node_properties:
+- id
+- label_version
+- source_system
+- source_record_id
+- ingestion_version
+default_limits:
+  max_hops: 4
+  max_candidate_nodes: 250
+  max_visible_nodes: 80
+  max_visible_edges: 120
