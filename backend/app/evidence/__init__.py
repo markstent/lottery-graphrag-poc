@@ -27,6 +27,13 @@ class EvidenceChunk(BaseModel):
 
     similarity: float = Field(description="Vector similarity at retrieval time")
     rank: int = Field(description="Position after ranking (1-based)")
+    discovered_via: str = Field(
+        default="vector",
+        description=(
+            "How the chunk entered the candidate set: "
+            "vector | graph_traversal | vector+graph_traversal"
+        ),
+    )
     rerank_score: float | None = Field(
         default=None, description="Reranker score when reranking is enabled"
     )
@@ -66,5 +73,39 @@ class RagRunResult(BaseModel):
     question: str
     answer: RagAnswer
     evidence: list[EvidenceChunk]
+    embedding_model: str
+    generation_model: str
+
+
+class GraphEvidence(BaseModel):
+    """One graph node candidate with its transparent ranking outcome.
+
+    Structured nodes additionally carry authoritative facts read from the
+    warehouse Parquet layer (the graph guides, Parquet states facts).
+    """
+
+    node_id: str
+    node_label: str
+    hops: int
+    path: list[str]
+    rel_type: str
+    score: float
+    components: dict[str, float]
+    selected: bool = False
+    discard_reason: str | None = None
+    authoritative: dict[str, str] | None = Field(
+        default=None, description="Authoritative structured-layer facts for this node"
+    )
+
+
+class GraphRunResult(BaseModel):
+    """Complete record of one graph-enhanced execution (pipeline B or C)."""
+
+    run_id: str
+    question: str
+    answer: RagAnswer
+    node_evidence: list[GraphEvidence]
+    document_evidence: list[EvidenceChunk]
+    ontology_concepts: list[str]
     embedding_model: str
     generation_model: str

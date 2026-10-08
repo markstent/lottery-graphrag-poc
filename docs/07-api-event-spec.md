@@ -232,6 +232,12 @@ Example:
 
 ## 9. Ontology Events
 
+> Implementation status (HITL-08): the retrieval pipeline currently emits the
+> section 8 event `graph.ontology.expanded` for ontology expansion. This
+> `ontology.concept.*` family is reserved for the Semantic Layer screens and
+> is not yet emitted; the two sections will be reconciled when those screens
+> are built. See `docs/retrieval/graph-rag.md`.
+
 ```text
 ontology.term.mapped
 ontology.concept.resolved

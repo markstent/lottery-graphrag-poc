@@ -47,7 +47,9 @@ class CorpusChunk:
             "text": self.text,
         }
 
-    def to_evidence(self, similarity: float, rank: int) -> EvidenceChunk:
+    def to_evidence(
+        self, similarity: float, rank: int, discovered_via: str = "vector"
+    ) -> EvidenceChunk:
         return EvidenceChunk(
             chunk_id=self.chunk_id,
             document_id=self.document_id,
@@ -62,6 +64,7 @@ class CorpusChunk:
             valid_to=self.valid_to,
             similarity=round(similarity, 6),
             rank=rank,
+            discovered_via=discovered_via,
         )
 
 

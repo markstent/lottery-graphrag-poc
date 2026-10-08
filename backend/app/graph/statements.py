@@ -143,3 +143,49 @@ def example_query(name: str) -> str:
     """Load an example Cypher query from the bundled cypher/ directory."""
     resource = resources.files("app.graph").joinpath(f"cypher/{name}.cypher")
     return resource.read_text(encoding="utf-8")
+
+
+# --------------------------------------------------- retrieval (Phase 9)
+# Read-side queries for graph retrieval. Static strings, parameter-driven;
+# relationship types and limits always come from configured values, never
+# from user input. Traversal is per-hop so the pipeline can emit one
+# telemetry event per traversed edge (docs/07 section 8).
+
+RETRIEVAL_NEIGHBOURS = """
+UNWIND $ids AS fid
+CALL (fid) {
+  MATCH (a {id: fid})-[r]-(b)
+  WHERE type(r) IN $rel_types AND coalesce(b.id, '') <> fid
+  WITH type(r) AS rel_type, b.id AS to_id, labels(b)[0] AS to_label
+  ORDER BY rel_type, to_id
+  WITH rel_type, collect({to_id: to_id, to_label: to_label}) AS items
+  WITH rel_type, items[.. $per_type] AS trimmed
+  UNWIND trimmed AS item
+  RETURN item.to_id AS to_id, item.to_label AS to_label, rel_type
+}
+RETURN fid AS from_id, rel_type, to_id, to_label
+ORDER BY from_id, to_id
+LIMIT 5000
+"""
+
+RETRIEVAL_CONCEPT_BOUND = """
+MATCH (e)-[:MAPS_TO]->(c {id: $concept_id})
+RETURN e.id AS entity_id, labels(e)[0] AS entity_label
+ORDER BY entity_id
+LIMIT $limit
+"""
+
+RETRIEVAL_NODE = """
+MATCH (n {id: $id})
+RETURN labels(n)[0] AS node_label, properties(n) AS props
+"""
+
+RETRIEVAL_CONCEPTS = """
+MATCH (c:BusinessConcept)
+RETURN c.id AS id, c.canonical_name AS canonical_name, c.description AS description
+"""
+
+RETRIEVAL_MARKETS = """
+MATCH (m:Market)
+RETURN m.id AS id, m.name AS name, m.market_code AS market_code
+"""

@@ -1,0 +1,207 @@
+"""Live-graph GraphRAG tests (opt-in: GRAPH_E2E=1, or `make test-graph`).
+
+Runs the full graph pipeline against a real Neo4j holding the tiny
+development world: real centralised statements, real resolver dictionaries,
+real bounded traversal. Embeddings and generation stay deterministic
+(HashingEmbedder, FakeAnswerGenerator) so the only live dependency is the
+graph itself. The database is wiped and re-ingested, mirroring
+test_graph_ingestion.py.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import os
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+from app.config import RetrievalSettings
+from app.datasets.config import GenerationConfig
+from app.datasets.parquet import write_world
+from app.datasets.world import TABLE_SCHEMAS, build_world
+from app.graph.config import GraphConfig
+from app.graph.ingest import ingest
+from app.retrieval.graph.entities import DictionaryEntityResolver
+from app.retrieval.graph.neo4j_adapter import GraphReader
+from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.graph.source_lookup import SourceLookup
+from app.retrieval.standard.corpus import load_corpus
+from app.retrieval.standard.embeddings import HashingEmbedder
+from app.retrieval.standard.generation import FakeAnswerGenerator
+from app.retrieval.standard.vector_store import InMemoryVectorStore
+from neo4j import GraphDatabase
+
+from tests.test_graph_rag import make_settings
+
+CONNECT_TIMEOUT_SECONDS = 15.0
+
+
+def _neo4j_available(config: GraphConfig) -> bool:
+    try:
+        driver = GraphDatabase.driver(config.uri, auth=(config.user, config.password))
+        driver.verify_connectivity()
+        driver.close()
+        return True
+    except Exception:
+        return False
+
+
+@pytest.fixture(scope="module")
+def graph_config() -> GraphConfig:
+    return GraphConfig(
+        uri=os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
+        user=os.environ.get("NEO4J_USER", "neo4j"),
+        password=os.environ.get("NEO4J_PASSWORD", "devpassword"),
+        database=os.environ.get("NEO4J_DATABASE", "neo4j"),
+    )
+
+
+@pytest.fixture(scope="module")
+def tiny_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
+    dataset_dir = tmp_path_factory.mktemp("tiny-world-graphrag")
+    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
+    return dataset_dir
+
+
+@pytest.fixture(scope="module")
+def ingested(graph_config: GraphConfig, tiny_dataset: Path) -> Path:
+    if os.environ.get("GRAPH_E2E") != "1":
+        pytest.skip("set GRAPH_E2E=1 to run live-graph tests (they wipe the database)")
+    if not _neo4j_available(graph_config):
+        pytest.skip("Neo4j is not reachable; start it with `make services-up`")
+    driver = GraphDatabase.driver(graph_config.uri, auth=(graph_config.user, graph_config.password))
+    try:
+        with driver.session(database=graph_config.database) as session:
+            session.run("MATCH (n) DETACH DELETE n").consume()
+    finally:
+        driver.close()
+    ingest(tiny_dataset, graph_config, ingestion_version="ing-test", wipe=True)
+    return tiny_dataset
+
+
+@pytest.fixture(scope="module")
+def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipeline]:
+    settings: RetrievalSettings = make_settings(dataset_dir=str(ingested))
+    embeddings = HashingEmbedder(dimensions=settings.embedding.dimensions)
+    corpus = {chunk.chunk_id: chunk for chunk in load_corpus(ingested)}
+    store = InMemoryVectorStore()
+    if corpus:
+        store.upsert(
+            ids=list(corpus),
+            vectors=embeddings.embed([chunk.text for chunk in corpus.values()]),
+            payloads=[chunk.to_payload() for chunk in corpus.values()],
+        )
+    with GraphReader(graph_config) as reader:
+        resolver = DictionaryEntityResolver(
+            lookup_node=reader.lookup_node,
+            market_aliases=reader.markets(),
+            concepts=reader.concepts(),
+        )
+        yield GraphRagPipeline(
+            resolver=resolver,
+            neighbours=reader,
+            embeddings=embeddings,
+            store=store,
+            corpus=corpus,
+            generator=FakeAnswerGenerator(),
+            settings=settings,
+            source_lookup=SourceLookup(ingested),
+            pipeline="C",
+        )
+
+
+def _first_market_name(dataset_dir: Path) -> str:
+    import duckdb
+
+    rows = (
+        duckdb.connect()
+        .execute(
+            f"SELECT market_name FROM read_parquet('{dataset_dir / 'markets.parquet'}') LIMIT 1"
+        )
+        .fetchall()
+    )
+    return str(rows[0][0])
+
+
+def test_resolver_and_traversal_on_live_graph(pipeline: GraphRagPipeline) -> None:
+    question = "What happened around digital checkout recently?"
+    result = pipeline.run(question)
+
+    assert result.answer.text.startswith("[fake-model]")
+    assert result.node_evidence, "live traversal must produce candidates"
+    selected = [evidence for evidence in result.node_evidence if evidence.selected]
+    assert selected
+    seeds = [
+        event.payload["node_id"]
+        for event in pipeline.events
+        if event.event_type == "graph.seed.selected"
+    ]
+    assert seeds, "resolver must produce at least one seed"
+    traversed = [
+        event for event in pipeline.events if event.event_type == "graph.relationship.traversed"
+    ]
+    assert traversed
+    # Structured nodes carry authoritative facts from the Parquet layer.
+    authoritative = [evidence for evidence in selected if evidence.authoritative is not None]
+    assert authoritative, "selected structured nodes must carry source facts"
+
+
+def test_market_name_resolves_to_market_node(pipeline: GraphRagPipeline) -> None:
+    market = _first_market_name(Path(pipeline.settings.dataset_dir))
+    result = pipeline.run(f"What happened in {market} recently?")
+    seeds = [
+        event.payload["node_id"]
+        for event in pipeline.events
+        if event.event_type == "graph.seed.selected"
+    ]
+    assert any(seed.startswith("MKT_") for seed in seeds)
+    assert result.node_evidence
+
+
+def test_pipeline_deterministic_on_live_graph(pipeline: GraphRagPipeline) -> None:
+    question = "What happened around digital checkout recently?"
+    first = pipeline.run(question)
+    second = pipeline.run(question)
+    assert [e.node_id for e in first.node_evidence] == [e.node_id for e in second.node_evidence]
+    assert first.answer.text == second.answer.text
+
+
+def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: GraphConfig) -> None:
+    graph_settings = make_settings(dataset_dir=str(ingested)).graph.without_ontology()
+    full_settings = make_settings(dataset_dir=str(ingested))
+    embeddings = HashingEmbedder(dimensions=full_settings.embedding.dimensions)
+    corpus = {chunk.chunk_id: chunk for chunk in load_corpus(ingested)}
+    store = InMemoryVectorStore()
+    if corpus:
+        store.upsert(
+            ids=list(corpus),
+            vectors=embeddings.embed([chunk.text for chunk in corpus.values()]),
+            payloads=[chunk.to_payload() for chunk in corpus.values()],
+        )
+    with GraphReader(graph_config) as reader:
+        resolver = DictionaryEntityResolver(
+            lookup_node=reader.lookup_node,
+            market_aliases=reader.markets(),
+            concepts=reader.concepts(),
+        )
+        pipeline = GraphRagPipeline(
+            resolver=resolver,
+            neighbours=reader,
+            embeddings=embeddings,
+            store=store,
+            corpus=corpus,
+            generator=FakeAnswerGenerator(),
+            settings=dataclasses.replace(full_settings, graph=graph_settings),
+            source_lookup=SourceLookup(ingested),
+            pipeline="B",
+        )
+        result = pipeline.run("What happened around digital checkout recently?")
+    assert result.ontology_concepts == []
+    traversed = {
+        event.payload["relationship_type"]
+        for event in pipeline.events
+        if event.event_type == "graph.relationship.traversed"
+    }
+    assert "MAPS_TO" not in traversed

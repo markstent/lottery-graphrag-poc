@@ -8,7 +8,7 @@ explicit configs with the deterministic fake adapters.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.graph.config import DEFAULT_DATASET_DIR
 
@@ -58,6 +58,88 @@ class GenerationSettings:
 
 
 @dataclass(frozen=True, slots=True)
+class RankingWeights:
+    """Transparent evidence-ranking signals (docs/retrieval/evidence-ranking.md).
+
+    The score is a weighted sum of normalised components; every component is
+    recorded per candidate so no hidden rule favours one pipeline.
+    """
+
+    graph_distance: float  # closer to seeds ranks higher
+    relationship_type: float  # stronger relationship types rank higher
+    semantic_relevance: float  # shared embedding model, question vs node text
+    temporal_validity: float  # currently-valid evidence ranks higher
+
+
+@dataclass(frozen=True, slots=True)
+class GraphRagSettings:
+    """Bounded graph traversal and evidence settings (docs/02 section 11).
+
+    Traversal limits are hard caps: depth, per-hop fan-out, per-node
+    per-relationship-type edges and total nodes. Pipeline B excludes
+    ontology relationships; pipeline C includes them plus concept expansion.
+    """
+
+    max_depth: int
+    max_nodes_per_hop: int
+    max_edges_per_node_type: int
+    max_total_nodes: int
+    max_evidence_nodes: int
+    relationship_types: tuple[str, ...]
+    ontology_expansion: bool
+    ranking: RankingWeights
+
+    def without_ontology(self) -> GraphRagSettings:
+        """Pipeline B view: same limits, no ontology relationships."""
+        return GraphRagSettings(
+            max_depth=self.max_depth,
+            max_nodes_per_hop=self.max_nodes_per_hop,
+            max_edges_per_node_type=self.max_edges_per_node_type,
+            max_total_nodes=self.max_total_nodes,
+            max_evidence_nodes=self.max_evidence_nodes,
+            relationship_types=tuple(rel for rel in self.relationship_types if rel != "MAPS_TO"),
+            ontology_expansion=False,
+            ranking=self.ranking,
+        )
+
+
+# Relationship allow-list for retrieval traversal: the structured-record
+# subgraph. Documents and chunks are excluded on purpose: the vector layer
+# owns document retrieval for every pipeline (ADR-002, retrieval fairness),
+# and document edges would flood traversal budget with leaf nodes whose
+# content the shared corpus already provides. Player-heavy transactional
+# edges (PLAYS, EXPOSED_TO, USES, AVAILABLE_VIA, PROMOTES, HAS_DRAW,
+# DEPLOYED_TO, RELATED_TO_APP_VERSION) are also excluded: they would flood
+# traversal with thousands of neighbours. Fraud-topology runs add
+# USES_PAYMENT per run via configuration. Quantitative facts stay in the
+# structured layer (AGENTS.md Graph Augmentation Principle); the graph
+# guides, it does not enumerate.
+DEFAULT_RELATIONSHIP_TYPES: tuple[str, ...] = (
+    "AFFECTS",
+    "AFFECTS_MARKET",
+    "AVAILABLE_IN",
+    "BELONGS_TO",
+    "CONCERNS",
+    "FROM_MARKET",
+    "INSTANCE_OF",
+    "MAPS_TO",
+    "RELATED_TO",
+    "RELATED_TO_VERSION",
+    "RUNS_ON",
+    "SIMILAR_TO",
+    "TARGETS",
+    "VERSION_OF",
+)
+
+DEFAULT_RANKING_WEIGHTS = RankingWeights(
+    graph_distance=0.25,
+    relationship_type=0.25,
+    semantic_relevance=0.35,
+    temporal_validity=0.15,
+)
+
+
+@dataclass(frozen=True, slots=True)
 class RetrievalSettings:
     """Complete configuration for one standard RAG pipeline."""
 
@@ -68,6 +150,20 @@ class RetrievalSettings:
     context: ContextSettings
     rerank: RerankSettings
     generation: GenerationSettings
+    # Used only by the graph pipelines (B/C); the standard pipeline ignores
+    # it, so a default keeps standard-RAG configuration unchanged.
+    graph: GraphRagSettings = field(
+        default_factory=lambda: GraphRagSettings(
+            max_depth=2,
+            max_nodes_per_hop=100,
+            max_edges_per_node_type=4,
+            max_total_nodes=200,
+            max_evidence_nodes=12,
+            relationship_types=DEFAULT_RELATIONSHIP_TYPES,
+            ontology_expansion=True,
+            ranking=DEFAULT_RANKING_WEIGHTS,
+        )
+    )
 
 
 def _env_int(name: str, default: int) -> int:
@@ -106,5 +202,15 @@ def from_env() -> RetrievalSettings:
             model=os.environ.get("GENERATION_MODEL", "fake-answer-v1"),
             temperature=_env_float("GENERATION_TEMPERATURE", 0.0),
             api_base=os.environ.get("GENERATION_API_BASE"),
+        ),
+        graph=GraphRagSettings(
+            max_depth=_env_int("GRAPH_DEPTH", 2),
+            max_nodes_per_hop=_env_int("GRAPH_MAX_NODES_PER_HOP", 100),
+            max_edges_per_node_type=_env_int("GRAPH_MAX_EDGES_PER_NODE_TYPE", 4),
+            max_total_nodes=_env_int("GRAPH_MAX_TOTAL_NODES", 200),
+            max_evidence_nodes=_env_int("GRAPH_MAX_EVIDENCE_NODES", 12),
+            relationship_types=DEFAULT_RELATIONSHIP_TYPES,
+            ontology_expansion=os.environ.get("GRAPH_ONTOLOGY", "1") == "1",
+            ranking=DEFAULT_RANKING_WEIGHTS,
         ),
     )

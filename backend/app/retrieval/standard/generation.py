@@ -33,17 +33,34 @@ class GenerationError(RuntimeError):
 class AnswerGenerator(Protocol):
     model_name: str
 
-    def generate(self, question: str, contexts: list[EvidenceChunk]) -> tuple[str, float]:
-        """Return (answer_text, latency_ms) grounded in the given contexts."""
+    def generate(
+        self,
+        question: str,
+        contexts: list[EvidenceChunk],
+        extra_blocks: list[str] | None = None,
+    ) -> tuple[str, float]:
+        """Return (answer_text, latency_ms) grounded in the given contexts.
+
+        `extra_blocks` carries structured-layer facts (graph pipeline) that
+        must be quoted rather than invented.
+        """
         ...
 
 
-def build_user_prompt(question: str, contexts: list[EvidenceChunk]) -> str:
+def build_user_prompt(
+    question: str,
+    contexts: list[EvidenceChunk],
+    extra_blocks: list[str] | None = None,
+) -> str:
     """Numbered context block; [n] in answers maps to contexts[n-1]."""
     blocks = [
         f"[{index}] {chunk.title} ({chunk.market_id}, {chunk.language_code})\n{chunk.text}"
         for index, chunk in enumerate(contexts, start=1)
     ]
+    next_index = len(blocks) + 1
+    for block in extra_blocks or []:
+        blocks.append(f"[{next_index}] {block}")
+        next_index += 1
     joined = "\n\n".join(blocks) if blocks else "(no context retrieved)"
     return f"Context sources:\n{joined}\n\nQuestion: {question}"
 
@@ -54,13 +71,21 @@ class FakeAnswerGenerator:
     def __init__(self) -> None:
         self.model_name = "fake-answer-v1"
 
-    def generate(self, question: str, contexts: list[EvidenceChunk]) -> tuple[str, float]:
+    def generate(
+        self,
+        question: str,
+        contexts: list[EvidenceChunk],
+        extra_blocks: list[str] | None = None,
+    ) -> tuple[str, float]:
         started = time.perf_counter()
-        if contexts:
+        del question  # deterministic output: context titles only
+        blocks = len(extra_blocks or [])
+        if contexts or blocks:
             titles = ", ".join(chunk.title for chunk in contexts[:2])
             text = (
-                f"[fake-model] Based on {len(contexts)} retrieved source(s), the strongest "
-                f"evidence for the question is in: {titles}."
+                f"[fake-model] Based on {len(contexts)} retrieved source(s)"
+                + (f" and {blocks} authoritative structured record(s)" if blocks else "")
+                + f", the strongest evidence for the question is in: {titles}."
             )
         else:
             text = "[fake-model] No context was retrieved for this question."
@@ -82,7 +107,12 @@ class LiteLLMAnswerGenerator:
         self._api_base = api_base
         self._timeout_s = timeout_s
 
-    def generate(self, question: str, contexts: list[EvidenceChunk]) -> tuple[str, float]:
+    def generate(
+        self,
+        question: str,
+        contexts: list[EvidenceChunk],
+        extra_blocks: list[str] | None = None,
+    ) -> tuple[str, float]:
         import litellm  # imported lazily: heavy import, not needed in CI
 
         started = time.perf_counter()
@@ -91,7 +121,10 @@ class LiteLLMAnswerGenerator:
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": build_user_prompt(question, contexts)},
+                    {
+                        "role": "user",
+                        "content": build_user_prompt(question, contexts, extra_blocks),
+                    },
                 ],
                 temperature=self._temperature,
                 base_url=self._api_base,
