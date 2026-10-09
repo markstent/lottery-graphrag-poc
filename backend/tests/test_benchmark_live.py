@@ -28,6 +28,8 @@ from app.retrieval.standard.corpus import load_corpus
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator, GenerationError
 from app.retrieval.standard.index import InMemoryVectorStore
+from app.scenarios.engine import apply_scenarios
+from app.scenarios.ledger import build_ledger, write_ledger
 
 from tests.test_graph_rag import make_settings
 from tests.test_graph_rag_live import _neo4j_available
@@ -61,9 +63,20 @@ def graph_config() -> GraphConfig:
     )
 
 
+@pytest.fixture(scope="module")
+def tiny_ledger(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    planted = build_world(GenerationConfig(profile="tiny", world_seed=42))
+    ledger_path = tmp_path_factory.mktemp("tiny-ledger") / "ledger.json"
+    write_ledger(ledger_path, build_ledger(apply_scenarios(planted), planted))
+    return ledger_path
+
+
 @pytest.fixture()
 def runner(
-    ingested: Path, graph_config: GraphConfig, monkeypatch: pytest.MonkeyPatch
+    ingested: Path,
+    graph_config: GraphConfig,
+    tiny_ledger: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[BenchmarkRunner]:
     settings: RetrievalSettings = make_settings(dataset_dir=str(ingested))
     embeddings = HashingEmbedder(dimensions=settings.embedding.dimensions)
@@ -82,6 +95,7 @@ def runner(
         graph_config=graph_config,
         generator=FakeAnswerGenerator(),
         world_dir=ingested,
+        ledger_path=tiny_ledger,
     )
     yield instance
     instance.close()

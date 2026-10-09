@@ -145,10 +145,11 @@ class BenchmarkRunner:
         graph_config: GraphConfig,
         generator: AnswerGenerator,
         world_dir: Path,
+        ledger_path: Path | None = None,
     ) -> None:
         self.lab: Lab = build_lab(settings, generator)
         self.graph_config = graph_config
-        self.grounding = WorldGrounding(world_dir)
+        self.grounding = WorldGrounding(world_dir, ledger_path=ledger_path)
         self.world_dir = world_dir
 
     def close(self) -> None:
