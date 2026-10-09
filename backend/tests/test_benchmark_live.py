@@ -9,6 +9,7 @@ them instead of Ollama/Qdrant.
 
 from __future__ import annotations
 
+import dataclasses
 import os
 from collections.abc import Iterator
 from pathlib import Path
@@ -19,12 +20,13 @@ from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.world import TABLE_SCHEMAS, build_world
 from app.evaluation.runner import BenchmarkRunner
+from app.evidence import EvidenceChunk
 from app.graph.config import GraphConfig
 from app.graph.ingest import ingest
 from app.retrieval.graph import lab as lab_module
 from app.retrieval.standard.corpus import load_corpus
 from app.retrieval.standard.embeddings import HashingEmbedder
-from app.retrieval.standard.generation import FakeAnswerGenerator
+from app.retrieval.standard.generation import FakeAnswerGenerator, GenerationError
 from app.retrieval.standard.index import InMemoryVectorStore
 
 from tests.test_graph_rag import make_settings
@@ -129,3 +131,37 @@ def test_seedless_pipeline_a_records_no_seeds(runner: BenchmarkRunner) -> None:
     a_run = run.results[0].runs["A"]
     assert a_run.seed_ids == ()
     assert a_run.selected_document_ids  # pipeline A retrieves document chunks
+
+
+class FailingGenerator:
+    """Gateway stub whose every call fails, like a downed provider."""
+
+    model_name = "failing-gateway-v1"
+
+    def generate(
+        self,
+        question: str,
+        contexts: list[EvidenceChunk],
+        extra_blocks: list[str] | None = None,
+    ) -> tuple[str, float]:
+        raise GenerationError("Model gateway call failed: provider unreachable")
+
+
+def test_gateway_failure_is_recorded_not_fatal(
+    runner: BenchmarkRunner, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One flaky gateway must not destroy an official run (docs/08 Phase 12).
+
+    Every pipeline's generation fails here; the runner still completes and
+    records generation_failure for each execution instead of raising.
+    """
+    failing_lab = dataclasses.replace(runner.lab, generator=FailingGenerator())
+    monkeypatch.setattr(runner, "lab", failing_lab)
+    run = runner.run(["Q01"])
+    q01 = run.results[0]
+    assert set(q01.runs) == {"A", "B", "C"}
+    for tag in "ABC":
+        assert q01.runs[tag].generation_failed
+        assert q01.runs[tag].answer == ""
+        assert q01.scores[tag].failure_class == "generation_failure"
+        assert q01.scores[tag].answer_score == 0.0

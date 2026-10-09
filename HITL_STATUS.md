@@ -11,7 +11,7 @@
 | HITL-07 High-Fidelity UX Prototype | APPROVED | 2026-10-07 | Standing blanket approval; all seven IA screens implemented with mocked docs/07 event telemetry, replay/rewind, presentation mode; visual baselines committed (frontend/e2e/visual.spec.ts-snapshots/); vitest 13, smoke e2e, tsc, oxlint, prettier, build green. |
 | HITL-08 Retrieval Behaviour | APPROVED | 2026-10-08 | Standing blanket approval. Conventional RAG + GraphRAG B/C implemented with evidence tracking, traversal telemetry, context assembly; real side-by-side A/B/C traces for SCN-007/015/003 in docs/retrieval/example-traces.md; specs docs/retrieval/graph-rag.md + evidence-ranking.md; 17 offline + 4 live GraphRAG tests, truth-ledger isolation verified; known limitations recorded (see gate notes). |
 | HITL-09 Benchmark / Scoring | APPROVED | 2026-10-08 | Standing blanket approval. 30-question bank grounded deterministically into the dev world (20 scored; 8 not planted, 2 not groundable, all reported); deterministic scoring (answer checks, evidence precision/recall, failure taxonomy); fairness by shared lab construction; harness + CLI with reproducibility record; demo profile enabled and timed. See gate notes. |
-| HITL-10 Testing / Quality | PENDING | | |
+| HITL-10 Testing / Quality | APPROVED | 2026-10-09 | Standing blanket approval. CI (backend ruff/mypy/pytest with Neo4j+Qdrant services, frontend prettier/oxlint/tsc/vitest/build, Playwright smoke); a long-standing backend CI container bug fixed (Neo4j health-check port not published); test matrix + critical coverage report committed (docs/testing/coverage.md); failure-mode tests added (gateway/embedder/store propagation; runner records generation_failure instead of crashing); B/C fairness contract pinned offline. See gate notes. |
 | HITL-11 Presentation Readiness | PENDING | | |
 
 Only the project owner may mark a gate `APPROVED`.
@@ -115,3 +115,31 @@ Residual risks and known limitations:
 - Q28 evidence recall is bounded (~0.29 for B/C): traversal reaches a subset
   of both planted clusters within the evidence budget; the metric still
   separates pipelines cleanly (A = 0.0).
+
+## HITL-10 notes (2026-10-09)
+
+Artefacts: test matrix and critical coverage report
+(docs/testing/coverage.md); failure-mode tests
+(backend/tests/test_failure_modes.py: gateway, embedder and vector-store
+failures propagate out of both pipelines; no fabricated success); runner
+resilience (a gateway error inside an official benchmark run is recorded per
+question as generation_failure instead of aborting the run; infrastructure
+errors still fail loudly); B/C fairness contract pinned offline
+(backend/tests/test_lab_fairness.py via the extracted bc_graph_settings seam
+in app/retrieval/graph/lab.py).
+
+CI defect found and fixed: the Neo4j service container passed its own startup
+but the workflow health check probed port 7474 while only 7687 was published,
+so every backend CI job failed at container initialisation (Phases 8 and 9
+runs). Port 7474 is now published; the next push verifies the fix end to end.
+
+Verified locally at this commit: backend 127 passed + 16 live tests
+(GRAPH_E2E/VECTOR_E2E) green against real Neo4j/Qdrant; ruff, ruff format,
+mypy strict clean; frontend prettier/oxlint/tsc/vitest (13)/build green;
+Playwright smoke green; 5 visual baselines green on the owning machine. Dev
+graph re-ingested after live tests.
+
+Residual gaps (recorded in docs/testing/coverage.md): no automated
+performance gates (timings recorded, not enforced); frontend unit coverage
+deliberately thin until presentation mode defines the components; visual
+regression is owner-machine only; single-browser E2E.

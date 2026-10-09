@@ -16,6 +16,9 @@ jobs:
           NEO4J_AUTH: neo4j/devpassword
         ports:
           - 7687:7687
+          # The HTTP endpoint must be published for the wget health check
+          # below; Bolt alone is not reachable from the runner.
+          - 7474:7474
         options: >-
           --health-cmd "wget -qO- http://localhost:7474 || exit 1"
           --health-interval 5s

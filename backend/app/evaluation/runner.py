@@ -33,7 +33,8 @@ from app.evaluation.scoring import (
 from app.events import ListEventSink, RetrievalEvent
 from app.graph.config import GraphConfig
 from app.retrieval.graph.lab import Lab, build_lab, wired_pipelines
-from app.retrieval.standard.generation import AnswerGenerator
+from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.standard.generation import AnswerGenerator, GenerationError
 from app.retrieval.standard.pipeline import StandardRagPipeline
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -160,7 +161,7 @@ class BenchmarkRunner:
             grounded = self.grounding.ground(question)
             result = QuestionResult(grounded=grounded)
             if grounded.status == "ok":
-                self._execute(question, grounded, result)
+                self._run_pipelines(question, grounded, result)
                 self._score(grounded, result)
             results.append(result)
             print(
@@ -171,28 +172,67 @@ class BenchmarkRunner:
             )
         return BenchmarkRun(record=self._record(), results=results)
 
-    def _execute(
+    def _run_pipelines(
         self, question: BankQuestion, grounded: GroundedQuestion, result: QuestionResult
     ) -> None:
         sink_a = ListEventSink()
         pipeline_a: StandardRagPipeline = self.lab.pipeline_a()
-        started = time.perf_counter()
-        run_a = pipeline_a.run(grounded.text)
-        latency = (time.perf_counter() - started) * 1000
-        result.runs["A"] = _pipeline_result("A", run_a, latency, sink_a.events)
+        result.runs["A"] = self._execute(pipeline_a, "A", grounded.text, sink_a.events)
 
         wired = wired_pipelines(self.lab, self.graph_config, question.profile)
         try:
             for tag, pipeline in wired.pipelines:
-                started = time.perf_counter()
-                run = pipeline.run(grounded.text)
-                latency = (time.perf_counter() - started) * 1000
-                result.runs[tag] = _pipeline_result(tag, run, latency, pipeline.events)
+                result.runs[tag] = self._execute(pipeline, tag, grounded.text, pipeline.events)
         finally:
             wired.reader.close()
 
+    def _execute(
+        self,
+        pipeline: StandardRagPipeline | GraphRagPipeline,
+        tag: str,
+        question: str,
+        events: list[RetrievalEvent],
+    ) -> PipelineRunResult:
+        """Run one pipeline; a gateway failure is recorded, not fatal.
+
+        Only GenerationError is contained: the gateway is an external
+        dependency where one flaky call must not destroy an official run,
+        and the report marks the result generation_failure. Anything else
+        (Neo4j down, a bug) fails loudly.
+        """
+        started = time.perf_counter()
+        try:
+            run = pipeline.run(question)
+        except GenerationError:
+            latency = (time.perf_counter() - started) * 1000
+            return PipelineRunResult(
+                pipeline=tag,
+                answer="",
+                selected_nodes=(),
+                discarded_nodes=(),
+                seed_ids=(),
+                selected_document_ids=(),
+                context_tokens=0,
+                latency_ms=latency,
+                event_counts={},
+                generation_failed=True,
+            )
+        latency = (time.perf_counter() - started) * 1000
+        return _pipeline_result(tag, run, latency, events)
+
     def _score(self, grounded: GroundedQuestion, result: QuestionResult) -> None:
         for tag, run in result.runs.items():
+            if run.generation_failed:
+                # The gateway failed; classify from the recorded fact rather
+                # than heuristics that would read the empty run as retrieval
+                # failure.
+                result.scores[tag] = QuestionScore(
+                    answer_score=0.0,
+                    evidence_recall=0.0,
+                    evidence_precision=0.0,
+                    failure_class="generation_failure",
+                )
+                continue
             answer_score = score_checks(grounded.checks, run.answer)
             recall, precision = evidence_metrics(
                 grounded.required_evidence, run.retrieved_evidence()

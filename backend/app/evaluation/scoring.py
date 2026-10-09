@@ -120,6 +120,7 @@ class PipelineRunResult:
     context_tokens: int
     latency_ms: float
     event_counts: dict[str, int]
+    generation_failed: bool = False
 
     def retrieved_evidence(self) -> tuple[str, ...]:
         """Record ids a run surfaced as evidence (nodes + cited documents)."""

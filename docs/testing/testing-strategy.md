@@ -17,3 +17,6 @@ Critical logic:
 - evidence provenance
 - graph traversal limits
 - benchmark configuration
+
+The current matrix and critical-coverage report lives in
+[coverage.md](coverage.md).

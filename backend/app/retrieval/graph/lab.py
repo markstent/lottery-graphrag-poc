@@ -102,26 +102,15 @@ def wired_pipelines(
 
     Fair B/C split: identical limits and relationship allow-list; B is
     exactly C minus the ontology relationships (MAPS_TO) and concept
-    expansion. ``profile="fraud"`` adds the player-instrument/device edges
-    to both.
+    expansion (see :func:`bc_graph_settings`). ``profile="fraud"`` adds the
+    player-instrument/device edges to both.
     """
     reader = GraphReader(graph_config)
     try:
         resolver: EntityResolver = build_resolver(reader)
-        relationships = graph_relationships(lab.settings, profile)
-        pipeline_b_graph = dataclasses.replace(
-            lab.settings.graph,
-            relationship_types=tuple(rel for rel in relationships if rel != "MAPS_TO"),
-            ontology_expansion=False,
-        )
-        pipeline_c_graph = dataclasses.replace(
-            lab.settings.graph,
-            relationship_types=relationships,
-            ontology_expansion=True,
-        )
+        settings_b, settings_c = bc_graph_settings(lab.settings, profile)
         pipelines: list[tuple[PipelineId, GraphRagPipeline]] = []
-        for tag, graph_settings in (("B", pipeline_b_graph), ("C", pipeline_c_graph)):
-            tuned = dataclasses.replace(lab.settings, graph=graph_settings)
+        for tag, tuned in (("B", settings_b), ("C", settings_c)):
             pipelines.append(
                 (
                     tag,  # type: ignore[arg-type]
@@ -149,3 +138,30 @@ def graph_relationships(base: RetrievalSettings, profile: str | None) -> tuple[s
     if profile == "fraud":
         return base.graph.relationship_types + FRAUD_RELATIONSHIP_TYPES
     return base.graph.relationship_types
+
+
+def bc_graph_settings(
+    base: RetrievalSettings, profile: str | None
+) -> tuple[RetrievalSettings, RetrievalSettings]:
+    """Retrieval settings for pipelines B and C: the fairness contract.
+
+    B is exactly C minus ontology traversal: C keeps ``MAPS_TO`` and concept
+    expansion, B drops both. Limits, budgets and every other relationship
+    type are identical. The fraud profile appends the same player-instrument
+    and player-device edges to both.
+    """
+    relationships = graph_relationships(base, profile)
+    graph_b = dataclasses.replace(
+        base.graph,
+        relationship_types=tuple(rel for rel in relationships if rel != "MAPS_TO"),
+        ontology_expansion=False,
+    )
+    graph_c = dataclasses.replace(
+        base.graph,
+        relationship_types=relationships,
+        ontology_expansion=True,
+    )
+    return (
+        dataclasses.replace(base, graph=graph_b),
+        dataclasses.replace(base, graph=graph_c),
+    )
