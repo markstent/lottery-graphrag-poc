@@ -88,6 +88,26 @@ answer_rubric
 scenario_ids
 ```
 
+Implementation status (Phase 10, `app/evaluation/bank.py` +
+`app/evaluation/grounding.py`): the bank stores the logical fields
+(`question_id`, logical `question_text` template, `category`, difficulty by
+category, `market_scope`, `scenario_ids`) and grounding produces the
+world-bound fields (`question_text` with concrete anchors, expected-answer
+checks covering `numeric_expectations`, `required_concepts`,
+`required_evidence_ids`). The remaining fields are covered structurally
+rather than per record: `time_scope` is the documented `REPORTING_DATE` /
+scenario-window convention; `required_entities` live in the grounding
+selections; `answer_rubric` is replaced by deterministic checks
+(docs/evaluation/scoring.md); `forbidden_truth_ids` is enforced by the
+truth-ledger isolation tests rather than per-record lists;
+`optional_evidence_ids` and `required_relationship_paths` are not needed by
+the deterministic scorer and are deferred until a consumer requires them.
+
+A validated harness run over this bank is committed as
+docs/evaluation/harness-validation.md (full bank with the deterministic fake
+generator plus a real-model subset and the demo-profile performance
+verification).
+
 ---
 
 ## 5. Example Questions

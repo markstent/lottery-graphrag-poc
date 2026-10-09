@@ -7,7 +7,7 @@ UV := uv --directory $(BACKEND)
 PNPM := pnpm -C $(FRONTEND)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data ingest-graph run-benchmark demo-reset
+.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data generate-demo-data ingest-graph run-benchmark demo-reset
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -69,8 +69,11 @@ index-vector: ## Build the document vector index in Qdrant (Phase 8)
 	$(UV) run python -m app.retrieval.standard
 
 run-benchmark: ## Run the benchmark suite (Phase 10)
-	@echo "run-benchmark is not implemented yet; it arrives with Phase 10 (benchmark and evaluation, HITL-09 approved)." >&2
-	@exit 1
+	cd backend && $(UV) run python -m app.evaluation --generator fake
+
+generate-demo-data: ## Generate the demo dataset (5M tickets; writes a separate truth ledger)
+	cd backend && $(UV) run python -m app.datasets --profile demo --world-seed 2026 \
+		--truth-path ../data/truth/ledger-demo.json
 
 demo-reset: ## Reset the presentation demo state (Phase 13)
 	@echo "demo-reset is not implemented yet; it arrives with Phase 13 (presentation mode, HITL-11 approved)." >&2

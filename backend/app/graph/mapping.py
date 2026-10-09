@@ -15,6 +15,7 @@ from typing import Any
 # ------------------------------------------------------------ ontology maps
 # Canonical concepts are the BusinessConcept master rows generated with the
 # dataset (docs/03-ontology-spec.md layer B/C subset, version 1).
+ONTOLOGY_VERSION = "1.0.0"
 
 FAMILY_TO_CONCEPT: dict[str, str] = {
     "FAM_NATIONAL_DRAW": "CONCEPT_NATIONAL_DRAW",

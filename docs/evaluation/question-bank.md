@@ -192,7 +192,7 @@
 ## Q28 — PATTERN
 **Scope:** ALL
 
-**Question:** Are there unusual account clusters connected through shared devices or payment instruments?
+**Question:** Are the case accounts connected to wider account clusters through shared devices or payment instruments?
 
 **Binding key:** `shared_identity_cluster`
 
@@ -204,8 +204,35 @@
 **Binding key:** `campaign_transferability`
 
 ## Q30 — TEMPORAL_ONTOLOGY
-**Scope:** ALL
+**Scope:** UK
 
-**Question:** Where do current structured facts conflict with older documentation, and which source should be treated as authoritative?
+**Question:** Where do current structured facts for the synthetic UK flagship draw game conflict with older documentation, and which source should be treated as authoritative?
 
 **Binding key:** `document_structured_conflict`
+
+---
+
+## Grounding (implementation)
+
+The logical questions above are instantiated per generated world by
+`app/evaluation/grounding.py`. Grounding is deterministic and
+evaluator-only; retrieval never sees expected answers (ADR-008).
+
+- **Selections** follow documented conventions: the selected games are the
+  lowest game id per market and family (UK flagship `GAME_UK_01`, UK
+  annuity `GAME_UK_02`, Greek high-frequency, Austrian digital, Czech
+  selected via SCN-002); the selected incidents and campaigns resolve by
+  earliest id or ledger truth for planted scenarios.
+- **Anchors**: base questions anchor to `REPORTING_DATE` (2025-06-30);
+  scenario questions anchor to their planted window. Questions that need a
+  starting record name one or two trigger accounts or incidents; the
+  cluster membership, sibling incidents and authoritative source stay
+  evaluator-only.
+- **Expected answers** become deterministic checks (number / token / set)
+  plus required-evidence record ids, per `docs/evaluation/scoring.md`.
+- **Not planted**: questions whose home scenario is not planted in the
+  configured world are reported and never scored. In the development world
+  (SCN-002/003/007/015 enabled) the scored set is 20 questions; Q06 and Q15
+  do not ground because this world contains no support summaries discussing
+  the selected game's payment incidents and no shared mechanics across the
+  selected campaign's games.

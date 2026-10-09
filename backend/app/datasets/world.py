@@ -8,6 +8,8 @@ ingestion_version is stamped when Phase 4 materialises graph nodes.
 
 from __future__ import annotations
 
+import sys
+import time
 from datetime import UTC, datetime
 from typing import Any
 
@@ -155,21 +157,38 @@ def build_data_dictionary() -> list[dict[str, Any]]:
 
 
 def build_world(config: GenerationConfig) -> World:
-    """Generate all tables for the configured profile deterministically."""
+    """Generate all tables for the configured profile deterministically.
+
+    Stage progress goes to stderr with elapsed seconds so long profiles
+    (demo) report where generation time goes. Determinism is unaffected:
+    logging reads the clock, never the generators.
+    """
+    started = time.perf_counter()
     volumes = PROFILES[config.profile]
     tables: dict[str, list[tuple[Any, ...]]] = {}
 
+    def _stage(label: str, rows: dict[str, list[tuple[Any, ...]]]) -> None:
+        count = sum(len(values) for values in rows.values())
+        print(
+            f"[generate] {config.profile} {label}: {count} rows "
+            f"({time.perf_counter() - started:.1f}s)",
+            file=sys.stderr,
+        )
+
     tables.update(entities.generate_master_rows())
     tables.update(entities.generate_games())
+    _stage("master data", tables)
 
     rng_retailers = stream(config.world_seed, "retailers")
     tables["retailers"] = entities.generate_retailers(rng_retailers, volumes.retailers)
     tables.update(entities.generate_platform_layer())
+    _stage("retailers + platforms", {"retailers": tables["retailers"]})
 
     rng_players = stream(config.world_seed, "players")
     tables.update(
         entities.generate_players_and_devices(rng_players, volumes.players, volumes.devices)
     )
+    _stage("players + devices", {k: tables[k] for k in ("players", "devices", "player_device")})
 
     rng_draws = stream(config.world_seed, "draws")
     tables["draws"] = activity.generate_draws(rng_draws, tables["games"])
@@ -185,6 +204,7 @@ def build_world(config: GenerationConfig) -> World:
     )
     tables["tickets"] = tickets
     tables["prizes"] = prizes
+    _stage("tickets + prizes", {"tickets": tickets, "prizes": prizes})
 
     rng_campaigns = stream(config.world_seed, "campaigns")
     tables.update(marketing.generate_campaigns(rng_campaigns, tables["games"]))
@@ -197,6 +217,7 @@ def build_world(config: GenerationConfig) -> World:
         tables["players"],
         volumes.campaign_exposures,
     )
+    _stage("campaign exposures", {"campaign_exposures": tables["campaign_exposures"]})
 
     rng_incidents = stream(config.world_seed, "incidents")
     incidents, incident_games = operations.generate_incidents(
@@ -232,6 +253,7 @@ def build_world(config: GenerationConfig) -> World:
         app_versions_by_market,
         volumes.sessions,
     )
+    _stage("sessions", {"sessions": tables["sessions"]})
 
     rng_documents = stream(config.world_seed, "documents")
     docs, chunks = documents.generate_documents(

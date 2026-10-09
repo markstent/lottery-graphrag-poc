@@ -81,6 +81,14 @@ def generate_exposures(
         market_id: _weighted_players(market_players, rng)
         for market_id, market_players in players_by_market.items()
     }
+    # Cumulative weights once per market: rebuilding inside the row loop made
+    # generation quadratic in players x exposures and unusable at demo scale.
+    cum_by_market: dict[str, list[float]] = {}
+    for market_id, weights in weights_by_market.items():
+        cum = list(weights)
+        for j in range(1, len(cum)):
+            cum[j] += cum[j - 1]
+        cum_by_market[market_id] = cum
 
     exposures: list[tuple[Any, ...]] = []
     for i in range(total):
@@ -88,10 +96,7 @@ def generate_exposures(
         campaign_id, market_id = campaign[0], campaign[1]
         start, end = campaign[4], campaign[5]
         market_players = players_by_market[market_id]
-        market_weights = weights_by_market[market_id]
-        cum = list(market_weights)
-        for j in range(1, len(cum)):
-            cum[j] += cum[j - 1]
+        cum = cum_by_market[market_id]
         player = market_players[rng.choices(range(len(market_players)), cum_weights=cum)[0]]
         span_seconds = max(1, int((end - start).total_seconds()))
         exposed_at = start + timedelta(seconds=rng.randrange(span_seconds))

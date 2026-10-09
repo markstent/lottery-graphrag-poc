@@ -15,4 +15,6 @@ test-results/
 *.log
 data/generated/
 data/truth/
+data/evaluation/
+backend/data/
 .ai-project

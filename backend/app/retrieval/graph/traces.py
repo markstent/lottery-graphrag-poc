@@ -18,26 +18,13 @@ benchmark_questions in the scenario library only.
 from __future__ import annotations
 
 import argparse
-import dataclasses
-from pathlib import Path
 
 from app.config import RetrievalSettings, from_env
 from app.events import ListEventSink, RetrievalEvent
 from app.evidence import GraphRunResult, RagRunResult
 from app.graph.config import GraphConfig
 from app.graph.config import from_env as from_graph_env
-from app.retrieval.graph.entities import EntityResolver
-from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolver
-from app.retrieval.graph.pipeline import GraphRagPipeline
-from app.retrieval.graph.source_lookup import SourceLookup
-from app.retrieval.standard.corpus import load_corpus
-from app.retrieval.standard.generation import (
-    AnswerGenerator,
-    FakeAnswerGenerator,
-    LiteLLMAnswerGenerator,
-)
-from app.retrieval.standard.index import build_embedder, build_store
-from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.graph.lab import build_generator, build_lab, wired_pipelines
 
 # Questions are the scenario library's own benchmark questions (HITL-05),
 # phrased with the ids a support analyst would have open. The evaluator
@@ -75,34 +62,10 @@ QUESTIONS: list[tuple[str, str, str, str | None]] = [
     ),
 ]
 
-FRAUD_RELATIONSHIP_TYPES = ("USES_PAYMENT", "USES")
-
-
-def build_generator(name: str, settings: RetrievalSettings) -> AnswerGenerator:
-    if name == "fake":
-        return FakeAnswerGenerator()
-    if name == "litellm":
-        return LiteLLMAnswerGenerator(
-            model=settings.generation.model,
-            temperature=settings.generation.temperature,
-            api_base=settings.generation.api_base,
-        )
-    raise ValueError(f"Unknown generator: {name!r}")
-
-
-def graph_relationships(base: RetrievalSettings, profile: str | None) -> tuple[str, ...]:
-    if profile == "fraud":
-        return base.graph.relationship_types + FRAUD_RELATIONSHIP_TYPES
-    return base.graph.relationship_types
-
 
 def run_all(settings: RetrievalSettings, graph_config: GraphConfig, generator_name: str) -> str:
     lines: list[str] = []
-    embedder = build_embedder(settings.embedding)
-    store = build_store(settings.vector, embedder.dimensions, settings.embedding.provider)
-    generator = build_generator(generator_name, settings)
-    corpus = {chunk.chunk_id: chunk for chunk in load_corpus(Path(settings.dataset_dir))}
-    source_lookup = SourceLookup(Path(settings.dataset_dir))
+    lab = build_lab(settings, build_generator(generator_name, settings))
 
     for scenario, label, question, profile in QUESTIONS:
         lines.append(f"## {scenario} — {label}")
@@ -111,53 +74,16 @@ def run_all(settings: RetrievalSettings, graph_config: GraphConfig, generator_na
         lines.append("")
 
         sink_a = ListEventSink()
-        pipeline_a = StandardRagPipeline(
-            embeddings=embedder,
-            store=store,
-            generator=generator,
-            settings=settings,
-            pipeline="A",
-            sink=sink_a,
-        )
-        result_a = pipeline_a.run(question)
+        result_a = lab.pipeline_a(sink=sink_a).run(question)
         lines.extend(_trace_a(result_a, sink_a.events))
 
-        reader = GraphReader(graph_config)
+        wired = wired_pipelines(lab, graph_config, profile)
         try:
-            resolver: EntityResolver = build_resolver(reader)
-            # Fair B/C split: identical limits and relationship allow-list;
-            # B is exactly C minus the ontology relationships (MAPS_TO) and
-            # concept expansion.
-            c_relationships = graph_relationships(settings, profile)
-            pipeline_b_graph = dataclasses.replace(
-                settings.graph,
-                relationship_types=tuple(rel for rel in c_relationships if rel != "MAPS_TO"),
-                ontology_expansion=False,
-            )
-            pipeline_c_graph = dataclasses.replace(
-                settings.graph,
-                relationship_types=c_relationships,
-                ontology_expansion=True,
-            )
-            for tag, graph_settings in (("B", pipeline_b_graph), ("C", pipeline_c_graph)):
-                tuned = dataclasses.replace(settings, graph=graph_settings)
-                sink = ListEventSink()
-                pipeline_g = GraphRagPipeline(
-                    resolver=resolver,
-                    neighbours=reader,
-                    embeddings=embedder,
-                    store=store,
-                    corpus=corpus,
-                    generator=generator,
-                    settings=tuned,
-                    source_lookup=source_lookup,
-                    pipeline=tag,
-                    sink=sink,
-                )
-                result_g = pipeline_g.run(question)
-                lines.extend(_trace_g(tag, result_g, sink.events))
+            for tag, pipeline in wired.pipelines:
+                result_g = pipeline.run(question)
+                lines.extend(_trace_g(tag, result_g, pipeline.events))
         finally:
-            reader.close()
+            wired.reader.close()
 
         lines.append("")
     return "\n".join(lines)

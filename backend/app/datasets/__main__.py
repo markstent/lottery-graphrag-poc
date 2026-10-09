@@ -21,7 +21,10 @@ from app.datasets.world import TABLE_SCHEMAS, build_data_dictionary, build_world
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import DEFAULT_TRUTH_PATH, build_ledger, write_ledger
 
-_ALLOWED_PROFILES = ("tiny", "dev")  # demo/stress scaling requires HITL-03 approval
+_ALLOWED_PROFILES = ("tiny", "dev", "demo")  # stress scaling remains gated
+
+# Demo worlds must not overwrite the development world's evaluator ledger;
+# generate them with make generate-demo-data (separate --truth-path).
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -50,8 +53,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.profile not in PROFILES:
         parser.error(f"unknown profile {args.profile}")
-    if args.profile in ("demo", "stress"):
-        parser.error("demo and stress profiles require HITL-03 approval (scaling is gated)")
+    if args.profile == "stress":
+        parser.error("the stress profile is still gated (not needed for the POC)")
+    if args.profile == "demo" and args.truth_path == DEFAULT_TRUTH_PATH:
+        parser.error(
+            "demo generation must write a separate evaluator ledger via "
+            "--truth-path (see make generate-demo-data)"
+        )
 
     config = GenerationConfig(
         profile=args.profile, world_seed=args.world_seed, scenario_seed=args.scenario_seed
