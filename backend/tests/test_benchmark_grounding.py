@@ -71,9 +71,11 @@ def test_scenario_ids_missing_from_the_world_do_not_ground(grounding: WorldGroun
     assert grounded.note
 
 
-def test_grounding_is_deterministic(grounding: WorldGrounding, tiny_dataset: Path) -> None:
+def test_grounding_is_deterministic(
+    grounding: WorldGrounding, tiny_dataset: Path, tiny_ledger: Path
+) -> None:
     first = grounding.ground(question_by_id("Q26"))
-    second = WorldGrounding(tiny_dataset).ground(question_by_id("Q26"))
+    second = WorldGrounding(tiny_dataset, ledger_path=tiny_ledger).ground(question_by_id("Q26"))
     assert (first.text, first.checks, first.required_evidence) == (
         second.text,
         second.checks,
