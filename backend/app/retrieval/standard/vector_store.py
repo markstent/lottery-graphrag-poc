@@ -110,8 +110,14 @@ class QdrantVectorStore:
             )
             for point_id, vector, payload in zip(ids, vectors, payloads, strict=True)
         ]
+        # Batched: one call for the whole corpus can outlive the client
+        # timeout on larger worlds (demo profile has ~3k chunks).
+        batch_size = 256
         try:
-            self._client.upsert(collection_name=self._collection, points=points)
+            for start in range(0, len(points), batch_size):
+                self._client.upsert(
+                    collection_name=self._collection, points=points[start : start + batch_size]
+                )
         except Exception as error:  # qdrant-client raises varied transport errors
             raise VectorStoreError(f"Qdrant upsert failed: {error}") from error
 

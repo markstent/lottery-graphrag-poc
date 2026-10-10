@@ -17,6 +17,78 @@ from app.evaluation.runner import BenchmarkRun, QuestionResult
 PIPELINES = ("A", "B", "C")
 
 
+def summarize(run: BenchmarkRun) -> dict[str, Any]:
+    """Machine-readable aggregate of a run: the same means the report shows.
+
+    Published next to results.json as summary.json and served by the public
+    benchmarks endpoint, so the presentation dashboard consumes exactly the
+    aggregation policy the report renders (no client-side re-computation).
+    """
+    scored = [result for result in run.results if result.grounded.status == "ok"]
+    unscored = [result for result in run.results if result.grounded.status != "ok"]
+
+    by_category: dict[str, list[QuestionResult]] = defaultdict(list)
+    for result in scored:
+        by_category[result.grounded.question.category].append(result)
+    categories = [
+        {
+            "category": category,
+            "difficulty": CATEGORY_DIFFICULTY[category],
+            "n": len(group),
+            "answer": {
+                tag: _mean(
+                    [
+                        s.answer_score
+                        for s in (r.scores[tag] for r in group if tag in r.scores)
+                        if s.answer_score is not None
+                    ]
+                )
+                for tag in PIPELINES
+            },
+            "recall": {
+                tag: _mean(
+                    [
+                        s.evidence_recall
+                        for s in (r.scores[tag] for r in group if tag in r.scores)
+                        if s.evidence_recall is not None
+                    ]
+                )
+                for tag in PIPELINES
+            },
+        }
+        for category, group in sorted(by_category.items())
+    ]
+
+    failures = [
+        {
+            "question_id": result.grounded.question.question_id,
+            "category": result.grounded.question.category,
+            "pipeline": tag,
+            "failure_class": score.failure_class,
+        }
+        for result in scored
+        for tag, score in sorted(result.scores.items())
+        if score.failure_class
+    ]
+
+    return {
+        "total": len(run.results),
+        "scored": len(scored),
+        "pipelines": {tag: _collect(scored, tag) for tag in PIPELINES},
+        "categories": categories,
+        "failures": failures,
+        "unscored": [
+            {
+                "question_id": result.grounded.question.question_id,
+                "category": result.grounded.question.category,
+                "status": result.grounded.status,
+                "note": result.grounded.note,
+            }
+            for result in unscored
+        ],
+    }
+
+
 def render_report(run: BenchmarkRun) -> str:
     lines: list[str] = []
     record = run.record.to_payload()

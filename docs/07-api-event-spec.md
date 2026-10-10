@@ -451,3 +451,32 @@ Contract tests must cover:
 API contracts are part of **HITL-02 Architecture Approval** and **HITL-08 Retrieval Behaviour Approval**.
 
 Do not freeze event contracts before reviewing real prototype traces.
+
+---
+
+## 20. Implementation status (HITL-11, 2026-10-09)
+
+Implemented and covered by tests (`tests/test_api_queries.py` offline,
+`tests/test_api_live.py` full A/B/C over HTTP):
+
+```text
+GET  /api/v1/health
+POST /api/v1/queries          202; background execution; typed request
+GET  /api/v1/queries/{run_id}        status + RagRunResult/GraphRunResult
+GET  /api/v1/queries/{run_id}/events recorded sequence (replay source)
+GET  /api/v1/demo/questions      fixed demo configuration
+GET  /api/v1/benchmarks/latest   published harness output only
+```
+
+Deliberate differences from the sketch: replay is served from the recorded
+event sequence (in-memory, bounded to the last 50 runs of the API process)
+rather than a durable event log, and `POST /queries` returns 202 with
+`results_url`/`events_url` instead of SSE streaming. SSE remains the
+transport for progressive delivery if per-event push is needed later; the
+frontend paces playback from recorded `t_ms`, so polling satisfies the
+replay contract.
+
+Reserved for later phases (not implemented): experiments, dataset and
+scenario management, `GET /queries/{run_id}/evidence` (evidence is embedded
+in the results DTO), and benchmark submission/cancel (the harness runs via
+`make run-benchmark`; the API only publishes results).

@@ -102,3 +102,57 @@ One FastAPI process hosts the API, orchestrator, pipelines, recorder, SSE hub an
 - Repository layout: ADR-009 supersedes the master-specification §8 sketch.
 - Structured store: ADR-006.
 - Run/event/result persistence: ADR-007.
+
+## 11. Final architecture explanation (HITL-11, as built)
+
+The system is five layers over one synthetic enterprise world.
+
+**Data layer.** A deterministic generator (`app/datasets`, profiles
+tiny/dev/demo) produces a relational world in Parquet: master data, players
+and devices, 5M-ticket activity at demo scale, marketing, operations and a
+document corpus. Generation is seeded and byte-for-byte reproducible; all
+planted patterns come from the scenario engine, which also writes the
+evaluator-only truth ledger. Four scenarios are enabled
+(SCN-002 shared devices, SCN-003 shared payment instruments, SCN-007
+cross-market platform incident, SCN-015 document/record conflict).
+
+**Semantic overlay (Neo4j).** The graph is an augmentation, not a
+replacement: games, platforms, versions, incidents, documents, campaigns,
+players and payment methods with bounded relationship types, each node
+carrying provenance to its warehouse row. BusinessConcept nodes and
+`MAPS_TO` edges form the ontology; cross-market equivalence lives as concept
+bindings (for example one PLATFORM_INCIDENT concept binding the GR/AT/CZ
+incidents of SCN-007). Traversal is bounded by configuration
+(depth 2, per-hop and total node caps, evidence cap), never unbounded.
+
+**Retrieval (three pipelines, one lab).** Pipeline A is a credible
+conventional RAG: bge-m3 embeddings, one shared Qdrant collection, lexical
+rerank, budgeted context. Pipelines B and C share every component with A and
+each other; B is exactly C minus ontology traversal (`MAPS_TO` plus concept
+seeds), a contract pinned by tests, so measured B/C differences isolate the
+ontology layer. Every stage emits typed events into a sink; the events are
+the only driver of UI visuals and the record used for replay.
+
+**Model gateway.** One seam (`AnswerGenerator`) with a deterministic fake
+for CI and a LiteLLM adapter for local or hosted models, selected by
+configuration; temperature 0; citations are derived from the selected
+context by the pipeline, never from model output.
+
+**Evaluation.** The 30-question bank is grounded deterministically into a
+world; scoring is deterministic (answer checks, evidence precision/recall,
+failure taxonomy). The truth ledger is readable only by the evaluation
+package, enforced by isolation tests; the public API cannot read it.
+
+**Presentation surface (Phase 13, as built).** The API exposes versioned
+endpoints for live query execution (`POST /queries` returning immediately,
+background execution, `GET /queries/{id}` results, `GET /queries/{id}/events`
+for replay from the recorded sequence), the fixed demo question set, and the
+latest published benchmark summary. The frontend consumes the same event
+contract for both the committed demo story and live backend runs; quality
+metrics shown next to a live run come only from the published benchmark.
+
+The experiment claims only what the comparison isolates: same world, same
+question, same components, differing only in the graph/ontology overlay.
+Where the graph wins (seedless questions, cross-market discovery, evidence
+recall), the delta is attributable to the overlay; where it does not, the
+harness reports that too.

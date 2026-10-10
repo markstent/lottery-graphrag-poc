@@ -12,7 +12,7 @@
 | HITL-08 Retrieval Behaviour | APPROVED | 2026-10-08 | Standing blanket approval. Conventional RAG + GraphRAG B/C implemented with evidence tracking, traversal telemetry, context assembly; real side-by-side A/B/C traces for SCN-007/015/003 in docs/retrieval/example-traces.md; specs docs/retrieval/graph-rag.md + evidence-ranking.md; 17 offline + 4 live GraphRAG tests, truth-ledger isolation verified; known limitations recorded (see gate notes). |
 | HITL-09 Benchmark / Scoring | APPROVED | 2026-10-08 | Standing blanket approval. 30-question bank grounded deterministically into the dev world (20 scored; 8 not planted, 2 not groundable, all reported); deterministic scoring (answer checks, evidence precision/recall, failure taxonomy); fairness by shared lab construction; harness + CLI with reproducibility record; demo profile enabled and timed. See gate notes. |
 | HITL-10 Testing / Quality | APPROVED | 2026-10-09 | Standing blanket approval. CI green end to end (backend ruff/mypy/pytest with Neo4j+Qdrant services, frontend prettier/oxlint/tsc/vitest/build, Playwright smoke); three long-standing CI defects fixed (Neo4j health-check port, Qdrant image without shell tools, fixtures depending on machine-local ledger); test matrix + critical coverage report committed (docs/testing/coverage.md); failure-mode tests added (gateway/embedder/store propagation; runner records generation_failure instead of crashing); B/C fairness contract pinned offline. See gate notes. |
-| HITL-11 Presentation Readiness | PENDING | | |
+| HITL-11 Presentation Readiness | APPROVED | 2026-10-09 | Standing blanket approval. Live backend wired: versioned query API (POST /queries background execution, results, recorded-event replay, fixed demo questions, published benchmark summary) per docs/07 §20; frontend Live Lab runs real A/B/C executions against the demo world with Demo story / Live backend sources, loading/error/disabled states, honest evaluation (published benchmark scores only, never per-run fabrication); demo/reset/recovery operationalised (Makefile ingest-demo-graph, index-demo-vector, serve-demo-api, demo-reset) with separate Qdrant collection so demo never overwrites dev; demo script + recovery procedure (docs/demo/presentation.md); final architecture explanation appended to docs/architecture/system-architecture.md. See gate notes. |
 
 Only the project owner may mark a gate `APPROVED`.
 
@@ -149,3 +149,60 @@ Residual gaps (recorded in docs/testing/coverage.md): no automated
 performance gates (timings recorded, not enforced); frontend unit coverage
 deliberately thin until presentation mode defines the components; visual
 regression is owner-machine only; single-browser E2E.
+
+## HITL-11 — Presentation Readiness (approved 2026-10-09)
+
+Delivered at this commit:
+
+- **Query API (docs/07 §20).** `POST /api/v1/queries` accepts a typed
+  request, returns 202 immediately and executes the selected pipelines in a
+  worker thread; `GET /queries/{id}` returns status plus the typed
+  RagRunResult/GraphRunResult records; `GET /queries/{id}/events` returns
+  the recorded sequence for replay (never re-execution). Failures map to
+  docs/07 §11 error classes (GenerationError→MODEL_ERROR etc.) and emit a
+  run.error event; the store keeps the last 50 runs of the process.
+  Contract tests: 11 offline (validation, lifecycle, ordering, replay
+  identity, 404s, error mapping, demo questions, benchmark 404/publish) + 1
+  live full A/B/C run over HTTP.
+- **Demo configuration.** Fixed saved questions (DEMO-01..04, mirroring
+  published bank questions Q30/Q25/Q28 plus one unplanted) served by
+  `GET /api/v1/demo/questions`; question texts are pipeline-visible only.
+- **Frontend wiring.** `src/api/backend-run.ts` maps recorded backend
+  events + result DTOs onto the approved MockRun playback shape; Live Lab
+  gains a Demo story / Live backend source toggle with loading, error and
+  disabled states. Evaluation metrics shown next to a live run come only
+  from the published benchmark for the matched question; runs without a
+  published result keep the strip in its waiting state. The Results
+  Dashboard consumes the latest published run (`GET /api/v1/benchmarks/latest`,
+  now backed by the harness's own `summary.json` aggregate, so no client-side
+  re-computation); with no published run it shows the committed validation
+  run labelled as such, hides sections without a bank dimension, and marks
+  unscored questions "not scored" (docs/ux/screen-specifications.md §6
+  live-data note). Vitest 22, tsc, oxlint, prettier, build, smoke e2e and
+  all 5 visual baselines green.
+- **Demo operations.** `make ingest-demo-graph`, `index-demo-vector`,
+  `serve-demo-api` (demo world + separate `semantic_context_lab_demo`
+  Qdrant collection) and `make demo-reset`; demo run verified end to end
+  (DEMO-02 over the API: A 8 chunks, B 103 nodes, C 129 nodes + ontology
+  expansion, 757 recorded events). Vector store upsert now batches (256)
+  after the demo corpus (2,905 chunks) exceeded the single-call client
+  timeout; covered by VECTOR_E2E in CI.
+- **Documents.** Demo script and recovery procedures
+  (docs/demo/presentation.md); final architecture explanation appended to
+  docs/architecture/system-architecture.md §11; API implementation status
+  recorded in docs/07 §20.
+
+- **Benchmark aggregation.** The harness now writes `summary.json` next to
+  `results.json` and `report.md`, produced by one `summarize()` policy
+  shared with the markdown report; the API and dashboard publish that
+  aggregate unchanged.
+
+Verified locally at this commit: backend 139 passed offline + 10 live
+(GRAPH_E2E) green, ruff/ruff format/mypy strict clean; frontend stack green
+as above; demo state restored after live tests (make demo-reset).
+
+Residual gaps: replay events are in-memory (bounded, process lifetime);
+`GET /queries/{id}/evidence` and SSE progressive delivery intentionally
+deferred (docs/07 §20); benchmark execution stays a CLI operation, the API
+only publishes results; presentation-state run history does not survive an
+API restart (regenerating state is one demo-reset).

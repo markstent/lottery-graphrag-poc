@@ -109,6 +109,12 @@ Blind mode: planted specifics hidden; configuration metadata only (docs/06 secti
 
 Every chart has a table alternative (accessibility); failure rows deep-link to run replays.
 
+Live data note (HITL-11): when the dashboard renders the latest published
+run from the API, the header states the run id and source; sections with no
+bank dimension (market breakdown) are hidden rather than filled with
+synthetic values, and unscored questions appear in failure analysis marked
+"not scored".
+
 ## 7. Semantic Layer
 
 ```text

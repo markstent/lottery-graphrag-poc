@@ -1,10 +1,18 @@
 /**
  * Results Dashboard (docs/06 section 16): A/B/C outcomes with table-first,
  * chart-second rendering and failure drill-in.
+ *
+ * Data source: the latest published benchmark run from the API (the
+ * harness's own aggregate, never recomputed here). When the API has no run
+ * or is unreachable, the committed validation run from
+ * docs/evaluation/harness-validation.md is shown instead and labelled.
  */
 
+import { useEffect, useState } from 'react'
+
 import { hrefFor } from '../app/router'
-import { BENCHMARK_RESULTS } from '../mock/content'
+import { BENCHMARK_RESULTS, type BenchmarkResults } from '../mock/content'
+import { fetchBenchmarkResults } from '../api/backend-run'
 
 const CONFIGS = [
   'A · Current Approach',
@@ -53,8 +61,29 @@ function MetricCard({
   )
 }
 
+type Source = 'api' | 'committed'
+
 export function ResultsDashboard() {
-  const results = BENCHMARK_RESULTS
+  const [results, setResults] = useState<BenchmarkResults>(BENCHMARK_RESULTS)
+  const [source, setSource] = useState<Source>('committed')
+
+  useEffect(() => {
+    let cancelled = false
+    fetchBenchmarkResults()
+      .then((published) => {
+        if (!cancelled && published) {
+          setResults(published)
+          setSource('api')
+        }
+      })
+      .catch(() => {
+        // API offline or broken run: keep the committed validation run.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   return (
     <div className="space-y-4">
       <section
@@ -67,6 +96,7 @@ export function ResultsDashboard() {
             <p className="text-xs text-muted">
               benchmark run {results.benchmarkRunId} · {results.questions}{' '}
               questions · same world, corpus, embedding and generation models
+              {source === 'committed' && ' · committed validation run'}
             </p>
           </div>
           <a
@@ -148,21 +178,25 @@ export function ResultsDashboard() {
       </section>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <section
-          aria-label="By market"
-          className="rounded-card border border-border bg-surface p-4"
-        >
-          <h3 className="mb-2 text-sm font-semibold text-secondary">
-            Correctness by market
-          </h3>
-          <ul className="space-y-2 text-sm">
-            {results.byMarket.map((row) => (
-              <li key={row.market} className="flex items-center gap-3">
-                <span className="w-32 shrink-0 text-secondary">
-                  {row.market}
-                </span>
-                {[row.baseline, row.graphRelationships, row.graphOntology].map(
-                  (value, index) => (
+        {results.byMarket.length > 0 && (
+          <section
+            aria-label="By market"
+            className="rounded-card border border-border bg-surface p-4"
+          >
+            <h3 className="mb-2 text-sm font-semibold text-secondary">
+              Correctness by market
+            </h3>
+            <ul className="space-y-2 text-sm">
+              {results.byMarket.map((row) => (
+                <li key={row.market} className="flex items-center gap-3">
+                  <span className="w-32 shrink-0 text-secondary">
+                    {row.market}
+                  </span>
+                  {[
+                    row.baseline,
+                    row.graphRelationships,
+                    row.graphOntology,
+                  ].map((value, index) => (
                     <span
                       key={index}
                       className="h-1.5 flex-1 rounded-full bg-border"
@@ -172,15 +206,15 @@ export function ResultsDashboard() {
                         style={{ width: `${Math.round(value * 100)}%` }}
                       />
                     </span>
-                  ),
-                )}
-                <span className="w-10 text-right tabular-nums text-muted">
-                  {row.graphOntology.toFixed(2)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
+                  ))}
+                  <span className="w-10 text-right tabular-nums text-muted">
+                    {row.graphOntology.toFixed(2)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <section
           aria-label="Efficiency"
@@ -238,8 +272,10 @@ export function ResultsDashboard() {
             >
               <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-chip bg-surface-raised px-2 py-0.5 text-xs text-muted">
-                  {failure.questionId} · {failure.complexity} · pipeline{' '}
-                  {failure.pipeline}
+                  {failure.questionId} · {failure.complexity}
+                  {failure.pipeline
+                    ? ` · pipeline ${failure.pipeline}`
+                    : ' · not scored'}
                 </span>
                 <a
                   href={hrefFor('lab', { run: MOCK_RUN_ID })}
@@ -251,6 +287,9 @@ export function ResultsDashboard() {
               <p className="mt-1 text-secondary">{failure.note}</p>
             </li>
           ))}
+          {results.failures.length === 0 && (
+            <li className="text-sm text-muted">No failures recorded.</li>
+          )}
         </ul>
       </section>
     </div>

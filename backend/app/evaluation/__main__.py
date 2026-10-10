@@ -3,7 +3,7 @@
     uv run python -m app.evaluation [--generator fake|litellm]
         [--questions Q01,Q25] [--pipelines ABC] [--out DIR]
 
-Writes ``results.json`` and ``report.md`` into the output directory
+Writes ``results.json``, ``summary.json`` and ``report.md`` into the output directory
 (default ``data/evaluation/run-<timestamp>``). Requires services up and the
 dev world ingested + indexed, like the trace CLI.
 """
@@ -16,7 +16,7 @@ from datetime import datetime
 from pathlib import Path
 
 from app.config import from_env
-from app.evaluation.report import render_report
+from app.evaluation.report import render_report, summarize
 from app.evaluation.runner import BenchmarkRunner
 from app.graph.config import from_env as from_graph_env
 from app.retrieval.graph.lab import build_generator
@@ -55,6 +55,7 @@ def main() -> None:
     )
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "results.json").write_text(json.dumps(run.to_payload(), indent=2), encoding="utf-8")
+    (out_dir / "summary.json").write_text(json.dumps(summarize(run), indent=2), encoding="utf-8")
     (out_dir / "report.md").write_text(render_report(run), encoding="utf-8")
     print(f"wrote {out_dir / 'results.json'} and {out_dir / 'report.md'}")
 

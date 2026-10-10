@@ -147,6 +147,38 @@ def test_seedless_pipeline_a_records_no_seeds(runner: BenchmarkRunner) -> None:
     assert a_run.selected_document_ids  # pipeline A retrieves document chunks
 
 
+def test_summary_matches_the_report_policy(runner: BenchmarkRunner) -> None:
+    import json
+
+    from app.evaluation.report import summarize
+
+    run = runner.run(QUESTIONS)
+    summary = summarize(run)
+    assert summary["total"] == 3
+    assert summary["scored"] == 1
+    assert set(summary["pipelines"]) == {"A", "B", "C"}
+    for stats in summary["pipelines"].values():
+        assert stats["n"] == 1
+        assert 0.0 <= stats["answer"] <= 1.0
+        assert 0.0 <= stats["recall"] <= 1.0
+    assert summary["unscored"] == [
+        {
+            "question_id": "Q17",
+            "category": summary["unscored"][0]["category"],
+            "status": "not_planted",
+            "note": summary["unscored"][0]["note"],
+        },
+        {
+            "question_id": "Q25",
+            "category": summary["unscored"][1]["category"],
+            "status": "not_grounded",
+            "note": summary["unscored"][1]["note"],
+        },
+    ]
+    # The aggregate is JSON-serialisable exactly as the harness writes it.
+    assert json.loads(json.dumps(summary)) == summary
+
+
 class FailingGenerator:
     """Gateway stub whose every call fails, like a downed provider."""
 

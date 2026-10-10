@@ -191,7 +191,7 @@ export interface MarketRow {
 export interface FailureRow {
   questionId: string
   complexity: string
-  pipeline: 'A' | 'B' | 'C'
+  pipeline?: 'A' | 'B' | 'C'
   note: string
 }
 
