@@ -32,3 +32,27 @@ All data, brands, products, people, incidents, documents and systems are synthet
 ## Repository philosophy
 
 This project is built from specifications first. Code must conform to the specifications and approved HITL decisions.
+
+## Run the demo
+
+```bash
+make services-up      # Neo4j + Qdrant (Docker/OrbStack)
+make demo-reset       # ingest the demo graph + rebuild the demo vector index
+make serve-demo-api   # API on :8000 against the demo world
+make dev-frontend     # UI on :5173
+```
+
+Then open `http://localhost:5173`. Live Lab starts on the committed demo
+story (offline-safe); switch the composer to "Live backend" to execute real
+A/B/C runs against the demo world. Development data and tests:
+
+```bash
+make generate-dev-data  # development dataset
+make ingest-graph       # development world into Neo4j
+make index-vector       # development document index into Qdrant
+make test               # backend + frontend unit tests
+make run-benchmark      # the evaluation harness
+```
+
+Presentation run-of-show and recovery procedures:
+`docs/demo/presentation.md`. Release record: `RELEASE.md`.
