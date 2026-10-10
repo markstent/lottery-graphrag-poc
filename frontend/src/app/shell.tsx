@@ -17,6 +17,7 @@ const NAV: Array<{ name: RouteName; label: string }> = [
   { name: 'benchmark', label: 'Benchmark' },
   { name: 'results', label: 'Results' },
   { name: 'semantic', label: 'Semantic Layer' },
+  { name: 'help', label: 'Help' },
 ]
 
 function SettingsDrawer() {

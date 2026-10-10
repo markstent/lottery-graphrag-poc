@@ -1,8 +1,8 @@
 /**
- * Minimal hash router for the seven IA routes
- * (docs/ux/information-architecture.md section 2).
+ * Minimal hash router for the eight IA routes
+ * (docs/ux/information-architecture.md section 2; Help added at HITL-11).
  *
- * Chosen over adding react-router: seven static routes with one query
+ * Chosen over adding react-router: eight static routes with one query
  * parameter each; a 40-line module keeps the dependency count down
  * (DECISIONS.md D-011). Deep links survive refresh by design.
  */
@@ -17,6 +17,7 @@ export type RouteName =
   | 'benchmark'
   | 'results'
   | 'semantic'
+  | 'help'
 
 export interface Route {
   name: RouteName
@@ -31,6 +32,7 @@ const ROUTES: RouteName[] = [
   'benchmark',
   'results',
   'semantic',
+  'help',
 ]
 
 export function parseHash(hash: string): Route {

@@ -27,4 +27,13 @@ describe('App', () => {
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Run' })).toBeVisible()
   })
+
+  it('links to the in-app Help screen', () => {
+    render(<App />)
+
+    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute(
+      'href',
+      '#/help',
+    )
+  })
 })

@@ -4,6 +4,7 @@ import { useRoute } from './app/router'
 import { BenchmarkRunner } from './views/benchmark-runner'
 import { EvidenceExplorer } from './views/evidence-explorer'
 import { ExperimentHome } from './views/experiment-home'
+import { Help } from './views/help'
 import { LiveLab } from './views/live-lab'
 import { ResultsDashboard } from './views/results-dashboard'
 import { ScenarioLab } from './views/scenario-lab'
@@ -26,6 +27,8 @@ function Routes() {
       return <ResultsDashboard />
     case 'semantic':
       return <SemanticLayer />
+    case 'help':
+      return <Help />
   }
 }
 

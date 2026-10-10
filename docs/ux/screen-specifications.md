@@ -109,6 +109,17 @@ Blind mode: planted specifics hidden; configuration metadata only (docs/06 secti
 
 Every chart has a table alternative (accessibility); failure rows deep-link to run replays.
 
+## 6a. Help (HITL-11 addition, 2026-10-10)
+
+In-app documentation screen (`#/help`): a sticky section index and eleven
+sections covering the experiment design, quick start, screen-by-screen
+guide, run stages and event vocabulary, saved demo questions, metric
+sources and honesty rules, data and provenance, operator commands,
+troubleshooting, glossary and accessibility. Content quotes only committed
+figures (validation results, demo-world scale) and mirrors
+docs/demo/presentation.md; it renders no synthetic values. Visual baseline:
+`e2e/visual.spec.ts-snapshots/help-darwin.png`.
+
 Live data note (HITL-11): when the dashboard renders the latest published
 run from the API, the header states the run id and source; sections with no
 bank dimension (market breakdown) are hidden rather than filled with

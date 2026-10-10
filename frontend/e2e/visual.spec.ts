@@ -51,3 +51,11 @@ test('semantic layer', async ({ page }) => {
   ).toBeVisible()
   await expect(page).toHaveScreenshot('semantic.png', { fullPage: true })
 })
+
+test('help', async ({ page }) => {
+  await page.goto('/#/help')
+  await expect(
+    page.getByRole('heading', { name: 'Help', level: 1 }),
+  ).toBeVisible()
+  await expect(page).toHaveScreenshot('help.png', { fullPage: true })
+})
