@@ -8,6 +8,7 @@
  */
 
 import { hrefFor } from '../app/router'
+import { Code, CommandBlock, Section, Table } from '../components/doc'
 
 const NAV_SECTIONS = [
   { id: 'what', label: 'What this application is' },
@@ -22,77 +23,6 @@ const NAV_SECTIONS = [
   { id: 'glossary', label: 'Glossary' },
   { id: 'accessibility', label: 'Accessibility' },
 ]
-
-function Section({
-  id,
-  title,
-  children,
-}: {
-  id: string
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <section aria-labelledby={`help-${id}`} className="scroll-mt-28">
-      <h2 id={`help-${id}`} className="text-lg font-semibold">
-        {title}
-      </h2>
-      <div className="mt-2 space-y-3 text-sm leading-relaxed text-secondary">
-        {children}
-      </div>
-    </section>
-  )
-}
-
-function Table({ head, rows }: { head: string[]; rows: string[][] }) {
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-xs text-muted">
-            {head.map((cell) => (
-              <th key={cell} scope="col" className="pb-1 pr-4 font-normal">
-                {cell}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row[0]} className="border-t border-border align-top">
-              {row.map((cell, index) => (
-                <td
-                  key={index}
-                  className={
-                    index === 0 ? 'py-1.5 pr-4 text-primary' : 'py-1.5 pr-4'
-                  }
-                >
-                  {cell}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function Code({ children }: { children: string }) {
-  return (
-    <code className="rounded-chip bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-primary">
-      {children}
-    </code>
-  )
-}
-
-function CommandBlock({ lines }: { lines: string[] }) {
-  return (
-    <pre className="overflow-x-auto rounded-card border border-border bg-surface p-3 font-mono text-xs text-primary">
-      {lines.join('\n')}
-    </pre>
-  )
-}
 
 export function Help() {
   return (
@@ -575,6 +505,14 @@ export function Help() {
           <Code>docs/07-api-event-spec.md</Code> (API contract),{' '}
           <Code>docs/evaluation/harness-validation.md</Code> (validation runs),{' '}
           <Code>RELEASE.md</Code> (release record). Related screens:{' '}
+          <a
+            className="text-graph hover:underline"
+            href={hrefFor('dictionary')}
+          >
+            Data Dictionary
+          </a>{' '}
+          (every table, graph label, relationship and ontology concept, with
+          diagrams),{' '}
           <a
             className="text-graph hover:underline"
             href={hrefFor('experiment')}

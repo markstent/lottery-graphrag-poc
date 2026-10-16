@@ -59,3 +59,11 @@ test('help', async ({ page }) => {
   ).toBeVisible()
   await expect(page).toHaveScreenshot('help.png', { fullPage: true })
 })
+
+test('data dictionary', async ({ page }) => {
+  await page.goto('/#/dictionary')
+  await expect(
+    page.getByRole('heading', { name: 'Data Dictionary', level: 1 }),
+  ).toBeVisible()
+  await expect(page).toHaveScreenshot('dictionary.png', { fullPage: true })
+})

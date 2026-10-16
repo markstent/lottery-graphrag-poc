@@ -18,6 +18,7 @@ export type RouteName =
   | 'results'
   | 'semantic'
   | 'help'
+  | 'dictionary'
 
 export interface Route {
   name: RouteName
@@ -33,6 +34,7 @@ const ROUTES: RouteName[] = [
   'results',
   'semantic',
   'help',
+  'dictionary',
 ]
 
 export function parseHash(hash: string): Route {

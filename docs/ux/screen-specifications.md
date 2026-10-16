@@ -126,6 +126,23 @@ bank dimension (market breakdown) are hidden rather than filled with
 synthetic values, and unscored questions appear in failure analysis marked
 "not scored".
 
+## 6b. Data Dictionary (HITL-11 addition, 2026-10-10)
+
+In-app schema documentation (`#/dictionary`) so a reader can understand
+exactly what is represented without leaving the app. Sections: layer
+architecture (SVG diagram: structured layer, graph overlay, vector index,
+pipelines), the full 36-table inventory grouped by domain with keys and
+demo-world row counts, field-level detail for the ten core tables, the
+graph schema as a domain-cluster SVG plus the exhaustive 26-label /
+26-relationship-type lists with meanings and the graph-vs-source boundary
+(including derived relationships), the ontology catalogue (10 concepts),
+mapping sources and a binding diagram (INC_S007_GR/AT/CZ →
+CONCEPT_PLATFORM_INCIDENT), and pointers to the authoritative repo
+artefacts. All figures are generated from committed sources (world
+manifest, statements.py allow-list, master_data.py catalogue); reserved
+but unpopulated ontology vocabulary is stated explicitly. Baselines:
+`dictionary-darwin.png`, updated `help-darwin.png`.
+
 ## 7. Semantic Layer
 
 ```text

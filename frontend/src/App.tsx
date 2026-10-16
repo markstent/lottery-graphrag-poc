@@ -2,6 +2,7 @@ import { SettingsProvider, useSettings } from './app/settings'
 import { Shell } from './app/shell'
 import { useRoute } from './app/router'
 import { BenchmarkRunner } from './views/benchmark-runner'
+import { DataDictionary } from './views/data-dictionary'
 import { EvidenceExplorer } from './views/evidence-explorer'
 import { ExperimentHome } from './views/experiment-home'
 import { Help } from './views/help'
@@ -29,6 +30,8 @@ function Routes() {
       return <SemanticLayer />
     case 'help':
       return <Help />
+    case 'dictionary':
+      return <DataDictionary />
   }
 }
 

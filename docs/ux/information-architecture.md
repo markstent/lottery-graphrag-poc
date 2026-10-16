@@ -46,10 +46,11 @@ Settings drawer: provider/model defaults, `GET /models/status`, reduced motion, 
 - Live Lab run deep links load replayable events; replay is client-side over stored telemetry.
 - Evidence Explorer opens as a route with the originating run in the URL, so citations from Live Lab remain shareable during a session.
 - Presentation mode changes density and chrome, never routes: the same seven screens exist, plus a fixed demo-question rail in Live Lab.
-- Help (added at HITL-11, 2026-10-10) is an eighth route: in-app operator
-  and presenter documentation (sections, troubleshooting, glossary). It is
-  documentation chrome, not one of the seven experiment screens, and links
-  back into Live Lab, Results and Semantic Layer.
+- Help (added at HITL-11, 2026-10-10) is documentation chrome beside the
+  seven experiment screens, now two routes: `#/help` (operator and
+  presenter guide) and `#/dictionary` (data dictionary: table inventory,
+  field-level detail, graph schema and ontology catalogue with diagrams).
+  Both link back into Live Lab, Results and Semantic Layer.
 - Blind benchmark mode hides Scenario Lab truth details (docs/06 section 12); the Scenario Lab route shows configuration but not planted specifics.
 
 ## 5. Required states per screen
