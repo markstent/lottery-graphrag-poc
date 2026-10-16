@@ -194,6 +194,45 @@ export function Code({ children }: { children: string }) {
   )
 }
 
+export function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-chip border border-border bg-surface-raised px-2 py-0.5 font-mono text-[11px] text-secondary">
+      {children}
+    </span>
+  )
+}
+
+/**
+ * A horizontal step rail: pills joined by arrow glyphs. Because it is
+ * plain flex layout it wraps instead of overlapping, unlike positioned
+ * SVG, and it reads as plain text to assistive tech.
+ */
+export function Rail({
+  items,
+}: {
+  items: readonly { label: string; note?: string }[]
+}) {
+  return (
+    <ul className="flex flex-wrap items-center gap-x-2 gap-y-2">
+      {items.map((item, index) => (
+        <li key={item.label} className="flex items-center gap-2">
+          {index > 0 && (
+            <span aria-hidden className="text-sm text-muted">
+              →
+            </span>
+          )}
+          <span className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-xs font-medium text-primary">
+            {item.label}
+            {item.note && (
+              <span className="ml-1.5 font-normal text-muted">{item.note}</span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 export function CommandBlock({ lines }: { lines: string[] }) {
   return (
     <pre className="overflow-x-auto rounded-card border border-border bg-surface p-3 font-mono text-xs leading-relaxed text-primary">

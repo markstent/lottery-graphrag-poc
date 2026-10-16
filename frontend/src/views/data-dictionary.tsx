@@ -5,367 +5,143 @@
  * Everything here is generated from committed sources: the world manifest
  * and _data_dictionary.json (demo world), backend/app/graph/statements.py
  * (node labels and relationship allow-list) and
- * backend/app/datasets/master_data.py (concept catalogue). Diagrams are
- * inline SVG styled with design tokens; the tables beside them are the
- * textual alternative (docs/ux/accessibility.md).
+ * backend/app/datasets/master_data.py (concept catalogue).
  *
- * Structure (2026-10-10 redesign): hero, how-to-read orientation with the
- * layer diagram, an entity-relationship overview, then the reference
- * sections.
+ * 2026-10-10 visual pass: layout-driven HTML (store cards, chain rails,
+ * cluster chips) instead of positioned SVG, so nothing can overlap.
  */
 
-import { Callout, Code, PageHero, Section, Table } from '../components/doc'
-import { Arrow, Box, Diagram } from '../components/diagram'
+import {
+  Callout,
+  Card,
+  Chip,
+  PageHero,
+  Rail,
+  Section,
+  Table,
+} from '../components/doc'
 
-function LayerDiagram() {
+const STORES = [
+  {
+    title: 'Structured layer',
+    tech: 'DuckDB over Parquet',
+    body: '36 tables, authoritative for every fact and amount: tickets, prizes, sessions, KPIs. The graph never replaces it.',
+  },
+  {
+    title: 'Graph overlay',
+    tech: 'Neo4j',
+    body: '26 node labels, 26 relationship types. Entities, relationships, ontology mappings and provenance. It guides queries; it does not state numbers.',
+    accent: true,
+  },
+  {
+    title: 'Vector index',
+    tech: 'Qdrant',
+    body: 'One shared collection of 6,996 document chunks, the same embedder for pipelines A, B and C.',
+  },
+] as const
+
+/** Four one-line chains that give the shape of the world. */
+const CHAINS = [
+  {
+    what: 'Players play',
+    rail: [
+      { label: 'Player', note: '100,000' },
+      { label: 'Ticket', note: '5,000,000' },
+      { label: 'Game', note: '20' },
+      { label: 'Draw', note: '2,292' },
+    ],
+  },
+  {
+    what: 'Platforms fail',
+    rail: [
+      { label: 'Incident', note: '25' },
+      { label: 'Platform', note: '8' },
+      { label: 'PlatformVersion', note: '24' },
+      { label: 'AppVersion', note: '16' },
+    ],
+  },
+  {
+    what: 'Knowledge flows',
+    rail: [
+      { label: 'Document', note: '2,000' },
+      { label: 'Chunk', note: '6,996' },
+      { label: 'Vector index' },
+    ],
+  },
+  {
+    what: 'Money and identity',
+    rail: [
+      { label: 'Player' },
+      { label: 'Account / Device / PaymentMethod' },
+      { label: 'fraud substrates' },
+    ],
+  },
+] as const
+
+const CLUSTERS = [
+  {
+    name: 'Reference',
+    labels: ['Market', 'Region', 'Language', 'Currency', 'Channel', 'Supplier'],
+  },
+  {
+    name: 'Product',
+    labels: [
+      'Game',
+      'GameFamily',
+      'GameCategory',
+      'GameMechanic',
+      'Draw',
+      'PrizeType',
+    ],
+  },
+  { name: 'Platform', labels: ['Platform', 'PlatformVersion', 'AppVersion'] },
+  {
+    name: 'Player',
+    labels: ['Player', 'PlayerSegment', 'Device', 'PaymentMethod'],
+  },
+  {
+    name: 'Commercial & ops',
+    labels: ['Campaign', 'Experiment', 'Incident', 'SupportCase'],
+  },
+  {
+    name: 'Knowledge',
+    labels: ['Document', 'DocumentChunk', 'BusinessConcept'],
+    accent: true,
+  },
+] as const
+
+function OntologyBinding() {
   return (
-    <Diagram
-      title="One world, three coordinated stores"
-      description="The DuckDB/Parquet warehouse holds the authoritative facts. The Neo4j graph overlay holds entities, relationships and ontology mappings, and every node points back to its source record (dashed provenance arrows). The Qdrant index holds document chunks. Pipelines A, B and C read the vector index; B and C additionally read the graph; all three answer through the same model gateway."
-      height={300}
-    >
-      <Box
-        x={20}
-        y={30}
-        w={200}
-        h={110}
-        title="Structured layer"
-        lines={[
-          'DuckDB over Parquet',
-          '36 tables · authoritative facts',
-          'tickets, prizes, sessions…',
-        ]}
-      />
-      <Box
-        x={280}
-        y={30}
-        w={200}
-        h={110}
-        title="Graph overlay (Neo4j)"
-        lines={[
-          '26 node labels',
-          '26 relationship types',
-          'entities + ontology + provenance',
-        ]}
-        accent
-      />
-      <Box
-        x={540}
-        y={30}
-        w={200}
-        h={110}
-        title="Vector index (Qdrant)"
-        lines={[
-          'one shared collection',
-          '6,996 document chunks',
-          'same embedder for A/B/C',
-        ]}
-      />
-      <Box
-        x={280}
-        y={210}
-        w={200}
-        h={60}
-        title="Pipelines A / B / C"
-        lines={['A: vector · B: + graph · C: + ontology']}
-      />
-      <Arrow x1={222} y1={85} x2={278} y2={85} label="provenance" dashed />
-      <Arrow x1={538} y1={85} x2={482} y2={85} label="source records" dashed />
-      <Arrow x1={340} y1={140} x2={340} y2={208} label="guides" />
-      <Arrow x1={420} y1={140} x2={420} y2={208} label="chunks" />
-      <Arrow x1={122} y1={140} x2={330} y2={244} label="authoritative facts" />
-    </Diagram>
-  )
-}
-
-/** How the core entities connect, before the table-by-table detail. */
-function EntityOverviewDiagram() {
-  const h = 52
-  return (
-    <Diagram
-      title="How the core entities connect"
-      description="Entity-relationship overview. A Player registers Accounts, uses Devices and PaymentMethods, and buys Tickets for Games in Draws through Channels and Retailers. Games belong to Families and run on Platforms; Platform Versions and App Versions trace releases. Incidents relate to Platforms, Versions and Games. Campaigns expose Players and promote Games. Documents describe the world and are chunked for retrieval; Business Concepts bind the vocabulary. High-volume fact tables (tickets, sessions, exposures, prizes, KPIs) are shaded as facts."
-      height={430}
-    >
-      {/* Player domain */}
-      <Box
-        x={20}
-        y={20}
-        w={120}
-        h={h}
-        title="Player"
-        lines={['100,000']}
-        accent
-      />
-      <Box x={20} y={100} w={120} h={h} title="Account" lines={['100,000']} />
-      <Box x={20} y={180} w={120} h={h} title="Device" lines={['120,000']} />
-      <Box
-        x={20}
-        y={260}
-        w={120}
-        h={h}
-        title="PaymentMethod"
-        lines={['95,909']}
-      />
-      <Arrow x1={80} y1={72} x2={80} y2={98} />
-      <Arrow x1={80} y1={152} x2={80} y2={178} />
-      <Arrow x1={80} y1={232} x2={80} y2={258} />
-
-      {/* Activity facts */}
-      <Box
-        x={220}
-        y={20}
-        w={130}
-        h={h}
-        title="Ticket"
-        lines={['5,000,000 · fact']}
-      />
-      <Box
-        x={220}
-        y={100}
-        w={130}
-        h={h}
-        title="Session"
-        lines={['2,000,000 · fact']}
-      />
-      <Box
-        x={220}
-        y={180}
-        w={130}
-        h={h}
-        title="Exposure"
-        lines={['3,000,000 · fact']}
-      />
-      <Arrow x1={142} y1={44} x2={218} y2={44} label="buys" />
-      <Arrow x1={142} y1={60} x2={218} y2={118} label="starts" />
-      <Arrow x1={142} y1={110} x2={218} y2={200} label="receives" />
-
-      {/* Product domain */}
-      <Box x={430} y={20} w={120} h={h} title="Game" lines={['20']} accent />
-      <Box x={430} y={100} w={120} h={h} title="GameFamily" lines={['8']} />
-      <Box x={430} y={180} w={120} h={h} title="Draw" lines={['2,292']} />
-      <Box x={580} y={20} w={120} h={h} title="Retailer" lines={['5,000']} />
-      <Arrow x1={352} y1={44} x2={428} y2={44} label="for" />
-      <Arrow x1={490} y1={72} x2={490} y2={98} label="family" />
-      <Arrow x1={490} y1={152} x2={490} y2={178} label="draw" />
-      <Arrow x1={352} y1={30} x2={578} y2={40} label="via" />
-
-      {/* Platform + incidents */}
-      <Box x={430} y={260} w={120} h={h} title="Platform" lines={['8']} />
-      <Box
-        x={580}
-        y={260}
-        w={120}
-        h={h}
-        title="PlatformVersion"
-        lines={['24']}
-      />
-      <Box
-        x={220}
-        y={260}
-        w={130}
-        h={h}
-        title="Incident"
-        lines={['25']}
-        accent
-      />
-      <Arrow x1={490} y1={232} x2={490} y2={258} label="runs on" />
-      <Arrow x1={552} y1={286} x2={578} y2={286} label="versions" />
-      <Arrow x1={352} y1={286} x2={428} y2={286} label="affects" />
-
-      {/* Knowledge + ontology */}
-      <Box x={220} y={352} w={130} h={h} title="Document" lines={['2,000']} />
-      <Box x={430} y={352} w={120} h={h} title="Chunk" lines={['6,996']} />
-      <Box
-        x={620}
-        y={352}
-        w={140}
-        h={h}
-        title="BusinessConcept"
-        lines={['10 · the ontology']}
-        accent
-      />
-      <Arrow x1={352} y1={378} x2={428} y2={378} label="chunked into" />
-      <Arrow x1={285} y1={312} x2={285} y2={350} label="summarised" />
-      <Arrow x1={552} y1={378} x2={618} y2={378} label="MAPS_TO" dashed />
-      <Arrow
-        x1={550}
-        y1={70}
-        x2={660}
-        y2={350}
-        label="bound to concepts"
-        dashed
-      />
-
-      <text x={20} y={430} fill="var(--color-text-muted)" fontSize={10}>
-        Accented boxes enter the graph as nodes; plain boxes are warehouse-only;
-        "fact" tables are never graphed.
-      </text>
-    </Diagram>
-  )
-}
-
-function OntologyDiagram() {
-  return (
-    <Diagram
-      title="A cross-market concept binding incidents from three markets"
-      description="Three incident nodes, INC_S007_GR (Greece), INC_S007_AT (Austria) and INC_S007_CZ (Czech Republic), each with MAPS_TO edges pointing to the single concept node CONCEPT_PLATFORM_INCIDENT (type BusinessEvent). On the product side, game families FAM_NATIONAL_DRAW and FAM_ANNUITY map to CONCEPT_NATIONAL_DRAW, and FAM_MULTINATIONAL_JACKPOT maps to CONCEPT_MULTINATIONAL_JACKPOT. Channels RETAIL, APP and WEB map to the retail and digital channel concepts. A query mentioning any one bound incident can therefore discover the others through the shared concept."
-      height={280}
-    >
-      <Box
-        x={20}
-        y={30}
-        w={190}
-        h={54}
-        title="INC_S007_GR"
-        lines={['Incident · Greece']}
-      />
-      <Box
-        x={20}
-        y={112}
-        w={190}
-        h={54}
-        title="INC_S007_AT"
-        lines={['Incident · Austria']}
-      />
-      <Box
-        x={20}
-        y={194}
-        w={190}
-        h={54}
-        title="INC_S007_CZ"
-        lines={['Incident · Czech Republic']}
-      />
-      <Box
-        x={320}
-        y={100}
-        w={220}
-        h={70}
-        title="CONCEPT_PLATFORM_INCIDENT"
-        lines={[
-          'BusinessConcept · BusinessEvent',
-          'canonical: Platform Incident',
-        ]}
-        accent
-      />
-      <Arrow x1={210} y1={57} x2={318} y2={122} label="MAPS_TO" />
-      <Arrow x1={210} y1={139} x2={318} y2={139} label="MAPS_TO" />
-      <Arrow x1={210} y1={221} x2={318} y2={156} label="MAPS_TO" />
-      <Box
-        x={590}
-        y={30}
-        w={150}
-        h={54}
-        title="FAM_NATIONAL_DRAW"
-        lines={['GameFamily']}
-      />
-      <Box
-        x={590}
-        y={104}
-        w={150}
-        h={54}
-        title="FAM_MULTINATIONAL…"
-        lines={['GameFamily']}
-      />
-      <Box
-        x={590}
-        y={178}
-        w={150}
-        h={54}
-        title="RETAIL / APP / WEB"
-        lines={['Channel']}
-      />
-      <Arrow x1={540} y1={115} x2={588} y2={62} label="MAPS_TO" />
-      <Arrow x1={540} y1={135} x2={588} y2={132} label="MAPS_TO" />
-      <Arrow x1={540} y1={155} x2={588} y2={204} label="MAPS_TO" />
-    </Diagram>
-  )
-}
-
-function GraphSchemaDiagram() {
-  return (
-    <Diagram
-      title="The graph schema by domain cluster"
-      description="Domain-cluster diagram of the graph schema. Reference cluster: Market, Region, Language, Currency, Channel, Supplier. Product cluster: Game, GameFamily, GameCategory, GameMechanic, Draw, PrizeType. Platform cluster: Platform, PlatformVersion, AppVersion. Player cluster: Player, PlayerSegment, Device, PaymentMethod. Operations cluster: Campaign, Experiment, Incident, SupportCase. Knowledge cluster: Document, DocumentChunk, BusinessConcept. Cross-cluster arrows: Game RUNS_ON Platform and AVAILABLE_IN Market; Incident AFFECTS Game and AFFECTS_MARKET Market and RELATED_TO Platform; Document REFERENCES Incident and HAS_CHUNK DocumentChunk; Player USES Device and USES_PAYMENT PaymentMethod and PLAYS Game and EXPOSED_TO Campaign; entities MAPS_TO BusinessConcept."
-      height={360}
-    >
-      <Box
-        x={20}
-        y={20}
-        w={165}
-        h={118}
-        title="Reference"
-        lines={['Market', 'Region · Language · Currency', 'Channel · Supplier']}
-      />
-      <Box
-        x={20}
-        y={190}
-        w={165}
-        h={118}
-        title="Player"
-        lines={['Player · PlayerSegment', 'Device · PaymentMethod']}
-      />
-      <Box
-        x={215}
-        y={20}
-        w={165}
-        h={118}
-        title="Product"
-        lines={[
-          'Game · GameFamily',
-          'GameCategory · GameMechanic',
-          'Draw · PrizeType',
-        ]}
-      />
-      <Box
-        x={215}
-        y={190}
-        w={165}
-        h={118}
-        title="Commercial / Ops"
-        lines={['Campaign · Experiment', 'Incident · SupportCase']}
-      />
-      <Box
-        x={410}
-        y={20}
-        w={165}
-        h={118}
-        title="Platform"
-        lines={['Platform', 'PlatformVersion · AppVersion']}
-      />
-      <Box
-        x={410}
-        y={190}
-        w={165}
-        h={118}
-        title="Knowledge"
-        lines={['Document · DocumentChunk', 'BusinessConcept']}
-        accent
-      />
-      <Box
-        x={605}
-        y={100}
-        w={135}
-        h={110}
-        title="Vector index"
-        lines={['Qdrant collection', 'chunk text + provenance']}
-      />
-      <Arrow x1={185} y1={70} x2={213} y2={70} label="AVAILABLE_IN" />
-      <Arrow x1={298} y1={140} x2={298} y2={188} label="PROMOTES · AFFECTS" />
-      <Arrow x1={380} y1={70} x2={408} y2={70} label="RUNS_ON" />
-      <Arrow x1={492} y1={140} x2={492} y2={188} label="REFERENCES" />
-      <Arrow x1={102} y1={140} x2={250} y2={224} label="PLAYS" dashed />
-      <Arrow x1={185} y1={250} x2={213} y2={250} label="EXPOSED_TO" />
-      <Arrow
-        x1={575}
-        y1={230}
-        x2={603}
-        y2={195}
-        label="chunk text indexed"
-        dashed
-      />
-      <Arrow x1={575} y1={100} x2={603} y2={140} label="node evidence" dashed />
-    </Diagram>
+    <div className="grid items-center gap-4 md:grid-cols-[1fr_auto_1.2fr]">
+      <ul className="space-y-2 border-l-2 border-graph/40 pl-4">
+        {[
+          ['INC_S007_GR', 'Incident · Greece'],
+          ['INC_S007_AT', 'Incident · Austria'],
+          ['INC_S007_CZ', 'Incident · Czech Republic'],
+        ].map(([id, note]) => (
+          <li
+            key={id}
+            className="rounded-card border border-border bg-surface-raised px-3 py-2"
+          >
+            <p className="font-mono text-xs font-medium text-primary">{id}</p>
+            <p className="text-xs text-muted">{note}</p>
+          </li>
+        ))}
+      </ul>
+      <span aria-hidden className="text-xl text-muted">
+        →
+      </span>
+      <div className="rounded-card border border-graph/60 bg-surface p-4">
+        <p className="font-mono text-sm font-semibold text-primary">
+          CONCEPT_PLATFORM_INCIDENT
+        </p>
+        <p className="mt-1 text-xs text-secondary">
+          one BusinessConcept of type BusinessEvent. A question mentioning any
+          one of the three incidents can discover the other two through this
+          shared node; that traversal is pipeline C only.
+        </p>
+      </div>
+    </div>
   )
 }
 
@@ -375,73 +151,82 @@ export function DataDictionary() {
       <PageHero
         eyebrow="Data Dictionary"
         title="What every table, node and relationship represents"
-        lead="This app answers questions over a synthetic enterprise. This page explains exactly what that enterprise is made of: its warehouse tables, the graph that indexes their meaning, and the ontology that ties vocabularies together. Figures quote the demo world (seed 2026); the schema is identical across profiles."
+        lead="The enterprise behind this app is synthetic but precise. This page explains what it is made of: the warehouse tables, the graph that indexes their meaning, and the ontology that ties vocabularies together. Figures quote the demo world (seed 2026); the schema is identical across profiles."
       >
         <Callout title="How to read this page">
-          Three stores hold one world (diagram below). Start with the entity
-          overview to see the shape of the data, then use the domain tables as
-          reference. Accented diagram boxes mark what enters the graph;
-          everything else stays in the warehouse.
+          Three stores hold one world, so start with the store cards below, then
+          the four chains that show how entities connect. Everything after that
+          is reference.
         </Callout>
       </PageHero>
 
       <Section
-        id="layers"
-        title="One world, three representations"
-        lead="The structured layer is authoritative for facts and amounts; the graph never replaces it, it indexes meaning; the vector index serves document retrieval."
+        id="stores"
+        title="One world, three stores"
+        lead="Each store has one job; provenance links them all."
       >
-        <LayerDiagram />
+        <div className="grid gap-3 md:grid-cols-3">
+          {STORES.map((store) => (
+            <Card
+              key={store.title}
+              title={store.title}
+              footer={
+                <p className="font-mono text-xs text-muted">{store.tech}</p>
+              }
+            >
+              <p>{store.body}</p>
+            </Card>
+          ))}
+        </div>
         <p>
-          Every graph node and every citation carries provenance back to a
-          source system and record, so any claim in an answer can be traced to
-          an authoritative row.
+          Every graph node carries <Chip>source_system</Chip> and{' '}
+          <Chip>source_record_id</Chip>, so any claim in an answer traces back
+          to an authoritative row.
         </p>
       </Section>
 
       <Section
-        id="overview"
-        title="The shape of the world"
-        lead="How the core entities connect, before the table-by-table detail."
+        id="chains"
+        title="How the data connects"
+        lead="Four chains cover most questions; each pill is a table detailed below."
       >
-        <EntityOverviewDiagram />
+        <div className="space-y-3">
+          {CHAINS.map((chain) => (
+            <div key={chain.what}>
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+                {chain.what}
+              </p>
+              <Rail items={chain.rail} />
+            </div>
+          ))}
+        </div>
+        <p>
+          High-volume fact tables (tickets, sessions, exposures, prizes, KPIs)
+          stay in the warehouse and are never copied into the graph.
+        </p>
       </Section>
 
       <Section
         id="tables"
         title="Warehouse tables by domain"
-        lead="36 tables. Keys shown are the synthetic record identifiers; every table also records its source system in the generation manifest. Field-level types and rules: _data_dictionary.json in the dataset directory and docs/01-synthetic-data-spec.md sections 6–7."
+        lead="36 tables. Keys are the synthetic record identifiers. Field-level types and rules: _data_dictionary.json in the dataset directory and docs/01-synthetic-data-spec.md §6–7."
       >
         <h3 className="text-sm font-semibold text-primary">
           Reference and master data
         </h3>
         <Table
-          head={['Table', 'Key', 'Represents', 'Demo rows']}
+          head={['Table', 'Key', 'Represents', 'Rows']}
           rows={[
             [
               'markets',
               'market_id',
-              'The four operating markets (UK, GR, AT, CZ) and their regulator, timezone, currency',
+              'UK, GR, AT, CZ with regulator, timezone, currency',
               '4',
             ],
-            [
-              'regions',
-              'region_id',
-              'Sub-national regions within each market',
-              '16',
-            ],
+            ['regions', 'region_id', 'Sub-national regions', '16'],
             ['languages', 'language_code', 'Supported content languages', '4'],
-            [
-              'currencies',
-              'currency_code',
-              'Settlement currencies (GBP, EUR, CZK)',
-              '3',
-            ],
-            [
-              'channels',
-              'channel_code',
-              'Sales channels (retail, app, web)',
-              '3',
-            ],
+            ['currencies', 'currency_code', 'GBP, EUR, CZK', '3'],
+            ['channels', 'channel_code', 'retail, app, web', '3'],
             ['suppliers', 'supplier_id', 'Platform and service suppliers', '6'],
             [
               'retailers',
@@ -455,12 +240,12 @@ export function DataDictionary() {
           Product catalogue
         </h3>
         <Table
-          head={['Table', 'Key', 'Represents', 'Demo rows']}
+          head={['Table', 'Key', 'Represents', 'Rows']}
           rows={[
             [
               'games',
               'game_id',
-              'Sellable games with prices, jackpot model and market validity',
+              'Sellable games with prices, jackpot model, market validity',
               '20',
             ],
             [
@@ -470,28 +255,18 @@ export function DataDictionary() {
               '8',
             ],
             ['game_categories', 'category_code', 'Product categories', '4'],
-            [
-              'game_mechanics',
-              'mechanic_id',
-              'Play mechanics (number match, progressive jackpot…)',
-              '6',
-            ],
+            ['game_mechanics', 'mechanic_id', 'Play mechanics', '6'],
             [
               'game_mechanic_map',
               'game_id',
               'Game-to-mechanic assignments',
               '23',
             ],
-            [
-              'draws',
-              'draw_id',
-              'Draw schedule per game (canonical master data)',
-              '2,292',
-            ],
+            ['draws', 'draw_id', 'Draw schedule per game', '2,292'],
             [
               'prizes',
               'prize_id',
-              'Per-ticket prize outcomes (fact table, never graphed)',
+              'Per-ticket prize outcomes (fact table)',
               '1,750,899',
             ],
           ]}
@@ -500,51 +275,51 @@ export function DataDictionary() {
           Players, money and identity
         </h3>
         <Table
-          head={['Table', 'Key', 'Represents', 'Demo rows']}
+          head={['Table', 'Key', 'Represents', 'Rows']}
           rows={[
             [
               'players',
               'player_id',
-              'Registered players with synthetic demographics and value/engagement segments',
+              'Synthetic demographics, value and engagement segments',
               '100,000',
             ],
             [
               'accounts',
               'account_id',
-              'Web accounts per player with verification state',
+              'Web accounts with verification state',
               '100,000',
             ],
             [
               'devices',
               'device_id',
-              'Known devices with fingerprint and family',
+              'Known devices: fingerprint, family',
               '120,000',
             ],
             [
               'player_device',
               'player_id + device_id',
-              'Which player used which device, when (fraud scenario substrate)',
+              'Who used which device, when (fraud substrate)',
               '108,047',
             ],
             [
               'payment_methods',
               'payment_method_id',
-              'Tokenised payment instruments (synthetic tokens, no PAN)',
+              'Tokenised instruments (no PAN)',
               '95,909',
             ],
             [
               'player_payment_method',
               'player_id + payment_method_id',
-              'Who used which instrument, usage weight (fraud scenario substrate)',
+              'Who used which instrument, usage weight (fraud substrate)',
               '100,000',
             ],
           ]}
         />
         <h3 className="text-sm font-semibold text-primary">
-          Commercial and marketing
+          Commercial and operations
         </h3>
         <Table
-          head={['Table', 'Key', 'Represents', 'Demo rows']}
+          head={['Table', 'Key', 'Represents', 'Rows']}
           rows={[
             [
               'campaigns',
@@ -555,39 +330,23 @@ export function DataDictionary() {
             [
               'campaign_game_map',
               'campaign_id + game_id',
-              'Which games a campaign promotes',
+              'Games a campaign promotes',
               '23',
             ],
             [
               'campaign_exposures',
               'exposure_id',
-              'Per-player campaign impressions and engagement (fact table)',
+              'Per-player impressions and engagement (fact table)',
               '3,000,000',
             ],
             [
               'experiments',
               'experiment_id',
-              'Controlled pricing/experience experiments',
+              'Controlled pricing and experience experiments',
               '6',
             ],
-            [
-              'kpi_daily',
-              'date',
-              'Daily market KPIs (fact table, never graphed)',
-              '19,784',
-            ],
-          ]}
-        />
-        <h3 className="text-sm font-semibold text-primary">Operations</h3>
-        <Table
-          head={['Table', 'Key', 'Represents', 'Demo rows']}
-          rows={[
-            [
-              'platforms',
-              'platform_id',
-              'Sales platforms and their suppliers',
-              '8',
-            ],
+            ['kpi_daily', 'date', 'Daily market KPIs (fact table)', '19,784'],
+            ['platforms', 'platform_id', 'Sales platforms and suppliers', '8'],
             [
               'platform_versions',
               'platform_version_id',
@@ -597,13 +356,13 @@ export function DataDictionary() {
             [
               'app_versions',
               'app_version_id',
-              'Customer app releases deployed per market',
+              'App releases deployed per market',
               '16',
             ],
             [
               'incidents',
               'incident_id',
-              'Operational incidents with severity and root cause',
+              'Incidents with severity and root cause',
               '25',
             ],
             [
@@ -624,30 +383,30 @@ export function DataDictionary() {
           Documents and activity
         </h3>
         <Table
-          head={['Table', 'Key', 'Represents', 'Demo rows']}
+          head={['Table', 'Key', 'Represents', 'Rows']}
           rows={[
             [
               'documents',
               'document_id',
-              'Knowledge documents (rules, incident summaries, experiment reports…) with validity windows',
+              'Knowledge documents with validity windows',
               '2,000',
             ],
             [
               'document_chunks',
               'chunk_id',
-              'Retrieval-ready chunks of documents (indexed in Qdrant)',
+              'Retrieval chunks, indexed in Qdrant',
               '6,996',
             ],
             [
               'sessions',
               'session_id',
-              'Player sessions (fact table, never graphed)',
+              'Player sessions (fact table)',
               '2,000,000',
             ],
             [
               'tickets',
               'ticket_id',
-              'Ticket purchases (fact table, never graphed)',
+              'Ticket purchases (fact table)',
               '5,000,000',
             ],
           ]}
@@ -657,7 +416,7 @@ export function DataDictionary() {
       <Section
         id="fields"
         title="Core tables, field by field"
-        lead="The fields of the tables most questions touch. All identifiers are synthetic; no PII exists anywhere in the world (coarse age bands, no names, tokenised payments)."
+        lead="No PII exists anywhere: coarse age bands, no names, tokenised payments."
       >
         <Table
           head={['Table', 'Fields']}
@@ -709,84 +468,73 @@ export function DataDictionary() {
       <Section
         id="graph"
         title="The graph overlay"
-        lead="26 node labels connected by 26 relationship types: the exhaustive allow-list in backend/app/graph/statements.py, verified against the live database after every ingestion."
+        lead="26 node labels in six clusters; 26 relationship types. The allow-list lives in backend/app/graph/statements.py and the live database is verified against it after every ingestion."
       >
-        <GraphSchemaDiagram />
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {CLUSTERS.map((cluster) => (
+            <Card key={cluster.name} title={cluster.name}>
+              <div className="flex flex-wrap gap-1.5">
+                {cluster.labels.map((label) => (
+                  <Chip key={label}>{label}</Chip>
+                ))}
+              </div>
+            </Card>
+          ))}
+        </div>
         <p>
-          Every node carries <Code>id</Code>, <Code>source_system</Code>,{' '}
-          <Code>source_record_id</Code>, <Code>ingestion_version</Code> and{' '}
-          <Code>label_version</Code> as provenance.
-        </p>
-        <h3 className="text-sm font-semibold text-primary">
-          What stays out of the graph
-        </h3>
-        <p>
-          High-volume facts are never copied into the graph. Ticket, prize,
-          session, exposure and KPI rows stay in the structured layer and appear
-          only as aggregated, clearly named derived relationships:
+          Facts are not copied into the graph. Ticket, prize, session, exposure
+          and KPI rows appear only as aggregated derived relationships:
         </p>
         <Table
-          head={['Derived relationship', 'Meaning', 'Carried properties']}
+          head={['Derived relationship', 'Meaning', 'Carries']}
           rows={[
             [
               '(:Player)-[:PLAYS]->(:Game)',
-              'The player has bought tickets for this game',
-              'ticket_count, last_purchase_at, method',
+              'player has bought tickets for this game',
+              'ticket_count, last_purchase_at',
             ],
             [
               '(:Player)-[:EXPOSED_TO]->(:Campaign)',
-              'The player was exposed to this campaign',
-              'exposure_count, engaged_count, method',
+              'player was exposed to this campaign',
+              'exposure_count, engaged_count',
             ],
             [
               '(:Player)-[:USES_PAYMENT]->(:PaymentMethod)',
-              'Instrument association derived from player_payment_method',
+              'instrument association',
               'first_used_at, last_used_at, usage_weight',
             ],
           ]}
         />
         <h3 className="text-sm font-semibold text-primary">
-          Every relationship type and what it means
+          Every relationship type
         </h3>
         <Table
           head={['Relationship', 'From → To', 'Meaning']}
           rows={[
             ['AVAILABLE_IN', 'Game → Market', 'markets where the game is sold'],
-            [
-              'AVAILABLE_VIA',
-              'Game → Channel',
-              'channels the game is sold through',
-            ],
+            ['AVAILABLE_VIA', 'Game → Channel', 'sales channels'],
             [
               'BELONGS_TO',
               'Game → GameFamily; Player → PlayerSegment',
-              'product family; behavioural segment membership',
+              'product family; segment membership',
             ],
-            ['HAS_MECHANIC', 'Game → GameMechanic', 'play mechanics of a game'],
-            ['HAS_DRAW', 'Game → Draw', 'scheduled draws of a game'],
-            ['RUNS_ON', 'Game → Platform', 'platform the game runs on'],
+            ['HAS_MECHANIC', 'Game → GameMechanic', 'play mechanics'],
+            ['HAS_DRAW', 'Game → Draw', 'scheduled draws'],
+            ['RUNS_ON', 'Game → Platform', 'hosting platform'],
             ['SIMILAR_TO', 'Game → Game', 'derived product similarity'],
             ['VERSION_OF', 'PlatformVersion → Platform', 'release lineage'],
-            [
-              'DEPLOYED_TO',
-              'AppVersion → Market',
-              'where an app release is deployed',
-            ],
-            ['USES', 'Player → Device', 'derived from player_device usage'],
+            ['DEPLOYED_TO', 'AppVersion → Market', 'app release footprint'],
+            ['USES', 'Player → Device', 'derived from player_device'],
             [
               'USES_PAYMENT',
               'Player → PaymentMethod',
               'derived instrument association',
             ],
-            [
-              'PLAYS',
-              'Player → Game',
-              'derived purchase relationship (aggregated)',
-            ],
+            ['PLAYS', 'Player → Game', 'derived purchases (aggregated)'],
             [
               'EXPOSED_TO',
               'Player → Campaign',
-              'derived exposure relationship (aggregated)',
+              'derived exposures (aggregated)',
             ],
             ['PROMOTES', 'Campaign → Game', 'campaign promotes game'],
             [
@@ -797,12 +545,12 @@ export function DataDictionary() {
             [
               'RELATED_TO',
               'Incident → Platform; SupportCase → Incident',
-              'incident-platform link; case about an incident',
+              'incident platform; case about incident',
             ],
             [
               'RELATED_TO_VERSION',
               'Incident → PlatformVersion',
-              'the exact faulty release',
+              'the faulty release',
             ],
             [
               'RELATED_TO_APP_VERSION',
@@ -816,17 +564,13 @@ export function DataDictionary() {
             ],
             ['AFFECTS_MARKET', 'Incident → Market', 'markets impacted'],
             ['CONCERNS', 'SupportCase → Game', 'case subject'],
-            ['FROM_MARKET', 'SupportCase → Market', 'case origin market'],
+            ['FROM_MARKET', 'SupportCase → Market', 'case origin'],
             [
               'REFERENCES',
               'Document → Game / Incident / Campaign / AppVersion / Experiment',
               'document citations into the world',
             ],
-            [
-              'HAS_CHUNK',
-              'Document → DocumentChunk',
-              'retrieval chunks of a document',
-            ],
+            ['HAS_CHUNK', 'Document → DocumentChunk', 'retrieval chunks'],
             [
               'INSTANCE_OF',
               'Game / GameFamily / GameMechanic → BusinessConcept',
@@ -835,7 +579,7 @@ export function DataDictionary() {
             [
               'MAPS_TO',
               'GameMechanic / PlayerSegment / Channel / Incident → BusinessConcept',
-              'ontology mapping from the mapping tables',
+              'ontology mapping',
             ],
           ]}
         />
@@ -844,9 +588,9 @@ export function DataDictionary() {
       <Section
         id="ontology"
         title="The ontology"
-        lead="Ten canonical BusinessConcept nodes (version 1.0.0). Domain vocabulary maps onto them through explicit mapping tables in backend/app/graph/mapping.py; pipeline C is the only pipeline allowed to traverse those mappings, which is exactly the B-to-C difference the experiment measures."
+        lead="Ten canonical BusinessConcept nodes (version 1.0.0). Mappings live in backend/app/graph/mapping.py; pipeline C is the only pipeline that may traverse them, which is exactly the B-to-C difference being measured."
       >
-        <OntologyDiagram />
+        <OntologyBinding />
         <h3 className="text-sm font-semibold text-primary">
           Concept catalogue
         </h3>
@@ -876,12 +620,8 @@ export function DataDictionary() {
               'PlayerSegment',
               'Behavioural player cohort',
             ],
-            [
-              'CONCEPT_RETAIL_CHANNEL',
-              'Channel',
-              'Physical retail sales channel',
-            ],
-            ['CONCEPT_DIGITAL_CHANNEL', 'Channel', 'App and web sales channel'],
+            ['CONCEPT_RETAIL_CHANNEL', 'Channel', 'Physical retail channel'],
+            ['CONCEPT_DIGITAL_CHANNEL', 'Channel', 'App and web channel'],
             [
               'CONCEPT_PLATFORM_INCIDENT',
               'BusinessEvent',
@@ -913,17 +653,17 @@ export function DataDictionary() {
           ]}
         />
         <Callout title="Honest scope note">
-          The ontology specification reserves further vocabulary (IS_A,
-          EQUIVALENT_TO, CAUSES and others in docs/03 section 5) that this POC
-          does not populate. Only INSTANCE_OF and MAPS_TO bindings exist, and
-          the tests pin pipeline C to exactly that.
+          The ontology spec reserves further vocabulary (IS_A, EQUIVALENT_TO,
+          CAUSES and others, docs/03 §5) that this POC does not populate. Only
+          INSTANCE_OF and MAPS_TO bindings exist, and tests pin pipeline C to
+          exactly that.
         </Callout>
       </Section>
 
       <Section
         id="sources"
         title="Authoritative definitions"
-        lead="Where each artefact in this page comes from in the repository."
+        lead="Where each artefact on this page comes from."
       >
         <Table
           head={['Artefact', 'Where']}
@@ -947,7 +687,7 @@ export function DataDictionary() {
             ['Ingestion pipeline', 'docs/data/graph-ingestion.md'],
             [
               'Planted scenarios',
-              'docs/04-scenario-library (scenario engine), Scenario Lab screen',
+              'docs/04-scenario-library; Scenario Lab screen',
             ],
           ]}
         />

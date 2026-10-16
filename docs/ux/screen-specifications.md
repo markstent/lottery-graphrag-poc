@@ -109,22 +109,22 @@ Blind mode: planted specifics hidden; configuration metadata only (docs/06 secti
 
 Every chart has a table alternative (accessibility); failure rows deep-link to run replays.
 
-## 6a. Help (HITL-11 addition; redesigned 2026-10-10)
+## 6a. Help (HITL-11 addition; visual pass 2026-10-10)
 
 In-app documentation screen (`#/help`), structured as a guided reading
-experience: a page hero with three audience paths (present the demo /
-understand the experiment / run the backend), a numbered sticky reading
-path, and eleven sections. Explanation-first sections carry inline SVG
-diagrams with text alternatives: the pipeline comparison (three lanes A/B/C
-sharing one embed-and-search head, B adding graph traversal, C adding
-ontology expansion, all reading authoritative facts from the warehouse), the
-seven-screen journey strip, the run lifecycle, the score-strip sources
-diagram (live measurements vs published benchmark) and the provenance chain.
-Reference sections (saved demo questions, metrics table, operator commands,
-troubleshooting, glossary, accessibility) keep tabular form. Callouts carry
-the fairness contract, the designed miss (DEMO-04), the committed headline
-results and the bounded-traversal guarantees. Content quotes only committed
-figures and mirrors docs/demo/presentation.md. Visual baseline:
+experience: a page hero with three audience links (presenting / evaluating /
+operating), a numbered sticky reading path over eight sections, and every
+visual built from layout-driven HTML primitives (cards, step rails, chip
+groups) rather than positioned SVG, so elements cannot overlap at any width.
+"The big picture" shows the shared embed-search-rerank rail and three
+pipeline cards (A baseline; B adds resolve→traverse→evidence steps; C adds
+concept expansion), with callouts for the built-in guardrails. The tour
+merges quick-start steps with a seven-screen card grid. Reference sections:
+saved demo questions, metric sources with the honesty rule and committed
+headline results (callouts), data and provenance with a five-step
+answer→warehouse rail, backend commands, troubleshooting, glossary and
+accessibility. Content quotes only committed figures and mirrors
+docs/demo/presentation.md. Visual baseline:
 `e2e/visual.spec.ts-snapshots/help-darwin.png`.
 
 Live data note (HITL-11): when the dashboard renders the latest published
@@ -133,25 +133,22 @@ bank dimension (market breakdown) are hidden rather than filled with
 synthetic values, and unscored questions appear in failure analysis marked
 "not scored".
 
-## 6b. Data Dictionary (HITL-11 addition; redesigned 2026-10-10)
+## 6b. Data Dictionary (HITL-11 addition; visual pass 2026-10-10)
 
-In-app schema documentation (`#/dictionary`), structured for orientation
-before reference: a page hero with a "how to read this page" callout (accent
-marking = enters the graph), the layer-architecture diagram, a new
-entity-relationship overview ("The shape of the world") showing how players,
-accounts, devices, payment methods, tickets, games, draws, retailers,
-platforms, incidents, documents and concepts connect with demo row counts
-and fact-table shading, then the reference sections: the 36-table inventory
-grouped by domain with keys and demo-world row counts, field-level detail
-for the ten core tables, the graph schema cluster diagram plus the
-exhaustive 26-label / 26-relationship-type lists with meanings and the
-graph-vs-source boundary (derived relationships PLAYS / EXPOSED_TO /
-USES_PAYMENT), the ontology catalogue (10 concepts), mapping sources and the
-INC_S007_GR/AT/CZ → CONCEPT_PLATFORM_INCIDENT binding diagram, and pointers
-to authoritative artefacts. All figures are generated from committed sources
-(world manifest, statements.py allow-list, master_data.py catalogue);
-reserved but unpopulated ontology vocabulary is stated explicitly in a callout.
-Baseline: `dictionary-darwin.png`.
+In-app schema documentation (`#/dictionary`), orientation before reference:
+a page hero with a "how to read this page" callout, three store cards
+(structured layer / graph overlay / vector index, with technology and
+provenance note), and "How the data connects" as four step rails (players
+play, platforms fail, knowledge flows, money and identity) with demo row
+counts. Reference sections: the 36-table inventory grouped by domain with
+keys and row counts, field-level detail for the ten core tables, the graph
+overlay as six cluster cards with label chips plus the derived-relationship
+table and the exhaustive 26-relationship list, and the ontology: an
+incident→concept binding card (INC_S007_GR/AT/CZ MAPS_TO
+CONCEPT_PLATFORM_INCIDENT), the ten-concept catalogue, mapping sources and
+the reserved-vocabulary scope callout. All figures are generated from
+committed sources (world manifest, statements.py allow-list,
+master_data.py catalogue). Baseline: `dictionary-darwin.png`.
 
 ## 6c. Experiment Home "Start here" strip (HITL-11 addition, 2026-10-10)
 

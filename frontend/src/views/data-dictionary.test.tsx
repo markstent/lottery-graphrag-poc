@@ -8,8 +8,8 @@ describe('DataDictionary', () => {
     render(<DataDictionary />)
 
     for (const heading of [
-      'One world, three representations',
-      'The shape of the world',
+      'One world, three stores',
+      'How the data connects',
       'Warehouse tables by domain',
       'Core tables, field by field',
       'The graph overlay',
@@ -23,8 +23,6 @@ describe('DataDictionary', () => {
   it('documents the actual graph vocabulary, not the spec superset', () => {
     render(<DataDictionary />)
 
-    // All 26 live relationship types appear; reserved-but-unpopulated
-    // ontology vocabulary is explicitly called out.
     expect(screen.getAllByText('AVAILABLE_IN').length).toBeGreaterThan(0)
     expect(screen.getAllByText('USES_PAYMENT').length).toBeGreaterThan(0)
     expect(screen.getAllByText('MAPS_TO').length).toBeGreaterThan(0)
@@ -33,26 +31,24 @@ describe('DataDictionary', () => {
     ).toBeVisible()
   })
 
-  it('quotes the demo-world facts and diagrams carry text alternatives', () => {
+  it('quotes demo-world facts across stores, chains and clusters', () => {
     render(<DataDictionary />)
 
     expect(screen.getAllByText('5,000,000').length).toBeGreaterThan(0)
     expect(
       screen.getAllByText('CONCEPT_PLATFORM_INCIDENT').length,
     ).toBeGreaterThan(0)
-    const diagrams = screen.getAllByRole('img')
-    expect(diagrams.length).toBeGreaterThanOrEqual(3)
-    for (const diagram of diagrams) {
-      expect(
-        diagram.getAttribute('aria-label') ?? diagram.querySelector('title'),
-      ).toBeTruthy()
-    }
+    // The six clusters are card titles.
+    expect(screen.getByText('Knowledge')).toBeVisible()
+    expect(screen.getByText('Commercial & ops')).toBeVisible()
+    // Chain rails render the incident→platform→versions chain.
+    expect(screen.getByText('Platforms fail')).toBeVisible()
   })
 
   it('opens with a how-to-read orientation', () => {
     render(<DataDictionary />)
 
     expect(screen.getByText('How to read this page')).toBeVisible()
-    expect(screen.getByText('The shape of the world')).toBeVisible()
+    expect(screen.getByText('One world, three stores')).toBeVisible()
   })
 })
