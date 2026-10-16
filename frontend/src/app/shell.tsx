@@ -9,16 +9,29 @@ import { hrefFor, useRoute, type RouteName } from './router'
 import { useSettings } from './settings'
 import { EXPERIMENT } from '../mock/content'
 
-const NAV: Array<{ name: RouteName; label: string }> = [
-  { name: 'lab', label: 'Live Lab' },
-  { name: 'experiment', label: 'Experiment Home' },
-  { name: 'scenarios', label: 'Scenario Lab' },
-  { name: 'evidence', label: 'Evidence Explorer' },
-  { name: 'benchmark', label: 'Benchmark' },
-  { name: 'results', label: 'Results' },
-  { name: 'semantic', label: 'Semantic Layer' },
-  { name: 'help', label: 'Help' },
-  { name: 'dictionary', label: 'Data Dictionary' },
+const NAV_GROUPS: Array<{
+  label: string
+  items: Array<{ name: RouteName; label: string }>
+}> = [
+  {
+    label: 'Experiment',
+    items: [
+      { name: 'lab', label: 'Live Lab' },
+      { name: 'experiment', label: 'Experiment Home' },
+      { name: 'results', label: 'Results' },
+      { name: 'evidence', label: 'Evidence Explorer' },
+      { name: 'benchmark', label: 'Benchmark' },
+      { name: 'scenarios', label: 'Scenario Lab' },
+      { name: 'semantic', label: 'Semantic Layer' },
+    ],
+  },
+  {
+    label: 'Learn',
+    items: [
+      { name: 'help', label: 'Help' },
+      { name: 'dictionary', label: 'Data Dictionary' },
+    ],
+  },
 ]
 
 function SettingsDrawer() {
@@ -136,25 +149,32 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav aria-label="Primary" className="mx-auto max-w-7xl px-4">
-          <ul className="flex flex-wrap gap-1 pb-2">
-            {NAV.map((item) => {
-              const active = route.name === item.name
-              return (
-                <li key={item.name}>
-                  <a
-                    href={hrefFor(item.name)}
-                    aria-current={active ? 'page' : undefined}
-                    className={`inline-block rounded-chip px-3 py-1.5 text-sm transition-colors duration-micro ${
-                      active
-                        ? 'bg-surface-raised text-primary'
-                        : 'text-secondary hover:bg-surface-raised hover:text-primary'
-                    }`}
-                  >
-                    {item.label}
-                  </a>
-                </li>
-              )
-            })}
+          <ul className="flex flex-wrap items-center gap-x-1 gap-y-1 pb-2">
+            {NAV_GROUPS.map((group, groupIndex) => (
+              <li key={group.label} className="flex items-center gap-1">
+                {groupIndex > 0 && (
+                  <span aria-hidden className="mx-2 h-4 w-px bg-border" />
+                )}
+                <span className="sr-only">{group.label}:</span>
+                {group.items.map((item) => {
+                  const active = route.name === item.name
+                  return (
+                    <a
+                      key={item.name}
+                      href={hrefFor(item.name)}
+                      aria-current={active ? 'page' : undefined}
+                      className={`inline-block rounded-chip px-3 py-1.5 text-sm transition-colors duration-micro ${
+                        active
+                          ? 'bg-surface-raised text-primary'
+                          : 'text-secondary hover:bg-surface-raised hover:text-primary'
+                      }`}
+                    >
+                      {item.label}
+                    </a>
+                  )
+                })}
+              </li>
+            ))}
           </ul>
         </nav>
       </header>

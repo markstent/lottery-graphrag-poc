@@ -55,7 +55,10 @@ test('semantic layer', async ({ page }) => {
 test('help', async ({ page }) => {
   await page.goto('/#/help')
   await expect(
-    page.getByRole('heading', { name: 'Help', level: 1 }),
+    page.getByRole('heading', {
+      name: 'Your guide to the Semantic Context Lab',
+      level: 1,
+    }),
   ).toBeVisible()
   await expect(page).toHaveScreenshot('help.png', { fullPage: true })
 })
@@ -63,7 +66,10 @@ test('help', async ({ page }) => {
 test('data dictionary', async ({ page }) => {
   await page.goto('/#/dictionary')
   await expect(
-    page.getByRole('heading', { name: 'Data Dictionary', level: 1 }),
+    page.getByRole('heading', {
+      name: 'What every table, node and relationship represents',
+      level: 1,
+    }),
   ).toBeVisible()
   await expect(page).toHaveScreenshot('dictionary.png', { fullPage: true })
 })

@@ -5,18 +5,33 @@
  * docs/07-api-event-spec.md, docs/evaluation/harness-validation.md and
  * RELEASE.md. Numbers quoted here are the committed validation results,
  * never invented for presentation.
+ *
+ * Structure (2026-10-10 redesign): hero with audience paths, the big
+ * picture with a pipeline comparison diagram, a guided reading path,
+ * then reference sections. Diagrams are inline SVG with text
+ * alternatives; see components/diagram.tsx.
  */
 
 import { hrefFor } from '../app/router'
-import { Code, CommandBlock, Section, Table } from '../components/doc'
+import {
+  Callout,
+  Card,
+  Code,
+  CommandBlock,
+  PageHero,
+  Section,
+  Steps,
+  Table,
+} from '../components/doc'
+import { Arrow, Box, Diagram } from '../components/diagram'
 
 const NAV_SECTIONS = [
-  { id: 'what', label: 'What this application is' },
+  { id: 'big-picture', label: 'The big picture' },
+  { id: 'journey', label: 'Your path through the app' },
   { id: 'quickstart', label: 'Quick start' },
-  { id: 'screens', label: 'Screen-by-screen guide' },
   { id: 'run', label: 'What happens during a run' },
   { id: 'questions', label: 'Saved demo questions' },
-  { id: 'metrics', label: 'Metrics and how to read them' },
+  { id: 'metrics', label: 'Reading the numbers' },
   { id: 'data', label: 'Data, scenarios and provenance' },
   { id: 'operator', label: 'Running the backend' },
   { id: 'troubleshooting', label: 'Troubleshooting' },
@@ -24,177 +39,639 @@ const NAV_SECTIONS = [
   { id: 'accessibility', label: 'Accessibility' },
 ]
 
+function Toc() {
+  return (
+    <nav
+      aria-label="Help sections"
+      className="lg:sticky lg:top-6 lg:self-start"
+    >
+      <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted">
+        Reading path
+      </p>
+      <ol className="space-y-1 text-sm">
+        {NAV_SECTIONS.map((section, index) => (
+          <li key={section.id}>
+            <a
+              href={`#/help?section=${section.id}`}
+              onClick={(event) => {
+                event.preventDefault()
+                document
+                  .getElementById(`help-${section.id}`)
+                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }}
+              className="flex items-baseline gap-2 rounded-chip px-3 py-1 text-secondary transition-colors duration-micro hover:bg-surface-raised hover:text-primary"
+            >
+              <span
+                aria-hidden
+                className="w-4 shrink-0 text-right text-xs tabular-nums text-muted"
+              >
+                {index + 1}
+              </span>
+              {section.label}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </nav>
+  )
+}
+
+/** The one diagram that explains the whole experiment. */
+function PipelineComparisonDiagram() {
+  const laneA = 40
+  const laneB = 150
+  const laneC = 260
+  const boxH = 44
+  return (
+    <Diagram
+      title="How the three pipelines differ"
+      description="Three horizontal lanes share the same beginning: a question is embedded and searched against the same vector index, then reranked and turned into an answer. Pipeline A stops there. Pipeline B additionally resolves question text to graph entities and traverses a bounded neighbourhood, adding node evidence to the context. Pipeline C additionally expands through ontology concepts, pulling in equivalent entities across markets. The graph never replaces the warehouse: structured facts are read from Parquet at the end."
+      height={340}
+    >
+      {/* Shared head of the funnel */}
+      <Box
+        x={250}
+        y={8}
+        w={260}
+        h={40}
+        title="Question"
+        lines={['typed or picked from saved chips']}
+      />
+      <Arrow x1={380} y1={50} x2={380} y2={68} />
+      <Box
+        x={250}
+        y={70}
+        w={260}
+        h={40}
+        title="Embed + vector search + rerank"
+        lines={['one shared index and embedder for A, B and C']}
+      />
+
+      {/* Lane A */}
+      <text
+        x={30}
+        y={laneA + 28}
+        fill="var(--color-text-muted)"
+        fontSize={11}
+        fontWeight={600}
+      >
+        A
+      </text>
+      <Arrow x1={380} y1={112} x2={380} y2={laneA - 4} />
+      <Box
+        x={250}
+        y={laneA}
+        w={260}
+        h={boxH}
+        title="Select context chunks"
+        lines={['token budget · discarded chunks kept visible']}
+      />
+      <Arrow x1={512} y1={laneA + 22} x2={560} y2={laneA + 22} />
+      <Box
+        x={562}
+        y={laneA}
+        w={170}
+        h={boxH}
+        title="Answer + citations"
+        lines={['documents only']}
+      />
+
+      {/* Lane B */}
+      <text
+        x={30}
+        y={laneB + 28}
+        fill="var(--color-text-secondary)"
+        fontSize={11}
+        fontWeight={600}
+      >
+        B
+      </text>
+      <Arrow
+        x1={300}
+        y1={112}
+        x2={135}
+        y2={148}
+        label="entities in the question"
+      />
+      <Box
+        x={60}
+        y={laneB}
+        w={150}
+        h={boxH}
+        title="Graph seeds"
+        lines={['resolved entities']}
+        accent
+      />
+      <Arrow
+        x1={212}
+        y1={laneB + 22}
+        x2={248}
+        y2={laneB + 22}
+        label="traverse"
+      />
+      <Box
+        x={250}
+        y={laneB}
+        w={150}
+        h={boxH}
+        title="Bounded traversal"
+        lines={['depth 2 · node caps']}
+        accent
+      />
+      <Arrow
+        x1={402}
+        y1={laneB + 22}
+        x2={470}
+        y2={laneB + 22}
+        label="node evidence"
+      />
+      <Box
+        x={472}
+        y={laneB}
+        w={120}
+        h={boxH}
+        title="Context"
+        lines={['chunks + nodes']}
+      />
+      <Arrow x1={594} y1={laneB + 16} x2={640} y2={laneA + 48} />
+
+      {/* Lane C */}
+      <text
+        x={30}
+        y={laneC + 28}
+        fill="var(--color-text-primary)"
+        fontSize={11}
+        fontWeight={600}
+      >
+        C
+      </text>
+      <Arrow x1={135} y1={laneB + 46} x2={135} y2={laneC - 2} label="MAPS_TO" />
+      <Box
+        x={60}
+        y={laneC}
+        w={150}
+        h={boxH}
+        title="Ontology expansion"
+        lines={['concepts pull equivalents']}
+        accent
+      />
+      <Arrow x1={212} y1={laneC + 22} x2={248} y2={laneC + 22} />
+      <Box
+        x={250}
+        y={laneC}
+        w={150}
+        h={boxH}
+        title="Bounded traversal"
+        lines={['same caps as B']}
+        accent
+      />
+      <Arrow
+        x1={402}
+        y1={laneC + 22}
+        x2={470}
+        y2={laneC + 22}
+        label="node evidence"
+      />
+      <Box
+        x={472}
+        y={laneC}
+        w={120}
+        h={boxH}
+        title="Context"
+        lines={['chunks + nodes']}
+      />
+      <Arrow x1={594} y1={laneC + 16} x2={680} y2={laneA + 48} />
+
+      {/* Authoritative records footnote */}
+      <Box
+        x={250}
+        y={laneC + 66}
+        w={370}
+        h={40}
+        title="Authoritative facts from the warehouse"
+        lines={['the graph guides the query; Parquet states the numbers']}
+      />
+      <Arrow x1={330} y1={laneC + 46} x2={330} y2={laneC + 64} dashed />
+      <Arrow x1={530} y1={laneC + 46} x2={530} y2={laneC + 64} dashed />
+    </Diagram>
+  )
+}
+
+function JourneyDiagram() {
+  const y = 20
+  const w = 128
+  const h = 74
+  const gap = 22
+  const x = (index: number) => 16 + index * (w + gap)
+  const screens: { title: string; lines: string[]; accent?: boolean }[] = [
+    {
+      title: 'Live Lab',
+      lines: ['run a question', 'watch retrieval'],
+      accent: true,
+    },
+    { title: 'Evidence', lines: ['inspect any', 'citation'] },
+    { title: 'Results', lines: ['published', 'benchmark'] },
+    { title: 'Semantic', lines: ['what C adds', 'over B'] },
+    { title: 'Experiment', lines: ['design +', 'fairness'] },
+    { title: 'Scenarios', lines: ['planted', 'patterns'] },
+    { title: 'Benchmark', lines: ['questions', '+ scoring'] },
+  ]
+  return (
+    <Diagram
+      title="Suggested path through the seven screens"
+      description="Seven screen cards left to right: Live Lab, Evidence Explorer, Results, Semantic Layer, Experiment Home, Scenario Lab, Benchmark. Arrows lead from one to the next. Live Lab is accented as the starting point."
+      height={130}
+    >
+      {screens.map((screen, index) => (
+        <g key={screen.title}>
+          <Box
+            x={x(index)}
+            y={y}
+            w={w}
+            h={h}
+            title={screen.title}
+            lines={screen.lines}
+            accent={screen.accent}
+          />
+          {index < screens.length - 1 && (
+            <Arrow
+              x1={x(index) + w + 2}
+              y1={y + h / 2}
+              x2={x(index + 1) - 4}
+              y2={y + h / 2}
+            />
+          )}
+        </g>
+      ))}
+      <text x={16} y={y + h + 22} fill="var(--color-text-muted)" fontSize={10}>
+        Follow it left to right: run something, check the proof, see the
+        scoreline, then go deeper.
+      </text>
+    </Diagram>
+  )
+}
+
+function RunLifecycleDiagram() {
+  return (
+    <Diagram
+      title="Life of a run"
+      description="Four stages: Submit (question enters the composer), Running (typed events stream into both panes as they happen), Completed (answer with citations plus a score strip), Replay (the timeline can rewind and scrub the recorded events). A failed run records the typed error and shows an honest failure state instead of an answer."
+      height={120}
+    >
+      <Box
+        x={20}
+        y={20}
+        w={150}
+        h={56}
+        title="1 · Submit"
+        lines={['question + pipeline toggle']}
+      />
+      <Arrow x1={172} y1={48} x2={198} y2={48} />
+      <Box
+        x={200}
+        y={20}
+        w={170}
+        h={56}
+        title="2 · Running"
+        lines={['events stream live']}
+        accent
+      />
+      <Arrow x1={372} y1={48} x2={398} y2={48} />
+      <Box
+        x={400}
+        y={20}
+        w={170}
+        h={56}
+        title="3 · Completed"
+        lines={['answer + citations + strip']}
+      />
+      <Arrow x1={572} y1={48} x2={598} y2={48} />
+      <Box
+        x={600}
+        y={20}
+        w={140}
+        h={56}
+        title="4 · Replay"
+        lines={['scrub the timeline']}
+      />
+      <text x={200} y={100} fill="var(--color-text-muted)" fontSize={10}>
+        Failures are recorded too: a typed error state replaces the answer,
+        never a fake success.
+      </text>
+    </Diagram>
+  )
+}
+
+function ScoreStripDiagram() {
+  return (
+    <Diagram
+      title="Where the score strip's numbers come from"
+      description="Two sources feed the score strip after a live run. From the run itself: latency and context tokens, always real. From the published benchmark: answer correctness and evidence recall, shown only when the question matches a published question. If there is no published result for the question, the quality columns keep their waiting state rather than inventing numbers."
+      height={150}
+    >
+      <Box
+        x={30}
+        y={20}
+        w={200}
+        h={64}
+        title="This run (always real)"
+        lines={['latency', 'context tokens']}
+      />
+      <Box
+        x={30}
+        y={100}
+        w={200}
+        h={40}
+        title="No published result?"
+        lines={['quality stays in waiting state']}
+      />
+      <Arrow x1={232} y1={52} x2={290} y2={62} />
+      <Arrow x1={232} y1={120} x2={290} y2={92} dashed />
+      <Box
+        x={292}
+        y={30}
+        w={190}
+        h={64}
+        title="Score strip"
+        lines={['quality columns', 'operational columns']}
+        accent
+      />
+      <Arrow x1={484} y1={62} x2={540} y2={52} />
+      <Box
+        x={542}
+        y={20}
+        w={200}
+        h={64}
+        title="Published benchmark"
+        lines={['answer correctness', 'evidence recall']}
+      />
+    </Diagram>
+  )
+}
+
+function ProvenanceDiagram() {
+  return (
+    <Diagram
+      title="Every claim traces back to a source record"
+      description="Provenance chain: the answer carries a citation; the citation opens a document chunk or a graph node; the chunk or node names its source system and source record; the source record is a row in the warehouse. Clicking a citation in any answer walks this chain in the Evidence Explorer."
+      height={110}
+    >
+      <Box
+        x={20}
+        y={24}
+        w={140}
+        h={52}
+        title="Answer"
+        lines={['citation chip']}
+        accent
+      />
+      <Arrow x1={162} y1={50} x2={190} y2={50} />
+      <Box
+        x={192}
+        y={24}
+        w={170}
+        h={52}
+        title="Chunk or graph node"
+        lines={['what retrieval used']}
+      />
+      <Arrow x1={364} y1={50} x2={392} y2={50} />
+      <Box
+        x={394}
+        y={24}
+        w={180}
+        h={52}
+        title="Source system + record id"
+        lines={['provenance fields']}
+      />
+      <Arrow x1={576} y1={50} x2={604} y2={50} />
+      <Box
+        x={606}
+        y={24}
+        w={134}
+        h={52}
+        title="Warehouse row"
+        lines={['authoritative']}
+      />
+    </Diagram>
+  )
+}
+
 export function Help() {
   return (
     <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
-      <nav
-        aria-label="Help sections"
-        className="lg:sticky lg:top-6 lg:self-start"
-      >
-        <ul className="space-y-1 text-sm">
-          {NAV_SECTIONS.map((section) => (
-            <li key={section.id}>
-              <a
-                href={`#/help?section=${section.id}`}
-                onClick={(event) => {
-                  event.preventDefault()
-                  document
-                    .getElementById(`help-${section.id}`)
-                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }}
-                className="block rounded-chip px-3 py-1 text-secondary transition-colors duration-micro hover:bg-surface-raised hover:text-primary"
-              >
-                {section.label}
-              </a>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      <Toc />
 
       <div className="space-y-8">
-        <header>
-          <h1 className="text-xl font-semibold">Help</h1>
-          <p className="mt-1 text-sm text-muted">
-            Semantic Context Lab v0.1.0-rc1 · everything below reflects the
-            committed state of the repository; nothing on this page is
-            mock-up-only.
-          </p>
-        </header>
+        <PageHero
+          eyebrow="Help"
+          title="Your guide to the Semantic Context Lab"
+          lead="This application measures what a knowledge graph and an enterprise ontology add to an AI system that answers questions over an enterprise. Everything runs on a synthetic multinational lottery operator (UK, Greece, Austria, Czech Republic): every player, ticket, incident and document is invented, so the experiment is safe to show and exact to repeat."
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Card title="I'm presenting the demo">
+              <p>
+                Start with{' '}
+                <a className="text-graph hover:underline" href={hrefFor('lab')}>
+                  Live Lab
+                </a>{' '}
+                and the saved demo story, then sections 4, 5 and 9 here.
+              </p>
+            </Card>
+            <Card title="I want to understand the experiment">
+              <p>
+                Read the big picture below, then{' '}
+                <a
+                  className="text-graph hover:underline"
+                  href={hrefFor('results')}
+                >
+                  Results
+                </a>{' '}
+                and{' '}
+                <a
+                  className="text-graph hover:underline"
+                  href={hrefFor('experiment')}
+                >
+                  Experiment Home
+                </a>
+                .
+              </p>
+            </Card>
+            <Card title="I run the backend">
+              <p>
+                Jump to{' '}
+                <a
+                  className="text-graph hover:underline"
+                  href="#/help?section=operator"
+                >
+                  Running the backend
+                </a>{' '}
+                and{' '}
+                <a
+                  className="text-graph hover:underline"
+                  href="#/help?section=troubleshooting"
+                >
+                  Troubleshooting
+                </a>
+                .
+              </p>
+            </Card>
+          </div>
+        </PageHero>
 
-        <Section id="what" title="What this application is">
+        <Section
+          id="big-picture"
+          title="The big picture"
+          lead="One question, three ways to retrieve evidence, one fair comparison."
+        >
           <p>
-            This is an experimental application that measures the incremental
-            value of adding a knowledge graph and an enterprise ontology{' '}
-            <em>above</em> an existing synthetic enterprise data layer. The
-            synthetic organisation is a multinational lottery operator active in
-            the United Kingdom, Greece, Austria and the Czech Republic. Every
-            player, account, device, ticket, incident, document and system in it
-            is synthetic.
+            A conventional RAG system reads a question, finds similar document
+            chunks, and answers from them. That is pipeline <strong>A</strong>,
+            and it is kept genuinely strong: same embedder, reranker and budgets
+            as everything else. Pipeline <strong>B</strong> adds the knowledge
+            graph: it recognises entities in the question and walks a bounded
+            neighbourhood around them. Pipeline <strong>C</strong> adds the
+            enterprise ontology on top: concepts connect equivalent things
+            across markets, so a question about one country can find the pattern
+            in another.
           </p>
+          <PipelineComparisonDiagram />
+          <Callout title="Why this is a fair comparison">
+            All three pipelines run in one shared lab: same embedding model,
+            same vector collection, same reranker, same generator, same context
+            budgets. B is exactly C minus the ontology traversal, and automated
+            tests pin that contract. Any measured difference between B and C is
+            the ontology layer, nothing else.
+          </Callout>
           <p>
-            The core thesis:{' '}
-            <strong>
-              the graph does not replace the data layer; it makes relationships
-              and enterprise meaning available to AI.
-            </strong>{' '}
-            Authoritative numbers stay in the structured warehouse layer,
-            documents stay in the vector layer, and the Neo4j overlay stores
-            semantic entities, relationships, ontology mappings and provenance,
-            each node referencing its source record.
+            The graph does not replace the data layer. Numbers stay in the
+            warehouse, documents stay in the vector index, and Neo4j holds
+            meaning: entities, relationships, ontology mappings and provenance.
+            When an answer needs a quantity, the pipeline reads it from the
+            authoritative Parquet records, never from the graph.
           </p>
-          <p>
-            Three retrieval configurations are compared under strict fairness:
-          </p>
-          <Table
-            head={['Pipeline', 'Retrieves with', 'Added layer']}
-            rows={[
-              [
-                'A · Current Approach',
-                'embeddings + vector search + rerank only',
-                'none (credible conventional RAG baseline)',
-              ],
-              [
-                'B · + Graph',
-                'A plus resolved graph seeds and bounded traversal',
-                'graph relationships',
-              ],
-              [
-                'C · + Graph & Ontology',
-                'B plus ontology concept traversal (MAPS_TO, concept seeds)',
-                'enterprise ontology',
-              ],
+        </Section>
+
+        <Section
+          id="journey"
+          title="Your path through the app"
+          lead="Seven screens tell one story: watch it work, trust it, then see the scoreline."
+        >
+          <JourneyDiagram />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Card title="Live Lab — start here">
+              <p>
+                Standard RAG on the left, graph-enhanced on the right, same
+                question. Run the committed demo story or switch to the live
+                backend and execute real pipelines. Every pane animates from
+                recorded telemetry, and the timeline replays any moment.
+              </p>
+            </Card>
+            <Card title="Evidence Explorer — trust it">
+              <p>
+                Click any citation to see the full provenance: chunk text,
+                source system, market, validity window, or the graph node with
+                its ranking components and reject reasons.
+              </p>
+            </Card>
+            <Card title="Results — the scoreline">
+              <p>
+                The published benchmark outcome: per-pipeline means, category
+                breakdowns, efficiency and failures, from the harness's own
+                summary. Without a published run it shows the committed
+                validation run, labelled as such.
+              </p>
+            </Card>
+            <Card title="Semantic Layer — what C adds">
+              <p>
+                The enterprise ontology: ten business concepts, the entities
+                bound to them, and the cross-market equivalences that pipeline C
+                traverses and B does not.
+              </p>
+            </Card>
+            <Card title="Experiment Home — the design">
+              <p>
+                Configurations, fairness controls, markets and dataset scale.
+                Use it to explain the experiment design to an audience.
+              </p>
+            </Card>
+            <Card title="Scenario Lab + Benchmark — the machinery">
+              <p>
+                Scenario Lab lists the planted patterns (SCN-002, SCN-003,
+                SCN-007, SCN-015) and their observable signals. Benchmark shows
+                the 30-question bank and how deterministic scoring works.
+              </p>
+            </Card>
+          </div>
+        </Section>
+
+        <Section
+          id="quickstart"
+          title="Quick start"
+          lead="Five minutes from opening the app to reading an answer."
+        >
+          <Steps
+            items={[
+              {
+                title: 'Open Live Lab (the default screen)',
+                children: (
+                  <p>
+                    It starts on the committed demo story, which needs no
+                    backend at all.
+                  </p>
+                ),
+              },
+              {
+                title: 'Press Run and watch both panes',
+                children: (
+                  <p>
+                    The panes animate from real recorded events; drag or click
+                    the timeline to rewind and replay any moment.
+                  </p>
+                ),
+              },
+              {
+                title: 'Switch the composer to Live backend',
+                children: (
+                  <p>
+                    Saved questions appear once the API is reachable (
+                    <Code>http://localhost:8000</Code>). Section 9 covers
+                    starting it.
+                  </p>
+                ),
+              },
+              {
+                title: 'Click a citation under an answer',
+                children: (
+                  <p>
+                    The Evidence Explorer opens with full provenance for that
+                    piece of evidence.
+                  </p>
+                ),
+              },
+              {
+                title: 'Toggle Presentation mode (top right)',
+                children: (
+                  <p>
+                    Stage layout with saved-question chips for demonstrating to
+                    a room.
+                  </p>
+                ),
+              },
             ]}
           />
-          <p>
-            Fairness is structural: all three pipelines share one lab (same
-            embedding model, same vector collection, same reranker, same
-            generator, same context budgets). B is exactly C minus the ontology
-            traversal, a contract pinned by automated tests, so any measured
-            B-to-C difference isolates the ontology layer.
-          </p>
         </Section>
 
-        <Section id="quickstart" title="Quick start">
-          <ol className="list-decimal space-y-1 pl-5">
-            <li>
-              Open <strong>Live Lab</strong> (the default screen). It starts on
-              the committed demo story, which needs no backend.
-            </li>
-            <li>
-              Press <strong>Run</strong> and watch both panes animate from real
-              telemetry; drag or click the timeline to rewind and replay any
-              moment.
-            </li>
-            <li>
-              To execute real pipelines, switch the composer toggle to{' '}
-              <strong>Live backend</strong>. Saved questions appear when the API
-              is reachable (<Code>http://localhost:8000</Code>).
-            </li>
-            <li>
-              Click any citation under an answer to inspect it in the{' '}
-              <strong>Evidence Explorer</strong>; open <strong>Results</strong>{' '}
-              for the published benchmark outcome.
-            </li>
-            <li>
-              Toggle <strong>Presentation mode</strong> (top right) for the
-              stage layout with saved-question chips.
-            </li>
-          </ol>
-        </Section>
-
-        <Section id="screens" title="Screen-by-screen guide">
-          <Table
-            head={['Screen', 'What it shows', 'How to use it']}
-            rows={[
-              [
-                'Live Lab',
-                'Side-by-side retrieval: standard RAG (left) and graph-enhanced (right), driven by the same question.',
-                'Type a question or pick a saved chip, press Run. Use the timeline to scrub; each pane renders only received events.',
-              ],
-              [
-                'Experiment Home',
-                'The experiment design: configurations, fairness controls, markets and dataset scale.',
-                'Read-only orientation; use it to explain the experiment to an audience.',
-              ],
-              [
-                'Scenario Lab',
-                'The planted scenario library (SCN-002, SCN-003, SCN-007, SCN-015) with observable signals.',
-                'Read-only; each scenario lists which planted rows and signals exist in the world.',
-              ],
-              [
-                'Evidence Explorer',
-                'Full provenance for one piece of evidence: document chunk text, source system, market, validity window, or the graph node with its ranking components.',
-                'Reach it by clicking a citation in an answer, or deep-link from Results failure rows.',
-              ],
-              [
-                'Benchmark',
-                'The evaluation harness: 30 questions, deterministic scoring, failure taxonomy.',
-                'Shows how questions are grounded and scored; official runs execute via the CLI, not the browser.',
-              ],
-              [
-                'Results',
-                'The published benchmark outcome: per-pipeline means, per-category breakdowns, efficiency, failures.',
-                'Data comes from the harness’s own summary; without a published run it shows the committed validation run and labels it.',
-              ],
-              [
-                'Semantic Layer',
-                'The enterprise ontology: business concepts, their bound entities and cross-market equivalences.',
-                'Read-only; use it to explain what pipeline C adds over B.',
-              ],
-            ]}
-          />
-        </Section>
-
-        <Section id="run" title="What happens during a run">
-          <p>
-            Every stage of every pipeline emits a typed event; the UI renders
-            only those events. Nothing is simulated during playback.
-          </p>
+        <Section
+          id="run"
+          title="What happens during a run"
+          lead="Every stage emits a typed event; the UI renders only those events. Nothing is simulated during playback."
+        >
+          <RunLifecycleDiagram />
           <h3 className="text-sm font-semibold text-primary">
-            Standard RAG (left pane, pipeline A)
+            Pipeline A: standard RAG (left pane)
           </h3>
           <Table
-            head={['Stage', 'Meaning']}
+            head={['Stage', 'What it means']}
             rows={[
               [
                 'Embedding',
@@ -210,7 +687,7 @@ export function Help() {
               ],
               [
                 'Context',
-                'Chunks are selected/deduplicated within the token budget; discards are visible.',
+                'Chunks are selected and deduplicated within the token budget; discards stay visible.',
               ],
               [
                 'Generation',
@@ -219,10 +696,10 @@ export function Help() {
             ]}
           />
           <h3 className="text-sm font-semibold text-primary">
-            Graph pipelines (right pane, B and C)
+            Pipelines B and C: graph-enhanced (right pane)
           </h3>
           <Table
-            head={['Stage', 'Meaning']}
+            head={['Stage', 'What it means']}
             rows={[
               [
                 'Entity resolution',
@@ -234,7 +711,7 @@ export function Help() {
               ],
               [
                 'Traversal',
-                'Bounded expansion from seeds: depth 2, caps per hop/total, evidence cap.',
+                'Bounded expansion from seeds: depth 2, caps per hop and in total, evidence cap.',
               ],
               [
                 'Candidate ranking',
@@ -250,20 +727,19 @@ export function Help() {
               ],
             ]}
           />
-          <p>
-            Traversal never runs unbounded: depth, per-hop nodes, per-type edges
-            and total nodes are configuration limits (<Code>GRAPH_DEPTH=2</Code>
-            , <Code>GRAPH_MAX_TOTAL_NODES=200</Code>, evidence cap 12 by
-            default).
-          </p>
+          <Callout title="Traversal is bounded by design">
+            Depth, per-hop nodes, per-type edges and total nodes are
+            configuration limits (<Code>GRAPH_DEPTH=2</Code>,{' '}
+            <Code>GRAPH_MAX_TOTAL_NODES=200</Code>, evidence cap 12 by default).
+            Unbounded user-driven traversal cannot happen.
+          </Callout>
         </Section>
 
-        <Section id="questions" title="Saved demo questions">
-          <p>
-            Four saved questions form the fixed demo configuration. Their texts
-            name real entities in the demo world; expected answers are never
-            embedded anywhere.
-          </p>
+        <Section
+          id="questions"
+          title="Saved demo questions"
+          lead="Four fixed questions form the demo configuration. Their texts name real entities in the demo world; expected answers are never embedded anywhere."
+        >
           <Table
             head={['Id', 'Asks about', 'Mirrors benchmark']}
             rows={[
@@ -289,55 +765,70 @@ export function Help() {
               ],
             ]}
           />
-          <p>
-            DEMO-04 exists to show what an honest miss looks like: the system
-            reports that it cannot find the pattern rather than inventing one.
-          </p>
+          <Callout title="Why one demo question is designed to miss">
+            DEMO-04 shows what an honest miss looks like: the system reports
+            that it cannot find the pattern rather than inventing one. In front
+            of an audience, this is the trust moment.
+          </Callout>
         </Section>
 
-        <Section id="metrics" title="Metrics and how to read them">
+        <Section
+          id="metrics"
+          title="Reading the numbers"
+          lead="Which numbers are measured live, and which come from the published benchmark."
+        >
+          <ScoreStripDiagram />
           <Table
-            head={['Metric', 'Where it comes from', 'When you see it']}
+            head={['Metric', 'Where it comes from', 'Where you see it']}
             rows={[
               [
                 'Answer correctness',
                 'Deterministic checks against grounded truth (benchmark harness only)',
-                'Results Dashboard, published runs',
+                'Results, published runs',
               ],
               [
                 'Evidence recall / precision',
                 'Overlap of retrieved evidence with truth-ledger evidence (harness only)',
-                'Results Dashboard, published runs',
+                'Results, published runs',
               ],
               [
                 'Latency, context tokens',
                 'Measured per live run',
-                'Live Lab score strip and Results efficiency table',
+                'Live Lab score strip, Results efficiency table',
               ],
               [
                 'Live score strip',
-                'Quality columns come only from the published benchmark for the matched question; operational columns are the real run',
-                'After a Live backend run of a saved question with a published result',
+                'Quality columns only from the published benchmark for the matched question; operational columns from the real run',
+                'After a live run of a saved question with a published result',
               ],
             ]}
           />
+          <Callout title="The committed headline results">
+            Dev world, question bank 1.0.0: full-bank evidence recall{' '}
+            <strong>A 0.02 vs B/C 0.62</strong> with the deterministic
+            generator; on the real-model subset (Q01, Q25, Q28, Q30) answer
+            score <strong>B/C 0.66 vs A 0.41</strong> and evidence recall{' '}
+            <strong>0.65 vs 0.04</strong>. These are published, reproducible
+            runs, not live claims.
+          </Callout>
           <p>
             The live score strip never fabricates quality numbers. Ad-hoc
-            questions have no truth to score against, so the strip stays in its
-            waiting state and only real operational measurements are reported.
-            Committed headline results (dev world, bank 1.0.0): full-bank
-            evidence recall A 0.02 vs B/C 0.62 with the deterministic generator;
-            on the real-model subset (Q01, Q25, Q28, Q30) answer score B/C 0.66
-            vs A 0.41 and evidence recall 0.65 vs 0.04.
+            questions have no truth to score against, so quality columns stay in
+            their waiting state and only real operational measurements are
+            reported.
           </p>
         </Section>
 
-        <Section id="data" title="Data, scenarios and provenance">
+        <Section
+          id="data"
+          title="Data, scenarios and provenance"
+          lead="One synthetic world, planted patterns, and citations that resolve to records."
+        >
           <p>
             The demo world (<Code>data/generated/demo-seed2026</Code>) was
             produced by generator 0.1.0 with world seed 2026 and scenario seed
             2026: 5,000,000 tickets, 100,000 players, 100,000 accounts, 120,000
-            devices, 2,000 documents across four markets. Generation is
+            devices and 2,000 documents across four markets. Generation is
             deterministic: identical inputs reproduce identical outputs.
           </p>
           <p>
@@ -347,15 +838,27 @@ export function Help() {
             evaluation package alone; automated isolation tests fail the build
             if retrieval, the API or the datasets code ever tries to read it.
           </p>
+          <ProvenanceDiagram />
           <p>
-            Every citation resolves to a source system and record. Graph nodes
-            carry provenance to warehouse rows, so a numerical claim can be
-            traced from the answer through the graph to the authoritative table.
+            Every citation resolves to a source system and record, and graph
+            nodes carry provenance to warehouse rows, so a numerical claim can
+            be traced from the answer through the graph to the authoritative
+            table. The{' '}
+            <a
+              className="text-graph hover:underline"
+              href={hrefFor('dictionary')}
+            >
+              Data Dictionary
+            </a>{' '}
+            documents every table, node label, relationship and concept.
           </p>
         </Section>
 
-        <Section id="operator" title="Running the backend">
-          <p>Services and state (from the repository root):</p>
+        <Section
+          id="operator"
+          title="Running the backend"
+          lead="Services and state, from the repository root."
+        >
           <CommandBlock
             lines={[
               'make services-up        # Neo4j + Qdrant (Docker/OrbStack)',
@@ -366,8 +869,8 @@ export function Help() {
           />
           <p>
             The API reads its world and models from configuration. Without extra
-            settings it uses the deterministic fake generator. For local-model
-            answers:
+            settings it uses the deterministic fake generator (safe and instant,
+            ideal for a live demo). For local-model answers:
           </p>
           <CommandBlock
             lines={[
@@ -377,7 +880,6 @@ export function Help() {
               'make serve-demo-api',
             ]}
           />
-          <p>Other useful commands:</p>
           <Table
             head={['Command', 'Effect']}
             rows={[
@@ -401,7 +903,11 @@ export function Help() {
           />
         </Section>
 
-        <Section id="troubleshooting" title="Troubleshooting">
+        <Section
+          id="troubleshooting"
+          title="Troubleshooting"
+          lead="Symptoms, causes and recovery for the common failure modes."
+        >
           <Table
             head={['Symptom', 'Cause', 'Recovery']}
             rows={[
@@ -440,7 +946,11 @@ export function Help() {
           </p>
         </Section>
 
-        <Section id="glossary" title="Glossary">
+        <Section
+          id="glossary"
+          title="Glossary"
+          lead="The eight words this app uses that everywhere else means something slightly different."
+        >
           <Table
             head={['Term', 'Meaning']}
             rows={[
@@ -480,7 +990,11 @@ export function Help() {
           />
         </Section>
 
-        <Section id="accessibility" title="Accessibility">
+        <Section
+          id="accessibility"
+          title="Accessibility"
+          lead="Built in, not bolted on."
+        >
           <ul className="list-disc space-y-1 pl-5">
             <li>
               Full keyboard navigation; visible focus states; skip-to-content

@@ -109,15 +109,22 @@ Blind mode: planted specifics hidden; configuration metadata only (docs/06 secti
 
 Every chart has a table alternative (accessibility); failure rows deep-link to run replays.
 
-## 6a. Help (HITL-11 addition, 2026-10-10)
+## 6a. Help (HITL-11 addition; redesigned 2026-10-10)
 
-In-app documentation screen (`#/help`): a sticky section index and eleven
-sections covering the experiment design, quick start, screen-by-screen
-guide, run stages and event vocabulary, saved demo questions, metric
-sources and honesty rules, data and provenance, operator commands,
-troubleshooting, glossary and accessibility. Content quotes only committed
-figures (validation results, demo-world scale) and mirrors
-docs/demo/presentation.md; it renders no synthetic values. Visual baseline:
+In-app documentation screen (`#/help`), structured as a guided reading
+experience: a page hero with three audience paths (present the demo /
+understand the experiment / run the backend), a numbered sticky reading
+path, and eleven sections. Explanation-first sections carry inline SVG
+diagrams with text alternatives: the pipeline comparison (three lanes A/B/C
+sharing one embed-and-search head, B adding graph traversal, C adding
+ontology expansion, all reading authoritative facts from the warehouse), the
+seven-screen journey strip, the run lifecycle, the score-strip sources
+diagram (live measurements vs published benchmark) and the provenance chain.
+Reference sections (saved demo questions, metrics table, operator commands,
+troubleshooting, glossary, accessibility) keep tabular form. Callouts carry
+the fairness contract, the designed miss (DEMO-04), the committed headline
+results and the bounded-traversal guarantees. Content quotes only committed
+figures and mirrors docs/demo/presentation.md. Visual baseline:
 `e2e/visual.spec.ts-snapshots/help-darwin.png`.
 
 Live data note (HITL-11): when the dashboard renders the latest published
@@ -126,22 +133,36 @@ bank dimension (market breakdown) are hidden rather than filled with
 synthetic values, and unscored questions appear in failure analysis marked
 "not scored".
 
-## 6b. Data Dictionary (HITL-11 addition, 2026-10-10)
+## 6b. Data Dictionary (HITL-11 addition; redesigned 2026-10-10)
 
-In-app schema documentation (`#/dictionary`) so a reader can understand
-exactly what is represented without leaving the app. Sections: layer
-architecture (SVG diagram: structured layer, graph overlay, vector index,
-pipelines), the full 36-table inventory grouped by domain with keys and
-demo-world row counts, field-level detail for the ten core tables, the
-graph schema as a domain-cluster SVG plus the exhaustive 26-label /
-26-relationship-type lists with meanings and the graph-vs-source boundary
-(including derived relationships), the ontology catalogue (10 concepts),
-mapping sources and a binding diagram (INC_S007_GR/AT/CZ →
-CONCEPT_PLATFORM_INCIDENT), and pointers to the authoritative repo
-artefacts. All figures are generated from committed sources (world
-manifest, statements.py allow-list, master_data.py catalogue); reserved
-but unpopulated ontology vocabulary is stated explicitly. Baselines:
-`dictionary-darwin.png`, updated `help-darwin.png`.
+In-app schema documentation (`#/dictionary`), structured for orientation
+before reference: a page hero with a "how to read this page" callout (accent
+marking = enters the graph), the layer-architecture diagram, a new
+entity-relationship overview ("The shape of the world") showing how players,
+accounts, devices, payment methods, tickets, games, draws, retailers,
+platforms, incidents, documents and concepts connect with demo row counts
+and fact-table shading, then the reference sections: the 36-table inventory
+grouped by domain with keys and demo-world row counts, field-level detail
+for the ten core tables, the graph schema cluster diagram plus the
+exhaustive 26-label / 26-relationship-type lists with meanings and the
+graph-vs-source boundary (derived relationships PLAYS / EXPOSED_TO /
+USES_PAYMENT), the ontology catalogue (10 concepts), mapping sources and the
+INC_S007_GR/AT/CZ → CONCEPT_PLATFORM_INCIDENT binding diagram, and pointers
+to authoritative artefacts. All figures are generated from committed sources
+(world manifest, statements.py allow-list, master_data.py catalogue);
+reserved but unpopulated ontology vocabulary is stated explicitly in a callout.
+Baseline: `dictionary-darwin.png`.
+
+## 6c. Experiment Home "Start here" strip (HITL-11 addition, 2026-10-10)
+
+Additive change to the approved Experiment Home: a "Start here" section at
+the top presents the three-step reading order (1 Watch it answer → Live Lab,
+2 Check the proof → Evidence Explorer, 3 Read the scoreline → Results) as
+linked step cards. The approved saved-experiments and configuration sections
+below are unchanged; deep links, hierarchy and colour semantics of the
+existing content are preserved. Baseline: `experiment-home-darwin.png`
+(re-recorded with the new primary-nav grouping, see
+docs/ux/information-architecture.md).
 
 ## 7. Semantic Layer
 

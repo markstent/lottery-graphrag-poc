@@ -51,6 +51,14 @@ Settings drawer: provider/model defaults, `GET /models/status`, reduced motion, 
   presenter guide) and `#/dictionary` (data dictionary: table inventory,
   field-level detail, graph schema and ontology catalogue with diagrams).
   Both link back into Live Lab, Results and Semantic Layer.
+- Primary navigation is grouped (2026-10-10 redesign): Experiment (Live
+  Lab, Experiment Home, Results, Evidence Explorer, Benchmark, Scenario
+  Lab, Semantic Layer) then Learn (Help, Data Dictionary), separated by a
+  divider and announced by visually hidden group labels. Grouping follows
+  the narrative order: run something, read the scoreline, inspect proof,
+  then reference. The Learn routes open with page heroes and guided reading
+  paths; Experiment Home opens with a "Start here" strip giving the
+  three-step route through the app (screen-specifications.md §6c).
 - Blind benchmark mode hides Scenario Lab truth details (docs/06 section 12); the Scenario Lab route shows configuration but not planted specifics.
 
 ## 5. Required states per screen

@@ -9,10 +9,11 @@ describe('DataDictionary', () => {
 
     for (const heading of [
       'One world, three representations',
-      'Structured layer: table inventory',
+      'The shape of the world',
+      'Warehouse tables by domain',
       'Core tables, field by field',
-      'Graph overlay: node labels and relationships',
-      'Ontology: business concepts and mappings',
+      'The graph overlay',
+      'The ontology',
       'Authoritative definitions',
     ]) {
       expect(screen.getByRole('heading', { name: heading })).toBeVisible()
@@ -28,7 +29,7 @@ describe('DataDictionary', () => {
     expect(screen.getAllByText('USES_PAYMENT').length).toBeGreaterThan(0)
     expect(screen.getAllByText('MAPS_TO').length).toBeGreaterThan(0)
     expect(
-      screen.getByText(/only INSTANCE_OF and MAPS_TO bindings exist/),
+      screen.getByText(/Only INSTANCE_OF and MAPS_TO bindings exist/),
     ).toBeVisible()
   })
 
@@ -40,11 +41,18 @@ describe('DataDictionary', () => {
       screen.getAllByText('CONCEPT_PLATFORM_INCIDENT').length,
     ).toBeGreaterThan(0)
     const diagrams = screen.getAllByRole('img')
-    expect(diagrams.length).toBeGreaterThanOrEqual(2)
+    expect(diagrams.length).toBeGreaterThanOrEqual(3)
     for (const diagram of diagrams) {
       expect(
         diagram.getAttribute('aria-label') ?? diagram.querySelector('title'),
       ).toBeTruthy()
     }
+  })
+
+  it('opens with a how-to-read orientation', () => {
+    render(<DataDictionary />)
+
+    expect(screen.getByText('How to read this page')).toBeVisible()
+    expect(screen.getByText('The shape of the world')).toBeVisible()
   })
 })
