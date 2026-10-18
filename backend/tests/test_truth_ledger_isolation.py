@@ -2,8 +2,8 @@
 
 The boundary is structural, not conventional:
 
-1. No module under ``app/retrieval``, ``app/api``, ``app/datasets`` or
-   ``app/graph`` may import ``app.evaluation`` or reference the truth path.
+1. No module under ``app/retrieval``, ``app/api``, ``app/datasets``,
+   ``app/graph`` or ``app/ontology`` may import ``app.evaluation`` or reference the truth path.
 2. The scenario package may write the ledger but must never import the
    loader; producer and consumer share only the JSON contract.
 3. ``app.evaluation`` is imported by nothing under ``app/`` except itself.
@@ -23,7 +23,7 @@ from app.scenarios.catalogue import ENABLED
 from app.scenarios.engine import apply_scenarios
 
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
-ISOLATED_NAMESPACES = ("retrieval", "api", "datasets", "graph")
+ISOLATED_NAMESPACES = ("retrieval", "api", "datasets", "graph", "ontology")
 FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "app.evaluation")
 
 
@@ -52,6 +52,19 @@ def test_isolated_namespaces_never_reference_evaluator_truth() -> None:
             assert not any(name.startswith("app.evaluation") for name in imports), (
                 f"{namespace}/{path.name} imports app.evaluation"
             )
+
+
+def test_ontology_package_is_independent_of_bank_and_scenarios() -> None:
+    allowed = {"app.datasets.config"}
+    for path in sorted((APP_DIR / "ontology").rglob("*.py")):
+        imports = _imported_modules(_tree(path))
+        offenders = {
+            name
+            for name in imports
+            if name.startswith(("app.scenarios", "app.evaluation", "app.datasets"))
+            and name not in allowed
+        }
+        assert not offenders, (path.name, offenders)
 
 
 def test_scenario_writer_never_imports_the_loader() -> None:
