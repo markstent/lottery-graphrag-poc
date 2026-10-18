@@ -3,6 +3,8 @@ from pathlib import Path
 import pytest
 from app.ontology import ONTOLOGY_VERSION
 from app.ontology.loader import OntologyError, load_ontology
+from app.ontology.similarity import GameConcepts, concept_similarity, cross_market_similar
+from app.ontology.terms import Term, TermMatcher, build_term_table
 
 
 def test_loads_v2_with_hierarchy_and_four_languages() -> None:
@@ -119,3 +121,97 @@ def test_loader_rejects_invalid_documents(tmp_path: Path, text: str, message: st
 
 def test_ontology_error_is_a_value_error() -> None:
     assert issubclass(OntologyError, ValueError)
+
+
+def test_term_matcher_finds_local_and_synonym_terms() -> None:
+    onto = load_ontology()
+    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENLOTTO"): "Zahlenlotto"})
+    matcher = TermMatcher(table)
+    hits = {m.term.concept_id for m in matcher.match("Wie läuft das Zahlenlotto in Österreich?")}
+    assert "CONCEPT_NATIONAL_DRAW" in hits
+
+
+def test_term_matcher_is_whole_word_and_non_overlapping() -> None:
+    matcher = TermMatcher(
+        [
+            Term("draw game", "en", "CONCEPT_DRAW_GAME", "label"),
+            Term("draw", "en", "CONCEPT_X", "label"),
+        ]
+    )
+    matches = matcher.match("A draw game and a withdrawal.")
+    assert [m.term.concept_id for m in matches] == ["CONCEPT_DRAW_GAME"]
+
+
+def test_term_matcher_matches_greek_inside_a_sentence_with_offsets() -> None:
+    matcher = TermMatcher([Term("λαχείο", "el", "CONCEPT_LOTTERY", "label")])
+    text = "Πόσα λαχείο πουλήθηκαν;"
+    (match,) = matcher.match(text)
+    assert text[match.start : match.end] == "λαχείο"
+
+
+def test_term_matcher_does_not_match_inside_identifiers() -> None:
+    matcher = TermMatcher([Term("uk", "en", "CONCEPT_UK", "synonym")])
+    assert matcher.match("GAME_UK_01") == ()
+    assert len(matcher.match("sales in the UK.")) == 1
+
+
+def test_shared_synonym_yields_one_match_per_concept() -> None:
+    matcher = TermMatcher(
+        [Term("bet", "en", "CONCEPT_B", "synonym"), Term("bet", "en", "CONCEPT_A", "synonym")]
+    )
+    matches = matcher.match("Place a bet")
+    assert [m.term.concept_id for m in matches] == ["CONCEPT_A", "CONCEPT_B"]
+    assert {(m.start, m.end) for m in matches} == {(8, 11)}
+
+
+def test_term_table_is_lowercase_deduplicated_and_sorted() -> None:
+    table = build_term_table(
+        load_ontology(),
+        {
+            ("family", "FAM_AT_ZAHLENLOTTO"): " Zahlenlotto ",
+            ("family", "FAM_GR_ARITHMOLACHEIO"): " Arithmolacheio Plus ",
+        },
+    )
+    assert all(t.text == t.text.casefold().strip() and t.text for t in table)
+    keys = [(t.text, t.concept_id, t.language) for t in table]
+    assert keys == sorted(keys)
+    assert len({(t.text, t.concept_id) for t in table}) == len(table)
+    assert any(t.source == "local_name" and t.text == "arithmolacheio plus" for t in table)
+    assert not any(t.source == "local_name" and t.text == "zahlenlotto" for t in table)
+
+
+def test_similarity_links_equivalent_products_across_markets() -> None:
+    gr = GameConcepts(
+        "GAME_GR_01",
+        "MKT_GR",
+        "CONCEPT_NATIONAL_DRAW",
+        "CONCEPT_DRAW_GAME",
+        frozenset({"CONCEPT_NUMBER_SELECTION", "CONCEPT_QUICK_PICK"}),
+    )
+    at = GameConcepts(
+        "GAME_AT_01",
+        "MKT_AT",
+        "CONCEPT_NATIONAL_DRAW",
+        "CONCEPT_DRAW_GAME",
+        frozenset({"CONCEPT_NUMBER_SELECTION"}),
+    )
+    assert concept_similarity(gr, at) == 0.8
+    assert cross_market_similar([gr, at])[0].method == "ontology_similarity_v2"
+
+
+def test_cross_market_similar_excludes_same_market_and_zero_and_caps_top_k() -> None:
+    def game(gid: str, market: str, family: str, cat: str = "C") -> GameConcepts:
+        return GameConcepts(gid, market, family, cat, frozenset())
+
+    games = [
+        game("A1", "M1", "F"),
+        game("A2", "M1", "F"),
+        game("B1", "M2", "F"),
+        game("B2", "M2", "F"),
+        game("C1", "M3", "Z", "Y"),
+    ]
+    edges = cross_market_similar(games, top_k=1)
+    assert [(e.a_id, e.b_id) for e in edges if e.a_id == "A1"] == [("A1", "B1")]
+    assert all(e.score > 0 for e in edges)
+    assert not any(e.a_id in {"A1", "A2"} and e.b_id in {"A1", "A2"} for e in edges)
+    assert not any("C1" in (e.a_id, e.b_id) for e in edges)
