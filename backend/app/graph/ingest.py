@@ -17,8 +17,9 @@ from typing import Any
 from neo4j import Driver, GraphDatabase
 from neo4j import Session as Neo4jSession
 
-from app.datasets.master_data import PLAYER_SEGMENTS, PRIZE_TYPES
+from app.datasets.master_data import PRIZE_TYPES
 from app.datasets.schema import TABLE_PROVENANCE
+from app.datasets.taxonomies import PLAYER_SEGMENTS
 from app.graph import mapping, statements
 from app.graph.config import LABEL_VERSION, GraphConfig
 from app.graph.reader import load_dataset
@@ -242,15 +243,15 @@ def build_node_rows(tables: dict[str, list[dict[str, Any]]]) -> dict[str, list[d
             prize_type_id,
             {"id": prize_type_id, "tier": tier, "multiplier": multiplier},
         )
-    for segment_id, kind, code, description in PLAYER_SEGMENTS:
+    for segment_id, _market_id, kind, name, _language in PLAYER_SEGMENTS:
         add_master(
             "PlayerSegment",
             segment_id,
             {
                 "id": segment_id,
                 "segment_kind": kind,
-                "code": code,
-                "description": description,
+                "code": segment_id,
+                "description": name,
             },
         )
     for row in tables["players"]:
@@ -732,7 +733,7 @@ def build_relationship_rows(
         ("MAPS_TO", "PlayerSegment", "BusinessConcept"),
         [
             {"a_id": segment_id, "b_id": mapping.SEGMENT_TO_CONCEPT, "props": {}}
-            for segment_id in sorted({row[0] for row in PLAYER_SEGMENTS})
+            for segment_id in sorted({row.segment_id for row in PLAYER_SEGMENTS})
         ],
     )
     put(

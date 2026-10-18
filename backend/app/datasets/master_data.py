@@ -8,17 +8,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.datasets.rows import MarketRow
+
 # ---------------------------------------------------------------- markets ---
 
 MARKET_CURRENCY: dict[str, str] = {"UK": "GBP", "GR": "EUR", "AT": "EUR", "CZ": "CZK"}
 
-MARKETS: list[tuple[str, str, str, str, str, str, float, float]] = [
-    # market_id, code, name, currency, language, timezone, digital, retail
-    ("MKT_UK", "UK", "United Kingdom", "GBP", "en", "Europe/London", 0.78, 0.71),
-    ("MKT_GR", "GR", "Greece", "EUR", "el", "Europe/Athens", 0.54, 0.86),
-    ("MKT_AT", "AT", "Austria", "EUR", "de", "Europe/Vienna", 0.62, 0.74),
-    ("MKT_CZ", "CZ", "Czech Republic", "CZK", "cs", "Europe/Prague", 0.58, 0.69),
-]
+MARKETS: tuple[MarketRow, ...] = (
+    MarketRow("MKT_UK", "UK", "United Kingdom", "GBP", "en", "Europe/London", 0.78, 0.71),
+    MarketRow("MKT_GR", "GR", "Greece", "EUR", "el", "Europe/Athens", 0.54, 0.86),
+    MarketRow("MKT_AT", "AT", "Austria", "EUR", "de", "Europe/Vienna", 0.62, 0.74),
+    MarketRow("MKT_CZ", "CZ", "Czech Republic", "CZK", "cs", "Europe/Prague", 0.58, 0.69),
+)
 
 REGIONS: list[tuple[str, str, str]] = [
     # region_id, market_id, name
@@ -57,42 +58,6 @@ CHANNELS: list[tuple[str, str]] = [
     ("RETAIL", "Retail terminal"),
 ]
 
-PLAYER_SEGMENTS: list[tuple[str, str, str, str]] = [
-    # segment_id, kind, code, description
-    ("SEG_VALUE_VIP", "VALUE", "VIP", "Highest long-term value players"),
-    ("SEG_VALUE_MAINSTREAM", "VALUE", "MAINSTREAM", "Regular value players"),
-    ("SEG_VALUE_BUDGET", "VALUE", "BUDGET", "Low-stake players"),
-    ("SEG_ENG_ENGAGED", "ENGAGEMENT", "ENGAGED", "Frequently active players"),
-    ("SEG_ENG_CASUAL", "ENGAGEMENT", "CASUAL", "Occasional players"),
-    ("SEG_ENG_DORMANT", "ENGAGEMENT", "DORMANT", "Rarely active players"),
-]
-
-GAME_FAMILIES: list[tuple[str, str]] = [
-    ("FAM_NATIONAL_DRAW", "National draw lottery"),
-    ("FAM_MULTINATIONAL_JACKPOT", "Multinational jackpot lottery"),
-    ("FAM_HIGH_FREQUENCY", "High-frequency number game"),
-    ("FAM_INSTANT_WIN", "Instant-win game"),
-    ("FAM_DIGITAL_INSTANT", "Digital instant-win game"),
-    ("FAM_ADD_ON", "Supplementary add-on game"),
-    ("FAM_ANNUITY", "Annuity-style game"),
-    ("FAM_FIXED_PRIZE", "Fixed-prize game"),
-]
-
-GAME_CATEGORIES: list[tuple[str, str]] = [
-    ("CAT_DRAW", "Draw-based"),
-    ("CAT_NUMBER", "Number game"),
-    ("CAT_INSTANT", "Instant product"),
-    ("CAT_SUPPLEMENTARY", "Supplementary product"),
-]
-
-GAME_MECHANICS: list[tuple[str, str, str]] = [
-    ("MECH_NUMBER_MATCH", "NUM_MATCH", "Match numbers against a draw"),
-    ("MECH_QUICK_PICK", "QUICK_PICK", "Auto-selected number lines"),
-    ("MECH_SYMBOL_SCRATCH", "SYMBOL_SCRATCH", "Reveal matching symbols"),
-    ("MECH_INSTANT_ROUNDS", "INSTANT_ROUNDS", "Immediate win rounds per ticket"),
-    ("MECH_PROGRESSIVE_JACKPOT", "PROG_JACKPOT", "Rolling progressive jackpot"),
-    ("MECH_SECOND_CHANCE", "SECOND_CHANCE", "Non-winning entries enter a draw"),
-]
 
 PRIZE_TYPES: list[tuple[str, str, float, float]] = [
     # prize_type_id, tier, multiplier, weight
@@ -110,20 +75,6 @@ CAMPAIGN_OBJECTIVES: list[tuple[str, str]] = [
     ("OBJ_DIGITAL_SHIFT", "Shift retail players to digital"),
 ]
 
-INCIDENT_CATEGORIES: list[tuple[str, str]] = [
-    ("INC_PAYMENTS", "Payment processing failure"),
-    ("INC_APP_STABILITY", "Application stability"),
-    ("INC_DRAW_DELAY", "Draw execution delay"),
-    ("INC_LOGIN", "Authentication outage"),
-    ("INC_RETAIL_TERMINAL", "Retail terminal outage"),
-]
-
-SUPPORT_CATEGORIES: list[tuple[str, str]] = [
-    ("SUP_PAYMENT", "Payment issue"),
-    ("SUP_ACCOUNT", "Account access"),
-    ("SUP_GAME_QUERY", "Game or rules query"),
-    ("SUP_TECHNICAL", "Technical fault"),
-]
 
 SUPPLIERS: list[tuple[str, str]] = [
     ("SUP_MERIDIAN", "Meridian Platform Works"),
@@ -134,18 +85,6 @@ SUPPLIERS: list[tuple[str, str]] = [
     ("SUP_ORPHEUS", "Orpheus Draw Systems"),
 ]
 
-BUSINESS_CONCEPTS: list[tuple[str, str, str]] = [
-    ("CONCEPT_NATIONAL_DRAW", "Game", "National draw lottery product"),
-    ("CONCEPT_MULTINATIONAL_JACKPOT", "Game", "Multinational jackpot product"),
-    ("CONCEPT_HIGH_FREQUENCY_GAME", "Game", "High-frequency number product"),
-    ("CONCEPT_INSTANT_PRODUCT", "Game", "Instant-win product"),
-    ("CONCEPT_ADD_ON_PRODUCT", "Game", "Supplementary add-on product"),
-    ("CONCEPT_PROGRESSIVE_JACKPOT", "PrizeModel", "Progressive rolling jackpot"),
-    ("CONCEPT_PLAYER_SEGMENT", "PlayerSegment", "Behavioural player cohort"),
-    ("CONCEPT_RETAIL_CHANNEL", "Channel", "Physical retail sales channel"),
-    ("CONCEPT_DIGITAL_CHANNEL", "Channel", "App and web sales channel"),
-    ("CONCEPT_PLATFORM_INCIDENT", "BusinessEvent", "Platform incident affecting products"),
-]
 
 # ---------------------------------------------------------- product catalogue
 
@@ -175,9 +114,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_UK_01",
         "UK",
         "Albion Millions",
-        "FAM_NATIONAL_DRAW",
-        "CAT_DRAW",
-        ("MECH_NUMBER_MATCH", "MECH_QUICK_PICK"),
+        "FAM_UK_NATIONAL_DRAW",
+        "CAT_UK_DRAW",
+        ("MECH_UK_NUMBER_MATCH", "MECH_UK_LUCKY_DIP"),
         250,
         True,
         True,
@@ -190,9 +129,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_UK_02",
         "UK",
         "Kingsport Draw",
-        "FAM_ANNUITY",
-        "CAT_DRAW",
-        ("MECH_NUMBER_MATCH",),
+        "FAM_UK_ANNUITY",
+        "CAT_UK_DRAW",
+        ("MECH_UK_NUMBER_MATCH",),
         300,
         True,
         True,
@@ -205,9 +144,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_UK_03",
         "UK",
         "Thames Cash",
-        "FAM_HIGH_FREQUENCY",
-        "CAT_NUMBER",
-        ("MECH_QUICK_PICK",),
+        "FAM_UK_RAPID_NUMBERS",
+        "CAT_UK_NUMBERS",
+        ("MECH_UK_LUCKY_DIP",),
         100,
         True,
         False,
@@ -220,9 +159,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_UK_04",
         "UK",
         "Union Raffle",
-        "FAM_FIXED_PRIZE",
-        "CAT_DRAW",
-        ("MECH_SECOND_CHANCE",),
+        "FAM_UK_FIXED_PRIZE",
+        "CAT_UK_DRAW",
+        ("MECH_UK_SECOND_CHANCE",),
         150,
         True,
         True,
@@ -235,9 +174,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_UK_05",
         "UK",
         "Lioness Instant",
-        "FAM_INSTANT_WIN",
-        "CAT_INSTANT",
-        ("MECH_SYMBOL_SCRATCH",),
+        "FAM_UK_SCRATCHCARD",
+        "CAT_UK_INSTANT",
+        ("MECH_UK_SCRATCH",),
         200,
         False,
         True,
@@ -250,9 +189,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_UK_06",
         "UK",
         "SwiftSix",
-        "FAM_DIGITAL_INSTANT",
-        "CAT_INSTANT",
-        ("MECH_INSTANT_ROUNDS",),
+        "FAM_UK_ONLINE_INSTANT",
+        "CAT_UK_INSTANT",
+        ("MECH_UK_INSTANT_ROUNDS",),
         100,
         True,
         False,
@@ -266,9 +205,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_GR_01",
         "GR",
         "Aegean Gold",
-        "FAM_NATIONAL_DRAW",
-        "CAT_DRAW",
-        ("MECH_NUMBER_MATCH", "MECH_QUICK_PICK"),
+        "FAM_GR_ARITHMOLACHEIO",
+        "CAT_GR_KLIROSEIS",
+        ("MECH_GR_EPILOGI_ARITHMON", "MECH_GR_TYCHAIA_EPILOGI"),
         200,
         True,
         True,
@@ -281,9 +220,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_GR_02",
         "GR",
         "Ellas Jackpot",
-        "FAM_MULTINATIONAL_JACKPOT",
-        "CAT_DRAW",
-        ("MECH_NUMBER_MATCH",),
+        "FAM_GR_POLYETHNIKO_TZAKPOT",
+        "CAT_GR_KLIROSEIS",
+        ("MECH_GR_EPILOGI_ARITHMON",),
         250,
         True,
         True,
@@ -296,9 +235,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_GR_03",
         "GR",
         "Olympia Numbers",
-        "FAM_HIGH_FREQUENCY",
-        "CAT_NUMBER",
-        ("MECH_QUICK_PICK",),
+        "FAM_GR_SYCHNES_KLIROSEIS",
+        "CAT_GR_ARITHMOPAICHNIDIA",
+        ("MECH_GR_TYCHAIA_EPILOGI",),
         100,
         True,
         False,
@@ -311,9 +250,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_GR_04",
         "GR",
         "Athena Express",
-        "FAM_DIGITAL_INSTANT",
-        "CAT_INSTANT",
-        ("MECH_INSTANT_ROUNDS",),
+        "FAM_GR_PSIFIAKO_XYSTO",
+        "CAT_GR_STIGMIAIA",
+        ("MECH_GR_AMESOI_GYROI",),
         100,
         True,
         False,
@@ -326,9 +265,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_GR_05",
         "GR",
         "Peloponnesus Pull",
-        "FAM_INSTANT_WIN",
-        "CAT_INSTANT",
-        ("MECH_SYMBOL_SCRATCH",),
+        "FAM_GR_XYSTO",
+        "CAT_GR_STIGMIAIA",
+        ("MECH_GR_XYSIMO",),
         150,
         False,
         True,
@@ -342,9 +281,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_AT_01",
         "AT",
         "Danube Classic",
-        "FAM_NATIONAL_DRAW",
-        "CAT_DRAW",
-        ("MECH_NUMBER_MATCH",),
+        "FAM_AT_ZAHLENLOTTO",
+        "CAT_AT_ZIEHUNG",
+        ("MECH_AT_ZAHLENWAHL",),
         250,
         True,
         True,
@@ -357,9 +296,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_AT_02",
         "AT",
         "Alpen Jackpot",
-        "FAM_MULTINATIONAL_JACKPOT",
-        "CAT_DRAW",
-        ("MECH_NUMBER_MATCH",),
+        "FAM_AT_LAENDER_JACKPOT",
+        "CAT_AT_ZIEHUNG",
+        ("MECH_AT_ZAHLENWAHL",),
         250,
         True,
         True,
@@ -372,9 +311,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_AT_03",
         "AT",
         "Wiener Zahlen",
-        "FAM_HIGH_FREQUENCY",
-        "CAT_NUMBER",
-        ("MECH_QUICK_PICK",),
+        "FAM_AT_SCHNELLZIEHUNG",
+        "CAT_AT_ZAHLEN",
+        ("MECH_AT_QUICKTIPP",),
         100,
         True,
         False,
@@ -387,9 +326,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_AT_04",
         "AT",
         "Alpen Star",
-        "FAM_ADD_ON",
-        "CAT_SUPPLEMENTARY",
-        ("MECH_SECOND_CHANCE",),
+        "FAM_AT_ZUSATZSPIEL",
+        "CAT_AT_ZUSATZ",
+        ("MECH_AT_ZWEITE_CHANCE",),
         100,
         True,
         True,
@@ -402,9 +341,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_AT_05",
         "AT",
         "Edelweiss Instant",
-        "FAM_INSTANT_WIN",
-        "CAT_INSTANT",
-        ("MECH_SYMBOL_SCRATCH",),
+        "FAM_AT_RUBBELLOS",
+        "CAT_AT_SOFORT",
+        ("MECH_AT_RUBBELN",),
         200,
         False,
         True,
@@ -418,9 +357,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_CZ_01",
         "CZ",
         "Praha Fortuna",
-        "FAM_NATIONAL_DRAW",
-        "CAT_DRAW",
-        ("MECH_NUMBER_MATCH", "MECH_QUICK_PICK"),
+        "FAM_CZ_CISELNA_LOTERIE",
+        "CAT_CZ_LOSOVANI",
+        ("MECH_CZ_VYBER_CISEL", "MECH_CZ_NAHODNY_TIP"),
         2000,
         True,
         True,
@@ -433,9 +372,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_CZ_02",
         "CZ",
         "Moravia Multi",
-        "FAM_MULTINATIONAL_JACKPOT",
-        "CAT_DRAW",
-        ("MECH_NUMBER_MATCH",),
+        "FAM_CZ_MEZINARODNI_JACKPOT",
+        "CAT_CZ_LOSOVANI",
+        ("MECH_CZ_VYBER_CISEL",),
         2500,
         True,
         True,
@@ -448,9 +387,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_CZ_03",
         "CZ",
         "Rychle Cisla",
-        "FAM_HIGH_FREQUENCY",
-        "CAT_NUMBER",
-        ("MECH_QUICK_PICK",),
+        "FAM_CZ_RYCHLA_CISLA",
+        "CAT_CZ_CISLA",
+        ("MECH_CZ_NAHODNY_TIP",),
         1000,
         True,
         False,
@@ -463,9 +402,9 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_CZ_04",
         "CZ",
         "Stastny Kupon",
-        "FAM_INSTANT_WIN",
-        "CAT_INSTANT",
-        ("MECH_SYMBOL_SCRATCH",),
+        "FAM_CZ_STIRACI_LOS",
+        "CAT_CZ_OKAMZITE",
+        ("MECH_CZ_STIRANI",),
         1500,
         False,
         True,

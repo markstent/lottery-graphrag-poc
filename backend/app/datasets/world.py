@@ -94,12 +94,6 @@ def build_world(config: GenerationConfig) -> World:
         )
 
     tables.update(entities.generate_master_rows())
-    # Task 4 populates: the two new market/language columns on the master tables.
-    for name in ("game_families", "game_categories", "game_mechanics"):
-        tables[name] = [(*row, None, None) for row in tables[name]]
-    # Task 4 populates: new reference tables.
-    for name in ("incident_types", "support_categories", "player_segments", "payment_providers"):
-        tables[name] = []
     tables.update(entities.generate_games())
     _stage("master data", tables)
 

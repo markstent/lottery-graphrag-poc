@@ -10,14 +10,21 @@ from app.datasets.config import WINDOW_START
 from app.datasets.distributions import MARKET_DEVICE_SHARE, MARKET_RETAIL_SHARE, MARKET_SPLIT
 from app.datasets.master_data import (
     CHANNELS,
-    GAME_CATEGORIES,
-    GAME_FAMILIES,
-    GAME_MECHANICS,
     GAME_SPECS,
     MARKET_CURRENCY,
+    MARKETS,
     PLATFORMS,
     REGIONS,
     SUPPLIERS,
+)
+from app.datasets.taxonomies import (
+    GAME_CATEGORIES,
+    GAME_FAMILIES,
+    GAME_MECHANICS,
+    INCIDENT_TYPES,
+    PAYMENT_PROVIDERS,
+    PLAYER_SEGMENTS,
+    SUPPORT_CATEGORIES,
 )
 from app.datasets.util import money
 
@@ -36,26 +43,7 @@ def _split(total: int, shares: dict[str, float]) -> dict[str, int]:
 def generate_master_rows() -> dict[str, list[tuple[Any, ...]]]:
     """Fixed master tables (no randomness)."""
     return {
-        "markets": [
-            (
-                f"MKT_{code}",
-                code,
-                {"UK": "United Kingdom", "GR": "Greece", "AT": "Austria", "CZ": "Czech Republic"}[
-                    code
-                ],
-                MARKET_CURRENCY[code],
-                {"UK": "en", "GR": "el", "AT": "de", "CZ": "cs"}[code],
-                {
-                    "UK": "Europe/London",
-                    "GR": "Europe/Athens",
-                    "AT": "Europe/Vienna",
-                    "CZ": "Europe/Prague",
-                }[code],
-                {"UK": 0.78, "GR": 0.54, "AT": 0.62, "CZ": 0.58}[code],
-                {"UK": 0.71, "GR": 0.86, "AT": 0.74, "CZ": 0.69}[code],
-            )
-            for code in ("UK", "GR", "AT", "CZ")
-        ],
+        "markets": list(MARKETS),
         "regions": list(REGIONS),
         "currencies": [("GBP", "Pound sterling"), ("EUR", "Euro"), ("CZK", "Czech koruna")],
         "languages": [("en", "English"), ("el", "Greek"), ("de", "German"), ("cs", "Czech")],
@@ -64,6 +52,10 @@ def generate_master_rows() -> dict[str, list[tuple[Any, ...]]]:
         "game_families": list(GAME_FAMILIES),
         "game_categories": list(GAME_CATEGORIES),
         "game_mechanics": list(GAME_MECHANICS),
+        "incident_types": list(INCIDENT_TYPES),
+        "support_categories": list(SUPPORT_CATEGORIES),
+        "player_segments": list(PLAYER_SEGMENTS),
+        "payment_providers": list(PAYMENT_PROVIDERS),
     }
 
 
