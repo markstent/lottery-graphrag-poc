@@ -78,14 +78,14 @@ class TermMatcher:
         """Matches ordered by position; concepts sharing a text give one match each."""
         if self._pattern is None:
             return ()
-        folded = text.casefold()
-        if len(folded) != len(text):
-            # casefold can change length (e.g. "ß"); lower() keeps offsets aligned where it can.
-            folded = text.lower()
-        if len(folded) != len(text):
-            return ()
+        folded_chars: list[str] = []
+        owner: list[int] = []  # folded offset -> index of the original character it came from
+        for index, char in enumerate(text):
+            folded = char.casefold()
+            folded_chars.append(folded)
+            owner.extend([index] * len(folded))
         return tuple(
-            TermMatch(term, m.start(), m.end())
-            for m in self._pattern.finditer(folded)
+            TermMatch(term, owner[m.start()], owner[m.end() - 1] + 1)
+            for m in self._pattern.finditer("".join(folded_chars))
             for term in self._by_text[m.group()]
         )

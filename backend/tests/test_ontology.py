@@ -215,3 +215,37 @@ def test_cross_market_similar_excludes_same_market_and_zero_and_caps_top_k() -> 
     assert all(e.score > 0 for e in edges)
     assert not any(e.a_id in {"A1", "A2"} and e.b_id in {"A1", "A2"} for e in edges)
     assert not any("C1" in (e.a_id, e.b_id) for e in edges)
+
+
+def test_term_matcher_maps_offsets_when_casefold_changes_length() -> None:
+    onto = load_ontology()
+    matcher = TermMatcher(build_term_table(onto, {("family", "X"): "Außenstelle"}))
+    assert not matcher.match("nothing here")
+    matcher = TermMatcher([Term("außenstelle".casefold(), "de", "CONCEPT_S", "local_name")])
+    text = "Die Außenstelle meldet Zahlungsfehler."
+    (match,) = matcher.match(text)
+    assert text[match.start : match.end] == "Außenstelle"
+
+
+def test_term_matcher_handles_greek_final_sigma() -> None:
+    term = "κληρώσεις".casefold()
+    matcher = TermMatcher([Term(term, "el", "CONCEPT_DRAW", "label")])
+    text = "Πόσες ΚΛΗΡΏΣΕΙΣ έγιναν;"
+    (match,) = matcher.match(text)
+    assert text[match.start : match.end] == "ΚΛΗΡΏΣΕΙΣ"
+
+
+def test_term_matcher_does_not_match_inside_longer_word() -> None:
+    matcher = TermMatcher([Term("draw", "en", "CONCEPT_X", "label")])
+    assert matcher.match("a drawn card") == ()
+
+
+def test_term_matcher_prefers_longer_greek_term() -> None:
+    matcher = TermMatcher(
+        [
+            Term("κληρώσεις".casefold(), "el", "CONCEPT_A", "label"),
+            Term("συχνές κληρώσεις".casefold(), "el", "CONCEPT_B", "label"),
+        ]
+    )
+    matches = matcher.match("Συχνές Κληρώσεις")
+    assert [m.term.concept_id for m in matches] == ["CONCEPT_B"]
