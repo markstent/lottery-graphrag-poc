@@ -198,6 +198,7 @@ def build_world(config: GenerationConfig) -> World:
         tables["sessions"],
         tables["support_cases"],
         tables["campaign_exposures"],
+        tables["campaigns"],
         market_currency,
     )
 

@@ -12,14 +12,16 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from app.datasets.config import PROFILES, WINDOW_DAYS, WINDOW_START, GenerationConfig
-from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE
+from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE, primary_key
 from app.datasets.world import World
 
 
 def _referential_errors(tables: dict[str, list[Any]]) -> list[str]:
     """Foreign-key integrity over nullable-aware relationships."""
     errors: list[str] = []
-    known_ids = {name: {row[0] for row in rows} for name, rows in tables.items()}
+    known_ids = {
+        name: {getattr(row, primary_key(name)) for row in rows} for name, rows in tables.items()
+    }
     for fk in FOREIGN_KEYS:
         child, parent = fk.child_table, fk.parent_table
         for row in tables[child]:
@@ -116,7 +118,8 @@ def _time_errors(tables: dict[str, list[Any]], window_start: date) -> list[str]:
     for table, column in _WINDOWED_TIMESTAMPS:
         for row in tables[table]:
             if not window_lower <= getattr(row, column) < window_upper:
-                errors.append(f"time: {table} {row[0]} timestamp outside generation window")
+                row_id = getattr(row, primary_key(table))
+                errors.append(f"time: {table} {row_id} timestamp outside generation window")
     launch = {g.game_id: g.launch_date for g in tables["games"]}
     for ticket in tables["tickets"]:
         if ticket.purchase_timestamp.date() < launch.get(ticket.game_id, window_start):

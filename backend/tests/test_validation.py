@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 import pytest
+from app.datasets.activity import generate_draws
 from app.datasets.config import PROFILES, GenerationConfig
+from app.datasets.master_data import CAMPAIGN_OBJECTIVES
+from app.datasets.rng import stream
+from app.datasets.rows import GameRow
 from app.datasets.validation import validate_world
 from app.datasets.world import World, build_world
 
@@ -105,3 +110,59 @@ def test_volume_targets_include_operational_volumes(tiny_world: World) -> None:
     assert len(tiny_world.tables["incidents"]) == volumes.incidents
     assert len(tiny_world.tables["campaigns"]) == volumes.campaigns_per_market * 4
     assert len(tiny_world.tables["experiments"]) == volumes.experiments
+
+
+def test_campaign_objectives_cycle_through_all_four_in_each_market(tiny_world: World) -> None:
+    expected = [objective_id for objective_id, _ in CAMPAIGN_OBJECTIVES]
+    for market_id in {c.market_id for c in tiny_world.tables["campaigns"]}:
+        objectives = [
+            c.objective_code for c in tiny_world.tables["campaigns"] if c.market_id == market_id
+        ]
+        assert objectives == (expected * len(objectives))[: len(objectives)]
+        assert objectives[:3] == expected[:3]
+
+
+def test_experiment_target_segments_are_local_engagement_segments(tiny_world: World) -> None:
+    engagement = {
+        s.segment_id for s in tiny_world.tables["player_segments"] if s.segment_kind == "ENGAGEMENT"
+    }
+    for experiment in tiny_world.tables["experiments"]:
+        assert experiment.target_segment in engagement
+        assert experiment.target_segment.startswith(f"SEG_{experiment.market_id[-2:]}_")
+
+
+def test_support_categories_are_market_local(tiny_world: World) -> None:
+    for case in tiny_world.tables["support_cases"]:
+        assert case.category_code.startswith(f"SUPC_{case.market_id[-2:]}_")
+
+
+def test_kpi_daily_has_conversion_rate_for_every_market(tiny_world: World) -> None:
+    markets = {m.market_id for m in tiny_world.tables["markets"]}
+    converted = {
+        k.market_id for k in tiny_world.tables["kpi_daily"] if k.metric_code == "conversion_rate"
+    }
+    assert converted == markets
+
+
+def _game(game_id: str, family: str, jackpot_type: str) -> GameRow:
+    template = GameRow(
+        game_id, "MKT_UK", "Test", family, "CAT_UK_DRAW", datetime(2025, 1, 1).date(), None,
+        "ACTIVE", Decimal("2.50"), "GBP", "WEEKLY", jackpot_type, "PARIMUTUEL", True, True,
+    )  # fmt: skip
+    return template
+
+
+def test_draw_base_jackpot_follows_jackpot_type_and_family() -> None:
+    games = [
+        _game("GAME_UK_90", "FAM_AT_LAENDER_JACKPOT", "PROGRESSIVE"),
+        _game("GAME_UK_91", "FAM_UK_NATIONAL_DRAW", "PROGRESSIVE"),
+        _game("GAME_UK_92", "FAM_UK_FIXED_PRIZE", "FIXED"),
+    ]
+    first_draw = {}
+    for draw in generate_draws(stream(1, "draws"), games):
+        first_draw.setdefault(draw.game_id, draw.jackpot_amount)
+    assert first_draw == {
+        "GAME_UK_90": Decimal("20000000.00"),
+        "GAME_UK_91": Decimal("400000.00"),
+        "GAME_UK_92": Decimal("1000000.00"),
+    }

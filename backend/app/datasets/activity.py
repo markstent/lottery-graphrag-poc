@@ -30,6 +30,7 @@ from app.datasets.master_data import PRIZE_TYPES
 from app.datasets.rows import (
     AppVersionRow,
     CampaignExposureRow,
+    CampaignRow,
     DrawRow,
     GameRow,
     KpiDailyRow,
@@ -290,6 +291,7 @@ def generate_kpi_daily(
     sessions: list[SessionRow],
     support_cases: list[SupportCaseRow],
     exposures: list[CampaignExposureRow],
+    campaigns: list[CampaignRow],
     market_currency: dict[str, str],
 ) -> list[KpiDailyRow]:
     """Derive daily KPI aggregates from transactional facts."""
@@ -298,7 +300,10 @@ def generate_kpi_daily(
     active: dict[tuple[date, str], set[str]] = defaultdict(set)
     session_outcomes: dict[tuple[date, str], list[str]] = defaultdict(list)
     support_by_day: dict[tuple[date, str], int] = defaultdict(int)
+    # [engaged exposures, converted exposures] per day and market.
     exposure_stats: dict[tuple[date, str], list[int]] = defaultdict(lambda: [0, 0])
+
+    campaign_market = {c.campaign_id: c.market_id for c in campaigns}
 
     for t in tickets:
         day = t.purchase_timestamp.date()
@@ -311,10 +316,11 @@ def generate_kpi_daily(
     for c in support_cases:
         support_by_day[(c.opened_at.date(), c.market_id)] += 1
     for e in exposures:
-        stats = exposure_stats[(e.exposed_at.date(), e.campaign_id)]
-        stats[0] += 1
         if e.engaged:
-            stats[1] += 1
+            stats = exposure_stats[(e.exposed_at.date(), campaign_market[e.campaign_id])]
+            stats[0] += 1
+            if e.converted_game_id is not None:
+                stats[1] += 1
 
     market_ids = sorted(market_currency)
     rows: list[KpiDailyRow] = []

@@ -200,5 +200,10 @@ def column_names(table: str) -> list[str]:
     return [name for name, _ in split_columns(TABLE_SCHEMAS[table])]
 
 
+def primary_key(table: str) -> str:
+    """Name of the table's identifier column (always its first column)."""
+    return column_names(table)[0]
+
+
 def column_index(table: str, column: str) -> int:
     return column_names(table).index(column)
