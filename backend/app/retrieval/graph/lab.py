@@ -32,10 +32,6 @@ from app.retrieval.standard.vector_store import VectorStore
 
 PipelineId = Literal["A", "B", "C"]
 
-# Player-instrument/device edges for fraud-topology questions; excluded from
-# the operational allow-list because they fan out to thousands of neighbours.
-FRAUD_RELATIONSHIP_TYPES: tuple[str, ...] = ("USES_PAYMENT", "USES")
-
 
 @dataclass(frozen=True, slots=True)
 class Lab:
@@ -96,19 +92,17 @@ def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
 def wired_pipelines(
     lab: Lab,
     graph_config: GraphConfig,
-    profile: str | None,
 ) -> WiredGraphPipelines:
     """Wire B and C for one question against the live graph.
 
     Fair B/C split: identical limits and relationship allow-list; B is
-    exactly C minus the ontology relationships (MAPS_TO) and concept
-    expansion (see :func:`bc_graph_settings`). ``profile="fraud"`` adds the
-    player-instrument/device edges to both.
+    exactly C minus the ontology relationships and concept expansion (see
+    :func:`bc_graph_settings`).
     """
     reader = GraphReader(graph_config)
     try:
         resolver: EntityResolver = build_resolver(reader)
-        settings_b, settings_c = bc_graph_settings(lab.settings, profile)
+        settings_b, settings_c = bc_graph_settings(lab.settings)
         pipelines: list[tuple[PipelineId, GraphRagPipeline]] = []
         for tag, tuned in (("B", settings_b), ("C", settings_c)):
             pipelines.append(
@@ -134,34 +128,18 @@ def wired_pipelines(
         raise
 
 
-def graph_relationships(base: RetrievalSettings, profile: str | None) -> tuple[str, ...]:
-    if profile == "fraud":
-        return base.graph.relationship_types + FRAUD_RELATIONSHIP_TYPES
-    return base.graph.relationship_types
-
-
 def bc_graph_settings(
-    base: RetrievalSettings, profile: str | None
+    base: RetrievalSettings,
 ) -> tuple[RetrievalSettings, RetrievalSettings]:
     """Retrieval settings for pipelines B and C: the fairness contract.
 
-    B is exactly C minus ontology traversal: C keeps ``MAPS_TO`` and concept
-    expansion, B drops both. Limits, budgets and every other relationship
-    type are identical. The fraud profile appends the same player-instrument
-    and player-device edges to both.
+    C is the base configuration. B is derived from it by
+    :meth:`GraphRagSettings.without_ontology`, which drops every ontology
+    relationship type and concept expansion; limits, budgets and every other
+    relationship type are identical.
     """
-    relationships = graph_relationships(base, profile)
-    graph_b = dataclasses.replace(
-        base.graph,
-        relationship_types=tuple(rel for rel in relationships if rel != "MAPS_TO"),
-        ontology_expansion=False,
-    )
-    graph_c = dataclasses.replace(
-        base.graph,
-        relationship_types=relationships,
-        ontology_expansion=True,
-    )
+    graph_c = dataclasses.replace(base.graph, ontology_expansion=True)
     return (
-        dataclasses.replace(base, graph=graph_b),
+        dataclasses.replace(base, graph=graph_c.without_ontology()),
         dataclasses.replace(base, graph=graph_c),
     )

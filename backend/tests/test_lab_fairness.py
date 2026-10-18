@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import dataclasses
 
-from app.retrieval.graph.lab import FRAUD_RELATIONSHIP_TYPES, bc_graph_settings
+import pytest
+from app.config import RetrievalSettings
+from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
+from app.retrieval.graph.lab import bc_graph_settings
 
 from tests.test_graph_rag import make_settings
 
@@ -23,41 +26,40 @@ def diff_labels(base_settings: object, other: object) -> list[str]:
     ]
 
 
-def test_b_and_c_differ_only_in_graph_traversal() -> None:
-    base = make_settings()
-    settings_b, settings_c = bc_graph_settings(base, profile=None)
+@pytest.fixture
+def base() -> RetrievalSettings:
+    return make_settings()
+
+
+def test_b_and_c_differ_only_in_graph_traversal(base: RetrievalSettings) -> None:
+    settings_b, settings_c = bc_graph_settings(base)
     assert diff_labels(base, settings_b) == ["graph"]
     assert diff_labels(base, settings_c) in ([], ["graph"])
     assert diff_labels(settings_b, settings_c) == ["graph"]
 
 
-def test_c_relationships_are_b_plus_maps_to() -> None:
-    base = make_settings()
-    settings_b, settings_c = bc_graph_settings(base, profile=None)
-    assert "MAPS_TO" in base.graph.relationship_types
-    assert "MAPS_TO" not in settings_b.graph.relationship_types
+def test_b_excludes_every_ontology_relationship_and_nothing_else(
+    base: RetrievalSettings,
+) -> None:
+    settings_b, settings_c = bc_graph_settings(base)
+    removed = set(settings_c.graph.relationship_types) - set(settings_b.graph.relationship_types)
+    assert removed == set(ONTOLOGY_RELATIONSHIP_TYPES)
+    assert not settings_b.graph.ontology_expansion
+    assert settings_c.graph.ontology_expansion
+
+
+def test_b_preserves_the_c_order_for_non_ontology_types(base: RetrievalSettings) -> None:
+    settings_b, settings_c = bc_graph_settings(base)
     assert settings_c.graph.relationship_types == base.graph.relationship_types
-    # B preserves the C order with MAPS_TO removed: same traversal menu.
-    without_maps = tuple(rel for rel in settings_c.graph.relationship_types if rel != "MAPS_TO")
-    assert settings_b.graph.relationship_types == without_maps
-
-
-def test_only_c_expands_the_ontology() -> None:
-    base = make_settings()
-    settings_b, settings_c = bc_graph_settings(base, profile=None)
-    assert settings_b.graph.ontology_expansion is False
-    assert settings_c.graph.ontology_expansion is True
-
-
-def test_fraud_profile_adds_the_same_edges_to_both() -> None:
-    base = make_settings()
-    settings_b, settings_c = bc_graph_settings(base, profile="fraud")
-    plain_b, plain_c = bc_graph_settings(base, profile=None)
-    assert settings_b.graph.relationship_types == (
-        plain_b.graph.relationship_types + FRAUD_RELATIONSHIP_TYPES
+    expected = tuple(
+        rel for rel in settings_c.graph.relationship_types if rel not in ONTOLOGY_RELATIONSHIP_TYPES
     )
-    assert settings_c.graph.relationship_types == (
-        plain_c.graph.relationship_types + FRAUD_RELATIONSHIP_TYPES
-    )
-    assert settings_b.graph.ontology_expansion is False
-    assert settings_c.graph.ontology_expansion is True
+    assert settings_b.graph.relationship_types == expected
+
+
+def test_every_question_traverses_player_instruments(base: RetrievalSettings) -> None:
+    settings_b, settings_c = bc_graph_settings(base)
+    for relationship in ("USES", "USES_PAYMENT"):
+        assert relationship in base.graph.relationship_types
+        assert relationship in settings_b.graph.relationship_types
+        assert relationship in settings_c.graph.relationship_types

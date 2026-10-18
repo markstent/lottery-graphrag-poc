@@ -11,6 +11,7 @@ import os
 from dataclasses import dataclass, field
 
 from app.graph.config import DEFAULT_DATASET_DIR
+from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,7 +98,9 @@ class GraphRagSettings:
             max_edges_per_node_type=self.max_edges_per_node_type,
             max_total_nodes=self.max_total_nodes,
             max_evidence_nodes=self.max_evidence_nodes,
-            relationship_types=tuple(rel for rel in self.relationship_types if rel != "MAPS_TO"),
+            relationship_types=tuple(
+                rel for rel in self.relationship_types if rel not in ONTOLOGY_RELATIONSHIP_TYPES
+            ),
             ontology_expansion=False,
             ranking=self.ranking,
         )
@@ -107,27 +110,34 @@ class GraphRagSettings:
 # subgraph. Documents and chunks are excluded on purpose: the vector layer
 # owns document retrieval for every pipeline (ADR-002, retrieval fairness),
 # and document edges would flood traversal budget with leaf nodes whose
-# content the shared corpus already provides. Player-heavy transactional
-# edges (PLAYS, EXPOSED_TO, USES, AVAILABLE_VIA, PROMOTES, HAS_DRAW,
-# DEPLOYED_TO, RELATED_TO_APP_VERSION) are also excluded: they would flood
-# traversal with thousands of neighbours. Fraud-topology runs add
-# USES_PAYMENT per run via configuration. Quantitative facts stay in the
-# structured layer (AGENTS.md Graph Augmentation Principle); the graph
-# guides, it does not enumerate.
+# content the shared corpus already provides (HAS_CHUNK, REFERENCES).
+# Player transactional aggregates (PLAYS, EXPOSED_TO, AVAILABLE_VIA,
+# PROMOTES, HAS_DRAW, DEPLOYED_TO, HAS_MECHANIC) are also excluded: they
+# would flood traversal with thousands of neighbours. USES and USES_PAYMENT
+# are included for every question and bounded by the per-type and per-hop
+# caps. Quantitative facts stay in the structured layer (AGENTS.md Graph
+# Augmentation Principle); the graph guides, it does not enumerate.
 DEFAULT_RELATIONSHIP_TYPES: tuple[str, ...] = (
     "AFFECTS",
     "AFFECTS_MARKET",
     "AVAILABLE_IN",
     "BELONGS_TO",
+    "CATEGORISED_AS",
     "CONCERNS",
     "FROM_MARKET",
     "INSTANCE_OF",
+    "IS_A",
     "MAPS_TO",
+    "OF_TYPE",
+    "PROVIDED_BY",
     "RELATED_TO",
+    "RELATED_TO_APP_VERSION",
     "RELATED_TO_VERSION",
     "RUNS_ON",
     "SIMILAR_TO",
     "TARGETS",
+    "USES",
+    "USES_PAYMENT",
     "VERSION_OF",
 )
 

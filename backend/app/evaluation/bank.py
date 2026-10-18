@@ -46,8 +46,8 @@ class BankQuestion:
     # questions; a scenario id that is not planted in this world makes the
     # question NOT_PLANTED (reported, not scored).
     scenario_id: str | None = None
-    # "fraud" adds the player-instrument/device edges to the traversal
-    # allow-list for this question (SCN-003 pattern); None = default profile.
+    # No longer read: USES/USES_PAYMENT are in the default allow-list for
+    # every question. Phase 3 removes this field.
     profile: str | None = None
 
 

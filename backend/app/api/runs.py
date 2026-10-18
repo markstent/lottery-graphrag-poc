@@ -44,7 +44,6 @@ class RunRecord:
     run_id: str
     question: str
     configurations: list[str]
-    profile: str | None
     market_scope: list[str] = field(default_factory=list)
     status: str = "running"
     events: list[dict[str, Any]] = field(default_factory=list)
@@ -107,7 +106,6 @@ class QueryService:
             run_id=run_id,
             question=request.question,
             configurations=list(request.configurations),
-            profile=request.profile,
             market_scope=list(request.market_scope),
         )
         with self._lock:
@@ -130,7 +128,6 @@ class QueryService:
                 run_id=record.run_id,
                 question=record.question,
                 configurations=list(record.configurations),
-                profile=record.profile,
                 market_scope=list(record.market_scope),
                 status=record.status,
                 events=[dict(event) for event in record.events],
@@ -166,7 +163,7 @@ class QueryService:
             self._attach_error(record, record.error_code, record.error_message)
 
     def _run_graph(self, lab: Lab, record: RunRecord, tag: str) -> None:
-        wired = wired_pipelines(lab, self._graph_config, record.profile)
+        wired = wired_pipelines(lab, self._graph_config)
         try:
             for pipeline_tag, pipeline in wired.pipelines:
                 if pipeline_tag != tag:

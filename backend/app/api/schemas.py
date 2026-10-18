@@ -31,8 +31,8 @@ class QueryRequest(BaseModel):
 
     question: str = Field(min_length=1, max_length=2000)
     configurations: list[PipelineId] = Field(default=["A", "B", "C"], min_length=1, max_length=3)
-    # Fraud-topology questions need the player-instrument relationships
-    # added to the B/C allow-list (same profile switch as the harness).
+    # Accepted for compatibility but ignored: the B/C allow-list no longer
+    # varies per question. Phase 3 removes this field.
     profile: Literal["fraud"] | None = None
     # Optional retrieval scope: market codes ("UK") or full ids ("MKT_UK"),
     # normalised to full ids. Empty means all markets. The scope applies
@@ -105,6 +105,7 @@ class DemoQuestion(BaseModel):
     id: str
     question: str
     category: str
+    # No longer read (see QueryRequest.profile); Phase 3 removes this field.
     profile: Literal["fraud"] | None = None
     configurations: list[PipelineId] = ["A", "B", "C"]
     # Published benchmark question whose evaluator scores the Results

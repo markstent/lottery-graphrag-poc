@@ -29,7 +29,7 @@ from app.retrieval.graph.lab import build_generator, build_lab, wired_pipelines
 # Questions are the scenario library's own benchmark questions (HITL-05),
 # phrased with the ids a support analyst would have open. The evaluator
 # truth ledger is not consulted.
-QUESTIONS: list[tuple[str, str, str, str | None]] = [
+QUESTIONS: list[tuple[str, str, str]] = [
     (
         "SCN-007",
         "cross-market platform incident",
@@ -38,7 +38,6 @@ QUESTIONS: list[tuple[str, str, str, str | None]] = [
             "Which platform version connects incident INC_S007_GR to the other "
             "markets, and why was the UK unaffected?"
         ),
-        None,
     ),
     (
         "SCN-015",
@@ -47,7 +46,6 @@ QUESTIONS: list[tuple[str, str, str, str | None]] = [
             "What is the current ticket price for GAME_UK_01, and why does the "
             "rules document disagree with the source record?"
         ),
-        None,
     ),
     (
         "SCN-003",
@@ -56,9 +54,6 @@ QUESTIONS: list[tuple[str, str, str, str | None]] = [
             "Which accounts share payment instruments with PLAYER_GR_001283, "
             "and how many accounts are involved?"
         ),
-        # Fraud-topology questions need the player-instrument relationship;
-        # it is excluded from the default operational allow-list.
-        "fraud",
     ),
 ]
 
@@ -67,7 +62,7 @@ def run_all(settings: RetrievalSettings, graph_config: GraphConfig, generator_na
     lines: list[str] = []
     lab = build_lab(settings, build_generator(generator_name, settings))
 
-    for scenario, label, question, profile in QUESTIONS:
+    for scenario, label, question in QUESTIONS:
         lines.append(f"## {scenario}: {label}")
         lines.append("")
         lines.append(f"**Question:** {question}")
@@ -77,7 +72,7 @@ def run_all(settings: RetrievalSettings, graph_config: GraphConfig, generator_na
         result_a = lab.pipeline_a(sink=sink_a).run(question)
         lines.extend(_trace_a(result_a, sink_a.events))
 
-        wired = wired_pipelines(lab, graph_config, profile)
+        wired = wired_pipelines(lab, graph_config)
         try:
             for tag, pipeline in wired.pipelines:
                 result_g = pipeline.run(question)

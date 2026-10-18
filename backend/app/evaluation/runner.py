@@ -181,7 +181,7 @@ class BenchmarkRunner:
         pipeline_a: StandardRagPipeline = self.lab.pipeline_a()
         result.runs["A"] = self._execute(pipeline_a, "A", grounded.text, sink_a.events)
 
-        wired = wired_pipelines(self.lab, self.graph_config, question.profile)
+        wired = wired_pipelines(self.lab, self.graph_config)
         try:
             for tag, pipeline in wired.pipelines:
                 result.runs[tag] = self._execute(pipeline, tag, grounded.text, pipeline.events)
