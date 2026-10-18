@@ -17,15 +17,6 @@ from typing import Any
 from app.ontology.model import LANGUAGES, Ontology
 from app.ontology.similarity import GameConcepts, cross_market_similar
 
-# Labels a document reference may point at (one REFERENCES statement each).
-DOCUMENT_REFERENCE_LABELS: tuple[str, ...] = (
-    "Game",
-    "Incident",
-    "Campaign",
-    "AppVersion",
-    "Experiment",
-)
-
 METHOD_CATALOG_FLAGS = "catalog_flags_v1"
 METHOD_OPERATIONAL_DEPENDENCY = "operational_dependency_v1"
 METHOD_TICKET_AGGREGATE = "ticket_aggregate_v1"

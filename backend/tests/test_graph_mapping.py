@@ -2,25 +2,22 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+import time
+from datetime import UTC, date, datetime
+from typing import Any
 
 import pytest
 from app.datasets.config import GenerationConfig
+from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import World, build_world
-from app.graph import mapping
+from app.graph import mapping, statements
+from app.graph.config import LABEL_VERSION
+from app.graph.ingest import IngestStats, expected_relationship_counts
+from app.graph.node_rows import build_node_rows
+from app.graph.relationship_rows import BINDING_LABELS, RelationshipKey, build_relationship_rows
 from app.ontology.loader import load_ontology
 from app.ontology.model import BINDING_KINDS, Ontology
 from app.ontology.similarity import METHOD
-
-BINDING_LABELS: dict[str, str] = {
-    "family": "GameFamily",
-    "category": "GameCategory",
-    "mechanic": "GameMechanic",
-    "incident_type": "IncidentType",
-    "support_category": "SupportCategory",
-    "segment": "PlayerSegment",
-    "channel": "Channel",
-}
 
 
 @pytest.fixture(scope="module")
@@ -200,3 +197,205 @@ def test_ingestion_version_format() -> None:
     version = mapping.ingestion_version_now()
     assert version.startswith("ing-")
     assert len(version) == len("ing-YYYYmmddTHHMMSSZ")
+
+
+# ------------------------------------------------------------ row builders
+LINEAR_PLAYERS = 20_000
+LINEAR_BUDGET_SECONDS = 2.0
+
+
+@pytest.fixture(scope="module")
+def tiny_tables(tiny_world: World) -> dict[str, list[dict[str, Any]]]:
+    return {name: [r._asdict() for r in rows] for name, rows in tiny_world.tables.items()}
+
+
+@pytest.fixture(scope="module")
+def tiny_nodes(
+    tiny_tables: dict[str, list[dict[str, Any]]], onto: Ontology
+) -> dict[str, list[dict[str, Any]]]:
+    return build_node_rows(tiny_tables, onto)
+
+
+@pytest.fixture(scope="module")
+def tiny_rels(
+    tiny_tables: dict[str, list[dict[str, Any]]], onto: Ontology
+) -> dict[RelationshipKey, list[dict[str, Any]]]:
+    return build_relationship_rows(tiny_tables, onto)
+
+
+def test_node_rows_carry_validity_and_source_timestamp(
+    tiny_nodes: dict[str, list[dict[str, Any]]],
+) -> None:
+    game = tiny_nodes["Game"][0]
+    assert game["valid_from"] == game["launch_date"]
+    assert "valid_to" not in game or game["valid_to"] == game["retirement_date"]
+    incident = tiny_nodes["Incident"][0]
+    assert incident["valid_from"] == incident["started_at"]
+    assert incident["source_timestamp"] == incident["started_at"]
+    document = tiny_nodes["Document"][0]
+    assert document["source_timestamp"] == document["created_at"]
+    campaign = tiny_nodes["Campaign"][0]
+    assert (campaign["valid_from"], campaign["valid_to"]) == (
+        campaign["start_at"],
+        campaign["end_at"],
+    )
+    assert campaign["source_timestamp"] == campaign["start_at"]
+    version = tiny_nodes["PlatformVersion"][0]
+    assert version["valid_from"] == version["source_timestamp"] == version["released_at"]
+    assert all("source_timestamp" not in row for row in tiny_nodes["GameFamily"])
+    assert (
+        tiny_nodes["IncidentType"]
+        and tiny_nodes["SupportCategory"]
+        and tiny_nodes["PaymentProvider"]
+        and tiny_nodes["BusinessConcept"]
+    )
+
+
+def test_taxonomy_nodes_come_from_world_tables(
+    tiny_tables: dict[str, list[dict[str, Any]]], tiny_nodes: dict[str, list[dict[str, Any]]]
+) -> None:
+    segments = {row["id"]: row for row in tiny_nodes["PlayerSegment"]}
+    assert set(segments) == {row["segment_id"] for row in tiny_tables["player_segments"]}
+    segment = next(iter(segments.values()))
+    assert {"market_id", "segment_kind", "name", "language_code"} <= set(segment)
+    assert "code" not in segment and "description" not in segment
+    assert segment["source_table"] == "player_segments"
+    family = tiny_nodes["GameFamily"][0]
+    assert {"market_id", "name", "language_code"} <= set(family)
+    provider = tiny_nodes["PaymentProvider"][0]
+    assert {"name", "platform_id", "source_record_id"} <= set(provider)
+    assert all(row["payment_type"] != "SHARED_POOL" for row in tiny_nodes["PaymentMethod"])
+
+
+def test_relationship_rows_have_no_game_to_concept_instance_edges(
+    tiny_rels: dict[RelationshipKey, list[dict[str, Any]]],
+) -> None:
+    assert ("INSTANCE_OF", "Game", "BusinessConcept") not in tiny_rels
+    assert ("INSTANCE_OF", "Game", "GameCategory") in tiny_rels
+    assert ("OF_TYPE", "Incident", "IncidentType") in tiny_rels
+    assert ("CATEGORISED_AS", "SupportCase", "SupportCategory") in tiny_rels
+    assert ("PROVIDED_BY", "PaymentMethod", "PaymentProvider") in tiny_rels
+    assert ("IS_A", "BusinessConcept", "BusinessConcept") in tiny_rels
+    assert ("SIMILAR_TO", "Game", "Game") in tiny_rels
+    for label in BINDING_LABELS.values():
+        assert ("MAPS_TO", label, "BusinessConcept") in tiny_rels
+
+
+def test_has_mechanic_props_carry_validity(
+    tiny_rels: dict[RelationshipKey, list[dict[str, Any]]],
+) -> None:
+    rows = tiny_rels[("HAS_MECHANIC", "Game", "GameMechanic")]
+    assert all({"valid_from", "valid_to"} <= set(row["props"]) for row in rows)
+
+
+def test_every_relationship_endpoint_has_a_node(
+    tiny_nodes: dict[str, list[dict[str, Any]]],
+    tiny_rels: dict[RelationshipKey, list[dict[str, Any]]],
+) -> None:
+    ids = {label: {row["id"] for row in rows} for label, rows in tiny_nodes.items()}
+    for (rel_type, label_a, label_b), rows in tiny_rels.items():
+        missing_a = {row["a_id"] for row in rows} - ids[label_a]
+        missing_b = {row["b_id"] for row in rows} - ids[label_b]
+        assert not missing_a, f"({label_a})-[:{rel_type}]->({label_b}) sources: {missing_a}"
+        assert not missing_b, f"({label_a})-[:{rel_type}]->({label_b}) targets: {missing_b}"
+
+
+def test_expected_relationship_counts_collapse_duplicate_pairs() -> None:
+    rels: dict[RelationshipKey, list[dict[str, Any]]] = {
+        ("PLAYS", "Player", "Game"): [
+            {"a_id": "P1", "b_id": "G1", "props": {}},
+            {"a_id": "P1", "b_id": "G1", "props": {"ticket_count": 2}},
+            {"a_id": "P1", "b_id": "G2", "props": {}},
+        ]
+    }
+    assert expected_relationship_counts(rels) == {("PLAYS", "Player", "Game"): 2}
+
+
+def test_ingest_stats_to_json(onto: Ontology) -> None:
+    stats = IngestStats(
+        ingestion_version="ing-test",
+        label_version=LABEL_VERSION,
+        ontology_version=onto.version,
+        nodes={"Game": 20},
+        relationships=[("PLAYS", "Player", "Game", 7)],
+    )
+    assert LABEL_VERSION == "v2"
+    assert stats.to_json() == {
+        "ingestion_version": "ing-test",
+        "label_version": "v2",
+        "ontology_version": onto.version,
+        "nodes": {"Game": 20},
+        "relationships": [{"type": "PLAYS", "from": "Player", "to": "Game", "count": 7}],
+    }
+
+
+def _synthetic_tables(players: int) -> dict[str, list[dict[str, Any]]]:
+    """Minimal dict tables with many players and the rows they reference."""
+    tables: dict[str, list[dict[str, Any]]] = {name: [] for name in TABLE_SCHEMAS}
+    seen = datetime(2025, 1, 1, tzinfo=UTC)
+    for n in range(players):
+        player_id = f"PLAYER_UK_{n:06d}"
+        tables["players"].append(
+            {
+                "player_id": player_id,
+                "value_segment": "SEG_UK_VALUE_HIGH",
+                "engagement_segment": "SEG_UK_ENG_ENGAGED",
+            }
+        )
+        tables["player_device"].append(
+            {
+                "player_id": player_id,
+                "device_id": f"DEV_UK_{n:06d}",
+                "usage_weight": 1.0,
+                "first_seen_at": seen,
+                "last_seen_at": seen,
+            }
+        )
+        tables["player_payment_method"].append(
+            {
+                "player_id": player_id,
+                "payment_method_id": f"PAY_UK_{n:07d}",
+                "usage_weight": 1.0,
+                "first_used_at": seen,
+            }
+        )
+        tables["payment_methods"].append(
+            {"payment_method_id": f"PAY_UK_{n:07d}", "provider_id": "PROV_CARD"}
+        )
+        tables["support_cases"].append(
+            {
+                "support_case_id": f"SUP_{n:05d}",
+                "market_id": "MKT_UK",
+                "game_id": None,
+                "incident_id": None,
+                "category_code": "SUPCAT_UK_ACCOUNT",
+            }
+        )
+    tables["game_mechanic_map"] = []
+    tables["documents"] = [
+        {
+            "document_id": "DOC_0001",
+            "market_id": None,
+            "title": "Note",
+            "body": "",
+            "created_at": seen,
+            "valid_from": date(2025, 1, 1),
+        }
+    ]
+    return tables
+
+
+def test_relationship_building_is_linear(onto: Ontology) -> None:
+    tables = _synthetic_tables(players=LINEAR_PLAYERS)
+    started = time.perf_counter()
+    rels = build_relationship_rows(tables, onto)
+    elapsed = time.perf_counter() - started
+    assert len(rels[("BELONGS_TO", "Player", "PlayerSegment")]) == 2 * LINEAR_PLAYERS
+    assert elapsed < LINEAR_BUDGET_SECONDS
+
+
+def test_every_registered_label_has_node_rows(
+    tiny_nodes: dict[str, list[dict[str, Any]]],
+) -> None:
+    assert set(tiny_nodes) == set(statements.NODE_LABELS)
+    assert all(rows for rows in tiny_nodes.values())

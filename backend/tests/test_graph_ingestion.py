@@ -17,9 +17,11 @@ from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.graph import statements
-from app.graph.config import GraphConfig
-from app.graph.ingest import build_node_rows, ingest
+from app.graph.config import LABEL_VERSION, GraphConfig
+from app.graph.ingest import expected_relationship_counts, ingest
+from app.graph.node_rows import build_node_rows
 from app.graph.reader import load_dataset
+from app.graph.relationship_rows import build_relationship_rows
 from app.ontology.loader import load_ontology
 from neo4j import GraphDatabase
 
@@ -63,7 +65,7 @@ def ingested(graph_config: GraphConfig, tiny_dataset: Path) -> None:
     driver = GraphDatabase.driver(graph_config.uri, auth=(graph_config.user, graph_config.password))
     try:
         with driver.session(database=graph_config.database) as session:
-            session.run("MATCH (n) DETACH DELETE n").consume()
+            session.run(statements.WIPE).consume()
     finally:
         driver.close()
     ingest(tiny_dataset, graph_config, ingestion_version="ing-test", wipe=True)
@@ -92,8 +94,36 @@ def test_node_counts_match_source(
     expected = build_node_rows(tables, load_ontology())
 
     for label, rows in expected.items():
-        count = _query(graph_config, f"MATCH (n:{label}) RETURN count(n) AS c")[0]["c"]
+        count = _query(graph_config, statements.label_count_statement(label))[0]["count"]
         assert count == len(rows), f"{label}: graph {count} != source {len(rows)}"
+
+
+def test_v2_labels_and_relationships_are_present(
+    ingested: None, graph_config: GraphConfig, tiny_dataset: Path
+) -> None:
+    labels = {
+        row["label"]
+        for row in _query(graph_config, "MATCH (n) RETURN DISTINCT labels(n)[0] AS label")
+    }
+    assert labels == set(statements.NODE_LABELS)
+    tables = load_dataset(tiny_dataset)
+    expected = expected_relationship_counts(build_relationship_rows(tables, load_ontology()))
+    for key in (
+        ("OF_TYPE", "Incident", "IncidentType"),
+        ("CATEGORISED_AS", "SupportCase", "SupportCategory"),
+        ("PROVIDED_BY", "PaymentMethod", "PaymentProvider"),
+        ("IS_A", "BusinessConcept", "BusinessConcept"),
+        ("MAPS_TO", "IncidentType", "BusinessConcept"),
+        ("MAPS_TO", "SupportCategory", "BusinessConcept"),
+        ("MAPS_TO", "PlayerSegment", "BusinessConcept"),
+    ):
+        assert key in expected, f"no source rows for {key}"
+    for (rel_type, label_a, label_b), count in expected.items():
+        query = statements.relationship_count_statement(rel_type, label_a, label_b)
+        actual = _query(graph_config, query)[0]["count"]
+        assert actual == count, f"({label_a})-[:{rel_type}]->({label_b}): {actual} != {count}"
+    versions = _query(graph_config, "MATCH (n) RETURN DISTINCT n.label_version AS v")
+    assert versions == [{"v": LABEL_VERSION}]
 
 
 def test_every_node_carries_provenance(ingested: None, graph_config: GraphConfig) -> None:

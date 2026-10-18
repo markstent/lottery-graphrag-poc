@@ -13,7 +13,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DATASET_DIR = REPO_ROOT / "data" / "generated" / "dev-seed2026"
 
-LABEL_VERSION = "v1"
+LABEL_VERSION = "v2"
 
 
 @dataclass(frozen=True, slots=True)

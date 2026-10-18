@@ -90,14 +90,6 @@ RELATIONSHIP_TYPES: tuple[str, ...] = (
 # (graph relationships) excludes them; configuration C adds them.
 ONTOLOGY_RELATIONSHIP_TYPES: tuple[str, ...] = ("MAPS_TO", "SIMILAR_TO", "IS_A")
 
-# Document references point at several target labels; one statement each.
-DOCUMENT_REFERENCE_LABELS: tuple[str, ...] = (
-    "Game",
-    "Incident",
-    "Campaign",
-    "AppVersion",
-    "Experiment",
-)
 
 _SCHEMA_STATEMENTS: tuple[str, ...] = (
     *(
@@ -147,6 +139,8 @@ def relationship_statement(rel_type: str, label_a: str, label_b: str) -> str:
     _require_relationship_type(rel_type)
     return _RELATIONSHIP_STATEMENT.format(rel_type=rel_type, label_a=label_a, label_b=label_b)
 
+
+WIPE = "MATCH (n) DETACH DELETE n"
 
 _LABEL_COUNT_STATEMENT = "MATCH (n:{label}) RETURN count(n) AS count"
 _RELATIONSHIP_COUNT_STATEMENT = (
