@@ -147,7 +147,13 @@ export function Steps({
   )
 }
 
-export function Table({ head, rows }: { head: string[]; rows: string[][] }) {
+export function Table({
+  head,
+  rows,
+}: {
+  head: readonly string[]
+  rows: readonly (readonly string[])[]
+}) {
   return (
     <div className="overflow-x-auto rounded-card border border-border">
       <table className="w-full text-sm">

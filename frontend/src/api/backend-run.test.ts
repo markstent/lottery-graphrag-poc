@@ -203,6 +203,22 @@ afterEach(() => {
 })
 
 describe('runBackendQuestion', () => {
+  it('sends the market scope with the query request', async () => {
+    await runBackendQuestion(
+      { id: 'X', question: 'test question', category: 'x' },
+      ['MKT_GR', 'MKT_AT'],
+    )
+    const fetchMock = vi.mocked(fetch)
+    const post = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith('/queries'),
+    )
+    const init = post?.[1] as RequestInit | undefined
+    expect(JSON.parse(String(init?.body)).market_scope).toEqual([
+      'MKT_GR',
+      'MKT_AT',
+    ])
+  })
+
   it('maps a recorded run into the playback shape', async () => {
     const run = await runBackendQuestion({
       id: 'X',

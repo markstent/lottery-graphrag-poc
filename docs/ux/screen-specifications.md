@@ -6,6 +6,9 @@ Phase 6 artefact (HITL-06): low-fidelity wireframes, layout hierarchy and requir
 
 ### 1.1 Idle (default landing)
 
+Live Lab is the home screen: the bare URL `/` resolves to `#/lab`, and the
+app name in the header links back to it.
+
 ```text
 ┌────────────────────────────────────────────────────────────────────────────┐
 │ A experiment name · dataset/profile · market scope · model · run id   [.presentation] │
@@ -13,6 +16,7 @@ Phase 6 artefact (HITL-06): low-fidelity wireframes, layout hierarchy and requir
 │ [B] Question composer                                    scope ◧ conf ◧    │
 │     "Why did digital conversion fall in Greece, and have we seen           │
 │      the same issue elsewhere?"                          [Run] [Clear]     │
+│     market scope: (All markets) (UK) (GR) (AT) (CZ)  ← Live backend only   │
 │     demo questions: (q1) (q2) (q3)            ← presentation mode only     │
 ├────────────────────────────────────────────────────────────────────────────┤
 │ [C1] CURRENT APPROACH                │ [C2] + GRAPH & ONTOLOGY             │
@@ -22,6 +26,16 @@ Phase 6 artefact (HITL-06): low-fidelity wireframes, layout hierarchy and requir
 │ [D] Execution timeline (empty)          [E] Score strip (hidden)           │
 └────────────────────────────────────────────────────────────────────────────┘
 ```
+
+The market-scope row (2026-10-18) is a multi-select: All markets is
+exclusive and default; selecting one or more markets sends `market_scope`
+with the query (docs/07 section 4) and the composer's scope line names the
+selected markets. In Demo story mode the row is disabled with the hint
+"switch to Live backend to scope a run"; scope is never faked against the
+recorded story. Story-mode honesty (2026-10-18): the recorded story only
+contains the Greece episode, so dq-2/dq-3 chips and any other question text
+disable Run and the chips carry the hint "switch to Live backend to run
+this"; the story is never replayed for a question it does not contain.
 
 ### 1.2 Active
 
@@ -33,6 +47,10 @@ Phase 6 artefact (HITL-06): low-fidelity wireframes, layout hierarchy and requir
 
 - Answers above D: answer text, citations (click opens an inline slide-over Evidence Inspector drawer in Live Lab with an "Open full page ↗" permalink to `#/evidence`), latency, context tokens per side; no score prejudice before evaluation completes.
 - E appears after `evaluation_completed`: correctness, evidence recall, grounding, latency, tokens; expanded: relationship discovery, cross-market discovery, ontology contribution (docs/06 section 10).
+- Backend runs whose question has no published benchmark match show a
+  standing explanation instead of E (2026-10-18): "No evaluation scores for
+  this run", naming the honesty rule and the scored chips (dq-1..dq-3).
+  Latency and tokens remain visible: they are always measured.
 - Replay control beside D restarts the stored event stream.
 
 ### 1.4 Error
@@ -109,7 +127,16 @@ Blind mode: planted specifics hidden; configuration metadata only (docs/06 secti
 
 Every chart has a table alternative (accessibility); failure rows deep-link to run replays. Includes a collapsible "Benchmark execution & question status log" disclosure at the bottom so operators can inspect per-question execution statuses directly from Results without switching screens (while keeping `#/benchmark` available via "Open standalone runner ↗").
 
-## 6a. Help (HITL-11 addition; SaaS polish 2026-10-18)
+## 6a. Help (HITL-11 addition; SaaS redesign 2026-10-18)
+
+Four-tab guide (`#/help`): 1 Overview & Quick Tour, 2 Concrete Data
+Example, 3 Scores & Honesty Rule, 4 Backend & Glossary. Tab 2 carries a
+layout-driven diagram of one planted graph neighbourhood (scenario SCN-007):
+incident-to-market, incident-to-platform-version-to-platform, the ontology
+MAPS_TO triangle between the AT/CZ siblings and CONCEPT_PLATFORM_INCIDENT,
+and document REFERENCES/HAS_CHUNK edges. Rows are wrapping chip-and-arrow
+sequences (no positioned SVG), each readable as a path; a caption points to
+the Live Lab graph pane for the live traversal.
 
 In-app documentation screen (`#/help`), structured as a compact five-section
 guide: a page hero with three audience links (presenting / evaluating /
@@ -146,6 +173,19 @@ relationship types; "The ontology" shows the INC_S007_GR/AT/CZ →
 CONCEPT_PLATFORM_INCIDENT binding card, the ten-concept catalogue, a
 mapping-sources drawer and the reserved-vocabulary scope callout. Baseline:
 `dictionary-darwin.png`.
+
+Plain-language layer (2026-10-18, user feedback: "what is an incident?"):
+the Sample Data tab opens with a "What this database describes" section
+above the sample rows: a lead paragraph (one synthetic operator, world seed
+2026, calendar year 2025, four markets, nothing real) and a six-card grid
+of what the database covers (what we sell, who plays, where and how,
+commercial activity, what goes wrong, what we know), followed by a "What is
+an incident?" callout that defines an incident in business terms with a
+concrete example (INC_S007_GR, checkout failing after PLV_PAYMENTS_3) and
+its links to games, market and incident-report documents. Each sample table
+shows a "What a row in … means" definition card above the analytical
+takeaway, and the tab ends with a "What every core table means in plain
+English" disclosure: 16 table groups, business meaning not schema.
 
 ## 6c. Experiment Home "Start here" strip (HITL-11 addition, 2026-10-10)
 

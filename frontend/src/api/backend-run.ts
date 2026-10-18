@@ -100,7 +100,10 @@ const timeout = (ms: number): Promise<never> =>
     setTimeout(() => reject(new Error('run timed out')), ms),
   )
 
-async function postQuery(question: BackendQuestion): Promise<string> {
+async function postQuery(
+  question: BackendQuestion,
+  marketScope: readonly string[],
+): Promise<string> {
   const response = await fetch(`${API_BASE}/api/v1/queries`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -108,6 +111,7 @@ async function postQuery(question: BackendQuestion): Promise<string> {
       question: question.question,
       configurations: question.configurations ?? ['A', 'B', 'C'],
       profile: question.profile ?? null,
+      market_scope: marketScope,
     }),
   })
   if (!response.ok) throw new Error(`query rejected (${response.status})`)
@@ -585,8 +589,12 @@ export async function fetchDemoQuestions(): Promise<BackendQuestion[]> {
 /** Execute one question through the backend and map it to a MockRun. */
 export async function runBackendQuestion(
   question: BackendQuestion,
+  marketScope: readonly string[] = [],
 ): Promise<MockRun> {
-  const runId = await Promise.race([postQuery(question), timeout(10_000)])
+  const runId = await Promise.race([
+    postQuery(question, marketScope),
+    timeout(10_000),
+  ])
   const [results, events, benchmark] = await Promise.all([
     awaitResults(runId),
     fetchEvents(runId),

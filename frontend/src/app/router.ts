@@ -55,6 +55,11 @@ export function hrefFor(
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parseHash(window.location.hash))
   useEffect(() => {
+    // Live Lab is the home screen: give the bare URL an explicit hash so
+    // refreshes and shared links always reopen the same screen.
+    if (!window.location.hash) {
+      window.history.replaceState(null, '', '#/lab')
+    }
     const onChange = () => setRoute(parseHash(window.location.hash))
     window.addEventListener('hashchange', onChange)
     return () => window.removeEventListener('hashchange', onChange)

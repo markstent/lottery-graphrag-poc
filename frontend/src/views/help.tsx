@@ -6,10 +6,13 @@
  * RELEASE.md. Numbers quoted here are the committed validation results,
  * never invented for presentation.
  *
- * 2026-10-18 SaaS polish: consolidated from 8 sections to 5 scannable
- * sections, eliminated duplicated screen catalogue cards, and tucked
- * reference tables into disclosures where appropriate.
+ * 2026-10-18 SaaS redesign: converted from a long multi-section scroll into
+ * a tabbed guide (1. Overview & Tour, 2. Concrete Example, 3. Scores &
+ * Metrics, 4. Backend & Ops) so a first-time user sees one digestible
+ * screen at a time, including a concrete side-by-side data walkthrough.
  */
+
+import { useState } from 'react'
 
 import { hrefFor } from '../app/router'
 import {
@@ -25,231 +28,420 @@ import {
   Table,
 } from '../components/doc'
 
-const NAV_SECTIONS = [
-  { id: 'big-picture', label: 'How it works' },
-  { id: 'tour', label: 'Quick tour' },
-  { id: 'numbers', label: 'Scores & metrics' },
-  { id: 'backend', label: 'Backend & ops' },
-  { id: 'reference', label: 'Glossary & access' },
+type HelpTab = 'overview' | 'example' | 'scores' | 'ops'
+
+const TABS: Array<{ id: HelpTab; label: string }> = [
+  { id: 'overview', label: '1 · Overview & Quick Tour' },
+  { id: 'example', label: '2 · Concrete Data Example' },
+  { id: 'scores', label: '3 · Scores & Honesty Rule' },
+  { id: 'ops', label: '4 · Backend & Glossary' },
 ]
 
-function Toc() {
+/**
+ * Diagram of one planted graph neighbourhood (scenario SCN-007). Pure
+ * flex/grid chips that wrap, never positioned SVG, so rows can reflow
+ * without overlapping (UX layout rule) and screen readers read a path per
+ * line.
+ */
+type DiagramNode = {
+  id: string
+  sub?: string
+  tone?: 'seed' | 'concept' | 'plain'
+}
+
+type DiagramToken = { node: DiagramNode } | { rel: string }
+
+const DIAGRAM_PATHS: { note?: string; tokens: DiagramToken[] }[] = [
+  {
+    tokens: [
+      { node: { id: 'INC_S007_GR', sub: 'Incident', tone: 'seed' } },
+      { rel: 'AFFECTS_MARKET' },
+      { node: { id: 'MKT_GR', sub: 'Market', tone: 'plain' } },
+    ],
+  },
+  {
+    tokens: [
+      { node: { id: 'INC_S007_GR', sub: 'Incident', tone: 'seed' } },
+      { rel: 'RELATED_TO_VERSION' },
+      {
+        node: {
+          id: 'PLV_PAYMENTS_3',
+          sub: 'PlatformVersion',
+          tone: 'plain',
+        },
+      },
+      { rel: 'VERSION_OF' },
+      { node: { id: 'PLT_PAYMENTS', sub: 'Platform', tone: 'plain' } },
+    ],
+  },
+  {
+    note: 'Ontology: pipeline C discovers the cross-market siblings',
+    tokens: [
+      { node: { id: 'INC_S007_AT', sub: 'Incident', tone: 'plain' } },
+      { rel: 'MAPS_TO' },
+      {
+        node: {
+          id: 'CONCEPT_PLATFORM_INCIDENT',
+          sub: 'BusinessConcept',
+          tone: 'concept',
+        },
+      },
+      { rel: 'MAPS_TO' },
+      { node: { id: 'INC_S007_CZ', sub: 'Incident', tone: 'plain' } },
+    ],
+  },
+  {
+    tokens: [
+      { node: { id: 'DOC_S007_GR', sub: 'Document', tone: 'plain' } },
+      { rel: 'REFERENCES' },
+      { node: { id: 'INC_S007_GR', sub: 'Incident', tone: 'seed' } },
+    ],
+  },
+  {
+    tokens: [
+      { node: { id: 'DOC_S007_GR', sub: 'Document', tone: 'plain' } },
+      { rel: 'HAS_CHUNK' },
+      {
+        node: {
+          id: 'CHNK_S007_GR_00',
+          sub: 'DocumentChunk · vector in Qdrant',
+          tone: 'plain',
+        },
+      },
+    ],
+  },
+]
+
+const NODE_TONES = {
+  seed: 'border-graph/60 bg-graph/10 text-primary',
+  concept: 'border-ontology/60 bg-ontology/10 text-ontology',
+  plain: 'border-border bg-surface-raised text-secondary',
+} as const
+
+function DiagramChip({ node }: { node: DiagramNode }) {
   return (
-    <nav
-      aria-label="Help sections"
-      className="lg:sticky lg:top-6 lg:self-start"
+    <span
+      className={`inline-flex items-baseline gap-1.5 rounded-chip border px-2.5 py-1 ${
+        NODE_TONES[node.tone ?? 'plain']
+      }`}
     >
-      <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted">
-        On this page
-      </p>
-      <ol className="space-y-1 text-sm">
-        {NAV_SECTIONS.map((section, index) => (
-          <li key={section.id}>
-            <a
-              href={`#/help?section=${section.id}`}
-              onClick={(event) => {
-                event.preventDefault()
-                document
-                  .getElementById(`help-${section.id}`)
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
-              className="flex items-baseline gap-2 rounded-chip px-3 py-1 text-secondary transition-colors duration-micro hover:bg-surface-raised hover:text-primary"
-            >
-              <span
-                aria-hidden
-                className="w-4 shrink-0 text-right text-xs tabular-nums text-muted"
-              >
-                {index + 1}
-              </span>
-              {section.label}
-            </a>
-          </li>
-        ))}
-      </ol>
-    </nav>
+      <span className="font-mono text-xs font-medium">{node.id}</span>
+      {node.sub && <span className="text-[11px] text-muted">{node.sub}</span>}
+    </span>
   )
 }
 
-function PipelineComparison() {
+function GraphDiagram() {
   return (
-    <div className="space-y-3">
-      <Rail
-        items={[
-          { label: 'Embed the question' },
-          { label: 'Vector search', note: 'shared index' },
-          { label: 'Rerank candidates' },
-        ]}
-      />
-      <div className="grid gap-3 md:grid-cols-3">
-        <Card
-          title="A · Conventional RAG"
-          footer={
-            <p className="text-xs font-medium uppercase tracking-wide text-muted">
-              Credible baseline
-            </p>
-          }
-        >
-          <p>
-            Selects top document chunks within the token budget and answers from
-            those chunks alone.
-          </p>
-        </Card>
-        <Card
-          title="B · + Graph"
-          footer={
-            <p className="text-xs font-medium uppercase tracking-wide text-graph">
-              + Graph relationships
-            </p>
-          }
-        >
-          <p>
-            Resolves entity seeds from the question, traverses a bounded 2-hop
-            neighbourhood, and combines node facts with document chunks.
-          </p>
-        </Card>
-        <Card
-          title="C · + Ontology"
-          footer={
-            <p className="text-xs font-medium uppercase tracking-wide text-ontology">
-              + Enterprise ontology
-            </p>
-          }
-        >
-          <p>
-            Everything in B, plus <Code>MAPS_TO</Code> concept expansion across
-            markets so a pattern in one country is found from another's
-            question.
-          </p>
-        </Card>
-      </div>
-    </div>
+    <figure
+      aria-label="Diagram of one graph neighbourhood around incident INC_S007_GR"
+      className="rounded-card border border-graph/40 bg-surface p-4"
+    >
+      <figcaption className="mb-3 text-xs font-semibold uppercase tracking-wide text-graph">
+        The knowledge graph at a glance: one incident and everything connected
+        to it
+      </figcaption>
+      <ol className="space-y-2.5">
+        {DIAGRAM_PATHS.map((path, index) => (
+          <li
+            key={index}
+            className="flex flex-wrap items-center gap-x-2 gap-y-1.5"
+          >
+            {path.tokens.map((token, tokenIndex) =>
+              'node' in token ? (
+                <DiagramChip key={tokenIndex} node={token.node} />
+              ) : (
+                <span
+                  key={tokenIndex}
+                  className="flex items-center gap-1.5 text-xs text-muted"
+                >
+                  <span aria-hidden>→</span>
+                  <span className="font-mono text-[11px] uppercase tracking-wide text-graph">
+                    {token.rel}
+                  </span>
+                  <span aria-hidden>→</span>
+                </span>
+              ),
+            )}
+            {path.note && (
+              <span className="text-[11px] text-ontology">({path.note})</span>
+            )}
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 text-xs text-muted">
+        This is the planted neighbourhood for scenario SCN-007, one of 26 node
+        labels joined by 26 relationship types. Every edge above is a real
+        traversal in the demo world: watch it unfold step by step in the Live
+        Lab graph pane.
+      </p>
+    </figure>
   )
 }
 
 export function Help() {
+  const [tab, setTab] = useState<HelpTab>('overview')
+
   return (
-    <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
-      <Toc />
+    <div className="space-y-6">
+      <PageHero
+        eyebrow="Help & Orientation"
+        title="How the Semantic Context Lab works"
+        lead="This application compares Conventional RAG (vector search over documents) against Graph + Ontology retrieval over a synthetic 4-market lottery enterprise (UK, Greece, Austria, Czech Republic)."
+      >
+        <div className="grid gap-2 text-sm sm:grid-cols-3">
+          <a
+            className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
+            href={hrefFor('lab')}
+          >
+            <span className="font-medium text-primary">1. Try a question</span>
+            <span className="block text-xs text-secondary">
+              Open Live Lab and click a demo chip →
+            </span>
+          </a>
+          <a
+            className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
+            href={hrefFor('dictionary')}
+          >
+            <span className="font-medium text-primary">
+              2. See the database rows
+            </span>
+            <span className="block text-xs text-secondary">
+              Inspect sample Parquet tables & graph →
+            </span>
+          </a>
+          <a
+            className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
+            href={hrefFor('results')}
+          >
+            <span className="font-medium text-primary">
+              3. Check the benchmark
+            </span>
+            <span className="block text-xs text-secondary">
+              Compare A vs B vs C scores →
+            </span>
+          </a>
+        </div>
+      </PageHero>
 
-      <div className="space-y-8">
-        <PageHero
-          eyebrow="Help"
-          title="Your guide to the Semantic Context Lab"
-          lead="This application measures what a knowledge graph and an enterprise ontology add to AI retrieval over a synthetic lottery enterprise (UK, GR, AT, CZ). Every record is synthetic, deterministic and safe to inspect."
+      <div
+        role="tablist"
+        aria-label="Help sections"
+        className="flex flex-wrap gap-1 border-b border-border pb-2"
+      >
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            role="tab"
+            type="button"
+            aria-selected={tab === item.id}
+            onClick={() => setTab(item.id)}
+            className={`rounded-chip px-3.5 py-1.5 text-sm font-medium transition-colors duration-micro ${
+              tab === item.id
+                ? 'border border-graph/60 bg-surface-raised text-primary'
+                : 'border border-transparent text-secondary hover:bg-surface-raised hover:text-primary'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'overview' && (
+        <div className="space-y-6">
+          <Section
+            id="big-picture"
+            title="Three retrieval pipelines, one controlled experiment"
+            lead="All three pipelines use the exact same question, embedding model, vector index, reranker and token budget."
+          >
+            <Rail
+              items={[
+                { label: 'Question' },
+                { label: 'Embed & vector search', note: 'shared Qdrant index' },
+                { label: 'Rerank chunks' },
+                { label: 'Add graph / ontology (B & C)' },
+                { label: 'Generate answer' },
+              ]}
+            />
+            <div className="grid gap-3 md:grid-cols-3">
+              <Card
+                title="A · Conventional RAG"
+                footer={
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                    Baseline · Documents only
+                  </p>
+                }
+              >
+                <p>
+                  Finds top-matching text chunks in Qdrant and answers from
+                  those chunks alone. Fast, but misses cross-table and
+                  cross-country links.
+                </p>
+              </Card>
+              <Card
+                title="B · + Graph"
+                footer={
+                  <p className="text-xs font-medium uppercase tracking-wide text-graph">
+                    + Entity relationships
+                  </p>
+                }
+              >
+                <p>
+                  Resolves entity IDs in the question (e.g.{' '}
+                  <Code>GAME_UK_01</Code>) and traverses 2 hops in Neo4j to pull
+                  linked incidents, versions and authoritative warehouse rows.
+                </p>
+              </Card>
+              <Card
+                title="C · + Graph & Ontology"
+                footer={
+                  <p className="text-xs font-medium uppercase tracking-wide text-ontology">
+                    + Canonical concepts
+                  </p>
+                }
+              >
+                <p>
+                  Adds <Code>MAPS_TO</Code> expansion through canonical{' '}
+                  <Code>BusinessConcept</Code> nodes so an incident in Greece
+                  automatically surfaces matching incidents in Austria and
+                  Czechia.
+                </p>
+              </Card>
+            </div>
+          </Section>
+
+          <Section
+            id="tour"
+            title="60-second walkthrough"
+            lead="Follow one question from prompt to provenance."
+          >
+            <Steps
+              items={[
+                {
+                  title: 'Click a question chip in Live Lab',
+                  children: (
+                    <p>
+                      Pick <Code>dq-1</Code> (Greece conversion drop) or{' '}
+                      <Code>DEMO-01..04</Code> and press <strong>Run</strong>.
+                      Watch Conventional RAG on the left and Graph + Ontology on
+                      the right.
+                    </p>
+                  ),
+                },
+                {
+                  title: 'Click any citation chip under an answer',
+                  children: (
+                    <p>
+                      An inline drawer slides open showing the exact source
+                      table (<Code>incidents.parquet</Code>,{' '}
+                      <Code>documents.parquet</Code>), record ID and graph path.
+                    </p>
+                  ),
+                },
+                {
+                  title: 'Switch to Live backend when ready',
+                  children: (
+                    <p>
+                      Toggle <strong>Live backend</strong> in the composer to
+                      execute real queries against DuckDB, Qdrant and Neo4j on{' '}
+                      <Code>localhost:8000</Code>.
+                    </p>
+                  ),
+                },
+              ]}
+            />
+          </Section>
+        </div>
+      )}
+
+      {tab === 'example' && (
+        <Section
+          id="example"
+          title="Concrete example: why Conventional RAG misses what the Graph finds"
+          lead="Take the default question: “Why did digital conversion fall in Greece, and have we seen the same issue elsewhere?”"
         >
-          <div className="grid gap-2 text-sm sm:grid-cols-3">
-            <a
-              className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
-              href={hrefFor('lab')}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card
+              title="What Conventional RAG sees (Text Chunks)"
+              footer={
+                <p className="text-xs text-muted">
+                  Result: Explains Greece, misses Austria/Czechia and UK
+                  deferral
+                </p>
+              }
             >
-              <span className="font-medium text-primary">Presenting?</span>
-              <span className="text-secondary"> Open Live Lab.</span>
-            </a>
-            <a
-              className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
-              href={hrefFor('results')}
+              <p>
+                Vector similarity matches the Greek incident report{' '}
+                <Code>DOC_S007_GR</Code> and Greek KPI rows because they contain
+                the words <em>“Greece”</em> and <em>“checkout”</em>.
+              </p>
+              <p className="mt-2">
+                It misses the Austrian report (written in German) and the UK
+                release note (which talks about deferring an app update rather
+                than a conversion drop).
+              </p>
+            </Card>
+            <Card
+              title="What Graph + Ontology sees (Connected Records)"
+              footer={
+                <p className="text-xs text-graph">
+                  Result: Connects GR, AT, CZ and explains why UK was spared
+                </p>
+              }
             >
-              <span className="font-medium text-primary">Evaluating?</span>
-              <span className="text-secondary"> Inspect Results.</span>
-            </a>
-            <a
-              className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
-              href={hrefFor('dictionary')}
-            >
-              <span className="font-medium text-primary">
-                Exploring schema?
-              </span>
-              <span className="text-secondary"> Open Data Dictionary.</span>
-            </a>
+              <p>
+                Starting from <Code>MKT_GR</Code>, Neo4j traverses:
+              </p>
+              <p className="mt-2 font-mono text-xs text-primary">
+                INC_S007_GR → PLV_PAYMENTS_3 ← INC_S007_AT / INC_S007_CZ
+              </p>
+              <p className="mt-2">
+                And via <Code>CONCEPT_PLATFORM_INCIDENT</Code> +{' '}
+                <Code>APPV_UK_530</Code>, it finds the UK release note showing
+                the faulty <Code>PLV_PAYMENTS_3</Code> update was deferred in
+                the UK.
+              </p>
+            </Card>
           </div>
-        </PageHero>
 
-        <Section
-          id="big-picture"
-          title="How it works"
-          lead="One question, three retrieval pipelines, one controlled lab."
-        >
-          <p>
-            All three pipelines share the same embedding model, vector
-            collection, reranker, generator and context budget. Pipeline B is
-            identical to C minus the ontology step, isolating the value of each
-            layer. Authoritative quantities stay in the Parquet warehouse; Neo4j
-            stores relationships, concepts and provenance pointers.
-          </p>
-          <PipelineComparison />
-          <Callout title="Built-in guardrails">
-            Graph traversal is bounded by configuration (depth 2, max 200 nodes,
-            evidence cap 12). Every stage emits a typed telemetry event and the
-            UI renders only received events.
-          </Callout>
-        </Section>
+          <GraphDiagram />
 
-        <Section
-          id="tour"
-          title="Quick tour & demo questions"
-          lead="Run a question, inspect the citation chain, then check the benchmark."
-        >
-          <Steps
-            items={[
-              {
-                title: 'Run a question in Live Lab',
-                children: (
-                  <p>
-                    Click any <Code>DEMO-01..04</Code> chip in the composer or
-                    press Run. Use the timeline to scrub and replay events.
-                  </p>
-                ),
-              },
-              {
-                title: 'Inspect provenance',
-                children: (
-                  <p>
-                    Click any citation chip under an answer to open the Evidence
-                    Explorer with its source system and record ID.
-                  </p>
-                ),
-              },
-              {
-                title: 'Switch to Live backend when ready',
-                children: (
-                  <p>
-                    Toggle <strong>Live backend</strong> in the composer to
-                    execute real pipelines against <Code>localhost:8000</Code>.
-                  </p>
-                ),
-              },
-            ]}
-          />
           <Table
-            head={['Chip', 'Scenario & question focus', 'Benchmark']}
+            head={[
+              'Saved chip',
+              'What is planted in the database',
+              'Why it matters',
+            ]}
             rows={[
               [
-                'DEMO-01',
-                'SCN-015: rules document that disagrees with the structured record for GAME_UK_01',
-                'Q30',
+                'DEMO-01 (Q30)',
+                'games.parquet says GAME_UK_01 costs GBP 2.50; expired leaflet DOC_S015_UK says GBP 1.50',
+                'Tests whether retrieval prefers authoritative structured records over outdated text',
               ],
               [
-                'DEMO-02',
-                'SCN-007: platform version linking the Greek checkout incident to other markets, and why the UK was unaffected',
-                'Q25',
+                'DEMO-02 (Q25)',
+                'Incidents INC_S007_GR, INC_S007_AT, INC_S007_CZ share platform_version_id = PLV_PAYMENTS_3',
+                'Tests cross-market root-cause discovery across multilingual records',
               ],
               [
-                'DEMO-03',
-                'SCN-003: accounts sharing payment instruments with PLAYER_GR_001283 (fraud profile)',
-                'Q28',
+                'DEMO-03 (Q28)',
+                'Multiple accounts linked to shared payment instrument tokens in player_payment_method.parquet',
+                'Tests 2-hop relationship traversal for fraud/shared-instrument rings',
               ],
               [
                 'DEMO-04',
-                'Unplanted scenario: verifies the system reports an honest empty result rather than inventing a pattern',
-                'none',
+                'Unplanted question (no matching pattern in the world)',
+                'Verifies the system reports an honest empty result instead of hallucinating',
               ],
             ]}
           />
         </Section>
+      )}
 
+      {tab === 'scores' && (
         <Section
           id="numbers"
-          title="Scores, metrics & provenance"
+          title="Scores, metrics & the honesty rule"
           lead="Live operational telemetry is separated strictly from benchmark truth."
         >
           <Table
@@ -294,67 +486,60 @@ export function Help() {
               { label: 'Warehouse row' },
             ]}
           />
-          <p className="text-xs text-muted">
-            Demo world (<Code>data/generated/demo-seed2026</Code>, seed 2026):
-            5,000,000 tickets, 100,000 players, 2,000 documents. The evaluator
-            truth ledger is isolated from retrieval by automated tests.
-          </p>
         </Section>
+      )}
 
-        <Section
-          id="backend"
-          title="Running the backend & troubleshooting"
-          lead="Commands run from the repository root."
-        >
-          <CommandBlock
-            lines={[
-              'make services-up        # Neo4j + Qdrant (Docker/OrbStack)',
-              'make demo-reset         # re-ingest demo graph + rebuild demo vector index',
-              'make serve-demo-api     # API on :8000 against the demo world',
-              'make dev-frontend       # UI on :5173',
-            ]}
-          />
-          <Disclosure
-            summary="Local LLM & benchmark CLI commands"
-            note="Ollama / LiteLLM configuration and dataset regeneration"
+      {tab === 'ops' && (
+        <div className="space-y-6">
+          <Section
+            id="backend"
+            title="Running the backend & troubleshooting"
+            lead="Commands run from the repository root."
           >
-            <div className="space-y-3">
-              <p className="text-xs text-secondary">
-                By default the API uses the deterministic fake generator for
-                instant stage demos. To run with a local model:
-              </p>
-              <CommandBlock
-                lines={[
-                  'GENERATION_PROVIDER=litellm \\',
-                  'GENERATION_MODEL="ollama/qwen3.5:35b-a3b-q4_K_M" \\',
-                  'GENERATION_API_BASE="http://localhost:11434" \\',
-                  'make serve-demo-api',
-                ]}
-              />
-              <Table
-                head={['Command', 'Effect']}
-                rows={[
-                  [
-                    'make generate-demo-data',
-                    'Regenerates the demo dataset and truth ledger (~100s)',
-                  ],
-                  [
-                    'make run-benchmark',
-                    'Runs the 30-question harness; writes results.json, summary.json, report.md',
-                  ],
-                  [
-                    'make ingest-graph && make index-vector',
-                    'Restores Neo4j and Qdrant to the dev world',
-                  ],
-                ]}
-              />
-            </div>
-          </Disclosure>
-          <Disclosure
-            summary="Troubleshooting common symptoms"
-            note="5 recovery recipes · typed error codes"
-          >
-            <div className="space-y-3">
+            <CommandBlock
+              lines={[
+                'make services-up        # Neo4j + Qdrant (Docker/OrbStack)',
+                'make demo-reset         # re-ingest demo graph + rebuild demo vector index',
+                'make serve-demo-api     # API on :8000 against the demo world',
+                'make dev-frontend       # UI on :5173',
+              ]}
+            />
+            <Disclosure
+              summary="Local LLM & benchmark CLI commands"
+              note="Ollama / LiteLLM configuration and dataset regeneration"
+            >
+              <div className="space-y-3">
+                <CommandBlock
+                  lines={[
+                    'GENERATION_PROVIDER=litellm \\',
+                    'GENERATION_MODEL="ollama/qwen3.5:35b-a3b-q4_K_M" \\',
+                    'GENERATION_API_BASE="http://localhost:11434" \\',
+                    'make serve-demo-api',
+                  ]}
+                />
+                <Table
+                  head={['Command', 'Effect']}
+                  rows={[
+                    [
+                      'make generate-demo-data',
+                      'Regenerates the demo dataset and truth ledger (~100s)',
+                    ],
+                    [
+                      'make run-benchmark',
+                      'Runs the 30-question harness; writes results.json, summary.json, report.md',
+                    ],
+                    [
+                      'make ingest-graph && make index-vector',
+                      'Restores Neo4j and Qdrant to the dev world',
+                    ],
+                  ]}
+                />
+              </div>
+            </Disclosure>
+            <Disclosure
+              summary="Troubleshooting common symptoms"
+              note="5 recovery recipes · typed error codes"
+            >
               <Table
                 head={['Symptom', 'Recovery']}
                 rows={[
@@ -380,70 +565,42 @@ export function Help() {
                   ],
                 ]}
               />
-              <p className="text-xs text-muted">
-                Typed API error codes: <Code>MODEL_ERROR</Code>,{' '}
-                <Code>EMBEDDING_ERROR</Code>,{' '}
-                <Code>VECTOR_RETRIEVAL_ERROR</Code>, <Code>RUN_ERROR</Code>{' '}
-                (docs/07 §11).
-              </p>
-            </div>
-          </Disclosure>
-        </Section>
+            </Disclosure>
+          </Section>
 
-        <Section
-          id="reference"
-          title="Glossary and accessibility"
-          lead="Core terms and built-in access guarantees."
-        >
-          <Table
-            head={['Term', 'Meaning']}
-            rows={[
-              [
-                'Ontology',
-                'BusinessConcept nodes plus MAPS_TO edges binding synonyms and cross-market equivalents to one concept.',
-              ],
-              [
-                'Seed',
-                'A graph node resolved from the question text; the entry point for bounded traversal.',
-              ],
-              [
-                'Traversal',
-                'Expansion from seeds across relationship types within configured depth and node caps.',
-              ],
-              [
-                'Not planted',
-                'A question whose home scenario does not exist in this world; reported, never scored.',
-              ],
-              [
-                'Truth ledger',
-                'Evaluator-only record of planted patterns; retrieval can never read it.',
-              ],
-              [
-                'Provenance',
-                'The source system and record behind every chunk, node and citation.',
-              ],
-              [
-                'Demo story',
-                'The committed offline-safe event stream replayed by Live Lab by default.',
-              ],
-            ]}
-          />
-          <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
-            <li>
-              Full keyboard navigation, visible focus states and skip-to-content
-              link.
-            </li>
-            <li>
-              Reduced motion respected via Settings or system preference; state
-              remains readable without animation.
-            </li>
-            <li>
-              Status is never conveyed by colour alone; every pane and table
-              carries accessible labels.
-            </li>
-          </ul>
-        </Section>
-      </div>
+          <Section
+            id="reference"
+            title="Glossary"
+            lead="Core terms used across the interface."
+          >
+            <Table
+              head={['Term', 'Meaning']}
+              rows={[
+                [
+                  'Ontology',
+                  'BusinessConcept nodes plus MAPS_TO edges binding synonyms and cross-market equivalents to one concept.',
+                ],
+                [
+                  'Seed',
+                  'A graph node resolved from the question text; the entry point for bounded traversal.',
+                ],
+                [
+                  'Traversal',
+                  'Expansion from seeds across relationship types within configured depth and node caps.',
+                ],
+                [
+                  'Truth ledger',
+                  'Evaluator-only record of planted patterns; retrieval can never read it.',
+                ],
+                [
+                  'Provenance',
+                  'The source system and record behind every chunk, node and citation.',
+                ],
+              ]}
+            />
+          </Section>
+        </div>
+      )}
     </div>
   )
 }

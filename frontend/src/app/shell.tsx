@@ -123,9 +123,13 @@ export function Shell({ children }: { children: ReactNode }) {
       </a>
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <p className="text-base font-semibold tracking-tight">
+          <a
+            href={hrefFor('lab')}
+            className="text-base font-semibold tracking-tight text-primary transition-colors duration-micro hover:text-graph"
+            aria-label="Semantic Context Lab home"
+          >
             {EXPERIMENT.name}
-          </p>
+          </a>
           <p className="text-xs text-muted">
             {EXPERIMENT.dataset} · {EXPERIMENT.markets.length} markets ·{' '}
             {EXPERIMENT.model} · {EXPERIMENT.embedding}

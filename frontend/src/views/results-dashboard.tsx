@@ -102,7 +102,12 @@ export function ResultsDashboard() {
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h2 className="text-lg">Results Dashboard</h2>
+            <p className="text-xs font-semibold uppercase tracking-wide text-graph">
+              30-question Evaluation Harness
+            </p>
+            <h2 className="mt-0.5 text-lg font-semibold text-primary">
+              Results Dashboard
+            </h2>
             <p className="text-xs text-muted">
               benchmark run {results.benchmarkRunId} · {results.questions}{' '}
               questions · same world, corpus, embedding and generation models
@@ -117,6 +122,28 @@ export function ResultsDashboard() {
           >
             Open runner
           </a>
+        </div>
+        <div className="mt-3 rounded-card border border-graph/30 bg-surface-raised p-3 text-xs text-secondary">
+          <strong className="text-primary">Key finding:</strong> Across the 30
+          benchmark questions, adding the knowledge graph and ontology lifts
+          evidence recall from{' '}
+          <span className="font-mono text-primary">
+            {results.overview.evidenceRecall[0].toFixed(2)}
+          </span>{' '}
+          (Conventional RAG) to{' '}
+          <span className="font-mono font-semibold text-graph">
+            {results.overview.evidenceRecall[2].toFixed(2)}
+          </span>{' '}
+          (Graph + Ontology) and answer correctness from{' '}
+          <span className="font-mono text-primary">
+            {results.overview.correctness[0].toFixed(2)}
+          </span>{' '}
+          to{' '}
+          <span className="font-mono font-semibold text-graph">
+            {results.overview.correctness[2].toFixed(2)}
+          </span>
+          , with the largest gains on multi-hop (L4) and cross-market (L5)
+          questions.
         </div>
       </section>
 

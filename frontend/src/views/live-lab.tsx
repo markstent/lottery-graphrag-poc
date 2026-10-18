@@ -26,12 +26,21 @@ import {
 
 type RunSource = 'story' | 'backend'
 
+/** Canonical demo markets, matching backend master data (UK, GR, AT, CZ). */
+const MARKETS = [
+  { code: 'UK', label: 'United Kingdom' },
+  { code: 'GR', label: 'Greece' },
+  { code: 'AT', label: 'Austria' },
+  { code: 'CZ', label: 'Czech Republic' },
+] as const
+
 export function LiveLab() {
   const settings = useSettings()
   const [question, setQuestion] = useState('')
   const [source, setSource] = useState<RunSource>('story')
   const [liveRun, setLiveRun] = useState<MockRun | null>(null)
   const [drawerEvidenceId, setDrawerEvidenceId] = useState<string | null>(null)
+  const [markets, setMarkets] = useState<string[]>([])
   const [backendStatus, setBackendStatus] = useState<
     'idle' | 'loading' | 'error'
   >('idle')
@@ -63,7 +72,7 @@ export function LiveLab() {
   const submit = (text: string) => {
     setQuestion(text)
     if (source === 'story') {
-      playback.runQuestion()
+      if (text === storyQuestion || text === '') playback.runQuestion()
       return
     }
     const saved = backendQuestions.find((entry) => entry.question === text)
@@ -76,6 +85,7 @@ export function LiveLab() {
         question: text,
         category: 'ad_hoc',
       },
+      markets.map((code) => `MKT_${code}`),
     )
       .then((run) => {
         setLiveRun(run)
@@ -100,8 +110,76 @@ export function LiveLab() {
         }))
       : DEMO_QUESTIONS.map((entry) => ({ id: entry.id, text: entry.text }))
 
+  // The recorded story only contains the Greece episode: no other chip may
+  // pretend to run in Demo story mode (honesty rule).
+  const storyQuestion = DEMO_QUESTIONS[0].text
+  const offStory =
+    source === 'story' && question.trim() !== '' && question !== storyQuestion
+
   return (
     <div className="space-y-4">
+      {!started && (
+        <section
+          aria-label="First-time orientation"
+          className="rounded-card border border-border bg-surface p-4"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-graph">
+                What you are testing
+              </p>
+              <h2 className="mt-0.5 text-base font-semibold text-primary">
+                Same question, same data: Conventional RAG vs Graph + Ontology
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <a
+                href={hrefFor('dictionary')}
+                className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-primary"
+              >
+                Inspect sample database rows →
+              </a>
+              <a
+                href={hrefFor('help')}
+                className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-primary"
+              >
+                How it works →
+              </a>
+            </div>
+          </div>
+          <ol className="mt-3 grid gap-3 text-xs sm:grid-cols-3">
+            <li className="rounded-card border border-border bg-surface-raised p-3">
+              <p className="font-semibold text-primary">
+                1. Click a question chip below
+              </p>
+              <p className="mt-1 text-secondary">
+                Pick <span className="font-mono text-graph">dq-1</span> (Greece
+                checkout drop) or press <strong>Run</strong> to start both
+                pipelines side by side.
+              </p>
+            </li>
+            <li className="rounded-card border border-border bg-surface-raised p-3">
+              <p className="font-semibold text-primary">
+                2. Compare the two panes
+              </p>
+              <p className="mt-1 text-secondary">
+                Left retrieves text chunks from Qdrant; right traverses Neo4j
+                relationships and ontology concepts across UK, GR, AT and CZ.
+              </p>
+            </li>
+            <li className="rounded-card border border-border bg-surface-raised p-3">
+              <p className="font-semibold text-primary">
+                3. Click any citation chip
+              </p>
+              <p className="mt-1 text-secondary">
+                Opens the inline Evidence Inspector showing the underlying
+                Parquet warehouse row, document and provenance.
+              </p>
+            </li>
+          </ol>
+        </section>
+      )}
+
       <section
         aria-label="Question composer"
         className="rounded-card border border-border bg-surface p-4"
@@ -123,12 +201,18 @@ export function LiveLab() {
             onClick={() => submit(question || savedQuestions[0]?.text || '')}
             disabled={
               playback.status === 'running' ||
-              (source === 'backend' && backendStatus === 'loading')
+              (source === 'backend' && backendStatus === 'loading') ||
+              (source === 'backend' &&
+                !backendQuestionsError &&
+                backendQuestions.length === 0) ||
+              offStory
             }
             title={
               playback.status === 'running' || backendStatus === 'loading'
                 ? 'A run is already active'
-                : undefined
+                : offStory
+                  ? 'The recorded demo only contains the Greece question; switch to Live backend to run this'
+                  : undefined
             }
             className="rounded-chip bg-graph px-4 py-1.5 text-sm font-medium text-background transition-opacity duration-micro hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
@@ -165,7 +249,76 @@ export function LiveLab() {
             ))}
           </div>
           <span className="text-xs text-muted">
-            scope: all markets · configuration: {activeRun.runId}
+            scope:{' '}
+            {markets.length
+              ? markets
+                  .map(
+                    (code) =>
+                      MARKETS.find((market) => market.code === code)?.label ??
+                      code,
+                  )
+                  .join(', ')
+              : 'all markets'}{' '}
+            · configuration: {activeRun.runId}
+          </span>
+        </div>
+        <div
+          role="group"
+          aria-label="Market scope"
+          className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3"
+        >
+          <span className="mr-1 text-xs font-medium text-muted">
+            Market scope:
+          </span>
+          <button
+            type="button"
+            aria-pressed={markets.length === 0}
+            disabled={source === 'story'}
+            onClick={() => setMarkets([])}
+            title={
+              source === 'story'
+                ? 'Market scope applies to Live backend runs'
+                : undefined
+            }
+            className={`rounded-chip border px-2.5 py-1 text-xs transition-colors duration-micro disabled:cursor-not-allowed disabled:opacity-40 ${
+              markets.length === 0
+                ? 'border-graph bg-graph/15 font-medium text-primary'
+                : 'border-border bg-surface-raised text-secondary hover:text-primary'
+            }`}
+          >
+            All markets
+          </button>
+          {MARKETS.map((market) => (
+            <button
+              key={market.code}
+              type="button"
+              aria-pressed={markets.includes(market.code)}
+              disabled={source === 'story'}
+              title={
+                source === 'story'
+                  ? 'Market scope applies to Live backend runs'
+                  : market.label
+              }
+              onClick={() =>
+                setMarkets((current) =>
+                  current.includes(market.code)
+                    ? current.filter((code) => code !== market.code)
+                    : [...current, market.code],
+                )
+              }
+              className={`rounded-chip border px-2.5 py-1 text-xs transition-colors duration-micro disabled:cursor-not-allowed disabled:opacity-40 ${
+                markets.includes(market.code)
+                  ? 'border-graph bg-graph/15 font-medium text-primary'
+                  : 'border-border bg-surface-raised text-secondary hover:text-primary'
+              }`}
+            >
+              {market.label}
+            </button>
+          ))}
+          <span className="text-xs text-muted">
+            {source === 'story'
+              ? 'switch to Live backend to scope a run'
+              : 'retrieval is restricted to the selected markets'}
           </span>
         </div>
         {backendStatus === 'error' && (
@@ -189,7 +342,15 @@ export function LiveLab() {
               key={demo.id}
               type="button"
               onClick={() => submit(demo.text)}
-              disabled={backendStatus === 'loading'}
+              disabled={
+                backendStatus === 'loading' ||
+                (source === 'story' && demo.text !== storyQuestion)
+              }
+              title={
+                source === 'story' && demo.text !== storyQuestion
+                  ? 'Not part of the recorded demo; switch to Live backend to run this question'
+                  : undefined
+              }
               className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-left text-xs text-secondary transition-colors duration-micro hover:border-graph/60 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="mr-1.5 font-mono text-[11px] text-graph">
@@ -198,6 +359,12 @@ export function LiveLab() {
               {demo.text}
             </button>
           ))}
+          {source === 'story' && (
+            <span className="text-xs text-muted">
+              only dq-1 is in the recorded story; switch to Live backend to run
+              the others
+            </span>
+          )}
         </div>
       </section>
 
@@ -235,6 +402,22 @@ export function LiveLab() {
       )}
 
       {playback.scores && <ScoreStrip scores={playback.scores} />}
+
+      {source === 'backend' &&
+        liveRun &&
+        playback.status === 'done' &&
+        !playback.scores && (
+          <p className="text-xs text-muted">
+            <span className="font-medium text-warning">
+              No evaluation scores for this run.
+            </span>{' '}
+            Quality metrics are computed only for questions with a published
+            benchmark result (the honesty rule); latency and context tokens
+            above are always measured. Run a saved chip with a benchmark match,
+            such as <span className="font-mono">dq-1</span> to{' '}
+            <span className="font-mono">dq-3</span>, to see scored evaluation.
+          </p>
+        )}
 
       {!started && (
         <p className="text-xs text-muted">

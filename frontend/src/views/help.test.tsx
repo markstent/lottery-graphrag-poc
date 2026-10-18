@@ -1,44 +1,54 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { Help } from './help'
 
 describe('Help', () => {
-  it('renders five scannable sections behind a numbered reading path', () => {
+  it('renders four focused tabs instead of a single bloated scroll', () => {
     render(<Help />)
 
-    const nav = screen.getByRole('navigation', { name: 'Help sections' })
-    expect(within(nav).getAllByRole('link')).toHaveLength(5)
+    const tablist = screen.getByRole('tablist', { name: 'Help sections' })
+    expect(within(tablist).getAllByRole('tab')).toHaveLength(4)
 
-    for (const heading of [
-      'How it works',
-      'Quick tour & demo questions',
-      'Scores, metrics & provenance',
-      'Running the backend & troubleshooting',
-      'Glossary and accessibility',
-    ]) {
-      expect(screen.getByRole('heading', { name: heading })).toBeVisible()
-    }
-  })
-
-  it('compares the three pipelines as cards under a shared head', () => {
-    render(<Help />)
-
+    expect(
+      screen.getByRole('heading', {
+        name: 'Three retrieval pipelines, one controlled experiment',
+      }),
+    ).toBeVisible()
     expect(screen.getByText('A · Conventional RAG')).toBeVisible()
     expect(screen.getByText('B · + Graph')).toBeVisible()
-    expect(screen.getByText('C · + Ontology')).toBeVisible()
-    expect(screen.getByText('Embed the question')).toBeVisible()
-    expect(screen.getByText('Built-in guardrails')).toBeVisible()
+    expect(screen.getByText('C · + Graph & Ontology')).toBeVisible()
   })
 
-  it('keeps the grounded facts and audience paths', () => {
+  it('shows a concrete side-by-side data example on the second tab', () => {
     render(<Help />)
 
-    expect(screen.getByText('Presenting?')).toBeVisible()
-    expect(screen.getByText('Evaluating?')).toBeVisible()
-    expect(screen.getByText('Exploring schema?')).toBeVisible()
-    expect(screen.getByText('DEMO-01')).toBeVisible()
+    fireEvent.click(
+      screen.getByRole('tab', { name: '2 · Concrete Data Example' }),
+    )
+    expect(
+      screen.getByRole('heading', {
+        name: 'Concrete example: why Conventional RAG misses what the Graph finds',
+      }),
+    ).toBeVisible()
+    expect(screen.getByText('DEMO-01 (Q30)')).toBeVisible()
     expect(screen.getByText('DEMO-04')).toBeVisible()
+  })
+
+  it('preserves committed benchmark numbers and operator commands in their tabs', () => {
+    render(<Help />)
+
+    fireEvent.click(
+      screen.getByRole('tab', { name: '3 · Scores & Honesty Rule' }),
+    )
     expect(screen.getByText(/A 0\.02 vs B\/C 0\.62/)).toBeVisible()
+
+    fireEvent.click(screen.getByRole('tab', { name: '4 · Backend & Glossary' }))
+    expect(
+      screen.getByRole('heading', {
+        name: 'Running the backend & troubleshooting',
+      }),
+    ).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Glossary' })).toBeVisible()
   })
 })

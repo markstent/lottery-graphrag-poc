@@ -47,7 +47,9 @@ test('results dashboard', async ({ page }) => {
 test('semantic layer', async ({ page }) => {
   await page.goto('/#/semantic')
   await expect(
-    page.getByText(/additional semantic layer above existing data/),
+    page.getByRole('heading', {
+      name: 'How raw tables & documents become connected graph concepts',
+    }),
   ).toBeVisible()
   await expect(page).toHaveScreenshot('semantic.png', { fullPage: true })
 })
@@ -56,18 +58,29 @@ test('help', async ({ page }) => {
   await page.goto('/#/help')
   await expect(
     page.getByRole('heading', {
-      name: 'Your guide to the Semantic Context Lab',
+      name: 'How the Semantic Context Lab works',
       level: 1,
     }),
   ).toBeVisible()
   await expect(page).toHaveScreenshot('help.png', { fullPage: true })
 })
 
+test('help graph diagram', async ({ page }) => {
+  await page.goto('/#/help')
+  await page.getByRole('tab', { name: '2 · Concrete Data Example' }).click()
+  const diagram = page.getByLabel(
+    'Diagram of one graph neighbourhood around incident INC_S007_GR',
+  )
+  await expect(diagram).toBeVisible()
+  await diagram.scrollIntoViewIfNeeded()
+  await expect(diagram).toHaveScreenshot('help-graph-diagram.png')
+})
+
 test('data dictionary', async ({ page }) => {
   await page.goto('/#/dictionary')
   await expect(
     page.getByRole('heading', {
-      name: 'What every table, node and relationship represents',
+      name: 'Inspect the synthetic enterprise data, graph and ontology',
       level: 1,
     }),
   ).toBeVisible()
