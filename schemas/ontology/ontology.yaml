@@ -92,8 +92,8 @@ concepts:
   - id: CONCEPT_QUICK_PICK
     parent: CONCEPT_GAME_MECHANIC
     type: Mechanic
-    labels: {en: Quick pick, el: Τυχαία επιλογή, de: Quicktipp, cs: Náhodný tip}
-    synonyms: {en: [Lucky Dip, random numbers], el: [τυχαία επιλογή αριθμών, αυτόματη επιλογή], de: [Zufallstipp], cs: [náhodný výběr čísel]}
+    labels: {en: Quick pick, el: Τυχαία επιλογή, de: Schnellwahl, cs: Náhodný tip}
+    synonyms: {en: [Quick Pick, random numbers], el: [τυχαία επιλογή αριθμών, αυτόματη επιλογή], de: [Zufallstipp], cs: [náhodný výběr čísel]}
     definition: The system selects the player's numbers at random.
   - id: CONCEPT_SYMBOL_REVEAL
     parent: CONCEPT_GAME_MECHANIC
@@ -310,7 +310,7 @@ bindings:
   - {kind: category, code: CAT_CZ_OKAMZITE, market: MKT_CZ, concept: CONCEPT_INSTANT_PRODUCT}
   # Game mechanics (CONCEPT_PROGRESSIVE_JACKPOT is intentionally unbound in v2)
   - {kind: mechanic, code: MECH_UK_NUMBER_MATCH, market: MKT_UK, concept: CONCEPT_NUMBER_SELECTION}
-  - {kind: mechanic, code: MECH_UK_LUCKY_DIP, market: MKT_UK, concept: CONCEPT_QUICK_PICK}
+  - {kind: mechanic, code: MECH_UK_QUICK_PICK, market: MKT_UK, concept: CONCEPT_QUICK_PICK}
   - {kind: mechanic, code: MECH_UK_SCRATCH, market: MKT_UK, concept: CONCEPT_SYMBOL_REVEAL}
   - {kind: mechanic, code: MECH_UK_INSTANT_ROUNDS, market: MKT_UK, concept: CONCEPT_INSTANT_ROUNDS}
   - {kind: mechanic, code: MECH_UK_SECOND_CHANCE, market: MKT_UK, concept: CONCEPT_SECOND_CHANCE}
@@ -319,7 +319,7 @@ bindings:
   - {kind: mechanic, code: MECH_GR_XYSIMO, market: MKT_GR, concept: CONCEPT_SYMBOL_REVEAL}
   - {kind: mechanic, code: MECH_GR_AMESOI_GYROI, market: MKT_GR, concept: CONCEPT_INSTANT_ROUNDS}
   - {kind: mechanic, code: MECH_AT_ZAHLENWAHL, market: MKT_AT, concept: CONCEPT_NUMBER_SELECTION}
-  - {kind: mechanic, code: MECH_AT_QUICKTIPP, market: MKT_AT, concept: CONCEPT_QUICK_PICK}
+  - {kind: mechanic, code: MECH_AT_SCHNELLWAHL, market: MKT_AT, concept: CONCEPT_QUICK_PICK}
   - {kind: mechanic, code: MECH_AT_RUBBELN, market: MKT_AT, concept: CONCEPT_SYMBOL_REVEAL}
   - {kind: mechanic, code: MECH_AT_ZWEITE_CHANCE, market: MKT_AT, concept: CONCEPT_SECOND_CHANCE}
   - {kind: mechanic, code: MECH_CZ_VYBER_CISEL, market: MKT_CZ, concept: CONCEPT_NUMBER_SELECTION}

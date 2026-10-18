@@ -7,6 +7,7 @@ concepts are reconciled by the ontology, never by shared codes here.
 
 from __future__ import annotations
 
+from app.datasets.master_data import CHANNELS
 from app.datasets.rows import (
     GameCategoryRow,
     GameFamilyRow,
@@ -78,7 +79,7 @@ _CATEGORIES: dict[str, tuple[tuple[str, str], ...]] = {
 _MECHANICS: dict[str, tuple[tuple[str, str, str], ...]] = {
     "MKT_UK": (
         ("MECH_UK_NUMBER_MATCH", "NUMBER_MATCH", "Match your numbers against the draw"),
-        ("MECH_UK_LUCKY_DIP", "LUCKY_DIP", "Randomly selected number lines"),
+        ("MECH_UK_QUICK_PICK", "QUICK_PICK", "Randomly selected number lines"),
         ("MECH_UK_SCRATCH", "SCRATCH", "Scratch to reveal matching symbols"),
         ("MECH_UK_INSTANT_ROUNDS", "INSTANT_ROUNDS", "Instant win rounds on every ticket"),
         ("MECH_UK_SECOND_CHANCE", "SECOND_CHANCE", "Losing entries go into a second draw"),
@@ -91,7 +92,7 @@ _MECHANICS: dict[str, tuple[tuple[str, str, str], ...]] = {
     ),
     "MKT_AT": (
         ("MECH_AT_ZAHLENWAHL", "ZAHLENWAHL", "Zahlen wählen und mit der Ziehung vergleichen"),
-        ("MECH_AT_QUICKTIPP", "QUICKTIPP", "Zufällig gewählte Zahlenreihen"),
+        ("MECH_AT_SCHNELLWAHL", "SCHNELLWAHL", "Zufällig gewählte Zahlenreihen"),
         ("MECH_AT_RUBBELN", "RUBBELN", "Aufrubbeln und Symbole aufdecken"),
         ("MECH_AT_ZWEITE_CHANCE", "ZWEITE_CHANCE", "Nieten nehmen an einer zweiten Ziehung teil"),
     ),
@@ -265,3 +266,16 @@ def incident_type_for(market_id: str | None, canonical: str) -> str:
 def support_category_for(market_id: str, canonical: str) -> str:
     """Support category id for a canonical kind in a market."""
     return _SUPPORT_CATEGORIES[market_id][_SUPPORT_KINDS.index(canonical)][0]
+
+
+def local_names() -> dict[tuple[str, str], str]:
+    """Display name of every local code, keyed by (ontology binding kind, code)."""
+    names: dict[tuple[str, str], str] = {}
+    names.update({("family", r.family_id): r.name for r in GAME_FAMILIES})
+    names.update({("category", r.category_code): r.name for r in GAME_CATEGORIES})
+    names.update({("mechanic", r.mechanic_id): r.mechanic_code for r in GAME_MECHANICS})
+    names.update({("incident_type", r.incident_type_id): r.name for r in INCIDENT_TYPES})
+    names.update({("support_category", r.support_category_id): r.name for r in SUPPORT_CATEGORIES})
+    names.update({("segment", r.segment_id): r.name for r in PLAYER_SEGMENTS})
+    names.update({("channel", code): description for code, description in CHANNELS})
+    return names

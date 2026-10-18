@@ -249,3 +249,14 @@ def test_term_matcher_prefers_longer_greek_term() -> None:
     )
     matches = matcher.match("Συχνές Κληρώσεις")
     assert [m.term.concept_id for m in matches] == ["CONCEPT_B"]
+
+
+def test_every_local_code_has_exactly_one_binding_and_vice_versa() -> None:
+    from app.datasets.taxonomies import local_names
+
+    onto = load_ontology()
+    codes = set(local_names())
+    bound = {(b.kind, b.code) for b in onto.bindings}
+    assert codes == bound
+    assert len(onto.bindings) == len(bound)
+    assert all(onto.concept(b.concept_id) for b in onto.bindings)
