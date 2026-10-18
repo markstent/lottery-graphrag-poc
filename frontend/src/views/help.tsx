@@ -6,9 +6,9 @@
  * RELEASE.md. Numbers quoted here are the committed validation results,
  * never invented for presentation.
  *
- * 2026-10-10 visual pass: all diagrams are layout-driven HTML (cards,
- * step rails, chip groups) rather than positioned SVG, so elements can
- * never overlap; prose trimmed to explanation-first short sections.
+ * 2026-10-18 SaaS polish: consolidated from 8 sections to 5 scannable
+ * sections, eliminated duplicated screen catalogue cards, and tucked
+ * reference tables into disclosures where appropriate.
  */
 
 import { hrefFor } from '../app/router'
@@ -17,6 +17,7 @@ import {
   Card,
   Code,
   CommandBlock,
+  Disclosure,
   PageHero,
   Rail,
   Section,
@@ -25,14 +26,11 @@ import {
 } from '../components/doc'
 
 const NAV_SECTIONS = [
-  { id: 'big-picture', label: 'The big picture' },
-  { id: 'tour', label: 'A five-minute tour' },
-  { id: 'questions', label: 'Saved demo questions' },
-  { id: 'numbers', label: 'Reading the numbers' },
-  { id: 'data', label: 'Data and provenance' },
-  { id: 'backend', label: 'Running the backend' },
-  { id: 'troubleshooting', label: 'Troubleshooting' },
-  { id: 'reference', label: 'Glossary and accessibility' },
+  { id: 'big-picture', label: 'How it works' },
+  { id: 'tour', label: 'Quick tour' },
+  { id: 'numbers', label: 'Scores & metrics' },
+  { id: 'backend', label: 'Backend & ops' },
+  { id: 'reference', label: 'Glossary & access' },
 ]
 
 function Toc() {
@@ -42,7 +40,7 @@ function Toc() {
       className="lg:sticky lg:top-6 lg:self-start"
     >
       <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-muted">
-        Reading path
+        On this page
       </p>
       <ol className="space-y-1 text-sm">
         {NAV_SECTIONS.map((section, index) => (
@@ -72,129 +70,72 @@ function Toc() {
   )
 }
 
-/** The experiment in one view: shared head, then what each pipeline adds. */
 function PipelineComparison() {
   return (
     <div className="space-y-3">
       <Rail
         items={[
           { label: 'Embed the question' },
-          { label: 'Vector search', note: 'one shared index' },
+          { label: 'Vector search', note: 'shared index' },
           { label: 'Rerank candidates' },
         ]}
       />
-      <p className="text-xs text-muted">
-        Every pipeline starts from these same three steps.
-      </p>
       <div className="grid gap-3 md:grid-cols-3">
         <Card
           title="A · Conventional RAG"
           footer={
             <p className="text-xs font-medium uppercase tracking-wide text-muted">
-              the credible baseline
+              Credible baseline
             </p>
           }
         >
           <p>
-            Selects the best document chunks within the token budget and answers
-            from them alone.
+            Selects top document chunks within the token budget and answers from
+            those chunks alone.
           </p>
         </Card>
         <Card
           title="B · + Graph"
           footer={
             <p className="text-xs font-medium uppercase tracking-wide text-graph">
-              + graph relationships
+              + Graph relationships
             </p>
           }
         >
-          <Steps
-            items={[
-              {
-                title: 'Resolve seeds',
-                children: <p>entities in the question become graph nodes.</p>,
-              },
-              {
-                title: 'Traverse',
-                children: <p>a bounded neighbourhood: depth 2, node caps.</p>,
-              },
-              {
-                title: 'Add evidence',
-                children: <p>node facts sit alongside document chunks.</p>,
-              },
-            ]}
-          />
+          <p>
+            Resolves entity seeds from the question, traverses a bounded 2-hop
+            neighbourhood, and combines node facts with document chunks.
+          </p>
         </Card>
         <Card
           title="C · + Ontology"
           footer={
-            <p className="text-xs font-medium uppercase tracking-wide text-graph">
-              + enterprise ontology
+            <p className="text-xs font-medium uppercase tracking-wide text-ontology">
+              + Enterprise ontology
             </p>
           }
         >
-          <p>Everything in B, plus one step:</p>
-          <Steps
-            items={[
-              {
-                title: 'Expand concepts',
-                children: (
-                  <p>
-                    MAPS_TO pulls equivalent entities across markets, so one
-                    country's pattern is found from another's question.
-                  </p>
-                ),
-              },
-            ]}
-          />
+          <p>
+            Everything in B, plus <Code>MAPS_TO</Code> concept expansion across
+            markets so a pattern in one country is found from another's
+            question.
+          </p>
         </Card>
       </div>
     </div>
   )
 }
 
-const SCREENS = [
-  {
-    name: 'Live Lab',
-    what: 'Run a question; watch standard RAG and the graph pipeline side by side.',
-    accent: true,
-  },
-  {
-    name: 'Evidence Explorer',
-    what: 'Click a citation to see the chunk or node behind it, with full provenance.',
-  },
-  {
-    name: 'Results',
-    what: 'The published benchmark outcome: per-pipeline scores, efficiency, failures.',
-  },
-  {
-    name: 'Semantic Layer',
-    what: 'The ontology: concepts and the cross-market links only pipeline C uses.',
-  },
-  {
-    name: 'Experiment Home',
-    what: 'Design, configurations and fairness controls.',
-  },
-  {
-    name: 'Scenario Lab',
-    what: 'The planted patterns (SCN-002/003/007/015) and their signals.',
-  },
-  {
-    name: 'Benchmark',
-    what: 'The 30-question bank and deterministic scoring.',
-  },
-] as const
-
 export function Help() {
   return (
-    <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[200px_1fr]">
       <Toc />
 
       <div className="space-y-8">
         <PageHero
           eyebrow="Help"
           title="Your guide to the Semantic Context Lab"
-          lead="This app measures what a knowledge graph and an enterprise ontology add to AI retrieval over a synthetic lottery enterprise (UK, GR, AT, CZ). Everything in it is invented, so the demo is safe to show and exact to repeat."
+          lead="This application measures what a knowledge graph and an enterprise ontology add to AI retrieval over a synthetic lottery enterprise (UK, GR, AT, CZ). Every record is synthetic, deterministic and safe to inspect."
         >
           <div className="grid gap-2 text-sm sm:grid-cols-3">
             <a
@@ -202,135 +143,94 @@ export function Help() {
               href={hrefFor('lab')}
             >
               <span className="font-medium text-primary">Presenting?</span>
-              <span className="text-secondary"> Start with Live Lab.</span>
+              <span className="text-secondary"> Open Live Lab.</span>
             </a>
             <a
               className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
-              href="#/help?section=big-picture"
-              onClick={(event) => {
-                event.preventDefault()
-                document
-                  .getElementById('help-big-picture')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
+              href={hrefFor('results')}
             >
               <span className="font-medium text-primary">Evaluating?</span>
-              <span className="text-secondary"> Read the big picture.</span>
+              <span className="text-secondary"> Inspect Results.</span>
             </a>
             <a
               className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
-              href="#/help?section=backend"
-              onClick={(event) => {
-                event.preventDefault()
-                document
-                  .getElementById('help-backend')
-                  ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-              }}
+              href={hrefFor('dictionary')}
             >
-              <span className="font-medium text-primary">Operating?</span>
-              <span className="text-secondary"> Jump to the commands.</span>
+              <span className="font-medium text-primary">
+                Exploring schema?
+              </span>
+              <span className="text-secondary"> Open Data Dictionary.</span>
             </a>
           </div>
         </PageHero>
 
         <Section
           id="big-picture"
-          title="The big picture"
-          lead="One question, three retrieval pipelines, one fair comparison."
+          title="How it works"
+          lead="One question, three retrieval pipelines, one controlled lab."
         >
           <p>
-            Pipeline A is a strong conventional RAG baseline. Pipeline B adds
-            the knowledge graph. Pipeline C adds the enterprise ontology on top.
-            All three run in one shared lab: same embedding model, same vector
-            collection, same reranker, same generator, same context budgets. B
-            is exactly C minus the ontology step, and tests pin that contract,
-            so the B-to-C difference isolates the ontology.
+            All three pipelines share the same embedding model, vector
+            collection, reranker, generator and context budget. Pipeline B is
+            identical to C minus the ontology step, isolating the value of each
+            layer. Authoritative quantities stay in the Parquet warehouse; Neo4j
+            stores relationships, concepts and provenance pointers.
           </p>
           <PipelineComparison />
-          <p>
-            The graph never replaces the data layer: numbers stay in the
-            warehouse, documents stay in the vector index, and Neo4j holds
-            meaning plus provenance. When an answer needs a quantity, the
-            pipeline reads it from the authoritative Parquet records.
-          </p>
           <Callout title="Built-in guardrails">
-            Traversal is bounded by configuration: depth 2, at most 200 nodes,
-            evidence cap 12. Every stage emits a typed event and the UI renders
-            only those events; nothing is simulated during playback.
+            Graph traversal is bounded by configuration (depth 2, max 200 nodes,
+            evidence cap 12). Every stage emits a typed telemetry event and the
+            UI renders only received events.
           </Callout>
         </Section>
 
         <Section
           id="tour"
-          title="A five-minute tour"
-          lead="Run something, check the proof, read the scoreline."
+          title="Quick tour & demo questions"
+          lead="Run a question, inspect the citation chain, then check the benchmark."
         >
           <Steps
             items={[
               {
-                title: 'Open Live Lab (the default screen)',
+                title: 'Run a question in Live Lab',
                 children: (
                   <p>
-                    It starts on the committed demo story, which needs no
-                    backend.
+                    Click any <Code>DEMO-01..04</Code> chip in the composer or
+                    press Run. Use the timeline to scrub and replay events.
                   </p>
                 ),
               },
               {
-                title: 'Press Run and watch both panes',
+                title: 'Inspect provenance',
                 children: (
                   <p>
-                    They animate from real recorded events; scrub the timeline
-                    to replay any moment.
+                    Click any citation chip under an answer to open the Evidence
+                    Explorer with its source system and record ID.
                   </p>
                 ),
               },
               {
-                title: 'Switch the composer to Live backend',
+                title: 'Switch to Live backend when ready',
                 children: (
                   <p>
-                    Saved questions appear once the API is reachable (
-                    <Code>http://localhost:8000</Code>).
+                    Toggle <strong>Live backend</strong> in the composer to
+                    execute real pipelines against <Code>localhost:8000</Code>.
                   </p>
                 ),
-              },
-              {
-                title: 'Click any citation under an answer',
-                children: (
-                  <p>The Evidence Explorer opens with its provenance.</p>
-                ),
-              },
-              {
-                title: 'Try Presentation mode (top right)',
-                children: <p>Stage layout with saved-question chips.</p>,
               },
             ]}
           />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {SCREENS.map((screen) => (
-              <Card key={screen.name} title={screen.name}>
-                <p>{screen.what}</p>
-              </Card>
-            ))}
-          </div>
-        </Section>
-
-        <Section
-          id="questions"
-          title="Saved demo questions"
-          lead="Four fixed questions name real entities in the demo world; expected answers are never embedded anywhere."
-        >
           <Table
-            head={['Id', 'Asks about', 'Mirrors benchmark']}
+            head={['Chip', 'Scenario & question focus', 'Benchmark']}
             rows={[
               [
                 'DEMO-01',
-                'SCN-015: a rules document that disagrees with the structured record for GAME_UK_01',
+                'SCN-015: rules document that disagrees with the structured record for GAME_UK_01',
                 'Q30',
               ],
               [
                 'DEMO-02',
-                'SCN-007: which platform version links the Greek checkout incident to other markets, and why the UK was unaffected',
+                'SCN-007: platform version linking the Greek checkout incident to other markets, and why the UK was unaffected',
                 'Q25',
               ],
               [
@@ -340,72 +240,51 @@ export function Help() {
               ],
               [
                 'DEMO-04',
-                'A question whose home scenario is not planted in this world',
+                'Unplanted scenario: verifies the system reports an honest empty result rather than inventing a pattern',
                 'none',
               ],
             ]}
           />
-          <Callout title="One question is designed to miss">
-            DEMO-04 shows an honest miss: the system reports it cannot find the
-            pattern rather than inventing one. In front of an audience, this is
-            the trust moment.
-          </Callout>
         </Section>
 
         <Section
           id="numbers"
-          title="Reading the numbers"
-          lead="Which numbers are measured live, and which come from the published benchmark."
+          title="Scores, metrics & provenance"
+          lead="Live operational telemetry is separated strictly from benchmark truth."
         >
           <Table
-            head={['Metric', 'Source', 'Where you see it']}
+            head={['Metric', 'Source', 'Where shown']}
             rows={[
               [
-                'Latency, context tokens',
-                'measured on the live run',
+                'Latency & context tokens',
+                'Measured on every run',
                 'Live Lab score strip; Results efficiency',
               ],
               [
                 'Answer correctness',
-                'deterministic scoring against grounded truth (harness only)',
-                'Results; score strip for published questions',
+                'Deterministic check against grounded truth (harness only)',
+                'Results; score strip for published benchmark questions',
               ],
               [
                 'Evidence recall / precision',
-                'overlap of retrieved evidence with truth-ledger evidence (harness only)',
-                'Results; score strip for published questions',
+                'Overlap with truth-ledger evidence (harness only)',
+                'Results; score strip for published benchmark questions',
               ],
             ]}
           />
-          <Callout title="The honesty rule">
-            Quality numbers come only from the published benchmark for a matched
-            question. Ad-hoc questions have no truth to score against, so the
-            quality columns stay in their waiting state; operational
-            measurements (latency, tokens) are always real.
-          </Callout>
-          <Callout title="Committed headline results">
-            Dev world, bank 1.0.0: full-bank evidence recall{' '}
-            <strong>A 0.02 vs B/C 0.62</strong> (deterministic generator); on
-            the real-model subset (Q01, Q25, Q28, Q30) answer score{' '}
-            <strong>B/C 0.66 vs A 0.41</strong>, evidence recall{' '}
-            <strong>0.65 vs 0.04</strong>. Published, reproducible runs.
-          </Callout>
-        </Section>
-
-        <Section
-          id="data"
-          title="Data and provenance"
-          lead="One synthetic world, planted patterns, citations that resolve to records."
-        >
-          <p>
-            The demo world (<Code>data/generated/demo-seed2026</Code>, generator
-            0.1.0, world and scenario seed 2026) holds 5,000,000 tickets,
-            100,000 players and 2,000 documents across four markets. Generation
-            is deterministic: identical inputs reproduce identical outputs.
-            Planted patterns come from the scenario engine only; the truth
-            ledger is evaluator-only and isolation tests fail the build if
-            retrieval ever reads it.
-          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Callout title="The honesty rule">
+              Ad-hoc questions have no truth ledger entry, so quality columns
+              stay in their waiting state; latency and token counts are always
+              real.
+            </Callout>
+            <Callout title="Committed headline results">
+              Dev world, bank 1.0.0: full-bank evidence recall{' '}
+              <strong>A 0.02 vs B/C 0.62</strong>; real-model subset (Q01, Q25,
+              Q28, Q30) answer score <strong>B/C 0.66 vs A 0.41</strong>,
+              evidence recall <strong>0.65 vs 0.04</strong>.
+            </Callout>
+          </div>
           <Rail
             items={[
               { label: 'Answer' },
@@ -415,22 +294,17 @@ export function Help() {
               { label: 'Warehouse row' },
             ]}
           />
-          <p>
-            Clicking a citation walks this chain in the Evidence Explorer. The{' '}
-            <a
-              className="text-graph hover:underline"
-              href={hrefFor('dictionary')}
-            >
-              Data Dictionary
-            </a>{' '}
-            documents every table, node label, relationship and concept.
+          <p className="text-xs text-muted">
+            Demo world (<Code>data/generated/demo-seed2026</Code>, seed 2026):
+            5,000,000 tickets, 100,000 players, 2,000 documents. The evaluator
+            truth ledger is isolated from retrieval by automated tests.
           </p>
         </Section>
 
         <Section
           id="backend"
-          title="Running the backend"
-          lead="From the repository root."
+          title="Running the backend & troubleshooting"
+          lead="Commands run from the repository root."
         >
           <CommandBlock
             lines={[
@@ -440,80 +314,86 @@ export function Help() {
               'make dev-frontend       # UI on :5173',
             ]}
           />
-          <p>
-            Without extra settings the API uses the deterministic fake
-            generator: instant and safe for a live demo. For local-model
-            answers:
-          </p>
-          <CommandBlock
-            lines={[
-              'GENERATION_PROVIDER=litellm \\',
-              'GENERATION_MODEL="ollama/qwen3.5:35b-a3b-q4_K_M" \\',
-              'GENERATION_API_BASE="http://localhost:11434" \\',
-              'make serve-demo-api',
-            ]}
-          />
-          <Table
-            head={['Command', 'Effect']}
-            rows={[
-              [
-                'make generate-demo-data',
-                'regenerates the demo dataset and its truth ledger (~100s)',
-              ],
-              [
-                'make run-benchmark',
-                'runs the 30-question harness; writes results.json, summary.json, report.md',
-              ],
-              [
-                'make ingest-graph && make index-vector',
-                'returns Neo4j/Qdrant to the dev world (demo and dev never overwrite each other)',
-              ],
-            ]}
-          />
-        </Section>
-
-        <Section
-          id="troubleshooting"
-          title="Troubleshooting"
-          lead="Common symptoms and recovery."
-        >
-          <Table
-            head={['Symptom', 'Recovery']}
-            rows={[
-              [
-                '“Saved questions unavailable” in Live Lab',
-                'start make serve-demo-api; check http://localhost:8000/api/v1/health',
-              ],
-              [
-                'Backend run fails with MODEL_ERROR',
-                'restart the model server, or switch to the Demo story; the failure is recorded, never faked',
-              ],
-              [
-                'A run returns no graph seeds',
-                'the question names no graph entity; use a saved demo question',
-              ],
-              [
-                'Graph looks wrong after tests ran',
-                'a GRAPH_E2E test wiped Neo4j into its fixture world; run make demo-reset (~2.5 min)',
-              ],
-              [
-                'Answers too slow on stage',
-                'use the deterministic generator for the live demo',
-              ],
-            ]}
-          />
-          <p>
-            Failed runs record a typed error: <Code>MODEL_ERROR</Code>,{' '}
-            <Code>EMBEDDING_ERROR</Code>, <Code>VECTOR_RETRIEVAL_ERROR</Code>,{' '}
-            <Code>RUN_ERROR</Code> (docs/07 section 11). The UI never presents a
-            fake success.
-          </p>
+          <Disclosure
+            summary="Local LLM & benchmark CLI commands"
+            note="Ollama / LiteLLM configuration and dataset regeneration"
+          >
+            <div className="space-y-3">
+              <p className="text-xs text-secondary">
+                By default the API uses the deterministic fake generator for
+                instant stage demos. To run with a local model:
+              </p>
+              <CommandBlock
+                lines={[
+                  'GENERATION_PROVIDER=litellm \\',
+                  'GENERATION_MODEL="ollama/qwen3.5:35b-a3b-q4_K_M" \\',
+                  'GENERATION_API_BASE="http://localhost:11434" \\',
+                  'make serve-demo-api',
+                ]}
+              />
+              <Table
+                head={['Command', 'Effect']}
+                rows={[
+                  [
+                    'make generate-demo-data',
+                    'Regenerates the demo dataset and truth ledger (~100s)',
+                  ],
+                  [
+                    'make run-benchmark',
+                    'Runs the 30-question harness; writes results.json, summary.json, report.md',
+                  ],
+                  [
+                    'make ingest-graph && make index-vector',
+                    'Restores Neo4j and Qdrant to the dev world',
+                  ],
+                ]}
+              />
+            </div>
+          </Disclosure>
+          <Disclosure
+            summary="Troubleshooting common symptoms"
+            note="5 recovery recipes · typed error codes"
+          >
+            <div className="space-y-3">
+              <Table
+                head={['Symptom', 'Recovery']}
+                rows={[
+                  [
+                    '“Saved questions unavailable” in Live Lab',
+                    'Start make serve-demo-api; verify http://localhost:8000/api/v1/health',
+                  ],
+                  [
+                    'Backend run fails with MODEL_ERROR',
+                    'Restart the model server or switch to Demo story; failures are recorded, never faked',
+                  ],
+                  [
+                    'A run returns no graph seeds',
+                    'The question names no graph entity; pick a saved demo question chip',
+                  ],
+                  [
+                    'Graph looks wrong after tests ran',
+                    'A GRAPH_E2E test wiped Neo4j into its fixture world; run make demo-reset (~2.5 min)',
+                  ],
+                  [
+                    'Answers too slow on stage',
+                    'Use the default deterministic generator for live presentations',
+                  ],
+                ]}
+              />
+              <p className="text-xs text-muted">
+                Typed API error codes: <Code>MODEL_ERROR</Code>,{' '}
+                <Code>EMBEDDING_ERROR</Code>,{' '}
+                <Code>VECTOR_RETRIEVAL_ERROR</Code>, <Code>RUN_ERROR</Code>{' '}
+                (docs/07 §11).
+              </p>
+            </div>
+          </Disclosure>
         </Section>
 
         <Section
           id="reference"
           title="Glossary and accessibility"
-          lead="The words this app uses, and the access guarantees."
+          lead="Core terms and built-in access guarantees."
         >
           <Table
             head={['Term', 'Meaning']}
@@ -548,49 +428,21 @@ export function Help() {
               ],
             ]}
           />
-          <ul className="list-disc space-y-1 pl-5">
+          <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
             <li>
-              Full keyboard navigation; visible focus; skip-to-content link.
+              Full keyboard navigation, visible focus states and skip-to-content
+              link.
             </li>
             <li>
-              Reduced motion respected (Settings or system preference);
-              animation pauses, state stays readable.
+              Reduced motion respected via Settings or system preference; state
+              remains readable without animation.
             </li>
             <li>
-              Status never conveyed by colour alone; tables and panes are
-              labelled.
+              Status is never conveyed by colour alone; every pane and table
+              carries accessible labels.
             </li>
           </ul>
         </Section>
-
-        <p className="text-xs text-muted">
-          Deeper documentation: <Code>docs/demo/presentation.md</Code>,{' '}
-          <Code>docs/07-api-event-spec.md</Code>,{' '}
-          <Code>docs/evaluation/harness-validation.md</Code>,{' '}
-          <Code>RELEASE.md</Code>. Related screens:{' '}
-          <a
-            className="text-graph hover:underline"
-            href={hrefFor('dictionary')}
-          >
-            Data Dictionary
-          </a>
-          ,{' '}
-          <a
-            className="text-graph hover:underline"
-            href={hrefFor('experiment')}
-          >
-            Experiment Home
-          </a>
-          ,{' '}
-          <a className="text-graph hover:underline" href={hrefFor('results')}>
-            Results
-          </a>
-          ,{' '}
-          <a className="text-graph hover:underline" href={hrefFor('semantic')}>
-            Semantic Layer
-          </a>
-          .
-        </p>
       </div>
     </div>
   )

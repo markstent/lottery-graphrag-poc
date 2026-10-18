@@ -4,20 +4,17 @@ import { describe, expect, it } from 'vitest'
 import { Help } from './help'
 
 describe('Help', () => {
-  it('renders eight sections behind a numbered reading path', () => {
+  it('renders five scannable sections behind a numbered reading path', () => {
     render(<Help />)
 
     const nav = screen.getByRole('navigation', { name: 'Help sections' })
-    expect(within(nav).getAllByRole('link')).toHaveLength(8)
+    expect(within(nav).getAllByRole('link')).toHaveLength(5)
 
     for (const heading of [
-      'The big picture',
-      'A five-minute tour',
-      'Saved demo questions',
-      'Reading the numbers',
-      'Data and provenance',
-      'Running the backend',
-      'Troubleshooting',
+      'How it works',
+      'Quick tour & demo questions',
+      'Scores, metrics & provenance',
+      'Running the backend & troubleshooting',
       'Glossary and accessibility',
     ]) {
       expect(screen.getByRole('heading', { name: heading })).toBeVisible()
@@ -34,15 +31,14 @@ describe('Help', () => {
     expect(screen.getByText('Built-in guardrails')).toBeVisible()
   })
 
-  it('keeps the grounded facts and the audience paths', () => {
+  it('keeps the grounded facts and audience paths', () => {
     render(<Help />)
 
     expect(screen.getByText('Presenting?')).toBeVisible()
     expect(screen.getByText('Evaluating?')).toBeVisible()
-    expect(screen.getByText('Operating?')).toBeVisible()
+    expect(screen.getByText('Exploring schema?')).toBeVisible()
     expect(screen.getByText('DEMO-01')).toBeVisible()
     expect(screen.getByText('DEMO-04')).toBeVisible()
-    // Committed validation numbers, quoted not invented.
     expect(screen.getByText(/A 0\.02 vs B\/C 0\.62/)).toBeVisible()
   })
 })

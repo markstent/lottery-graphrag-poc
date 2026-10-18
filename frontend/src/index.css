@@ -99,9 +99,10 @@ body {
 
 /* Readable labels over edges: dark halo behind the glyphs. */
 .label-halo {
+  fill: var(--color-text-primary);
   paint-order: stroke;
-  stroke: var(--color-background);
-  stroke-width: 3px;
+  stroke: var(--color-surface);
+  stroke-width: 4px;
   stroke-linejoin: round;
 }
 

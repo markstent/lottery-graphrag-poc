@@ -17,6 +17,27 @@ export function ScenarioLab() {
   return (
     <div className="space-y-4">
       <section
+        aria-label="Scenario header"
+        className="rounded-card border border-border bg-surface p-4"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg">Scenario Lab</h2>
+            <p className="text-xs text-muted">
+              Planted patterns and observable signals · blind benchmark mode
+              hides evaluator truth
+            </p>
+          </div>
+          <a
+            href="#/experiment"
+            className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+          >
+            ← Back to Setup
+          </a>
+        </div>
+      </section>
+
+      <section
         aria-label="Blind mode notice"
         className="rounded-card border border-warning/50 bg-surface p-3"
       >

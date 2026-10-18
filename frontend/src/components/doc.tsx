@@ -233,6 +233,41 @@ export function Rail({
   )
 }
 
+export function Disclosure({
+  summary,
+  note,
+  defaultOpen = false,
+  children,
+}: {
+  summary: string
+  note?: string
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <details
+      open={defaultOpen}
+      className="group rounded-card border border-border bg-surface"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-primary hover:bg-surface-raised">
+        <span className="flex items-baseline gap-2">
+          <span>{summary}</span>
+          {note && (
+            <span className="text-xs font-normal text-muted">{note}</span>
+          )}
+        </span>
+        <span
+          aria-hidden
+          className="text-xs text-muted transition-transform duration-micro group-open:rotate-90"
+        >
+          ▸
+        </span>
+      </summary>
+      <div className="border-t border-border p-4">{children}</div>
+    </details>
+  )
+}
+
 export function CommandBlock({ lines }: { lines: string[] }) {
   return (
     <pre className="overflow-x-auto rounded-card border border-border bg-surface p-3 font-mono text-xs leading-relaxed text-primary">

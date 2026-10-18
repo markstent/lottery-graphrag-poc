@@ -17,9 +17,9 @@ interface Position {
   depth: number
 }
 
-const COLUMN_WIDTH = 132
-const ROW_HEIGHT = 84
-const MARGIN = 56
+const COLUMN_WIDTH = 148
+const ROW_HEIGHT = 90
+const MARGIN = 60
 
 /** Deterministic layered layout: depth via BFS over revealed edges. */
 function computeLayout(state: GraphPaneState): {
@@ -225,9 +225,10 @@ export function GraphCanvas({
                 <circle r={5} fill="var(--color-background)" stroke="none" />
               )}
               <text
-                y={30}
+                y={33}
                 textAnchor="middle"
-                className="fill-secondary text-[10px] label-halo"
+                fill="var(--color-text-primary)"
+                className="text-[11px] font-medium label-halo"
               >
                 {node.label}
               </text>

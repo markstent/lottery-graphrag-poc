@@ -177,24 +177,26 @@ export function LiveLab() {
             with <code>make serve-api</code>.
           </p>
         )}
-        {settings.presentation && (
-          <div
-            className="mt-3 flex flex-wrap gap-2"
-            aria-label="Saved demo questions"
-          >
-            {savedQuestions.map((demo) => (
-              <button
-                key={demo.id}
-                type="button"
-                onClick={() => submit(demo.text)}
-                disabled={backendStatus === 'loading'}
-                className="rounded-chip border border-border bg-surface-raised px-3 py-1.5 text-left text-xs text-secondary transition-colors duration-micro hover:border-graph hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {demo.text}
-              </button>
-            ))}
-          </div>
-        )}
+        <div
+          className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3"
+          aria-label="Saved demo questions"
+        >
+          <span className="mr-1 text-xs font-medium text-muted">Try:</span>
+          {savedQuestions.map((demo) => (
+            <button
+              key={demo.id}
+              type="button"
+              onClick={() => submit(demo.text)}
+              disabled={backendStatus === 'loading'}
+              className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-left text-xs text-secondary transition-colors duration-micro hover:border-graph/60 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <span className="mr-1.5 font-mono text-[11px] text-graph">
+                {demo.id}
+              </span>
+              {demo.text}
+            </button>
+          ))}
+        </div>
       </section>
 
       <div className="grid gap-4 xl:grid-cols-2">

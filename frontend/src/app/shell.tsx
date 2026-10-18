@@ -11,18 +11,23 @@ import { EXPERIMENT } from '../mock/content'
 
 const NAV_GROUPS: Array<{
   label: string
-  items: Array<{ name: RouteName; label: string }>
+  items: Array<{
+    name: RouteName
+    label: string
+    matches?: readonly RouteName[]
+  }>
 }> = [
   {
     label: 'Experiment',
     items: [
-      { name: 'lab', label: 'Live Lab' },
-      { name: 'experiment', label: 'Experiment Home' },
-      { name: 'results', label: 'Results' },
-      { name: 'evidence', label: 'Evidence Explorer' },
-      { name: 'benchmark', label: 'Benchmark' },
-      { name: 'scenarios', label: 'Scenario Lab' },
+      { name: 'lab', label: 'Live Lab', matches: ['lab', 'evidence'] },
+      { name: 'results', label: 'Results', matches: ['results', 'benchmark'] },
       { name: 'semantic', label: 'Semantic Layer' },
+      {
+        name: 'experiment',
+        label: 'Setup',
+        matches: ['experiment', 'scenarios'],
+      },
     ],
   },
   {
@@ -157,15 +162,23 @@ export function Shell({ children }: { children: ReactNode }) {
                 )}
                 <span className="sr-only">{group.label}:</span>
                 {group.items.map((item) => {
-                  const active = route.name === item.name
+                  const active = (item.matches ?? [item.name]).includes(
+                    route.name,
+                  )
                   return (
                     <a
                       key={item.name}
                       href={hrefFor(item.name)}
-                      aria-current={active ? 'page' : undefined}
+                      aria-current={
+                        route.name === item.name
+                          ? 'page'
+                          : active
+                            ? 'true'
+                            : undefined
+                      }
                       className={`inline-block rounded-chip px-3 py-1.5 text-sm transition-colors duration-micro ${
                         active
-                          ? 'bg-surface-raised text-primary'
+                          ? 'bg-surface-raised font-medium text-primary'
                           : 'text-secondary hover:bg-surface-raised hover:text-primary'
                       }`}
                     >

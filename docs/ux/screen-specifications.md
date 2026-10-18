@@ -109,22 +109,19 @@ Blind mode: planted specifics hidden; configuration metadata only (docs/06 secti
 
 Every chart has a table alternative (accessibility); failure rows deep-link to run replays.
 
-## 6a. Help (HITL-11 addition; visual pass 2026-10-10)
+## 6a. Help (HITL-11 addition; SaaS polish 2026-10-18)
 
-In-app documentation screen (`#/help`), structured as a guided reading
-experience: a page hero with three audience links (presenting / evaluating /
-operating), a numbered sticky reading path over eight sections, and every
-visual built from layout-driven HTML primitives (cards, step rails, chip
-groups) rather than positioned SVG, so elements cannot overlap at any width.
-"The big picture" shows the shared embed-search-rerank rail and three
-pipeline cards (A baseline; B adds resolve→traverse→evidence steps; C adds
-concept expansion), with callouts for the built-in guardrails. The tour
-merges quick-start steps with a seven-screen card grid. Reference sections:
-saved demo questions, metric sources with the honesty rule and committed
-headline results (callouts), data and provenance with a five-step
-answer→warehouse rail, backend commands, troubleshooting, glossary and
-accessibility. Content quotes only committed figures and mirrors
-docs/demo/presentation.md. Visual baseline:
+In-app documentation screen (`#/help`), structured as a compact five-section
+guide: a page hero with three audience links (presenting / evaluating /
+exploring schema), a numbered sticky reading path, and layout-driven HTML
+primitives (cards, step rails, chip groups, collapsible disclosures).
+Sections: "How it works" (shared embed-search-rerank rail, three pipeline
+cards A/B/C, guardrail callout), "Quick tour & demo questions" (three-step
+tour plus DEMO-01..04 table), "Scores, metrics & provenance" (metric table,
+honesty rule + committed headline callouts, five-step provenance rail),
+"Running the backend & troubleshooting" (core commands visible, local LLM
+and recovery tables inside collapsible `<details>` disclosures) and
+"Glossary and accessibility". Visual baseline:
 `e2e/visual.spec.ts-snapshots/help-darwin.png`.
 
 Live data note (HITL-11): when the dashboard renders the latest published
@@ -133,22 +130,22 @@ bank dimension (market breakdown) are hidden rather than filled with
 synthetic values, and unscored questions appear in failure analysis marked
 "not scored".
 
-## 6b. Data Dictionary (HITL-11 addition; visual pass 2026-10-10)
+## 6b. Data Dictionary (HITL-11 addition; SaaS polish 2026-10-18)
 
 In-app schema documentation (`#/dictionary`), orientation before reference:
 a page hero with a "how to read this page" callout, three store cards
-(structured layer / graph overlay / vector index, with technology and
-provenance note), and "How the data connects" as four step rails (players
-play, platforms fail, knowledge flows, money and identity) with demo row
-counts. Reference sections: the 36-table inventory grouped by domain with
-keys and row counts, field-level detail for the ten core tables, the graph
-overlay as six cluster cards with label chips plus the derived-relationship
-table and the exhaustive 26-relationship list, and the ontology: an
-incident→concept binding card (INC_S007_GR/AT/CZ MAPS_TO
-CONCEPT_PLATFORM_INCIDENT), the ten-concept catalogue, mapping sources and
-the reserved-vocabulary scope callout. All figures are generated from
-committed sources (world manifest, statements.py allow-list,
-master_data.py catalogue). Baseline: `dictionary-darwin.png`.
+(structured layer / graph overlay / vector index), and "How the data
+connects" as a 2×2 card grid of entity chains (players play, platforms fail,
+knowledge flows, money & identity) with demo row counts. Exhaustive
+reference catalogues use progressive disclosure (`<details>` drawers):
+"Warehouse tables & fields" groups the 36 tables into five domain drawers
+(Reference data open by default) plus a field-level drawer for the ten core
+tables; "The graph overlay" renders six cluster cards with label chips, the
+derived-relationship table, and an open-by-default drawer of all 26
+relationship types; "The ontology" shows the INC_S007_GR/AT/CZ →
+CONCEPT_PLATFORM_INCIDENT binding card, the ten-concept catalogue, a
+mapping-sources drawer and the reserved-vocabulary scope callout. Baseline:
+`dictionary-darwin.png`.
 
 ## 6c. Experiment Home "Start here" strip (HITL-11 addition, 2026-10-10)
 

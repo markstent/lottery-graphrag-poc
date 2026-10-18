@@ -10,11 +10,9 @@ describe('DataDictionary', () => {
     for (const heading of [
       'One world, three stores',
       'How the data connects',
-      'Warehouse tables by domain',
-      'Core tables, field by field',
+      'Warehouse tables & fields',
       'The graph overlay',
       'The ontology',
-      'Authoritative definitions',
     ]) {
       expect(screen.getByRole('heading', { name: heading })).toBeVisible()
     }
@@ -38,10 +36,8 @@ describe('DataDictionary', () => {
     expect(
       screen.getAllByText('CONCEPT_PLATFORM_INCIDENT').length,
     ).toBeGreaterThan(0)
-    // The six clusters are card titles.
     expect(screen.getByText('Knowledge')).toBeVisible()
     expect(screen.getByText('Commercial & ops')).toBeVisible()
-    // Chain rails render the incident→platform→versions chain.
     expect(screen.getByText('Platforms fail')).toBeVisible()
   })
 

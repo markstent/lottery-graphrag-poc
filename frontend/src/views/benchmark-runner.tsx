@@ -30,14 +30,22 @@ export function BenchmarkRunner() {
               {results.benchmarkRunId} · exp-demo-2026-10 · completed
             </p>
           </div>
-          <a
-            href={hrefFor('results', {
-              benchmark_run_id: results.benchmarkRunId,
-            })}
-            className="rounded-chip bg-graph px-4 py-1.5 text-sm font-medium text-background transition-opacity duration-micro hover:opacity-90"
-          >
-            Open results
-          </a>
+          <div className="flex items-center gap-2">
+            <a
+              href={hrefFor('experiment')}
+              className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+            >
+              ← Setup
+            </a>
+            <a
+              href={hrefFor('results', {
+                benchmark_run_id: results.benchmarkRunId,
+              })}
+              className="rounded-chip bg-graph px-4 py-1.5 text-sm font-medium text-background transition-opacity duration-micro hover:opacity-90"
+            >
+              Open results
+            </a>
+          </div>
         </div>
       </section>
 

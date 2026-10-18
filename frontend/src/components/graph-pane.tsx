@@ -47,7 +47,8 @@ export function GraphPane({
 
       {nodes.length === 0 ? (
         <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-muted">
-          {headline}
+          Pick a question chip above or press Run to watch entity seeds and
+          graph traversal unfold.
         </p>
       ) : (
         <>
