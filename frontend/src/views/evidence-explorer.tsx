@@ -11,7 +11,7 @@ import { hrefFor } from '../app/router'
 import { EVIDENCE_PATH_IDS, getEvidence } from '../mock/evidence'
 import { MOCK_RUN, projectGraph } from '../mock/telemetry'
 
-type Tab = 'sources' | 'graph' | 'provenance'
+export type Tab = 'sources' | 'graph' | 'provenance'
 
 const KIND_BADGE: Record<string, string> = {
   document: '📄 document',
@@ -20,10 +20,12 @@ const KIND_BADGE: Record<string, string> = {
   'graph-node': '🔗 graph node',
 }
 
-export function EvidenceExplorer({
+export function EvidenceInspector({
   evidenceId,
+  onSelectEvidence,
 }: {
   evidenceId: string | null
+  onSelectEvidence?: (id: string) => void
 }) {
   const [tab, setTab] = useState<Tab>('sources')
   const focusId = evidenceId ?? EVIDENCE_PATH_IDS[0]
@@ -32,26 +34,6 @@ export function EvidenceExplorer({
 
   return (
     <div className="space-y-4">
-      <section
-        aria-label="Run context"
-        className="rounded-card border border-border bg-surface p-4"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-lg">Evidence Explorer</h2>
-            <p className="text-xs text-muted">
-              run {MOCK_RUN.runId} · “{MOCK_RUN.question}”
-            </p>
-          </div>
-          <a
-            href={hrefFor('lab', { run: MOCK_RUN.runId })}
-            className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
-          >
-            ← Back to Live Lab
-          </a>
-        </div>
-      </section>
-
       <div role="tablist" aria-label="Evidence views" className="flex gap-1">
         {(
           [
@@ -86,7 +68,10 @@ export function EvidenceExplorer({
               <li key={id}>
                 <button
                   type="button"
-                  onClick={() => setTab('provenance')}
+                  onClick={() => {
+                    onSelectEvidence?.(id)
+                    setTab('provenance')
+                  }}
                   aria-current={isFocus ? 'true' : undefined}
                   className={`h-full w-full rounded-card border p-4 text-left transition-colors duration-micro ${
                     isFocus
@@ -159,6 +144,43 @@ export function EvidenceExplorer({
           </p>
         </section>
       )}
+    </div>
+  )
+}
+
+export function EvidenceExplorer({
+  evidenceId,
+}: {
+  evidenceId: string | null
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(evidenceId)
+
+  return (
+    <div className="space-y-4">
+      <section
+        aria-label="Run context"
+        className="rounded-card border border-border bg-surface p-4"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg">Evidence Explorer</h2>
+            <p className="text-xs text-muted">
+              run {MOCK_RUN.runId} · “{MOCK_RUN.question}”
+            </p>
+          </div>
+          <a
+            href={hrefFor('lab', { run: MOCK_RUN.runId })}
+            className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+          >
+            ← Back to Live Lab
+          </a>
+        </div>
+      </section>
+
+      <EvidenceInspector
+        evidenceId={selectedId ?? evidenceId}
+        onSelectEvidence={setSelectedId}
+      />
     </div>
   )
 }

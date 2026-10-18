@@ -11,6 +11,7 @@ import { GraphPane } from '../components/graph-pane'
 import { RagPane } from '../components/rag-pane'
 import { ScoreStrip } from '../components/score-strip'
 import { Timeline } from '../components/timeline'
+import { EvidenceInspector } from './evidence-explorer'
 import { useSettings } from '../app/settings'
 import { hrefFor } from '../app/router'
 import { DEMO_QUESTIONS } from '../mock/content'
@@ -30,6 +31,7 @@ export function LiveLab() {
   const [question, setQuestion] = useState('')
   const [source, setSource] = useState<RunSource>('story')
   const [liveRun, setLiveRun] = useState<MockRun | null>(null)
+  const [drawerEvidenceId, setDrawerEvidenceId] = useState<string | null>(null)
   const [backendStatus, setBackendStatus] = useState<
     'idle' | 'loading' | 'error'
   >('idle')
@@ -207,7 +209,7 @@ export function LiveLab() {
           <RagPane
             state={ragState}
             onCitation={(citation) => {
-              window.location.hash = citationHref(citation.id)
+              setDrawerEvidenceId(citation.id)
             }}
           />
         </section>
@@ -218,7 +220,7 @@ export function LiveLab() {
           <GraphPane
             state={graphState}
             onCitation={(nodeId) => {
-              window.location.hash = citationHref(nodeId)
+              setDrawerEvidenceId(nodeId)
             }}
           />
         </section>
@@ -240,6 +242,54 @@ export function LiveLab() {
           generation model. Pane activity is driven by real execution telemetry
           events.
         </p>
+      )}
+
+      {drawerEvidenceId !== null && (
+        <div
+          className="fixed inset-0 z-30 flex justify-end bg-background/70"
+          onClick={() => setDrawerEvidenceId(null)}
+        >
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Evidence inspection drawer"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') setDrawerEvidenceId(null)
+            }}
+            className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-surface p-6 shadow-2xl"
+          >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <div>
+                <h2 className="text-lg font-semibold text-primary">
+                  Evidence Inspector
+                </h2>
+                <p className="text-xs text-muted">
+                  run {activeRun.runId} · citation {drawerEvidenceId}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={citationHref(drawerEvidenceId)}
+                  className="rounded-chip border border-border px-2.5 py-1 text-xs text-secondary transition-colors duration-micro hover:text-primary"
+                >
+                  Open full page ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setDrawerEvidenceId(null)}
+                  className="rounded-chip border border-border px-2.5 py-1 text-xs text-secondary transition-colors duration-micro hover:text-primary"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+            <EvidenceInspector
+              evidenceId={drawerEvidenceId}
+              onSelectEvidence={setDrawerEvidenceId}
+            />
+          </aside>
+        </div>
       )}
     </div>
   )

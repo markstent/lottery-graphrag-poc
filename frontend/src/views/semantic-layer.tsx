@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 
+import { hrefFor } from '../app/router'
 import { SEMANTIC_CONCEPTS, SEMANTIC_SOURCES } from '../mock/content'
 
 const ENTITY_MAPPINGS: Record<string, string[]> = {
@@ -142,10 +143,18 @@ export function SemanticLayer() {
           </li>
         </ol>
 
-        <p className="mt-4 text-sm text-secondary">
-          The graph is an additional semantic layer above existing data. It does
-          not replace the data layer.
-        </p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-secondary">
+            The graph is an additional semantic layer above existing data. It
+            does not replace the data layer.
+          </p>
+          <a
+            href={hrefFor('dictionary')}
+            className="rounded-chip border border-border px-3 py-1.5 text-xs text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-primary"
+          >
+            Inspect full schema in Data Dictionary →
+          </a>
+        </div>
       </section>
     </div>
   )

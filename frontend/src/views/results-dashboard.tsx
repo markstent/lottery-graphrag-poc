@@ -11,8 +11,18 @@
 import { useEffect, useState } from 'react'
 
 import { hrefFor } from '../app/router'
+import { Disclosure } from '../components/doc'
 import { BENCHMARK_RESULTS, type BenchmarkResults } from '../mock/content'
 import { fetchBenchmarkResults } from '../api/backend-run'
+
+const QUESTION_STATUSES = [
+  { id: 'Q-001', complexity: 'L1', status: 'ok' },
+  { id: 'Q-007', complexity: 'L3', status: 'ok' },
+  { id: 'Q-014', complexity: 'L5', status: 'error' },
+  { id: 'Q-021', complexity: 'L6', status: 'error' },
+  { id: 'Q-027', complexity: 'L4', status: 'ok' },
+  { id: 'Q-030', complexity: 'L2', status: 'ok' },
+] as const
 
 const CONFIGS = [
   'A · Current Approach',
@@ -292,6 +302,77 @@ export function ResultsDashboard() {
           )}
         </ul>
       </section>
+
+      <Disclosure
+        summary="Benchmark execution & question status log"
+        note={`${results.questions}/${results.questions} questions complete · sample status drill-in`}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center justify-between text-xs text-secondary">
+            <span>
+              Run {results.benchmarkRunId} · {results.questions}/
+              {results.questions} questions complete
+            </span>
+            <a
+              href={hrefFor('benchmark', {
+                benchmark_run_id: results.benchmarkRunId,
+              })}
+              className="text-graph hover:underline"
+            >
+              Open standalone runner ↗
+            </a>
+          </div>
+          <table className="w-full text-sm">
+            <caption className="sr-only">Benchmark question statuses</caption>
+            <thead>
+              <tr className="text-left text-xs text-muted">
+                <th scope="col" className="pb-1 font-normal">
+                  Question
+                </th>
+                <th scope="col" className="pb-1 font-normal">
+                  Complexity
+                </th>
+                <th scope="col" className="pb-1 font-normal">
+                  Status
+                </th>
+                <th scope="col" className="pb-1 font-normal">
+                  Replay
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {QUESTION_STATUSES.map((question) => (
+                <tr key={question.id} className="border-t border-border">
+                  <th
+                    scope="row"
+                    className="py-1.5 pr-3 font-normal text-secondary"
+                  >
+                    {question.id}
+                  </th>
+                  <td className="py-1.5 pr-3 text-muted">
+                    {question.complexity}
+                  </td>
+                  <td className="py-1.5 pr-3">
+                    {question.status === 'ok' ? (
+                      <span className="text-success">● ok</span>
+                    ) : (
+                      <span className="text-error">● error</span>
+                    )}
+                  </td>
+                  <td className="py-1.5">
+                    <a
+                      href={hrefFor('lab', { run: MOCK_RUN_ID })}
+                      className="text-xs text-graph hover:underline"
+                    >
+                      watch
+                    </a>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Disclosure>
     </div>
   )
 }

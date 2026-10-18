@@ -13,6 +13,7 @@
  * use collapsible disclosures so the page scans cleanly on load.
  */
 
+import { hrefFor } from '../app/router'
 import {
   Callout,
   Card,
@@ -664,6 +665,18 @@ export function DataDictionary() {
             />
           </div>
         </Disclosure>
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-ontology/40 bg-surface-raised p-3">
+          <p className="text-xs text-secondary">
+            Want to click through how warehouse tables, documents and telemetry
+            bind to these concepts step by step?
+          </p>
+          <a
+            href={hrefFor('semantic')}
+            className="rounded-chip border border-ontology/50 px-3 py-1 text-xs font-medium text-ontology transition-colors duration-micro hover:bg-ontology/15"
+          >
+            Open interactive Semantic Layer →
+          </a>
+        </div>
         <Callout title="Honest scope note">
           The ontology spec reserves further vocabulary (IS_A, EQUIVALENT_TO,
           CAUSES and others, docs/03 §5) that this POC does not populate. Only

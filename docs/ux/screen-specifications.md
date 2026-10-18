@@ -31,7 +31,7 @@ Phase 6 artefact (HITL-06): low-fidelity wireframes, layout hierarchy and requir
 
 ### 1.3 Completed
 
-- Answers above D: answer text, citations (click → Evidence Explorer), latency, context tokens per side; no score prejudice before evaluation completes.
+- Answers above D: answer text, citations (click opens an inline slide-over Evidence Inspector drawer in Live Lab with an "Open full page ↗" permalink to `#/evidence`), latency, context tokens per side; no score prejudice before evaluation completes.
 - E appears after `evaluation_completed`: correctness, evidence recall, grounding, latency, tokens; expanded: relationship discovery, cross-market discovery, ontology contribution (docs/06 section 10).
 - Replay control beside D restarts the stored event stream.
 
@@ -107,7 +107,7 @@ Blind mode: planted specifics hidden; configuration metadata only (docs/06 secti
 └────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Every chart has a table alternative (accessibility); failure rows deep-link to run replays.
+Every chart has a table alternative (accessibility); failure rows deep-link to run replays. Includes a collapsible "Benchmark execution & question status log" disclosure at the bottom so operators can inspect per-question execution statuses directly from Results without switching screens (while keeping `#/benchmark` available via "Open standalone runner ↗").
 
 ## 6a. Help (HITL-11 addition; SaaS polish 2026-10-18)
 
