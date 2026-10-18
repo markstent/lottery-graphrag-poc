@@ -226,7 +226,7 @@ class DrawRow(NamedTuple):
 
 class TicketRow(NamedTuple):
     ticket_id: str
-    player_id: str
+    player_id: str | None
     game_id: str
     market_id: str
     draw_id: str | None
@@ -290,7 +290,7 @@ class CampaignExposureRow(NamedTuple):
 
 class IncidentRow(NamedTuple):
     incident_id: str
-    market_id: str
+    market_id: str | None
     platform_id: str
     platform_version_id: str | None
     app_version_id: str | None
@@ -325,10 +325,10 @@ class KpiDailyRow(NamedTuple):
     date: date
     market_id: str
     game_id: str | None
-    channel_code: str
+    channel_code: str | None
     metric_code: str
     metric_value: float
-    currency_code: str
+    currency_code: str | None
 
 
 class ExperimentRow(NamedTuple):

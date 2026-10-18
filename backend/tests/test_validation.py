@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from decimal import Decimal
 
 import pytest
 from app.datasets.config import PROFILES, GenerationConfig
@@ -23,19 +22,7 @@ def test_tiny_world_passes_validation(tiny_world: World) -> None:
 def test_missing_parent_reference_is_reported(tiny_world: World) -> None:
     tables = {name: list(rows) for name, rows in tiny_world.tables.items()}
     broken = list(tables["tickets"])
-    broken[0] = (
-        "TKT_BROKEN",
-        None,
-        "GAME_MISSING",
-        "MKT_UK",
-        None,
-        None,
-        "WEB",
-        broken[0][7],
-        Decimal("2.50"),
-        "GBP",
-        "SETTLED",
-    )
+    broken[0] = broken[0]._replace(ticket_id="TKT_BROKEN", game_id="GAME_MISSING")
     tables["tickets"] = broken
     world = World(tiny_world.config, tables)
 
@@ -46,8 +33,7 @@ def test_missing_parent_reference_is_reported(tiny_world: World) -> None:
 def test_wrong_ticket_currency_is_reported(tiny_world: World) -> None:
     tables = {name: list(rows) for name, rows in tiny_world.tables.items()}
     broken = list(tables["tickets"])
-    row = broken[0]
-    broken[0] = (*row[:9], "USD", *row[10:])
+    broken[0] = broken[0]._replace(currency_code="USD")
     tables["tickets"] = broken
     world = World(tiny_world.config, tables)
 
@@ -57,21 +43,15 @@ def test_wrong_ticket_currency_is_reported(tiny_world: World) -> None:
 
 def test_pre_launch_ticket_is_reported(tiny_world: World) -> None:
     tables = {name: list(rows) for name, rows in tiny_world.tables.items()}
-    game_id = tables["games"][0][0]
-    launch = tables["games"][0][5]
+    game = tables["games"][0]
     broken = list(tables["tickets"])
-    broken[0] = (
-        "TKT_EARLY",
-        None,
-        game_id,
-        "MKT_UK",
-        None,
-        None,
-        "WEB",
-        datetime.combine(launch, datetime.min.time()) - timedelta(days=5),
-        Decimal("2.50"),
-        "GBP",
-        "SETTLED",
+    broken[0] = broken[0]._replace(
+        ticket_id="TKT_EARLY",
+        game_id=game.game_id,
+        market_id=game.market_id,
+        currency_code=game.currency_code,
+        purchase_timestamp=datetime.combine(game.launch_date, datetime.min.time())
+        - timedelta(days=5),
     )
     tables["tickets"] = broken
     world = World(tiny_world.config, tables)
@@ -104,3 +84,24 @@ def test_players_use_their_markets_segment_codes(tiny_world: World) -> None:
 def test_payment_methods_reference_known_providers(tiny_world: World) -> None:
     providers = {row.provider_id for row in tiny_world.tables["payment_providers"]}
     assert all(row.provider_id in providers for row in tiny_world.tables["payment_methods"])
+
+
+def test_incident_types_are_market_local_or_corporate(tiny_world: World) -> None:
+    for incident in tiny_world.tables["incidents"]:
+        expected_prefix = (
+            "ITYPE_CORP_" if incident.market_id is None else f"ITYPE_{incident.market_id[-2:]}_"
+        )
+        assert incident.incident_type.startswith(expected_prefix)
+
+
+def test_exposure_ids_do_not_collide_with_experiments(tiny_world: World) -> None:
+    assert all(
+        row.exposure_id.startswith("EXPO_") for row in tiny_world.tables["campaign_exposures"]
+    )
+
+
+def test_volume_targets_include_operational_volumes(tiny_world: World) -> None:
+    volumes = PROFILES["tiny"]
+    assert len(tiny_world.tables["incidents"]) == volumes.incidents
+    assert len(tiny_world.tables["campaigns"]) == volumes.campaigns_per_market * 4
+    assert len(tiny_world.tables["experiments"]) == volumes.experiments

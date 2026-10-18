@@ -12,33 +12,26 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from app.datasets.config import PROFILES, WINDOW_DAYS, WINDOW_START, GenerationConfig
-from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE, column_index
+from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE
 from app.datasets.world import World
 
 
-def _ids(rows: list[tuple[Any, ...]], column: int = 0) -> set[str]:
-    return {row[column] for row in rows if row[column] is not None}
-
-
-def _index(rows: list[tuple[Any, ...]], key_column: int) -> dict[str, tuple[Any, ...]]:
-    return {row[key_column]: row for row in rows if row[key_column] is not None}
-
-
-def _referential_errors(tables: dict[str, list[tuple[Any, ...]]]) -> list[str]:
+def _referential_errors(tables: dict[str, list[Any]]) -> list[str]:
     """Foreign-key integrity over nullable-aware relationships."""
     errors: list[str] = []
-    known_ids = {name: _ids(rows) for name, rows in tables.items()}
+    known_ids = {name: {row[0] for row in rows} for name, rows in tables.items()}
     for fk in FOREIGN_KEYS:
         child, parent = fk.child_table, fk.parent_table
-        child_col = column_index(child, fk.child_column)
         for row in tables[child]:
-            value = row[child_col]
+            value = getattr(row, fk.child_column)
             if value is None:
                 if not fk.nullable:
-                    errors.append(f"referential: {child}[{child_col}] is null but required")
+                    errors.append(f"referential: {child}.{fk.child_column} is null but required")
                 continue
             if value not in known_ids[parent]:
-                errors.append(f"referential: {child}[{child_col}]={value!r} missing from {parent}")
+                errors.append(
+                    f"referential: {child}.{fk.child_column}={value!r} missing from {parent}"
+                )
     return errors
 
 
@@ -56,97 +49,114 @@ def _segment_errors(tables: dict[str, list[Any]]) -> list[str]:
     return errors
 
 
-def _currency_errors(tables: dict[str, list[tuple[Any, ...]]]) -> list[str]:
+def _currency_errors(tables: dict[str, list[Any]]) -> list[str]:
     """Currency and market consistency across facts."""
     errors: list[str] = []
-    market_currency = {row[0]: row[3] for row in tables["markets"]}
-    game_market = {row[0]: row[1] for row in tables["games"]}
+    market_currency = {m.market_id: m.currency_code for m in tables["markets"]}
+    game_market = {g.game_id: g.market_id for g in tables["games"]}
 
-    for row in tables["games"]:
-        if row[9] != market_currency.get(row[1]):
-            errors.append(f"currency: game {row[0]} currency {row[9]} differs from market")
-    for row in tables["tickets"]:
-        expected = market_currency.get(row[3])
-        if row[9] != expected:
+    for game in tables["games"]:
+        if game.currency_code != market_currency.get(game.market_id):
             errors.append(
-                f"currency: ticket {row[0]} currency {row[9]} differs from market {expected}"
+                f"currency: game {game.game_id} currency {game.currency_code} differs from market"
             )
-        if row[3] != game_market.get(row[2]):
-            errors.append(f"market: ticket {row[0]} market differs from game market")
-    for row in tables["draws"]:
-        if game_market.get(row[1]) and row[4] != market_currency[game_market[row[1]]]:
-            errors.append(f"currency: draw {row[0]} currency differs from game market")
-    ticket_currency = {row[0]: row[9] for row in tables["tickets"]}
-    for row in tables["prizes"]:
-        if ticket_currency.get(row[1]) != row[4]:
-            errors.append(f"currency: prize {row[0]} currency differs from ticket")
-    for row in tables["campaigns"]:
-        if row[7] != market_currency.get(row[1]):
-            errors.append(f"currency: campaign {row[0]} currency differs from market")
-    player_market = {row[0]: row[1] for row in tables["players"]}
-    for row in tables["sessions"]:
-        if player_market.get(row[1]) != row[2]:
-            errors.append(f"market: session {row[0]} market differs from player market")
-    for row in tables["campaign_exposures"]:
-        campaign_market = next((c[1] for c in tables["campaigns"] if c[0] == row[1]), None)
-        if campaign_market and player_market.get(row[2]) != campaign_market:
-            errors.append(f"market: exposure {row[0]} player market differs from campaign market")
+    for ticket in tables["tickets"]:
+        expected = market_currency.get(ticket.market_id)
+        if ticket.currency_code != expected:
+            errors.append(
+                f"currency: ticket {ticket.ticket_id} currency {ticket.currency_code} "
+                f"differs from market {expected}"
+            )
+        if ticket.market_id != game_market.get(ticket.game_id):
+            errors.append(f"market: ticket {ticket.ticket_id} market differs from game market")
+    for draw in tables["draws"]:
+        market = game_market.get(draw.game_id)
+        if market and draw.currency_code != market_currency[market]:
+            errors.append(f"currency: draw {draw.draw_id} currency differs from game market")
+    ticket_currency = {t.ticket_id: t.currency_code for t in tables["tickets"]}
+    for prize in tables["prizes"]:
+        if ticket_currency.get(prize.ticket_id) != prize.currency_code:
+            errors.append(f"currency: prize {prize.prize_id} currency differs from ticket")
+    for campaign in tables["campaigns"]:
+        if campaign.currency_code != market_currency.get(campaign.market_id):
+            errors.append(f"currency: campaign {campaign.campaign_id} currency differs from market")
+    player_market = {p.player_id: p.market_id for p in tables["players"]}
+    for session in tables["sessions"]:
+        if player_market.get(session.player_id) != session.market_id:
+            errors.append(f"market: session {session.session_id} market differs from player market")
+    campaign_market = {c.campaign_id: c.market_id for c in tables["campaigns"]}
+    for exposure in tables["campaign_exposures"]:
+        market = campaign_market.get(exposure.campaign_id)
+        if market and player_market.get(exposure.player_id) != market:
+            errors.append(
+                f"market: exposure {exposure.exposure_id} player market differs "
+                "from campaign market"
+            )
     return errors
 
 
-def _time_errors(tables: dict[str, list[tuple[Any, ...]]], window_start: date) -> list[str]:
+# Timestamp column per table that must fall inside the generation window.
+_WINDOWED_TIMESTAMPS = (
+    ("tickets", "purchase_timestamp"),
+    ("sessions", "started_at"),
+    ("draws", "draw_timestamp"),
+    ("incidents", "started_at"),
+    ("support_cases", "opened_at"),
+    ("campaign_exposures", "exposed_at"),
+    ("documents", "created_at"),
+    ("experiments", "start_at"),
+)
+
+
+def _time_errors(tables: dict[str, list[Any]], window_start: date) -> list[str]:
     """Time-order consistency: no reversed causality, no pre-launch facts."""
     errors: list[str] = []
     window_lower = datetime.combine(window_start, time.min)
     window_upper = datetime.combine(window_start + timedelta(days=WINDOW_DAYS), time.min)
-    timestamp_columns = (
-        ("tickets", 7),
-        ("sessions", 5),
-        ("draws", 2),
-        ("incidents", 7),
-        ("support_cases", 5),
-        ("campaign_exposures", 4),
-        ("documents", 5),
-        ("experiments", 4),
-    )
-    for table, column in timestamp_columns:
+    for table, column in _WINDOWED_TIMESTAMPS:
         for row in tables[table]:
-            if not window_lower <= row[column] < window_upper:
+            if not window_lower <= getattr(row, column) < window_upper:
                 errors.append(f"time: {table} {row[0]} timestamp outside generation window")
-    launch = {row[0]: row[5] for row in tables["games"]}
-    for row in tables["tickets"]:
-        if row[7].date() < launch.get(row[2], window_start):
-            errors.append(f"time: ticket {row[0]} precedes game launch")
-    for row in tables["draws"]:
-        if row[2].date() < launch.get(row[1], window_start):
-            errors.append(f"time: draw {row[0]} precedes game launch")
-    for row in tables["sessions"]:
-        if row[6] <= row[5]:
-            errors.append(f"time: session {row[0]} ends before it starts")
-    registration = {row[0]: row[4] for row in tables["players"]}
-    for row in tables["accounts"]:
-        if row[2].date() < registration.get(row[1], window_start):
-            errors.append(f"time: account {row[0]} created before player registration")
-    for row in tables["incidents"]:
-        if row[8] is not None and row[8] < row[7]:
-            errors.append(f"time: incident {row[0]} resolved before start")
-        if row[3]:
-            version = next((v for v in tables["platform_versions"] if v[0] == row[3]), None)
-            if version and row[7] < version[3]:
-                errors.append(f"time: incident {row[0]} started before platform version release")
-    incident_start = {row[0]: row[7] for row in tables["incidents"]}
-    for row in tables["support_cases"]:
-        if row[6] is not None and row[6] < row[5]:
-            errors.append(f"time: support case {row[0]} closed before open")
-        if row[4] and row[5] < incident_start.get(row[4], window_start):
-            errors.append(f"time: support case {row[0]} opened before linked incident")
-    campaign_window = {row[0]: (row[4], row[5]) for row in tables["campaigns"]}
-    for row in tables["campaign_exposures"]:
-        start, end = campaign_window[row[1]]
-        if not start <= row[4] <= end:
-            errors.append(f"time: exposure {row[0]} outside campaign window")
-        if row[7] is not None and row[7] < row[4]:
-            errors.append(f"time: exposure {row[0]} converted before exposure")
+    launch = {g.game_id: g.launch_date for g in tables["games"]}
+    for ticket in tables["tickets"]:
+        if ticket.purchase_timestamp.date() < launch.get(ticket.game_id, window_start):
+            errors.append(f"time: ticket {ticket.ticket_id} precedes game launch")
+    for draw in tables["draws"]:
+        if draw.draw_timestamp.date() < launch.get(draw.game_id, window_start):
+            errors.append(f"time: draw {draw.draw_id} precedes game launch")
+    for session in tables["sessions"]:
+        if session.ended_at is not None and session.ended_at <= session.started_at:
+            errors.append(f"time: session {session.session_id} ends before it starts")
+    registration = {p.player_id: p.registration_date for p in tables["players"]}
+    for account in tables["accounts"]:
+        if account.created_at.date() < registration.get(account.player_id, window_start):
+            errors.append(f"time: account {account.account_id} created before player registration")
+    release = {v.platform_version_id: v.released_at for v in tables["platform_versions"]}
+    for incident in tables["incidents"]:
+        if incident.resolved_at is not None and incident.resolved_at < incident.started_at:
+            errors.append(f"time: incident {incident.incident_id} resolved before start")
+        released = (
+            release.get(incident.platform_version_id) if incident.platform_version_id else None
+        )
+        if released and incident.started_at < released:
+            errors.append(
+                f"time: incident {incident.incident_id} started before platform version release"
+            )
+    incident_start = {i.incident_id: i.started_at for i in tables["incidents"]}
+    for case in tables["support_cases"]:
+        if case.closed_at is not None and case.closed_at < case.opened_at:
+            errors.append(f"time: support case {case.support_case_id} closed before open")
+        if case.incident_id and case.opened_at < incident_start.get(case.incident_id, window_lower):
+            errors.append(
+                f"time: support case {case.support_case_id} opened before linked incident"
+            )
+    campaign_window = {c.campaign_id: (c.start_at, c.end_at) for c in tables["campaigns"]}
+    for exposure in tables["campaign_exposures"]:
+        start, end = campaign_window[exposure.campaign_id]
+        if not start <= exposure.exposed_at <= end:
+            errors.append(f"time: exposure {exposure.exposure_id} outside campaign window")
+        if exposure.converted_at is not None and exposure.converted_at < exposure.exposed_at:
+            errors.append(f"time: exposure {exposure.exposure_id} converted before exposure")
     return errors
 
 

@@ -16,6 +16,7 @@ from typing import Any
 from app.datasets import activity, documents, entities, marketing, operations
 from app.datasets.config import GENERATOR_VERSION, PROFILES, GenerationConfig
 from app.datasets.rng import stream
+from app.datasets.rows import AppVersionRow, DocumentChunkRow, DocumentRow
 from app.datasets.schema import TABLE_PROVENANCE, TABLE_SCHEMAS
 from app.datasets.util import split_columns
 
@@ -25,7 +26,7 @@ _TABLE_ORDER = list(TABLE_SCHEMAS)
 class World:
     """One generated world: rows per table plus the reproducibility manifest."""
 
-    def __init__(self, config: GenerationConfig, tables: dict[str, list[tuple[Any, ...]]]) -> None:
+    def __init__(self, config: GenerationConfig, tables: dict[str, list[Any]]) -> None:
         self.config = config
         self.tables = tables
         self.generated_at = datetime.now(UTC)
@@ -83,9 +84,9 @@ def build_world(config: GenerationConfig) -> World:
     """
     started = time.perf_counter()
     volumes = PROFILES[config.profile]
-    tables: dict[str, list[tuple[Any, ...]]] = {}
+    tables: dict[str, list[Any]] = {}
 
-    def _stage(label: str, rows: dict[str, list[tuple[Any, ...]]]) -> None:
+    def _stage(label: str, rows: dict[str, list[Any]]) -> None:
         count = sum(len(values) for values in rows.values())
         print(
             f"[generate] {config.profile} {label}: {count} rows "
@@ -125,7 +126,11 @@ def build_world(config: GenerationConfig) -> World:
     _stage("tickets + prizes", {"tickets": tickets, "prizes": prizes})
 
     rng_campaigns = stream(config.world_seed, "campaigns")
-    tables.update(marketing.generate_campaigns(rng_campaigns, tables["games"]))
+    tables.update(
+        marketing.generate_campaigns(
+            rng_campaigns, tables["games"], per_market=volumes.campaigns_per_market
+        )
+    )
 
     rng_exposures = stream(config.world_seed, "exposures")
     tables["campaign_exposures"] = marketing.generate_exposures(
@@ -144,7 +149,7 @@ def build_world(config: GenerationConfig) -> World:
         tables["platform_versions"],
         tables["app_versions"],
         tables["games"],
-        total=25,
+        total=volumes.incidents,
     )
     tables["incidents"] = incidents
     tables["incident_game_map"] = incident_games
@@ -154,16 +159,16 @@ def build_world(config: GenerationConfig) -> World:
         rng_support, tables["players"], tables["games"], incidents, volumes.support_cases
     )
     tables["experiments"] = operations.generate_experiments(
-        stream(config.world_seed, "experiments")
+        stream(config.world_seed, "experiments"), total=volumes.experiments
     )
 
     rng_sessions = stream(config.world_seed, "sessions")
     devices_by_player: dict[str, list[str]] = {}
-    for player_id, device_id, *_ in tables["player_device"]:
-        devices_by_player.setdefault(player_id, []).append(device_id)
-    app_versions_by_market: dict[str, list[tuple[Any, ...]]] = {}
+    for link in tables["player_device"]:
+        devices_by_player.setdefault(link.player_id, []).append(link.device_id)
+    app_versions_by_market: dict[str, list[AppVersionRow]] = {}
     for version in tables["app_versions"]:
-        app_versions_by_market.setdefault(version[1], []).append(version)
+        app_versions_by_market.setdefault(version.market_id, []).append(version)
     tables["sessions"] = activity.generate_sessions(
         rng_sessions,
         tables["players"],
@@ -178,15 +183,16 @@ def build_world(config: GenerationConfig) -> World:
         rng_documents,
         volumes.documents,
         tables["games"],
-        incidents,
+        tables["incidents"],
         tables["campaigns"],
         tables["app_versions"],
         tables["experiments"],
     )
-    tables["documents"] = docs
-    tables["document_chunks"] = chunks
+    # Documents move to named rows with their generator; wrap until then.
+    tables["documents"] = [DocumentRow(*doc) for doc in docs]
+    tables["document_chunks"] = [DocumentChunkRow(*chunk) for chunk in chunks]
 
-    market_currency = {row[0]: row[3] for row in tables["markets"]}
+    market_currency = {row.market_id: row.currency_code for row in tables["markets"]}
     tables["kpi_daily"] = activity.generate_kpi_daily(
         tickets,
         tables["sessions"],

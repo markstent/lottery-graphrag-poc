@@ -18,6 +18,8 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from app.datasets.config import WINDOW_START
+from app.datasets.rows import ROW_TYPES, KpiDailyRow
+from app.datasets.taxonomies import incident_type_for, support_category_for
 from app.datasets.util import chunk_text, word_count
 from app.datasets.world import World
 from app.scenarios.catalogue import ScenarioSpec
@@ -69,7 +71,8 @@ class ScenarioPlanter:
         self.planted_rows: dict[str, int] = {}
 
     def add(self, table: str, rows: list[tuple[Any, ...]]) -> None:
-        self.tables[table].extend(rows)
+        # Planted rows are built positionally until the scenario rewrite; type them here.
+        self.tables[table].extend(ROW_TYPES[table](*row) for row in rows)
         self.planted_rows[table] = self.planted_rows.get(table, 0) + len(rows)
 
     def players_in(self, market_id: str, count: int) -> list[tuple[Any, ...]]:
@@ -234,7 +237,7 @@ def plant_cross_market_platform_incident(plan: ScenarioPlanter) -> None:
                 "PLT_PAYMENTS",
                 version[0],
                 None,
-                "INC_PAYMENTS",
+                incident_type_for(market, "PAYMENT"),
                 severity,
                 started,
                 resolved,
@@ -263,7 +266,7 @@ def plant_cross_market_platform_incident(plan: ScenarioPlanter) -> None:
                     incident_id,
                     opened,
                     opened + timedelta(hours=2 + plan.rng.randrange(48)),
-                    "SUP_PAYMENT",
+                    support_category_for(market, "PAYMENT"),
                     round(-0.9 + plan.rng.random() * 0.3, 2),
                     f"Payment failing at checkout since {started.date().isoformat()}.",
                 )
@@ -381,29 +384,16 @@ def plant_cross_market_platform_incident(plan: ScenarioPlanter) -> None:
 
     # Reporting degradation for the most affected market (derived KPI layer).
     dip_days = {(base + timedelta(days=offset)).date() for offset in range(5)}
-    kpi_rows = plan.tables["kpi_daily"]
-    adjusted: list[tuple[Any, ...]] = []
-    for row in kpi_rows:
-        if row[1] == "MKT_GR" and row[0] in dip_days:
-            if row[4] == "session_completion":
-                row = (
-                    row[0],
-                    row[1],
-                    row[2],
-                    row[3],
-                    row[4],
-                    round(row[5] * (1 - 0.4 * plan.spec.strength), 6),
-                    row[6],
+    adjusted: list[KpiDailyRow] = []
+    for row in plan.tables["kpi_daily"]:
+        if row.market_id == "MKT_GR" and row.date in dip_days:
+            if row.metric_code == "session_completion":
+                row = row._replace(
+                    metric_value=round(row.metric_value * (1 - 0.4 * plan.spec.strength), 6)
                 )
-            elif row[4] == "payment_failure_rate":
-                row = (
-                    row[0],
-                    row[1],
-                    row[2],
-                    row[3],
-                    row[4],
-                    min(0.95, row[5] + 0.3 * plan.spec.strength),
-                    row[6],
+            elif row.metric_code == "payment_failure_rate":
+                row = row._replace(
+                    metric_value=min(0.95, row.metric_value + 0.3 * plan.spec.strength)
                 )
         adjusted.append(row)
     plan.tables["kpi_daily"] = adjusted

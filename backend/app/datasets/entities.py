@@ -33,16 +33,21 @@ from app.datasets.master_data import (
 from app.datasets.rows import (
     AccountRow,
     AppVersionRow,
+    ChannelRow,
+    CurrencyRow,
     DeviceRow,
     GameMechanicMapRow,
     GameRow,
+    LanguageRow,
     PaymentMethodRow,
     PlatformRow,
     PlatformVersionRow,
     PlayerDeviceRow,
     PlayerPaymentMethodRow,
     PlayerRow,
+    RegionRow,
     RetailerRow,
+    SupplierRow,
 )
 from app.datasets.taxonomies import (
     GAME_CATEGORIES,
@@ -74,11 +79,20 @@ def generate_master_rows() -> dict[str, list[tuple[Any, ...]]]:
     """Fixed master tables (no randomness)."""
     return {
         "markets": list(MARKETS),
-        "regions": list(REGIONS),
-        "currencies": [("GBP", "Pound sterling"), ("EUR", "Euro"), ("CZK", "Czech koruna")],
-        "languages": [("en", "English"), ("el", "Greek"), ("de", "German"), ("cs", "Czech")],
-        "channels": list(CHANNELS),
-        "suppliers": list(SUPPLIERS),
+        "regions": [RegionRow(*region) for region in REGIONS],
+        "currencies": [
+            CurrencyRow("GBP", "Pound sterling"),
+            CurrencyRow("EUR", "Euro"),
+            CurrencyRow("CZK", "Czech koruna"),
+        ],
+        "languages": [
+            LanguageRow("en", "English"),
+            LanguageRow("el", "Greek"),
+            LanguageRow("de", "German"),
+            LanguageRow("cs", "Czech"),
+        ],
+        "channels": [ChannelRow(*channel) for channel in CHANNELS],
+        "suppliers": [SupplierRow(*supplier) for supplier in SUPPLIERS],
         "game_families": list(GAME_FAMILIES),
         "game_categories": list(GAME_CATEGORIES),
         "game_mechanics": list(GAME_MECHANICS),
