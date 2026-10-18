@@ -41,10 +41,13 @@ NODE_LABELS: tuple[str, ...] = (
     "Player",
     "Device",
     "PaymentMethod",
+    "PaymentProvider",
     "Campaign",
     "Experiment",
     "Incident",
+    "IncidentType",
     "SupportCase",
+    "SupportCategory",
     "Document",
     "DocumentChunk",
     "BusinessConcept",
@@ -56,6 +59,7 @@ RELATIONSHIP_TYPES: tuple[str, ...] = (
     "AVAILABLE_IN",
     "AVAILABLE_VIA",
     "BELONGS_TO",
+    "CATEGORISED_AS",
     "CONCERNS",
     "DEPLOYED_TO",
     "EXPOSED_TO",
@@ -64,9 +68,12 @@ RELATIONSHIP_TYPES: tuple[str, ...] = (
     "HAS_DRAW",
     "HAS_MECHANIC",
     "INSTANCE_OF",
+    "IS_A",
     "MAPS_TO",
+    "OF_TYPE",
     "PLAYS",
     "PROMOTES",
+    "PROVIDED_BY",
     "REFERENCES",
     "RELATED_TO",
     "RELATED_TO_VERSION",
@@ -78,6 +85,10 @@ RELATIONSHIP_TYPES: tuple[str, ...] = (
     "USES_PAYMENT",
     "VERSION_OF",
 )
+
+# Edges that exist only because of the enterprise ontology. Configuration B
+# (graph relationships) excludes them; configuration C adds them.
+ONTOLOGY_RELATIONSHIP_TYPES: tuple[str, ...] = ("MAPS_TO", "SIMILAR_TO", "IS_A")
 
 # Document references point at several target labels; one statement each.
 DOCUMENT_REFERENCE_LABELS: tuple[str, ...] = (
@@ -97,6 +108,11 @@ _SCHEMA_STATEMENTS: tuple[str, ...] = (
     "CREATE INDEX market_code IF NOT EXISTS FOR (n:Market) ON (n.market_code);",
     "CREATE INDEX game_name IF NOT EXISTS FOR (n:Game) ON (n.name);",
     "CREATE INDEX concept_type IF NOT EXISTS FOR (n:BusinessConcept) ON (n.concept_type);",
+    "CREATE INDEX concept_parent IF NOT EXISTS FOR (n:BusinessConcept) ON (n.parent_id);",
+    *(
+        f"CREATE INDEX {label.lower()}_market IF NOT EXISTS FOR (n:{label}) ON (n.market_id);"
+        for label in ("IncidentType", "SupportCategory", "PlayerSegment")
+    ),
     *(
         f"CREATE INDEX {label.lower()}_src IF NOT EXISTS FOR (n:{label}) ON (n.source_record_id);"
         for label in ("Game", "Player", "Document", "Incident")
@@ -122,16 +138,49 @@ SET r += row.props
 
 def node_statement(label: str) -> str:
     """MERGE statement for one node label."""
-    if label not in NODE_LABELS:
-        raise KeyError(f"unknown node label: {label}")
+    _require_label(label)
     return _NODE_STATEMENT.format(label=label)
 
 
 def relationship_statement(rel_type: str, label_a: str, label_b: str) -> str:
     """MERGE statement for one relationship type between two fixed labels."""
+    _require_relationship_type(rel_type)
+    return _RELATIONSHIP_STATEMENT.format(rel_type=rel_type, label_a=label_a, label_b=label_b)
+
+
+_LABEL_COUNT_STATEMENT = "MATCH (n:{label}) RETURN count(n) AS count"
+_RELATIONSHIP_COUNT_STATEMENT = (
+    "MATCH (:{label_a})-[r:{rel_type}]->(:{label_b}) RETURN count(r) AS count"
+)
+
+
+def _require_label(label: str) -> None:
+    if label not in NODE_LABELS:
+        raise KeyError(f"unknown node label: {label}")
+
+
+def _require_relationship_type(rel_type: str) -> None:
     if rel_type not in RELATIONSHIP_TYPES:
         raise KeyError(f"unknown relationship type: {rel_type}")
-    return _RELATIONSHIP_STATEMENT.format(rel_type=rel_type, label_a=label_a, label_b=label_b)
+
+
+def label_count_statement(label: str) -> str:
+    """Node count for one registered label.
+
+    Schema statistics are one statement per label (and per relationship
+    triple below): Community Edition without APOC cannot count dynamic labels
+    in a single statement.
+    """
+    _require_label(label)
+    return _LABEL_COUNT_STATEMENT.format(label=label)
+
+
+def relationship_count_statement(rel_type: str, label_a: str, label_b: str) -> str:
+    """Relationship count for one registered type between two registered labels."""
+    _require_relationship_type(rel_type)
+    _require_label(label_a)
+    _require_label(label_b)
+    return _RELATIONSHIP_COUNT_STATEMENT.format(rel_type=rel_type, label_a=label_a, label_b=label_b)
 
 
 def schema_statements() -> list[str]:
@@ -182,10 +231,45 @@ RETURN labels(n)[0] AS node_label, properties(n) AS props
 
 RETRIEVAL_CONCEPTS = """
 MATCH (c:BusinessConcept)
-RETURN c.id AS id, c.canonical_name AS canonical_name, c.description AS description
+RETURN c.id AS id,
+       c.canonical_name AS canonical_name,
+       c.label_en AS labels_en,
+       c.label_el AS labels_el,
+       c.label_de AS labels_de,
+       c.label_cs AS labels_cs,
+       c.synonyms AS synonyms,
+       c.parent_id AS parent_id
+ORDER BY id
 """
 
 RETRIEVAL_MARKETS = """
 MATCH (m:Market)
 RETURN m.id AS id, m.name AS name, m.market_code AS market_code
+ORDER BY id
+"""
+
+# ------------------------------------------------------------ ontology reads
+
+ONTOLOGY_TREE = """
+MATCH (c:BusinessConcept)
+RETURN c.id AS id,
+       c.parent_id AS parent_id,
+       c.concept_type AS concept_type,
+       c.canonical_name AS canonical_name,
+       c.label_en AS label_en,
+       c.label_el AS label_el,
+       c.label_de AS label_de,
+       c.label_cs AS label_cs,
+       c.synonyms AS synonyms,
+       c.definition AS definition
+ORDER BY id
+"""
+
+ONTOLOGY_BINDING_COUNTS = """
+MATCH (e)-[:MAPS_TO]->(c:BusinessConcept)
+RETURN c.id AS concept_id,
+       labels(e)[0] AS entity_label,
+       e.market_id AS market_id,
+       count(e) AS count
+ORDER BY concept_id, entity_label, market_id
 """

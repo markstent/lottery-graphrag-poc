@@ -3,6 +3,8 @@
 No I/O here: every function maps source rows (dicts) to graph rows so the
 mappings are unit-testable and the derivation methods stay explicit
 (docs/02-graph-schema-spec.md section 7, docs/03-ontology-spec.md section 6).
+Every concept, binding and similarity edge is derived from the ontology
+(``app.ontology``); this module holds no concept maps of its own.
 """
 
 from __future__ import annotations
@@ -12,39 +14,8 @@ from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
 
-# ------------------------------------------------------------ ontology maps
-# Canonical concepts are the BusinessConcept master rows generated with the
-# dataset (docs/03-ontology-spec.md layer B/C subset, version 1).
-ONTOLOGY_VERSION = "1.0.0"
-
-FAMILY_TO_CONCEPT: dict[str, str] = {
-    "FAM_NATIONAL_DRAW": "CONCEPT_NATIONAL_DRAW",
-    "FAM_ANNUITY": "CONCEPT_NATIONAL_DRAW",
-    "FAM_FIXED_PRIZE": "CONCEPT_NATIONAL_DRAW",
-    "FAM_MULTINATIONAL_JACKPOT": "CONCEPT_MULTINATIONAL_JACKPOT",
-    "FAM_HIGH_FREQUENCY": "CONCEPT_HIGH_FREQUENCY_GAME",
-    "FAM_INSTANT_WIN": "CONCEPT_INSTANT_PRODUCT",
-    "FAM_DIGITAL_INSTANT": "CONCEPT_INSTANT_PRODUCT",
-    "FAM_ADD_ON": "CONCEPT_ADD_ON_PRODUCT",
-}
-
-MECHANIC_TO_CONCEPT: dict[str, str] = {
-    "MECH_PROGRESSIVE_JACKPOT": "CONCEPT_PROGRESSIVE_JACKPOT",
-}
-
-SEGMENT_TO_CONCEPT = "CONCEPT_PLAYER_SEGMENT"
-CHANNEL_TO_CONCEPT: dict[str, str] = {
-    "RETAIL": "CONCEPT_RETAIL_CHANNEL",
-    "APP": "CONCEPT_DIGITAL_CHANNEL",
-    "WEB": "CONCEPT_DIGITAL_CHANNEL",
-}
-INCIDENT_TYPE_TO_CONCEPT: dict[str, str] = {
-    "INC_PAYMENTS": "CONCEPT_PLATFORM_INCIDENT",
-    "INC_APP_STABILITY": "CONCEPT_PLATFORM_INCIDENT",
-    "INC_DRAW_DELAY": "CONCEPT_PLATFORM_INCIDENT",
-    "INC_LOGIN": "CONCEPT_PLATFORM_INCIDENT",
-    "INC_RETAIL_TERMINAL": "CONCEPT_PLATFORM_INCIDENT",
-}
+from app.ontology.model import LANGUAGES, Ontology
+from app.ontology.similarity import GameConcepts, cross_market_similar
 
 # Labels a document reference may point at (one REFERENCES statement each).
 DOCUMENT_REFERENCE_LABELS: tuple[str, ...] = (
@@ -55,22 +26,8 @@ DOCUMENT_REFERENCE_LABELS: tuple[str, ...] = (
     "Experiment",
 )
 
-CONCEPT_CANONICAL_NAMES: dict[str, str] = {
-    "CONCEPT_NATIONAL_DRAW": "National Draw",
-    "CONCEPT_MULTINATIONAL_JACKPOT": "Multinational Jackpot",
-    "CONCEPT_HIGH_FREQUENCY_GAME": "High Frequency Game",
-    "CONCEPT_INSTANT_PRODUCT": "Instant Product",
-    "CONCEPT_ADD_ON_PRODUCT": "Add-on Product",
-    "CONCEPT_PROGRESSIVE_JACKPOT": "Progressive Jackpot",
-    "CONCEPT_PLAYER_SEGMENT": "Player Segment",
-    "CONCEPT_RETAIL_CHANNEL": "Retail Channel",
-    "CONCEPT_DIGITAL_CHANNEL": "Digital Channel",
-    "CONCEPT_PLATFORM_INCIDENT": "Platform Incident",
-}
-
 METHOD_CATALOG_FLAGS = "catalog_flags_v1"
 METHOD_OPERATIONAL_DEPENDENCY = "operational_dependency_v1"
-METHOD_SIMILARITY = "ontology_family_mechanics_v1"
 METHOD_TICKET_AGGREGATE = "ticket_aggregate_v1"
 METHOD_EXPOSURE_AGGREGATE = "exposure_aggregate_v1"
 METHOD_ENGAGEMENT_TARGETING = "exposure_engagement_v1"
@@ -86,7 +43,6 @@ DIGITAL_PLATFORMS = (
 )
 RETAIL_PLATFORMS = ("PLT_RETAIL", "PLT_DRAW")
 
-_SIMILAR_TOP_K = 3
 _DOCUMENT_REFERENCE_LIMIT = 5
 
 _REFERENCE_PATTERN = re.compile(r"\b(GAME|INC|CMP|APPV|EXP)_[A-Z0-9_]+[A-Z0-9]")
@@ -117,48 +73,6 @@ def game_runs_on(game: dict[str, Any]) -> list[str]:
     if game["retail_enabled"]:
         platforms.extend(RETAIL_PLATFORMS)
     return sorted(set(platforms))
-
-
-def similarity_score(
-    game_a: dict[str, Any], game_b: dict[str, Any], mechanics: dict[str, set[str]]
-) -> float:
-    """Structural similarity in [0, 1]: family 0.4, category 0.2, mechanics 0.4."""
-    family = 0.4 if game_a["game_family_id"] == game_b["game_family_id"] else 0.0
-    category = 0.2 if game_a["game_category_code"] == game_b["game_category_code"] else 0.0
-    set_a = mechanics.get(game_a["game_id"], set())
-    set_b = mechanics.get(game_b["game_id"], set())
-    union = set_a | set_b
-    mechanic = 0.4 * (len(set_a & set_b) / len(union) if union else 0.0)
-    return round(family + category + mechanic, 3)
-
-
-def cross_market_similar_games(
-    games: list[dict[str, Any]], mechanics: dict[str, set[str]], top_k: int = _SIMILAR_TOP_K
-) -> list[dict[str, Any]]:
-    """Top-k SIMILAR_TO edges per game across markets, deterministically ordered.
-
-    Rows follow the ingestion contract: ``a_id``/``b_id`` endpoints plus a
-    ``props`` map for relationship properties.
-    """
-    edges: list[dict[str, Any]] = []
-    for game in games:
-        candidates = (
-            (other, similarity_score(game, other, mechanics))
-            for other in games
-            if other["market_id"] != game["market_id"]
-        )
-        ranked = sorted(candidates, key=lambda pair: (-pair[1], pair[0]["game_id"]))
-        for other, score in ranked[:top_k]:
-            if score <= 0.0:
-                continue
-            edges.append(
-                {
-                    "a_id": game["game_id"],
-                    "b_id": other["game_id"],
-                    "props": {"score": score, "method": METHOD_SIMILARITY},
-                }
-            )
-    return edges
 
 
 def campaign_target_segments(
@@ -278,3 +192,107 @@ def mechanics_by_game(mechanic_map: list[dict[str, Any]]) -> dict[str, set[str]]
 def ingestion_version_now() -> str:
     """Timestamped ingestion version for one ingestion run."""
     return datetime.now(UTC).strftime("ing-%Y%m%dT%H%M%SZ")
+
+
+# ------------------------------------------------------------ ontology rows
+ONTOLOGY_SOURCE_SYSTEM = "ontology"
+ONTOLOGY_SOURCE_TABLE = "ontology.yaml"
+
+
+def _bound_concept(ontology: Ontology, kind: str, code: str) -> str:
+    concept_id = ontology.concept_for(kind, code)
+    if concept_id is None:
+        raise KeyError(f"no ontology binding for {kind} {code}")
+    return concept_id
+
+
+def game_concepts(game: dict[str, Any], mechanics: set[str], ontology: Ontology) -> GameConcepts:
+    """A game expressed in ontology concepts via its family, category and mechanic bindings."""
+    return GameConcepts(
+        game_id=game["game_id"],
+        market_id=game["market_id"],
+        family_concept=_bound_concept(ontology, "family", game["game_family_id"]),
+        category_concept=_bound_concept(ontology, "category", game["game_category_code"]),
+        mechanic_concepts=frozenset(
+            _bound_concept(ontology, "mechanic", mechanic) for mechanic in mechanics
+        ),
+    )
+
+
+def concept_node_rows(ontology: Ontology) -> list[dict[str, Any]]:
+    """One BusinessConcept node row per concept, in ontology source order.
+
+    Root concepts carry no ``parent_id`` key (None values are never stored).
+    """
+    rows: list[dict[str, Any]] = []
+    for concept in ontology.concepts:
+        row: dict[str, Any] = {
+            "id": concept.concept_id,
+            "canonical_name": concept.labels["en"],
+            "concept_type": concept.concept_type,
+            "definition": concept.definition,
+            **{f"label_{lang}": concept.labels[lang] for lang in LANGUAGES},
+            "synonyms": sorted(
+                f"{lang}:{text}" for lang, texts in concept.synonyms.items() for text in texts
+            ),
+            "ontology_version": ontology.version,
+            "source_system": ONTOLOGY_SOURCE_SYSTEM,
+            "source_table": ONTOLOGY_SOURCE_TABLE,
+            "source_record_id": concept.concept_id,
+        }
+        if concept.parent_id is not None:
+            row["parent_id"] = concept.parent_id
+        rows.append(row)
+    return rows
+
+
+def is_a_rows(ontology: Ontology) -> list[dict[str, Any]]:
+    """IS_A edges from every non-root concept to its parent."""
+    return [
+        {
+            "a_id": concept.concept_id,
+            "b_id": concept.parent_id,
+            "props": {"ontology_version": ontology.version},
+        }
+        for concept in ontology.concepts
+        if concept.parent_id is not None
+    ]
+
+
+def maps_to_rows(ontology: Ontology, kind: str, label: str) -> list[dict[str, Any]]:
+    """MAPS_TO edges from every bound local code of one kind to its concept.
+
+    ``label`` is the source node label the caller pairs with these rows in its
+    relationship key; the rows themselves only carry endpoint ids.
+    """
+    return [
+        {
+            "a_id": binding.code,
+            "b_id": binding.concept_id,
+            "props": {"ontology_version": ontology.version},
+        }
+        for binding in ontology.bindings
+        if binding.kind == kind
+    ]
+
+
+def similar_to_rows(
+    games: list[dict[str, Any]], mechanic_map: list[dict[str, Any]], ontology: Ontology
+) -> list[dict[str, Any]]:
+    """Cross-market SIMILAR_TO edges scored on ontology concepts."""
+    mechanics = mechanics_by_game(mechanic_map)
+    concepts = [
+        game_concepts(game, mechanics.get(game["game_id"], set()), ontology) for game in games
+    ]
+    return [
+        {
+            "a_id": edge.a_id,
+            "b_id": edge.b_id,
+            "props": {
+                "score": edge.score,
+                "method": edge.method,
+                "ontology_version": ontology.version,
+            },
+        }
+        for edge in cross_market_similar(concepts)
+    ]

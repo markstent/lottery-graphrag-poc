@@ -60,3 +60,88 @@ def test_example_queries_are_bounded(name: str) -> None:
     query = statements.example_query(name)
     assert "$limit" in query
     assert "LIMIT $limit" in query
+
+
+def test_v2_labels_and_relationship_types_are_registered() -> None:
+    for label in ("IncidentType", "SupportCategory", "PaymentProvider"):
+        assert label in statements.NODE_LABELS
+    for rel_type in ("IS_A", "OF_TYPE", "CATEGORISED_AS", "PROVIDED_BY"):
+        assert rel_type in statements.RELATIONSHIP_TYPES
+    assert len(set(statements.NODE_LABELS)) == len(statements.NODE_LABELS) == 29
+    assert len(set(statements.RELATIONSHIP_TYPES)) == len(statements.RELATIONSHIP_TYPES) == 30
+
+
+def test_ontology_relationship_types_are_declared() -> None:
+    assert statements.ONTOLOGY_RELATIONSHIP_TYPES == ("MAPS_TO", "SIMILAR_TO", "IS_A")
+    assert set(statements.ONTOLOGY_RELATIONSHIP_TYPES) <= set(statements.RELATIONSHIP_TYPES)
+
+
+def test_label_count_statement_is_registry_bound() -> None:
+    assert "MATCH (n:IncidentType)" in statements.label_count_statement("IncidentType")
+    with pytest.raises(KeyError):
+        statements.label_count_statement("NotALabel")
+
+
+def test_relationship_count_statement_is_registry_bound() -> None:
+    query = statements.relationship_count_statement("OF_TYPE", "Incident", "IncidentType")
+    assert "MATCH (:Incident)-[r:OF_TYPE]->(:IncidentType)" in query
+    with pytest.raises(KeyError):
+        statements.relationship_count_statement("NOT_A_REL", "Incident", "IncidentType")
+    with pytest.raises(KeyError):
+        statements.relationship_count_statement("OF_TYPE", "NotALabel", "IncidentType")
+
+
+def test_retrieval_concepts_return_multilingual_columns_in_order() -> None:
+    query = statements.RETRIEVAL_CONCEPTS
+    for column in (
+        "AS id",
+        "AS canonical_name",
+        "AS labels_en",
+        "AS labels_el",
+        "AS labels_de",
+        "AS labels_cs",
+        "AS synonyms",
+        "AS parent_id",
+    ):
+        assert column in query
+    assert "ORDER BY id" in query
+    assert "ORDER BY id" in statements.RETRIEVAL_MARKETS
+
+
+def test_ontology_read_queries_are_ordered() -> None:
+    assert "ORDER BY id" in statements.ONTOLOGY_TREE
+    assert "[:MAPS_TO]" in statements.ONTOLOGY_BINDING_COUNTS
+    assert "ORDER BY" in statements.ONTOLOGY_BINDING_COUNTS
+
+
+def test_schema_statements_index_new_labels() -> None:
+    joined = "\n".join(statements.schema_statements())
+    for label in ("IncidentType", "SupportCategory", "PaymentProvider"):
+        assert f"FOR (n:{label}) REQUIRE n.id IS UNIQUE" in joined
+    assert "FOR (n:BusinessConcept) ON (n.parent_id)" in joined
+
+
+def test_graph_schema_yaml_matches_registries() -> None:
+    import yaml
+    from app.datasets.config import REPO_ROOT
+
+    schema = yaml.safe_load((REPO_ROOT / "schemas/graph/graph-schema.yaml").read_text("utf-8"))
+    assert schema["schema_version"] == "2.0.0"
+    assert set(schema["node_types"]) == set(statements.NODE_LABELS)
+    assert set(schema["relationship_types"]) == set(statements.RELATIONSHIP_TYPES)
+    assert tuple(schema["ontology_relationship_types"]) == statements.ONTOLOGY_RELATIONSHIP_TYPES
+    for removed in ("Rule", "PREFERS", "DESCRIBES", "DEFINES", "ABOUT", "EQUIVALENT_TO"):
+        assert removed not in schema["node_types"] + schema["relationship_types"]
+
+
+@pytest.mark.parametrize(
+    "name", ["multilingual_concept_lookup", "ontology_assisted_product_lookup"]
+)
+def test_example_queries_do_not_use_removed_game_concept_edge(name: str) -> None:
+    assert "INSTANCE_OF]->(concept" not in statements.example_query(name)
+
+
+def test_example_incident_transfer_goes_through_incident_type() -> None:
+    query = statements.example_query("cross_market_incident_transfer")
+    assert "[:OF_TYPE]" in query
+    assert "(incident)-[:MAPS_TO]" not in query

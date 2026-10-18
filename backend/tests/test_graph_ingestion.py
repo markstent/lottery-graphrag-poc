@@ -20,6 +20,7 @@ from app.graph import statements
 from app.graph.config import GraphConfig
 from app.graph.ingest import build_node_rows, ingest
 from app.graph.reader import load_dataset
+from app.ontology.loader import load_ontology
 from neo4j import GraphDatabase
 
 CONNECT_TIMEOUT_SECONDS = 15.0
@@ -88,7 +89,7 @@ def test_node_counts_match_source(
     ingested: None, graph_config: GraphConfig, tiny_dataset: Path
 ) -> None:
     tables = load_dataset(tiny_dataset)
-    expected = build_node_rows(tables)
+    expected = build_node_rows(tables, load_ontology())
 
     for label, rows in expected.items():
         count = _query(graph_config, f"MATCH (n:{label}) RETURN count(n) AS c")[0]["c"]
@@ -126,7 +127,7 @@ def test_ontology_bindings_link_games_to_concepts(
 ) -> None:
     rows = _query(
         graph_config,
-        "MATCH (g:Game)-[:INSTANCE_OF]->(c:BusinessConcept) "
+        "MATCH (g:Game)-[:BELONGS_TO]->(:GameFamily)-[:MAPS_TO]->(c:BusinessConcept) "
         "RETURN g.id AS game, c.id AS concept ORDER BY game LIMIT 1",
     )
     assert rows, "no game-to-concept bindings ingested"

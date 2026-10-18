@@ -1,13 +1,15 @@
 // Example 2: cross-market incident transfer THROUGH the ontology.
-// Plain graph relationships contain no Incident-to-Incident edges, so this
-// path only exists via MAPS_TO canonical concepts. This is the canonical
-// demonstration of ontology value beyond plain graph relationships.
+// Plain graph relationships contain no Incident-to-Incident edges, and each
+// market files incidents under its own local incident types. The path only
+// exists because local incident types bind (MAPS_TO) to one canonical
+// concept. This is the canonical demonstration of ontology value beyond
+// plain graph relationships.
 // Traversal class 4 (ontology-assisted), bounded by LIMIT.
 // Parameter: $incident_id (string), $limit (integer)
 
 MATCH (incident:Incident {id: $incident_id})
-MATCH (incident)-[:MAPS_TO]->(concept:BusinessConcept)
-MATCH (peer:Incident)-[:MAPS_TO]->(concept)
+MATCH (incident)-[:OF_TYPE]->(:IncidentType)-[:MAPS_TO]->(concept:BusinessConcept)
+MATCH (peer:Incident)-[:OF_TYPE]->(:IncidentType)-[:MAPS_TO]->(concept)
 WHERE peer.id <> incident.id
   AND (peer.market_id IS NULL OR incident.market_id IS NULL OR peer.market_id <> incident.market_id)
 OPTIONAL MATCH (peer)-[:AFFECTS]->(affected:Game)

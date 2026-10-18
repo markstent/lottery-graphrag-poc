@@ -4,76 +4,123 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from app.datasets.master_data import GAME_SPECS
+import pytest
+from app.datasets.config import GenerationConfig
+from app.datasets.world import World, build_world
 from app.graph import mapping
+from app.ontology.loader import load_ontology
+from app.ontology.model import BINDING_KINDS, Ontology
+from app.ontology.similarity import METHOD
+
+BINDING_LABELS: dict[str, str] = {
+    "family": "GameFamily",
+    "category": "GameCategory",
+    "mechanic": "GameMechanic",
+    "incident_type": "IncidentType",
+    "support_category": "SupportCategory",
+    "segment": "PlayerSegment",
+    "channel": "Channel",
+}
 
 
-def _game(
-    game_id: str, market: str, family: str, category: str, mechanics: tuple[str, ...]
-) -> dict:
-    return {
-        "game_id": game_id,
-        "market_id": f"MKT_{market}",
-        "game_family_id": family,
-        "game_category_code": category,
+@pytest.fixture(scope="module")
+def onto() -> Ontology:
+    return load_ontology()
+
+
+@pytest.fixture(scope="module")
+def tiny_world() -> World:
+    return build_world(GenerationConfig(profile="tiny", world_seed=42))
+
+
+def test_concept_rows_carry_four_labels_and_parent(onto: Ontology) -> None:
+    rows = {r["id"]: r for r in mapping.concept_node_rows(onto)}
+    row = rows["CONCEPT_PAYMENT_INCIDENT"]
+    assert row["parent_id"] == "CONCEPT_PLATFORM_INCIDENT"
+    assert all(row[f"label_{lang}"] for lang in ("en", "el", "de", "cs"))
+    assert row["canonical_name"] == row["label_en"]
+    assert row["ontology_version"] == "2.0.0"
+    assert row["source_system"] == "ontology"
+    assert row["source_table"] == "ontology.yaml"
+    assert row["source_record_id"] == "CONCEPT_PAYMENT_INCIDENT"
+
+
+def test_concept_rows_cover_every_concept_with_prefixed_sorted_synonyms(onto: Ontology) -> None:
+    rows = mapping.concept_node_rows(onto)
+    assert [r["id"] for r in rows] == [c.concept_id for c in onto.concepts]
+    row = next(r for r in rows if r["id"] == "CONCEPT_PAYMENT_INCIDENT")
+    assert row["synonyms"] == sorted(row["synonyms"])
+    assert "el:αποτυχία πληρωμής" in row["synonyms"]
+    assert {s.split(":", 1)[0] for s in row["synonyms"]} == {"en", "el", "de", "cs"}
+
+
+def test_root_concept_rows_omit_parent(onto: Ontology) -> None:
+    rows = {r["id"]: r for r in mapping.concept_node_rows(onto)}
+    for root in onto.roots():
+        assert "parent_id" not in rows[root.concept_id]
+
+
+def test_is_a_rows_link_every_non_root_to_its_parent(onto: Ontology) -> None:
+    rows = mapping.is_a_rows(onto)
+    expected = {(c.concept_id, c.parent_id) for c in onto.concepts if c.parent_id is not None}
+    assert {(r["a_id"], r["b_id"]) for r in rows} == expected
+    assert len(rows) == len(expected)
+    assert all(r["props"] == {"ontology_version": onto.version} for r in rows)
+
+
+def test_maps_to_rows_cover_every_binding_kind(onto: Ontology) -> None:
+    assert set(BINDING_LABELS) == BINDING_KINDS
+    total = sum(
+        len(mapping.maps_to_rows(onto, kind, label)) for kind, label in BINDING_LABELS.items()
+    )
+    assert total == len(onto.bindings)
+
+
+def test_maps_to_rows_point_codes_at_bound_concepts(onto: Ontology) -> None:
+    rows = mapping.maps_to_rows(onto, "incident_type", "IncidentType")
+    assert rows
+    for row in rows:
+        assert onto.concept_for("incident_type", row["a_id"]) == row["b_id"]
+        assert row["props"] == {"ontology_version": onto.version}
+
+
+def test_game_concepts_resolve_through_bindings(onto: Ontology) -> None:
+    game = {
+        "game_id": "GAME_UK_01",
+        "market_id": "MKT_UK",
+        "game_family_id": "FAM_UK_NATIONAL_DRAW",
+        "game_category_code": "CAT_UK_DRAW",
     }
+    concepts = mapping.game_concepts(game, {"MECH_UK_NUMBER_MATCH"}, onto)
+    assert concepts.family_concept == onto.concept_for("family", "FAM_UK_NATIONAL_DRAW")
+    assert concepts.category_concept == onto.concept_for("category", "CAT_UK_DRAW")
+    assert concepts.mechanic_concepts == {onto.concept_for("mechanic", "MECH_UK_NUMBER_MATCH")}
 
 
-def test_every_game_family_maps_to_a_concept() -> None:
-    families = {spec.family_id for spec in GAME_SPECS}
-    assert families <= set(mapping.FAMILY_TO_CONCEPT)
-
-
-def test_every_incident_type_maps_to_a_concept() -> None:
-    assert set(mapping.INCIDENT_TYPE_TO_CONCEPT) == {
-        "INC_PAYMENTS",
-        "INC_APP_STABILITY",
-        "INC_DRAW_DELAY",
-        "INC_LOGIN",
-        "INC_RETAIL_TERMINAL",
+def test_game_concepts_reject_unbound_codes(onto: Ontology) -> None:
+    game = {
+        "game_id": "GAME_X",
+        "market_id": "MKT_UK",
+        "game_family_id": "FAM_NOT_BOUND",
+        "game_category_code": "CAT_UK_DRAW",
     }
+    with pytest.raises(KeyError, match="FAM_NOT_BOUND"):
+        mapping.game_concepts(game, set(), onto)
 
 
-def test_instant_families_share_one_canonical_concept() -> None:
-    """Ontology value: two product families unify under one concept."""
-    assert (
-        mapping.FAMILY_TO_CONCEPT["FAM_INSTANT_WIN"]
-        == mapping.FAMILY_TO_CONCEPT["FAM_DIGITAL_INSTANT"]
-        == "CONCEPT_INSTANT_PRODUCT"
+def test_similar_to_is_ontology_derived_and_cross_market(tiny_world: World, onto: Ontology) -> None:
+    rows = mapping.similar_to_rows(
+        [g._asdict() for g in tiny_world.tables["games"]],
+        [m._asdict() for m in tiny_world.tables["game_mechanic_map"]],
+        onto,
     )
-
-
-def test_similarity_score_bounds_and_determinism() -> None:
-    mechanics = {"G1": {"MECH_A", "MECH_B"}, "G2": {"MECH_A"}, "G3": set()}
-    a = _game("G1", "UK", "FAM_NATIONAL_DRAW", "CAT_DRAW", ("MECH_A",))
-    b = _game("G2", "GR", "FAM_NATIONAL_DRAW", "CAT_DRAW", ("MECH_A",))
-    c = _game("G3", "AT", "FAM_INSTANT_WIN", "CAT_INSTANT", ())
-
-    assert mapping.similarity_score(a, b, mechanics) == 0.8
-    assert mapping.similarity_score(a, c, mechanics) == 0.0
-    assert 0.0 <= mapping.similarity_score(a, c, mechanics) <= 1.0
-
-
-def test_cross_market_similarity_excludes_same_market_and_is_bounded() -> None:
-    games = [
-        _game("G1", "UK", "FAM_NATIONAL_DRAW", "CAT_DRAW", ("M1",)),
-        _game("G2", "UK", "FAM_NATIONAL_DRAW", "CAT_DRAW", ("M1",)),
-        _game("G3", "GR", "FAM_NATIONAL_DRAW", "CAT_DRAW", ("M1",)),
-        _game("G4", "AT", "FAM_ANNUITY", "CAT_DRAW", ("M1",)),
-    ]
-    edges = mapping.cross_market_similar_games(
-        games, {"G1": {"M1"}, "G2": {"M1"}, "G3": {"M1"}, "G4": {"M1"}}
-    )
-
-    assert all(edge["a_id"] != edge["b_id"] for edge in edges)
-    assert all(
-        next(g for g in games if g["game_id"] == edge["a_id"])["market_id"]
-        != next(g for g in games if g["game_id"] == edge["b_id"])["market_id"]
-        for edge in edges
-    )
-    per_game = [edge for edge in edges if edge["a_id"] == "G1"]
-    assert len(per_game) <= 3
-    assert all(edge["props"]["method"] == "ontology_family_mechanics_v1" for edge in edges)
+    assert rows and all(r["props"]["method"] == METHOD == "ontology_similarity_v2" for r in rows)
+    assert all(r["props"]["ontology_version"] == onto.version for r in rows)
+    assert all(0.0 < r["props"]["score"] <= 1.0 for r in rows)
+    market = {g.game_id: g.market_id for g in tiny_world.tables["games"]}
+    assert all(market[r["a_id"]] != market[r["b_id"]] for r in rows)
+    keys = [(r["a_id"], -r["props"]["score"], r["b_id"]) for r in rows]
+    assert keys == sorted(keys)
 
 
 def test_campaign_target_segment_derivation() -> None:

@@ -23,11 +23,21 @@ from app.datasets.taxonomies import PLAYER_SEGMENTS
 from app.graph import mapping, statements
 from app.graph.config import LABEL_VERSION, GraphConfig
 from app.graph.reader import load_dataset
+from app.ontology.loader import load_ontology
+from app.ontology.model import Ontology
 
 BATCH_SIZE = 2_000
 WIPE_STATEMENT = "MATCH (n) DETACH DELETE n"
 
 RelationshipKey = tuple[str, str, str]  # (rel_type, label_a, label_b)
+
+_INGESTED_BINDING_LABELS: dict[str, str] = {
+    "family": "GameFamily",
+    "category": "GameCategory",
+    "mechanic": "GameMechanic",
+    "segment": "PlayerSegment",
+    "channel": "Channel",
+}
 
 
 @dataclass(slots=True)
@@ -74,8 +84,10 @@ def _clean(props: dict[str, Any]) -> dict[str, Any]:
     return {key: _f(value) for key, value in props.items() if value is not None}
 
 
-def build_node_rows(tables: dict[str, list[dict[str, Any]]]) -> dict[str, list[dict[str, Any]]]:
-    """Map source tables to graph node rows keyed by node label."""
+def build_node_rows(
+    tables: dict[str, list[dict[str, Any]]], ontology: Ontology
+) -> dict[str, list[dict[str, Any]]]:
+    """Map source tables and the ontology to graph node rows keyed by node label."""
     nodes: dict[str, list[dict[str, Any]]] = {}
 
     def add(label: str, table: str, record_id: Any, props: dict[str, Any]) -> None:
@@ -403,26 +415,13 @@ def build_node_rows(tables: dict[str, list[dict[str, Any]]]) -> dict[str, list[d
                 "token_count": row["token_count"],
             },
         )
-    for row in tables["business_concepts"]:
-        concept_id = row["concept_id"]
-        add(
-            "BusinessConcept",
-            "business_concepts",
-            concept_id,
-            {
-                "id": concept_id,
-                "canonical_name": mapping.CONCEPT_CANONICAL_NAMES[concept_id],
-                "concept_type": row["concept_type"],
-                "description": row["description"],
-                "ontology_version": LABEL_VERSION,
-            },
-        )
+    nodes["BusinessConcept"] = mapping.concept_node_rows(ontology)
 
     return nodes
 
 
 def build_relationship_rows(
-    tables: dict[str, list[dict[str, Any]]],
+    tables: dict[str, list[dict[str, Any]]], ontology: Ontology
 ) -> dict[RelationshipKey, list[dict[str, Any]]]:
     """Map source tables and derived aggregates to relationship rows."""
     rels: dict[RelationshipKey, list[dict[str, Any]]] = {}
@@ -444,14 +443,6 @@ def build_relationship_rows(
             [
                 *(rels.get(("BELONGS_TO", "Game", "GameFamily"), [])),
                 {"a_id": row["game_id"], "b_id": row["game_family_id"], "props": {}},
-            ],
-        )
-        concept = mapping.FAMILY_TO_CONCEPT[row["game_family_id"]]
-        put(
-            ("INSTANCE_OF", "Game", "BusinessConcept"),
-            [
-                *(rels.get(("INSTANCE_OF", "Game", "BusinessConcept"), [])),
-                {"a_id": row["game_id"], "b_id": concept, "props": {}},
             ],
         )
         put(
@@ -505,17 +496,7 @@ def build_relationship_rows(
             for row in mechanic_map
         ],
     )
-    put(
-        ("MAPS_TO", "GameMechanic", "BusinessConcept"),
-        [
-            {"a_id": mechanic_id, "b_id": mapping.MECHANIC_TO_CONCEPT[mechanic_id], "props": {}}
-            for mechanic_id in sorted(mapping.MECHANIC_TO_CONCEPT)
-        ],
-    )
-    put(
-        ("SIMILAR_TO", "Game", "Game"),
-        mapping.cross_market_similar_games(games, mapping.mechanics_by_game(mechanic_map)),
-    )
+    put(("SIMILAR_TO", "Game", "Game"), mapping.similar_to_rows(games, mechanic_map, ontology))
     put(
         ("HAS_DRAW", "Game", "Draw"),
         [{"a_id": row["game_id"], "b_id": row["draw_id"], "props": {}} for row in tables["draws"]],
@@ -646,17 +627,6 @@ def build_relationship_rows(
                     {"a_id": row["incident_id"], "b_id": row["market_id"], "props": {}},
                 ],
             )
-        put(
-            ("MAPS_TO", "Incident", "BusinessConcept"),
-            [
-                *(rels.get(("MAPS_TO", "Incident", "BusinessConcept"), [])),
-                {
-                    "a_id": row["incident_id"],
-                    "b_id": mapping.INCIDENT_TYPE_TO_CONCEPT[row["incident_type"]],
-                    "props": {},
-                },
-            ],
-        )
     put(
         ("AFFECTS", "Incident", "Game"),
         [
@@ -729,20 +699,11 @@ def build_relationship_rows(
         if rows:
             put(("REFERENCES", "Document", label), rows)
 
-    put(
-        ("MAPS_TO", "PlayerSegment", "BusinessConcept"),
-        [
-            {"a_id": segment_id, "b_id": mapping.SEGMENT_TO_CONCEPT, "props": {}}
-            for segment_id in sorted({row.segment_id for row in PLAYER_SEGMENTS})
-        ],
-    )
-    put(
-        ("MAPS_TO", "Channel", "BusinessConcept"),
-        [
-            {"a_id": channel, "b_id": concept, "props": {}}
-            for channel, concept in sorted(mapping.CHANNEL_TO_CONCEPT.items())
-        ],
-    )
+    put(("IS_A", "BusinessConcept", "BusinessConcept"), mapping.is_a_rows(ontology))
+    # Binding kinds whose source labels are ingested today; incident types and
+    # support categories gain nodes (and their MAPS_TO edges) in ingestion v2.
+    for kind, label in _INGESTED_BINDING_LABELS.items():
+        put(("MAPS_TO", label, "BusinessConcept"), mapping.maps_to_rows(ontology, kind, label))
 
     return {key: rows for key, rows in rels.items() if rows}
 
@@ -796,8 +757,9 @@ def ingest(
 ) -> IngestStats:
     """Ingest one dataset into Neo4j. Safe to re-run for the same dataset."""
     tables = load_dataset(dataset_dir)
-    nodes = build_node_rows(tables)
-    rels = build_relationship_rows(tables)
+    ontology = load_ontology()
+    nodes = build_node_rows(tables, ontology)
+    rels = build_relationship_rows(tables, ontology)
     version = ingestion_version or mapping.ingestion_version_now()
     stats = IngestStats(ingestion_version=version)
 

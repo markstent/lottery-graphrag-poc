@@ -95,14 +95,27 @@ class GraphReader:
         records = self._driver.execute_query(
             statements.RETRIEVAL_CONCEPTS, {}, database_=self._database
         ).records
+        # The resolver's keyword text is the concept's other-language labels
+        # plus its synonyms (stripped of their "<lang>:" prefix).
         return [
             (
                 str(record["id"]),
                 str(record["canonical_name"] or ""),
-                str(record["description"] or ""),
+                " ".join(
+                    [
+                        *(str(record[f"labels_{lang}"] or "") for lang in ("el", "de", "cs")),
+                        *(_synonym_text(str(entry)) for entry in record["synonyms"] or []),
+                    ]
+                ),
             )
             for record in records
         ]
+
+
+def _synonym_text(entry: str) -> str:
+    """Synonym text without its "<lang>:" prefix."""
+    _lang, _sep, text = entry.partition(":")
+    return text
 
 
 def build_resolver(reader: GraphReader) -> DictionaryEntityResolver:
