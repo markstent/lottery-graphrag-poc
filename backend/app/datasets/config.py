@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
-GENERATOR_VERSION = "0.1.0"
+GENERATOR_VERSION = "0.2.0"
 
 # Repository layout anchors data at the repository root (ADR-006), independent
 # of the process working directory.
@@ -38,16 +38,32 @@ class ProfileVolumes:
     support_cases: int
     documents: int
     games_expected: int
+    incidents: int
+    campaigns_per_market: int
+    experiments: int
 
 
 # The game catalogue is canonical master data (5 families x 4 markets), so
 # every profile expects 20 games; scaling a profile grows activity volume,
 # never the catalogue. Demo scaling is approved (HITL-03); stress stays gated.
-TINY = ProfileVolumes(200, 2_000, 800, 800, 40, 240, 60, 24, 20)
-DEV = ProfileVolumes(10_000, 250_000, 100_000, 100_000, 500, 12_000, 2_000, 250, 20)
-DEMO = ProfileVolumes(100_000, 5_000_000, 2_000_000, 3_000_000, 5_000, 120_000, 50_000, 2_000, 20)
+TINY = ProfileVolumes(200, 2_000, 800, 800, 40, 240, 60, 24, 20, 25, 3, 6)
+DEV = ProfileVolumes(10_000, 250_000, 100_000, 100_000, 500, 12_000, 2_000, 250, 20, 40, 4, 8)
+DEMO = ProfileVolumes(
+    100_000, 5_000_000, 2_000_000, 3_000_000, 5_000, 120_000, 50_000, 2_000, 20, 120, 6, 12
+)
 STRESS = ProfileVolumes(
-    1_000_000, 50_000_000, 20_000_000, 30_000_000, 20_000, 1_000_000, 500_000, 10_000, 20
+    1_000_000,
+    50_000_000,
+    20_000_000,
+    30_000_000,
+    20_000,
+    1_000_000,
+    500_000,
+    10_000,
+    20,
+    400,
+    8,
+    16,
 )
 
 PROFILES: dict[str, ProfileVolumes] = {

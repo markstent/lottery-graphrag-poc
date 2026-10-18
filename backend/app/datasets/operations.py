@@ -7,7 +7,7 @@ from datetime import datetime, time, timedelta
 from typing import Any
 
 from app.datasets.config import WINDOW_DAYS, WINDOW_START
-from app.datasets.master_data import MARKET_SPLIT
+from app.datasets.distributions import MARKET_SPLIT
 
 _SEVERITIES = (("LOW", 0.40), ("MEDIUM", 0.35), ("HIGH", 0.20), ("CRITICAL", 0.05))
 

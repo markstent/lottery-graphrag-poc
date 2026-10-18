@@ -10,8 +10,6 @@ from dataclasses import dataclass
 
 # ---------------------------------------------------------------- markets ---
 
-MARKET_SPLIT: dict[str, float] = {"UK": 0.32, "GR": 0.28, "AT": 0.22, "CZ": 0.18}
-
 MARKET_CURRENCY: dict[str, str] = {"UK": "GBP", "GR": "EUR", "AT": "EUR", "CZ": "CZK"}
 
 MARKETS: list[tuple[str, str, str, str, str, str, float, float]] = [

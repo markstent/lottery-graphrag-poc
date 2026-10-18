@@ -7,6 +7,7 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from app.datasets.config import WINDOW_START
+from app.datasets.distributions import MARKET_DEVICE_SHARE, MARKET_RETAIL_SHARE, MARKET_SPLIT
 from app.datasets.master_data import (
     CHANNELS,
     GAME_CATEGORIES,
@@ -14,15 +15,11 @@ from app.datasets.master_data import (
     GAME_MECHANICS,
     GAME_SPECS,
     MARKET_CURRENCY,
-    MARKET_SPLIT,
     PLATFORMS,
     REGIONS,
     SUPPLIERS,
 )
 from app.datasets.util import money
-
-_MARKET_RETAIL_SHARE: dict[str, float] = {"UK": 0.30, "GR": 0.26, "AT": 0.24, "CZ": 0.20}
-_MARKET_DEVICE_SHARE: dict[str, float] = {"UK": 0.32, "GR": 0.27, "AT": 0.22, "CZ": 0.19}
 
 
 def _split(total: int, shares: dict[str, float]) -> dict[str, int]:
@@ -103,7 +100,7 @@ def generate_games() -> dict[str, list[tuple[Any, ...]]]:
 def generate_retailers(rng: random.Random, total: int) -> list[tuple[Any, ...]]:
     """Synthetic retail network, split across markets and regions."""
     rows: list[tuple[Any, ...]] = []
-    counts = _split(total, _MARKET_RETAIL_SHARE)
+    counts = _split(total, MARKET_RETAIL_SHARE)
     index = 0
     for code in ("UK", "GR", "AT", "CZ"):
         market_regions = [r[0] for r in REGIONS if r[1] == f"MKT_{code}"]
@@ -173,7 +170,7 @@ def generate_players_and_devices(
 
     value_weights = [0.10, 0.55, 0.35]
     engagement_weights = [0.30, 0.45, 0.25]
-    device_counts = _split(devices_total, _MARKET_DEVICE_SHARE)
+    device_counts = _split(devices_total, MARKET_DEVICE_SHARE)
     player_counts = _split(players_total, MARKET_SPLIT)
     shared_payment_pool = [f"PAY_SHARED_{i:03d}" for i in range(80)]
     device_families = ("IOS", "ANDROID", "WEB")

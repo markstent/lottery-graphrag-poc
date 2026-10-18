@@ -38,3 +38,17 @@ def test_different_seed_changes_activity(world_config: GenerationConfig) -> None
     # Master data is fixed and must not drift between worlds.
     assert first.tables["markets"] == second.tables["markets"]
     assert first.tables["games"] == second.tables["games"]
+
+
+def test_profiles_scale_operational_volumes() -> None:
+    from app.datasets.config import DEMO, DEV, TINY
+
+    assert (TINY.incidents, TINY.campaigns_per_market, TINY.experiments) == (25, 3, 6)
+    assert DEV.incidents > TINY.incidents
+    assert DEMO.incidents > DEV.incidents
+
+
+def test_generator_version_is_v2() -> None:
+    from app.datasets.config import GENERATOR_VERSION
+
+    assert GENERATOR_VERSION == "0.2.0"
