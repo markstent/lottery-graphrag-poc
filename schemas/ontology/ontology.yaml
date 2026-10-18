@@ -1,63 +1,399 @@
-ontology_version: 0.1-draft
+# Enterprise ontology v2: the single source for cross-market concepts.
+# Concepts form a hierarchy with labels and synonyms in en, el, de and cs.
+# Bindings map each market-local reference code (backend/app/datasets/taxonomies.py
+# and the shared channel codes) to exactly one concept. `market: null` marks
+# corporate incident types and channels, which are shared by every market.
+ontology_version: "2.0.0"
+created_at: "2026-10-18"
+change_summary: "v2: hierarchy, four-language labels, synonyms, market-local bindings"
+
 concepts:
-- id: LotteryProduct
-  parent: BusinessObject
-- id: DrawGame
-  parent: LotteryProduct
-- id: NationalDrawGame
-  parent: DrawGame
-- id: MultinationalDrawGame
-  parent: DrawGame
-- id: HighFrequencyGame
-  parent: LotteryProduct
-- id: InstantGame
-  parent: LotteryProduct
-- id: DigitalInstantGame
-  parent: InstantGame
-- id: AddOnGame
-  parent: LotteryProduct
-- id: GameMechanic
-  parent: BusinessConcept
-- id: NumberSelection
-  parent: GameMechanic
-- id: Jackpot
-  parent: GameMechanic
-- id: Rollover
-  parent: GameMechanic
-- id: Multiplier
-  parent: GameMechanic
-- id: InstantReveal
-  parent: GameMechanic
-- id: Incident
-  parent: BusinessEvent
-- id: PaymentIncident
-  parent: Incident
-- id: ApplicationIncident
-  parent: Incident
-- id: PlatformIncident
-  parent: Incident
-- id: Campaign
-  parent: BusinessEvent
-- id: PlayerSegment
-  parent: BusinessActor
-- id: Platform
-  parent: BusinessCapability
-relationships:
-- INSTANCE_OF
-- IS_A
-- HAS_MECHANIC
-- HAS_PRIZE_TYPE
-- AVAILABLE_VIA
-- OPERATES_IN
-- RUNS_ON
-- DEPENDS_ON
-- PROMOTES
-- TARGETS
-- AFFECTS
-- CAUSES
-- CORRELATES_WITH
-- RELATED_TO
-- MAPS_TO
-- EQUIVALENT_TO
-- SUPPORTED_BY
-- MEASURED_BY
+  # Products
+  - id: CONCEPT_LOTTERY_PRODUCT
+    parent: null
+    type: Product
+    labels: {en: Lottery product, el: Λαχειοφόρο προϊόν, de: Lotterieprodukt, cs: Loterijní produkt}
+    synonyms: {en: [lottery game], el: [παιχνίδι λαχείου], de: [Lotteriespiel], cs: [loterijní hra]}
+    definition: Any product sold by the operator whose outcome is decided by chance.
+  - id: CONCEPT_DRAW_GAME
+    parent: CONCEPT_LOTTERY_PRODUCT
+    type: Product
+    labels: {en: Draw game, el: Παιχνίδι κλήρωσης, de: Ziehungsspiel, cs: Losovaná hra}
+    synonyms: {en: [Draw games, draw-based game], el: [Κληρώσεις, κλήρωση], de: [Ziehungsspiele, Ziehung], cs: [Losované hry, losování]}
+    definition: A lottery product whose winners are determined by a scheduled draw.
+  - id: CONCEPT_NATIONAL_DRAW
+    parent: CONCEPT_DRAW_GAME
+    type: Product
+    labels: {en: National Draw, el: Αριθμολαχείο, de: Zahlenlotto, cs: Číselná loterie}
+    synonyms: {en: [national lottery, main draw], el: [εθνική κλήρωση, κύρια κλήρωση], de: [nationale Ziehung, Lotto], cs: [národní loterie, hlavní losování]}
+    definition: The flagship number draw run by a single market for its own players.
+  - id: CONCEPT_MULTINATIONAL_JACKPOT
+    parent: CONCEPT_DRAW_GAME
+    type: Product
+    labels: {en: Multinational jackpot, el: Πολυεθνικό Τζάκποτ, de: Länderübergreifender Jackpot, cs: Mezinárodní jackpot}
+    synonyms: {en: [cross-border jackpot, international jackpot draw], el: [διεθνές τζάκποτ], de: [internationaler Jackpot], cs: [nadnárodní jackpot]}
+    definition: A draw game whose jackpot pool is shared by several markets.
+  - id: CONCEPT_ANNUITY_DRAW
+    parent: CONCEPT_DRAW_GAME
+    type: Product
+    labels: {en: Annuity Draw, el: Κλήρωση με μηνιαίο εισόδημα, de: Rentenziehung, cs: Rentová loterie}
+    synonyms: {en: [annuity lottery, monthly income prize], el: [κλήρωση πρόσοδου], de: [Rentenlotterie, Monatsrente], cs: [loterie s měsíční rentou]}
+    definition: A draw game whose top prize is paid out as a regular income over many years.
+  - id: CONCEPT_FIXED_PRIZE_DRAW
+    parent: CONCEPT_DRAW_GAME
+    type: Product
+    labels: {en: Fixed prize draw, el: Κλήρωση σταθερού επάθλου, de: Ziehung mit Fixgewinn, cs: Losování s pevnou výhrou}
+    synonyms: {en: [Fixed Prize Raffle, raffle], el: [λαχειοφόρος αγορά], de: [Tombola, Fixgewinnlotterie], cs: [tombola]}
+    definition: A draw game with prize amounts fixed in advance rather than pooled.
+  - id: CONCEPT_HIGH_FREQUENCY_GAME
+    parent: CONCEPT_LOTTERY_PRODUCT
+    type: Product
+    labels: {en: High-frequency game, el: Παιχνίδι συχνών κληρώσεων, de: Schnellziehung, cs: Rychlá čísla}
+    synonyms: {en: [Rapid Numbers, Number games, fast draw], el: [Συχνές Κληρώσεις, Αριθμοπαιχνίδια, γρήγορη κλήρωση], de: [Zahlenspiele, Schnelllotto], cs: [Číselné hry, rychlé losování]}
+    definition: A numbers game drawn many times a day with short play cycles.
+  - id: CONCEPT_INSTANT_PRODUCT
+    parent: CONCEPT_LOTTERY_PRODUCT
+    type: Product
+    labels: {en: Instant product, el: Στιγμιαίο προϊόν, de: Sofortspiel, cs: Okamžitá hra}
+    synonyms: {en: [Instant games, instant win], el: [Στιγμιαία, στιγμιαίο κέρδος], de: [Sofortspiele, Sofortgewinn], cs: [Okamžité výhry, okamžitá výhra]}
+    definition: A lottery product whose result is revealed immediately at the point of play.
+  - id: CONCEPT_RETAIL_INSTANT
+    parent: CONCEPT_INSTANT_PRODUCT
+    type: Product
+    labels: {en: Scratchcard, el: Ξυστό, de: Rubbellos, cs: Stírací los}
+    synonyms: {en: [scratch card, scratch ticket, retail instant], el: [ξυστό, ξυστό λαχείο, ξυστά], de: [Rubbellose, Papierlos], cs: [stírací los, stírací losy]}
+    definition: A printed instant ticket sold in retail outlets and scratched to reveal the result.
+  - id: CONCEPT_DIGITAL_INSTANT
+    parent: CONCEPT_INSTANT_PRODUCT
+    type: Product
+    labels: {en: Online Instant, el: Ψηφιακό Ξυστό, de: Online-Rubbellos, cs: Online stírací los}
+    synonyms: {en: [digital scratchcard, e-instant], el: [ηλεκτρονικό ξυστό, διαδικτυακό ξυστό], de: [digitales Rubbellos, E-Sofortspiel], cs: [elektronický stírací los, digitální los]}
+    definition: An instant game played on the web or in the app with an animated reveal.
+  - id: CONCEPT_ADD_ON_PRODUCT
+    parent: CONCEPT_LOTTERY_PRODUCT
+    type: Product
+    labels: {en: Add-on game, el: Πρόσθετο παιχνίδι, de: Zusatzspiel, cs: Doplňková hra}
+    synonyms: {en: [add-on, supplementary game], el: [συμπληρωματικό παιχνίδι], de: [Zusatzprodukte, Zusatzziehung], cs: [doplňková sázka]}
+    definition: An optional extra game bought together with a main draw ticket.
+
+  # Game mechanics
+  - id: CONCEPT_GAME_MECHANIC
+    parent: null
+    type: Mechanic
+    labels: {en: Game mechanic, el: Μηχανισμός παιχνιδιού, de: Spielmechanik, cs: Herní mechanika}
+    synonyms: {en: [game mechanism, play style], el: [τρόπος παιχνιδιού], de: [Spielprinzip], cs: [princip hry]}
+    definition: The way a player takes part in a game and how a win is decided.
+  - id: CONCEPT_NUMBER_SELECTION
+    parent: CONCEPT_GAME_MECHANIC
+    type: Mechanic
+    labels: {en: Number selection, el: Επιλογή αριθμών, de: Zahlenwahl, cs: Výběr čísel}
+    synonyms: {en: [number match, pick your numbers], el: [αντιστοίχιση αριθμών], de: [Zahlen wählen, Tippen], cs: [vlastní výběr čísel]}
+    definition: The player chooses numbers that are matched against the drawn numbers.
+  - id: CONCEPT_QUICK_PICK
+    parent: CONCEPT_GAME_MECHANIC
+    type: Mechanic
+    labels: {en: Quick pick, el: Τυχαία επιλογή, de: Quicktipp, cs: Náhodný tip}
+    synonyms: {en: [Lucky Dip, random numbers], el: [τυχαία επιλογή αριθμών, αυτόματη επιλογή], de: [Zufallstipp], cs: [náhodný výběr čísel]}
+    definition: The system selects the player's numbers at random.
+  - id: CONCEPT_SYMBOL_REVEAL
+    parent: CONCEPT_GAME_MECHANIC
+    type: Mechanic
+    labels: {en: Symbol reveal, el: Αποκάλυψη συμβόλων, de: Symbole aufdecken, cs: Odhalení symbolů}
+    synonyms: {en: [scratch, scratch to reveal], el: [ξύσιμο, ξύστε], de: [Rubbeln, aufrubbeln], cs: [stírání, setřete]}
+    definition: The player uncovers hidden symbols and wins when they match.
+  - id: CONCEPT_INSTANT_ROUNDS
+    parent: CONCEPT_GAME_MECHANIC
+    type: Mechanic
+    labels: {en: Instant rounds, el: Άμεσοι γύροι, de: Sofortrunden, cs: Okamžitá kola}
+    synonyms: {en: [instant win rounds], el: [άμεσοι γύροι κερδών], de: [Sofortgewinnrunden], cs: [kola okamžitých výher]}
+    definition: Each ticket plays one or more short rounds that settle instantly.
+  - id: CONCEPT_PROGRESSIVE_JACKPOT
+    parent: CONCEPT_GAME_MECHANIC
+    type: Mechanic
+    labels: {en: Progressive jackpot, el: Προοδευτικό τζάκποτ, de: Progressiver Jackpot, cs: Progresivní jackpot}
+    synonyms: {en: [rollover jackpot, rollover], el: [μεταφορά τζάκποτ], de: [Jackpot-Übertrag], cs: [převáděný jackpot]}
+    definition: A top prize that grows and rolls over to the next draw when nobody wins it.
+  - id: CONCEPT_SECOND_CHANCE
+    parent: CONCEPT_GAME_MECHANIC
+    type: Mechanic
+    labels: {en: Second chance, el: Δεύτερη ευκαιρία, de: Zweite Chance, cs: Druhá šance}
+    synonyms: {en: [second chance draw], el: [κλήρωση δεύτερης ευκαιρίας], de: [Zweitchance-Ziehung], cs: [losování druhé šance]}
+    definition: Non-winning entries take part in an additional draw.
+
+  # Incidents
+  - id: CONCEPT_INCIDENT
+    parent: null
+    type: BusinessEvent
+    labels: {en: Incident, el: Περιστατικό, de: Vorfall, cs: Incident}
+    synonyms: {en: [outage, service disruption], el: [διακοπή υπηρεσίας], de: [Störung, Ausfall], cs: [výpadek, porucha]}
+    definition: An unplanned event that disrupts or degrades a business service.
+  - id: CONCEPT_PLATFORM_INCIDENT
+    parent: CONCEPT_INCIDENT
+    type: BusinessEvent
+    labels: {en: Platform incident, el: Περιστατικό πλατφόρμας, de: Plattformstörung, cs: Incident platformy}
+    synonyms: {en: [platform outage], el: [βλάβη πλατφόρμας], de: [Plattformausfall], cs: [výpadek platformy]}
+    definition: An incident on one of the operator's technology platforms.
+  - id: CONCEPT_PAYMENT_INCIDENT
+    parent: CONCEPT_PLATFORM_INCIDENT
+    type: BusinessEvent
+    labels: {en: Payment incident, el: Περιστατικό πληρωμών, de: Zahlungsstörung, cs: Incident plateb}
+    synonyms: {en: [payment failure, Payment processing failure], el: [αποτυχία πληρωμής, Αποτυχία πληρωμών], de: [Zahlungsfehler, Zahlungsausfall], cs: [chyba platby, Selhání plateb]}
+    definition: Deposits, purchases or withdrawals fail or are delayed on the payments platform.
+  - id: CONCEPT_APPLICATION_INCIDENT
+    parent: CONCEPT_PLATFORM_INCIDENT
+    type: BusinessEvent
+    labels: {en: Application incident, el: Περιστατικό εφαρμογής, de: Anwendungsstörung, cs: Incident aplikace}
+    synonyms: {en: [App stability, Application stability, app crash], el: [Αστάθεια εφαρμογής, κατάρρευση εφαρμογής], de: [App-Instabilität, App-Absturz], cs: [Nestabilita aplikace, pád aplikace]}
+    definition: The player app or website crashes, freezes or responds too slowly.
+  - id: CONCEPT_IDENTITY_INCIDENT
+    parent: CONCEPT_PLATFORM_INCIDENT
+    type: BusinessEvent
+    labels: {en: Identity incident, el: Περιστατικό ταυτοποίησης, de: Identitätsstörung, cs: Incident identity}
+    synonyms: {en: [Sign-in outage, Authentication outage, login failure], el: [Διακοπή σύνδεσης, αποτυχία σύνδεσης], de: [Anmeldestörung, Login-Fehler], cs: [Výpadek přihlášení, chyba přihlášení]}
+    definition: Players cannot sign in or verify their identity.
+  - id: CONCEPT_DRAW_INCIDENT
+    parent: CONCEPT_PLATFORM_INCIDENT
+    type: BusinessEvent
+    labels: {en: Draw incident, el: Περιστατικό κλήρωσης, de: Ziehungsstörung, cs: Incident losování}
+    synonyms: {en: [Draw delay, Draw execution delay], el: [Καθυστέρηση κλήρωσης], de: [Ziehungsverzögerung], cs: [Zpoždění losování]}
+    definition: A scheduled draw is delayed or its results are published late.
+  - id: CONCEPT_RETAIL_INCIDENT
+    parent: CONCEPT_PLATFORM_INCIDENT
+    type: BusinessEvent
+    labels: {en: Retail incident, el: Περιστατικό λιανικής, de: Störung im Handel, cs: Incident v prodejní síti}
+    synonyms: {en: [Terminal outage, Retail terminal outage], el: [Διακοπή τερματικών], de: [Terminalausfall], cs: [Výpadek terminálů]}
+    definition: Retail terminals cannot sell or validate tickets.
+
+  # Customer support
+  - id: CONCEPT_SUPPORT_TOPIC
+    parent: null
+    type: BusinessEvent
+    labels: {en: Support topic, el: Θέμα υποστήριξης, de: Supportthema, cs: Téma podpory}
+    synonyms: {en: [support category, contact reason], el: [κατηγορία υποστήριξης], de: [Anfragekategorie], cs: [kategorie podpory]}
+    definition: The subject of a player's contact with customer support.
+  - id: CONCEPT_PAYMENT_COMPLAINT
+    parent: CONCEPT_SUPPORT_TOPIC
+    type: BusinessEvent
+    labels: {en: Payment complaint, el: Παράπονο πληρωμής, de: Zahlungsbeschwerde, cs: Stížnost na platbu}
+    synonyms: {en: [Payment issue, payment problem], el: [Πρόβλημα πληρωμής], de: [Zahlungsproblem], cs: [Problém s platbou]}
+    definition: A player reports a failed, duplicated or missing payment.
+  - id: CONCEPT_ACCOUNT_ACCESS
+    parent: CONCEPT_SUPPORT_TOPIC
+    type: BusinessEvent
+    labels: {en: Account access, el: Πρόσβαση λογαριασμού, de: Kontozugang, cs: Přístup k účtu}
+    synonyms: {en: [cannot log in, locked account], el: [κλειδωμένος λογαριασμός], de: [Konto gesperrt], cs: [zablokovaný účet]}
+    definition: A player cannot sign in to or recover their account.
+  - id: CONCEPT_GAME_QUERY
+    parent: CONCEPT_SUPPORT_TOPIC
+    type: BusinessEvent
+    labels: {en: Game query, el: Ερώτηση για παιχνίδι, de: Frage zum Spiel, cs: Dotaz ke hře}
+    synonyms: {en: [Game or rules query, rules question], el: [ερώτηση για κανόνες], de: [Spielregeln], cs: [dotaz na pravidla]}
+    definition: A player asks about game rules, prizes or draw results.
+  - id: CONCEPT_TECHNICAL_FAULT
+    parent: CONCEPT_SUPPORT_TOPIC
+    type: BusinessEvent
+    labels: {en: Technical fault, el: Τεχνικό πρόβλημα, de: Technische Störung, cs: Technická závada}
+    synonyms: {en: [technical issue], el: [τεχνική βλάβη], de: [technischer Fehler], cs: [technický problém]}
+    definition: A player reports an error or malfunction in the app, website or terminal.
+
+  # Player segments
+  - id: CONCEPT_PLAYER_SEGMENT
+    parent: null
+    type: BusinessActor
+    labels: {en: Player segment, el: Τμήμα παικτών, de: Spielersegment, cs: Segment hráčů}
+    synonyms: {en: [customer segment], el: [κατηγορία παικτών], de: [Kundensegment], cs: [zákaznický segment]}
+    definition: A group of players classified by value or engagement.
+  - id: CONCEPT_VALUE_SEGMENT
+    parent: CONCEPT_PLAYER_SEGMENT
+    type: BusinessActor
+    labels: {en: Value segment, el: Τμήμα αξίας, de: Wertsegment, cs: Hodnotový segment}
+    synonyms: {en: [spend tier], el: [κατηγορία δαπάνης], de: [Umsatzklasse], cs: [útratová skupina]}
+    definition: A segment defined by how much a player spends.
+  - id: CONCEPT_HIGH_VALUE
+    parent: CONCEPT_VALUE_SEGMENT
+    type: BusinessActor
+    labels: {en: High value, el: Υψηλής αξίας, de: Hoher Wert, cs: Vysoká hodnota}
+    synonyms: {en: [VIP, high-value players], el: [Κορυφαίοι, παίκτες υψηλής αξίας], de: [Topkunden, VIP], cs: [VIP, nejcennější hráči]}
+    definition: Players in the top spend tier of their market.
+  - id: CONCEPT_MAINSTREAM_VALUE
+    parent: CONCEPT_VALUE_SEGMENT
+    type: BusinessActor
+    labels: {en: Mainstream value, el: Μεσαίας αξίας, de: Mittlerer Wert, cs: Střední hodnota}
+    synonyms: {en: [Mainstream, regular spenders], el: [Τακτικοί], de: [Stammkunden], cs: [Běžní, běžní hráči]}
+    definition: Players in the middle spend tier of their market.
+  - id: CONCEPT_BUDGET_VALUE
+    parent: CONCEPT_VALUE_SEGMENT
+    type: BusinessActor
+    labels: {en: Low value, el: Χαμηλής αξίας, de: Niedriger Wert, cs: Nízká hodnota}
+    synonyms: {en: [Budget, low spenders], el: [Οικονομικοί], de: [Sparsam, Wenigspieler], cs: [Úsporní]}
+    definition: Players in the lowest spend tier of their market.
+  - id: CONCEPT_ENGAGEMENT_SEGMENT
+    parent: CONCEPT_PLAYER_SEGMENT
+    type: BusinessActor
+    labels: {en: Engagement segment, el: Τμήμα δραστηριότητας, de: Aktivitätssegment, cs: Segment aktivity}
+    synonyms: {en: [activity tier], el: [επίπεδο δραστηριότητας], de: [Aktivitätsstufe], cs: [úroveň aktivity]}
+    definition: A segment defined by how often a player plays.
+  - id: CONCEPT_ENGAGED
+    parent: CONCEPT_ENGAGEMENT_SEGMENT
+    type: BusinessActor
+    labels: {en: Engaged, el: Ενεργοί, de: Aktiv, cs: Aktivní}
+    synonyms: {en: [active players, highly engaged], el: [ενεργοί παίκτες], de: [aktive Spieler], cs: [aktivní hráči]}
+    definition: Players who play frequently and recently.
+  - id: CONCEPT_CASUAL
+    parent: CONCEPT_ENGAGEMENT_SEGMENT
+    type: BusinessActor
+    labels: {en: Casual, el: Περιστασιακοί, de: Gelegentlich, cs: Občasní}
+    synonyms: {en: [occasional players], el: [περιστασιακοί παίκτες], de: [Gelegenheitsspieler], cs: [příležitostní hráči]}
+    definition: Players who play now and then, typically around large jackpots.
+  - id: CONCEPT_DORMANT
+    parent: CONCEPT_ENGAGEMENT_SEGMENT
+    type: BusinessActor
+    labels: {en: Dormant, el: Αδρανείς, de: Inaktiv, cs: Neaktivní}
+    synonyms: {en: [lapsed players, inactive], el: [ανενεργοί παίκτες], de: [inaktive Spieler, ruhende Kunden], cs: [spící hráči]}
+    definition: Players who have not played for an extended period.
+
+  # Sales channels
+  - id: CONCEPT_SALES_CHANNEL
+    parent: null
+    type: Channel
+    labels: {en: Sales channel, el: Κανάλι πωλήσεων, de: Vertriebskanal, cs: Prodejní kanál}
+    synonyms: {en: [distribution channel], el: [κανάλι διανομής], de: [Absatzkanal], cs: [distribuční kanál]}
+    definition: The route through which a player buys and plays a product.
+  - id: CONCEPT_RETAIL_CHANNEL
+    parent: CONCEPT_SALES_CHANNEL
+    type: Channel
+    labels: {en: Retail, el: Λιανική, de: Einzelhandel, cs: Kamenný prodej}
+    synonyms: {en: [Retail terminal, retailer, point of sale], el: [πρακτορείο, τερματικό λιανικής], de: [Annahmestelle, Verkaufsstelle], cs: [prodejní místo, terminál]}
+    definition: Sales made through terminals in physical retail outlets.
+  - id: CONCEPT_DIGITAL_CHANNEL
+    parent: CONCEPT_SALES_CHANNEL
+    type: Channel
+    labels: {en: Digital, el: Ψηφιακό κανάλι, de: Digitaler Kanal, cs: Digitální kanál}
+    synonyms: {en: [Mobile application, Web portal, online], el: [εφαρμογή, διαδίκτυο, online], de: [App, Webportal, online], cs: [mobilní aplikace, webový portál, online]}
+    definition: Sales made through the operator's mobile app or web portal.
+
+bindings:
+  # Game families
+  - {kind: family, code: FAM_UK_NATIONAL_DRAW, market: MKT_UK, concept: CONCEPT_NATIONAL_DRAW}
+  - {kind: family, code: FAM_UK_ANNUITY, market: MKT_UK, concept: CONCEPT_ANNUITY_DRAW}
+  - {kind: family, code: FAM_UK_RAPID_NUMBERS, market: MKT_UK, concept: CONCEPT_HIGH_FREQUENCY_GAME}
+  - {kind: family, code: FAM_UK_FIXED_PRIZE, market: MKT_UK, concept: CONCEPT_FIXED_PRIZE_DRAW}
+  - {kind: family, code: FAM_UK_SCRATCHCARD, market: MKT_UK, concept: CONCEPT_RETAIL_INSTANT}
+  - {kind: family, code: FAM_UK_ONLINE_INSTANT, market: MKT_UK, concept: CONCEPT_DIGITAL_INSTANT}
+  - {kind: family, code: FAM_GR_ARITHMOLACHEIO, market: MKT_GR, concept: CONCEPT_NATIONAL_DRAW}
+  - {kind: family, code: FAM_GR_POLYETHNIKO_TZAKPOT, market: MKT_GR, concept: CONCEPT_MULTINATIONAL_JACKPOT}
+  - {kind: family, code: FAM_GR_SYCHNES_KLIROSEIS, market: MKT_GR, concept: CONCEPT_HIGH_FREQUENCY_GAME}
+  - {kind: family, code: FAM_GR_XYSTO, market: MKT_GR, concept: CONCEPT_RETAIL_INSTANT}
+  - {kind: family, code: FAM_GR_PSIFIAKO_XYSTO, market: MKT_GR, concept: CONCEPT_DIGITAL_INSTANT}
+  - {kind: family, code: FAM_AT_ZAHLENLOTTO, market: MKT_AT, concept: CONCEPT_NATIONAL_DRAW}
+  - {kind: family, code: FAM_AT_LAENDER_JACKPOT, market: MKT_AT, concept: CONCEPT_MULTINATIONAL_JACKPOT}
+  - {kind: family, code: FAM_AT_SCHNELLZIEHUNG, market: MKT_AT, concept: CONCEPT_HIGH_FREQUENCY_GAME}
+  - {kind: family, code: FAM_AT_ZUSATZSPIEL, market: MKT_AT, concept: CONCEPT_ADD_ON_PRODUCT}
+  - {kind: family, code: FAM_AT_RUBBELLOS, market: MKT_AT, concept: CONCEPT_RETAIL_INSTANT}
+  - {kind: family, code: FAM_CZ_CISELNA_LOTERIE, market: MKT_CZ, concept: CONCEPT_NATIONAL_DRAW}
+  - {kind: family, code: FAM_CZ_MEZINARODNI_JACKPOT, market: MKT_CZ, concept: CONCEPT_MULTINATIONAL_JACKPOT}
+  - {kind: family, code: FAM_CZ_RYCHLA_CISLA, market: MKT_CZ, concept: CONCEPT_HIGH_FREQUENCY_GAME}
+  - {kind: family, code: FAM_CZ_STIRACI_LOS, market: MKT_CZ, concept: CONCEPT_RETAIL_INSTANT}
+  # Game categories
+  - {kind: category, code: CAT_UK_DRAW, market: MKT_UK, concept: CONCEPT_DRAW_GAME}
+  - {kind: category, code: CAT_UK_NUMBERS, market: MKT_UK, concept: CONCEPT_HIGH_FREQUENCY_GAME}
+  - {kind: category, code: CAT_UK_INSTANT, market: MKT_UK, concept: CONCEPT_INSTANT_PRODUCT}
+  - {kind: category, code: CAT_GR_KLIROSEIS, market: MKT_GR, concept: CONCEPT_DRAW_GAME}
+  - {kind: category, code: CAT_GR_ARITHMOPAICHNIDIA, market: MKT_GR, concept: CONCEPT_HIGH_FREQUENCY_GAME}
+  - {kind: category, code: CAT_GR_STIGMIAIA, market: MKT_GR, concept: CONCEPT_INSTANT_PRODUCT}
+  - {kind: category, code: CAT_AT_ZIEHUNG, market: MKT_AT, concept: CONCEPT_DRAW_GAME}
+  - {kind: category, code: CAT_AT_ZAHLEN, market: MKT_AT, concept: CONCEPT_HIGH_FREQUENCY_GAME}
+  - {kind: category, code: CAT_AT_SOFORT, market: MKT_AT, concept: CONCEPT_INSTANT_PRODUCT}
+  - {kind: category, code: CAT_AT_ZUSATZ, market: MKT_AT, concept: CONCEPT_ADD_ON_PRODUCT}
+  - {kind: category, code: CAT_CZ_LOSOVANI, market: MKT_CZ, concept: CONCEPT_DRAW_GAME}
+  - {kind: category, code: CAT_CZ_CISLA, market: MKT_CZ, concept: CONCEPT_HIGH_FREQUENCY_GAME}
+  - {kind: category, code: CAT_CZ_OKAMZITE, market: MKT_CZ, concept: CONCEPT_INSTANT_PRODUCT}
+  # Game mechanics (CONCEPT_PROGRESSIVE_JACKPOT is intentionally unbound in v2)
+  - {kind: mechanic, code: MECH_UK_NUMBER_MATCH, market: MKT_UK, concept: CONCEPT_NUMBER_SELECTION}
+  - {kind: mechanic, code: MECH_UK_LUCKY_DIP, market: MKT_UK, concept: CONCEPT_QUICK_PICK}
+  - {kind: mechanic, code: MECH_UK_SCRATCH, market: MKT_UK, concept: CONCEPT_SYMBOL_REVEAL}
+  - {kind: mechanic, code: MECH_UK_INSTANT_ROUNDS, market: MKT_UK, concept: CONCEPT_INSTANT_ROUNDS}
+  - {kind: mechanic, code: MECH_UK_SECOND_CHANCE, market: MKT_UK, concept: CONCEPT_SECOND_CHANCE}
+  - {kind: mechanic, code: MECH_GR_EPILOGI_ARITHMON, market: MKT_GR, concept: CONCEPT_NUMBER_SELECTION}
+  - {kind: mechanic, code: MECH_GR_TYCHAIA_EPILOGI, market: MKT_GR, concept: CONCEPT_QUICK_PICK}
+  - {kind: mechanic, code: MECH_GR_XYSIMO, market: MKT_GR, concept: CONCEPT_SYMBOL_REVEAL}
+  - {kind: mechanic, code: MECH_GR_AMESOI_GYROI, market: MKT_GR, concept: CONCEPT_INSTANT_ROUNDS}
+  - {kind: mechanic, code: MECH_AT_ZAHLENWAHL, market: MKT_AT, concept: CONCEPT_NUMBER_SELECTION}
+  - {kind: mechanic, code: MECH_AT_QUICKTIPP, market: MKT_AT, concept: CONCEPT_QUICK_PICK}
+  - {kind: mechanic, code: MECH_AT_RUBBELN, market: MKT_AT, concept: CONCEPT_SYMBOL_REVEAL}
+  - {kind: mechanic, code: MECH_AT_ZWEITE_CHANCE, market: MKT_AT, concept: CONCEPT_SECOND_CHANCE}
+  - {kind: mechanic, code: MECH_CZ_VYBER_CISEL, market: MKT_CZ, concept: CONCEPT_NUMBER_SELECTION}
+  - {kind: mechanic, code: MECH_CZ_NAHODNY_TIP, market: MKT_CZ, concept: CONCEPT_QUICK_PICK}
+  - {kind: mechanic, code: MECH_CZ_STIRANI, market: MKT_CZ, concept: CONCEPT_SYMBOL_REVEAL}
+  # Incident types (market null = corporate)
+  - {kind: incident_type, code: ITYPE_CORP_PAYMENT, market: null, concept: CONCEPT_PAYMENT_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CORP_APPLICATION, market: null, concept: CONCEPT_APPLICATION_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CORP_DRAW, market: null, concept: CONCEPT_DRAW_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CORP_IDENTITY, market: null, concept: CONCEPT_IDENTITY_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CORP_RETAIL, market: null, concept: CONCEPT_RETAIL_INCIDENT}
+  - {kind: incident_type, code: ITYPE_UK_PAYMENT_FAILURE, market: MKT_UK, concept: CONCEPT_PAYMENT_INCIDENT}
+  - {kind: incident_type, code: ITYPE_UK_APP_STABILITY, market: MKT_UK, concept: CONCEPT_APPLICATION_INCIDENT}
+  - {kind: incident_type, code: ITYPE_UK_DRAW_DELAY, market: MKT_UK, concept: CONCEPT_DRAW_INCIDENT}
+  - {kind: incident_type, code: ITYPE_UK_SIGN_IN, market: MKT_UK, concept: CONCEPT_IDENTITY_INCIDENT}
+  - {kind: incident_type, code: ITYPE_UK_TERMINAL, market: MKT_UK, concept: CONCEPT_RETAIL_INCIDENT}
+  - {kind: incident_type, code: ITYPE_GR_PLIROMES, market: MKT_GR, concept: CONCEPT_PAYMENT_INCIDENT}
+  - {kind: incident_type, code: ITYPE_GR_EFARMOGI, market: MKT_GR, concept: CONCEPT_APPLICATION_INCIDENT}
+  - {kind: incident_type, code: ITYPE_GR_KLIROSI, market: MKT_GR, concept: CONCEPT_DRAW_INCIDENT}
+  - {kind: incident_type, code: ITYPE_GR_SYNDESI, market: MKT_GR, concept: CONCEPT_IDENTITY_INCIDENT}
+  - {kind: incident_type, code: ITYPE_GR_TERMATIKA, market: MKT_GR, concept: CONCEPT_RETAIL_INCIDENT}
+  - {kind: incident_type, code: ITYPE_AT_ZAHLUNG, market: MKT_AT, concept: CONCEPT_PAYMENT_INCIDENT}
+  - {kind: incident_type, code: ITYPE_AT_APP, market: MKT_AT, concept: CONCEPT_APPLICATION_INCIDENT}
+  - {kind: incident_type, code: ITYPE_AT_ZIEHUNG, market: MKT_AT, concept: CONCEPT_DRAW_INCIDENT}
+  - {kind: incident_type, code: ITYPE_AT_ANMELDUNG, market: MKT_AT, concept: CONCEPT_IDENTITY_INCIDENT}
+  - {kind: incident_type, code: ITYPE_AT_TERMINAL, market: MKT_AT, concept: CONCEPT_RETAIL_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CZ_PLATBY, market: MKT_CZ, concept: CONCEPT_PAYMENT_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CZ_APLIKACE, market: MKT_CZ, concept: CONCEPT_APPLICATION_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CZ_LOSOVANI, market: MKT_CZ, concept: CONCEPT_DRAW_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CZ_PRIHLASENI, market: MKT_CZ, concept: CONCEPT_IDENTITY_INCIDENT}
+  - {kind: incident_type, code: ITYPE_CZ_TERMINAL, market: MKT_CZ, concept: CONCEPT_RETAIL_INCIDENT}
+  # Support categories
+  - {kind: support_category, code: SUPC_UK_PAYMENT, market: MKT_UK, concept: CONCEPT_PAYMENT_COMPLAINT}
+  - {kind: support_category, code: SUPC_UK_ACCOUNT, market: MKT_UK, concept: CONCEPT_ACCOUNT_ACCESS}
+  - {kind: support_category, code: SUPC_UK_GAME, market: MKT_UK, concept: CONCEPT_GAME_QUERY}
+  - {kind: support_category, code: SUPC_UK_TECHNICAL, market: MKT_UK, concept: CONCEPT_TECHNICAL_FAULT}
+  - {kind: support_category, code: SUPC_GR_PLIROMI, market: MKT_GR, concept: CONCEPT_PAYMENT_COMPLAINT}
+  - {kind: support_category, code: SUPC_GR_LOGARIASMOS, market: MKT_GR, concept: CONCEPT_ACCOUNT_ACCESS}
+  - {kind: support_category, code: SUPC_GR_PAICHNIDI, market: MKT_GR, concept: CONCEPT_GAME_QUERY}
+  - {kind: support_category, code: SUPC_GR_TECHNIKO, market: MKT_GR, concept: CONCEPT_TECHNICAL_FAULT}
+  - {kind: support_category, code: SUPC_AT_ZAHLUNG, market: MKT_AT, concept: CONCEPT_PAYMENT_COMPLAINT}
+  - {kind: support_category, code: SUPC_AT_KONTO, market: MKT_AT, concept: CONCEPT_ACCOUNT_ACCESS}
+  - {kind: support_category, code: SUPC_AT_SPIEL, market: MKT_AT, concept: CONCEPT_GAME_QUERY}
+  - {kind: support_category, code: SUPC_AT_TECHNIK, market: MKT_AT, concept: CONCEPT_TECHNICAL_FAULT}
+  - {kind: support_category, code: SUPC_CZ_PLATBA, market: MKT_CZ, concept: CONCEPT_PAYMENT_COMPLAINT}
+  - {kind: support_category, code: SUPC_CZ_UCET, market: MKT_CZ, concept: CONCEPT_ACCOUNT_ACCESS}
+  - {kind: support_category, code: SUPC_CZ_HRA, market: MKT_CZ, concept: CONCEPT_GAME_QUERY}
+  - {kind: support_category, code: SUPC_CZ_TECHNIKA, market: MKT_CZ, concept: CONCEPT_TECHNICAL_FAULT}
+  # Player segments
+  - {kind: segment, code: SEG_UK_VIP, market: MKT_UK, concept: CONCEPT_HIGH_VALUE}
+  - {kind: segment, code: SEG_UK_MAINSTREAM, market: MKT_UK, concept: CONCEPT_MAINSTREAM_VALUE}
+  - {kind: segment, code: SEG_UK_BUDGET, market: MKT_UK, concept: CONCEPT_BUDGET_VALUE}
+  - {kind: segment, code: SEG_UK_ENGAGED, market: MKT_UK, concept: CONCEPT_ENGAGED}
+  - {kind: segment, code: SEG_UK_CASUAL, market: MKT_UK, concept: CONCEPT_CASUAL}
+  - {kind: segment, code: SEG_UK_DORMANT, market: MKT_UK, concept: CONCEPT_DORMANT}
+  - {kind: segment, code: SEG_GR_KORYFAIOI, market: MKT_GR, concept: CONCEPT_HIGH_VALUE}
+  - {kind: segment, code: SEG_GR_TAKTIKOI, market: MKT_GR, concept: CONCEPT_MAINSTREAM_VALUE}
+  - {kind: segment, code: SEG_GR_OIKONOMIKOI, market: MKT_GR, concept: CONCEPT_BUDGET_VALUE}
+  - {kind: segment, code: SEG_GR_ENERGOI, market: MKT_GR, concept: CONCEPT_ENGAGED}
+  - {kind: segment, code: SEG_GR_PERISTASIAKOI, market: MKT_GR, concept: CONCEPT_CASUAL}
+  - {kind: segment, code: SEG_GR_ADRANEIS, market: MKT_GR, concept: CONCEPT_DORMANT}
+  - {kind: segment, code: SEG_AT_TOPKUNDEN, market: MKT_AT, concept: CONCEPT_HIGH_VALUE}
+  - {kind: segment, code: SEG_AT_STAMMKUNDEN, market: MKT_AT, concept: CONCEPT_MAINSTREAM_VALUE}
+  - {kind: segment, code: SEG_AT_SPARSAM, market: MKT_AT, concept: CONCEPT_BUDGET_VALUE}
+  - {kind: segment, code: SEG_AT_AKTIV, market: MKT_AT, concept: CONCEPT_ENGAGED}
+  - {kind: segment, code: SEG_AT_GELEGENTLICH, market: MKT_AT, concept: CONCEPT_CASUAL}
+  - {kind: segment, code: SEG_AT_INAKTIV, market: MKT_AT, concept: CONCEPT_DORMANT}
+  - {kind: segment, code: SEG_CZ_VIP, market: MKT_CZ, concept: CONCEPT_HIGH_VALUE}
+  - {kind: segment, code: SEG_CZ_BEZNI, market: MKT_CZ, concept: CONCEPT_MAINSTREAM_VALUE}
+  - {kind: segment, code: SEG_CZ_USPORNI, market: MKT_CZ, concept: CONCEPT_BUDGET_VALUE}
+  - {kind: segment, code: SEG_CZ_AKTIVNI, market: MKT_CZ, concept: CONCEPT_ENGAGED}
+  - {kind: segment, code: SEG_CZ_OBCASNI, market: MKT_CZ, concept: CONCEPT_CASUAL}
+  - {kind: segment, code: SEG_CZ_NEAKTIVNI, market: MKT_CZ, concept: CONCEPT_DORMANT}
+  # Sales channels (shared by every market)
+  - {kind: channel, code: APP, market: null, concept: CONCEPT_DIGITAL_CHANNEL}
+  - {kind: channel, code: WEB, market: null, concept: CONCEPT_DIGITAL_CHANNEL}
+  - {kind: channel, code: RETAIL, market: null, concept: CONCEPT_RETAIL_CHANNEL}
