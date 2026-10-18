@@ -132,6 +132,7 @@ def test_payload_is_complete(runner: BenchmarkRunner) -> None:
     assert record["question_bank_version"]
     assert record["embedding_model"].startswith("hashing")
     assert record["graph_limits"]["total_nodes"]
+    assert record["ontology_version"] == "2.0.0"
     entry = payload["results"][0]
     assert entry["question_id"] == "Q01"
     assert set(entry["runs"]) == {"A", "B", "C"}

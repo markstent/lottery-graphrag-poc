@@ -32,6 +32,7 @@ from app.evaluation.scoring import (
 )
 from app.events import ListEventSink, RetrievalEvent
 from app.graph.config import GraphConfig
+from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.lab import Lab, build_lab, wired_pipelines
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.standard.generation import AnswerGenerator, GenerationError
@@ -285,15 +286,9 @@ class BenchmarkRunner:
                 "evidence_nodes": settings.graph.max_evidence_nodes,
                 "relationship_types": len(settings.graph.relationship_types),
             },
-            ontology_version=_ontology_version(),
+            ontology_version=ONTOLOGY_VERSION,
             started_at=datetime.now(UTC).isoformat(timespec="seconds"),
         )
-
-
-def _ontology_version() -> str:
-    from app.graph import mapping
-
-    return getattr(mapping, "ONTOLOGY_VERSION", "unknown")
 
 
 def _pipeline_result(

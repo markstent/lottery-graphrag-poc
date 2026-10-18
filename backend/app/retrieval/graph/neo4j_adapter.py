@@ -11,6 +11,7 @@ from typing import Any
 
 from app.graph import statements
 from app.graph.config import GraphConfig
+from app.ontology.model import LANGUAGES
 from app.retrieval.graph.entities import DictionaryEntityResolver, ResolvedEntity
 from app.retrieval.graph.traversal import NeighbourEdge
 
@@ -91,21 +92,26 @@ class GraphReader:
                     aliases[str(name)] = market_id
         return aliases
 
-    def concepts(self) -> list[tuple[str, str, str]]:
+    def concepts(self) -> list[tuple[str, str, tuple[str, ...]]]:
+        """(concept id, canonical name, whole match phrases) for the resolver.
+
+        Phrases are the four market-language labels plus every synonym with
+        its "<lang>:" prefix removed.
+        """
         records = self._driver.execute_query(
             statements.RETRIEVAL_CONCEPTS, {}, database_=self._database
         ).records
-        # The resolver's keyword text is the concept's other-language labels
-        # plus its synonyms (stripped of their "<lang>:" prefix).
         return [
             (
                 str(record["id"]),
                 str(record["canonical_name"] or ""),
-                " ".join(
-                    [
-                        *(str(record[f"labels_{lang}"] or "") for lang in ("el", "de", "cs")),
+                tuple(
+                    phrase
+                    for phrase in (
+                        *(str(record[f"labels_{lang}"] or "") for lang in LANGUAGES),
                         *(_synonym_text(str(entry)) for entry in record["synonyms"] or []),
-                    ]
+                    )
+                    if phrase
                 ),
             )
             for record in records

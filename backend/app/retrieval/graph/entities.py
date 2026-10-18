@@ -1,7 +1,8 @@
 """Entity resolution for graph seeds (docs/08 Phase 9).
 
 A deterministic dictionary resolver: exact graph ids appearing in the
-question, market names, and ontology concept names/description keywords.
+question, market names, and whole ontology concept phrases (canonical name,
+labels in every market language and synonyms).
 No model call sits inside resolution, so seed selection is reproducible and
 auditable. A model-based resolver can be added behind the same protocol
 later without touching the pipeline.
@@ -66,18 +67,18 @@ class DictionaryEntityResolver:
         *,
         lookup_node: Callable[[str], tuple[str, bool] | None],
         market_aliases: dict[str, str],
-        concepts: list[tuple[str, str, str]],  # (id, canonical_name, description)
+        concepts: list[tuple[str, str, tuple[str, ...]]],  # (id, canonical_name, phrases)
     ) -> None:
         self._lookup_node = lookup_node
         self._market_aliases = {alias.lower(): node_id for alias, node_id in market_aliases.items()}
-        # Concept match phrases: canonical name plus notable description words.
+        # Concept match phrases: canonical name plus the given whole phrases,
+        # lower-cased and deduplicated in order. Phrases are never split.
         self._concepts: list[tuple[str, list[str]]] = []
-        for concept_id, canonical_name, description in concepts:
-            phrases = [canonical_name.lower()]
-            phrases.extend(
-                word for word in description.lower().split() if len(word) >= 6 and word.isalpha()
+        for concept_id, canonical_name, phrases in concepts:
+            unique = dict.fromkeys(
+                phrase.lower() for phrase in (canonical_name, *phrases) if phrase.strip()
             )
-            self._concepts.append((concept_id, phrases))
+            self._concepts.append((concept_id, list(unique)))
 
     def resolve(self, question: str) -> list[ResolvedEntity]:
         resolved: list[ResolvedEntity] = []
@@ -122,7 +123,10 @@ class DictionaryEntityResolver:
         for concept_id, phrases in self._concepts:
             if concept_id in seen:
                 continue
-            matched = next((phrase for phrase in phrases if phrase in lower), None)
+            matched = next(
+                (phrase for phrase in phrases if re.search(rf"\b{re.escape(phrase)}\b", lower)),
+                None,
+            )
             if matched is None:
                 continue
             resolved.append(

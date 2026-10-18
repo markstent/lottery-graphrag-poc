@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from types import SimpleNamespace
+from typing import cast
+
+from app.evaluation.runner import BenchmarkRunner
 from app.evaluation.scoring import (
     PipelineRunResult,
     check_score,
@@ -9,6 +14,7 @@ from app.evaluation.scoring import (
     evidence_metrics,
     score_checks,
 )
+from app.retrieval.graph.lab import Lab
 
 
 class TestNumberCheck:
@@ -151,3 +157,21 @@ class TestPipelineRunResult:
             event_counts={},
         )
         assert run.retrieved_evidence() == ("GAME_UK_01", "DOC_0001", "DOC_0002")
+
+
+def test_reproducibility_record_carries_the_ontology_version(tmp_path: Path) -> None:
+    """The run record names the ontology the graph was built from, never a fallback."""
+    from tests.test_graph_rag import make_settings
+
+    runner = object.__new__(BenchmarkRunner)
+    runner.lab = cast(
+        Lab,
+        SimpleNamespace(
+            settings=make_settings(),
+            embeddings=SimpleNamespace(model_name="hashing-256"),
+            generator=SimpleNamespace(model_name="fake-answer-v1"),
+        ),
+    )
+    runner.world_dir = tmp_path
+
+    assert runner._record().ontology_version == "2.0.0"

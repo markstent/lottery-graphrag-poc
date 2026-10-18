@@ -35,7 +35,12 @@ from app.events import (
     GRAPH_SEED_SELECTED,
     GRAPH_TRAVERSAL_STARTED,
 )
-from app.retrieval.graph.entities import ResolvedEntity, StaticEntityResolver
+from app.ontology.loader import load_ontology
+from app.retrieval.graph.entities import (
+    DictionaryEntityResolver,
+    ResolvedEntity,
+    StaticEntityResolver,
+)
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import (
@@ -508,3 +513,54 @@ class TestTelemetryAndDeterminism:
     def test_empty_question_rejected(self) -> None:
         with pytest.raises(ValueError, match="empty"):
             build_pipeline().run(" ")
+
+
+def _ontology_resolver() -> DictionaryEntityResolver:
+    """Resolver fed the way the Neo4j adapter feeds it: labels plus synonyms."""
+    ontology = load_ontology()
+    concepts = [
+        (
+            concept.concept_id,
+            concept.labels["en"],
+            (
+                *concept.labels.values(),
+                *(text for texts in concept.synonyms.values() for text in texts),
+            ),
+        )
+        for concept in ontology.concepts
+    ]
+    return DictionaryEntityResolver(
+        lookup_node=lambda _id: None, market_aliases={}, concepts=concepts
+    )
+
+
+def _concept_seeds(question: str) -> set[str]:
+    return {
+        entity.entity_id
+        for entity in _ontology_resolver().resolve(question)
+        if entity.origin == "concept"
+    }
+
+
+def test_concept_resolution_does_not_split_labels_into_words() -> None:
+    seeds = _concept_seeds("Which incident hit the draw last week?")
+    assert "CONCEPT_PAYMENT_INCIDENT" not in seeds
+    assert "CONCEPT_PLATFORM_INCIDENT" not in seeds
+
+
+@pytest.mark.parametrize(
+    "question",
+    ["Was there a payment incident in Austria?", "Gab es einen Zahlungsfehler im März?"],
+)
+def test_concept_resolution_matches_whole_phrases_in_any_language(question: str) -> None:
+    assert "CONCEPT_PAYMENT_INCIDENT" in _concept_seeds(question)
+
+
+def test_concept_phrase_match_is_whole_word() -> None:
+    resolver = DictionaryEntityResolver(
+        lookup_node=lambda _id: None,
+        market_aliases={},
+        concepts=[("CONCEPT_X", "Draw", ())],
+    )
+    assert resolver.resolve("A withdrawal was delayed") == []
+    assert [e.entity_id for e in resolver.resolve("The DRAW was late")] == ["CONCEPT_X"]
