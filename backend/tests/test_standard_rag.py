@@ -186,6 +186,29 @@ class TestRetrievalCorrectness:
             pipeline.run("   ")
 
 
+class TestMarketScope:
+    def test_scoped_run_keeps_only_matching_market_documents(self) -> None:
+        pipeline = build_pipeline(make_corpus())
+        result = pipeline.run("checkout regression in Greece", markets=["MKT_GR"])
+
+        ids = {chunk.chunk_id for chunk in result.evidence}
+        assert ids == {"CHNK_PAY_00"}
+        assert result.evidence[0].rank == 1
+
+    def test_empty_scope_means_all_markets(self) -> None:
+        pipeline = build_pipeline(make_corpus())
+        result = pipeline.run("checkout regression in Greece", markets=[])
+
+        assert len(result.evidence) == 3
+
+    def test_scope_is_recorded_on_the_query_event(self) -> None:
+        pipeline = build_pipeline(make_corpus())
+        pipeline.run("checkout regression in Greece", markets=["MKT_GR", "MKT_UK"])
+
+        assert pipeline.events[0].event_type == RAG_QUERY_RECEIVED
+        assert pipeline.events[0].payload["markets"] == "MKT_GR,MKT_UK"
+
+
 class TestContextLimits:
     def test_budget_limits_selected_context(self) -> None:
         settings = make_settings(context=ContextSettings(budget_tokens=60, dedupe_threshold=0.85))

@@ -1,4 +1,4 @@
-// Example 4 — multilingual document lookup through canonical concepts.
+// Example 4: multilingual document lookup through canonical concepts.
 // Documents are written in market languages (el/de/cs/en); the concept
 // binding is language-independent, so an English concept id retrieves
 // Greek, German and Czech documents in one query.

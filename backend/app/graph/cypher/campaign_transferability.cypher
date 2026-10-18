@@ -1,4 +1,4 @@
-// Example 3 — campaign transferability across markets via shared segments.
+// Example 3: campaign transferability across markets via shared segments.
 // A campaign's engaged segment maps to the same segment concept in other
 // markets; their promoted games are the transferable products.
 // Traversal class 3, bounded by LIMIT.

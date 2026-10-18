@@ -97,13 +97,27 @@ GET    /graph/evidence-paths/{run_id}
 
 ```json
 {
-  "experiment_id": "EXP-001",
   "question": "Why did digital conversion fall in Greece?",
-  "market_scope": ["GR"],
   "configurations": ["A", "B", "C"],
-  "presentation_mode": false
+  "profile": null,
+  "market_scope": ["GR"]
 }
 ```
+
+`market_scope` (optional; 2026-10-18) restricts retrieval to one or more
+markets. Entries are two-letter codes (`UK`, `GR`, `AT`, `CZ`) or full ids
+(`MKT_UK`); unknown markets are rejected with 422 and an empty list means
+all markets. The scope is applied identically to every requested pipeline:
+
+- the document channel performs the vector search *within* the scope (the
+  top-k is computed over in-scope chunks only, never cropped afterwards);
+- in pipelines B/C, structured evidence whose authoritative record carries a
+  market outside the scope is discarded with the recorded reason
+  `out_of_scope_market`; records without a market (platforms, versions,
+  business concepts, documents) are shared evidence and stay in scope.
+
+The accepted scope is echoed by `GET /queries/{run_id}` as `market_scope`
+and recorded on the first event of every pipeline (`markets` payload field).
 
 ---
 

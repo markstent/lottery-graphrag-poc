@@ -8,6 +8,8 @@ contains gateway failures per question as ``generation_failure`` results
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import pytest
 from app.evidence import EvidenceChunk
 from app.retrieval.graph.entities import StaticEntityResolver
@@ -54,7 +56,12 @@ class FailingEmbedder:
 class FailingStore(InMemoryVectorStore):
     """Vector store stub whose search always fails."""
 
-    def search(self, vector: list[float], limit: int) -> list[tuple[str, float, VectorPayload]]:
+    def search(
+        self,
+        vector: list[float],
+        limit: int,
+        markets: Sequence[str] | None = None,
+    ) -> list[tuple[str, float, VectorPayload]]:
         raise RuntimeError("vector store connection reset")
 
 

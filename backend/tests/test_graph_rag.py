@@ -9,6 +9,7 @@ expansion, telemetry and determinism are covered offline. A live-graph test
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 
 import pytest
 from app.config import (
@@ -405,6 +406,87 @@ class TestSourceLookup:
         assert incident.authoritative is not None
         assert incident.authoritative["severity"] == "HIGH"
         assert incident.authoritative["source_table"] == "incidents"
+
+
+class TestMarketScope:
+    @staticmethod
+    def _incidents_dir(tmp_path) -> Path:  # type: ignore[no-untyped-def]
+        source_dir = tmp_path / "ds-scope"
+        source_dir.mkdir()
+        import duckdb
+
+        connection = duckdb.connect()
+        incident_path = source_dir / "incidents.parquet"
+        connection.execute(
+            "COPY ("
+            "SELECT * FROM (VALUES"
+            " ('INC_S007_GR','MKT_GR','PLT_PAYMENTS','PLV_PAYMENTS_3',NULL,"
+            "  'INC_PAYMENTS','HIGH',TIMESTAMP '2025-05-21',TIMESTAMP '2025-05-23',"
+            "  'Payment checkout failures','RC_77'),"
+            " ('INC_S007_AT','MKT_AT','PLT_PAYMENTS','PLV_PAYMENTS_3',NULL,"
+            "  'INC_PAYMENTS','MEDIUM',TIMESTAMP '2025-05-22',TIMESTAMP '2025-05-23',"
+            "  'Payment checkout failures','RC_77'))"
+            " AS t(incident_id, market_id, platform_id, platform_version_id,"
+            " app_version_id, incident_type, severity, started_at, resolved_at,"
+            " summary, root_cause_code)"
+            f") TO '{incident_path}' (FORMAT PARQUET)"
+        )
+        connection.close()
+        return source_dir
+
+    @classmethod
+    def _scope_pipeline(cls, tmp_path) -> GraphRagPipeline:  # type: ignore[no-untyped-def]
+        """GR seed whose out-of-scope sibling INC_S007_AT (MKT_AT facts)
+        is one RELATED_TO hop away (labelled, like the real adapter)."""
+        source_dir = cls._incidents_dir(tmp_path)
+        provider = load_static_provider_from_rows(
+            [("INC_S007_GR", "RELATED_TO", "INC_S007_AT", "Incident")]
+        )
+        pipeline = build_pipeline(
+            settings=make_settings(dataset_dir=str(source_dir)),
+            resolver=StaticEntityResolver(resolved()),
+        )
+        pipeline.neighbours = provider
+        pipeline.source_lookup = SourceLookup(source_dir)
+        return pipeline
+
+    def test_document_channel_is_scoped(self) -> None:
+        pipeline = build_pipeline()
+        result = pipeline.run("Why did checkout fail in Greece?", markets=["MKT_GR"])
+
+        chunk_ids = {chunk.chunk_id for chunk in result.document_evidence}
+        assert "CHNK_S007_GR_00" in chunk_ids
+        assert "CHNK_S007_UK_00" not in chunk_ids
+
+    def test_out_of_scope_structured_nodes_are_discarded(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        pipeline = self._scope_pipeline(tmp_path)
+        result = pipeline.run("Why did checkout fail in Greece?", markets=["MKT_GR"])
+
+        selected = {evidence.node_id for evidence in result.node_evidence if evidence.selected}
+        assert "INC_S007_GR" in selected
+        assert "INC_S007_AT" not in selected
+        discards = [
+            event
+            for event in pipeline.events
+            if event.event_type == GRAPH_CANDIDATE_DISCARDED
+            and event.payload.get("node_id") == "INC_S007_AT"
+        ]
+        assert discards, "the out-of-scope sibling must be recorded as discarded"
+        assert discards[0].payload["reason"] == "out_of_scope_market"
+
+    def test_unscoped_run_keeps_the_cross_market_sibling(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        pipeline = self._scope_pipeline(tmp_path)
+        result = pipeline.run("Why did checkout fail in Greece?")
+
+        selected = {evidence.node_id for evidence in result.node_evidence if evidence.selected}
+        assert {"INC_S007_GR", "INC_S007_AT"} <= selected
+
+    def test_scope_is_recorded_on_the_resolution_event(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        pipeline = self._scope_pipeline(tmp_path)
+        pipeline.run("Why did checkout fail in Greece?", markets=["MKT_GR"])
+
+        assert pipeline.events[0].event_type == GRAPH_ENTITY_RESOLUTION_STARTED
+        assert pipeline.events[0].payload["markets"] == "MKT_GR"
 
 
 class TestTelemetryAndDeterminism:

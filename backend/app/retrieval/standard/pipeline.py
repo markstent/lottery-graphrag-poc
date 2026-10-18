@@ -12,6 +12,7 @@ contracts that the graph pipeline must match.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Protocol
 
 from app.config import RetrievalSettings
@@ -79,11 +80,13 @@ class StandardRagPipeline:
     def events(self) -> list[RetrievalEvent]:
         return self.sink.events
 
-    def run(self, question: str) -> RagRunResult:
+    def run(self, question: str, markets: Sequence[str] | None = None) -> RagRunResult:
+        """Run one question; ``markets`` (full market ids) scopes retrieval."""
         if not question.strip():
             raise ValueError("Question must not be empty")
+        scope = list(markets) if markets else None
 
-        self.emitter.emit(RAG_QUERY_RECEIVED, question=question)
+        self.emitter.emit(RAG_QUERY_RECEIVED, question=question, markets=",".join(scope or []))
 
         self.emitter.emit(RAG_EMBEDDING_STARTED, model=self.embeddings.model_name)
         query_vector = self.embeddings.embed([question])[0]
@@ -92,7 +95,7 @@ class StandardRagPipeline:
         )
 
         self.emitter.emit(RAG_VECTOR_SEARCH_STARTED, top_k=self.settings.top_k)
-        hits = self.store.search(query_vector, limit=self.settings.top_k)
+        hits = self.store.search(query_vector, limit=self.settings.top_k, markets=scope)
         candidates = [
             self._payload_to_evidence(point_id, similarity, payload, rank)
             for rank, (point_id, similarity, payload) in enumerate(hits, start=1)

@@ -99,6 +99,38 @@ class TestRequestValidation:
         )
         assert response.status_code == 422
 
+    def test_unknown_market_rejected(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/queries", json={"question": "What happened?", "market_scope": ["XX"]}
+        )
+        assert response.status_code == 422
+
+    def test_markets_normalised_to_full_ids(self, client: TestClient) -> None:
+        run_id = client.post(
+            "/api/v1/queries",
+            json={
+                "question": "Anything.",
+                "configurations": ["A"],
+                "market_scope": ["uk", "MKT_GR"],
+            },
+        ).json()["run_id"]
+        payload = _await_completion(client, run_id)
+        assert payload["market_scope"] == ["MKT_UK", "MKT_GR"]
+
+    def test_scoped_run_filters_pipeline_a_evidence(self, client: TestClient) -> None:
+        run_id = client.post(
+            "/api/v1/queries",
+            json={
+                "question": "What do the game rules say about prize tiers?",
+                "configurations": ["A"],
+                "market_scope": ["MKT_GR"],
+            },
+        ).json()["run_id"]
+        payload = _await_completion(client, run_id)
+        assert payload["status"] == "completed"
+        evidence = payload["results"]["A"]["evidence"]
+        assert all(chunk["market_id"] == "MKT_GR" for chunk in evidence)
+
 
 class TestQueryLifecycle:
     def test_submission_returns_run_pointer_immediately(self, client: TestClient) -> None:

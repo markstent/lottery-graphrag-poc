@@ -1,4 +1,4 @@
-// Example 5 — local incident context (Class 2: maximum two hops).
+// Example 5: local incident context (Class 2: maximum two hops).
 // Used to assemble incident context with provenance; the returned node ids
 // are references into the authoritative structured layer for numeric facts.
 // Parameter: $incident_id (string), $limit (integer)

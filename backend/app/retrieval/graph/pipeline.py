@@ -17,6 +17,8 @@ structured layer, not the graph.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from app.config import RetrievalSettings
 from app.events import (
     GRAPH_CANDIDATE_DISCARDED,
@@ -106,12 +108,23 @@ class GraphRagPipeline:
     def events(self) -> list[RetrievalEvent]:
         return self.sink.events
 
-    def run(self, question: str) -> GraphRunResult:
+    def run(self, question: str, markets: Sequence[str] | None = None) -> GraphRunResult:
+        """Run one question; ``markets`` (full market ids) scopes evidence.
+
+        The scope applies to the document channel (same filtered vector
+        search as pipeline A: fairness) and to structured evidence: scored
+        nodes whose authoritative record carries a market outside the scope
+        are discarded with ``out_of_scope_market``. Shared infrastructure
+        (platforms, versions, concepts, documents) has no market and stays.
+        """
         if not question.strip():
             raise ValueError("Question must not be empty")
+        scope = list(markets) if markets else None
         graph_settings = self.settings.graph
 
-        self.emitter.emit(GRAPH_ENTITY_RESOLUTION_STARTED, question=question)
+        self.emitter.emit(
+            GRAPH_ENTITY_RESOLUTION_STARTED, question=question, markets=",".join(scope or [])
+        )
         resolved = self.resolver.resolve(question)
         if not graph_settings.ontology_expansion:
             # Pipeline B never uses the ontology layer: concept mentions do
@@ -128,7 +141,7 @@ class GraphRagPipeline:
             )
         seeds = [entity.entity_id for entity in resolved]
         if not seeds:
-            seeds = self._fallback_seed(question)
+            seeds = self._fallback_seed(question, scope)
         for seed in seeds:
             self.emitter.emit(GRAPH_SEED_SELECTED, node_id=seed)
 
@@ -186,6 +199,15 @@ class GraphRagPipeline:
                 )
 
         scored = self._rank(question, resolved, traversal)
+        if scope:
+            scored, out_of_scope = self._apply_market_scope(scored, scope)
+            for node in out_of_scope:
+                self.emitter.emit(
+                    GRAPH_CANDIDATE_DISCARDED,
+                    node_id=node.node_id,
+                    score=node.score,
+                    reason="out_of_scope_market",
+                )
         # Seeds are query anchors, not discovered evidence: they are always
         # recorded and selected (docs/07 section 8 keeps seed events
         # separate from candidate events), but they do not consume the
@@ -231,7 +253,7 @@ class GraphRagPipeline:
         node_evidence = self._attach_authoritative_facts(node_evidence)
 
         # Document retrieval: identical channel to pipeline A (fairness).
-        document_chunks = self._document_chunks(question)
+        document_chunks = self._document_chunks(question, scope)
         selected_chunks, discarded_chunks = select_context(
             document_chunks,
             budget_tokens=self.settings.context.budget_tokens,
@@ -314,11 +336,11 @@ class GraphRagPipeline:
                 concepts.add(edge.to_id)
         return concepts
 
-    def _fallback_seed(self, question: str) -> list[str]:
+    def _fallback_seed(self, question: str, markets: Sequence[str] | None = None) -> list[str]:
         """No entity resolved: seed from the shared vector layer's best
         document (same embedding model and corpus as pipeline A)."""
         query_vector = self.embeddings.embed([question])[0]
-        hits = self.store.search(query_vector, limit=1)
+        hits = self.store.search(query_vector, limit=1, markets=markets)
         if not hits:
             return []
         document_id = str(hits[0][2].get("document_id", ""))
@@ -357,16 +379,18 @@ class GraphRagPipeline:
             texts[node_id] = " ".join(parts)
         return texts
 
-    def _document_chunks(self, question: str) -> list[EvidenceChunk]:
+    def _document_chunks(
+        self, question: str, markets: Sequence[str] | None = None
+    ) -> list[EvidenceChunk]:
         """Document retrieval stage, identical to pipeline A's retrieval.
 
         Documents stay in the vector layer for every pipeline (ADR-002,
         retrieval fairness): same corpus, same embedding model, same top_k,
-        same reranker. The graph contributes structured records and
-        evidence paths, not a second document channel.
+        same reranker, same market scope. The graph contributes structured
+        records and evidence paths, not a second document channel.
         """
         query_vector = self.embeddings.embed([question])[0]
-        hits = self.store.search(query_vector, limit=self.settings.top_k)
+        hits = self.store.search(query_vector, limit=self.settings.top_k, markets=markets)
         candidates = [
             chunk.to_evidence(similarity=similarity, rank=rank)
             for rank, (chunk_id, similarity, _payload) in enumerate(hits, start=1)
@@ -375,6 +399,37 @@ class GraphRagPipeline:
         if self.reranker is not None:
             candidates = self.reranker.rerank(question, candidates)
         return candidates
+
+    def _apply_market_scope(
+        self, scored: list[ScoredNode], markets: list[str]
+    ) -> tuple[list[ScoredNode], list[ScoredNode]]:
+        """Split scored nodes into in-scope and out-of-scope evidence.
+
+        A node's market comes from its authoritative structured record
+        (Incident, Game, AppVersion, Player) or is the node id itself for
+        Market nodes. Nodes without a market (platforms, versions,
+        concepts, documents) are shared evidence and stay in scope.
+        """
+        in_scope: list[ScoredNode] = []
+        excluded: list[ScoredNode] = []
+        for node in scored:
+            market = self._node_market(node.node_label, node.node_id)
+            if market is None or market in markets:
+                in_scope.append(node)
+            else:
+                excluded.append(node)
+        return in_scope, excluded
+
+    def _node_market(self, node_label: str, node_id: str) -> str | None:
+        if node_label == "Market":
+            return node_id
+        if self.source_lookup is None:
+            return None
+        facts = self.source_lookup.fetch(node_label, node_id)
+        if facts is None:
+            return None
+        market = facts.columns.get("market_id")
+        return market or None
 
     def _attach_authoritative_facts(
         self, node_evidence: list[GraphEvidence]

@@ -7,12 +7,16 @@ public record (provenance included) and are already Pydantic.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
+from app.datasets.master_data import MARKETS
 from app.evidence import GraphRunResult, RagRunResult
 
 PipelineId = Literal["A", "B", "C"]
 QueryStatus = Literal["running", "completed", "failed"]
+
+# Canonical market codes from the synthetic world's master data (UK, GR, AT, CZ).
+MARKET_CODES = frozenset(code for _market_id, code, *_rest in MARKETS)
 
 
 class HealthResponse(BaseModel):
@@ -30,6 +34,23 @@ class QueryRequest(BaseModel):
     # Fraud-topology questions need the player-instrument relationships
     # added to the B/C allow-list (same profile switch as the harness).
     profile: Literal["fraud"] | None = None
+    # Optional retrieval scope: market codes ("UK") or full ids ("MKT_UK"),
+    # normalised to full ids. Empty means all markets. The scope applies
+    # identically to every requested pipeline (retrieval fairness).
+    market_scope: list[str] = Field(default_factory=list, max_length=4)
+
+    @field_validator("market_scope")
+    @classmethod
+    def _normalise_market_scope(cls, value: list[str]) -> list[str]:
+        normalised: list[str] = []
+        for entry in value:
+            code = entry.strip().upper().removeprefix("MKT_")
+            if code not in MARKET_CODES:
+                raise ValueError(f"unknown market: {entry!r}")
+            market_id = f"MKT_{code}"
+            if market_id not in normalised:
+                normalised.append(market_id)
+        return normalised
 
 
 class QueryAccepted(BaseModel):
@@ -55,6 +76,7 @@ class QueryResults(BaseModel):
     question: str
     status: QueryStatus
     configurations: list[PipelineId]
+    market_scope: list[str] = Field(default_factory=list)
     results: dict[str, RagRunResult | GraphRunResult] = Field(default_factory=dict)
     error: ApiError | None = None
 

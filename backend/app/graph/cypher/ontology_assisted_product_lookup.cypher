@@ -1,4 +1,4 @@
-// Example 1b — ontology-assisted cross-market product lookup (Class 4).
+// Example 1b: ontology-assisted cross-market product lookup (Class 4).
 // Two instant-product families (retail instant, digital instant) unify under
 // one canonical concept, so the ontology path finds peers that the family
 // edges alone would miss.

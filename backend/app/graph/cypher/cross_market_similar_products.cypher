@@ -1,4 +1,4 @@
-// Example 1a — structural similarity across markets (graph relationships only).
+// Example 1a: structural similarity across markets (graph relationships only).
 // Traversal class 1-2; bounded by LIMIT and the SIMILAR_TO whitelist.
 // Parameter: $game_id (string), $limit (integer)
 

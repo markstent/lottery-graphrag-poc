@@ -92,6 +92,7 @@ def build_queries_router(service: QueryService) -> APIRouter:
             question=record.question,
             status=record.status,  # type: ignore[arg-type]
             configurations=record.configurations,  # type: ignore[arg-type]
+            market_scope=record.market_scope,
             results=record.results,
             error=(
                 None

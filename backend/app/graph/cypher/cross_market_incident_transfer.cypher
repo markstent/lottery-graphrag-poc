@@ -1,4 +1,4 @@
-// Example 2 — cross-market incident transfer THROUGH the ontology.
+// Example 2: cross-market incident transfer THROUGH the ontology.
 // Plain graph relationships contain no Incident-to-Incident edges, so this
 // path only exists via MAPS_TO canonical concepts. This is the canonical
 // demonstration of ontology value beyond plain graph relationships.

@@ -68,7 +68,7 @@ def run_all(settings: RetrievalSettings, graph_config: GraphConfig, generator_na
     lab = build_lab(settings, build_generator(generator_name, settings))
 
     for scenario, label, question, profile in QUESTIONS:
-        lines.append(f"## {scenario} — {label}")
+        lines.append(f"## {scenario}: {label}")
         lines.append("")
         lines.append(f"**Question:** {question}")
         lines.append("")
@@ -99,7 +99,7 @@ def _fmt_events(events: list[RetrievalEvent]) -> str:
 def _trace_a(result: RagRunResult, events: list[RetrievalEvent]) -> list[str]:
     selected = [chunk for chunk in result.evidence if chunk.selected]
     discarded = [chunk for chunk in result.evidence if not chunk.selected]
-    lines = ["### Pipeline A — conventional RAG", ""]
+    lines = ["### Pipeline A: conventional RAG", ""]
     lines.append(f"- selected context ({len(selected)}):")
     for chunk in selected:
         lines.append(
@@ -126,7 +126,7 @@ def _trace_a(result: RagRunResult, events: list[RetrievalEvent]) -> list[str]:
 def _trace_g(tag: str, result: GraphRunResult, events: list[RetrievalEvent]) -> list[str]:
     selected = [node for node in result.node_evidence if node.selected]
     discarded = [node for node in result.node_evidence if not node.selected]
-    lines = [f"### Pipeline {tag} — {tag_label(tag)}", ""]
+    lines = [f"### Pipeline {tag}: {tag_label(tag)}", ""]
     lines.append("- resolved seeds and traversal:")
     seeds = [
         event.payload["node_id"] for event in events if event.event_type == "graph.seed.selected"

@@ -45,6 +45,7 @@ class RunRecord:
     question: str
     configurations: list[str]
     profile: str | None
+    market_scope: list[str] = field(default_factory=list)
     status: str = "running"
     events: list[dict[str, Any]] = field(default_factory=list)
     results: dict[str, Any] = field(default_factory=dict)
@@ -107,6 +108,7 @@ class QueryService:
             question=request.question,
             configurations=list(request.configurations),
             profile=request.profile,
+            market_scope=list(request.market_scope),
         )
         with self._lock:
             self._runs[run_id] = record
@@ -129,6 +131,7 @@ class QueryService:
                 question=record.question,
                 configurations=list(record.configurations),
                 profile=record.profile,
+                market_scope=list(record.market_scope),
                 status=record.status,
                 events=[dict(event) for event in record.events],
                 results=dict(record.results),
@@ -141,10 +144,11 @@ class QueryService:
     def _execute(self, record: RunRecord) -> None:
         try:
             lab = self._lab_once()
+            scope = record.market_scope or None
             for tag in record.configurations:
                 if tag == "A":
                     sink = ListEventSink()
-                    result = lab.pipeline_a(sink=sink).run(record.question)
+                    result = lab.pipeline_a(sink=sink).run(record.question, markets=scope)
                     record.results["A"] = result
                     self._attach(record, "A", sink.events)
                 else:
@@ -167,7 +171,7 @@ class QueryService:
             for pipeline_tag, pipeline in wired.pipelines:
                 if pipeline_tag != tag:
                     continue
-                result = pipeline.run(record.question)
+                result = pipeline.run(record.question, markets=record.market_scope or None)
                 record.results[pipeline_tag] = result
                 self._attach(record, pipeline_tag, pipeline.events)
         finally:

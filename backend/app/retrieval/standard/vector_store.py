@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 import uuid
+from collections.abc import Sequence
 from typing import Any, Protocol
 
 VectorPayload = dict[str, Any]
@@ -27,8 +28,19 @@ class VectorStore(Protocol):
         """Insert or overwrite points."""
         ...
 
-    def search(self, vector: list[float], limit: int) -> list[tuple[str, float, VectorPayload]]:
-        """Return the (id, similarity, payload) nearest neighbours."""
+    def search(
+        self,
+        vector: list[float],
+        limit: int,
+        markets: Sequence[str] | None = None,
+    ) -> list[tuple[str, float, VectorPayload]]:
+        """Return the (id, similarity, payload) nearest neighbours.
+
+        ``markets`` restricts the search to payloads whose ``market_id`` is
+        in the given full market ids (e.g. ``MKT_GR``); the top-k is
+        computed within the scope, never cropped afterwards. ``None`` or an
+        empty sequence means all markets.
+        """
         ...
 
     def reset(self) -> None:
@@ -54,10 +66,16 @@ class InMemoryVectorStore:
             self._vectors[point_id] = vector
             self._payloads[point_id] = payload
 
-    def search(self, vector: list[float], limit: int) -> list[tuple[str, float, VectorPayload]]:
+    def search(
+        self,
+        vector: list[float],
+        limit: int,
+        markets: Sequence[str] | None = None,
+    ) -> list[tuple[str, float, VectorPayload]]:
         scores = [
             (point_id, _dot(vector, stored), self._payloads[point_id])
             for point_id, stored in self._vectors.items()
+            if markets is None or self._payloads[point_id].get("market_id") in markets
         ]
         scores.sort(key=lambda entry: (-entry[1], entry[0]))
         return scores[:limit]
@@ -121,10 +139,26 @@ class QdrantVectorStore:
         except Exception as error:  # qdrant-client raises varied transport errors
             raise VectorStoreError(f"Qdrant upsert failed: {error}") from error
 
-    def search(self, vector: list[float], limit: int) -> list[tuple[str, float, VectorPayload]]:
+    def search(
+        self,
+        vector: list[float],
+        limit: int,
+        markets: Sequence[str] | None = None,
+    ) -> list[tuple[str, float, VectorPayload]]:
         try:
+            from qdrant_client.models import FieldCondition, Filter, MatchAny
+
+            query_filter = (
+                Filter(must=[FieldCondition(key="market_id", match=MatchAny(any=list(markets)))])
+                if markets
+                else None
+            )
             result = self._client.query_points(
-                collection_name=self._collection, query=vector, limit=limit, with_payload=True
+                collection_name=self._collection,
+                query=vector,
+                query_filter=query_filter,
+                limit=limit,
+                with_payload=True,
             )
         except Exception as error:
             raise VectorStoreError(f"Qdrant search failed: {error}") from error
