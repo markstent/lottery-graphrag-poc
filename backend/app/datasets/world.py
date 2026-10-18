@@ -16,7 +16,7 @@ from typing import Any
 from app.datasets import activity, documents, entities, marketing, operations
 from app.datasets.config import GENERATOR_VERSION, PROFILES, GenerationConfig
 from app.datasets.rng import stream
-from app.datasets.rows import AppVersionRow, DocumentChunkRow, DocumentRow
+from app.datasets.rows import AppVersionRow
 from app.datasets.schema import TABLE_PROVENANCE, TABLE_SCHEMAS
 from app.datasets.util import split_columns
 
@@ -179,18 +179,9 @@ def build_world(config: GenerationConfig) -> World:
     _stage("sessions", {"sessions": tables["sessions"]})
 
     rng_documents = stream(config.world_seed, "documents")
-    docs, chunks = documents.generate_documents(
-        rng_documents,
-        volumes.documents,
-        tables["games"],
-        tables["incidents"],
-        tables["campaigns"],
-        tables["app_versions"],
-        tables["experiments"],
+    tables["documents"], tables["document_chunks"] = documents.generate_documents(
+        rng_documents, volumes.documents, documents.WorldIndex.from_tables(tables)
     )
-    # Documents move to named rows with their generator; wrap until then.
-    tables["documents"] = [DocumentRow(*doc) for doc in docs]
-    tables["document_chunks"] = [DocumentChunkRow(*chunk) for chunk in chunks]
 
     market_currency = {row.market_id: row.currency_code for row in tables["markets"]}
     tables["kpi_daily"] = activity.generate_kpi_daily(

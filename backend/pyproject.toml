@@ -44,7 +44,7 @@ select = [
 # DDL definitions and multilingual document templates exceed the line limit
 # by nature; ambiguous-unicode flags fire on intentional non-Latin text.
 "app/datasets/schema.py" = ["E501"]
-"app/datasets/documents.py" = ["RUF001"]
+"app/datasets/document_templates.py" = ["RUF001"]
 "app/datasets/taxonomies.py" = ["RUF001", "RUF003"]
 "tests/test_chunking.py" = ["RUF001"]
 

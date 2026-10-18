@@ -363,7 +363,7 @@ class DocumentChunkRow(NamedTuple):
     chunk_index: int
     text: str
     token_count: int
-    embedding_version: str
+    embedding_version: str | None
 
 
 ROW_TYPES: dict[str, type[tuple[object, ...]]] = {
