@@ -446,6 +446,39 @@ Workstream 4 runs alongside 3.
 
 ---
 
+## 10a. Decisions from the builder check (agent calls, 2026-10-18)
+
+A reviewer read this document as a builder and asked seven questions.
+The answers below are the agent's calls under the owner's approval of this document.
+
+1. **Live scoring.**
+   For a bank question run in Live Lab, the deterministic scorer scores the live answer after the run has finished and the results are frozen; the scorecard labels this "scored against the answer key".
+   The LLM judge runs only in official runs.
+   Isolation is enforced on `app.retrieval`, `app.graph`, `app.ontology`, `app.datasets` and `app.scenarios`; `app.api` may import `app.evaluation` for post-run scoring and for starting benchmark runs, and a test asserts scoring happens only after the run record is complete.
+2. **Pipeline A and the planted clusters (H5).**
+   The serialiser includes every device used by more than one player, every payment method used by more than one player (with its account list), and the players that take part in such a share.
+   The per-question "fraud" relationship profile is removed; `USES` and `USES_PAYMENT` join the default allow-list for every question, bounded by the per-type and per-hop caps.
+3. **Anchor form in bank 2.0.0.**
+   Structural strata anchor on record ids.
+   The ontology stratum has two labelled sub-strata: id-anchored questions that need cross-market concept reach, and local-language name-anchored questions that need term resolution.
+   Headline H2 uses the id-anchored sub-stratum; the name-anchored one is reported as "entity resolution through the ontology".
+4. **Shared versus market-local reference data.**
+   Shared across markets: platforms, platform versions, suppliers, payment providers, channels, currencies, languages.
+   Market-local: game families, categories, mechanics, incident types, support categories, player segments.
+   SCN-007 and SCN-009 therefore stay graph stories; the ontology stratum comes from the local taxonomies.
+5. **Scenario targets vary with the scenario seed.**
+   Each injector draws its market, game, version or cluster from the scenario RNG among eligible candidates, within the structural constraints the scenario needs.
+   Grounding follows the ledger per world.
+   The game catalogue stays at 20 games.
+6. **Official-run topology.**
+   Official runs use the dev profile on three world seeds (2026, 2027, 2028), orchestrated sequentially by the harness CLI (regenerate, re-ingest, re-index per world), producing one run record with per-world sections and one aggregate `summary.json`.
+   The presentation world for Live Lab and Data Model is dev seed 2026, so a replayed question matches the Results numbers for the same instance.
+   The demo profile remains available for scale demonstrations but is not the official world.
+7. **Depth sweep.**
+   The H1 depth sweep is a separate run kind ("sweep"); headline tiles, the fairness pin and official cells use depth 2.
+8. **Record blocks in the shared collection.**
+   When B or C reaches a record through the graph and the document channel also returns its serialised block, the pipeline keeps one evidence slot for it with the structured-layer fact winning.
+
 ## 11. Left to the builder
 
 - Exact serialiser wording for structured records (fixed once, published, frozen with the bank).
