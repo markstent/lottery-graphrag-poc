@@ -96,3 +96,9 @@ PROVIDER_MIX: dict[str, dict[str, float]] = {
     "AT": {"PP_BLUEHARBOR": 0.40, "PP_CONTINENTAL": 0.35, "PP_ALPENKASSE": 0.25},
     "CZ": {"PP_BLUEHARBOR": 0.40, "PP_CONTINENTAL": 0.35, "PP_VLTAVA_PAY": 0.25},
 }
+
+# Maximum words per document chunk window.
+CHUNK_MAX_WORDS = 160
+
+# Trailing sentences repeated at the start of the next chunk window.
+CHUNK_OVERLAP_SENTENCES = 1
