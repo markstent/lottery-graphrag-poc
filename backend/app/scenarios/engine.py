@@ -4,6 +4,8 @@ Runs the enabled injectors in fixed catalogue order, each with its own RNG
 stream keyed by ``scenario_seed + scenario_id``, records planted row counts
 for volume validation and planted ids per table in the truth, and publishes
 the applied configuration (not the truth) into the dataset manifest.
+After all injectors, daily KPIs are re-derived from the planted tables and
+every manifest row count is refreshed.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from datetime import date
 from typing import Any
 
 from app.datasets.rng import stream
-from app.datasets.world import World
+from app.datasets.world import World, derive_kpis
 from app.scenarios.catalogue import BY_ID, ENABLED, ScenarioSpec
 from app.scenarios.plant import PLANTERS
 from app.scenarios.planter import ScenarioPlanter
@@ -60,6 +62,11 @@ def apply_scenarios(world: World) -> list[ScenarioOutcome]:
                 planted_rows=dict(plan.planted_rows),
             )
         )
+
+    baseline_kpi_rows = world.manifest["row_counts"]["kpi_daily"]
+    derive_kpis(world)
+    world.planted["kpi_daily"] = len(world.tables["kpi_daily"]) - baseline_kpi_rows
+    world.manifest["row_counts"] = {name: len(rows) for name, rows in world.tables.items()}
 
     world.manifest["scenarios"] = {
         "scenario_seed": world.config.scenario_seed,

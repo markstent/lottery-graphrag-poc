@@ -324,3 +324,30 @@ def test_targets_depend_on_the_scenario_seed(scenario_world) -> None:
     assert len({o["SCN-015"].truth["authoritative_source"] for o in other.values()}) > 1
     assert len({o["SCN-002"].truth["market"] for o in other.values()}) > 1
     assert len({o["SCN-003"].truth["market"] for o in other.values()}) > 1
+
+
+def test_scn007_depresses_gr_session_completion_without_manual_edits(scenario_world) -> None:
+    world, outcomes = scenario_world
+    outcome = outcomes["SCN-007"]
+    market = outcome.truth["primary_market"]
+    baseline = build_world(GenerationConfig(profile="tiny", world_seed=7, scenario_seed=7))
+    dip_days = {outcome.start_date + timedelta(days=o) for o in range(outcome.duration_days)}
+
+    def completion(table: list, days: set | None = None) -> dict:
+        return {
+            row.date: row.metric_value
+            for row in table
+            if row.market_id == market
+            and row.metric_code == "session_completion"
+            and (days is None or row.date in days)
+        }
+
+    before = completion(baseline.tables["kpi_daily"])
+    during = completion(world.tables["kpi_daily"], dip_days)
+    assert len(during) >= 2
+    assert sum(during.values()) / len(during) <= 0.85 * (sum(before.values()) / len(before))
+
+
+def test_manifest_row_counts_match_tables_after_planting(scenario_world) -> None:
+    world, _outcomes = scenario_world
+    assert world.manifest["row_counts"] == {name: len(rows) for name, rows in world.tables.items()}

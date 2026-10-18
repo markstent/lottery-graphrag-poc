@@ -16,7 +16,7 @@ from app.datasets.config import REPO_ROOT
 from app.datasets.world import World
 from app.scenarios.engine import ScenarioOutcome
 
-LEDGER_VERSION = "1"
+LEDGER_VERSION = "2"
 DEFAULT_TRUTH_PATH = REPO_ROOT / "data" / "truth" / "ledger.json"
 
 
