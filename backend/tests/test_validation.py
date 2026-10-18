@@ -88,3 +88,19 @@ def test_volume_targets_match_profile(tiny_world: World) -> None:
     assert len(tiny_world.tables["campaign_exposures"]) == volumes.campaign_exposures
     assert len(tiny_world.tables["documents"]) == volumes.documents
     assert len(tiny_world.tables["games"]) == volumes.games_expected
+
+
+def test_shared_payment_pool_is_real_rows(tiny_world: World) -> None:
+    ids = {row.payment_method_id for row in tiny_world.tables["payment_methods"]}
+    assert {f"PAY_SHARED_{i:03d}" for i in range(80)} <= ids
+
+
+def test_players_use_their_markets_segment_codes(tiny_world: World) -> None:
+    for player in tiny_world.tables["players"]:
+        assert player.value_segment.startswith(f"SEG_{player.market_id[-2:]}_")
+        assert player.engagement_segment.startswith(f"SEG_{player.market_id[-2:]}_")
+
+
+def test_payment_methods_reference_known_providers(tiny_world: World) -> None:
+    providers = {row.provider_id for row in tiny_world.tables["payment_providers"]}
+    assert all(row.provider_id in providers for row in tiny_world.tables["payment_methods"])

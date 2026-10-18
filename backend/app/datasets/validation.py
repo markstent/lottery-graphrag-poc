@@ -15,15 +15,6 @@ from app.datasets.config import PROFILES, WINDOW_DAYS, WINDOW_START, GenerationC
 from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE, column_index
 from app.datasets.world import World
 
-VALUE_SEGMENTS = {"SEG_VALUE_VIP", "SEG_VALUE_MAINSTREAM", "SEG_VALUE_BUDGET"}
-ENGAGEMENT_SEGMENTS = {"SEG_ENG_ENGAGED", "SEG_ENG_CASUAL", "SEG_ENG_DORMANT"}
-SHARED_PAYMENT_POOL_SIZE = 80
-# Task 4 populates the data behind these foreign keys; they cannot resolve until then.
-_PENDING_PARENTS = frozenset(
-    {"incident_types", "support_categories", "player_segments", "payment_providers"}
-)
-_PENDING_MASTER_MARKETS = frozenset({"game_families", "game_categories", "game_mechanics"})
-
 
 def _ids(rows: list[tuple[Any, ...]], column: int = 0) -> set[str]:
     return {row[column] for row in rows if row[column] is not None}
@@ -37,12 +28,7 @@ def _referential_errors(tables: dict[str, list[tuple[Any, ...]]]) -> list[str]:
     """Foreign-key integrity over nullable-aware relationships."""
     errors: list[str] = []
     known_ids = {name: _ids(rows) for name, rows in tables.items()}
-    known_ids["payment_methods"] |= {f"PAY_SHARED_{i:03d}" for i in range(SHARED_PAYMENT_POOL_SIZE)}
     for fk in FOREIGN_KEYS:
-        if fk.parent_table in _PENDING_PARENTS or (
-            fk.parent_table == "markets" and fk.child_table in _PENDING_MASTER_MARKETS
-        ):
-            continue
         child, parent = fk.child_table, fk.parent_table
         child_col = column_index(child, fk.child_column)
         for row in tables[child]:
@@ -56,13 +42,17 @@ def _referential_errors(tables: dict[str, list[tuple[Any, ...]]]) -> list[str]:
     return errors
 
 
-def _segment_errors(tables: dict[str, list[tuple[Any, ...]]]) -> list[str]:
+def _segment_errors(tables: dict[str, list[Any]]) -> list[str]:
+    """Player segments must come from the segment taxonomy of the player's own market."""
+    allowed: dict[tuple[str, str], set[str]] = {}
+    for segment in tables["player_segments"]:
+        allowed.setdefault((segment.market_id, segment.segment_kind), set()).add(segment.segment_id)
     errors: list[str] = []
-    for row in tables["players"]:
-        if row[7] not in VALUE_SEGMENTS:
-            errors.append(f"segment: unknown value_segment {row[7]!r}")
-        if row[8] not in ENGAGEMENT_SEGMENTS:
-            errors.append(f"segment: unknown engagement_segment {row[8]!r}")
+    for player in tables["players"]:
+        if player.value_segment not in allowed.get((player.market_id, "VALUE"), set()):
+            errors.append(f"segment: unknown value_segment {player.value_segment!r}")
+        if player.engagement_segment not in allowed.get((player.market_id, "ENGAGEMENT"), set()):
+            errors.append(f"segment: unknown engagement_segment {player.engagement_segment!r}")
     return errors
 
 

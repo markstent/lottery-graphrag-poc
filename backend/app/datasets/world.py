@@ -98,7 +98,7 @@ def build_world(config: GenerationConfig) -> World:
     _stage("master data", tables)
 
     rng_retailers = stream(config.world_seed, "retailers")
-    tables["retailers"] = entities.generate_retailers(rng_retailers, volumes.retailers)
+    tables["retailers"] = list(entities.generate_retailers(rng_retailers, volumes.retailers))
     tables.update(entities.generate_platform_layer())
     _stage("retailers + platforms", {"retailers": tables["retailers"]})
 

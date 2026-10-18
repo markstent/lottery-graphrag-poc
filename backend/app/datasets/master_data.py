@@ -415,7 +415,7 @@ GAME_SPECS: tuple[GameSpec, ...] = (
     ),
 )
 
-PLATFORMS: list[tuple[str, str, str, str | None]] = [
+PLATFORMS: list[tuple[str, str, str, str]] = [
     ("PLT_APP_IOS", "Mobile iOS Application", "APP", "SUP_MERIDIAN"),
     ("PLT_APP_ANDROID", "Mobile Android Application", "APP", "SUP_MERIDIAN"),
     ("PLT_WEB", "Web Portal", "WEB", "SUP_HELIOTROPE"),

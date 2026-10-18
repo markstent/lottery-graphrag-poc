@@ -184,7 +184,7 @@ class PlayerDeviceRow(NamedTuple):
     player_id: str
     device_id: str
     first_seen_at: datetime
-    last_seen_at: datetime
+    last_seen_at: datetime | None
     usage_weight: float
 
 
@@ -200,7 +200,7 @@ class PlayerPaymentMethodRow(NamedTuple):
     player_id: str
     payment_method_id: str
     first_used_at: datetime
-    last_used_at: datetime
+    last_used_at: datetime | None
     usage_weight: float
 
 

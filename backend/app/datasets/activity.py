@@ -13,6 +13,12 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from app.datasets.config import WINDOW_DAYS, WINDOW_START
+from app.datasets.distributions import (
+    ENGAGEMENT_ACTIVITY_BOOST,
+    MARKET_SPLIT,
+    PLAYER_ACTIVITY_PARETO_ALPHA,
+)
+from app.datasets.taxonomies import segments_for
 from app.datasets.util import money, to_json
 
 _DRAW_BASE_JACKPOT_MINOR = {
@@ -75,13 +81,20 @@ def generate_draws(rng: random.Random, game_rows: list[tuple[Any, ...]]) -> list
     return rows
 
 
-def _weighted_players(players: list[tuple[Any, ...]], rng: random.Random) -> list[float]:
+def _weighted_players(players: list[Any], rng: random.Random) -> list[float]:
     """Long-tail activity weight per player, boosted by engagement segment."""
+    # Segment ids are market-local, so boosts are keyed by each market's engaged/casual/dormant ids.
+    boosts = {
+        segment_id: boost
+        for code in MARKET_SPLIT
+        for segment_id, boost in zip(
+            segments_for(code, "ENGAGEMENT"), ENGAGEMENT_ACTIVITY_BOOST.values(), strict=True
+        )
+    }
     weights: list[float] = []
     for player in players:
-        engagement = player[8]
-        base = rng.paretovariate(1.6)
-        boost = {"SEG_ENG_ENGAGED": 1.5, "SEG_ENG_CASUAL": 1.0, "SEG_ENG_DORMANT": 0.15}[engagement]
+        base = rng.paretovariate(PLAYER_ACTIVITY_PARETO_ALPHA)
+        boost = boosts[player.engagement_segment]
         weights.append(base * boost)
     return weights
 
