@@ -14,7 +14,8 @@ from pathlib import Path
 import pytest
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
-from app.datasets.world import TABLE_SCHEMAS, build_world
+from app.datasets.schema import TABLE_SCHEMAS
+from app.datasets.world import build_world
 from app.graph import statements
 from app.graph.config import GraphConfig
 from app.graph.ingest import build_node_rows, ingest

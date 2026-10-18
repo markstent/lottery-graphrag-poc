@@ -76,7 +76,8 @@ def test_retrievable_artefacts_carry_no_ledger_fields(tmp_path: Path) -> None:
     """Manifest and dataset columns stay free of truth-ledger content."""
     from app.datasets.config import GenerationConfig
     from app.datasets.parquet import write_world
-    from app.datasets.world import TABLE_SCHEMAS, build_world
+    from app.datasets.schema import TABLE_SCHEMAS
+    from app.datasets.world import build_world
 
     world = build_world(GenerationConfig(profile="tiny", world_seed=7, scenario_seed=7))
     apply_scenarios(world)

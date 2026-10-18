@@ -19,7 +19,8 @@ from app.api.runs import QueryService
 from app.config import RetrievalSettings
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
-from app.datasets.world import TABLE_SCHEMAS, build_world
+from app.datasets.schema import TABLE_SCHEMAS
+from app.datasets.world import build_world
 from app.graph.config import from_env as from_graph_env
 from app.main import create_app
 from app.retrieval.standard.generation import GenerationError

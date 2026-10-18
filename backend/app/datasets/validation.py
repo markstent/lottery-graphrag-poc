@@ -12,11 +12,17 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from app.datasets.config import PROFILES, WINDOW_DAYS, WINDOW_START, GenerationConfig
-from app.datasets.world import TABLE_PROVENANCE, World
+from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE, column_index
+from app.datasets.world import World
 
 VALUE_SEGMENTS = {"SEG_VALUE_VIP", "SEG_VALUE_MAINSTREAM", "SEG_VALUE_BUDGET"}
 ENGAGEMENT_SEGMENTS = {"SEG_ENG_ENGAGED", "SEG_ENG_CASUAL", "SEG_ENG_DORMANT"}
 SHARED_PAYMENT_POOL_SIZE = 80
+# Task 4 populates the data behind these foreign keys; they cannot resolve until then.
+_PENDING_PARENTS = frozenset(
+    {"incident_types", "support_categories", "player_segments", "payment_providers"}
+)
+_PENDING_MASTER_MARKETS = frozenset({"game_families", "game_categories", "game_mechanics"})
 
 
 def _ids(rows: list[tuple[Any, ...]], column: int = 0) -> set[str]:
@@ -30,61 +36,19 @@ def _index(rows: list[tuple[Any, ...]], key_column: int) -> dict[str, tuple[Any,
 def _referential_errors(tables: dict[str, list[tuple[Any, ...]]]) -> list[str]:
     """Foreign-key integrity over nullable-aware relationships."""
     errors: list[str] = []
-    # (child_table, child_column, parent_table, nullable)
-    relationships: list[tuple[str, int, str, bool]] = [
-        ("regions", 1, "markets", False),
-        ("games", 1, "markets", False),
-        ("game_mechanic_map", 0, "games", False),
-        ("game_mechanic_map", 1, "game_mechanics", False),
-        ("platforms", 3, "suppliers", False),
-        ("platform_versions", 1, "platforms", False),
-        ("app_versions", 1, "markets", False),
-        ("players", 1, "markets", False),
-        ("players", 3, "regions", False),
-        ("accounts", 1, "players", False),
-        ("player_device", 0, "players", False),
-        ("player_device", 1, "devices", False),
-        ("player_payment_method", 0, "players", False),
-        ("retailers", 1, "markets", False),
-        ("retailers", 2, "regions", False),
-        ("draws", 1, "games", False),
-        ("tickets", 2, "games", False),
-        ("tickets", 3, "markets", False),
-        ("tickets", 4, "draws", True),
-        ("tickets", 5, "retailers", True),
-        ("prizes", 1, "tickets", False),
-        ("sessions", 1, "players", False),
-        ("sessions", 2, "markets", False),
-        ("sessions", 3, "devices", True),
-        ("sessions", 7, "app_versions", True),
-        ("campaigns", 1, "markets", False),
-        ("campaign_game_map", 0, "campaigns", False),
-        ("campaign_game_map", 1, "games", False),
-        ("campaign_exposures", 1, "campaigns", False),
-        ("campaign_exposures", 2, "players", False),
-        ("campaign_exposures", 6, "games", True),
-        ("incidents", 2, "platforms", False),
-        ("incidents", 3, "platform_versions", True),
-        ("incidents", 4, "app_versions", True),
-        ("incident_game_map", 0, "incidents", False),
-        ("incident_game_map", 1, "games", False),
-        ("support_cases", 1, "markets", False),
-        ("support_cases", 2, "players", True),
-        ("support_cases", 3, "games", True),
-        ("support_cases", 4, "incidents", True),
-        ("documents", 2, "markets", True),
-        ("document_chunks", 1, "documents", False),
-        ("kpi_daily", 1, "markets", False),
-        ("kpi_daily", 2, "games", True),
-        ("experiments", 1, "markets", False),
-    ]
     known_ids = {name: _ids(rows) for name, rows in tables.items()}
     known_ids["payment_methods"] |= {f"PAY_SHARED_{i:03d}" for i in range(SHARED_PAYMENT_POOL_SIZE)}
-    for child, child_col, parent, nullable in relationships:
+    for fk in FOREIGN_KEYS:
+        if fk.parent_table in _PENDING_PARENTS or (
+            fk.parent_table == "markets" and fk.child_table in _PENDING_MASTER_MARKETS
+        ):
+            continue
+        child, parent = fk.child_table, fk.parent_table
+        child_col = column_index(child, fk.child_column)
         for row in tables[child]:
             value = row[child_col]
             if value is None:
-                if not nullable:
+                if not fk.nullable:
                     errors.append(f"referential: {child}[{child_col}] is null but required")
                 continue
             if value not in known_ids[parent]:

@@ -19,7 +19,8 @@ import pytest
 from app.config import RetrievalSettings
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
-from app.datasets.world import TABLE_SCHEMAS, build_world
+from app.datasets.schema import TABLE_SCHEMAS
+from app.datasets.world import build_world
 from app.graph.config import GraphConfig
 from app.graph.ingest import ingest
 from app.retrieval.graph.entities import DictionaryEntityResolver

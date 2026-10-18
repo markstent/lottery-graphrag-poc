@@ -16,8 +16,9 @@ from pathlib import Path
 
 from app.datasets.config import DEFAULT_OUTPUT_DIR, PROFILES, GenerationConfig
 from app.datasets.parquet import write_world
+from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.validation import validate_world
-from app.datasets.world import TABLE_SCHEMAS, build_data_dictionary, build_world
+from app.datasets.world import build_data_dictionary, build_world
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import DEFAULT_TRUTH_PATH, build_ledger, write_ledger
 

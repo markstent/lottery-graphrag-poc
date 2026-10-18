@@ -8,7 +8,6 @@ from typing import Any
 
 from app.datasets.config import WINDOW_START
 from app.datasets.master_data import (
-    BUSINESS_CONCEPTS,
     CHANNELS,
     GAME_CATEGORIES,
     GAME_FAMILIES,
@@ -65,7 +64,6 @@ def generate_master_rows() -> dict[str, list[tuple[Any, ...]]]:
         "languages": [("en", "English"), ("el", "Greek"), ("de", "German"), ("cs", "Czech")],
         "channels": list(CHANNELS),
         "suppliers": list(SUPPLIERS),
-        "business_concepts": list(BUSINESS_CONCEPTS),
         "game_families": list(GAME_FAMILIES),
         "game_categories": list(GAME_CATEGORIES),
         "game_mechanics": list(GAME_MECHANICS),

@@ -7,7 +7,7 @@ from typing import Any
 
 import duckdb
 
-from app.datasets.world import TABLE_SCHEMAS
+from app.datasets.schema import TABLE_SCHEMAS
 
 
 def load_dataset(dataset_dir: Path) -> dict[str, list[dict[str, Any]]]:

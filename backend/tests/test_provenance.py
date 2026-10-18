@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pytest
 from app.datasets.config import GenerationConfig
-from app.datasets.world import TABLE_PROVENANCE, World, build_world
+from app.datasets.schema import TABLE_PROVENANCE
+from app.datasets.world import World, build_world
 
 CONTRACT_SOURCES = {
     "warehouse",
@@ -40,8 +41,9 @@ def test_manifest_records_provenance(world: World) -> None:
 
 
 def test_data_dictionary_covers_every_field() -> None:
+    from app.datasets.schema import TABLE_SCHEMAS
     from app.datasets.util import split_columns
-    from app.datasets.world import TABLE_SCHEMAS, build_data_dictionary
+    from app.datasets.world import build_data_dictionary
 
     dictionary = build_data_dictionary()
     expected_fields = sum(len(split_columns(ddl)) for ddl in TABLE_SCHEMAS.values())

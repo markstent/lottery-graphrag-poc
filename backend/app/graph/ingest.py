@@ -18,7 +18,7 @@ from neo4j import Driver, GraphDatabase
 from neo4j import Session as Neo4jSession
 
 from app.datasets.master_data import PLAYER_SEGMENTS, PRIZE_TYPES
-from app.datasets.world import TABLE_PROVENANCE
+from app.datasets.schema import TABLE_PROVENANCE
 from app.graph import mapping, statements
 from app.graph.config import LABEL_VERSION, GraphConfig
 from app.graph.reader import load_dataset
