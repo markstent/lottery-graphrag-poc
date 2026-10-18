@@ -166,3 +166,28 @@ def test_draw_base_jackpot_follows_jackpot_type_and_family() -> None:
         "GAME_UK_91": Decimal("400000.00"),
         "GAME_UK_92": Decimal("1000000.00"),
     }
+
+
+def test_data_dictionary_exports_foreign_keys() -> None:
+    from app.datasets.world import build_data_dictionary
+
+    dictionary = build_data_dictionary()
+    assert {"child_table", "child_column", "parent_table", "nullable"} <= set(
+        dictionary["foreign_keys"][0]
+    )
+    assert any(
+        fk["child_table"] == "games" and fk["parent_table"] == "game_families"
+        for fk in dictionary["foreign_keys"]
+    )
+
+
+def test_manifest_taxonomy_counts_are_derived(tiny_world: World) -> None:
+    assert tiny_world.manifest["taxonomy"] == {
+        "families": 20,
+        "categories": 13,
+        "mechanics": 16,
+        "incident_types": 25,
+        "support_categories": 16,
+        "segments": 24,
+        "providers": 6,
+    }

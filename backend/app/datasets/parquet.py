@@ -7,6 +7,7 @@ Arrow types are derived from the declared DDL so stored types stay exact.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, time
 from pathlib import Path
 from typing import Any
@@ -35,7 +36,7 @@ def _arrow_type(type_text: str) -> pa.DataType:
     return _BASE_TYPES[base]
 
 
-def _arrow_table(ddl: str, rows: list[tuple[Any, ...]]) -> pa.Table:
+def _arrow_table(ddl: str, rows: Sequence[tuple[Any, ...]]) -> pa.Table:
     columns = split_columns(ddl)
     if rows:
         values: list[list[Any]] = [list(column) for column in zip(*rows, strict=True)]
@@ -58,7 +59,7 @@ def _arrow_table(ddl: str, rows: list[tuple[Any, ...]]) -> pa.Table:
 
 
 def write_world(
-    output_dir: Path, schemas: dict[str, str], tables: dict[str, list[tuple[Any, ...]]]
+    output_dir: Path, schemas: dict[str, str], tables: dict[str, list[Any]]
 ) -> list[Path]:
     """Write every table to ``<output_dir>/<table>.parquet``; returns file paths."""
     output_dir.mkdir(parents=True, exist_ok=True)

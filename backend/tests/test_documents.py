@@ -173,3 +173,9 @@ def test_documents_are_deterministic(tiny_world: World) -> None:
     again = build_world(GenerationConfig(profile="tiny", world_seed=42))
     assert again.tables["documents"] == tiny_world.tables["documents"]
     assert again.tables["document_chunks"] == tiny_world.tables["document_chunks"]
+
+
+def test_template_fields_keep_template_order_without_duplicates() -> None:
+    from app.datasets.documents import _fields
+
+    assert _fields("{a} and {b} and {a}") == ["a", "b"]

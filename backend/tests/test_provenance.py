@@ -45,7 +45,7 @@ def test_data_dictionary_covers_every_field() -> None:
     from app.datasets.util import split_columns
     from app.datasets.world import build_data_dictionary
 
-    dictionary = build_data_dictionary()
+    dictionary = build_data_dictionary()["tables"]
     expected_fields = sum(len(split_columns(ddl)) for ddl in TABLE_SCHEMAS.values())
     assert len(dictionary) == expected_fields
 

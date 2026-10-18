@@ -17,7 +17,7 @@ from app.datasets import activity, documents, entities, marketing, operations
 from app.datasets.config import GENERATOR_VERSION, PROFILES, GenerationConfig
 from app.datasets.rng import stream
 from app.datasets.rows import AppVersionRow
-from app.datasets.schema import TABLE_PROVENANCE, TABLE_SCHEMAS
+from app.datasets.schema import FOREIGN_KEYS, ID_FORMATS, TABLE_PROVENANCE, TABLE_SCHEMAS
 from app.datasets.util import split_columns
 
 _TABLE_ORDER = list(TABLE_SCHEMAS)
@@ -38,6 +38,15 @@ class World:
             "world_seed": config.world_seed,
             "scenario_seed": config.scenario_seed,
             "generated_at": self.generated_at.isoformat(),
+            "taxonomy": {
+                "families": len(tables["game_families"]),
+                "categories": len(tables["game_categories"]),
+                "mechanics": len(tables["game_mechanics"]),
+                "incident_types": len(tables["incident_types"]),
+                "support_categories": len(tables["support_categories"]),
+                "segments": len(tables["player_segments"]),
+                "providers": len(tables["payment_providers"]),
+            },
             "row_counts": {name: len(tables[name]) for name in _TABLE_ORDER},
             "provenance": {
                 name: {
@@ -49,18 +58,19 @@ class World:
         }
 
 
-def build_data_dictionary() -> list[dict[str, Any]]:
+def build_data_dictionary() -> dict[str, Any]:
     """Machine-readable data dictionary (docs/data/data-dictionary.md).
 
     Derived from TABLE_SCHEMAS and TABLE_PROVENANCE so the dictionary can
-    never drift from the generated schema. Nullability and foreign keys are
-    enforced by app.datasets.validation rather than Parquet constraints.
+    never drift from the generated schema. Foreign keys and ID formats are
+    exported alongside the fields; they are enforced by
+    app.datasets.validation rather than Parquet constraints.
     """
-    dictionary: list[dict[str, Any]] = []
+    fields: list[dict[str, Any]] = []
     for table in _TABLE_ORDER:
         source_system, source_table = TABLE_PROVENANCE[table]
         for position, (field, field_type) in enumerate(split_columns(TABLE_SCHEMAS[table])):
-            dictionary.append(
+            fields.append(
                 {
                     "table": table,
                     "field": field,
@@ -72,7 +82,37 @@ def build_data_dictionary() -> list[dict[str, Any]]:
                     "sensitivity": "none (synthetic)",
                 }
             )
-    return dictionary
+    return {
+        "tables": fields,
+        "foreign_keys": [
+            {
+                "child_table": fk.child_table,
+                "child_column": fk.child_column,
+                "parent_table": fk.parent_table,
+                "nullable": fk.nullable,
+            }
+            for fk in FOREIGN_KEYS
+        ],
+        "id_formats": dict(ID_FORMATS),
+    }
+
+
+def derive_kpis(world: World) -> None:
+    """Rebuild kpi_daily from the world's current tables.
+
+    Called after baseline generation and again after scenario planting so
+    daily KPIs always reflect every row, planted or not.
+    """
+    tables = world.tables
+    tables["kpi_daily"] = activity.generate_kpi_daily(
+        tables["tickets"],
+        tables["sessions"],
+        tables["support_cases"],
+        tables["campaign_exposures"],
+        tables["campaigns"],
+        {row.market_id: row.currency_code for row in tables["markets"]},
+    )
+    world.manifest["row_counts"]["kpi_daily"] = len(tables["kpi_daily"])
 
 
 def build_world(config: GenerationConfig) -> World:
@@ -183,17 +223,10 @@ def build_world(config: GenerationConfig) -> World:
         rng_documents, volumes.documents, documents.WorldIndex.from_tables(tables)
     )
 
-    market_currency = {row.market_id: row.currency_code for row in tables["markets"]}
-    tables["kpi_daily"] = activity.generate_kpi_daily(
-        tickets,
-        tables["sessions"],
-        tables["support_cases"],
-        tables["campaign_exposures"],
-        tables["campaigns"],
-        market_currency,
-    )
-
+    tables["kpi_daily"] = []  # placeholder so World can size it; derive_kpis fills it
     missing = [name for name in _TABLE_ORDER if name not in tables]
     if missing:
         raise RuntimeError(f"generator did not produce tables: {missing}")
-    return World(config, tables)
+    world = World(config, tables)
+    derive_kpis(world)
+    return world

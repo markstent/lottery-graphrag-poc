@@ -185,8 +185,9 @@ def mention(rng: random.Random, ref: Ref) -> str:
     return f"{ref.name} ({ref.entity_id})"
 
 
-def _fields(template: str) -> set[str]:
-    return {name for _, name, _, _ in string.Formatter().parse(template) if name}
+def _fields(template: str) -> list[str]:
+    """Placeholders in template order, without duplicates (RNG draws stay deterministic)."""
+    return list(dict.fromkeys(name for _, name, _, _ in string.Formatter().parse(template) if name))
 
 
 def _incident_ref(index: WorldIndex, incident: IncidentRow) -> Ref:
@@ -308,13 +309,15 @@ def _compose_body(
 
     kind = subject.kind if subject is not None else ""
     pool = [
-        t for t in (*templates.get(kind, ()), *templates["generic"]) if _fields(t) <= set(related)
+        t
+        for t in (*templates.get(kind, ()), *templates["generic"])
+        if set(_fields(t)) <= set(related)
     ]
     forced: list[str] = []
     if kind == "game":
         # Rule 6: a game document names its family and a mechanic locally.
         for name in ("family", "mechanic"):
-            candidates = [t for t in pool if _fields(t) == {name}]
+            candidates = [t for t in pool if _fields(t) == [name]]
             if candidates:
                 forced.append(rng.choice(candidates))
     remaining = [t for t in pool if t not in forced]
