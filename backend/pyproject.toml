@@ -50,6 +50,7 @@ select = [
 "app/datasets/taxonomies.py" = ["RUF001", "RUF003"]
 "app/scenarios/inject_checkout.py" = ["RUF001"]
 "app/scenarios/inject_documents.py" = ["RUF001"]
+"app/scenarios/inject_ontology.py" = ["RUF001"]
 "app/scenarios/inject_operations.py" = ["RUF001"]
 "tests/test_chunking.py" = ["RUF001"]
 

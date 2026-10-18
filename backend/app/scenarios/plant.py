@@ -15,6 +15,10 @@ from app.scenarios.inject_checkout import (
     plant_payment_provider_degradation,
 )
 from app.scenarios.inject_documents import plant_document_structured_conflict
+from app.scenarios.inject_ontology import (
+    plant_game_mechanic_affinity,
+    plant_transferable_campaign,
+)
 from app.scenarios.inject_operations import plant_cross_market_platform_incident
 from app.scenarios.inject_topology import plant_shared_device_cluster, plant_shared_payment_cluster
 from app.scenarios.planter import ScenarioPlanter
@@ -25,5 +29,7 @@ PLANTERS: dict[str, Callable[[ScenarioPlanter], None]] = {
     "SCN-003": plant_shared_payment_cluster,
     "SCN-007": plant_cross_market_platform_incident,
     "SCN-009": plant_payment_provider_degradation,
+    "SCN-010": plant_game_mechanic_affinity,
+    "SCN-011": plant_transferable_campaign,
     "SCN-015": plant_document_structured_conflict,
 }

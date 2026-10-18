@@ -3,14 +3,15 @@
 Static scenario configuration. Which scenarios are planted is not secret;
 the truth ledger (what exactly was planted where) is evaluator-only.
 
-Six scenarios are enabled, covering the distinct signal surfaces: an app
+Eight scenarios are enabled, covering the distinct signal surfaces: an app
 release cohort failure with incident, document and KPI evidence (SCN-001),
 graph topology (SCN-002, SCN-003), cross-market operational incidents
 (SCN-007), an intermittent payment provider degradation visible only through
-payment-method links before any incident (SCN-009), and document/structured
-conflict (SCN-015). The remaining catalogue entries are registered but disabled;
-enabling one means implementing its injector and registering it in
-app/scenarios/plant.py, not flipping a flag.
+payment-method links before any incident (SCN-009), ontology-dependent
+cross-market patterns over local mechanic, family and segment codes (SCN-010,
+SCN-011), and document/structured conflict (SCN-015). The remaining catalogue
+entries are registered but disabled; enabling one means implementing its
+injector and registering it in app/scenarios/plant.py, not flipping a flag.
 """
 
 from __future__ import annotations
@@ -147,6 +148,7 @@ SCENARIO_CATALOGUE: tuple[ScenarioSpec, ...] = (
         0.5,
         "low",
         ("cross-market mechanic affinity for one segment",),
+        enabled=True,
     ),
     ScenarioSpec(
         "SCN-011",
@@ -155,6 +157,7 @@ SCENARIO_CATALOGUE: tuple[ScenarioSpec, ...] = (
         0.5,
         "low",
         ("similar segment and product structure across markets",),
+        enabled=True,
     ),
     ScenarioSpec(
         "SCN-012",

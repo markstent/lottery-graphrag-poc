@@ -324,6 +324,8 @@ def test_targets_depend_on_the_scenario_seed(scenario_world) -> None:
     assert len({o["SCN-015"].truth["authoritative_source"] for o in other.values()}) > 1
     assert len({o["SCN-002"].truth["market"] for o in other.values()}) > 1
     assert len({o["SCN-003"].truth["market"] for o in other.values()}) > 1
+    assert len({o["SCN-010"].truth["mechanic_concept"] for o in other.values()}) > 1
+    assert len({o["SCN-011"].truth["target_market"] for o in other.values()}) > 1
 
 
 def test_scn007_depresses_gr_session_completion_without_manual_edits(scenario_world) -> None:
@@ -439,3 +441,70 @@ def test_scn009_contacts_do_not_name_the_provider(scenario_world) -> None:
     assert review.document_type == "POST_INCIDENT_REVIEW" and review.market_id is None
     assert provider.provider_id in review.body
     assert all(market in review.body for market in truth["affected_markets"])
+
+
+def test_scn010_uses_three_local_mechanic_codes_for_one_concept(scenario_world) -> None:
+    from app.ontology.loader import load_ontology
+
+    _world, outcomes = scenario_world
+    truth = outcomes["SCN-010"].truth
+    onto = load_ontology()
+    codes = {m["mechanic_code"] for m in truth["per_market"].values()}
+    assert len(codes) == 3
+    assert {onto.concept_for("mechanic", c) for c in codes} == {truth["mechanic_concept"]}
+
+
+def test_scn010_documents_are_local_language_and_name_only(scenario_world) -> None:
+    world, outcomes = scenario_world
+    truth = outcomes["SCN-010"].truth
+    docs = {d.document_id: d for d in world.tables["documents"]}
+    for market, detail in truth["per_market"].items():
+        doc = docs[detail["document_id"]]
+        assert doc.language_code == MARKET_LANGUAGE[market]
+        assert detail["game_id"] not in doc.body
+        assert detail["game_id"] not in doc.title
+        assert doc.source_record_id == ""
+
+
+def test_scn011_source_campaign_outperforms_baseline(scenario_world) -> None:
+    world, outcomes = scenario_world
+    truth = outcomes["SCN-011"].truth
+    rows = [
+        e
+        for e in world.tables["campaign_exposures"]
+        if e.campaign_id == truth["source_campaign_id"]
+    ]
+    engaged = [e for e in rows if e.engaged]
+    assert len(engaged) / len(rows) >= 0.6
+    converted = sum(1 for e in engaged if e.converted_game_id == truth["source_game_id"])
+    assert converted / len(engaged) >= 0.4
+
+
+def test_no_planted_row_contains_a_concept_id(scenario_world) -> None:
+    world, _ = scenario_world
+    for table, rows in world.tables.items():
+        for row in rows:
+            assert "CONCEPT_" not in " ".join(str(v) for v in row), table
+
+
+def test_scn010_control_and_scn011_target_get_no_planted_rows(scenario_world) -> None:
+    world, outcomes = scenario_world
+    affinity, campaign = outcomes["SCN-010"].truth, outcomes["SCN-011"].truth
+    assert affinity["control_market"] not in affinity["per_market"]
+    planted_tickets = set(affinity["planted_ids"]["tickets"])
+    tickets = [t for t in world.tables["tickets"] if t.ticket_id in planted_tickets]
+    assert {t.market_id for t in tickets} == set(affinity["per_market"])
+    for market, detail in affinity["per_market"].items():
+        mine = [t for t in tickets if t.market_id == market]
+        assert len(mine) == detail["planted_ticket_count"]
+        assert {t.game_id for t in mine} == {detail["game_id"]}
+    planted_docs = set(campaign["planted_ids"]["documents"])
+    docs = [d for d in world.tables["documents"] if d.document_id in planted_docs]
+    assert {d.market_id for d in docs} == {campaign["source_market"]}
+    assert campaign["target_market"] != campaign["source_market"]
+    assert set(campaign["planted_ids"]) == {
+        "campaigns",
+        "campaign_exposures",
+        "documents",
+        "document_chunks",
+    }

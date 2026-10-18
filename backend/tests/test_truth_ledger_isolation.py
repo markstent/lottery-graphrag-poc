@@ -119,6 +119,7 @@ def test_cli_produces_a_loadable_ledger(tmp_path: Path) -> None:
     ledger = load_ledger(truth_path)
     assert ledger.world.profile == "tiny"
     assert [scenario.scenario_id for scenario in ledger.scenarios] == list(ENABLED)
+    assert len(ledger.scenarios) == 8
     by_id = {scenario.scenario_id: scenario for scenario in ledger.scenarios}
     assert by_id["SCN-007"].truth["primary_market"] in {"MKT_GR", "MKT_AT", "MKT_CZ"}
     assert by_id["SCN-015"].truth["authoritative_price"] > by_id["SCN-015"].truth["stale_price"]
