@@ -37,7 +37,7 @@ concepts:
     parent: CONCEPT_DRAW_GAME
     type: Product
     labels: {en: Annuity Draw, el: Κλήρωση με μηνιαίο εισόδημα, de: Rentenziehung, cs: Rentová loterie}
-    synonyms: {en: [annuity lottery, monthly income prize], el: [κλήρωση πρόσοδου], de: [Rentenlotterie, Monatsrente], cs: [loterie s měsíční rentou]}
+    synonyms: {en: [annuity lottery, monthly income prize], el: [κλήρωση προσόδου], de: [Rentenlotterie, Monatsrente], cs: [loterie s měsíční rentou]}
     definition: A draw game whose top prize is paid out as a regular income over many years.
   - id: CONCEPT_FIXED_PRIZE_DRAW
     parent: CONCEPT_DRAW_GAME
