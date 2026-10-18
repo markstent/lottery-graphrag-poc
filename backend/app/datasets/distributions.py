@@ -10,6 +10,8 @@ from __future__ import annotations
 MARKET_SPLIT: dict[str, float] = {"UK": 0.32, "GR": 0.28, "AT": 0.22, "CZ": 0.18}
 # Share of retailers located in each market.
 MARKET_RETAIL_SHARE: dict[str, float] = {"UK": 0.30, "GR": 0.26, "AT": 0.24, "CZ": 0.20}
+# Share of retailers that are agents rather than kiosks.
+RETAILER_AGENT_SHARE = 0.7
 # Share of devices registered in each market.
 MARKET_DEVICE_SHARE: dict[str, float] = {"UK": 0.32, "GR": 0.27, "AT": 0.22, "CZ": 0.19}
 
