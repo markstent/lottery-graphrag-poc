@@ -105,3 +105,12 @@ def test_evidence_only_questions_have_no_checks(grounding: WorldGrounding) -> No
     if grounded.status == "ok":
         assert grounded.checks == ()
         assert grounded.note  # the report explains evidence-only grading
+
+
+def test_base_uk_incident_anchor_is_never_a_planted_incident(grounding: WorldGrounding) -> None:
+    planted = {
+        str(incident_id)
+        for scenario in grounding._ledger_scenarios.values()
+        for incident_id in scenario.truth.get("planted_ids", {}).get("incidents", [])
+    }
+    assert str(grounding._sel("uk_incident")) not in planted

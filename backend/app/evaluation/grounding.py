@@ -178,12 +178,22 @@ class WorldGrounding:
                 )
             )
 
+    def _planted_incident_ids(self) -> list[str]:
+        return sorted(
+            {
+                str(incident_id)
+                for scenario in self._ledger_scenarios.values()
+                for incident_id in scenario.truth.get("planted_ids", {}).get("incidents", [])
+            }
+        )
+
     def _select_uk_incident(self) -> str:
+        planted = self._planted_incident_ids()
         return str(
             self.q1(
                 "SELECT incident_id FROM '{world}incidents.parquet' "
                 "WHERE market_id = 'MKT_UK' AND platform_id IS NOT NULL "
-                "AND incident_id NOT LIKE 'INC\\_S%' "
+                f"AND incident_id NOT IN ({_in(planted) if planted else "''"}) "
                 "ORDER BY started_at, incident_id LIMIT 1"
             )
         )
@@ -193,10 +203,10 @@ class WorldGrounding:
 
     def _select_gr_incident(self) -> str:
         scenario = self._select_scn7()
-        incidents = scenario.truth["planted_ids"].get("incidents", [])
+        incidents = scenario.truth["planted_ids"]["incidents"]
         if not incidents:
             raise GroundingError("SCN-007 has no planted incident in its primary market")
-        return str(next(iter(incidents)))
+        return str(incidents[0])
 
     def _game_platforms(self, game_id: str) -> list[str]:
         rows = self.q(
