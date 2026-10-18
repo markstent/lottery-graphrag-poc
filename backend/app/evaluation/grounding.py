@@ -19,6 +19,7 @@ Rules are deliberately boring and fully deterministic:
 
 from __future__ import annotations
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -128,7 +129,7 @@ class WorldGrounding:
         return str(
             self.q1(
                 "SELECT min(game_id) FROM '{world}games.parquet' "
-                "WHERE market_id = 'MKT_UK' AND game_family_id = 'FAM_NATIONAL_DRAW'"
+                "WHERE market_id = 'MKT_UK' AND game_family_id = 'FAM_UK_NATIONAL_DRAW'"
             )
         )
 
@@ -136,7 +137,7 @@ class WorldGrounding:
         return str(
             self.q1(
                 "SELECT min(game_id) FROM '{world}games.parquet' "
-                "WHERE market_id = 'MKT_UK' AND game_family_id = 'FAM_ANNUITY'"
+                "WHERE market_id = 'MKT_UK' AND game_family_id = 'FAM_UK_ANNUITY'"
             )
         )
 
@@ -144,7 +145,7 @@ class WorldGrounding:
         return str(
             self.q1(
                 "SELECT min(game_id) FROM '{world}games.parquet' "
-                "WHERE market_id = 'MKT_GR' AND game_family_id = 'FAM_HIGH_FREQUENCY'"
+                "WHERE market_id = 'MKT_GR' AND game_family_id = 'FAM_GR_SYCHNES_KLIROSEIS'"
             )
         )
 
@@ -192,15 +193,10 @@ class WorldGrounding:
 
     def _select_gr_incident(self) -> str:
         scenario = self._select_scn7()
-        market = scenario.truth["primary_market"]
-        ids = sorted(
-            incident_id
-            for incident_id in scenario.truth["planted_incidents"]
-            if str(incident_id).endswith(market[-2:])
-        )
-        if not ids:
+        incidents = scenario.truth["planted_ids"].get("incidents", [])
+        if not incidents:
             raise GroundingError("SCN-007 has no planted incident in its primary market")
-        return str(ids[0])
+        return str(next(iter(incidents)))
 
     def _game_platforms(self, game_id: str) -> list[str]:
         rows = self.q(
@@ -219,7 +215,7 @@ class WorldGrounding:
         if question.scenario_id is not None and question.scenario_id not in self._ledger_scenarios:
             return GroundedQuestion(
                 question,
-                question.template.format(anchor="the selected record"),
+                _unresolved_text(question.template),
                 (),
                 (),
                 status="not_planted",
@@ -227,12 +223,25 @@ class WorldGrounding:
             )
         try:
             grounder = getattr(self, f"_ground_{question.question_id.lower()}")
+        except AttributeError:
+            return GroundedQuestion(
+                question,
+                _unresolved_text(question.template),
+                (),
+                (),
+                status="not_grounded",
+                note=(
+                    f"bank 1.0 has no grounding rule for {question.question_id}; "
+                    "replaced by bank 2.0.0 in Phase 3"
+                ),
+            )
+        try:
             grounded: GroundedQuestion = grounder(question)
             return grounded
         except GroundingError as error:
             return GroundedQuestion(
                 question,
-                question.template.format(anchor="the selected record"),
+                _unresolved_text(question.template),
                 (),
                 (),
                 status="not_grounded",
@@ -344,7 +353,7 @@ class WorldGrounding:
             str(row[0])
             for row in self.q(
                 "SELECT incident_id FROM '{world}incidents.parquet' "
-                "WHERE market_id = 'MKT_GR' AND incident_type = 'INC_PAYMENTS'"
+                "WHERE market_id = 'MKT_GR' AND incident_type = 'ITYPE_GR_PLIROMES'"
             )
         ]
         docs: list[str] = []
@@ -605,7 +614,7 @@ class WorldGrounding:
     def _ground_q21(self, question: BankQuestion) -> GroundedQuestion:
         scenario = self._select_scn7()
         incident = str(self._sel("gr_incident"))
-        planted = [str(i) for i in scenario.truth["planted_incidents"]]
+        planted = [str(i) for i in scenario.truth["planted_ids"]["incidents"]]
         for record in planted:
             self._require_world_record("incidents", record)
         first_support = self.q1(
@@ -625,13 +634,14 @@ class WorldGrounding:
     def _ground_q25(self, question: BankQuestion) -> GroundedQuestion:
         scenario = self._select_scn7()
         incident = str(self._sel("gr_incident"))
-        siblings = sorted(str(i) for i in scenario.truth["planted_incidents"] if str(i) != incident)
+        planted_ids = scenario.truth["planted_ids"]
+        siblings = sorted(str(i) for i in planted_ids["incidents"] if str(i) != incident)
         for record in siblings:
             self._require_world_record("incidents", record)
         evidence = [
-            record
-            for record in scenario.required_evidence
-            if record.startswith(("INC_", "DOC_", "PLV_", "APPV_"))
+            str(incident),
+            str(scenario.truth["root_cause_entity"]),
+            *(str(i) for i in planted_ids.get("documents", [])),
         ]
         return GroundedQuestion(
             question,
@@ -687,7 +697,7 @@ class WorldGrounding:
         # The question anchors on one case account per planted cluster
         # (the tickets an analyst would have open). Only the trigger
         # accounts are revealed; cluster membership stays evaluator-only,
-        # mirroring the trace questions that anchor INC_S007_GR.
+        # mirroring the trace questions that anchor the SCN-007 incident.
         anchors = sorted(
             str(self._scenario(sid).truth["cluster_players"][0]) for sid in ("SCN-002", "SCN-003")
         )
@@ -708,7 +718,7 @@ class WorldGrounding:
         scenario = self._scenario("SCN-015")
         price = _num(scenario.truth["authoritative_price"])
         document = str(scenario.truth["conflicting_document"])
-        # Truth stores namespaced source ids (warehouse:games:GAME_UK_01);
+        # Truth stores namespaced source ids (warehouse:games:<game_id>);
         # answers and graph evidence use the bare record id.
         source = str(scenario.truth["authoritative_source"]).split(":")[-1]
         self._require_world_record("games", source)
@@ -760,6 +770,11 @@ class WorldGrounding:
         if not best_id:
             raise GroundingError(f"no {market} games to compare against {target}")
         return best_id
+
+
+def _unresolved_text(template: str) -> str:
+    """Render a template with every placeholder unresolved (ungrounded questions)."""
+    return template.format_map(defaultdict(lambda: "the selected record"))
 
 
 def _num(value: object) -> str:

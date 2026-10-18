@@ -29,6 +29,8 @@ from app.api.schemas import (
 # Saved presentation questions (fixed demo configuration). These are
 # pipeline-visible question texts only; they mirror the public phrasing used
 # by the trace CLI and never encode expected answers.
+# Phase 3 replaces these with bank 2.0.0 questions generated from the ledger
+# per world, so no scenario-planted id is hard-coded here.
 DEMO_QUESTIONS: list[DemoQuestion] = [
     DemoQuestion(
         id="DEMO-01",
@@ -43,8 +45,9 @@ DEMO_QUESTIONS: list[DemoQuestion] = [
         id="DEMO-02",
         question=(
             "Have we seen this digital checkout problem in other markets? Which "
-            "platform version connects incident INC_S007_GR to the other markets, "
-            "and why was the UK unaffected?"
+            "platform version connects the Greek payment checkout incident on "
+            "platform version PLV_PAYMENTS_3 to the other markets, and why was "
+            "the UK unaffected?"
         ),
         category="cross_market_platform_incident",
         benchmark_question_id="Q25",

@@ -24,6 +24,11 @@ NODE_SOURCES: dict[str, tuple[str, str]] = {
     "Game": ("games", "game_id"),
     "Market": ("markets", "market_id"),
     "Player": ("players", "player_id"),
+    "PaymentProvider": ("payment_providers", "provider_id"),
+    "IncidentType": ("incident_types", "incident_type_id"),
+    "GameFamily": ("game_families", "family_id"),
+    "SupportCategory": ("support_categories", "support_category_id"),
+    "PlayerSegment": ("player_segments", "segment_id"),
 }
 
 # Columns quoted in the snippet, per table, in order. Kept small on purpose:
@@ -59,6 +64,11 @@ SNIPPET_COLUMNS: dict[str, tuple[str, ...]] = {
     ),
     "markets": ("market_id", "market_name", "currency_code"),
     "players": ("player_id", "market_id", "account_status", "value_segment"),
+    "payment_providers": ("provider_id", "name", "home_market_id", "platform_id"),
+    "incident_types": ("incident_type_id", "market_id", "name", "language_code"),
+    "game_families": ("family_id", "market_id", "name", "language_code"),
+    "support_categories": ("support_category_id", "market_id", "name", "language_code"),
+    "player_segments": ("segment_id", "market_id", "segment_kind", "name", "language_code"),
 }
 
 # PaymentMethod nodes are link-table derived: the authoritative facts are
