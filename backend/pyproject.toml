@@ -57,7 +57,7 @@ select = [
 [tool.mypy]
 python_version = "3.13"
 strict = true
-packages = ["app"]
+packages = ["app", "scripts"]
 
 [[tool.mypy.overrides]]
 module = "pyarrow.*"

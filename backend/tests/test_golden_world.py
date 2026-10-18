@@ -7,26 +7,18 @@ Regenerate the fixture deliberately with:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import subprocess
 import sys
 from pathlib import Path
 
 from app.datasets.config import GENERATOR_VERSION
+from app.ontology import ONTOLOGY_VERSION
+from app.scenarios.ledger import LEDGER_VERSION
+from scripts.golden import world_hashes
 
 BACKEND = Path(__file__).resolve().parent.parent
 FIXTURE = BACKEND / "tests" / "fixtures" / "golden" / "tiny-seed7.json"
-
-
-def _sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def _manifest_sha256(path: Path) -> str:
-    manifest = json.loads(path.read_text())
-    manifest.pop("generated_at")  # wall-clock, legitimately differs per run
-    return hashlib.sha256(json.dumps(manifest, sort_keys=True).encode()).hexdigest()
 
 
 def test_fresh_process_regeneration_matches_golden_hashes(tmp_path: Path) -> None:
@@ -34,6 +26,8 @@ def test_fresh_process_regeneration_matches_golden_hashes(tmp_path: Path) -> Non
     assert golden["generator_version"] == GENERATOR_VERSION, (
         "bump the fixture with scripts/golden.py when the generator changes"
     )
+    assert golden["ontology_version"] == ONTOLOGY_VERSION, "regenerate with scripts/golden.py"
+    assert golden["ledger_version"] == LEDGER_VERSION, "regenerate with scripts/golden.py"
     subprocess.run(
         [
             sys.executable,
@@ -55,9 +49,15 @@ def test_fresh_process_regeneration_matches_golden_hashes(tmp_path: Path) -> Non
         capture_output=True,
     )
     world_dir = tmp_path / "tiny-seed7"
-    for table, digest in golden["tables"].items():
-        assert _sha256(world_dir / f"{table}.parquet") == digest, table
-    assert (
-        _manifest_sha256(world_dir / "_manifest.json") == golden["manifest_excluding_generated_at"]
+    actual = world_hashes(world_dir, tmp_path / "ledger.json")
+    expected_tables, actual_tables = set(golden["tables"]), set(actual["tables"])
+    assert actual_tables == expected_tables, (
+        f"missing: {sorted(expected_tables - actual_tables)}, "
+        f"unexpected: {sorted(actual_tables - expected_tables)}"
     )
-    assert _sha256(tmp_path / "ledger.json") == golden["ledger"]
+    for table, digest in golden["tables"].items():
+        assert actual["tables"][table] == digest, (
+            f"{table}: expected {digest}, got {actual['tables'][table]}"
+        )
+    assert actual["manifest_excluding_generated_at"] == golden["manifest_excluding_generated_at"]
+    assert actual["ledger"] == golden["ledger"]

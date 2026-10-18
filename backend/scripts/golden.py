@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from app.datasets.config import GENERATOR_VERSION
 from app.ontology import ONTOLOGY_VERSION
@@ -24,6 +25,22 @@ BACKEND = Path(__file__).resolve().parent.parent
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def world_hashes(world_dir: Path, ledger_path: Path) -> dict[str, Any]:
+    """Hash a world and its ledger; the manifest is hashed without its generated_at."""
+    manifest = json.loads((world_dir / "_manifest.json").read_text())
+    manifest.pop("generated_at")
+    return {
+        "generator_version": GENERATOR_VERSION,
+        "ontology_version": ONTOLOGY_VERSION,
+        "ledger_version": LEDGER_VERSION,
+        "tables": {p.stem: _sha256(p) for p in sorted(world_dir.glob("*.parquet"))},
+        "manifest_excluding_generated_at": hashlib.sha256(
+            json.dumps(manifest, sort_keys=True).encode()
+        ).hexdigest(),
+        "ledger": _sha256(ledger_path),
+    }
 
 
 def main() -> None:
@@ -57,18 +74,7 @@ def main() -> None:
             capture_output=True,
         )
         world_dir = tmp_path / f"{args.profile}-seed{args.world_seed}"
-        manifest = json.loads((world_dir / "_manifest.json").read_text())
-        manifest.pop("generated_at")
-        golden = {
-            "generator_version": GENERATOR_VERSION,
-            "ontology_version": ONTOLOGY_VERSION,
-            "ledger_version": LEDGER_VERSION,
-            "tables": {p.stem: _sha256(p) for p in sorted(world_dir.glob("*.parquet"))},
-            "manifest_excluding_generated_at": hashlib.sha256(
-                json.dumps(manifest, sort_keys=True).encode()
-            ).hexdigest(),
-            "ledger": _sha256(tmp_path / "ledger.json"),
-        }
+        golden = world_hashes(world_dir, tmp_path / "ledger.json")
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(golden, indent=2, sort_keys=True) + "\n")
 
