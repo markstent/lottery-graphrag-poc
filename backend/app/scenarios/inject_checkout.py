@@ -76,10 +76,6 @@ SCN009_REVIEW_HOUR = 10
 SCN009_SESSION_BASE, SCN009_SESSION_SHARE = 6, 0.25
 SCN009_SUPPORT_BASE, SCN009_SUPPORT_SHARE = 4, 0.4
 
-# Shared shape of planted failing sessions and complaints.
-SESSION_MINUTES = (2, 8)
-CASE_OPEN_HOURS = (2, 50)
-SENTIMENT = (-0.9, 0.3)  # lowest score and spread
 SECONDS_PER_DAY = 24 * 60 * 60
 
 # Support summaries per market language: one sentence, no internal ". ".
@@ -216,14 +212,17 @@ def plant_app_release_conversion_failure(plan: ScenarioPlanter) -> None:
         for _ in range(per_day):
             player = plan.rng.choice(cohort)
             outcome = "ABANDONED" if plan.rng.random() < SCN001_ABANDON_SHARE else "FAIL_PAYMENT"
+            device = plan.rng.choice(cohort_devices[player.player_id])
+            started_at = start + timedelta(days=day, seconds=plan.rng.randrange(SECONDS_PER_DAY))
             sessions.append(
-                _session(
-                    plan,
+                plan.failing_session(
                     player,
-                    start + timedelta(days=day),
-                    plan.rng.choice(cohort_devices[player.player_id]),
+                    market,
+                    started_at,
                     release.app_version_id,
+                    device,
                     outcome,
+                    channel_code="APP",
                 )
             )
 
@@ -235,10 +234,9 @@ def plant_app_release_conversion_failure(plan: ScenarioPlanter) -> None:
     for _ in range(case_count):
         opened = start + timedelta(seconds=plan.rng.randrange(SCN001_WINDOW_DAYS * SECONDS_PER_DAY))
         support.append(
-            _support_case(
-                plan,
-                market,
+            plan.support_case(
                 plan.rng.choice(cohort),
+                market,
                 opened,
                 plan.local("support_category", market, "TECHNICAL"),
                 summary,
@@ -322,7 +320,18 @@ def plant_payment_provider_degradation(plan: ScenarioPlanter) -> None:
                 player = plan.rng.choice(players)
                 owned = devices.get(player.player_id)
                 device = plan.rng.choice(owned) if owned else None
-                sessions.append(_session(plan, player, day, device, None, "FAIL_PAYMENT"))
+                started_at = day + timedelta(seconds=plan.rng.randrange(SECONDS_PER_DAY))
+                sessions.append(
+                    plan.failing_session(
+                        player,
+                        market,
+                        started_at,
+                        plan.app_version_at(market, started_at) if device else None,
+                        device,
+                        "FAIL_PAYMENT",
+                        channel_code="APP" if device else "WEB",
+                    )
+                )
 
         case_count = plan.signal_count(
             SCN009_SUPPORT_BASE, plan.daily_mean("support_cases", market), SCN009_SUPPORT_SHARE
@@ -333,10 +342,9 @@ def plant_payment_provider_degradation(plan: ScenarioPlanter) -> None:
             day = plan.rng.choice(active_days)
             opened = day + timedelta(seconds=plan.rng.randrange(SECONDS_PER_DAY))
             market_cases.append(
-                _support_case(
-                    plan,
-                    market,
+                plan.support_case(
                     plan.rng.choice(players),
+                    market,
                     opened,
                     plan.local("support_category", market, "PAYMENT"),
                     template.format(date=day.date().isoformat()),
@@ -448,56 +456,6 @@ def _provider_markets(
         if player.account_status == "ACTIVE" and player.player_id in payer_ids:
             payers[player.market_id].append(player)
     return {market: len(ids) for market, ids in methods.items()}, payers
-
-
-def _session(
-    plan: ScenarioPlanter,
-    player: PlayerRow,
-    day: datetime,
-    device_id: str | None,
-    app_version_id: str | None,
-    outcome: str,
-) -> SessionRow:
-    """One failing checkout session at a random time of `day`."""
-    started_at = day + timedelta(seconds=plan.rng.randrange(SECONDS_PER_DAY))
-    if device_id is not None and app_version_id is None:
-        app_version_id = plan.app_version_at(player.market_id, started_at)
-    return SessionRow(
-        session_id=plan.next_id("sessions"),
-        player_id=player.player_id,
-        market_id=player.market_id,
-        device_id=device_id,
-        channel_code="APP" if device_id is not None else "WEB",
-        started_at=started_at,
-        ended_at=started_at + timedelta(minutes=plan.rng.randrange(*SESSION_MINUTES)),
-        app_version_id=app_version_id,
-        session_outcome=outcome,
-    )
-
-
-def _support_case(
-    plan: ScenarioPlanter,
-    market: str,
-    player: PlayerRow,
-    opened: datetime,
-    category: str,
-    summary: str,
-    game_id: str | None = None,
-    incident_id: str | None = None,
-) -> SupportCaseRow:
-    low, spread = SENTIMENT
-    return SupportCaseRow(
-        support_case_id=plan.next_id("support_cases"),
-        market_id=market,
-        player_id=player.player_id,
-        game_id=game_id,
-        incident_id=incident_id,
-        opened_at=opened,
-        closed_at=opened + timedelta(hours=plan.rng.randrange(*CASE_OPEN_HOURS)),
-        category_code=category,
-        sentiment_score=round(low + plan.rng.random() * spread, 2),
-        summary_text=summary,
-    )
 
 
 def _release_note(plan: ScenarioPlanter, release: AppVersionRow) -> DocumentRow:

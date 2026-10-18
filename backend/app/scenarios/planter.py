@@ -15,7 +15,14 @@ from datetime import date, datetime, time, timedelta
 from typing import Any
 
 from app.datasets.config import WINDOW_DAYS, WINDOW_START
-from app.datasets.rows import DocumentChunkRow, DocumentRow, GameRow, PlayerRow
+from app.datasets.rows import (
+    DocumentChunkRow,
+    DocumentRow,
+    GameRow,
+    PlayerRow,
+    SessionRow,
+    SupportCaseRow,
+)
 from app.datasets.schema import ID_FORMATS, primary_key
 from app.datasets.taxonomies import incident_type_for, local_names, support_category_for
 from app.datasets.util import chunk_text, word_count
@@ -24,6 +31,15 @@ from app.scenarios.catalogue import ScenarioSpec
 
 _SEQUENCE_FIELD = "{n"
 _MARKET_FIELD = "{market}"
+
+# Shared shape of planted failing sessions and complaints, used by every
+# scenario that plants them so their rows look alike across scenarios.
+# Length of a planted failing session in minutes (half-open range).
+PLANTED_SESSION_MINUTES = (2, 8)
+# Hours a planted complaint stays open (half-open range).
+PLANTED_CASE_OPEN_HOURS = (2, 50)
+# Sentiment of a planted complaint: lowest score and the spread above it.
+PLANTED_CASE_SENTIMENT = (-0.9, 0.3)
 
 
 def at(day_offset: int, hour: int = 0, minute: int = 0) -> datetime:
@@ -155,3 +171,53 @@ class ScenarioPlanter:
             if link.player_id in player_ids:
                 grouped.setdefault(link.player_id, []).append(link.device_id)
         return grouped
+
+    def failing_session(
+        self,
+        player: PlayerRow,
+        market_id: str,
+        started_at: datetime,
+        app_version_id: str | None,
+        device_id: str | None,
+        outcome: str,
+        *,
+        channel_code: str,
+    ) -> SessionRow:
+        """One planted session starting at `started_at` that ends in `outcome`."""
+        return SessionRow(
+            session_id=self.next_id("sessions"),
+            player_id=player.player_id,
+            market_id=market_id,
+            device_id=device_id,
+            channel_code=channel_code,
+            started_at=started_at,
+            ended_at=started_at + timedelta(minutes=self.rng.randrange(*PLANTED_SESSION_MINUTES)),
+            app_version_id=app_version_id,
+            session_outcome=outcome,
+        )
+
+    def support_case(
+        self,
+        player: PlayerRow,
+        market_id: str,
+        opened_at: datetime,
+        category: str,
+        summary: str,
+        *,
+        game_id: str | None = None,
+        incident_id: str | None = None,
+    ) -> SupportCaseRow:
+        """One planted complaint opened at `opened_at` with a negative sentiment."""
+        low, spread = PLANTED_CASE_SENTIMENT
+        return SupportCaseRow(
+            support_case_id=self.next_id("support_cases"),
+            market_id=market_id,
+            player_id=player.player_id,
+            game_id=game_id,
+            incident_id=incident_id,
+            opened_at=opened_at,
+            closed_at=opened_at + timedelta(hours=self.rng.randrange(*PLANTED_CASE_OPEN_HOURS)),
+            category_code=category,
+            sentiment_score=round(low + self.rng.random() * spread, 2),
+            summary_text=summary,
+        )

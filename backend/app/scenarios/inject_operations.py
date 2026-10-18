@@ -46,9 +46,6 @@ SCN007_ROOT_CAUSE_CODE = "RC_77"
 # Signal volumes: at least `base` rows, else share x strength x daily mean.
 SCN007_SESSION_BASE, SCN007_SESSION_SHARE = 8, 0.35
 SCN007_SUPPORT_BASE, SCN007_SUPPORT_SHARE = 6, 0.5
-SCN007_SESSION_MINUTES = (2, 8)
-SCN007_CASE_OPEN_HOURS = (2, 50)
-SCN007_SENTIMENT = (-0.9, 0.3)
 
 # Incident report bodies per market language: four sentences, no internal ". ".
 SCN007_REPORT_TEMPLATES = {
@@ -210,21 +207,15 @@ def _support_cases(
     cases: list[SupportCaseRow] = []
     for player in players:
         opened = incident.started_at + timedelta(seconds=plan.rng.randrange(span))
-        low, spread = SCN007_SENTIMENT
         cases.append(
-            SupportCaseRow(
-                support_case_id=plan.next_id("support_cases"),
-                market_id=market,
-                player_id=player.player_id,
+            plan.support_case(
+                player,
+                market,
+                opened,
+                plan.local("support_category", market, "PAYMENT"),
+                f"Payment failing at checkout since {incident.started_at.date().isoformat()}.",
                 game_id=plan.rng.choice(games).game_id,
                 incident_id=incident.incident_id,
-                opened_at=opened,
-                closed_at=opened + timedelta(hours=plan.rng.randrange(*SCN007_CASE_OPEN_HOURS)),
-                category_code=plan.local("support_category", market, "PAYMENT"),
-                sentiment_score=round(low + plan.rng.random() * spread, 2),
-                summary_text=(
-                    f"Payment failing at checkout since {incident.started_at.date().isoformat()}."
-                ),
             )
         )
     return cases
@@ -247,18 +238,16 @@ def _failing_sessions(
         player = plan.rng.choice(players)
         owned = devices.get(player.player_id)
         started_at = incident.started_at + timedelta(seconds=plan.rng.randrange(span))
+        device = plan.rng.choice(owned) if owned else None
         sessions.append(
-            SessionRow(
-                session_id=plan.next_id("sessions"),
-                player_id=player.player_id,
-                market_id=market,
-                device_id=plan.rng.choice(owned) if owned else None,
+            plan.failing_session(
+                player,
+                market,
+                started_at,
+                app_version,
+                device,
+                "FAIL_PAYMENT",
                 channel_code="APP",
-                started_at=started_at,
-                ended_at=started_at
-                + timedelta(minutes=plan.rng.randrange(*SCN007_SESSION_MINUTES)),
-                app_version_id=app_version,
-                session_outcome="FAIL_PAYMENT",
             )
         )
     return sessions
