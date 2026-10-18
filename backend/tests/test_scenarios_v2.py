@@ -19,6 +19,7 @@ from app.datasets.taxonomies import (
     GAME_FAMILIES,
     INCIDENT_TYPES,
     MARKET_LANGUAGE,
+    segments_for,
     support_category_for,
 )
 from app.datasets.util import split_sentences
@@ -508,3 +509,44 @@ def test_scn010_control_and_scn011_target_get_no_planted_rows(scenario_world) ->
         "documents",
         "document_chunks",
     }
+
+
+def _engaged_share(tickets: list, segment_of: dict[str, str], segment: str) -> float:
+    identified = [t for t in tickets if t.player_id is not None]
+    return sum(1 for t in identified if segment_of[t.player_id] == segment) / len(identified)
+
+
+@pytest.mark.parametrize("scenario_seed", [7, 11, 23])
+def test_scn010_engaged_segment_over_indexes_on_the_planted_game(scenario_seed: int) -> None:
+    from app.scenarios.inject_ontology import SCN010_MECHANICS
+
+    world, outcomes = _planted_world(scenario_seed)
+    truth = outcomes["SCN-010"].truth
+    segment_of = {p.player_id: p.engagement_segment for p in world.tables["players"]}
+    for market, detail in truth["per_market"].items():
+        market_tickets = [t for t in world.tables["tickets"] if t.market_id == market]
+        game_tickets = [t for t in market_tickets if t.game_id == detail["game_id"]]
+        game_share = _engaged_share(game_tickets, segment_of, detail["segment_id"])
+        market_share = _engaged_share(market_tickets, segment_of, detail["segment_id"])
+        assert game_share - market_share >= 0.10, (market, game_share, market_share)
+
+    control = truth["control_market"]
+    code = control.removeprefix("MKT_")
+    (local_codes,) = (
+        codes
+        for concept, codes in SCN010_MECHANICS.values()
+        if concept == truth["mechanic_concept"]
+    )
+    games = {
+        link.game_id
+        for link in world.tables["game_mechanic_map"]
+        if link.mechanic_id == local_codes[code]
+    }
+    if not games:
+        return
+    engaged, _casual, _dormant = segments_for(code, "ENGAGEMENT")
+    market_tickets = [t for t in world.tables["tickets"] if t.market_id == control]
+    game_tickets = [t for t in market_tickets if t.game_id in games]
+    game_share = _engaged_share(game_tickets, segment_of, engaged)
+    market_share = _engaged_share(market_tickets, segment_of, engaged)
+    assert abs(game_share - market_share) <= 0.05, (control, game_share, market_share)

@@ -145,7 +145,7 @@ SCENARIO_CATALOGUE: tuple[ScenarioSpec, ...] = (
         "SCN-010",
         "game_mechanic_affinity",
         "A segment performs strongly on products sharing a mechanic across markets.",
-        0.5,
+        0.8,
         "low",
         ("cross-market mechanic affinity for one segment",),
         enabled=True,

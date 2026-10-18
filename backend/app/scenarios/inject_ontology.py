@@ -10,8 +10,9 @@ ledger alone.
 SCN-010: one engaged segment over-indexes on the product built on one
 mechanic (drawn from the scenario stream) in three markets drawn from the
 eligible ones; the fourth market is the control. Each affected market gets
-extra tickets from its engaged players and a monthly review in its language
-that names the game and segment by local name only.
+extra tickets on the game from its engaged players, scaled to the game's
+baseline volume, and a monthly review in its language that names the game
+and segment by local name only.
 
 SCN-011: a cross-sell campaign for one market's retail instant game succeeds
 with its engaged segment. A second market (the transfer target) has the same
@@ -72,9 +73,10 @@ ENGAGED_CONCEPT = "CONCEPT_ENGAGED"
 SCN010_MARKET_COUNT = 3
 # Planted tickets fall between these window days (inclusive); the review follows.
 SCN010_TICKET_DAYS = (60, 240)
-SCN010_TICKETS_PER_PLAYER = 3
-# Signal volume: at least `base` buyers, else share x strength x daily ticket mean.
-SCN010_BUYER_BASE, SCN010_BUYER_SHARE = 10, 0.2
+# Signal volume per market: strength x the chosen game's baseline tickets, so the
+# engaged segment visibly over-indexes on the game, with this floor for thin games.
+# Each planted ticket goes to the next engaged player of a shuffled pool.
+SCN010_MIN_TICKETS = 30
 SCN010_REVIEW_DAY = 250
 SCN010_REVIEW_HOUR = 9
 
@@ -199,14 +201,12 @@ def plant_game_mechanic_affinity(plan: ScenarioPlanter) -> None:
         code = plan.market_code(market)
         engaged, _casual, _dormant = segments_for(code, "ENGAGEMENT")
         game = plan.rng.choice(games_by_market[market])
-        buyer_count = plan.signal_count(
-            SCN010_BUYER_BASE, plan.daily_mean("tickets", market), SCN010_BUYER_SHARE
-        )
+        baseline = sum(1 for t in plan.tables["tickets"] if t.game_id == game.game_id)
+        ticket_count = max(SCN010_MIN_TICKETS, round(plan.spec.strength * baseline))
         pool = _engaged_players(plan, market, engaged, ticket_start)
         market_tickets = [
             _ticket(plan, player, game, at(plan.rng.randint(first_day, last_day)), draws)
-            for player in _spread(plan, pool, buyer_count)
-            for _ in range(SCN010_TICKETS_PER_PLAYER)
+            for player in _spread(plan, pool, ticket_count)
         ]
         review = _market_review(plan, market, engaged, game, local_codes[code])
         tickets.extend(market_tickets)
@@ -217,6 +217,7 @@ def plant_game_mechanic_affinity(plan: ScenarioPlanter) -> None:
             "segment_id": engaged,
             "document_id": review.document_id,
             "planted_ticket_count": len(market_tickets),
+            "baseline_game_tickets": baseline,
         }
 
     plan.add("tickets", tickets)
