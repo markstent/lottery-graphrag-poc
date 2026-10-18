@@ -19,7 +19,6 @@ from app.datasets.taxonomies import (
     GAME_FAMILIES,
     INCIDENT_TYPES,
     MARKET_LANGUAGE,
-    segments_for,
     support_category_for,
 )
 from app.datasets.util import split_sentences
@@ -531,22 +530,19 @@ def test_scn010_engaged_segment_over_indexes_on_the_planted_game(scenario_seed: 
         assert game_share - market_share >= 0.10, (market, game_share, market_share)
 
     control = truth["control_market"]
-    code = control.removeprefix("MKT_")
     (local_codes,) = (
         codes
         for concept, codes in SCN010_MECHANICS.values()
         if concept == truth["mechanic_concept"]
     )
+    mechanic = local_codes[control.removeprefix("MKT_")]
     games = {
-        link.game_id
-        for link in world.tables["game_mechanic_map"]
-        if link.mechanic_id == local_codes[code]
+        link.game_id for link in world.tables["game_mechanic_map"] if link.mechanic_id == mechanic
     }
-    if not games:
-        return
-    engaged, _casual, _dormant = segments_for(code, "ENGAGEMENT")
-    market_tickets = [t for t in world.tables["tickets"] if t.market_id == control]
-    game_tickets = [t for t in market_tickets if t.game_id in games]
-    game_share = _engaged_share(game_tickets, segment_of, engaged)
-    market_share = _engaged_share(market_tickets, segment_of, engaged)
-    assert abs(game_share - market_share) <= 0.05, (control, game_share, market_share)
+    baseline = build_world(
+        GenerationConfig(profile="tiny", world_seed=7, scenario_seed=scenario_seed)
+    )
+    for game_id in games:
+        planted = sum(1 for t in world.tables["tickets"] if t.game_id == game_id)
+        unplanted = sum(1 for t in baseline.tables["tickets"] if t.game_id == game_id)
+        assert planted == unplanted, (control, game_id)

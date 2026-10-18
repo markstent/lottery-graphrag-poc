@@ -10,9 +10,9 @@ ledger alone.
 SCN-010: one engaged segment over-indexes on the product built on one
 mechanic (drawn from the scenario stream) in three markets drawn from the
 eligible ones; the fourth market is the control. Each affected market gets
-extra tickets on the game from its engaged players, scaled to the game's
-baseline volume, and a monthly review in its language that names the game
-and segment by local name only.
+extra tickets on the game from its engaged players, solved so the game's
+engaged share exceeds the market's by a strength-scaled lift, and a monthly
+review in its language that names the game and segment by local name only.
 
 SCN-011: a cross-sell campaign for one market's retail instant game succeeds
 with its engaged segment. A second market (the transfer target) has the same
@@ -28,6 +28,8 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta
 from decimal import Decimal
 from itertools import cycle, islice
+from math import ceil
+from typing import NamedTuple
 
 from app.datasets.config import WINDOW_DAYS
 from app.datasets.master_data import MARKET_CURRENCY
@@ -73,8 +75,12 @@ ENGAGED_CONCEPT = "CONCEPT_ENGAGED"
 SCN010_MARKET_COUNT = 3
 # Planted tickets fall between these window days (inclusive); the review follows.
 SCN010_TICKET_DAYS = (60, 240)
-# Signal volume per market: strength x the chosen game's baseline tickets, so the
-# engaged segment visibly over-indexes on the game, with this floor for thin games.
+# Engaged share lift on the planted game per unit of scenario strength: the
+# planted volume is solved so the game's engaged share reaches the market's
+# engaged share (after planting) plus this lift (0.15 at strength 0.5), capped.
+SCN010_LIFT_PER_STRENGTH = 0.3
+SCN010_MAX_TARGET_SHARE = 0.95
+# Floor on planted tickets per market, for games already above the target.
 # Each planted ticket goes to the next engaged player of a shuffled pool.
 SCN010_MIN_TICKETS = 30
 SCN010_REVIEW_DAY = 250
@@ -201,12 +207,11 @@ def plant_game_mechanic_affinity(plan: ScenarioPlanter) -> None:
         code = plan.market_code(market)
         engaged, _casual, _dormant = segments_for(code, "ENGAGEMENT")
         game = plan.rng.choice(games_by_market[market])
-        baseline = sum(1 for t in plan.tables["tickets"] if t.game_id == game.game_id)
-        ticket_count = max(SCN010_MIN_TICKETS, round(plan.spec.strength * baseline))
+        volume = _affinity_volume(plan, market, game, engaged)
         pool = _engaged_players(plan, market, engaged, ticket_start)
         market_tickets = [
             _ticket(plan, player, game, at(plan.rng.randint(first_day, last_day)), draws)
-            for player in _spread(plan, pool, ticket_count)
+            for player in _spread(plan, pool, volume.tickets)
         ]
         review = _market_review(plan, market, engaged, game, local_codes[code])
         tickets.extend(market_tickets)
@@ -217,7 +222,10 @@ def plant_game_mechanic_affinity(plan: ScenarioPlanter) -> None:
             "segment_id": engaged,
             "document_id": review.document_id,
             "planted_ticket_count": len(market_tickets),
-            "baseline_game_tickets": baseline,
+            "baseline_game_tickets": volume.baseline_game_tickets,
+            "baseline_engaged_share": volume.baseline_engaged_share,
+            "market_engaged_share": volume.market_engaged_share,
+            "target_share": volume.target_share,
         }
 
     plan.add("tickets", tickets)
@@ -309,6 +317,58 @@ def plant_transferable_campaign(plan: ScenarioPlanter) -> None:
         target_game.game_id,
         evaluation.document_id,
     ]
+
+
+class _AffinityVolume(NamedTuple):
+    tickets: int
+    baseline_game_tickets: int
+    baseline_engaged_share: float
+    market_engaged_share: float
+    target_share: float
+
+
+def _affinity_volume(
+    plan: ScenarioPlanter, market: str, game: GameRow, segment: str
+) -> _AffinityVolume:
+    """Engaged tickets that lift the game's engaged share to the market share plus the lift.
+
+    Shares count identified tickets only (anonymous retail tickets have no
+    segment). Solving (s_g n + k) / (n + k) = t for k gives the volume. The
+    planted tickets also raise the market's own engaged share, so the target
+    is re-derived from the market share including the k planted tickets until
+    k stops changing: k only grows and t is capped, so the loop terminates.
+    """
+    segment_of = {p.player_id: p.engagement_segment for p in plan.tables["players"]}
+    identified = [
+        t for t in plan.tables["tickets"] if t.market_id == market and t.player_id is not None
+    ]
+    on_game = [t for t in identified if t.game_id == game.game_id]
+    if not on_game:
+        raise RuntimeError(
+            f"scenario {plan.spec.scenario_id}: {game.game_id} has no identified tickets"
+        )
+    n, total = len(on_game), len(identified)
+    market_share = _segment_share(identified, segment_of, segment)
+    game_share = _segment_share(on_game, segment_of, segment)
+    lift = SCN010_LIFT_PER_STRENGTH * plan.spec.strength
+    tickets, previous = SCN010_MIN_TICKETS, 0
+    while tickets != previous:
+        previous = tickets
+        planted_market_share = (market_share * total + tickets) / (total + tickets)
+        target = min(SCN010_MAX_TARGET_SHARE, planted_market_share + lift)
+        solved = ceil(n * (target - game_share) / (1 - target)) if target > game_share else 0
+        tickets = max(SCN010_MIN_TICKETS, solved)
+    return _AffinityVolume(
+        tickets=tickets,
+        baseline_game_tickets=n,
+        baseline_engaged_share=round(game_share, 4),
+        market_engaged_share=round(market_share, 4),
+        target_share=round(target, 4),
+    )
+
+
+def _segment_share(tickets: list[TicketRow], segment_of: dict[str, str], segment: str) -> float:
+    return sum(1 for t in tickets if segment_of[str(t.player_id)] == segment) / len(tickets)
 
 
 def _games_with_mechanic(
