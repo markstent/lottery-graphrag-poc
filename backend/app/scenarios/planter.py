@@ -140,6 +140,15 @@ class ScenarioPlanter:
             key=lambda g: g.game_id,
         )
 
+    def app_version_at(self, market_id: str, moment: datetime) -> str | None:
+        """Latest app version of the market released on or before `moment`."""
+        released = [
+            a
+            for a in self.tables["app_versions"]
+            if a.market_id == market_id and a.released_at <= moment
+        ]
+        return str(max(released, key=lambda a: a.released_at).app_version_id) if released else None
+
     def devices_of(self, player_ids: list[str]) -> dict[str, list[str]]:
         grouped: dict[str, list[str]] = {}
         for link in self.tables["player_device"]:

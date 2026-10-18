@@ -197,13 +197,6 @@ def _shared_version(plan: ScenarioPlanter, released_by: datetime) -> str:
     return str(max(candidates, key=lambda v: v.released_at).platform_version_id)
 
 
-def _latest_app_version(plan: ScenarioPlanter, market: str, moment: datetime) -> str | None:
-    released = [
-        a for a in plan.tables["app_versions"] if a.market_id == market and a.released_at <= moment
-    ]
-    return str(max(released, key=lambda a: a.released_at).app_version_id) if released else None
-
-
 def _support_cases(
     plan: ScenarioPlanter,
     incident: IncidentRow,
@@ -248,7 +241,7 @@ def _failing_sessions(
     """Failed checkout sessions spread over the incident duration."""
     span = int((resolved - incident.started_at).total_seconds())
     devices = plan.devices_of([p.player_id for p in players])
-    app_version = _latest_app_version(plan, market, incident.started_at)
+    app_version = plan.app_version_at(market, incident.started_at)
     sessions: list[SessionRow] = []
     for _ in range(count):
         player = plan.rng.choice(players)
@@ -301,7 +294,7 @@ def _incident_report(
 def _release_note(plan: ScenarioPlanter, version: str, base: datetime) -> DocumentRow:
     """Deferral note explaining why the unaffected market never saw the incident."""
     created = base - timedelta(days=SCN007_RELEASE_NOTE_LEAD_DAYS)
-    app_version = _latest_app_version(plan, SCN007_UNAFFECTED_MARKET, base)
+    app_version = plan.app_version_at(SCN007_UNAFFECTED_MARKET, base)
     if app_version is None:
         raise RuntimeError("scenario SCN-007: no released app version in the unaffected market")
     return DocumentRow(

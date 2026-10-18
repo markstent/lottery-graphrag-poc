@@ -351,3 +351,91 @@ def test_scn007_depresses_gr_session_completion_without_manual_edits(scenario_wo
 def test_manifest_row_counts_match_tables_after_planting(scenario_world) -> None:
     world, _outcomes = scenario_world
     assert world.manifest["row_counts"] == {name: len(rows) for name, rows in world.tables.items()}
+
+
+def test_scn001_cohort_sessions_are_on_the_release_and_device_family(scenario_world) -> None:
+    world, outcomes = scenario_world
+    truth = outcomes["SCN-001"].truth
+    devices = {d.device_id: d for d in world.tables["devices"]}
+    planted_ids = set(truth["planted_ids"]["sessions"])
+    planted = [s for s in world.tables["sessions"] if s.session_id in planted_ids]
+    assert planted and all(s.app_version_id == truth["app_version_id"] for s in planted)
+    assert all(s.market_id == truth["market"] for s in planted)
+    assert all(devices[s.device_id].device_family == truth["device_family"] for s in planted)
+
+
+def test_scn009_failures_share_one_provider_across_three_markets(scenario_world) -> None:
+    world, outcomes = scenario_world
+    truth = outcomes["SCN-009"].truth
+    method_provider = {m.payment_method_id: m.provider_id for m in world.tables["payment_methods"]}
+    player_providers: dict[str, set[str]] = defaultdict(set)
+    for link in world.tables["player_payment_method"]:
+        player_providers[link.player_id].add(method_provider[link.payment_method_id])
+    planted_ids = set(truth["planted_ids"]["sessions"])
+    planted = [s for s in world.tables["sessions"] if s.session_id in planted_ids]
+    assert len(truth["affected_markets"]) == 3
+    assert {s.market_id for s in planted} == set(truth["affected_markets"])
+    assert all(truth["provider_id"] in player_providers[s.player_id] for s in planted)
+    assert all(s.session_outcome == "FAIL_PAYMENT" for s in planted)
+
+
+def test_scenarios_fail_loudly_when_the_world_is_too_small() -> None:
+    from app.datasets.config import PROFILES, ProfileVolumes
+
+    PROFILES["micro"] = ProfileVolumes(12, 100, 50, 50, 8, 12, 6, 6, 20, 25, 3, 6)
+    try:
+        world = build_world(GenerationConfig(profile="micro", world_seed=1, scenario_seed=1))
+        with pytest.raises(RuntimeError, match="SCN-"):
+            apply_scenarios(world)
+    finally:
+        del PROFILES["micro"]
+
+
+def test_scn001_documents_and_contacts_use_the_market_language(scenario_world) -> None:
+    world, outcomes = scenario_world
+    truth = outcomes["SCN-001"].truth
+    market = truth["market"]
+    docs = {d.document_id: d for d in world.tables["documents"]}
+    incident = next(i for i in world.tables["incidents"] if i.incident_id == truth["incident_id"])
+    version = next(
+        v for v in world.tables["app_versions"] if v.app_version_id == truth["app_version_id"]
+    )
+    note, report = docs[truth["release_note_id"]], docs[truth["incident_report_id"]]
+    assert note.document_type == "RELEASE_NOTE" and report.document_type == "INCIDENT_REPORT"
+    assert {note.language_code, report.language_code} == {MARKET_LANGUAGE[market]}
+    assert truth["app_version_id"] in note.body
+    assert truth["incident_id"] in report.body
+    assert {t.incident_type_id: t.name for t in INCIDENT_TYPES}[
+        incident.incident_type
+    ] in report.body
+    assert incident.app_version_id == truth["app_version_id"]
+    assert incident.platform_version_id is None and incident.severity == "HIGH"
+    for doc in (note, report):
+        assert all(". " not in sentence for sentence in split_sentences(doc.body))
+    planted = set(truth["planted_ids"]["support_cases"])
+    cases = [c for c in world.tables["support_cases"] if c.support_case_id in planted]
+    assert cases and all(version.version_label in c.summary_text for c in cases)
+    assert {c.category_code for c in cases} == {support_category_for(market, "TECHNICAL")}
+
+
+def test_scn009_contacts_do_not_name_the_provider(scenario_world) -> None:
+    from app.datasets.taxonomies import PAYMENT_PROVIDERS
+
+    world, outcomes = scenario_world
+    truth = outcomes["SCN-009"].truth
+    provider = next(p for p in PAYMENT_PROVIDERS if p.provider_id == truth["provider_id"])
+    planted = truth["planted_ids"]
+    cases = [
+        c for c in world.tables["support_cases"] if c.support_case_id in planted["support_cases"]
+    ]
+    assert {c.market_id for c in cases} == set(truth["affected_markets"])
+    for case in cases:
+        assert provider.provider_id not in case.summary_text
+        assert provider.name not in case.summary_text
+        assert case.category_code == support_category_for(case.market_id, "PAYMENT")
+    assert "incidents" not in planted
+    (review_id,) = planted["documents"]
+    review = next(d for d in world.tables["documents"] if d.document_id == review_id)
+    assert review.document_type == "POST_INCIDENT_REVIEW" and review.market_id is None
+    assert provider.provider_id in review.body
+    assert all(market in review.body for market in truth["affected_markets"])

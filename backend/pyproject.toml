@@ -48,6 +48,7 @@ select = [
 "app/datasets/schema.py" = ["E501"]
 "app/datasets/document_templates.py" = ["RUF001"]
 "app/datasets/taxonomies.py" = ["RUF001", "RUF003"]
+"app/scenarios/inject_checkout.py" = ["RUF001"]
 "app/scenarios/inject_documents.py" = ["RUF001"]
 "app/scenarios/inject_operations.py" = ["RUF001"]
 "tests/test_chunking.py" = ["RUF001"]

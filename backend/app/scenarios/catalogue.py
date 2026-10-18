@@ -3,10 +3,12 @@
 Static scenario configuration. Which scenarios are planted is not secret;
 the truth ledger (what exactly was planted where) is evaluator-only.
 
-Phase 5 enables four scenarios that cover the distinct signal surfaces:
-graph topology (SCN-002, SCN-003), cross-market operational incidents with
-document and KPI evidence (SCN-007), and document/structured conflict
-(SCN-015). The remaining catalogue entries are registered but disabled;
+Six scenarios are enabled, covering the distinct signal surfaces: an app
+release cohort failure with incident, document and KPI evidence (SCN-001),
+graph topology (SCN-002, SCN-003), cross-market operational incidents
+(SCN-007), an intermittent payment provider degradation visible only through
+payment-method links before any incident (SCN-009), and document/structured
+conflict (SCN-015). The remaining catalogue entries are registered but disabled;
 enabling one means implementing its injector and registering it in
 app/scenarios/plant.py, not flipping a flag.
 """
@@ -43,6 +45,7 @@ SCENARIO_CATALOGUE: tuple[ScenarioSpec, ...] = (
             "elevated support contacts after release",
         ),
         ("Why did digital participation fall?", "Which cohort was most affected?"),
+        enabled=True,
     ),
     ScenarioSpec(
         "SCN-002",
@@ -135,6 +138,7 @@ SCENARIO_CATALOGUE: tuple[ScenarioSpec, ...] = (
         0.5,
         "moderate",
         ("elevated payment failure rate tied to one provider",),
+        enabled=True,
     ),
     ScenarioSpec(
         "SCN-010",
