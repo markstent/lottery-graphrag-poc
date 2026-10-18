@@ -31,13 +31,25 @@ def _tree(path: Path) -> ast.Module:
     return ast.parse(path.read_text(encoding="utf-8"))
 
 
-def _imported_modules(tree: ast.Module) -> set[str]:
+def _imported_modules(tree: ast.Module, module_path: Path) -> set[str]:
+    """Dotted names imported by a module, with relative imports resolved.
+
+    ``from pkg import name`` yields both ``pkg`` and ``pkg.name`` so that
+    submodule imports cannot hide behind the package name.
+    """
+    package = list(module_path.relative_to(APP_DIR.parent).with_suffix("").parts[:-1])
     modules: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             modules.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            modules.add(node.module)
+        elif isinstance(node, ast.ImportFrom):
+            base = package[: len(package) - (node.level - 1)] if node.level else []
+            parts = [*base, *([node.module] if node.module else [])]
+            if not parts:
+                continue
+            origin = ".".join(parts)
+            modules.add(origin)
+            modules.update(f"{origin}.{alias.name}" for alias in node.names)
     return modules
 
 
@@ -48,7 +60,7 @@ def test_isolated_namespaces_never_reference_evaluator_truth() -> None:
             assert not any(marker in source for marker in FORBIDDEN_STRINGS), (
                 f"{namespace}/{path.name} references evaluator truth machinery"
             )
-            imports = _imported_modules(_tree(path))
+            imports = _imported_modules(_tree(path), path)
             assert not any(name.startswith("app.evaluation") for name in imports), (
                 f"{namespace}/{path.name} imports app.evaluation"
             )
@@ -57,19 +69,26 @@ def test_isolated_namespaces_never_reference_evaluator_truth() -> None:
 def test_ontology_package_is_independent_of_bank_and_scenarios() -> None:
     allowed = {"app.datasets.config"}
     for path in sorted((APP_DIR / "ontology").rglob("*.py")):
-        imports = _imported_modules(_tree(path))
+        imports = _imported_modules(_tree(path), path)
         offenders = {
             name
             for name in imports
             if name.startswith(("app.scenarios", "app.evaluation", "app.datasets"))
-            and name not in allowed
+            and not any(name == ok or name.startswith(f"{ok}.") for ok in allowed)
         }
         assert not offenders, (path.name, offenders)
 
 
+def test_import_extraction_catches_bypass_forms() -> None:
+    source = "from app import evaluation\nfrom ..scenarios import plant\nfrom . import model\n"
+    fake_path = APP_DIR / "ontology" / "fake.py"
+    names = _imported_modules(ast.parse(source), fake_path)
+    assert {"app.evaluation", "app.scenarios.plant", "app.ontology.model"} <= names
+
+
 def test_scenario_writer_never_imports_the_loader() -> None:
     for path in sorted((APP_DIR / "scenarios").rglob("*.py")):
-        imports = _imported_modules(_tree(path))
+        imports = _imported_modules(_tree(path), path)
         assert not any(name.startswith("app.evaluation") for name in imports), (
             f"scenarios/{path.name} imports app.evaluation"
         )
@@ -79,7 +98,7 @@ def test_evaluation_loader_is_imported_only_by_itself() -> None:
     for path in sorted(APP_DIR.rglob("*.py")):
         if path.relative_to(APP_DIR).parts[0] == "evaluation":
             continue
-        imports = _imported_modules(_tree(path))
+        imports = _imported_modules(_tree(path), path)
         assert not any(name.startswith("app.evaluation") for name in imports), (
             f"{path.relative_to(APP_DIR)} imports app.evaluation outside the evaluator namespace"
         )
