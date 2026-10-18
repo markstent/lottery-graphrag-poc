@@ -13,8 +13,17 @@
 | HITL-09 Benchmark / Scoring | APPROVED | 2026-10-08 | Standing blanket approval. 30-question bank grounded deterministically into the dev world (20 scored; 8 not planted, 2 not groundable, all reported); deterministic scoring (answer checks, evidence precision/recall, failure taxonomy); fairness by shared lab construction; harness + CLI with reproducibility record; demo profile enabled and timed. See gate notes. |
 | HITL-10 Testing / Quality | APPROVED | 2026-10-09 | Standing blanket approval. CI green end to end (backend ruff/mypy/pytest with Neo4j+Qdrant services, frontend prettier/oxlint/tsc/vitest/build, Playwright smoke); three long-standing CI defects fixed (Neo4j health-check port, Qdrant image without shell tools, fixtures depending on machine-local ledger); test matrix + critical coverage report committed (docs/testing/coverage.md); failure-mode tests added (gateway/embedder/store propagation; runner records generation_failure instead of crashing); B/C fairness contract pinned offline. See gate notes. |
 | HITL-11 Presentation Readiness | APPROVED | 2026-10-09 | Standing blanket approval. Live backend wired: versioned query API (POST /queries background execution, results, recorded-event replay, fixed demo questions, published benchmark summary) per docs/07 §20; frontend Live Lab runs real A/B/C executions against the demo world with Demo story / Live backend sources, loading/error/disabled states, honest evaluation (published benchmark scores only, never per-run fabrication); demo/reset/recovery operationalised (Makefile ingest-demo-graph, index-demo-vector, serve-demo-api, demo-reset) with separate Qdrant collection so demo never overwrites dev; demo script + recovery procedure (docs/demo/presentation.md); final architecture explanation appended to docs/architecture/system-architecture.md. See gate notes. |
+| HITL-12 Overhaul v2 | APPROVED | 2026-10-18 | Design approved by project owner ("build it"): `docs/superpowers/specs/2026-10-18-overhaul-design.md`. Supersedes gates HITL-03 to HITL-09 for the v2 work. Checkpoints CP1 (experiment), CP2 (product), CP3 (official run) are recorded below as they are reached. |
 
 Only the project owner may mark a gate `APPROVED`.
+
+## HITL-12 checkpoints
+
+| Checkpoint | Status | Date | Notes |
+|---|---|---|---|
+| CP1 Experiment | PENDING | | world v2, ontology v2, eight scenarios, pipelines v2, bank 2.0.0, harness v2, smoke run |
+| CP2 Product | PENDING | | Overview, Live Lab, Data Model, Help on the live API |
+| CP3 Official run | PENDING | | model and cost choice, dry run, then official run and Results |
 
 On 2026-10-07 the project owner issued a blanket approval ("APPROVE EVERYTHING"),
 authorising continuous progression through the remaining gates without
