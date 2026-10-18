@@ -2,8 +2,8 @@
 
 Runs the enabled injectors in fixed catalogue order, each with its own RNG
 stream keyed by ``scenario_seed + scenario_id``, records planted row counts
-for volume validation, and publishes the applied configuration (not the
-truth) into the dataset manifest.
+for volume validation and planted ids per table in the truth, and publishes
+the applied configuration (not the truth) into the dataset manifest.
 """
 
 from __future__ import annotations
@@ -15,7 +15,8 @@ from typing import Any
 from app.datasets.rng import stream
 from app.datasets.world import World
 from app.scenarios.catalogue import BY_ID, ENABLED, ScenarioSpec
-from app.scenarios.plant import _PLANTERS, ScenarioPlanter
+from app.scenarios.plant import PLANTERS
+from app.scenarios.planter import ScenarioPlanter
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +38,7 @@ def apply_scenarios(world: World) -> list[ScenarioOutcome]:
     outcomes: list[ScenarioOutcome] = []
     for scenario_id in ENABLED:
         spec = BY_ID[scenario_id]
-        planter = _PLANTERS.get(scenario_id)
+        planter = PLANTERS.get(scenario_id)
         if planter is None:
             raise RuntimeError(
                 f"scenario {scenario_id} is enabled in the catalogue but has no injector"
@@ -50,7 +51,7 @@ def apply_scenarios(world: World) -> list[ScenarioOutcome]:
         outcomes.append(
             ScenarioOutcome(
                 spec=spec,
-                truth=plan.truth,
+                truth={**plan.truth, "planted_ids": plan.planted_ids},
                 required_evidence=tuple(plan.required_evidence),
                 affected_markets=tuple(plan.affected_markets),
                 affected_games=tuple(plan.affected_games),

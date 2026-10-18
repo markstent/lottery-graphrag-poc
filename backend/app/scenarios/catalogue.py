@@ -7,8 +7,8 @@ Phase 5 enables four scenarios that cover the distinct signal surfaces:
 graph topology (SCN-002, SCN-003), cross-market operational incidents with
 document and KPI evidence (SCN-007), and document/structured conflict
 (SCN-015). The remaining catalogue entries are registered but disabled;
-enabling one means implementing its injector in app/scenarios/plant.py,
-not flipping a flag.
+enabling one means implementing its injector and registering it in
+app/scenarios/plant.py, not flipping a flag.
 """
 
 from __future__ import annotations
