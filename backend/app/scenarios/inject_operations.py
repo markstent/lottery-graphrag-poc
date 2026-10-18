@@ -116,7 +116,13 @@ def plant_cross_market_platform_incident(plan: ScenarioPlanter) -> None:
         )
         incidents.append(incident)
 
-        games = plan.rng.sample(plan.digital_games(market), SCN007_GAMES_PER_INCIDENT)
+        digital = plan.digital_games(market)
+        if len(digital) < SCN007_GAMES_PER_INCIDENT:
+            raise RuntimeError(
+                f"scenario {plan.spec.scenario_id}: {market} has fewer than "
+                f"{SCN007_GAMES_PER_INCIDENT} digital games"
+            )
+        games = plan.rng.sample(digital, SCN007_GAMES_PER_INCIDENT)
         incident_games.extend(
             IncidentGameMapRow(
                 incident_id=incident.incident_id,

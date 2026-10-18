@@ -39,7 +39,10 @@ SCN003_LINK_USAGE_WEIGHT = 0.15
 
 def plant_shared_device_cluster(plan: ScenarioPlanter) -> None:
     """SCN-002: eight accounts connected through three shared devices."""
-    market = plan.rng.choice(plan.markets_with_active_players(SCN002_CLUSTER_SIZE))
+    eligible = [
+        m for m in plan.markets_with_active_players(SCN002_CLUSTER_SIZE) if plan.digital_games(m)
+    ]
+    market = _draw_market(plan, eligible)
     code = plan.market_code(market)
     members = plan.players_in(market, SCN002_CLUSTER_SIZE)
     member_ids = [p.player_id for p in members]
@@ -118,7 +121,7 @@ def plant_shared_device_cluster(plan: ScenarioPlanter) -> None:
 
 def plant_shared_payment_cluster(plan: ScenarioPlanter) -> None:
     """SCN-003: six accounts sharing two rarely used payment instruments."""
-    market = plan.rng.choice(plan.markets_with_active_players(SCN003_CLUSTER_SIZE))
+    market = _draw_market(plan, plan.markets_with_active_players(SCN003_CLUSTER_SIZE))
     members = plan.players_in(market, SCN003_CLUSTER_SIZE)
     member_ids = [p.player_id for p in members]
 
@@ -161,3 +164,10 @@ def plant_shared_payment_cluster(plan: ScenarioPlanter) -> None:
         ),
     }
     plan.required_evidence = [*sorted(member_ids)[:3], *sorted(instruments)]
+
+
+def _draw_market(plan: ScenarioPlanter, eligible: list[str]) -> str:
+    """Draw the scenario market from the eligible candidates."""
+    if not eligible:
+        raise RuntimeError(f"scenario {plan.spec.scenario_id}: no eligible market")
+    return str(plan.rng.choice(eligible))

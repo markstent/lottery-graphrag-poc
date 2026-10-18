@@ -7,6 +7,7 @@ chosen targets and every planted id, so tests never rely on id prefixes.
 
 from __future__ import annotations
 
+import random
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -25,7 +26,9 @@ from app.datasets.validation import validate_world
 from app.datasets.world import World, build_world
 from app.scenarios.catalogue import BY_ID, ENABLED
 from app.scenarios.engine import ScenarioOutcome, apply_scenarios
+from app.scenarios.inject_topology import SCN002_CLUSTER_SIZE, plant_shared_device_cluster
 from app.scenarios.ledger import build_ledger
+from app.scenarios.planter import ScenarioPlanter
 
 SCN007_MARKETS = {"MKT_GR", "MKT_AT", "MKT_CZ"}
 
@@ -256,10 +259,32 @@ def test_scn015_document_structured_conflict(scenario_world) -> None:
     assert game.draw_frequency_code != "NONE"
     assert game.ticket_price >= Decimal("1.50")
     assert float(game.ticket_price) == truth["authoritative_price"]
+    assert truth["stale_price"] == round(truth["authoritative_price"] * 0.6, 2)
     assert doc.market_id == game.market_id
     assert doc.language_code == MARKET_LANGUAGE[game.market_id]
     family = next(f for f in GAME_FAMILIES if f.family_id == game.game_family_id)
     assert family.name in doc.body
+
+
+def test_scn002_raises_when_no_market_is_eligible() -> None:
+    """Only one market keeps digital games, and it has too few active players."""
+    world = build_world(GenerationConfig(profile="tiny", world_seed=7, scenario_seed=7))
+    kept = "MKT_CZ"
+    tables = world.tables
+    tables["games"] = [
+        g if g.market_id == kept else g._replace(digital_enabled=False) for g in tables["games"]
+    ]
+    active = [p.player_id for p in tables["players"] if p.market_id == kept]
+    too_few = set(active[: SCN002_CLUSTER_SIZE - 1])
+    tables["players"] = [
+        p
+        if p.market_id != kept or p.player_id in too_few
+        else p._replace(account_status="SUSPENDED")
+        for p in tables["players"]
+    ]
+    plan = ScenarioPlanter(world, random.Random(7), BY_ID["SCN-002"])
+    with pytest.raises(RuntimeError, match="SCN-002"):
+        plant_shared_device_cluster(plan)
 
 
 def test_baseline_noise_still_exists(scenario_world) -> None:

@@ -15,9 +15,10 @@ from app.datasets.rows import DocumentRow
 from app.datasets.taxonomies import MARKET_LANGUAGE
 from app.scenarios.planter import ScenarioPlanter, at
 
-# A draw game expensive enough that the stale price stays positive.
+# Eligible draw games cost at least this much in their own currency.
 SCN015_MIN_PRICE = Decimal("1.50")
-SCN015_STALE_DISCOUNT = Decimal("1.00")
+# The legacy leaflet states 60% of the current price: a clear gap in every currency.
+SCN015_STALE_PRICE_FACTOR = 0.6
 SCN015_NO_DRAW = "NONE"
 SCN015_CREATED_DAY = 20
 SCN015_CREATED_HOUR = 10
@@ -61,7 +62,7 @@ def plant_document_structured_conflict(plan: ScenarioPlanter) -> None:
     if not candidates:
         raise RuntimeError("scenario SCN-015: no eligible draw game")
     game = plan.rng.choice(candidates)
-    stale_price = game.ticket_price - SCN015_STALE_DISCOUNT
+    stale_price = round(float(game.ticket_price) * SCN015_STALE_PRICE_FACTOR, 2)
     family = plan.names[("family", game.game_family_id)]
     language = MARKET_LANGUAGE[game.market_id]
 
@@ -93,7 +94,7 @@ def plant_document_structured_conflict(plan: ScenarioPlanter) -> None:
     plan.duration_days = SCN015_VALID_DAYS
     plan.truth = {
         "conflicting_document": document.document_id,
-        "stale_price": float(stale_price),
+        "stale_price": stale_price,
         "authoritative_source": f"warehouse:games:{game.game_id}",
         "authoritative_price": float(game.ticket_price),
         "validity_note": "document valid_to marks it superseded within the generation window",
