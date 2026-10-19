@@ -182,6 +182,8 @@ class StandardRagPipeline:
             source_system=str(payload.get("source_system", "")),
             valid_from=_optional_text(payload.get("valid_from")),
             valid_to=_optional_text(payload.get("valid_to")),
+            kind=str(payload.get("kind", "chunk")),
+            record_table=_optional_text(payload.get("record_table")),
         )
         return chunk.to_evidence(similarity=similarity, rank=rank)
 

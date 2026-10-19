@@ -18,7 +18,7 @@ from app.evidence import EvidenceChunk
 
 @dataclass(frozen=True, slots=True)
 class CorpusChunk:
-    """One indexed chunk with document provenance."""
+    """One indexed chunk with provenance: a document chunk or a serialised record."""
 
     chunk_id: str
     document_id: str
@@ -31,6 +31,8 @@ class CorpusChunk:
     source_system: str
     valid_from: str | None
     valid_to: str | None
+    kind: str = "chunk"
+    record_table: str | None = None
 
     def to_payload(self) -> dict[str, str | int | None]:
         return {
@@ -45,6 +47,8 @@ class CorpusChunk:
             "valid_from": self.valid_from,
             "valid_to": self.valid_to,
             "text": self.text,
+            "kind": self.kind,
+            "record_table": self.record_table,
         }
 
     def to_evidence(
@@ -65,6 +69,8 @@ class CorpusChunk:
             similarity=round(similarity, 6),
             rank=rank,
             discovered_via=discovered_via,
+            kind=self.kind,
+            record_table=self.record_table,
         )
 
 

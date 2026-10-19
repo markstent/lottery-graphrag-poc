@@ -24,6 +24,8 @@ class EvidenceChunk(BaseModel):
     source_system: str
     valid_from: str | None = None
     valid_to: str | None = None
+    kind: str = Field(default="chunk", description="chunk (document text) | record (table row)")
+    record_table: str | None = Field(default=None, description="Source table when kind is record")
 
     similarity: float = Field(description="Vector similarity at retrieval time")
     rank: int = Field(description="Position after ranking (1-based)")
