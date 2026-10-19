@@ -4,6 +4,7 @@ Status: HITL-09 artefact. Development world (`data/generated/dev-seed2026`),
 captured 2026-10-08, committed at Phase 10.
 
 These records, including the `lexical(w=0.3)` reranker, describe the v1 harness and are superseded by the Phase 3 runs.
+The v1 30-question bank and its CLI are retired; benchmark v2 (bank 2.0.0) is described in [scoring.md](scoring.md), [statistics.md](statistics.md) and [reproducibility.md](reproducibility.md).
 
 ## What this document is
 
@@ -260,5 +261,5 @@ All bank questions were grounded and scored.
 - Single runs, no variance estimates. Scoring is deterministic and the
   pipelines are deterministic given the world, so a repeat run reproduces
   these numbers.
-- LLM-as-judge is not used; any future judge must be versioned and identified
-  per result (docs/evaluation/scoring.md).
+- The v1 harness used no LLM judge. Benchmark v2 adds a versioned, blinded
+  judge beside the deterministic scores (docs/evaluation/scoring.md).

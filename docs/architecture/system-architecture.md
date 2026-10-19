@@ -138,9 +138,11 @@ for CI and a LiteLLM adapter for local or hosted models, selected by
 configuration; temperature 0; citations are derived from the selected
 context by the pipeline, never from model output.
 
-**Evaluation.** The 30-question bank is grounded deterministically into a
-world; scoring is deterministic (answer checks, evidence precision/recall,
-failure taxonomy). The truth ledger is readable only by the evaluation
+**Evaluation.** Bank 2.0.0 (22 logical questions) is grounded
+deterministically into each of three generated worlds and frozen with a hash;
+scoring is deterministic (answer checks, evidence over discoveries, citation
+metrics, failure class), with a blinded LLM judge reported beside it and
+clustered paired statistics over the worlds (docs/evaluation/). The truth ledger is readable only by the evaluation
 package, enforced by isolation tests; the public API cannot read it.
 
 **Presentation surface (Phase 13, as built).** The API exposes versioned

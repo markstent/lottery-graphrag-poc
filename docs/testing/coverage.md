@@ -1,7 +1,8 @@
 # Test Matrix and Critical Coverage
 
 Status: HITL-10 artefact, 2026-10-09. Counts refer to the commit that added
-this document; `make test` and CI keep them current.
+this document; `make test` and CI keep them current. The Scoring and Benchmark
+execution rows were updated for benchmark v2 on 2026-10-19.
 
 ## Layers
 
@@ -19,12 +20,12 @@ this document; `make test` and CI keep them current.
 
 | Critical area | Tests |
 |---|---|
-| Scoring | `test_benchmark_scoring.py` (17): answer checks (number/token/set), evidence precision/recall, failure taxonomy incl. `generation_failure` |
+| Scoring | `test_checks.py` (63): answer checks (number, token, set, verdict) and citation metrics; `test_claims.py` (12) and `test_benchmark_scoring.py` (15): carriers, anchor exclusion, evidence metrics, failure classes; `test_judge.py` (41): blinding, parsing, family rule, agreement; `test_statistics.py` (17) and `test_benchmark_report.py` (13): bootstrap, Wilcoxon, Holm, headlines, summary |
 | Truth-ledger isolation | `test_truth_ledger_isolation.py` (5): forbidden literals and imports across retrieval/api/datasets/graph modules |
 | Scenario injection | `test_scenarios.py` (9): planted patterns, truth-ledger metadata, determinism |
 | Deterministic generation | `test_determinism.py` (3), `test_validation.py` (5), `test_datasets` stage coverage via scenarios |
 | Evidence selection | `test_graph_rag.py` ranking/selection/discard tests (17), `test_standard_rag.py` context selection (18) |
-| Benchmark execution | `test_benchmark_bank.py` (9), `test_benchmark_grounding.py` (7), `test_benchmark_live.py` (4) |
+| Benchmark execution | `test_benchmark_bank.py` (6), `test_benchmark_grounding.py` (41), `test_benchmark_runner.py` (33), `test_official.py` (35): bank 2.0.0, grounding and the frozen bank, repeats and refusals, three-world orchestration, sweep and model comparison |
 | Experiment configuration (B/C fairness) | `test_lab_fairness.py` (4): B = C minus `MAPS_TO` and concept expansion, identical budgets, fraud profile symmetric |
 | Graph traversal limits | `test_graph_rag.py` depth/limits/beyond-limit discard tests |
 | Provenance | `test_provenance.py` (4), `test_graph_statements.py` (6) |
@@ -33,9 +34,10 @@ this document; `make test` and CI keep them current.
 
 Pipelines raise rather than fabricate success when the gateway, embedder or
 vector store fails (`test_failure_modes.py`, 6 tests). The benchmark runner
-contains gateway failures per question as `generation_failure` results so one
+records a gateway failure per repeat (that repeat has no score) so one
 flaky model call cannot destroy an official run, while infrastructure errors
-still fail loudly (`test_benchmark_live.py::test_gateway_failure_is_recorded_not_fatal`).
+still fail loudly (`test_benchmark_runner.py::test_a_generation_failure_is_recorded_not_fatal`,
+`test_any_other_pipeline_error_fails_the_run`).
 API error mapping is not applicable yet: the HTTP surface is the health
 endpoint only; the pipelines are invoked through CLIs. Failure mapping for the
 presentation-mode API is Phase 13 work.

@@ -1,5 +1,30 @@
 # Benchmark and Evaluation Specification
 
+## Benchmark v2 as built
+
+This section describes the benchmark as built in Phase 3 (bank 2.0.0, 2026-10-19).
+Where it differs from the original specification below, this section and the three pages it points to are the current behaviour; the original sections stay as the starting brief.
+
+- The bank is bank 2.0.0: 22 logical questions (L01 to L22) in four strata, H1 multi-hop (L05 to L08), H2 ontology-dependent (L09 to L14, with L13 and L14 anchored by local-language names), H3 single facts (L01 to L04) and H5 planted patterns (L15 to L22).
+  It replaces the 30-question v1 bank of sections 2 and 15.
+- Each structural question is grounded to up to three anchors per world, picked in a stable hash order; each planted question is grounded to one instance read from the truth ledger.
+  The generated page [evaluation/question-bank.md](evaluation/question-bank.md) lists every instance of the presentation world.
+- An official run scores the bank on three generated worlds (seeds 2026, 2027 and 2028) with three repeats of every pipeline, at graph depth 2.
+- Scoring is deterministic: answer checks, evidence recall, precision and F1 over discoveries (the question's anchor excluded), citation metrics and a failure class.
+  A blinded LLM judge of another model family scores beside them and never replaces them.
+  There is no composite score (section 7); each metric is reported on its own.
+  Known limitation: a graph node without a record block reaches the judge as the text `<Label> <id>`, which can differ in form from pipeline A's record text, so blinding is not complete.
+- Comparisons are B against A and C against B, with clustered paired bootstrap intervals, Wilcoxon tests on cluster means and Holm correction over a declared family; the harness writes the headline sentences.
+- The H1 depth sweep and the H7 model comparison are separate commands that report intervals or means without tests.
+
+Read next:
+
+- [evaluation/scoring.md](evaluation/scoring.md): claims and carriers, anchor exclusion, answer checks, citation metrics and the judge.
+- [evaluation/statistics.md](evaluation/statistics.md): the observation, pairing, clustering, the bootstrap, Wilcoxon, the Holm family, headline forms and the too-few-pairs rule.
+- [evaluation/reproducibility.md](evaluation/reproducibility.md): commands, the three-world run, run directories and every field of the record.
+
+---
+
 ## 1. Purpose
 
 Create a defensible benchmark for measuring the incremental value of:
