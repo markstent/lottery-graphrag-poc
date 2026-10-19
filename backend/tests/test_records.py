@@ -11,8 +11,9 @@ from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
-from app.retrieval.graph.source_lookup import SNIPPET_COLUMNS
+from app.retrieval.graph.source_lookup import NODE_SOURCES, SNIPPET_COLUMNS
 from app.retrieval.standard.records import (
+    RECORD_SERIALISER_VERSION,
     SERIALISERS,
     RecordBlock,
     records_manifest,
@@ -150,3 +151,61 @@ def test_records_manifest_counts_per_table(blocks: list[RecordBlock]) -> None:
     manifest = records_manifest(blocks)
     assert manifest["total"] == len(blocks)
     assert manifest["by_table"]["games"] == 20
+
+
+def test_every_graph_label_with_warehouse_text_has_a_record_block() -> None:
+    """The judge and the model see only text A could index (D-028): every
+    structured label's table is serialised, except players outside a share
+    (design 10a.2) and payment-method links, which are blocks only for
+    shared instruments."""
+    tables = {table for table, _ in NODE_SOURCES.values()}
+    unserialised = tables - set(SERIALISERS)
+    assert unserialised == {"player_payment_method"}
+    assert {"support_cases", "experiments", "markets", "platforms", "channels"} <= set(SERIALISERS)
+
+
+def test_serialiser_version_is_published() -> None:
+    assert RECORD_SERIALISER_VERSION == "2.1.0"
+
+
+def test_support_case_block_states_its_summary_and_category(
+    world_dir: Path, blocks: list[RecordBlock]
+) -> None:
+    cases = [b for b in blocks if b.table == "support_cases"]
+    connection = duckdb.connect()
+    try:
+        total, summary, category, market = connection.execute(
+            "SELECT count(*) OVER (), s.summary_text, c.name, s.market_id"
+            " FROM read_parquet(?) s JOIN read_parquet(?) c"
+            " ON c.support_category_id = s.category_code ORDER BY s.support_case_id LIMIT 1",
+            [
+                str(world_dir / "support_cases.parquet"),
+                str(world_dir / "support_categories.parquet"),
+            ],
+        ).fetchone() or (0, "", "", "")
+    finally:
+        connection.close()
+    assert len(cases) == total
+    first = cases[0]
+    assert summary in first.text and category in first.text and first.market_id == market
+    assert first.source_system == "support_platform"
+
+
+def test_experiment_market_platform_and_channel_blocks(blocks: list[RecordBlock]) -> None:
+    by_table = Counter(block.table for block in blocks)
+    assert by_table["markets"] == 4 and by_table["channels"] == 3
+    assert by_table["platforms"] > 0 and by_table["experiments"] > 0
+    experiment = next(b for b in blocks if b.table == "experiments")
+    assert "Hypothesis" in experiment.text and "Result" in experiment.text
+    assert experiment.market_id and experiment.valid_from is not None
+    market = next(b for b in blocks if b.record_id == "MKT_GR")
+    assert "Greece" in market.text and market.market_id == "MKT_GR"
+    platform = next(b for b in blocks if b.table == "platforms")
+    assert platform.market_id is None and "supplied by" in platform.text
+    channel = next(b for b in blocks if b.record_id == "APP")
+    assert channel.market_id is None and "Mobile application" in channel.text
+
+
+def test_payment_provider_block_market_is_its_home_market(blocks: list[RecordBlock]) -> None:
+    provider = next(b for b in blocks if b.table == "payment_providers" and b.market_id)
+    assert provider.market_id.startswith("MKT_")

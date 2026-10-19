@@ -1,15 +1,20 @@
 """Structured records serialised into text blocks for the shared vector collection.
 
 Pipeline A reads the warehouse only through the vector collection, so the
-catalogue tables and the planted-pattern carriers (shared devices, shared
-payment methods and the players taking part in a share, design 10a.2) are
-rendered as short English sentences and indexed next to document chunks.
-Local names are joined from the taxonomy tables so a block names a game's
-family, category and mechanics the way the market does.
+catalogue and operational tables (games, markets, platforms, channels,
+incidents, campaigns, experiments, support cases and the taxonomies) and
+the planted-pattern carriers (shared devices, shared payment methods and the
+players taking part in a share, design 10a.2) are rendered as short English
+sentences and indexed next to document chunks. Local names are joined from
+the taxonomy tables so a block names a game's family, category and
+mechanics the way the market does. A graph node is judged and shown on
+these blocks only, so the judge and the model never see warehouse text A
+could not index (D-028).
 
 This serialiser is a fixed, published function: one template per table in
-``SERIALISERS``, no tuning hooks. Once a benchmark bank is built against it,
-its wording is frozen.
+``SERIALISERS``, no tuning hooks, versioned by ``RECORD_SERIALISER_VERSION``
+(stamped into the index manifest and the reproducibility record). Once a
+benchmark bank is built against it, its wording is frozen.
 """
 
 from __future__ import annotations
@@ -29,6 +34,10 @@ from app.graph.mapping import game_available_via
 from app.retrieval.standard.corpus import CorpusChunk
 
 Row = dict[str, Any]
+
+# Bump on any change to a template, a query or the provenance suffix: the
+# index must then be rebuilt (the API refuses a mismatched index).
+RECORD_SERIALISER_VERSION = "2.1.0"
 
 # Player ids listed in a shared device or payment method block.
 MAX_LISTED_PLAYERS = 12
@@ -134,6 +143,38 @@ _QUERIES: dict[str, str] = {
         FROM support_categories s LEFT JOIN markets m ON m.market_id = s.market_id
         ORDER BY record_id
     """,
+    "markets": """
+        SELECT m.market_id AS record_id, m.*
+        FROM markets m
+        ORDER BY record_id
+    """,
+    "platforms": """
+        SELECT p.platform_id AS record_id, p.*, s.name AS supplier_name
+        FROM platforms p LEFT JOIN suppliers s ON s.supplier_id = p.supplier_id
+        ORDER BY record_id
+    """,
+    "channels": """
+        SELECT c.channel_code AS record_id, c.*
+        FROM channels c
+        ORDER BY record_id
+    """,
+    "experiments": """
+        SELECT e.experiment_id AS record_id, e.*, m.market_name,
+            seg.name AS target_segment_name
+        FROM experiments e
+        LEFT JOIN markets m ON m.market_id = e.market_id
+        LEFT JOIN player_segments seg ON seg.segment_id = e.target_segment
+        ORDER BY record_id
+    """,
+    "support_cases": """
+        SELECT s.support_case_id AS record_id, s.*, m.market_name,
+            c.name AS category_name, g.game_name
+        FROM support_cases s
+        LEFT JOIN markets m ON m.market_id = s.market_id
+        LEFT JOIN support_categories c ON c.support_category_id = s.category_code
+        LEFT JOIN games g ON g.game_id = s.game_id
+        ORDER BY record_id
+    """,
     "devices": f"""
         SELECT d.device_id AS record_id, d.*, shared.player_ids
         FROM devices d JOIN ({_SHARED_DEVICES}) shared ON shared.device_id = d.device_id
@@ -175,6 +216,7 @@ VALIDITY_COLUMNS: dict[str, tuple[str | None, str | None]] = {
     "campaigns": ("start_at", "end_at"),
     "app_versions": ("released_at", None),
     "experiments": ("start_at", "end_at"),
+    "support_cases": ("opened_at", None),
     "documents": ("valid_from", "valid_to"),
 }
 
@@ -270,6 +312,38 @@ SERIALISERS: dict[str, Callable[[Row], str]] = {
     "support_categories": lambda r: _join(
         f"Support category {r['name']} ({r['support_category_id']}){_in(r)}.",
         f"Language {r['language_code']}.",
+    ),
+    "markets": lambda r: _join(
+        f"Market {r['market_name']} ({r['market_id']}), market code {r['market_code']}.",
+        f"Currency {r['currency_code']}. Primary language {r['primary_language']}.",
+        f"Time zone {r['timezone']}.",
+    ),
+    "platforms": lambda r: _join(
+        f"Platform {r['platform_name']} ({r['platform_id']}) of type {r['platform_type']},"
+        f" supplied by {r['supplier_name']} ({r['supplier_id']}).",
+    ),
+    "channels": lambda r: f"Channel {r['channel_code']}: {r['description']}.",
+    "experiments": lambda r: _join(
+        f"Experiment {r['experiment_name']} ({r['experiment_id']}){_in(r)}.",
+        f"Hypothesis: {r['hypothesis']}.",
+        _opt(
+            r["target_segment"],
+            f"Target segment {r['target_segment_name']} ({r['target_segment']}).",
+        ),
+        f"Primary metric {r['primary_metric']}.",
+        f"Starts {r['start_at']}.",
+        _opt(r["end_at"], f"Ends {r['end_at']}."),
+        _opt(r["result_summary"], f"Result: {r['result_summary']}"),
+    ),
+    "support_cases": lambda r: _join(
+        f"Support case {r['support_case_id']}{_in(r)}: {r['summary_text']}",
+        f"Category {r['category_name']} ({r['category_code']}).",
+        _opt(r["player_id"], f"Player {r['player_id']}."),
+        _opt(r["game_id"], f"Game {r['game_name']} ({r['game_id']})."),
+        _opt(r["incident_id"], f"Incident {r['incident_id']}."),
+        f"Opened {r['opened_at']}.",
+        _opt(r["closed_at"], f"Closed {r['closed_at']}."),
+        f"Sentiment score {r['sentiment_score']}.",
     ),
     "devices": lambda r: _join(
         f"Device {r['device_id']} ({r['device_family']}) is used by {len(r['player_ids'])}"

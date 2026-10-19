@@ -3,7 +3,9 @@
 Embeds the generation-time document chunks plus the serialised structured
 records (``records.py``) into the shared Qdrant collection (ADR-002), dense
 and sparse, and records an index manifest next to the dataset. The manifest
-carries both model versions so every run is reproducible.
+carries both model versions and the record serialiser version so every run
+is reproducible, and the API refuses an index whose serialiser version
+differs from the code's (``check_manifest``).
 
 Usage:
     uv run python -m app.retrieval.standard [--dataset-dir DIR] [--provider ollama|hashing]
@@ -22,7 +24,7 @@ from pathlib import Path
 from app.config import EmbeddingSettings, RetrievalSettings, VectorSettings, from_env
 from app.retrieval.standard.corpus import CorpusChunk, load_corpus
 from app.retrieval.standard.embeddings import EmbeddingFunction, HashingEmbedder, OllamaEmbedder
-from app.retrieval.standard.records import serialise_records
+from app.retrieval.standard.records import RECORD_SERIALISER_VERSION, serialise_records
 from app.retrieval.standard.sparse import SparseEmbedder, build_sparse_embedder
 from app.retrieval.standard.vector_store import (
     DENSE_VECTOR,
@@ -30,7 +32,10 @@ from app.retrieval.standard.vector_store import (
     InMemoryVectorStore,
     QdrantVectorStore,
     VectorStore,
+    VectorStoreError,
 )
+
+MANIFEST_NAME = "vector-index.json"
 
 # Everything the vector collection holds, keyed by chunk id: document chunks
 # plus record blocks, so every search hit resolves to a chunk.
@@ -99,7 +104,6 @@ def build_index(settings: RetrievalSettings, rebuild: bool = True) -> dict[str, 
     corpus = load_indexed_corpus(dataset_dir)
     if not corpus:
         raise RuntimeError(f"No document chunks or records found in {dataset_dir}")
-    record_count = sum(1 for chunk in corpus.values() if chunk.kind == "record")
 
     embedder = build_embedder(settings.embedding)
     sparse = build_sparse_embedder(settings.embedding)
@@ -116,20 +120,51 @@ def build_index(settings: RetrievalSettings, rebuild: bool = True) -> dict[str, 
         raise RuntimeError(
             f"Index verification failed: store holds {store_count} points, expected {len(corpus)}"
         )
-    manifest = {
+    return write_manifest(settings, embedder, sparse, list(corpus.values()))
+
+
+def write_manifest(
+    settings: RetrievalSettings,
+    embedder: EmbeddingFunction,
+    sparse: SparseEmbedder,
+    corpus: Sequence[CorpusChunk],
+) -> dict[str, object]:
+    """Write the index manifest next to the dataset and return it."""
+    record_count = sum(1 for chunk in corpus if chunk.kind == "record")
+    manifest: dict[str, object] = {
         "collection": settings.vector.collection,
         "embedding_provider": settings.embedding.provider,
         "embedding_model": embedder.model_name,
         "embedding_dimensions": embedder.dimensions,
         "sparse_model": sparse.model_name,
+        "record_serialiser_version": RECORD_SERIALISER_VERSION,
         "vector_names": [DENSE_VECTOR, SPARSE_VECTOR],
         "chunk_count": len(corpus) - record_count,
         "record_count": record_count,
         "indexed_at": dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
     }
-    manifest_path = dataset_dir / "vector-index.json"
+    manifest_path = Path(settings.dataset_dir) / MANIFEST_NAME
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return manifest
+
+
+def check_manifest(dataset_dir: Path) -> None:
+    """Refuse an index built by another record serialiser (or of unknown origin).
+
+    Record blocks are the text A retrieves and B and C judge their nodes
+    on, so an index of other block wording would break that parity.
+    """
+    path = dataset_dir / MANIFEST_NAME
+    built = (
+        json.loads(path.read_text(encoding="utf-8")).get("record_serialiser_version")
+        if path.exists()
+        else None
+    )
+    if built != RECORD_SERIALISER_VERSION:
+        raise VectorStoreError(
+            f"index was built by record serialiser {built or 'unknown (no manifest)'}, "
+            f"code is {RECORD_SERIALISER_VERSION}; rebuild the index (make index-vector)"
+        )
 
 
 def main() -> None:
