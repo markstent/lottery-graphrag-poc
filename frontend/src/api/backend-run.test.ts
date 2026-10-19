@@ -266,6 +266,37 @@ describe('runBackendQuestion', () => {
     ).toBe('Game Rules')
   })
 
+  it('flags a v2 benchmark run, which has no per-question scores', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith('/queries'))
+          return Promise.resolve(jsonResponse({ run_id: 'RUN-TEST' }))
+        if (url.endsWith('/events'))
+          return Promise.resolve(jsonResponse(EVENTS))
+        if (url.endsWith('/benchmarks/latest'))
+          return Promise.resolve(
+            jsonResponse({
+              run_id: 'smoke-1',
+              run_kind: 'smoke',
+              label: 'scorer smoke test',
+              summary: { schema_version: '2', headlines: [] },
+            }),
+          )
+        return Promise.resolve(jsonResponse(RESULTS))
+      }),
+    )
+    const run = await runBackendQuestion({
+      id: 'X',
+      question: 'test question',
+      category: 'x',
+      benchmarkQuestionId: 'Q30',
+    })
+    expect(run.benchmarkV2Published).toBe(true)
+    expect(run.evaluation).toEqual([])
+  })
+
   it('omits the evaluation event without a published benchmark match', async () => {
     const run = await runBackendQuestion({
       id: 'X',
@@ -456,6 +487,54 @@ describe('fetchBenchmarkResults', () => {
       vi.fn(() => Promise.resolve(new Response('not found', { status: 404 }))),
     )
     expect(await fetchBenchmarkResults()).toBeNull()
+  })
+
+  it('maps a v1 run onto the dashboard shape', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          jsonResponse({
+            run_id: 'run-v1',
+            summary: {
+              total: 0,
+              scored: 0,
+              pipelines: {},
+              categories: [],
+              failures: [],
+              unscored: [],
+            },
+          }),
+        ),
+      ),
+    )
+    const published = await fetchBenchmarkResults()
+    expect(published?.schema).toBe('v1')
+  })
+
+  it('returns a v2 run as a notice with its kind, label and headlines', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          jsonResponse({
+            run_id: 'official-1',
+            run_kind: 'official',
+            label: null,
+            summary: { schema_version: '2', headlines: ['One line.'] },
+          }),
+        ),
+      ),
+    )
+    expect(await fetchBenchmarkResults()).toEqual({
+      schema: 'v2',
+      notice: {
+        runId: 'official-1',
+        runKind: 'official',
+        label: null,
+        headlines: ['One line.'],
+      },
+    })
   })
 })
 

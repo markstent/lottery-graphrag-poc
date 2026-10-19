@@ -404,7 +404,21 @@ export function LiveLab() {
       {playback.scores && <ScoreStrip scores={playback.scores} />}
 
       {source === 'backend' &&
+        liveRun?.benchmarkV2Published &&
+        playback.status === 'done' &&
+        !playback.scores && (
+          <p className="text-xs text-muted">
+            <span className="font-medium text-warning">
+              Per-question benchmark scores are not shown for benchmark v2 runs
+              yet.
+            </span>{' '}
+            Latency and context tokens above are always measured.
+          </p>
+        )}
+
+      {source === 'backend' &&
         liveRun &&
+        !liveRun.benchmarkV2Published &&
         playback.status === 'done' &&
         !playback.scores && (
           <p className="text-xs text-muted">

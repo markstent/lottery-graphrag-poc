@@ -83,9 +83,11 @@ def _record(kind: str) -> ReproducibilityRecord:
     )
 
 
-def _instance(question_id: str, stratum: str, seed: int, sub: str | None = None) -> BankInstance:
+def _instance(
+    question_id: str, stratum: str, seed: int, sub: str | None = None, anchor: str = "X"
+) -> BankInstance:
     return BankInstance(
-        instance_id=f"{question_id}-{seed}-X",
+        instance_id=f"{question_id}-{seed}-{anchor}",
         question_id=question_id,
         stratum=stratum,
         sub_stratum=sub,
@@ -272,7 +274,14 @@ def test_counts_failures_agreement_and_basis(synthetic_summary: dict[str, object
     summary = synthetic_summary
     assert summary["worlds"] == [2026, 2027]
     assert summary["bank_version"] == "2.0.0"
-    assert summary["instances"]["total"] == {"H1": 12, "H2": 12, "H2_name": 6, "H3": 12, "H5": 12}
+    assert summary["instances"]["total"] == {
+        "H1": 12,
+        "H2": 12,
+        "H2_name": 6,
+        "H3": 12,
+        "H5": 12,
+        "overall": 54,
+    }
     assert summary["instances"]["per_world"]["2026"]["H2_name"] == 3
     missing = [{"question_id": "L99", "reason": "no anchor"}]
     assert summary["unavailable"] == {"2026": missing, "2027": missing}
@@ -309,3 +318,49 @@ def test_judge_failures_are_counted_and_not_zero() -> None:
     assert summary["failures"]["judge"]["A"] == 1
     cell = summary["metrics"]["H1"]["judge_correctness"]["A"]
     assert (cell["mean"], cell["repeats"]) == (2.0, 1)
+
+
+def test_comparisons_name_why_they_were_or_were_not_tested(
+    synthetic_summary: dict[str, object],
+) -> None:
+    comparisons = synthetic_summary["comparisons"]
+    assert isinstance(comparisons, list)
+    reasons = {(c["stratum"], c["metric"]): c["reason"] for c in comparisons}
+    assert reasons[("H1", "evidence_f1")] == "tested"
+    assert reasons[("H3", "evidence_f1")] == "not_in_family"
+    assert reasons[("H2_name", "evidence_f1")] == "not_in_family"
+    assert all((c["reason"] == "tested") == c["in_family"] for c in comparisons)
+
+
+def test_report_reads_counts_and_reasons_from_the_summary(synthetic_run: BenchmarkRun) -> None:
+    report = render_report(synthetic_run)
+    assert "## overall: every question\n\nInstances: 54." in report
+    assert "| tested |" in report and "| not tested: outside the family |" in report
+
+
+def test_twelve_pairs_in_four_groups_make_no_claim() -> None:
+    results = [
+        _result(_instance(f"L1{q}", "H1", seed, anchor=f"X{k}"), _graded(q + k))
+        for seed in SEEDS
+        for q in range(2)
+        for k in range(3)
+    ]
+    world = {seed: [r for r in results if r.instance.world_seed == seed] for seed in SEEDS}
+    run = BenchmarkRun(
+        "official",
+        None,
+        _record("official"),
+        [WorldRun(seed, "bankhash", world[seed], ()) for seed in SEEDS],
+    )
+    summary = summarize(run)
+    cell = next(
+        c
+        for c in summary["comparisons"]
+        if c["stratum"] == "H1" and c["metric"] == "evidence_f1" and c["comparison"] == "B_vs_A"
+    )
+    assert (cell["n"], cell["clusters"]) == (12, 4)
+    assert not cell["in_family"] and cell["p_holm"] is None and cell["reason"] == "too_few"
+    assert summary["headlines"][0] == (
+        "Too few pairs to say for Graph and text search on multi-hop questions "
+        "(12 pairs in 4 groups)."
+    )

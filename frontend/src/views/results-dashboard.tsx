@@ -6,6 +6,8 @@
  * harness's own aggregate, never recomputed here). When the API has no run
  * or is unreachable, the committed validation run from
  * docs/evaluation/harness-validation.md is shown instead and labelled.
+ * When the published run is benchmark v2, which this screen cannot render
+ * yet, a notice with its kind, label and headlines replaces the dashboard.
  */
 
 import { useEffect, useState } from 'react'
@@ -13,7 +15,10 @@ import { useEffect, useState } from 'react'
 import { hrefFor } from '../app/router'
 import { Disclosure } from '../components/doc'
 import { BENCHMARK_RESULTS, type BenchmarkResults } from '../mock/content'
-import { fetchBenchmarkResults } from '../api/backend-run'
+import {
+  fetchBenchmarkResults,
+  type BenchmarkV2Notice,
+} from '../api/backend-run'
 
 const QUESTION_STATUSES = [
   { id: 'Q-001', complexity: 'L1', status: 'ok' },
@@ -73,18 +78,55 @@ function MetricCard({
 
 type Source = 'api' | 'committed'
 
+/** Stopgap until the product phase renders benchmark v2 results. */
+function BenchmarkV2Section({ notice }: { notice: BenchmarkV2Notice }) {
+  return (
+    <section
+      aria-label="Benchmark v2 run"
+      className="rounded-card border border-border bg-surface p-4"
+    >
+      <h2 className="text-lg font-semibold text-primary">Results Dashboard</h2>
+      <p className="mt-1 text-sm text-secondary">
+        A benchmark v2 run is published: run{' '}
+        <span className="font-mono">{notice.runId}</span>, kind{' '}
+        <span className="font-mono">{notice.runKind}</span>
+        {notice.label && (
+          <>
+            , labelled <strong className="text-primary">{notice.label}</strong>
+          </>
+        )}
+        .
+      </p>
+      <p className="mt-1 text-sm text-secondary">
+        The full results screen for benchmark v2 arrives in the product phase.
+        Until then, these are the run&apos;s headlines as the harness wrote
+        them:
+      </p>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-primary">
+        {notice.headlines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 export function ResultsDashboard() {
   const [results, setResults] = useState<BenchmarkResults>(BENCHMARK_RESULTS)
   const [source, setSource] = useState<Source>('committed')
+  const [v2Notice, setV2Notice] = useState<BenchmarkV2Notice | null>(null)
 
   useEffect(() => {
     let cancelled = false
     fetchBenchmarkResults()
       .then((published) => {
-        if (!cancelled && published) {
-          setResults(published)
-          setSource('api')
+        if (cancelled || !published) return
+        if (published.schema === 'v2') {
+          setV2Notice(published.notice)
+          return
         }
+        setResults(published.results)
+        setSource('api')
       })
       .catch(() => {
         // API offline or broken run: keep the committed validation run.
@@ -93,6 +135,8 @@ export function ResultsDashboard() {
       cancelled = true
     }
   }, [])
+
+  if (v2Notice) return <BenchmarkV2Section notice={v2Notice} />
 
   return (
     <div className="space-y-4">

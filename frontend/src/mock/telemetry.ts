@@ -124,6 +124,8 @@ export interface MockRun {
   rag: RagEvent[]
   graph: GraphEvent[]
   evaluation: EvaluationEvent[]
+  /** The published benchmark is v2, which has no per-question scores yet. */
+  benchmarkV2Published?: boolean
 }
 
 const node = (

@@ -79,6 +79,11 @@ HOLM_FAMILY = frozenset(
         ("H5", "answer"),
     }
 )
+REASON_WORDS = {
+    "tested": "tested",
+    "too_few": "not tested: too few pairs or groups",
+    "not_in_family": "not tested: outside the family",
+}
 # Pipeline A resolves no entities, so its anchor resolution reads the selection only.
 ANCHOR_RESOLUTION_BASIS = {"A": "selection", "B": "resolution", "C": "resolution"}
 
@@ -130,6 +135,7 @@ class _Comparison:
     p: float | None
     p_holm: float | None
     in_family: bool
+    reason: str
 
     def to_payload(self) -> dict[str, Any]:
         interval = self.interval
@@ -145,6 +151,7 @@ class _Comparison:
             "p": self.p,
             "p_holm": self.p_holm,
             "in_family": self.in_family,
+            "reason": self.reason,
         }
 
 
@@ -212,7 +219,7 @@ def _observe(result: InstanceResult) -> _Observation:
 
 def _stratum_counts(instances: Iterable[BankInstance]) -> dict[str, int]:
     counts = Counter(stratum_key(instance) for instance in instances)
-    return {key: counts[key] for key in STRATUM_KEYS}
+    return {**{key: counts[key] for key in STRATUM_KEYS}, OVERALL: counts.total()}
 
 
 def _metric_table(
@@ -246,11 +253,13 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
                         diffs.append(value[x][0] - value[y][0])
                         clusters.append(o.cluster)
                 n, groups = len(diffs), len(set(clusters))
-                in_family = (
-                    (stratum, metric) in HOLM_FAMILY
-                    and n >= MIN_PAIRS_FOR_CLAIM
-                    and groups >= MIN_CLUSTERS_FOR_CLAIM
-                )
+                if (stratum, metric) not in HOLM_FAMILY:
+                    reason = "not_in_family"
+                elif n < MIN_PAIRS_FOR_CLAIM or groups < MIN_CLUSTERS_FOR_CLAIM:
+                    reason = "too_few"
+                else:
+                    reason = "tested"
+                in_family = reason == "tested"
                 cells.append(
                     _Comparison(
                         stratum=stratum,
@@ -262,6 +271,7 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
                         p=wilcoxon_p(diffs, clusters) if in_family else None,
                         p_holm=None,
                         in_family=in_family,
+                        reason=reason,
                     )
                 )
     family = {str(i): c.p for i, c in enumerate(cells) if c.p is not None}
@@ -352,12 +362,10 @@ def render_report(run: BenchmarkRun) -> str:
 def _stratum_section(summary: dict[str, Any], key: str) -> list[str]:
     table = summary["metrics"][key]
     pipelines = list(summary["anchor_resolution_basis"])
-    total = summary["instances"]["total"]
-    count = sum(total.values()) if key == OVERALL else total[key]
     lines = [
         f"## {key}: {STRATUM_LABELS[key]}",
         "",
-        f"Instances: {count}.",
+        f"Instances: {summary['instances']['total'][key]}.",
         "",
         "| Metric | " + " | ".join(pipelines) + " |",
         "|---" * (len(pipelines) + 1) + "|",
@@ -389,7 +397,7 @@ def _comparison_section(comparisons: Sequence[dict[str, Any]]) -> list[str]:
         "p is Wilcoxon on group means, Holm-adjusted over the family.",
         "",
         "| Stratum | Metric | Comparison | Pairs | Groups | Mean | 95 percent interval "
-        "| p | Holm p | In family |",
+        "| p | Holm p | Test |",
         "|---|---|---|---|---|---|---|---|---|---|",
     ]
     for c in comparisons:
@@ -400,7 +408,7 @@ def _comparison_section(comparisons: Sequence[dict[str, Any]]) -> list[str]:
         lines.append(
             f"| {c['stratum']} | {c['metric']} | {c['comparison']} | {c['n']} | {c['clusters']} "
             f"| {mean} | {interval} | {_p(c['p'])} | {_p(c['p_holm'])} "
-            f"| {'yes' if c['in_family'] else 'no'} |"
+            f"| {REASON_WORDS[c['reason']]} |"
         )
     return [*lines, ""]
 

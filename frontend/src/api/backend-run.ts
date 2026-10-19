@@ -138,20 +138,44 @@ async function fetchEvents(runId: string): Promise<RecordedEvent[]> {
   return body.events
 }
 
+/** Per-question scores of the published run, and whether that run is v2. */
+interface QuestionBenchmark {
+  questions: Map<string, BenchmarkQuestionResult>
+  v2Published: boolean
+}
+
 async function fetchBenchmark(
   questionId: string | null | undefined,
-): Promise<Map<string, BenchmarkQuestionResult>> {
-  if (!questionId) return new Map()
+): Promise<QuestionBenchmark> {
+  const none = { questions: new Map(), v2Published: false }
+  if (!questionId) return none
   try {
     const response = await fetch(`${API_BASE}/api/v1/benchmarks/latest`)
-    if (!response.ok) return new Map()
+    if (!response.ok) return none
     const body = (await response.json()) as {
-      questions: BenchmarkQuestionResult[]
+      questions?: BenchmarkQuestionResult[]
+      summary?: { schema_version?: string } | null
     }
-    return new Map(body.questions.map((entry) => [entry.question_id, entry]))
+    // A v2 summary has no per-question scores; the Live Lab says so.
+    if (isV2Summary(body.summary)) return { ...none, v2Published: true }
+    return {
+      questions: new Map(
+        (body.questions ?? []).map((entry) => [entry.question_id, entry]),
+      ),
+      v2Published: false,
+    }
   } catch {
-    return new Map()
+    // API offline: the run still plays, without published scores.
+    return none
   }
+}
+
+function isV2Summary(summary: object | null | undefined): boolean {
+  return (
+    !!summary &&
+    'schema_version' in summary &&
+    summary.schema_version === BENCHMARK_V2_SCHEMA
+  )
 }
 
 function chunkSource(sourceSystem: string): MockChunk['sourceType'] {
@@ -551,16 +575,56 @@ export function mapBenchmarkResults(
   }
 }
 
+/** summary.json schema of benchmark v2, which the results screen cannot render yet. */
+const BENCHMARK_V2_SCHEMA = '2'
+
+/** What the Results screen can say about a published v2 run until it renders one. */
+export interface BenchmarkV2Notice {
+  runId: string
+  runKind: string
+  label: string | null
+  headlines: string[]
+}
+
+export type PublishedBenchmark =
+  | { schema: 'v1'; results: BenchmarkResults }
+  | { schema: 'v2'; notice: BenchmarkV2Notice }
+
+interface BenchmarkV2Payload {
+  run_id: string
+  run_kind: string
+  label: string | null
+  summary: { schema_version: string; headlines: string[] }
+}
+
 /**
  * The latest published benchmark run, or null when the API has none (the
- * caller falls back to the committed validation run and labels it).
+ * caller falls back to the committed validation run and labels it). A v2
+ * run comes back as a notice: its kind, label and headlines as written.
  */
-export async function fetchBenchmarkResults(): Promise<BenchmarkResults | null> {
+export async function fetchBenchmarkResults(): Promise<PublishedBenchmark | null> {
   const response = await fetch(`${API_BASE}/api/v1/benchmarks/latest`)
   if (response.status === 404) return null
   if (!response.ok)
     throw new Error(`benchmark unavailable (${response.status})`)
-  return mapBenchmarkResults((await response.json()) as BenchmarkSummaryPayload)
+  const body = (await response.json()) as
+    BenchmarkSummaryPayload | BenchmarkV2Payload
+  if (isV2Summary(body.summary)) {
+    const v2 = body as BenchmarkV2Payload
+    return {
+      schema: 'v2',
+      notice: {
+        runId: v2.run_id,
+        runKind: v2.run_kind,
+        label: v2.label,
+        headlines: v2.summary.headlines,
+      },
+    }
+  }
+  return {
+    schema: 'v1',
+    results: mapBenchmarkResults(body as BenchmarkSummaryPayload),
+  }
 }
 
 /** Saved presentation questions from the fixed demo configuration. */
@@ -620,13 +684,14 @@ export async function runBackendQuestion(
   )
   graph.push({ kind: 'answer_completed', t: answer.latencyMs, answer })
   const matched = question.benchmarkQuestionId
-    ? benchmark.get(question.benchmarkQuestionId)
+    ? benchmark.questions.get(question.benchmarkQuestionId)
     : undefined
   return {
     runId,
     question: question.question,
     rag,
     graph,
+    benchmarkV2Published: benchmark.v2Published,
     evaluation: matched
       ? [
           {
@@ -634,7 +699,7 @@ export async function runBackendQuestion(
             t: answer.latencyMs + 200,
             scores: scoreStrip(
               results,
-              benchmark,
+              benchmark.questions,
               question.benchmarkQuestionId,
             ),
           },

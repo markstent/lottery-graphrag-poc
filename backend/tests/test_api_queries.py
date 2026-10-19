@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from app.api.runs import QueryService
@@ -380,7 +381,7 @@ class TestDemoAndBenchmarks:
 
     def _latest(
         self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, root: Path
-    ) -> tuple[int, dict[str, object]]:
+    ) -> tuple[int, Any]:
         monkeypatch.setenv("BENCHMARK_DIR", str(root))
         app = create_app(
             service_factory=lambda: QueryService(
@@ -388,9 +389,9 @@ class TestDemoAndBenchmarks:
                 graph_config=from_graph_env(),
             )
         )
-        with TestClient(app) as client:
+        with TestClient(app, raise_server_exceptions=False) as client:
             response = client.get("/api/v1/benchmarks/latest")
-        return response.status_code, response.json()
+        return response.status_code, response.json() if response.status_code != 500 else None
 
     def test_latest_benchmark_prefers_official_runs(
         self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -414,6 +415,24 @@ class TestDemoAndBenchmarks:
         assert status == 200
         assert (body["run_id"], body["run_kind"]) == ("b-smoke", "smoke")
         assert body["label"] == "scorer smoke test"
+
+    def test_latest_benchmark_orders_by_time_not_text(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # 10:00 in UTC+02:00 is 08:00 UTC, earlier than 09:00 UTC, though it sorts later as text.
+        self._publish(tmp_path, "later", "official", "2026-10-02T09:00:00+00:00")
+        self._publish(tmp_path, "earlier", "official", "2026-10-02T10:00:00+02:00")
+        status, body = self._latest(tiny_dataset, monkeypatch, tmp_path)
+        assert (status, body["run_id"]) == (200, "later")
+
+    def test_a_malformed_summary_fails_loudly(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        self._publish(tmp_path, "good", "official", "2026-10-02T09:00:00+00:00")
+        (tmp_path / "broken").mkdir()
+        (tmp_path / "broken" / "summary.json").write_text("{not json", encoding="utf-8")
+        status, _ = self._latest(tiny_dataset, monkeypatch, tmp_path)
+        assert status == 500
 
     def test_latest_benchmark_ignores_summaries_of_another_schema(
         self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path

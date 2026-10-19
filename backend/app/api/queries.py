@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -131,7 +132,8 @@ def latest_benchmark(runs_dir: Path) -> tuple[str, dict[str, Any]] | None:
     """The newest official run under ``runs_dir``, else the newest run of any kind.
 
     A run is a directory holding a schema-2 ``summary.json``; newest means the
-    latest ``reproducibility.started_at``, then the directory name.
+    latest ``reproducibility.started_at`` as a point in time, then the
+    directory name. A malformed summary raises rather than being skipped.
     """
     runs: list[tuple[str, dict[str, Any]]] = []
     for path in runs_dir.glob("*/summary.json"):
@@ -142,7 +144,10 @@ def latest_benchmark(runs_dir: Path) -> tuple[str, dict[str, Any]] | None:
     pool = official or runs
     if not pool:
         return None
-    return max(pool, key=lambda run: (run[1]["reproducibility"]["started_at"], run[0]))
+    return max(
+        pool,
+        key=lambda run: (datetime.fromisoformat(run[1]["reproducibility"]["started_at"]), run[0]),
+    )
 
 
 def build_benchmarks_router() -> APIRouter:
