@@ -14,16 +14,21 @@ Market-local taxonomies (families, categories, mechanics, incident types, suppor
 **30 relationship types.**
 AFFECTS, AFFECTS_MARKET, AVAILABLE_IN, AVAILABLE_VIA, BELONGS_TO, CATEGORISED_AS, CONCERNS, DEPLOYED_TO, EXPOSED_TO, FROM_MARKET, HAS_CHUNK, HAS_DRAW, HAS_MECHANIC, INSTANCE_OF, IS_A, MAPS_TO, OF_TYPE, PLAYS, PROMOTES, PROVIDED_BY, REFERENCES, RELATED_TO, RELATED_TO_VERSION, RELATED_TO_APP_VERSION, RUNS_ON, SIMILAR_TO, TARGETS, USES, USES_PAYMENT, VERSION_OF.
 
-**Ontology relationship types.**
+**Traversal allow-list and ontology relationship types.**
+Retrieval traverses a 21-type structured allow-list (`DEFAULT_RELATIONSHIP_TYPES` in `app/config/__init__.py`), not all 30 types.
+Nine types are excluded on purpose.
+`HAS_CHUNK` and `REFERENCES` are document edges: the vector layer owns document retrieval for every pipeline.
+`PLAYS`, `EXPOSED_TO`, `AVAILABLE_VIA`, `PROMOTES`, `HAS_DRAW`, `DEPLOYED_TO` and `HAS_MECHANIC` are transactional or high-fan-out edges that would flood the traversal budget.
 `ONTOLOGY_RELATIONSHIP_TYPES` is `MAPS_TO`, `SIMILAR_TO` and `IS_A`.
 They exist only because of the enterprise ontology.
-Configuration C traverses all 30 types.
-Pipeline B traverses all of them except these three (D-017).
+Configuration C traverses the full 21-type allow-list.
+Pipeline B traverses the allow-list minus those three, which is 18 types (D-017).
 
 **Provenance and validity properties.**
 Every node carries `source_table` and `source_record_id`.
 `source_timestamp` is the first present of `created_at`, `started_at`, `opened_at`, `released_at`, `registration_date`, `first_seen_at` and `start_at` on the source row.
-Time-bounded entities also carry `valid_from` and `valid_to`: PlatformVersion, AppVersion, Game, Campaign, Experiment, Incident and Document.
+Time-bounded entities also carry `valid_from`: PlatformVersion, AppVersion, Game, Campaign, Experiment, Incident and Document.
+All of these except AppVersion also carry `valid_to`; an app version is open-ended.
 Null values are omitted from the node.
 The retrieval temporal-validity score reads these properties.
 
