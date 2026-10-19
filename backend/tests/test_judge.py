@@ -185,6 +185,27 @@ def test_blinding_differs_between_seeds() -> None:
     assert len(orders) > 1
 
 
+def test_block_titles_never_reach_the_judge() -> None:
+    """A graph node block is titled "<Label>: <id>" and a record block
+    "<table>: <id>": a title would tell the judge which pipeline ran."""
+    blocks = (
+        ShownBlock("PLY_1", "Player: PLY_1", "Player PLY_1"),
+        ShownBlock("INC_1", "incidents: INC_1", "Incident INC_1 in Greece."),
+    )
+    _, user = build_judge_prompt(JudgeItem("q", "e", (), blocks, "a [1].", (1,), "s"))
+    assert "Player: PLY_1" not in user and "incidents: INC_1" not in user
+    assert "Player PLY_1" in user and "Incident INC_1 in Greece." in user
+
+
+@pytest.mark.parametrize("marker", ["[1-3]", "[ 1 ]", "[1;2]", "[1,]", "[#2]"])
+def test_markers_outside_the_citation_grammar_point_nowhere(marker: str) -> None:
+    """A stale number must never point at a reshuffled block."""
+    blocks = tuple(ShownBlock(f"R{i}", "t", "x") for i in range(1, 6))
+    _, answer = blind(JudgeItem("q", "e", (), blocks, f"A {marker} and B [2].", (2,), "seed"))
+    assert marker not in answer
+    assert answer.startswith("A [?] and B [")
+
+
 def test_short_answers_are_not_truncated() -> None:
     _, answer = blind(JudgeItem("q", "e", (), (), "x" * ANSWER_CHAR_CAP, (), "s"))
     assert answer == "x" * ANSWER_CHAR_CAP
@@ -215,8 +236,9 @@ def test_user_prompt_shows_the_blinded_item_and_no_carrier_ids() -> None:
     for text in ("Which?", "The first.", "- Fact one.", "- Fact two.", answer):
         assert text in user
     for number, block in enumerate(shown, start=1):
-        assert f"[{number}] {block.title}\n{block.text}" in user
+        assert f"[{number}] {block.text}" in user
     assert "REL_1" not in user and "REL_2" not in user
+    assert "Release one" not in user and "Release two" not in user
     new = 1 + [b.carrier_id for b in shown].index("REL_1")
     assert f"Sources the answer cites: {new}" in user
 

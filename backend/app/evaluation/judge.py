@@ -2,11 +2,19 @@
 
 The judge scores one answer on five dimensions (0 wrong or absent, 1 partly,
 2 fully) beside the deterministic scores; it never replaces them. It sees
-the question, the expected answer, the claim statements, the context blocks
-the generator was shown and the answer, blinded: the blocks are shuffled by
-a hashed seed and renumbered, the answer's citations are rewritten to the
-new numbers, and nothing names the pipeline or how the context was
-retrieved. A judge failure (gateway error or unusable reply) is recorded as
+the question, the expected answer, the claim statements, the text of the
+context blocks the generator was shown and the answer, blinded: the blocks
+are shuffled by a hashed seed and renumbered, the answer's citations are
+rewritten to the new numbers, and the prompt never names the pipeline or
+how the context was retrieved.
+
+Blinding removes the systematic tell, block titles: a graph node without a
+record block is titled "<Label>: <id>" where a record block of pipeline A is
+titled "<table>: <id>", so the judge sees block text only. A residual tell
+remains: the text of such a node reads "<Label> <id>", which can differ in
+form from the text of the record block A retrieves for the same record.
+
+A judge failure (gateway error or unusable reply) is recorded as
 a verdict without scores.
 
 `GatewayJudge` calls the model through the one model gateway; `FakeJudge`
@@ -71,6 +79,8 @@ JUDGE_SYSTEM_PROMPT = (
     '"abstention": <0, 1 or 2>}.'
 )
 
+# Any bracket holding a digit: a citation marker or a malformed one.
+_DIGIT_BRACKET = re.compile(r"\[[^\[\]]*\d[^\[\]]*\]")
 _IDENTIFIER = re.compile(r"\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b")
 
 
@@ -141,40 +151,49 @@ class Judge(Protocol):
     def judge(self, item: JudgeItem) -> JudgeVerdict: ...
 
 
-def _blind_order(item: JudgeItem) -> list[int]:
-    """The shown order of the blocks: original 0-based indexes, shuffled by
-    the hashed seed."""
+def _blinding(item: JudgeItem) -> tuple[list[int], dict[int, int]]:
+    """The shown order (original 0-based indexes, shuffled by the hashed
+    seed) and the renumbering from original to shown 1-based numbers."""
     seed = int(hashlib.sha256(item.blind_seed.encode("utf-8")).hexdigest()[:16], 16)
     order = list(range(len(item.blocks)))
     random.Random(seed).shuffle(order)
-    return order
+    return order, {old + 1: new for new, old in enumerate(order, start=1)}
 
 
 def blind(item: JudgeItem) -> tuple[list[ShownBlock], str]:
-    """The blocks in shuffled order and the answer with its [n] markers
-    rewritten to the new numbers ([?] for a block that was not shown),
-    capped at ``ANSWER_CHAR_CAP`` characters."""
-    order = _blind_order(item)
-    renumber = {old + 1: new for new, old in enumerate(order, start=1)}
+    """The blocks in shuffled order and the answer, blinded."""
+    order, renumber = _blinding(item)
+    return [item.blocks[old] for old in order], _blind_answer(item.answer, renumber)
+
+
+def _blind_answer(answer: str, renumber: dict[int, int]) -> str:
+    """Rewrite every [n] and [n, m] marker to the shown numbers ([?] for a
+    block that was not shown) and every other bracket holding a digit, such
+    as [1-3], to [?], so no stale number points at a reshuffled block; then
+    cap at ``ANSWER_CHAR_CAP`` characters."""
 
     def rewrite(match: re.Match[str]) -> str:
-        numbers = (renumber.get(int(part)) for part in match.group(1).split(","))
+        citation = CITATION.fullmatch(match.group(0))
+        if citation is None:
+            return "[?]"
+        numbers = (renumber.get(int(part)) for part in citation.group(1).split(","))
         return "[" + ", ".join("?" if n is None else str(n) for n in numbers) + "]"
 
-    answer = CITATION.sub(rewrite, item.answer)
-    if len(answer) > ANSWER_CHAR_CAP:
-        answer = answer[:ANSWER_CHAR_CAP] + TRUNCATION_MARK
-    return [item.blocks[old] for old in order], answer
+    blinded = _DIGIT_BRACKET.sub(rewrite, answer)
+    if len(blinded) > ANSWER_CHAR_CAP:
+        blinded = blinded[:ANSWER_CHAR_CAP] + TRUNCATION_MARK
+    return blinded
 
 
 def build_judge_prompt(item: JudgeItem) -> tuple[str, str]:
-    """(system, user) for one blinded item; nothing names how the context
-    was retrieved."""
-    shown, answer = blind(item)
-    renumber = {old + 1: new for new, old in enumerate(_blind_order(item), start=1)}
+    """(system, user) for one blinded item: block text only, no titles, and
+    nothing that names how the context was retrieved."""
+    order, renumber = _blinding(item)
+    shown = [item.blocks[old] for old in order]
+    answer = _blind_answer(item.answer, renumber)
     facts = "\n".join(f"- {statement}" for statement in item.claim_statements) or "- (none)"
     sources = (
-        "\n\n".join(f"[{n}] {block.title}\n{block.text}" for n, block in enumerate(shown, start=1))
+        "\n\n".join(f"[{n}] {block.text}" for n, block in enumerate(shown, start=1))
         or "(no context was shown)"
     )
     cited = [str(renumber[n]) for n in item.cited_blocks if n in renumber]
