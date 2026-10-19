@@ -25,6 +25,8 @@ Only the project owner may mark a gate `APPROVED`.
 | CP2 Product | PENDING | | Overview, Live Lab, Data Model, Help on the live API |
 | CP3 Official run | PENDING | | model and cost choice, dry run, then official run and Results |
 
+Phase 1 (world v2, ontology v2, scenarios, graph model v2) implemented on branch `overhaul/v2`, 2026-10-19; CP1 presentation pending.
+
 On 2026-10-07 the project owner issued a blanket approval ("APPROVE EVERYTHING"),
 authorising continuous progression through the remaining gates without
 individual pauses. Each gate is still marked `APPROVED` only once its phase

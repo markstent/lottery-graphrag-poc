@@ -104,6 +104,7 @@ This workstream comes first because every screen downstream shows its output.
 Each market gets its own reference data, the way four real operators on four source systems would.
 
 - Market-local codes and display names for game families, game categories, mechanics, incident types, support categories, channels and player segments.
+  Channel codes stay shared across markets (D-013); every other taxonomy is market-local.
   Example: the national draw family is `FAM_UK_NATIONAL_DRAW` "National Draw" in the UK, `FAM_GR_ARITHMOLACHEIO` "Αριθμολαχείο" in Greece, `FAM_AT_ZAHLENLOTTO` "Zahlenlotto" in Austria, `FAM_CZ_CISELNA_LOTERIE` "Číselná loterie" in Czechia.
   Within a market, structural edges (`BELONGS_TO`, `INSTANCE_OF` category, `RELATED_TO` platform) work exactly as today.
   Across markets, nothing in the source layer links equivalent things.

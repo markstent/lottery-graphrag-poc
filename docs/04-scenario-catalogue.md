@@ -1,5 +1,44 @@
 # Scenario Catalogue and Truth-Ledger Specification
 
+## As built (v2, 2026-10-19)
+
+This section describes the scenario engine in `app/scenarios/`.
+Where an earlier section conflicts with this one, this one wins.
+
+**Planted set.**
+Eight scenarios are planted.
+Each signal is observable in the data and documents; the truth ledger holds the answers and is evaluator-only.
+
+| Scenario | Signal rule |
+|---|---|
+| SCN-001 | One market's app release breaks checkout for one device family: cohort sessions abandon or fail, support contacts rise, an incident and release note follow. |
+| SCN-002 | Eight accounts connect through three shared devices with coordinated purchases. |
+| SCN-003 | Six accounts share two rarely used payment instruments with normal spend. |
+| SCN-007 | One platform version degrades checkout in three markets with graded severity; the fourth market deferred it. No report names a sibling market. |
+| SCN-009 | One cross-market payment provider fails intermittently on alternating days in three markets, with no incident raised; only the payment-method links reveal it. |
+| SCN-010 | One engaged segment over-indexes on the product built on one mechanic in three markets; reviews use local names only. |
+| SCN-011 | A cross-sell campaign for one market's retail instant game succeeds; a second market has the same structure, with nothing planted there. |
+| SCN-015 | A superseded rules leaflet states a stale price that contradicts the authoritative game price. |
+
+**Targets.**
+Markets, releases, providers, mechanics, segments and games are drawn from the scenario seed among eligible candidates (D-016).
+Different scenario seeds plant different targets; the same seed reproduces the same plant.
+
+**Identifiers.**
+Planted rows take the next id in each table's baseline sequence and carry no scenario marker (D-014).
+Scenario membership is recorded in the truth ledger only.
+
+**KPIs.**
+Injectors never edit `kpi_daily`.
+KPIs are derived from the final rows after planting (D-015).
+
+**Not planted.**
+SCN-004, 005, 006, 008, 012, 013 and 014 are registered in `app/scenarios/catalogue.py` with `enabled=False`.
+Enabling one means writing its injector and registering it in `app/scenarios/plant.py`.
+Sections 2 to 6 still describe them as designs.
+
+---
+
 ## 1. Purpose
 
 Planted scenarios provide known hidden truth against which RAG and GraphRAG can be evaluated objectively.

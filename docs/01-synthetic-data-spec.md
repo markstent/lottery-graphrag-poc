@@ -1,5 +1,54 @@
 # Synthetic Data Specification
 
+## As built (v2, 2026-10-19)
+
+This section describes what the generator does now (`generator_version 0.2.0`).
+Where it conflicts with an earlier section, this section wins.
+Superseded: section 5 (shared reference data), section 7 (master data list) and the section 3 profile volumes.
+
+**Market-owned reference data.**
+Each market owns its reference data and codes, with display names in the market language.
+Game families, game categories, game mechanics, incident types, support categories and player segments exist once per market.
+Example: the national draw family is `FAM_UK_NATIONAL_DRAW` in the UK and `FAM_GR_ARITHMOLACHEIO` in Greece.
+Channel codes are the one exception and stay shared across markets (D-013).
+Nothing in the source layer links equivalent codes across markets; only the ontology does.
+Market-local codes live in `app/datasets/taxonomies.py`.
+
+**Tables added in v2.**
+`game_families`, `game_categories`, `game_mechanics`, `incident_types`, `support_categories` and `player_segments` (all with `market_id` and `language_code`), plus `payment_providers`.
+`payment_methods` now reference a provider, `players` reference `player_segments`, and `incidents` and `support_cases` reference their local type and category tables.
+The table list, column types, foreign keys and id formats are defined in `app/datasets/schema.py`, which is authoritative.
+
+**`business_concepts` removed.**
+Concepts belong to the ontology (`schemas/ontology/ontology.yaml`), not to the source layer.
+Section 7 no longer applies to business concepts.
+
+**Profiles.**
+
+| Profile | Players | Tickets | Incidents | Campaigns per market | Experiments |
+|---|---|---|---|---|---|
+| tiny | 200 | 2,000 | 25 | 3 | 6 |
+| dev | 10,000 | 250,000 | 40 | 4 | 8 |
+| demo | 100,000 | 5,000,000 | 120 | 6 | 12 |
+| stress | 1,000,000 | 50,000,000 | 400 | 8 | 16 |
+
+The remaining volumes (sessions, exposures, retailers, devices, support cases, documents) are in `app/datasets/config.py`.
+The catalogue stays at 20 games for every profile.
+
+**Distribution constants.**
+Every distribution constant is named and documented in `app/datasets/distributions.py` (market splits, segment weights, Pareto activity, win and claim shares, severity weights and chunking).
+
+**Chunking.**
+Documents are split on sentence boundaries into windows of at most 160 words, with the last sentence repeated at the start of the next window.
+Decimals, version labels and ids survive intact.
+`CHUNK_MAX_WORDS` and `CHUNK_OVERLAP_SENTENCES` set the rule.
+
+**Determinism.**
+`generator_version`, `world_seed`, `scenario_seed` and the configuration are recorded in the manifest.
+Golden hashes in the test suite pin the world and the truth ledger across processes.
+
+---
+
 ## 1. Purpose
 
 Create a deterministic synthetic enterprise dataset representing a multinational lottery operator across:

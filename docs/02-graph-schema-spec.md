@@ -1,5 +1,41 @@
 # Graph Schema Specification
 
+## As built (v2, 2026-10-19)
+
+This section describes the graph model as implemented in `app/graph/statements.py`.
+`docs/data/graph-ingestion.md` describes ingestion.
+Where an earlier section conflicts with this one, this one wins.
+
+**29 node labels.**
+Market, Region, Language, Currency, Channel, Supplier, Platform, PlatformVersion, AppVersion, GameFamily, GameCategory, GameMechanic, Game, Draw, PrizeType, PlayerSegment, Player, Device, PaymentMethod, PaymentProvider, Campaign, Experiment, Incident, IncidentType, SupportCase, SupportCategory, Document, DocumentChunk, BusinessConcept.
+Market-local taxonomies (families, categories, mechanics, incident types, support categories, segments) have one node per local code.
+`BusinessConcept` nodes come from the ontology, not from a source table.
+
+**30 relationship types.**
+AFFECTS, AFFECTS_MARKET, AVAILABLE_IN, AVAILABLE_VIA, BELONGS_TO, CATEGORISED_AS, CONCERNS, DEPLOYED_TO, EXPOSED_TO, FROM_MARKET, HAS_CHUNK, HAS_DRAW, HAS_MECHANIC, INSTANCE_OF, IS_A, MAPS_TO, OF_TYPE, PLAYS, PROMOTES, PROVIDED_BY, REFERENCES, RELATED_TO, RELATED_TO_VERSION, RELATED_TO_APP_VERSION, RUNS_ON, SIMILAR_TO, TARGETS, USES, USES_PAYMENT, VERSION_OF.
+
+**Ontology relationship types.**
+`ONTOLOGY_RELATIONSHIP_TYPES` is `MAPS_TO`, `SIMILAR_TO` and `IS_A`.
+They exist only because of the enterprise ontology.
+Configuration C traverses all 30 types.
+Pipeline B traverses all of them except these three (D-017).
+
+**Provenance and validity properties.**
+Every node carries `source_table` and `source_record_id`.
+`source_timestamp` is the first present of `created_at`, `started_at`, `opened_at`, `released_at`, `registration_date`, `first_seen_at` and `start_at` on the source row.
+Time-bounded entities also carry `valid_from` and `valid_to`: PlatformVersion, AppVersion, Game, Campaign, Experiment, Incident and Document.
+Null values are omitted from the node.
+The retrieval temporal-validity score reads these properties.
+
+**Persisted statistics.**
+The ingestion CLI writes `_graph_stats.json` beside the dataset with the ingestion version, label version, ontology version, node counts per label and relationship counts per type and endpoint labels.
+Ingestion fails hard if the database counts differ from the mapped rows.
+
+**Superseded.**
+Any earlier list of labels or relationship types, and any shared (non-market-local) reference node for families, categories or segments.
+
+---
+
 ## 1. Purpose
 
 Define the Neo4j semantic overlay used to connect entities from the existing synthetic enterprise data layer.

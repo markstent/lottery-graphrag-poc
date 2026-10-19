@@ -1,5 +1,57 @@
 # Enterprise Ontology Specification
 
+## As built (v2, 2026-10-19)
+
+This section describes ontology version `ONTOLOGY_VERSION 2.0.0`.
+Sections 3 to 5 are the design that the v2 concept tree implements.
+Section 8 is implemented by `ontology_similarity_v2`.
+Where an earlier section conflicts with this one, this one wins.
+
+**Single source.**
+`schemas/ontology/ontology.yaml` is the only source of concepts, labels, synonyms and bindings.
+It is loaded by `app/ontology/loader.py` into the immutable model in `app/ontology/model.py`.
+PyYAML is the one added dependency (D-012).
+The ontology package is independent of the generator, the scenarios and the evaluator.
+
+**Concept tree.**
+42 concepts under six roots: lottery product, game mechanic, incident, support topic, player segment and sales channel.
+Each concept has a parent, a type, a definition, a label in each language and synonyms per language.
+
+**Bindings.**
+117 bindings map a market-local code to a concept.
+Binding kinds and counts:
+
+| Kind | Count |
+|---|---|
+| family | 20 |
+| category | 13 |
+| mechanic | 16 |
+| incident_type | 25 |
+| support_category | 16 |
+| segment | 24 |
+| channel | 3 |
+
+Channel bindings are shared across markets (D-013); every other binding names its market.
+In the graph each binding is a `MAPS_TO` edge and each parent link an `IS_A` edge.
+
+**Languages and synonyms.**
+Labels and synonyms exist in four languages: English, Greek, German and Czech.
+
+**Term table.**
+`app/ontology/terms.py` builds one table of lower-cased terms from labels, synonyms and the generator's local display names.
+Each term records its language, its concept and its source.
+A whole-word matcher over the table resolves question text to concepts.
+
+**Similarity.**
+`ontology_similarity_v2` scores two games in different markets from their concepts only.
+A family match adds 0.4, a category match adds 0.2, and 0.4 times the Jaccard index of mechanic concepts is added.
+Each game keeps its three best cross-market matches as `SIMILAR_TO` edges, and every edge records the method name.
+
+**Superseded.**
+The v1 family-and-mechanics similarity, shared reference codes and the flat concept list.
+
+---
+
 ## 1. Purpose
 
 The ontology gives the agent a stable semantic model of the synthetic enterprise.
