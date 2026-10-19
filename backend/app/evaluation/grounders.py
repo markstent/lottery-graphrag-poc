@@ -217,7 +217,7 @@ Grounder = Callable[[World], list[Draft]]
 def ground_l01(world: World) -> list[Draft]:
     drafts = []
     for game_id, game in world.games.items():
-        two_decimal, shortest = _price_forms(game.price)
+        two_decimal, shortest = price_forms(game.price)
         statement = f"The ticket price of {game_id} is {two_decimal} {game.currency}."
         # The shortest form alone matches scores and version labels ("1.0" in
         # "2024.1.0"), so a carrier must state the two-decimal price and its currency.
@@ -291,12 +291,13 @@ def ground_l05(world: World) -> list[Draft]:
             continue
         answer = (
             f"Incidents on platform version {version}, the version of incident {incident_id},"
-            f" were also seen in {_join(markets)}."
+            f" were also seen in {render_list(markets)}."
         )
         specs = tuple(
             ClaimSpec(
                 other_id,
-                f"Incident {other_id} in {_join(found)} was seen on platform version {version}.",
+                f"Incident {other_id} in {render_list(found)}"
+                f" was seen on platform version {version}.",
                 (other_id,),
                 ((other_id,), (version,)),
             )
@@ -325,8 +326,8 @@ def ground_l06(world: World) -> list[Draft]:
         if not MIN_SET <= len(mechanics) <= MAX_SET:
             continue
         answer = (
-            f"The games affected by incident {incident_id} ({_join(list(game_ids))})"
-            f" use the mechanics {_join(mechanics)}."
+            f"The games affected by incident {incident_id} ({render_list(list(game_ids))})"
+            f" use the mechanics {render_list(mechanics)}."
         )
         mechanic_specs = [
             ClaimSpec(
@@ -399,7 +400,7 @@ def ground_l08(world: World) -> list[Draft]:
         games = sorted({game_id for _, game_id in pairs})
         if not MIN_SET <= len(games) <= MAX_SET:
             continue
-        answer = f"Incidents on platform version {version} affected {_join(games)}."
+        answer = f"Incidents on platform version {version} affected {render_list(games)}."
         specs = tuple(
             ClaimSpec(
                 f"{incident_id}:{game_id}",
@@ -433,7 +434,7 @@ def ground_l09(world: World) -> list[Draft]:
             continue
         answer = (
             f"The games in other markets whose family is the same kind as that of {game_id}"
-            f" ({world.label(concept)}) are {_join(others)}."
+            f" ({world.label(concept)}) are {render_list(others)}."
         )
         specs = tuple(_family_spec(world, other_id) for other_id in others)
         check = SetCheck.of(others, world.game_universe())
@@ -458,7 +459,7 @@ def ground_l10(world: World) -> list[Draft]:
             continue
         answer = (
             f"The incidents in other markets of the same kind as {incident_id}"
-            f" ({world.label(concept)}) are {_join(others)}."
+            f" ({world.label(concept)}) are {render_list(others)}."
         )
         specs = tuple(
             ClaimSpec(
@@ -492,7 +493,7 @@ def ground_l11(world: World) -> list[Draft]:
             continue
         answer = (
             f"The segments in other markets that correspond to {segment_id}"
-            f" ({world.label(concept)}) are {_join(others)}."
+            f" ({world.label(concept)}) are {render_list(others)}."
         )
         specs = tuple(
             ClaimSpec(
@@ -528,7 +529,7 @@ def ground_l12(world: World) -> list[Draft]:
             continue
         answer = (
             f"The games in other markets that use the same kind of mechanic as {game_id}'s"
-            f" main mechanic {main} ({world.label(concept)}) are {_join(others)}."
+            f" main mechanic {main} ({world.label(concept)}) are {render_list(others)}."
         )
         specs = tuple(_mechanic_spec(world, other_id, concept) for other_id in others)
         check = SetCheck.of(others, world.game_universe())
@@ -550,7 +551,7 @@ def ground_l13(world: World) -> list[Draft]:
         name = world.name("family", family_id)
         answer = (
             f'The games in the kind of game family called "{name}" ({world.label(concept)})'
-            f" are {_join(games)}."
+            f" are {render_list(games)}."
         )
         specs = tuple(_family_spec(world, game_id) for game_id in games)
         check = SetCheck.of(games, world.game_universe())
@@ -571,7 +572,7 @@ def ground_l14(world: World) -> list[Draft]:
         description = world.names[("mechanic", mechanic_id)][-1]
         answer = (
             f'The games that use the kind of mechanic called "{description}"'
-            f" ({world.label(concept)}) are {_join(games)}."
+            f" ({world.label(concept)}) are {render_list(games)}."
         )
         specs = tuple(_mechanic_spec(world, game_id, concept) for game_id in games)
         check = SetCheck.of(games, world.game_universe())
@@ -636,18 +637,18 @@ def _mechanic_spec(world: World, game_id: str, concept: str) -> ClaimSpec:
     words = (*mechanics, *(world.name("mechanic", m) for m in mechanics))
     return ClaimSpec(
         game_id,
-        f"Game {game_id} uses mechanic {_join(mechanics)}.",
+        f"Game {game_id} uses mechanic {render_list(mechanics)}.",
         (game_id,),
         ((game_id, world.games[game_id].name), words),
     )
 
 
-def _price_forms(price: Decimal) -> tuple[str, str]:
+def price_forms(price: Decimal) -> tuple[str, str]:
     """The two-decimal and the shortest written forms of a price ("2.50", "2.5")."""
     return f"{price:.2f}", format(price.normalize(), "f")
 
 
-def _join(items: Sequence[str]) -> str:
+def render_list(items: Sequence[str]) -> str:
     """'A', 'A and B', 'A, B and C'."""
     if len(items) <= 1:
         return "".join(items)

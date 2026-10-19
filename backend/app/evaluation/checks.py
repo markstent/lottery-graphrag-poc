@@ -155,8 +155,7 @@ def answer_score(checks: Sequence[Check], verdict: str, answer: str) -> float | 
 def scored_numbers(text: str) -> list[str]:
     """Normalised numbers in `text`, ignoring citations, identifiers and dates."""
     return [
-        _normalise_number(match.group())
-        for match in _NUMBER_PATTERN.finditer(_strip_non_numbers(text))
+        normalise(match.group()) for match in _NUMBER_PATTERN.finditer(_strip_non_numbers(text))
     ]
 
 
@@ -204,8 +203,8 @@ def _number_score(check: NumberCheck, text: str) -> float:
     if check.unit is not None:
         adjacent = [match for match in matches if _unit_adjacent(cleaned, match, check.unit)]
         matches = adjacent or matches
-    candidates = {_normalise_number(match.group()) for match in matches}
-    if _normalise_number(check.value) not in candidates:
+    candidates = {normalise(match.group()) for match in matches}
+    if normalise(check.value) not in candidates:
         return 0.0
     return 1.0 if len(candidates) == 1 else 0.5
 
@@ -246,9 +245,11 @@ def _mentions(text: str, name: str) -> bool:
     return word_pattern(name).search(text.casefold()) is not None
 
 
-def _normalise_number(text: str) -> str:
-    """Canonical form: a comma before exactly three digits groups thousands,
-    any other comma is a decimal point; trailing zeros are dropped."""
+def normalise(number: str | int | float | Decimal) -> str:
+    """Canonical form of a number or its text: a comma before exactly three
+    digits groups thousands, any other comma is a decimal point; trailing
+    zeros are dropped ("2.50" and 2.5 both give "2.5")."""
+    text = str(number)
     plain = _THOUSANDS_SEPARATOR.sub("", text).replace(",", ".")
     try:
         number = Decimal(plain)

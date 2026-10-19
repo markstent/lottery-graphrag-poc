@@ -1,12 +1,14 @@
-"""Grounding the structural bank questions (Phase 3 benchmark v2, Task 5).
+"""Grounding the bank questions and freezing the bank (Phase 3 benchmark v2).
 
-The tiny world and its ledger are generated into the test temporary
+The planted tiny world and its ledger are generated into the test temporary
 directory, so these tests run in CI with no machine-local data. The
-dev-world test runs only where ``data/generated/dev-seed2026`` exists.
+dev-world tests run only where ``data/generated/dev-seed2026`` exists.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections import Counter
 from collections.abc import Iterator
 from decimal import Decimal
@@ -18,20 +20,28 @@ from app.datasets.config import REPO_ROOT, GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
-from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, question_by_id
-from app.evaluation.checks import NumberCheck, SetCheck
+from app.evaluation.__main__ import main as cli_main
+from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, BANK_VERSION, question_by_id
+from app.evaluation.checks import NumberCheck, SetCheck, TokenCheck, normalise
 from app.evaluation.grounders import Draft, ground_l01
 from app.evaluation.grounding import (
     GroundingError,
+    Unavailable,
     WorldGrounding,
+    freeze_bank,
     instance_from_payload,
+    load_frozen_bank,
     name_anchor_order,
     sample_anchors,
+    write_frozen_bank,
 )
+from app.evaluation.truth_ledger import TruthLedger, TruthScenario, load_ledger
+from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import build_ledger, write_ledger
 
 STRUCTURAL = tuple(q for q in BANK if q.stratum != "H5")
+PLANTED = tuple(q for q in BANK if q.stratum == "H5")
 DEV_WORLD = REPO_ROOT / "data" / "generated" / "dev-seed2026"
 DEV_LEDGER = REPO_ROOT / "data" / "truth" / "ledger.json"
 dev_world = pytest.mark.skipif(
@@ -40,19 +50,27 @@ dev_world = pytest.mark.skipif(
 
 
 @pytest.fixture(scope="module")
-def tiny_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
+def tiny_planted(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
+    """A planted tiny world with its manifest, and the ledger of the same planting."""
     world = build_world(GenerationConfig(profile="tiny", world_seed=42))
-    dataset_dir = tmp_path_factory.mktemp("tiny-world-grounding")
+    outcomes = apply_scenarios(world)
+    root = tmp_path_factory.mktemp("tiny-world-grounding")
+    dataset_dir = root / "tiny-seed42"
     write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
-    return dataset_dir
+    manifest = json.dumps(world.manifest, indent=2, sort_keys=True) + "\n"
+    (dataset_dir / "_manifest.json").write_text(manifest)
+    ledger_path = write_ledger(root / "ledger.json", build_ledger(outcomes, world))
+    return dataset_dir, ledger_path
 
 
 @pytest.fixture(scope="module")
-def tiny_ledger(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    planted = build_world(GenerationConfig(profile="tiny", world_seed=42))
-    ledger_path = tmp_path_factory.mktemp("tiny-ledger") / "ledger.json"
-    write_ledger(ledger_path, build_ledger(apply_scenarios(planted), planted))
-    return ledger_path
+def tiny_dataset(tiny_planted: tuple[Path, Path]) -> Path:
+    return tiny_planted[0]
+
+
+@pytest.fixture(scope="module")
+def tiny_ledger(tiny_planted: tuple[Path, Path]) -> Path:
+    return tiny_planted[1]
 
 
 @pytest.fixture(scope="module")
@@ -60,6 +78,11 @@ def grounding(tiny_dataset: Path, tiny_ledger: Path) -> Iterator[WorldGrounding]
     instance = WorldGrounding(tiny_dataset, tiny_ledger)
     yield instance
     instance.close()
+
+
+@pytest.fixture(scope="module")
+def dev_ledger() -> TruthLedger:
+    return load_ledger(DEV_LEDGER)
 
 
 @pytest.fixture(scope="module")
@@ -239,9 +262,176 @@ def test_cross_market_anchors_have_a_market_of_their_own(
         )
 
 
-def test_planted_questions_have_no_structural_grounder(grounding: WorldGrounding) -> None:
-    with pytest.raises(GroundingError, match="L15"):
-        grounding.ground(question_by_id("L15"))
+def scenario(ledger: TruthLedger, scenario_id: str) -> TruthScenario:
+    return next(s for s in ledger.scenarios if s.scenario_id == scenario_id)
+
+
+def test_planted_anchors_and_answers_come_from_the_ledger(
+    grounding: WorldGrounding, tiny_ledger: Path
+) -> None:
+    ledger = load_ledger(tiny_ledger)
+    cluster = sorted(scenario(ledger, "SCN-002").truth["cluster_players"])
+    (instance,) = grounding.ground(question_by_id("L16")).instances
+    (check,) = instance.checks
+    assert instance.anchor_id == cluster[0] and instance.anchor_id in instance.text
+    assert isinstance(check, SetCheck) and check.expected == set(cluster[1:])
+    assert set(cluster) <= {key for key, _ in check.universe}
+    truth = scenario(ledger, "SCN-001").truth
+    (instance,) = grounding.ground(question_by_id("L15")).instances
+    assert instance.anchor_id == truth["incident_id"]
+    assert instance.checks == (TokenCheck(truth["app_version_id"]),)
+
+
+def test_planted_claims_follow_the_required_evidence(
+    grounding: WorldGrounding, tiny_ledger: Path
+) -> None:
+    ledger = load_ledger(tiny_ledger)
+    for question in PLANTED:
+        assert question.scenario_id is not None
+        evidence = scenario(ledger, question.scenario_id).required_evidence
+        (instance,) = grounding.ground(question).instances
+        expected = {e for e in evidence if e != instance.anchor_id and not e.startswith("kpi:")}
+        assert {claim.claim_id for claim in instance.claims} <= expected, question.question_id
+        for claim in instance.claims:
+            assert instance.anchor_id not in claim.carriers
+            if claim.claim_id.startswith("DOC_"):
+                assert all(c.startswith("CHNK_") for c in claim.carriers)
+            else:
+                assert claim.claim_id in claim.carriers
+
+
+def test_l18_names_the_unaffected_market_and_l22_the_record_price(
+    grounding: WorldGrounding, tiny_ledger: Path, tiny_dataset: Path
+) -> None:
+    truth = scenario(load_ledger(tiny_ledger), "SCN-007").truth
+    (instance,) = grounding.ground(question_by_id("L18")).instances
+    markets, unaffected = instance.checks
+    assert instance.anchor_id in truth["planted_ids"]["incidents"]
+    assert isinstance(markets, SetCheck) and markets.expected == set(truth["related_markets"])
+    assert isinstance(unaffected, TokenCheck)
+    assert unaffected.expected == truth["unaffected_markets"][0]
+    (instance,) = grounding.ground(question_by_id("L22")).instances
+    (price,) = instance.checks
+    currency = duckdb.execute(
+        "SELECT currency_code FROM read_parquet(?) WHERE game_id = ?",
+        [(tiny_dataset / "games.parquet").as_posix(), instance.anchor_id],
+    ).fetchall()[0][0]
+    assert isinstance(price, NumberCheck) and price.unit == currency
+
+
+def test_planted_grounding_is_deterministic(
+    grounding: WorldGrounding, tiny_dataset: Path, tiny_ledger: Path
+) -> None:
+    again = WorldGrounding(tiny_dataset, tiny_ledger)
+    try:
+        for question in PLANTED:
+            assert grounding.ground(question) == again.ground(question), question.question_id
+    finally:
+        again.close()
+
+
+def test_frozen_bank_is_byte_identical_across_groundings(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    write_frozen_bank(freeze_bank(tiny_dataset, tiny_ledger), tmp_path / "a.json")
+    write_frozen_bank(freeze_bank(tiny_dataset, tiny_ledger), tmp_path / "b.json")
+    assert (tmp_path / "a.json").read_bytes() == (tmp_path / "b.json").read_bytes()
+
+
+def test_frozen_bank_records_its_inputs_and_round_trips(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    bank = freeze_bank(tiny_dataset, tiny_ledger)
+    manifest = (tiny_dataset / "_manifest.json").read_bytes()
+    assert bank.world_manifest_hash == hashlib.sha256(manifest).hexdigest()
+    assert bank.ledger_hash == hashlib.sha256(tiny_ledger.read_bytes()).hexdigest()
+    assert bank.record_serialiser_version == RECORD_SERIALISER_VERSION
+    assert (bank.bank_version, bank.world_seed) == (BANK_VERSION, 42)
+    path = tmp_path / "bank.json"
+    write_frozen_bank(bank, path)
+    text = path.read_text(encoding="utf-8")
+    assert text.endswith("}\n") and text.startswith('{\n  "bank_hash"')
+    assert load_frozen_bank(path) == bank
+
+
+def test_loading_a_tampered_bank_fails(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    path = tmp_path / "bank.json"
+    write_frozen_bank(freeze_bank(tiny_dataset, tiny_ledger), path)
+    path.write_text(path.read_text().replace("L01", "L99", 1))
+    with pytest.raises(GroundingError):
+        load_frozen_bank(path)
+
+
+def test_unplanted_scenarios_are_reported_not_invented(
+    tiny_dataset: Path, tiny_ledger: Path
+) -> None:
+    bank = freeze_bank(tiny_dataset, tiny_ledger)
+    planted = {i.question_id for i in bank.instances}
+    assert all(u.question_id not in planted for u in bank.unavailable)
+
+
+def test_a_scenario_missing_from_the_ledger_is_unavailable(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    payload = json.loads(tiny_ledger.read_text(encoding="utf-8"))
+    payload["scenarios"] = [s for s in payload["scenarios"] if s["scenario_id"] != "SCN-015"]
+    ledger = tmp_path / "ledger.json"
+    ledger.write_text(json.dumps(payload), encoding="utf-8")
+    bank = freeze_bank(tiny_dataset, ledger)
+    assert Unavailable("L22", "scenario not planted") in bank.unavailable
+    assert "L22" not in {i.question_id for i in bank.instances}
+    assert {i.question_id for i in bank.instances if i.stratum == "H5"} == {
+        q.question_id for q in PLANTED if q.question_id != "L22"
+    }
+
+
+def test_ground_cli_writes_the_bank_and_prints_counts(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    out = tmp_path / "bank" / "bank.json"
+    args = ["ground", "--world", str(tiny_dataset), "--ledger", str(tiny_ledger)]
+    assert cli_main([*args, "--out", str(out)]) == 0
+    bank = load_frozen_bank(out)
+    printed = capsys.readouterr().out
+    planted = sum(1 for i in bank.instances if i.stratum == "H5")
+    assert f"H5 planted patterns: {planted} instances" in printed
+    assert bank.bank_hash in printed
+
+
+def test_bank_doc_lists_every_question_and_instance(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    bank_path = tmp_path / "bank.json"
+    write_frozen_bank(freeze_bank(tiny_dataset, tiny_ledger), bank_path)
+    doc_path = tmp_path / "question-bank.md"
+    assert cli_main(["bank-doc", "--bank", str(bank_path), "--out", str(doc_path)]) == 0
+    doc = doc_path.read_text(encoding="utf-8")
+    assert "Generated by `python -m app.evaluation bank-doc`; do not edit." in doc.splitlines()[:3]
+    assert "\u2014" not in doc
+    for question in BANK:
+        assert f"### {question.question_id}" in doc
+    for instance in load_frozen_bank(bank_path).instances:
+        assert instance.text in doc and instance.expected_answer in doc
+
+
+@dev_world
+def test_planted_questions_ground_one_instance_per_scenario(
+    dev_grounding: WorldGrounding,
+) -> None:
+    for question in PLANTED:
+        outcome = dev_grounding.ground(question)
+        assert len(outcome.instances) == 1 and outcome.instances[0].claims, question.question_id
+
+
+@dev_world
+def test_scn015_expects_the_authoritative_price(
+    dev_grounding: WorldGrounding, dev_ledger: TruthLedger
+) -> None:
+    truth = scenario(dev_ledger, "SCN-015").truth
+    check = dev_grounding.ground(question_by_id("L22")).instances[0].checks[0]
+    assert isinstance(check, NumberCheck) and check.value == normalise(truth["authoritative_price"])
 
 
 @dev_world

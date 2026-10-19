@@ -1,10 +1,15 @@
 """Grounding the bank into one generated world (benchmark v2).
 
-A logical question grounds to up to ``ANCHORS_PER_QUESTION`` concrete
+A structural question grounds to up to ``ANCHORS_PER_QUESTION`` concrete
 instances: the grounder in ``app.evaluation.grounders`` lists every eligible
 anchor, :func:`sample_anchors` picks a stable hash order of them, and each
 picked anchor becomes a :class:`BankInstance` whose claims carry the records
-and chunks that state its answer, minus the anchor itself.
+and chunks that state its answer, minus the anchor itself. A planted question
+grounds to one instance read from its scenario's ledger truth
+(``app.evaluation.planted``).
+
+:func:`freeze_bank` grounds the whole bank into a hashed :class:`FrozenBank`
+that records the world, ledger and record serialiser it was built from.
 
 Everything here is evaluator-only (ADR-008): retrieval code never imports
 this package. Identical world, ledger and bank version give identical output.
@@ -13,15 +18,16 @@ this package. Identical world, ledger and bank version give identical output.
 from __future__ import annotations
 
 import hashlib
+import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import cast
 
 import duckdb
 
 from app.datasets.schema import TABLE_SCHEMAS
-from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK_VERSION, LogicalQuestion
+from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, BANK_VERSION, LogicalQuestion
 from app.evaluation.checks import Check, check_from_payload
 from app.evaluation.claims import (
     CarrierIndex,
@@ -31,8 +37,13 @@ from app.evaluation.claims import (
     exclude_anchor,
 )
 from app.evaluation.grounders import GROUNDERS, Draft, World, load_world
+from app.evaluation.planted import PLANTED_GROUNDERS
 from app.evaluation.truth_ledger import load_ledger
 from app.ontology.loader import load_ontology
+from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+
+SCENARIO_NOT_PLANTED = "scenario not planted"
+NO_ELIGIBLE_ANCHOR = "no eligible anchor"
 
 # Strata whose instances score discoveries: an instance with no claim left
 # after excluding the anchor cannot, so its anchor is ineligible.
@@ -148,7 +159,9 @@ class WorldGrounding:
 
     def __init__(self, world_dir: Path, ledger_path: Path) -> None:
         self.world_dir = world_dir
-        self.world_seed = load_ledger(ledger_path).world.world_seed
+        ledger = load_ledger(ledger_path)
+        self.world_seed = ledger.world.world_seed
+        self._scenarios = {s.scenario_id: s for s in ledger.scenarios if s.enabled}
         self._connection = duckdb.connect()
         try:
             for table in TABLE_SCHEMAS:
@@ -166,6 +179,8 @@ class WorldGrounding:
         self._connection.close()
 
     def ground(self, question: LogicalQuestion) -> GroundingOutcome:
+        if question.scenario_id is not None:
+            return self._ground_planted(question, question.scenario_id)
         grounder = GROUNDERS.get(question.question_id)
         if grounder is None:
             raise GroundingError(f"no structural grounder for {question.question_id}")
@@ -188,6 +203,20 @@ class WorldGrounding:
             note += f", fewer than the {ANCHORS_PER_QUESTION} the bank asks for"
         instances = tuple(self._instance(question, by_anchor[anchor]) for anchor in chosen)
         return GroundingOutcome(instances, eligible, note)
+
+    def _ground_planted(self, question: LogicalQuestion, scenario_id: str) -> GroundingOutcome:
+        """One instance from the scenario's truth; none when the world did not plant it."""
+        scenario = self._scenarios.get(scenario_id)
+        if scenario is None:
+            return GroundingOutcome((), 0, SCENARIO_NOT_PLANTED)
+        grounder = PLANTED_GROUNDERS.get(question.question_id)
+        if grounder is None:
+            raise GroundingError(f"no planted grounder for {question.question_id}")
+        try:
+            draft = grounder(scenario, self._world, self._connection)
+        except ValueError as error:
+            raise GroundingError(f"{question.question_id}: {error}") from error
+        return GroundingOutcome((self._instance(question, draft),), 1, f"planted by {scenario_id}")
 
     def _instance(self, question: LogicalQuestion, draft: Draft) -> BankInstance:
         claims = exclude_anchor([self._claim(spec) for spec in draft.specs], draft.anchor_id)
@@ -224,3 +253,119 @@ class WorldGrounding:
         ):
             return True
         return any(self._claim(spec).carriers - {draft.anchor_id} for spec in draft.specs)
+
+
+@dataclass(frozen=True, slots=True)
+class Unavailable:
+    """A bank question this world cannot ground, and why."""
+
+    question_id: str
+    reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class FrozenBank:
+    """The bank grounded into one world, with the hashes of what it was built from.
+
+    ``bank_hash`` is the sha256 of the canonical JSON of every other field,
+    so any edit to a written bank is detected on load.
+    """
+
+    bank_version: str
+    world_seed: int
+    world_manifest_hash: str
+    record_serialiser_version: str
+    ledger_hash: str
+    instances: tuple[BankInstance, ...]
+    unavailable: tuple[Unavailable, ...]
+    bank_hash: str
+
+
+def freeze_bank(world_dir: Path, ledger_path: Path) -> FrozenBank:
+    """Ground every bank question, in bank order, into one hashed bank."""
+    grounding = WorldGrounding(world_dir, ledger_path)
+    instances: list[BankInstance] = []
+    unavailable: list[Unavailable] = []
+    try:
+        for question in BANK:
+            outcome = grounding.ground(question)
+            instances.extend(outcome.instances)
+            if not outcome.instances:
+                reason = SCENARIO_NOT_PLANTED if question.scenario_id else NO_ELIGIBLE_ANCHOR
+                unavailable.append(Unavailable(question.question_id, reason))
+    finally:
+        grounding.close()
+    unhashed = FrozenBank(
+        bank_version=BANK_VERSION,
+        world_seed=grounding.world_seed,
+        world_manifest_hash=_sha256((world_dir / "_manifest.json").read_bytes()),
+        record_serialiser_version=RECORD_SERIALISER_VERSION,
+        ledger_hash=_sha256(ledger_path.read_bytes()),
+        instances=tuple(instances),
+        unavailable=tuple(unavailable),
+        bank_hash="",
+    )
+    return replace(unhashed, bank_hash=_content_hash(_content(unhashed)))
+
+
+def write_frozen_bank(bank: FrozenBank, path: Path) -> None:
+    """Write the bank as canonical JSON (sorted keys, two-space indent, trailing newline)."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(_canonical({**_content(bank), "bank_hash": bank.bank_hash}), encoding="utf-8")
+
+
+def load_frozen_bank(path: Path) -> FrozenBank:
+    """Read a written bank; raises :class:`GroundingError` when its hash does not match."""
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict) or "bank_hash" not in payload:
+        raise GroundingError(f"{path} is not a frozen bank")
+    recorded = payload.pop("bank_hash")
+    actual = _content_hash(payload)
+    if recorded != actual:
+        raise GroundingError(f"{path} has bank hash {recorded} but its content hashes to {actual}")
+    return _bank_from_content(payload, actual)
+
+
+def _content(bank: FrozenBank) -> dict[str, object]:
+    """Every field but ``bank_hash``, as JSON-ready values."""
+    return {
+        "bank_version": bank.bank_version,
+        "world_seed": bank.world_seed,
+        "world_manifest_hash": bank.world_manifest_hash,
+        "record_serialiser_version": bank.record_serialiser_version,
+        "ledger_hash": bank.ledger_hash,
+        "instances": [instance.to_payload() for instance in bank.instances],
+        "unavailable": [
+            {"question_id": u.question_id, "reason": u.reason} for u in bank.unavailable
+        ],
+    }
+
+
+def _bank_from_content(content: Mapping[str, object], bank_hash: str) -> FrozenBank:
+    return FrozenBank(
+        bank_version=str(content["bank_version"]),
+        world_seed=int(str(content["world_seed"])),
+        world_manifest_hash=str(content["world_manifest_hash"]),
+        record_serialiser_version=str(content["record_serialiser_version"]),
+        ledger_hash=str(content["ledger_hash"]),
+        instances=tuple(
+            instance_from_payload(p) for p in cast(list[Mapping[str, object]], content["instances"])
+        ),
+        unavailable=tuple(
+            Unavailable(str(u["question_id"]), str(u["reason"]))
+            for u in cast(list[Mapping[str, object]], content["unavailable"])
+        ),
+        bank_hash=bank_hash,
+    )
+
+
+def _canonical(payload: Mapping[str, object]) -> str:
+    return json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
+
+
+def _content_hash(content: Mapping[str, object]) -> str:
+    return _sha256(_canonical(content).encode("utf-8"))
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
