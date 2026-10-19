@@ -9,7 +9,7 @@ Each question runs through three retrieval pipelines:
 
 - **A, conventional RAG**: dense (bge-m3) plus sparse embedding, hybrid search fused by reciprocal rank, cross-encoder reranking, one shared context budget and slot limit, generation.
   The index holds document chunks and structured record blocks, so A can retrieve table rows as well as document text.
-- **B, graph relationships**: an id and market resolver seeds a bounded traversal over the structured-record subgraph (when nothing resolves, the graph node of the best-matching record block); the top nodes by graph score join A's document channel as structured candidates, judged on the same record text A indexes; nodes carry authoritative facts from the source tables.
+- **B, graph relationships**: an id and market resolver seeds a bounded traversal over the structured-record subgraph (when nothing resolves, the graph node of the best-matching record block); every traversal node joins A's document channel as a structured candidate, judged on the same record text A indexes; nodes carry authoritative facts from the source tables.
   No ontology: no concept seeds, no `MAPS_TO` expansion, no query expansion.
 - **C, graph relationships + enterprise ontology**: B plus the ontology term resolver (concept seeds and concept-bound entities, shown as `via_concept`), query expansion with concept labels and synonyms (`graph.query.expanded`), and ontology expansion during traversal.
 
@@ -26,6 +26,7 @@ uv run python -m app.retrieval.graph.traces --generator fake
 ```
 
 The answers come from the deterministic fake generator, which returns the structured JSON answer (verdict plus prose with [n] citations) built from the context titles only.
+The timings line (run wall clock, and judge time from the rerank events) is measured and varies run to run.
 Everything else (resolution, seeds, traversal, scores, discards, budgets) is the real retrieval telemetry and is reproducible run to run.
 Run with `--generator litellm` and `GENERATION_MODEL` set to see a real model answer.
 
@@ -65,6 +66,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 919
+- timings: run 2785 ms, judge 1872 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -88,7 +90,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `GAME_UK_03` (Game, 2 hop(s) via HAS_MECHANIC, score 0.642, rerank -1.096, components {'graph_distance': 0.5, 'relationship_type': 0.6, 'semantic_relevance': 0.619853, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_03, game_id=GAME_UK_03, game_name=Thames Cash, market_id=MKT_UK, game_family_id=FAM_UK_RAPID_NUMBERS, ticket_price=1.00, currency_code=GBP
   - `GAME_UK_04` (Game, 2 hop(s) via INSTANCE_OF, score 0.627, rerank -1.569, components {'graph_distance': 0.5, 'relationship_type': 0.5, 'semantic_relevance': 0.648171, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_04, game_id=GAME_UK_04, game_name=Union Raffle, market_id=MKT_UK, game_family_id=FAM_UK_FIXED_PRIZE, ticket_price=1.50, currency_code=GBP
   - `GAME_AT_01` (Game, 2 hop(s) via RUNS_ON, score 0.620, rerank -3.132, components {'graph_distance': 0.5, 'relationship_type': 0.6, 'semantic_relevance': 0.557961, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_AT_01, game_id=GAME_AT_01, game_name=Danube Classic, market_id=MKT_AT, game_family_id=FAM_AT_ZAHLENZIEHUNG, ticket_price=2.50, currency_code=EUR
-- discarded nodes: 55 (candidate_cap=21, slot_limit=34)
+- discarded nodes: 55 (slot_limit=55)
 - hybrid channel blocks, shared with A (6):
   - `REC_campaigns_CMP_002` [record campaigns] campaigns: CMP_002 (fused 0.0161, dense rank None, sparse rank 2, rerank -0.803, rank 2)
   - `REC_games_GAME_UK_06` [record games] games: GAME_UK_06 (fused 0.0278, dense rank 24, sparse rank 3, rerank -1.878, rank 6)
@@ -96,8 +98,9 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `CHNK_0203_00` [chunk] Support Summary: Albion Millions (GAME_UK_01) (fused 0.0156, dense rank None, sparse rank 4, rerank -2.570, rank 8)
   - `REC_games_GAME_GR_01` [record games] games: GAME_GR_01 (fused 0.0125, dense rank None, sparse rank 20, rerank -2.999, rank 10)
   - `REC_games_GAME_CZ_01` [record games] games: GAME_CZ_01 (fused 0.0122, dense rank None, sparse rank 22, rerank -3.566, rank 12)
-- events: graph.candidate.discarded=89, graph.candidate.reranked=72, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=60, graph.relationship.traversed=60, graph.seed.selected=1, graph.traversal.started=1
+- events: graph.candidate.discarded=89, graph.candidate.reranked=93, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=60, graph.relationship.traversed=60, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 948
+- timings: run 7206 ms, judge 5616 ms over 93 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -129,14 +132,15 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `GAME_AT_01` (Game, 1 hop(s) via SIMILAR_TO, score 0.612, rerank -3.132, components {'graph_distance': 0.666667, 'relationship_type': 0.4, 'semantic_relevance': 0.557961, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_AT_01, game_id=GAME_AT_01, game_name=Danube Classic, market_id=MKT_AT, game_family_id=FAM_AT_ZAHLENZIEHUNG, ticket_price=2.50, currency_code=EUR
   - `GAME_CZ_01` (Game, 1 hop(s) via SIMILAR_TO, score 0.609, rerank -3.566, components {'graph_distance': 0.666667, 'relationship_type': 0.4, 'semantic_relevance': 0.54945, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_CZ_01, game_id=GAME_CZ_01, game_name=Vltava Výhra, market_id=MKT_CZ, game_family_id=FAM_CZ_CISELNA_LOTERIE, ticket_price=20.00, currency_code=CZK
   - `GAME_GR_01` (Game, 2 hop(s) via SIMILAR_TO, score 0.573, rerank -2.999, components {'graph_distance': 0.5, 'relationship_type': 0.4, 'semantic_relevance': 0.566719, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_GR_01, game_id=GAME_GR_01, game_name=Aegean Gold, market_id=MKT_GR, game_family_id=FAM_GR_ARITHMOLACHEIO, ticket_price=2.00, currency_code=EUR
-- discarded nodes: 85 (candidate_cap=53, slot_limit=32)
+- discarded nodes: 85 (slot_limit=85)
 - hybrid channel blocks, shared with A (4):
   - `REC_campaigns_CMP_002` [record campaigns] campaigns: CMP_002 (fused 0.0161, dense rank None, sparse rank 2, rerank -0.803, rank 2)
   - `REC_games_GAME_UK_06` [record games] games: GAME_UK_06 (fused 0.0278, dense rank 24, sparse rank 3, rerank -1.878, rank 6)
   - `REC_games_GAME_UK_05` [record games] games: GAME_UK_05 (fused 0.0145, dense rank None, sparse rank 9, rerank -2.414, rank 7)
   - `CHNK_0203_00` [chunk] Support Summary: Albion Millions (GAME_UK_01) (fused 0.0156, dense rank None, sparse rank 4, rerank -2.570, rank 8)
-- events: graph.candidate.discarded=121, graph.candidate.reranked=70, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=92, graph.ontology.expanded=4, graph.query.expanded=1, graph.relationship.traversed=92, graph.seed.selected=1, graph.traversal.started=1
+- events: graph.candidate.discarded=121, graph.candidate.reranked=122, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=92, graph.ontology.expanded=4, graph.query.expanded=1, graph.relationship.traversed=92, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 948
+- timings: run 9842 ms, judge 7704 ms over 122 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -168,6 +172,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 1373
+- timings: run 2947 ms, judge 2862 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -191,7 +196,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `INC_002` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.776, rerank 2.197, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.668258, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_002, incident_id=INC_002, market_id=MKT_GR, severity=LOW, incident_type=ITYPE_GR_PLIROMES, started_at=2025-02-05 08:29:43, resolved_at=2025-02-05 16:24:43
   - `INC_017` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.762, rerank 0.354, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.628734, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_017, incident_id=INC_017, market_id=MKT_UK, severity=LOW, incident_type=ITYPE_UK_PAYMENT_FAILURE, started_at=2025-03-24 20:50:16, resolved_at=2025-03-25 22:05:16
   - `INC_018` (Incident, 2 hop(s) via RELATED_TO, score 0.630, rerank -0.209, components {'graph_distance': 0.5, 'relationship_type': 0.5, 'semantic_relevance': 0.657356, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_018, incident_id=INC_018, market_id=MKT_GR, severity=LOW, incident_type=ITYPE_GR_PLIROMES, started_at=2025-08-19 23:46:27, resolved_at=2025-08-20 17:07:27
-- discarded nodes: 85 (candidate_cap=50, slot_limit=35)
+- discarded nodes: 85 (slot_limit=85)
 - hybrid channel blocks, shared with A (7):
   - `CHNK_0256_00` [chunk] Release Note: APPV_UK_530 (Deferred Update) (fused 0.0328, dense rank 1, sparse rank 1, rerank 2.729, rank 2)
   - `REC_incidents_INC_043` [record incidents] incidents: INC_043 (fused 0.0311, dense rank 7, sparse rank 2, rerank 0.374, rank 5)
@@ -200,8 +205,9 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `CHNK_0132_00` [chunk] Incident Report: Αποτυχία πληρωμών (INC_022) (fused 0.0123, dense rank 21, sparse rank None, rerank -1.011, rank 10)
   - `REC_incidents_INC_010` [record incidents] incidents: INC_010 (fused 0.0240, dense rank 19, sparse rank 28, rerank -1.055, rank 11)
   - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0141, dense rank 11, sparse rank None, rerank -1.176, rank 12)
-- events: graph.candidate.discarded=118, graph.candidate.reranked=73, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=2, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=88, graph.relationship.traversed=88, graph.seed.selected=2, graph.traversal.started=1
+- events: graph.candidate.discarded=118, graph.candidate.reranked=122, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=2, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=88, graph.relationship.traversed=88, graph.rerank.started=1, graph.seed.selected=2, graph.traversal.started=1
 - context tokens: 1373
+- timings: run 10831 ms, judge 8811 ms over 122 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -234,7 +240,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `INC_017` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.741, rerank 0.354, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.570416, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_017, incident_id=INC_017, market_id=MKT_UK, severity=LOW, incident_type=ITYPE_UK_PAYMENT_FAILURE, started_at=2025-03-24 20:50:16, resolved_at=2025-03-25 22:05:16
   - `INC_001` (Incident, 1 hop(s) via AFFECTS_MARKET, score 0.668, rerank -1.284, components {'graph_distance': 0.666667, 'relationship_type': 0.6, 'semantic_relevance': 0.575464, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_001, incident_id=INC_001, market_id=MKT_UK, severity=LOW, incident_type=ITYPE_UK_APP_STABILITY, started_at=2025-11-10 23:30:31, resolved_at=2025-11-13 19:40:31
   - `INC_018` (Incident, 2 hop(s) via RELATED_TO, score 0.613, rerank -0.209, components {'graph_distance': 0.5, 'relationship_type': 0.5, 'semantic_relevance': 0.608544, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_018, incident_id=INC_018, market_id=MKT_GR, severity=LOW, incident_type=ITYPE_GR_PLIROMES, started_at=2025-08-19 23:46:27, resolved_at=2025-08-20 17:07:27
-- discarded nodes: 110 (candidate_cap=76, slot_limit=34)
+- discarded nodes: 110 (slot_limit=110)
 - hybrid channel blocks, shared with A (6):
   - `CHNK_0256_00` [chunk] Release Note: APPV_UK_530 (Deferred Update) (fused 0.0325, dense rank 1, sparse rank 2, rerank 2.729, rank 2)
   - `REC_incidents_INC_043` [record incidents] incidents: INC_043 (fused 0.0312, dense rank 4, sparse rank 4, rerank 0.374, rank 5)
@@ -242,8 +248,9 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_incidents_INC_006` [record incidents] incidents: INC_006 (fused 0.0258, dense rank 5, sparse rank 36, rerank -0.199, rank 8)
   - `CHNK_0132_00` [chunk] Incident Report: Αποτυχία πληρωμών (INC_022) (fused 0.0120, dense rank 23, sparse rank None, rerank -1.011, rank 10)
   - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0245, dense rank 10, sparse rank 38, rerank -1.176, rank 11)
-- events: graph.candidate.discarded=144, graph.candidate.reranked=72, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=4, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=112, graph.ontology.expanded=4, graph.query.expanded=1, graph.relationship.traversed=112, graph.seed.selected=4, graph.traversal.started=1
+- events: graph.candidate.discarded=144, graph.candidate.reranked=145, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=4, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=112, graph.ontology.expanded=4, graph.query.expanded=1, graph.relationship.traversed=112, graph.rerank.started=1, graph.seed.selected=4, graph.traversal.started=1
 - context tokens: 1383
+- timings: run 13531 ms, judge 10595 ms over 145 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -275,6 +282,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 791
+- timings: run 1913 ms, judge 1858 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -306,8 +314,9 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_payment_methods_PAY_SHARED_034` [record payment_methods] payment_methods: PAY_SHARED_034 (fused 0.0272, dense rank 2, sparse rank 30, rerank 0.671, rank 10)
   - `REC_payment_methods_PAY_SHARED_075` [record payment_methods] payment_methods: PAY_SHARED_075 (fused 0.0159, dense rank 3, sparse rank None, rerank 0.584, rank 11)
   - `REC_payment_methods_PAY_SHARED_067` [record payment_methods] payment_methods: PAY_SHARED_067 (fused 0.0274, dense rank 7, sparse rank 20, rerank 0.562, rank 12)
-- events: graph.candidate.discarded=46, graph.candidate.reranked=56, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=17, graph.relationship.traversed=17, graph.seed.selected=1, graph.traversal.started=1
+- events: graph.candidate.discarded=46, graph.candidate.reranked=56, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=17, graph.relationship.traversed=17, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 745
+- timings: run 3160 ms, judge 2575 ms over 56 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -343,8 +352,9 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_payment_methods_PAY_SHARED_034` [record payment_methods] payment_methods: PAY_SHARED_034 (fused 0.0272, dense rank 2, sparse rank 30, rerank 0.671, rank 10)
   - `REC_payment_methods_PAY_SHARED_075` [record payment_methods] payment_methods: PAY_SHARED_075 (fused 0.0159, dense rank 3, sparse rank None, rerank 0.584, rank 11)
   - `REC_payment_methods_PAY_SHARED_067` [record payment_methods] payment_methods: PAY_SHARED_067 (fused 0.0274, dense rank 7, sparse rank 20, rerank 0.562, rank 12)
-- events: graph.candidate.discarded=54, graph.candidate.reranked=64, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=25, graph.ontology.expanded=2, graph.query.expanded=1, graph.relationship.traversed=25, graph.seed.selected=1, graph.traversal.started=1
+- events: graph.candidate.discarded=54, graph.candidate.reranked=64, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=25, graph.ontology.expanded=2, graph.query.expanded=1, graph.relationship.traversed=25, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 745
+- timings: run 3581 ms, judge 2765 ms over 64 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -376,6 +386,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 609
+- timings: run 1820 ms, judge 1764 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -407,8 +418,9 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_devices_DEV_AT_000713` [record devices] devices: DEV_AT_000713 (fused 0.0156, dense rank 4, sparse rank None, rerank -3.918, rank 10)
   - `REC_devices_DEV_AT_000770` [record devices] devices: DEV_AT_000770 (fused 0.0141, dense rank 11, sparse rank None, rerank -3.926, rank 11)
   - `REC_devices_DEV_AT_000782` [record devices] devices: DEV_AT_000782 (fused 0.0128, dense rank 18, sparse rank None, rerank -3.945, rank 12)
-- events: graph.candidate.discarded=39, graph.candidate.reranked=50, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=10, graph.relationship.traversed=10, graph.seed.selected=1, graph.traversal.started=1
+- events: graph.candidate.discarded=39, graph.candidate.reranked=50, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=10, graph.relationship.traversed=10, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 609
+- timings: run 2663 ms, judge 2259 ms over 50 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -441,8 +453,9 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_devices_DEV_AT_000713` [record devices] devices: DEV_AT_000713 (fused 0.0156, dense rank 4, sparse rank None, rerank -3.918, rank 10)
   - `REC_devices_DEV_AT_000770` [record devices] devices: DEV_AT_000770 (fused 0.0141, dense rank 11, sparse rank None, rerank -3.926, rank 11)
   - `REC_devices_DEV_AT_000782` [record devices] devices: DEV_AT_000782 (fused 0.0128, dense rank 18, sparse rank None, rerank -3.945, rank 12)
-- events: graph.candidate.discarded=39, graph.candidate.reranked=50, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=10, graph.query.expanded=1, graph.relationship.traversed=10, graph.seed.selected=1, graph.traversal.started=1
+- events: graph.candidate.discarded=39, graph.candidate.reranked=50, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=10, graph.query.expanded=1, graph.relationship.traversed=10, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 609
+- timings: run 2633 ms, judge 2238 ms over 50 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
