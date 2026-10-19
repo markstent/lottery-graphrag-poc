@@ -34,8 +34,8 @@ _SYSTEM_PROMPT = (
     'set verdict to "unknown" and say so plainly in the answer.'
 )
 
-_FENCED_JSON = re.compile(r"```json\s*(.*?)\s*```", re.DOTALL)
-_CITATION = re.compile(r"\[(\d+)\]")
+_FENCED_JSON = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
+_CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
 _USAGE_KEYS = ("prompt_tokens", "completion_tokens", "total_tokens")
 
 
@@ -118,15 +118,18 @@ def parse_answer(raw: str, block_count: int) -> ParsedAnswer:
 
     Citations are the [n] markers in the answer that point at one of the
     `block_count` blocks shown to the model, deduplicated in first-seen order.
+    A bracket may group comma-separated numbers ([1, 2]); ranges such as [1-3]
+    are not supported and cite nothing.
     """
     fenced = _FENCED_JSON.search(raw)
     structured = _structured(raw) or (_structured(fenced.group(1)) if fenced else None)
     verdict, answer = structured if structured else ("", raw)
     cited: list[int] = []
     for match in _CITATION.finditer(answer):
-        number = int(match.group(1))
-        if 1 <= number <= block_count and number not in cited:
-            cited.append(number)
+        for part in match.group(1).split(","):
+            number = int(part)
+            if 1 <= number <= block_count and number not in cited:
+                cited.append(number)
     return ParsedAnswer(verdict=verdict, answer=answer, cited_blocks=cited)
 
 

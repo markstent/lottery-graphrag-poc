@@ -15,6 +15,7 @@ from app.evaluation.scoring import (
     score_checks,
 )
 from app.retrieval.graph.lab import Lab
+from app.retrieval.standard.generation import PROMPT_VERSION
 
 
 class TestNumberCheck:
@@ -178,3 +179,4 @@ def test_reproducibility_record_carries_the_ontology_version(tmp_path: Path) -> 
     record = runner._record()
     assert record.ontology_version == "2.0.0"
     assert record.reranker == "lexical(w=0.3)"
+    assert record.to_payload()["prompt_version"] == PROMPT_VERSION

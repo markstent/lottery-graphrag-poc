@@ -93,10 +93,11 @@ When the sources do not answer the question, the model must set `verdict` to `un
 `parse_answer` reads the model output with three strategies, in order:
 
 1. Strict JSON: the whole output is the JSON object with string `verdict` and `answer` keys.
-2. Fenced JSON: the object sits inside a fenced json code block somewhere in the output.
+2. Fenced JSON: the object sits inside a fenced code block somewhere in the output; the `json` tag is optional and matched case-insensitively.
 3. Plain text: anything else, including JSON with missing keys or wrong types, keeps the whole output as the answer with an empty verdict.
 
 Cited blocks are the `[n]` markers in the parsed answer that point at a block actually shown to the model (`1..block_count`), deduplicated in order of first appearance.
+A bracket may group several numbers, so `[1, 2]` cites blocks 1 and 2; ranges such as `[1-3]` are not supported.
 A marker outside that range is dropped, so an answer can never cite a source it was not given.
 
 `RagAnswer` carries the result:

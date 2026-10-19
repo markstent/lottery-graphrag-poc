@@ -92,6 +92,29 @@ def test_parse_answer_dedupes_citations_in_order() -> None:
     assert parsed.cited_blocks == [2, 1]
 
 
+def test_parse_answer_json_array_falls_to_plain_text() -> None:
+    parsed = parse_answer('["a [1]"]', block_count=1)
+    assert parsed.verdict == "" and parsed.answer == '["a [1]"]' and parsed.cited_blocks == [1]
+
+
+def test_parse_answer_non_string_answer_falls_to_plain_text() -> None:
+    raw = '{"verdict": "x", "answer": 7}'
+    parsed = parse_answer(raw, block_count=1)
+    assert parsed.verdict == "" and parsed.answer == raw
+
+
+@pytest.mark.parametrize("fence", ["```", "```JSON", "```Json"])
+def test_parse_answer_reads_untagged_and_any_case_fences(fence: str) -> None:
+    raw = f'Sure:\n{fence}\n{{"verdict": "no", "answer": "Not offered [1]."}}\n```'
+    parsed = parse_answer(raw, block_count=1)
+    assert parsed.verdict == "no" and parsed.cited_blocks == [1]
+
+
+def test_parse_answer_reads_grouped_citations() -> None:
+    parsed = parse_answer('{"verdict": "x", "answer": "See [1, 2] and [3,2] [9, 1]."}', 3)
+    assert parsed.cited_blocks == [1, 2, 3]
+
+
 def test_prompt_version_is_v2() -> None:
     assert PROMPT_VERSION == "2.0.0"
 
