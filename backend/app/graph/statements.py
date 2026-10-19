@@ -225,19 +225,6 @@ MATCH (n {id: $id})
 RETURN labels(n)[0] AS node_label, properties(n) AS props
 """
 
-RETRIEVAL_CONCEPTS = """
-MATCH (c:BusinessConcept)
-RETURN c.id AS id,
-       c.canonical_name AS canonical_name,
-       c.label_en AS labels_en,
-       c.label_el AS labels_el,
-       c.label_de AS labels_de,
-       c.label_cs AS labels_cs,
-       c.synonyms AS synonyms,
-       c.parent_id AS parent_id
-ORDER BY id
-"""
-
 RETRIEVAL_MARKETS = """
 MATCH (m:Market)
 RETURN m.id AS id, m.name AS name, m.market_code AS market_code

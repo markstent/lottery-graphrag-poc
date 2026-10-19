@@ -12,8 +12,8 @@ from collections.abc import Sequence
 
 import pytest
 from app.evidence import EvidenceChunk
-from app.retrieval.graph.entities import StaticEntityResolver
 from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.graph.resolution import StaticEntityResolver
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction, HashingEmbedder
 from app.retrieval.standard.generation import AnswerGenerator, GenerationError

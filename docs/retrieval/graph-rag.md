@@ -21,10 +21,11 @@ The graph is an augmentation layer. Documents never travel through it.
 
 ```text
 question
-  -> entity resolution (semantic + id-pattern seeds)
+  -> entity resolution (B: ids and markets; C: plus ontology terms and bound codes)
+  -> query expansion (C only: concept labels and synonyms appended)
   -> seed selection (always selected, outside the evidence cap)
   -> bounded traversal over the structured-record subgraph
-  -> ontology expansion (C only: MAPS_TO-bound entities of reached concepts)
+  -> ontology expansion (C only: most relevant MAPS_TO-bound entities of reached concepts)
   -> candidate scoring (see docs/retrieval/evidence-ranking.md)
   -> evidence selection (max_evidence_nodes, reasons recorded)
   -> authoritative facts attached from the source tables (SourceLookup)
@@ -33,6 +34,21 @@ question
   -> the same generator, same parameters as pipeline A
   -> answer + node evidence + document evidence + telemetry events
 ```
+
+## Entity resolution and query expansion
+
+Resolution is deterministic and model-free (`app/retrieval/graph/resolution.py`).
+
+- Pipeline B uses `IdEntityResolver`: graph ids found in the question by id pattern and safe prefix (checked against the graph), then market names and codes as whole words (`origin` `id` or `market_alias`).
+  It never produces concepts.
+- Pipeline C uses `TermEntityResolver`, which runs the same id resolver first and then the ontology term matcher (`app/ontology/terms.py`) over every concept label, synonym and local display name in the four market languages.
+  Each matched term yields its concept (`origin="term"`, confidence 0.8).
+  A local display name also yields the local code it names; a label or synonym yields the concept's codes in the market the question names, if any (`origin="concept_binding"`, `via_concept` set, confidence 0.7).
+  Codes without a graph node are skipped; duplicates are removed in first-seen order.
+- Pipeline C then expands the question (`QueryExpansion`): the labels (English first, the canonical name) and synonyms of every resolved concept are appended on a new line, joined by `; `.
+  A term is added once, and not at all when the question already contains it as a whole word or it contains an earlier added term.
+  The expanded text drives C's document-channel embeddings (dense and sparse), the fallback seed search and the semantic ranking of graph nodes.
+  The reranker and the generator always see the raw question, and pipelines A and B use the raw question everywhere.
 
 ## Traversal rules
 
@@ -75,11 +91,14 @@ The walk is breadth-first over the **structured-record subgraph**:
 ## Ontology expansion (pipeline C only)
 
 After the structural walk, each reached `BusinessConcept` injects its
-`MAPS_TO`-bound entities one hop behind the concept, subject to the total node
-cap. Injected edges emit `new_edges` telemetry. Pipeline B filters
-`MAPS_TO` from the allow-list and drops concept seeds entirely
-(`GraphRagSettings.without_ontology()`), so B and C differ exactly by the
-ontology layer: same allow-list otherwise, same limits, same weights.
+`MAPS_TO`-bound entities one hop behind the concept: at most
+`max_edges_per_node_type` per concept, ordered by semantic relevance to the
+expanded question (same node texts and embedding model as ranking), ties by
+id, subject to the total node cap. Injected nodes emit `graph.node.discovered`
+with `via_concept`. Pipeline B filters `MAPS_TO` from the allow-list
+(`GraphRagSettings.without_ontology()`) and its resolver never produces
+concepts, so B and C differ exactly by the ontology layer: same allow-list
+otherwise, same limits, same weights.
 
 ## Seeds
 
@@ -91,6 +110,8 @@ candidate events (docs/07-api-event-spec.md section 8).
 
 Document retrieval is identical to pipeline A: same corpus, same embedding
 model, same `top_k`, same reranker, same `select_context` budget and dedupe.
+The only difference is pipeline C's expanded query text for the dense and
+sparse search (see above).
 The graph adds structured records and paths, not a second document channel.
 `EvidenceChunk.discovered_via` is `"vector"` for every chunk; the field stays
 in the schema so later phases can attach further provenance without a
@@ -108,7 +129,10 @@ link-table derived: facts are the account links from
 ## Telemetry
 
 Events use the section 8 names from `docs/07-api-event-spec.md`
-(`graph.traversal.started`, `graph.node.discovered`,
+(`graph.entity.resolved` with `via_concept`, `graph.query.expanded` with
+`added_terms` and `expanded_length` (pipeline C only),
+`graph.traversal.started`, `graph.node.discovered` (with `via_concept` for
+ontology-injected nodes),
 `graph.relationship.traversed`, `graph.ontology.expanded`,
 `graph.evidence_path.completed`, `graph.candidate.selected|discarded`,
 `graph.context.assembled`, `graph.generation.*`).
@@ -127,7 +151,9 @@ and pipeline A never imports graph modules.
 
 ## Testing
 
-- `backend/tests/test_graph_rag.py`: offline fixture graph (17 tests): caps,
+- `backend/tests/test_resolution.py`: B and C resolvers, local-name and
+  market bindings, query expansion, ranked and capped ontology expansion.
+- `backend/tests/test_graph_rag.py`: offline fixture graph: caps,
   weight-ordered cuts, replayable paths, ontology expansion, seeds outside
   the cap, transactional edges never traversed, truth-ledger isolation,
   score-component checks against `DEFAULT_RANKING_WEIGHTS`.

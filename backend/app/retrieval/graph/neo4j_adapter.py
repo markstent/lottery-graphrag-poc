@@ -2,17 +2,19 @@
 
 Thin read-side wrappers over the centralised statements
 (app.graph.statements). No Cypher lives here: neighbours, node lookups,
-market aliases and ontology concepts all run the shared static statements.
+and market aliases all run the shared static statements.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+from app.datasets.taxonomies import local_name_variants
 from app.graph import statements
 from app.graph.config import GraphConfig
-from app.ontology.model import LANGUAGES
-from app.retrieval.graph.entities import DictionaryEntityResolver, ResolvedEntity
+from app.ontology.model import Ontology
+from app.ontology.terms import TermMatcher, build_term_table
+from app.retrieval.graph.resolution import IdEntityResolver, TermEntityResolver
 from app.retrieval.graph.traversal import NeighbourEdge
 
 
@@ -92,46 +94,23 @@ class GraphReader:
                     aliases[str(name)] = market_id
         return aliases
 
-    def concepts(self) -> list[tuple[str, str, tuple[str, ...]]]:
-        """(concept id, canonical name, whole match phrases) for the resolver.
 
-        Phrases are the four market-language labels plus every synonym with
-        its "<lang>:" prefix removed.
-        """
-        records = self._driver.execute_query(
-            statements.RETRIEVAL_CONCEPTS, {}, database_=self._database
-        ).records
-        return [
-            (
-                str(record["id"]),
-                str(record["canonical_name"] or ""),
-                tuple(
-                    phrase
-                    for phrase in (
-                        *(str(record[f"labels_{lang}"] or "") for lang in LANGUAGES),
-                        *(_synonym_text(str(entry)) for entry in record["synonyms"] or []),
-                    )
-                    if phrase
-                ),
-            )
-            for record in records
-        ]
+def build_resolvers(
+    reader: GraphReader, ontology: Ontology
+) -> tuple[IdEntityResolver, TermEntityResolver]:
+    """Pipeline B's id resolver and pipeline C's term resolver over the live graph.
 
-
-def _synonym_text(entry: str) -> str:
-    """Synonym text without its "<lang>:" prefix."""
-    _lang, _sep, text = entry.partition(":")
-    return text
-
-
-def build_resolver(reader: GraphReader) -> DictionaryEntityResolver:
-    """Dictionary resolver backed by the live graph."""
-    return DictionaryEntityResolver(
-        lookup_node=reader.lookup_node,
-        market_aliases=reader.markets(),
-        concepts=reader.concepts(),
+    The term resolver wraps the id resolver, so ids and market names resolve
+    identically in both pipelines; C adds the ontology terms and the codes
+    they bind to.
+    """
+    local_names = local_name_variants()
+    ids = IdEntityResolver(lookup_node=reader.lookup_node, market_aliases=reader.markets())
+    terms = TermEntityResolver(
+        inner=ids,
+        matcher=TermMatcher(build_term_table(ontology, local_names)),
+        bindings=ontology,
+        market_hint=ids.market,
+        local_names=local_names,
     )
-
-
-def resolved_ids(entities: list[ResolvedEntity]) -> list[str]:
-    return [entity.entity_id for entity in entities]
+    return ids, terms

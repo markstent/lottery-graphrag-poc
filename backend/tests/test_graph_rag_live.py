@@ -23,9 +23,10 @@ from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.graph.config import GraphConfig
 from app.graph.ingest import ingest
-from app.retrieval.graph.entities import DictionaryEntityResolver
-from app.retrieval.graph.neo4j_adapter import GraphReader
+from app.ontology.loader import load_ontology
+from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.graph.resolution import QueryExpansion
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
@@ -93,13 +94,10 @@ def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipe
     store = InMemoryVectorStore()
     index_corpus(store, embeddings, sparse, list(corpus.values()))
     with GraphReader(graph_config) as reader:
-        resolver = DictionaryEntityResolver(
-            lookup_node=reader.lookup_node,
-            market_aliases=reader.markets(),
-            concepts=reader.concepts(),
-        )
+        ontology = load_ontology()
+        _ids, terms = build_resolvers(reader, ontology)
         yield GraphRagPipeline(
-            resolver=resolver,
+            resolver=terms,
             neighbours=reader,
             embeddings=embeddings,
             sparse=sparse,
@@ -109,6 +107,7 @@ def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipe
             reranker=build_reranker(settings),
             source_lookup=SourceLookup(ingested),
             pipeline="C",
+            expansion=QueryExpansion(ontology),
         )
 
 
@@ -177,13 +176,9 @@ def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: Graph
     store = InMemoryVectorStore()
     index_corpus(store, embeddings, sparse, list(corpus.values()))
     with GraphReader(graph_config) as reader:
-        resolver = DictionaryEntityResolver(
-            lookup_node=reader.lookup_node,
-            market_aliases=reader.markets(),
-            concepts=reader.concepts(),
-        )
+        ids, _terms = build_resolvers(reader, load_ontology())
         pipeline = GraphRagPipeline(
-            resolver=resolver,
+            resolver=ids,
             neighbours=reader,
             embeddings=embeddings,
             sparse=sparse,

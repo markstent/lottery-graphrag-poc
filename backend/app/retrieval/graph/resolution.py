@@ -1,0 +1,232 @@
+"""Entity resolution and query expansion for graph seeds (docs/retrieval/graph-rag.md).
+
+Pipeline B resolves exact graph ids and market names (`IdEntityResolver`).
+Pipeline C adds the ontology layer (`TermEntityResolver`): every concept
+label, synonym and local display name in the four market languages, and the
+local code a concept is bound to in the question's market. `QueryExpansion`
+appends the resolved concepts' labels and synonyms to the question so C's
+document channel searches in every market language.
+
+Resolution is deterministic and model-free, so seed selection is
+reproducible and auditable.
+"""
+
+from __future__ import annotations
+
+import re
+from collections.abc import Callable, Iterator, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Protocol
+
+from app.ontology.model import LANGUAGES, Ontology
+from app.ontology.terms import TermMatcher
+
+_ID_TOKEN = re.compile(r"\b[A-Z]{2,12}(?:_[A-Z0-9]+)+\b")
+
+# Graph id prefixes that are safe seed candidates. Player-transaction ids are
+# never seeds: traversal limits plus the relationship allow-list already keep
+# retrieval away from transactional neighbours.
+_SEED_PREFIXES = (
+    "INC_",
+    "MKT_",
+    "PLV_",
+    "PLT_",
+    "GAME_",
+    "DOC_",
+    "APPV_",
+    "CMP_",
+    "CONCEPT_",
+    "FAM_",
+    "CHNK_",
+    "PLAYER_",
+    "PAY_",
+)
+
+TERM_CONFIDENCE = 0.8
+BINDING_CONFIDENCE = 0.7
+CONCEPT_LABEL = "BusinessConcept"
+
+
+@dataclass(frozen=True, slots=True)
+class ResolvedEntity:
+    """One question mention mapped to a graph node."""
+
+    entity_id: str
+    node_label: str
+    matched_text: str
+    origin: str  # "id" | "market_alias" | "term" | "concept_binding"
+    confidence: float
+    # The concept a "concept_binding" entity was reached through.
+    via_concept: str | None = None
+
+
+class EntityResolver(Protocol):
+    def resolve(self, question: str) -> list[ResolvedEntity]:
+        """Map question mentions to graph node ids (deduplicated, ordered)."""
+        ...
+
+
+NodeLookup = Callable[[str], tuple[str, bool] | None]
+
+
+class IdEntityResolver:
+    """Pipeline B: exact graph ids and whole-word market aliases; no concepts.
+
+    `lookup_node` returns (node_label, exists) for a candidate id or None;
+    the Neo4j adapter backs it with one parameterised lookup.
+    """
+
+    def __init__(self, *, lookup_node: NodeLookup, market_aliases: Mapping[str, str]) -> None:
+        self.lookup_node = lookup_node
+        self._market_aliases = {alias.lower(): node_id for alias, node_id in market_aliases.items()}
+
+    def resolve(self, question: str) -> list[ResolvedEntity]:
+        resolved: list[ResolvedEntity] = []
+        seen: set[str] = set()
+        for token in dict.fromkeys(_ID_TOKEN.findall(question)):
+            if not token.startswith(_SEED_PREFIXES):
+                continue
+            found = self.lookup_node(token)
+            if found is None or not found[1]:
+                continue
+            resolved.append(ResolvedEntity(token, found[0], token, "id", 1.0))
+            seen.add(token)
+        for alias, market_id in self._market_matches(question):
+            if market_id in seen:
+                continue
+            resolved.append(ResolvedEntity(market_id, "Market", alias, "market_alias", 0.9))
+            seen.add(market_id)
+        return resolved
+
+    def market(self, question: str) -> str | None:
+        """The first market the question names by alias, or None."""
+        return next((market_id for _alias, market_id in self._market_matches(question)), None)
+
+    def _market_matches(self, question: str) -> Iterator[tuple[str, str]]:
+        lower = question.lower()
+        for alias, market_id in self._market_aliases.items():
+            if re.search(rf"\b{re.escape(alias)}\b", lower):
+                yield alias, market_id
+
+
+class TermEntityResolver:
+    """Pipeline C: the B resolver plus ontology terms and their bound local codes.
+
+    Each term match yields its concept. A local display name also yields the
+    code it names; a label or synonym yields the concept's codes in the
+    market the question names (`market_hint`), if any. Codes without a graph
+    node are skipped. Duplicates are removed in first-seen order.
+    """
+
+    def __init__(
+        self,
+        *,
+        inner: IdEntityResolver,
+        matcher: TermMatcher,
+        bindings: Ontology,
+        market_hint: Callable[[str], str | None],
+        local_names: Mapping[tuple[str, str], Sequence[str]],
+    ) -> None:
+        self._inner = inner
+        self._matcher = matcher
+        self._ontology = bindings
+        self._market_hint = market_hint
+        self._local_names = {
+            key: {name.casefold().strip() for name in names} for key, names in local_names.items()
+        }
+
+    def resolve(self, question: str) -> list[ResolvedEntity]:
+        resolved = self._inner.resolve(question)
+        seen = {entity.entity_id for entity in resolved}
+        market = self._market_hint(question)
+        for match in self._matcher.match(question):
+            term = match.term
+            matched_text = question[match.start : match.end]
+            candidates = [
+                ResolvedEntity(
+                    term.concept_id, CONCEPT_LABEL, matched_text, "term", TERM_CONFIDENCE
+                ),
+                *self._bound_codes(term.concept_id, term.text, term.source, market, matched_text),
+            ]
+            for entity in candidates:
+                if entity.entity_id not in seen:
+                    resolved.append(entity)
+                    seen.add(entity.entity_id)
+        return resolved
+
+    def _bound_codes(
+        self, concept_id: str, text: str, source: str, market: str | None, matched_text: str
+    ) -> Iterator[ResolvedEntity]:
+        for binding in self._ontology.codes_for(concept_id):
+            if source == "local_name":
+                if text not in self._local_names.get((binding.kind, binding.code), ()):
+                    continue
+            elif market is None or binding.market_id != market:
+                continue
+            found = self._inner.lookup_node(binding.code)
+            if found is None or not found[1]:
+                continue
+            yield ResolvedEntity(
+                binding.code,
+                found[0],
+                matched_text,
+                "concept_binding",
+                BINDING_CONFIDENCE,
+                via_concept=concept_id,
+            )
+
+
+class StaticEntityResolver:
+    """Pre-seeded resolver for tests and offline runs."""
+
+    def __init__(self, entities: list[ResolvedEntity]) -> None:
+        self._entities = entities
+
+    def resolve(self, question: str) -> list[ResolvedEntity]:
+        return list(self._entities)
+
+
+class QueryExpansion:
+    """Appends the resolved concepts' labels and synonyms to the question (pipeline C).
+
+    The added terms follow the question on a new line, joined by "; ": the
+    label in each market language (English first: the canonical name), then
+    the synonyms. A term is added once, and not at all when the question
+    already contains it as a whole word or it contains an earlier added term
+    ("Rubbellose" adds nothing to "Rubbellos").
+    """
+
+    def __init__(self, ontology: Ontology) -> None:
+        self._ontology = ontology
+
+    def expand(self, question: str, resolved: Sequence[ResolvedEntity]) -> str:
+        folded_question = question.casefold()
+        added: dict[str, str] = {}
+        for concept_id in _concepts_of(resolved):
+            for text in self._terms_of(concept_id):
+                folded = text.casefold()
+                covered = any(earlier in folded for earlier in added)
+                if covered or re.search(rf"(?<!\w){re.escape(folded)}(?!\w)", folded_question):
+                    continue
+                added[folded] = text
+        if not added:
+            return question
+        return f"{question}\n{'; '.join(added.values())}"
+
+    def _terms_of(self, concept_id: str) -> Iterator[str]:
+        concept = self._ontology.concept(concept_id)
+        for language in LANGUAGES:
+            yield concept.labels[language]
+        for language in LANGUAGES:
+            yield from concept.synonyms.get(language, ())
+
+
+def _concepts_of(resolved: Sequence[ResolvedEntity]) -> list[str]:
+    """Concept ids of term and binding entities, first-seen order."""
+    concepts: dict[str, None] = {}
+    for entity in resolved:
+        if entity.origin == "term":
+            concepts.setdefault(entity.entity_id)
+        elif entity.origin == "concept_binding" and entity.via_concept is not None:
+            concepts.setdefault(entity.via_concept)
+    return list(concepts)

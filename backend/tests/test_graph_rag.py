@@ -31,17 +31,15 @@ from app.events import (
     GRAPH_ENTITY_RESOLVED,
     GRAPH_EVIDENCE_PATH_COMPLETED,
     GRAPH_GENERATION_COMPLETED,
+    GRAPH_NODE_DISCOVERED,
+    GRAPH_QUERY_EXPANDED,
     GRAPH_RELATIONSHIP_TRAVERSED,
     GRAPH_SEED_SELECTED,
     GRAPH_TRAVERSAL_STARTED,
 )
 from app.ontology.loader import load_ontology
-from app.retrieval.graph.entities import (
-    DictionaryEntityResolver,
-    ResolvedEntity,
-    StaticEntityResolver,
-)
 from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.graph.resolution import QueryExpansion, ResolvedEntity, StaticEntityResolver
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import (
     NeighbourEdge,
@@ -55,7 +53,7 @@ from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.index import index_corpus
 from app.retrieval.standard.reranking import build_reranker
-from app.retrieval.standard.sparse import HashingSparseEmbedder
+from app.retrieval.standard.sparse import HashingSparseEmbedder, SparseVector
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
 
@@ -179,6 +177,7 @@ def resolved() -> list[ResolvedEntity]:
 def build_pipeline(
     settings: RetrievalSettings | None = None,
     resolver: StaticEntityResolver | None = None,
+    expansion: QueryExpansion | None = None,
 ) -> GraphRagPipeline:
     settings = settings or make_settings()
     embeddings = HashingEmbedder(dimensions=settings.embedding.dimensions)
@@ -195,7 +194,20 @@ def build_pipeline(
         generator=FakeAnswerGenerator(),
         settings=settings,
         reranker=build_reranker(settings),
+        expansion=expansion,
     )
+
+
+class RecordingSparseEmbedder(HashingSparseEmbedder):
+    """Hashing sparse embedder that records every query text it embeds."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.queries: list[str] = []
+
+    def embed_query(self, text: str) -> SparseVector:
+        self.queries.append(text)
+        return super().embed_query(text)
 
 
 class TestBoundedTraversal:
@@ -246,7 +258,9 @@ class TestBoundedTraversal:
         traversal = bounded_traversal(provider, ["CONCEPT_X"], settings)
         assert "E5" not in traversal.node_ids
         assert "E6" not in traversal.node_ids
-        expanded, counts, new_edges = expand_ontology(provider, traversal, settings, ["CONCEPT_X"])
+        expanded, counts, new_edges = expand_ontology(
+            provider, traversal, settings, ["CONCEPT_X"], lambda c: [0.0] * len(c)
+        )
         assert counts["CONCEPT_X"] == 2
         assert len(new_edges) == 2
         assert "E5" in expanded.node_ids
@@ -318,6 +332,84 @@ class TestOntologyExpansion:
             if event.event_type == GRAPH_RELATIONSHIP_TRAVERSED
         }
         assert "MAPS_TO" not in rels
+
+
+class TestQueryExpansionInPipeline:
+    QUESTION = "Why did checkout fail in Greece?"
+
+    @staticmethod
+    def _concept_entities() -> list[ResolvedEntity]:
+        return [
+            *resolved(),
+            ResolvedEntity(
+                entity_id="CONCEPT_PLATFORM_INCIDENT",
+                node_label="BusinessConcept",
+                matched_text="platform incident",
+                origin="term",
+                confidence=0.8,
+            ),
+        ]
+
+    def _run(self, expansion: QueryExpansion | None) -> tuple[GraphRagPipeline, list[str]]:
+        sparse = RecordingSparseEmbedder()
+        pipeline = build_pipeline(
+            resolver=StaticEntityResolver(self._concept_entities()), expansion=expansion
+        )
+        pipeline.sparse = sparse
+        pipeline.run(self.QUESTION)
+        return pipeline, sparse.queries
+
+    def test_pipeline_c_searches_with_the_expanded_question(self) -> None:
+        expansion = QueryExpansion(load_ontology())
+        expanded = expansion.expand(self.QUESTION, self._concept_entities())
+        pipeline, queries = self._run(expansion)
+        assert expanded.startswith(f"{self.QUESTION}\n")
+        assert queries == [expanded]
+        event = next(e for e in pipeline.events if e.event_type == GRAPH_QUERY_EXPANDED)
+        added = expanded.split("\n", 1)[1].split("; ")
+        assert event.payload == {"added_terms": len(added), "expanded_length": len(expanded)}
+
+    def test_pipelines_without_expansion_search_with_the_raw_question(self) -> None:
+        pipeline, queries = self._run(None)
+        assert queries == [self.QUESTION]
+        assert all(e.event_type != GRAPH_QUERY_EXPANDED for e in pipeline.events)
+
+    def test_resolved_events_carry_via_concept(self) -> None:
+        binding = ResolvedEntity(
+            entity_id="INC_S007_GR",
+            node_label="Incident",
+            matched_text="platform incident",
+            origin="concept_binding",
+            confidence=0.7,
+            via_concept="CONCEPT_PLATFORM_INCIDENT",
+        )
+        pipeline = build_pipeline(resolver=StaticEntityResolver([binding]))
+        pipeline.run(self.QUESTION)
+        event = next(e for e in pipeline.events if e.event_type == GRAPH_ENTITY_RESOLVED)
+        assert event.payload["via_concept"] == "CONCEPT_PLATFORM_INCIDENT"
+
+    def test_injected_nodes_carry_via_concept(self) -> None:
+        concept = ResolvedEntity(
+            entity_id="CONCEPT_X",
+            node_label="BusinessConcept",
+            matched_text="x",
+            origin="term",
+            confidence=0.8,
+        )
+        pipeline = build_pipeline(resolver=StaticEntityResolver([concept]))
+        pipeline.neighbours = load_static_provider_from_rows(
+            [("CONCEPT_X", "MAPS_TO", f"E{i}", "Incident") for i in range(1, 7)]
+        )
+        pipeline.run(self.QUESTION)
+        discovered = {
+            str(e.payload["node_id"]): e.payload
+            for e in pipeline.events
+            if e.event_type == GRAPH_NODE_DISCOVERED
+        }
+        # Traversal takes E1-E4 (per-type cap 4); expansion injects E5 and E6.
+        assert "via_concept" not in discovered["E1"]
+        assert discovered["E5"]["via_concept"] == "CONCEPT_X"
+        assert discovered["E6"]["via_concept"] == "CONCEPT_X"
 
 
 class TestRankingAndEvidence:
@@ -525,57 +617,6 @@ class TestTelemetryAndDeterminism:
     def test_empty_question_rejected(self) -> None:
         with pytest.raises(ValueError, match="empty"):
             build_pipeline().run(" ")
-
-
-def _ontology_resolver() -> DictionaryEntityResolver:
-    """Resolver fed the way the Neo4j adapter feeds it: labels plus synonyms."""
-    ontology = load_ontology()
-    concepts = [
-        (
-            concept.concept_id,
-            concept.labels["en"],
-            (
-                *concept.labels.values(),
-                *(text for texts in concept.synonyms.values() for text in texts),
-            ),
-        )
-        for concept in ontology.concepts
-    ]
-    return DictionaryEntityResolver(
-        lookup_node=lambda _id: None, market_aliases={}, concepts=concepts
-    )
-
-
-def _concept_seeds(question: str) -> set[str]:
-    return {
-        entity.entity_id
-        for entity in _ontology_resolver().resolve(question)
-        if entity.origin == "concept"
-    }
-
-
-def test_concept_resolution_does_not_split_labels_into_words() -> None:
-    seeds = _concept_seeds("Which incident hit the draw last week?")
-    assert "CONCEPT_PAYMENT_INCIDENT" not in seeds
-    assert "CONCEPT_PLATFORM_INCIDENT" not in seeds
-
-
-@pytest.mark.parametrize(
-    "question",
-    ["Was there a payment incident in Austria?", "Gab es einen Zahlungsfehler im März?"],
-)
-def test_concept_resolution_matches_whole_phrases_in_any_language(question: str) -> None:
-    assert "CONCEPT_PAYMENT_INCIDENT" in _concept_seeds(question)
-
-
-def test_concept_phrase_match_is_whole_word() -> None:
-    resolver = DictionaryEntityResolver(
-        lookup_node=lambda _id: None,
-        market_aliases={},
-        concepts=[("CONCEPT_X", "Draw", ())],
-    )
-    assert resolver.resolve("A withdrawal was delayed") == []
-    assert [e.entity_id for e in resolver.resolve("The DRAW was late")] == ["CONCEPT_X"]
 
 
 def test_every_structured_label_resolves_to_a_real_source_table() -> None:

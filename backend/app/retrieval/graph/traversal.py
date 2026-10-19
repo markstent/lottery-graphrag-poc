@@ -248,18 +248,26 @@ def bounded_traversal(
     )
 
 
+BoundRelevance = Callable[[list[tuple[str, str]]], list[float]]
+"""Semantic relevance of bound (entity id, label) candidates to the question, in order."""
+
+
 def expand_ontology(
     provider: NeighbourProvider,
     traversal: TraversalResult,
     settings: GraphRagSettings,
     concept_ids: list[str],
+    semantic: BoundRelevance,
 ) -> tuple[TraversalResult, dict[str, int], list[NeighbourEdge]]:
     """First-class ontology expansion (pipeline C only).
 
-    For each reached BusinessConcept, add its MAPS_TO-bound entities as
-    traversal nodes one hop behind the concept, subject to the same total
-    node cap. Returns the updated traversal, per-concept counts of newly
-    injected entities (for telemetry), and the injected edges.
+    For each reached BusinessConcept, add its most relevant MAPS_TO-bound
+    entities as traversal nodes one hop behind the concept: at most
+    ``max_edges_per_node_type`` per concept, ordered by ``semantic``
+    relevance to the (expanded) question, ties by id, subject to the same
+    total node cap. Entities already reached are not candidates. Returns
+    the updated traversal, per-concept counts of newly injected entities
+    (for telemetry), and the injected edges.
     """
     expansion_counts: dict[str, int] = {}
     new_edges: list[NeighbourEdge] = []
@@ -273,14 +281,25 @@ def expand_ontology(
     for concept_id in concept_ids:
         if concept_id not in hops:
             continue
-        limit = max(settings.max_total_nodes - len(node_ids), 0)
+        limit = min(
+            settings.max_edges_per_node_type, max(settings.max_total_nodes - len(node_ids), 0)
+        )
         if limit == 0:
             break
-        bound = provider.concept_bound(concept_id, settings.max_nodes_per_hop)
-        added = 0
-        for entity_id, entity_label in bound:
-            if entity_id in hops or added >= limit:
-                continue
+        candidates = [
+            (entity_id, entity_label)
+            for entity_id, entity_label in provider.concept_bound(
+                concept_id, settings.max_nodes_per_hop
+            )
+            if entity_id not in hops
+        ]
+        if not candidates:
+            continue
+        scores = semantic(candidates)
+        ranked = sorted(
+            zip(candidates, scores, strict=True), key=lambda pair: (-pair[1], pair[0][0])
+        )
+        for (entity_id, entity_label), _score in ranked[:limit]:
             edge = NeighbourEdge(
                 from_id=concept_id, rel_type="MAPS_TO", to_id=entity_id, to_label=entity_label
             )
@@ -294,9 +313,7 @@ def expand_ontology(
                 strengths.get(concept_id, 1.0),
                 RELATIONSHIP_WEIGHTS.get("MAPS_TO", DEFAULT_RELATIONSHIP_WEIGHT),
             )
-            added += 1
-        if added:
-            expansion_counts[concept_id] = added
+        expansion_counts[concept_id] = min(limit, len(ranked))
 
     return (
         TraversalResult(

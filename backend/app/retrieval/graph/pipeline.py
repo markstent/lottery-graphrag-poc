@@ -1,6 +1,7 @@
 """Graph-enhanced retrieval pipeline (docs/08 Phase 9; docs/retrieval/graph-rag.md).
 
-    question -> entity resolution -> seed selection
+    question -> entity resolution (+ query expansion for pipeline C)
+             -> seed selection
              -> bounded traversal (+ ontology expansion for pipeline C)
              -> transparent evidence ranking
              -> authoritative source lookup
@@ -9,12 +10,13 @@
                 record blocks of selected nodes superseded)
              -> LLM -> answer + citations
 
-Pipeline differences are configuration only: pipeline B runs the identical
-pipeline with `ontology_expansion=False` (MAPS_TO excluded from the
-traversal allow-list), isolating the ontology contribution (docs/
-retrieval/retrieval-fairness.md). Every candidate and selected node is
-recorded with its score components; final quantitative claims come from the
-structured layer, not the graph.
+Pipeline B runs the identical pipeline with `ontology_expansion=False`
+(MAPS_TO excluded from the traversal allow-list), an id-and-market resolver
+and no query expansion; pipeline C adds the ontology term resolver and the
+expanded query text. Everything else is shared, isolating the ontology
+contribution (docs/retrieval/retrieval-fairness.md). Every candidate and
+selected node is recorded with its score components; final quantitative
+claims come from the structured layer, not the graph.
 """
 
 from __future__ import annotations
@@ -33,6 +35,7 @@ from app.events import (
     GRAPH_GENERATION_STARTED,
     GRAPH_NODE_DISCOVERED,
     GRAPH_ONTOLOGY_EXPANDED,
+    GRAPH_QUERY_EXPANDED,
     GRAPH_RELATIONSHIP_TRAVERSED,
     GRAPH_SEED_SELECTED,
     GRAPH_TRAVERSAL_STARTED,
@@ -48,13 +51,13 @@ from app.evidence import (
     GraphRunResult,
     RagAnswer,
 )
-from app.retrieval.graph.entities import EntityResolver, ResolvedEntity
 from app.retrieval.graph.ranking import (
     STRUCTURED_LABELS,
     ScoredNode,
     score_nodes,
     semantic_scores,
 )
+from app.retrieval.graph.resolution import EntityResolver, QueryExpansion, ResolvedEntity
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import (
     NeighbourProvider,
@@ -91,8 +94,10 @@ class GraphRagPipeline:
         source_lookup: SourceLookup | None = None,
         pipeline: str = "C",
         sink: ListEventSink | None = None,
+        expansion: QueryExpansion | None = None,
     ) -> None:
         self.resolver = resolver
+        self.expansion = expansion
         self.neighbours = neighbours
         self.embeddings = embeddings
         self.sparse = sparse
@@ -128,10 +133,6 @@ class GraphRagPipeline:
             GRAPH_ENTITY_RESOLUTION_STARTED, question=question, markets=",".join(scope or [])
         )
         resolved = self.resolver.resolve(question)
-        if not graph_settings.ontology_expansion:
-            # Pipeline B never uses the ontology layer: concept mentions do
-            # not become seeds.
-            resolved = [entity for entity in resolved if entity.node_label != "BusinessConcept"]
         for entity in resolved:
             self.emitter.emit(
                 GRAPH_ENTITY_RESOLVED,
@@ -140,10 +141,22 @@ class GraphRagPipeline:
                 origin=entity.origin,
                 matched_text=entity.matched_text,
                 confidence=entity.confidence,
+                via_concept=entity.via_concept,
+            )
+        # Pipeline C searches and ranks with the question plus the resolved
+        # concepts' labels and synonyms; A and B use the raw question.
+        search_text = question
+        if self.expansion is not None:
+            search_text = self.expansion.expand(question, resolved)
+            added_terms = (
+                search_text[len(question) + 1 :].split("; ") if search_text != question else []
+            )
+            self.emitter.emit(
+                GRAPH_QUERY_EXPANDED, added_terms=len(added_terms), expanded_length=len(search_text)
             )
         seeds = [entity.entity_id for entity in resolved]
         if not seeds:
-            seeds = self._fallback_seed(question, scope)
+            seeds = self._fallback_seed(search_text, scope)
         for seed in seeds:
             self.emitter.emit(GRAPH_SEED_SELECTED, node_id=seed)
 
@@ -176,7 +189,11 @@ class GraphRagPipeline:
         if graph_settings.ontology_expansion:
             concept_ids = sorted(self._concept_ids(resolved, traversal))
             traversal, expansion_counts, new_edges = expand_ontology(
-                self.neighbours, traversal, graph_settings, concept_ids
+                self.neighbours,
+                traversal,
+                graph_settings,
+                concept_ids,
+                lambda candidates: self._bound_relevance(search_text, candidates),
             )
             for edge in new_edges:
                 self.emitter.emit(
@@ -184,6 +201,7 @@ class GraphRagPipeline:
                     node_id=edge.to_id,
                     node_label=edge.to_label,
                     hop=traversal.hops.get(edge.to_id, 0),
+                    via_concept=edge.from_id,
                 )
                 self.emitter.emit(
                     GRAPH_RELATIONSHIP_TRAVERSED,
@@ -200,7 +218,7 @@ class GraphRagPipeline:
                     bound_entities=added,
                 )
 
-        scored = self._rank(question, resolved, traversal)
+        scored = self._rank(search_text, resolved, traversal)
         if scope:
             scored, out_of_scope = self._apply_market_scope(scored, scope)
             for node in out_of_scope:
@@ -226,7 +244,7 @@ class GraphRagPipeline:
         # Document retrieval: identical channel to pipeline A (fairness).
         # Record blocks of selected structured nodes are superseded inside
         # the assembly (design 10a.8).
-        document_chunks = self._document_chunks(question, scope)
+        document_chunks = self._document_chunks(search_text, question, scope)
         assembly = assemble_context(structured, document_chunks, self.settings.context)
         node_reasons = {
             chunk.chunk_id: chunk.discard_reason
@@ -334,13 +352,14 @@ class GraphRagPipeline:
                 concepts.add(edge.to_id)
         return concepts
 
-    def _fallback_seed(self, question: str, markets: Sequence[str] | None = None) -> list[str]:
+    def _fallback_seed(self, search_text: str, markets: Sequence[str] | None = None) -> list[str]:
         """No entity resolved: seed from the shared vector layer's best
         document (same embedding models and corpus as pipeline A; record
-        blocks are excluded so the seed is always a Document node)."""
+        blocks are excluded so the seed is always a Document node).
+        ``search_text`` is the expanded question in pipeline C."""
         hits = self.store.search(
-            self.embeddings.embed([question])[0],
-            self.sparse.embed_query(question),
+            self.embeddings.embed([search_text])[0],
+            self.sparse.embed_query(search_text),
             limit=1,
             markets=markets,
             kinds=["chunk"],
@@ -355,22 +374,27 @@ class GraphRagPipeline:
             entity_id=document_id,
             node_label="Document",
             origin="vector_fallback",
-            matched_text=question[:64],
+            matched_text=search_text[:64],
             confidence=hits[0].score,
+            via_concept=None,
         )
         return [document_id]
 
     def _rank(
-        self, question: str, resolved: list[ResolvedEntity], traversal: TraversalResult
+        self, search_text: str, resolved: list[ResolvedEntity], traversal: TraversalResult
     ) -> list[ScoredNode]:
-
         labels: dict[str, str] = {}
         for entity in resolved:
             labels.setdefault(entity.entity_id, entity.node_label)
         for edge in traversal.edges:
             labels.setdefault(edge.to_id, edge.to_label)
-        semantic = semantic_scores(question, self._node_texts(labels), self.embeddings)
+        semantic = semantic_scores(search_text, self._node_texts(labels), self.embeddings)
         return score_nodes(traversal, labels, semantic, self.settings.graph.ranking)
+
+    def _bound_relevance(self, search_text: str, candidates: list[tuple[str, str]]) -> list[float]:
+        """Semantic relevance of ontology-bound candidates, for expansion ranking."""
+        scores = semantic_scores(search_text, self._node_texts(dict(candidates)), self.embeddings)
+        return [scores[node_id] for node_id, _label in candidates]
 
     def _node_texts(self, labels: dict[str, str]) -> dict[str, str]:
         texts: dict[str, str] = {}
@@ -384,7 +408,7 @@ class GraphRagPipeline:
         return texts
 
     def _document_chunks(
-        self, question: str, markets: Sequence[str] | None = None
+        self, search_text: str, question: str, markets: Sequence[str] | None = None
     ) -> list[EvidenceChunk]:
         """Document retrieval stage, identical to pipeline A's retrieval.
 
@@ -393,10 +417,12 @@ class GraphRagPipeline:
         same dense and sparse models, same hybrid search and top_k, same
         reranker, same market scope. The graph contributes structured
         records and evidence paths, not a second document channel.
+        Pipeline C embeds the expanded ``search_text`` (dense and sparse);
+        the reranker scores against the raw question for every pipeline.
         """
         hits = self.store.search(
-            self.embeddings.embed([question])[0],
-            self.sparse.embed_query(question),
+            self.embeddings.embed([search_text])[0],
+            self.sparse.embed_query(search_text),
             limit=self.settings.top_k,
             markets=markets,
         )

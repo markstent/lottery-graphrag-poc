@@ -211,6 +211,7 @@ Example:
 ```text
 graph.entity_resolution.started
 graph.entity.resolved
+graph.query.expanded
 graph.seed.selected
 graph.traversal.started
 graph.node.discovered

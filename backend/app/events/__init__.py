@@ -30,6 +30,7 @@ RAG_GENERATION_COMPLETED = "rag.generation.completed"
 # both pipelines share one sink contract from the start.
 GRAPH_ENTITY_RESOLUTION_STARTED = "graph.entity_resolution.started"
 GRAPH_ENTITY_RESOLVED = "graph.entity.resolved"
+GRAPH_QUERY_EXPANDED = "graph.query.expanded"
 GRAPH_SEED_SELECTED = "graph.seed.selected"
 GRAPH_TRAVERSAL_STARTED = "graph.traversal.started"
 GRAPH_NODE_DISCOVERED = "graph.node.discovered"

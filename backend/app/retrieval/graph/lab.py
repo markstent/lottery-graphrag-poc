@@ -15,9 +15,10 @@ from typing import Literal
 from app.config import RetrievalSettings
 from app.events import ListEventSink
 from app.graph.config import GraphConfig
-from app.retrieval.graph.entities import EntityResolver
-from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolver
+from app.ontology.loader import load_ontology
+from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.graph.resolution import EntityResolver, QueryExpansion
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction
@@ -106,18 +107,27 @@ def wired_pipelines(
     """Wire B and C for one question against the live graph.
 
     Fair B/C split: identical limits and relationship allow-list; B is
-    exactly C minus the ontology relationships and concept expansion (see
-    :func:`bc_graph_settings`).
+    exactly C minus the ontology layer: the ontology relationships and
+    concept expansion (see :func:`bc_graph_settings`), the ontology term
+    resolution and the query expansion. Both resolve ids and market names
+    with the same id resolver.
     """
     reader = GraphReader(graph_config)
     try:
-        resolver: EntityResolver = build_resolver(reader)
+        ontology = load_ontology()
+        id_resolver, term_resolver = build_resolvers(reader, ontology)
         settings_b, settings_c = bc_graph_settings(lab.settings)
+        variants: tuple[
+            tuple[PipelineId, RetrievalSettings, EntityResolver, QueryExpansion | None], ...
+        ] = (
+            ("B", settings_b, id_resolver, None),
+            ("C", settings_c, term_resolver, QueryExpansion(ontology)),
+        )
         pipelines: list[tuple[PipelineId, GraphRagPipeline]] = []
-        for tag, tuned in (("B", settings_b), ("C", settings_c)):
+        for tag, tuned, resolver, expansion in variants:
             pipelines.append(
                 (
-                    tag,  # type: ignore[arg-type]
+                    tag,
                     GraphRagPipeline(
                         resolver=resolver,
                         neighbours=reader,
@@ -130,6 +140,7 @@ def wired_pipelines(
                         source_lookup=lab.source_lookup,
                         pipeline=tag,
                         sink=ListEventSink(),
+                        expansion=expansion,
                     ),
                 )
             )

@@ -14,8 +14,8 @@ import dataclasses
 from app.config import ContextSettings
 from app.events import GRAPH_CANDIDATE_DISCARDED
 from app.evidence import EvidenceChunk
-from app.retrieval.graph.entities import ResolvedEntity, StaticEntityResolver
 from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.graph.resolution import ResolvedEntity, StaticEntityResolver
 from app.retrieval.graph.traversal import NeighbourEdge, StaticNeighbourProvider
 from app.retrieval.standard.context import (
     SELECTION_BUDGET,

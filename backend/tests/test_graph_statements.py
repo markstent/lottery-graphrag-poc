@@ -95,20 +95,7 @@ def test_relationship_count_statement_is_registry_bound() -> None:
         statements.relationship_count_statement("OF_TYPE", "NotALabel", "IncidentType")
 
 
-def test_retrieval_concepts_return_multilingual_columns_in_order() -> None:
-    query = statements.RETRIEVAL_CONCEPTS
-    for column in (
-        "AS id",
-        "AS canonical_name",
-        "AS labels_en",
-        "AS labels_el",
-        "AS labels_de",
-        "AS labels_cs",
-        "AS synonyms",
-        "AS parent_id",
-    ):
-        assert column in query
-    assert "ORDER BY id" in query
+def test_retrieval_markets_are_ordered() -> None:
     assert "ORDER BY id" in statements.RETRIEVAL_MARKETS
 
 

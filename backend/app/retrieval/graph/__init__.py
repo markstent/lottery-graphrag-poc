@@ -2,7 +2,7 @@
 
 Modules:
 
-- entities: deterministic entity resolution (graph seeds)
+- resolution: deterministic entity resolution (graph seeds) and query expansion
 - traversal: bounded breadth-first traversal with a provider seam
 - ranking: transparent evidence scoring with recorded components
 - source_lookup: authoritative structured-layer facts for graph nodes
