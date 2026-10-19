@@ -1,4 +1,5 @@
-import { SettingsProvider, useSettings } from './app/settings'
+import { SettingsProvider } from './app/settings'
+import { useSettings } from './app/use-settings'
 import { Shell } from './app/shell'
 import { useRoute } from './app/router'
 import { BenchmarkRunner } from './views/benchmark-runner'

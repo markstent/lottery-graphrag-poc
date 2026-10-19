@@ -3,24 +3,9 @@
  * Presentation mode changes density and chrome only, never routes.
  */
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 
-interface Settings {
-  presentation: boolean
-  togglePresentation: () => void
-  reducedMotion: boolean
-  toggleReducedMotion: () => void
-  settingsOpen: boolean
-  setSettingsOpen: (open: boolean) => void
-}
-
-const SettingsContext = createContext<Settings | null>(null)
+import { SettingsContext, type Settings } from './use-settings'
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [presentation, setPresentation] = useState(false)
@@ -52,11 +37,4 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       {children}
     </SettingsContext.Provider>
   )
-}
-
-export function useSettings(): Settings {
-  const settings = useContext(SettingsContext)
-  if (!settings)
-    throw new Error('useSettings must be used inside SettingsProvider')
-  return settings
 }

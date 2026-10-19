@@ -6,7 +6,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
 import { hrefFor, useRoute, type RouteName } from './router'
-import { useSettings } from './settings'
+import { useSettings } from './use-settings'
 import { EXPERIMENT } from '../mock/content'
 
 const NAV_GROUPS: Array<{
