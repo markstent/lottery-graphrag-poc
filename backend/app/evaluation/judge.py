@@ -1,17 +1,103 @@
-"""The blinded LLM judge's contract (benchmark v2).
+"""The blinded, versioned LLM judge (benchmark v2, docs/05 section 9).
 
-These are the types the runner records a judgement with. The judge
-implementations, blinding and prompt are Task 8 of the Phase 3 plan; until
-then no run is judged and every ``RunScore.judge`` is None.
+The judge scores one answer on five dimensions (0 wrong or absent, 1 partly,
+2 fully) beside the deterministic scores; it never replaces them. It sees
+the question, the expected answer, the claim statements, the context blocks
+the generator was shown and the answer, blinded: the blocks are shuffled by
+a hashed seed and renumbered, the answer's citations are rewritten to the
+new numbers, and nothing names the pipeline or how the context was
+retrieved. A judge failure (gateway error or unusable reply) is recorded as
+a verdict without scores.
+
+`GatewayJudge` calls the model through the one model gateway; `FakeJudge`
+is deterministic plumbing for smoke runs and CI and measures nothing.
+The judge settings live here, not in `app.config`, because only the
+evaluator reads them.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
+import os
+import random
+import re
+import time
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
+from app.models.gateway import Completion, CompletionRequest, GatewayError, complete
+from app.retrieval.standard.generation import CITATION, FENCED_JSON
+
 if TYPE_CHECKING:
-    from app.evaluation.runner import ShownBlock
+    from app.evaluation.runner import RunScore, ShownBlock
+
+JUDGE_PROMPT_VERSION = "1.0.0"
+JUDGE_DIMENSIONS = (
+    "correctness",
+    "completeness",
+    "faithfulness",
+    "citation_accuracy",
+    "abstention",
+)
+ANSWER_CHAR_CAP = 2400
+JUDGE_MAX_TOKENS = 300
+JUDGE_TIMEOUT_S = 120.0
+TRUNCATION_MARK = " [truncated]"
+FAKE_JUDGE_MODEL = "fake-judge-v1"
+# A deterministic answer score at or above this counts as correct when the
+# judge's correctness is compared with it.
+AGREEMENT_ANSWER_THRESHOLD = 0.5
+
+JUDGE_SYSTEM_PROMPT = (
+    "You grade one answer to a question about an enterprise. You are given the "
+    "question, a reference answer, the key facts a complete answer states, the "
+    "numbered context sources the answerer was shown, and the answer, which cites "
+    "sources as [n]; [?] marks a citation of a source that was not shown. Score "
+    "five dimensions, each 0, 1 or 2, where 0 means wrong or absent, 1 means "
+    "partly and 2 means fully. "
+    "correctness: the answer agrees with the reference answer. "
+    "completeness: the answer states the key facts. "
+    "faithfulness: every statement in the answer is supported by the context sources. "
+    "citation_accuracy: each citation points at a source that supports the "
+    "statement it is attached to. "
+    "abstention: 2 when the answer correctly says the context does not answer the "
+    "question, or answers when the context does; 0 when it guesses without support "
+    "in the context; 1 otherwise. "
+    "Judge only from what is given here. Respond with exactly one JSON object and "
+    'nothing else: {"correctness": <0, 1 or 2>, "completeness": <0, 1 or 2>, '
+    '"faithfulness": <0, 1 or 2>, "citation_accuracy": <0, 1 or 2>, '
+    '"abstention": <0, 1 or 2>}.'
+)
+
+_IDENTIFIER = re.compile(r"\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b")
+
+
+class JudgeParseError(ValueError):
+    """Raised when a judge reply is not the five-score JSON object."""
+
+
+@dataclass(frozen=True, slots=True)
+class JudgeSettings:
+    """The judge model; ``provider`` is "fake" or "litellm"."""
+
+    provider: str
+    model: str
+    model_family: str | None
+    api_base: str | None
+    temperature: float
+
+
+def judge_settings_from_env() -> JudgeSettings:
+    """Read the JUDGE_* variables (see .env.example); empty means unset."""
+    return JudgeSettings(
+        provider=os.environ.get("JUDGE_PROVIDER", "fake"),
+        model=os.environ.get("JUDGE_MODEL", FAKE_JUDGE_MODEL),
+        model_family=os.environ.get("JUDGE_MODEL_FAMILY") or None,
+        api_base=os.environ.get("JUDGE_API_BASE") or None,
+        temperature=float(os.environ.get("JUDGE_TEMPERATURE") or 0),
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,7 +123,7 @@ class JudgeVerdict:
 
 @dataclass(frozen=True, slots=True)
 class JudgeItem:
-    """What the judge sees of one repeat."""
+    """What the judge sees of one repeat, before blinding."""
 
     question: str
     expected_answer: str
@@ -50,5 +136,201 @@ class JudgeItem:
 
 class Judge(Protocol):
     model_name: str
+    model_family: str | None
 
     def judge(self, item: JudgeItem) -> JudgeVerdict: ...
+
+
+def _blind_order(item: JudgeItem) -> list[int]:
+    """The shown order of the blocks: original 0-based indexes, shuffled by
+    the hashed seed."""
+    seed = int(hashlib.sha256(item.blind_seed.encode("utf-8")).hexdigest()[:16], 16)
+    order = list(range(len(item.blocks)))
+    random.Random(seed).shuffle(order)
+    return order
+
+
+def blind(item: JudgeItem) -> tuple[list[ShownBlock], str]:
+    """The blocks in shuffled order and the answer with its [n] markers
+    rewritten to the new numbers ([?] for a block that was not shown),
+    capped at ``ANSWER_CHAR_CAP`` characters."""
+    order = _blind_order(item)
+    renumber = {old + 1: new for new, old in enumerate(order, start=1)}
+
+    def rewrite(match: re.Match[str]) -> str:
+        numbers = (renumber.get(int(part)) for part in match.group(1).split(","))
+        return "[" + ", ".join("?" if n is None else str(n) for n in numbers) + "]"
+
+    answer = CITATION.sub(rewrite, item.answer)
+    if len(answer) > ANSWER_CHAR_CAP:
+        answer = answer[:ANSWER_CHAR_CAP] + TRUNCATION_MARK
+    return [item.blocks[old] for old in order], answer
+
+
+def build_judge_prompt(item: JudgeItem) -> tuple[str, str]:
+    """(system, user) for one blinded item; nothing names how the context
+    was retrieved."""
+    shown, answer = blind(item)
+    renumber = {old + 1: new for new, old in enumerate(_blind_order(item), start=1)}
+    facts = "\n".join(f"- {statement}" for statement in item.claim_statements) or "- (none)"
+    sources = (
+        "\n\n".join(f"[{n}] {block.title}\n{block.text}" for n, block in enumerate(shown, start=1))
+        or "(no context was shown)"
+    )
+    cited = [str(renumber[n]) for n in item.cited_blocks if n in renumber]
+    user = (
+        f"Question: {item.question}\n\n"
+        f"Reference answer: {item.expected_answer}\n\n"
+        f"Key facts a complete answer states:\n{facts}\n\n"
+        f"Context sources the answerer was shown:\n{sources}\n\n"
+        f"Answer to grade:\n{answer}\n\n"
+        f"Sources the answer cites: {', '.join(cited) or 'none'}"
+    )
+    return JUDGE_SYSTEM_PROMPT, user
+
+
+def judge_prompt_hash() -> str:
+    """The sha256 of the system prompt and its version, for the record."""
+    return hashlib.sha256((JUDGE_SYSTEM_PROMPT + JUDGE_PROMPT_VERSION).encode("utf-8")).hexdigest()
+
+
+def parse_judge(raw: str) -> JudgeScores:
+    """Read the five scores from strict JSON, else from the first fenced
+    JSON object (as `parse_answer` does)."""
+    payload = _json_object(raw)
+    if payload is None:
+        payload = next(
+            (
+                found
+                for block in FENCED_JSON.finditer(raw)
+                if (found := _json_object(block.group(1)))
+            ),
+            None,
+        )
+    if payload is None:
+        raise JudgeParseError("the judge reply is not a JSON object")
+    values: dict[str, int] = {}
+    for dimension in JUDGE_DIMENSIONS:
+        if dimension not in payload:
+            raise JudgeParseError(f"the judge reply has no {dimension} score")
+        value = payload[dimension]
+        # bool is an int subclass; true is not a score.
+        if type(value) is not int or not 0 <= value <= 2:
+            raise JudgeParseError(
+                f"the judge reply gives {dimension}={value!r}; expected an integer 0, 1 or 2"
+            )
+        values[dimension] = value
+    return JudgeScores(**values)
+
+
+def _json_object(text: str) -> dict[str, object] | None:
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+class GatewayJudge:
+    """The judge model, called through the model gateway."""
+
+    def __init__(
+        self,
+        settings: JudgeSettings,
+        gateway: Callable[[CompletionRequest], Completion] = complete,
+    ) -> None:
+        if settings.provider != "litellm":
+            raise ValueError(
+                f"a gateway judge needs JUDGE_PROVIDER=litellm, got {settings.provider!r}"
+            )
+        self.settings = settings
+        self.model_name = settings.model
+        self.model_family = settings.model_family
+        self._gateway = gateway
+
+    def judge(self, item: JudgeItem) -> JudgeVerdict:
+        system, user = build_judge_prompt(item)
+        request = CompletionRequest(
+            model=self.settings.model,
+            system=system,
+            user=user,
+            temperature=self.settings.temperature,
+            max_tokens=JUDGE_MAX_TOKENS,
+            api_base=self.settings.api_base,
+            timeout_s=JUDGE_TIMEOUT_S,
+        )
+        started = time.perf_counter()
+        try:
+            scores = parse_judge(self._gateway(request).text)
+        except (GatewayError, JudgeParseError) as error:
+            latency_ms = (time.perf_counter() - started) * 1000
+            return JudgeVerdict(None, str(error), self.model_name, latency_ms)
+        return JudgeVerdict(scores, None, self.model_name, (time.perf_counter() - started) * 1000)
+
+
+class FakeJudge:
+    """Deterministic plumbing for smoke runs and CI; it measures nothing.
+
+    Correctness is 2 when every identifier-like token of the expected answer
+    occurs in the answer, 1 when some do and 0 when none do; every other
+    dimension is 1.
+    """
+
+    model_name = FAKE_JUDGE_MODEL
+    model_family: str | None = None
+
+    def judge(self, item: JudgeItem) -> JudgeVerdict:
+        identifiers = set(_IDENTIFIER.findall(item.expected_answer))
+        found = {token for token in identifiers if token in item.answer}
+        correctness = 2 if found == identifiers else 1 if found else 0
+        return JudgeVerdict(JudgeScores(correctness, 1, 1, 1, 1), None, self.model_name, 0.0)
+
+
+def check_families(generation_family: str | None, judge_family: str | None) -> None:
+    """Refuse a judge of the generation model's own family, or an unknown family."""
+    if not generation_family or not judge_family:
+        raise ValueError(
+            "an official run needs the model family of both the generator and the "
+            "judge (GENERATION_MODEL_FAMILY, JUDGE_MODEL_FAMILY)"
+        )
+    if generation_family.casefold() == judge_family.casefold():
+        raise ValueError(
+            f"the judge must be of another model family than the generator; both are "
+            f"{generation_family!r}"
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Agreement:
+    """Agreement of the judge with the deterministic answer score."""
+
+    n: int
+    agreement: float | None
+    kappa: float | None
+
+
+def agreement(pairs: Sequence[tuple[bool, bool]]) -> Agreement:
+    """Percent agreement and Cohen's kappa; kappa is None when chance
+    agreement is 1 (both raters constant and equal)."""
+    n = len(pairs)
+    if n == 0:
+        return Agreement(0, None, None)
+    observed = sum(a == b for a, b in pairs) / n
+    p_a = sum(a for a, _ in pairs) / n
+    p_b = sum(b for _, b in pairs) / n
+    expected = p_a * p_b + (1 - p_a) * (1 - p_b)
+    kappa = None if expected == 1 else (observed - expected) / (1 - expected)
+    return Agreement(n, observed, kappa)
+
+
+def judge_pairs(scores: Iterable[RunScore | None]) -> list[tuple[bool, bool]]:
+    """(deterministic answer score >= 0.5, judge correctness == 2) for every
+    judged repeat that has a deterministic answer score."""
+    return [
+        (score.answer >= AGREEMENT_ANSWER_THRESHOLD, score.judge.scores.correctness == 2)
+        for score in scores
+        if score is not None
+        and score.answer is not None
+        and score.judge is not None
+        and score.judge.scores is not None
+    ]

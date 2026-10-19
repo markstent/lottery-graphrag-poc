@@ -3,13 +3,17 @@
 Runs the instances of one frozen bank through pipelines A, B and C against
 the world the bank was grounded in, ``repeats`` times each, and scores every
 repeat deterministically: answer checks, evidence over discoveries,
-citation metrics and the failure class.
+citation metrics and the failure class. Beside those scores the blinded
+judge scores every successful repeat: the fake judge in smoke runs, a
+gateway judge in sweep and official runs (of another model family than the
+generator in an official run).
 
-The runner refuses, before any question runs, a bank grounded in another
-world, by another bank version, or over record blocks of another serialiser
-than the lab's index. Retrieval must select the same carriers in every
-repeat; only generation may vary. A gateway failure in one repeat is
-recorded and the run continues; any other error fails the run.
+The runner refuses, before any question runs, a lab over another world
+than the bank's, a bank grounded in another world, by another bank version,
+or over record blocks of another serialiser than the lab's index.
+Retrieval must select the same carriers in every repeat; only generation
+may vary. A gateway failure in one repeat is recorded and the run
+continues; any other error fails the run.
 
 Evaluator-only (ADR-008): retrieval code never imports this package, and the
 pipelines see the question text alone.
@@ -26,12 +30,23 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from app.evaluation.bank import BANK_VERSION, question_by_id
 from app.evaluation.checks import CitationMetrics, answer_score, citation_metrics
 from app.evaluation.claims import selection_carrier
 from app.evaluation.grounding import BankInstance, FrozenBank, GroundingError, Unavailable
+from app.evaluation.judge import (
+    JUDGE_PROMPT_VERSION,
+    FakeJudge,
+    GatewayJudge,
+    Judge,
+    JudgeItem,
+    JudgeVerdict,
+    check_families,
+    judge_prompt_hash,
+    judge_settings_from_env,
+)
 from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_score
 from app.events import GRAPH_ENTITY_RESOLVED
 from app.evidence import EvidenceChunk
@@ -50,9 +65,6 @@ from app.retrieval.standard.generation import (
     GenerationOutput,
 )
 from app.retrieval.standard.pipeline import StandardRagPipeline
-
-if TYPE_CHECKING:
-    from app.evaluation.judge import Judge, JudgeVerdict
 
 RUN_KINDS = ("smoke", "official", "sweep")
 SMOKE_LABEL = "scorer smoke test"
@@ -272,7 +284,10 @@ class BenchmarkRunner:
         pipelines: tuple[str, ...] = PIPELINES,
         judge: Judge | None = None,
     ) -> None:
+        """``judge`` defaults to the fake judge for a smoke run and to a
+        gateway judge from the JUDGE_* environment otherwise."""
         _check_run(lab, kind, repeats, pipelines)
+        self.judge = _check_judge(lab, kind, judge)
         self.world_manifest = _check_bank(bank, world_dir, lab)
         self.lab = lab
         self.graph_config = graph_config
@@ -282,7 +297,6 @@ class BenchmarkRunner:
         self.label = SMOKE_LABEL if kind == "smoke" else None
         self.repeats = repeats
         self.pipelines = pipelines
-        self.judge = judge
         self.started_at = datetime.now(UTC).isoformat(timespec="seconds")
         self._shown = _ShownContext(lab.generator)
         # Every pipeline shares the one recording generator, as they share the lab's.
@@ -367,10 +381,10 @@ class BenchmarkRunner:
             generation_model_family=settings.generation.model_family,
             repeats=self.repeats,
             run_kind=self.kind,
-            judge_model=None if self.judge is None else self.judge.model_name,
-            judge_model_family=None,
-            judge_prompt_version=None,
-            judge_prompt_hash=None,
+            judge_model=self.judge.model_name,
+            judge_model_family=self.judge.model_family,
+            judge_prompt_version=JUDGE_PROMPT_VERSION,
+            judge_prompt_hash=judge_prompt_hash(),
         )
 
     def _run_instance(
@@ -392,8 +406,25 @@ class BenchmarkRunner:
                     )
                 repeats.append(run)
             runs[tag] = repeats
-            scores[tag] = [None if r.generation_failed else _score(instance, r) for r in repeats]
+            scores[tag] = [
+                None if r.generation_failed else _score(instance, r, self._judge(instance, r))
+                for r in repeats
+            ]
         return InstanceResult(instance=instance, runs=runs, scores=scores)
+
+    def _judge(self, instance: BankInstance, run: PipelineRun) -> JudgeVerdict:
+        """Judge one successful repeat; the seed blinds the block order."""
+        return self.judge.judge(
+            JudgeItem(
+                question=instance.text,
+                expected_answer=instance.expected_answer,
+                claim_statements=tuple(claim.statement for claim in instance.claims),
+                blocks=run.blocks,
+                answer=run.answer,
+                cited_blocks=run.cited_blocks,
+                blind_seed=f"{instance.instance_id}:{run.pipeline}:{run.repeat}",
+            )
+        )
 
     def _execute(
         self,
@@ -447,7 +478,7 @@ class BenchmarkRunner:
         )
 
 
-def _score(instance: BankInstance, run: PipelineRun) -> RunScore:
+def _score(instance: BankInstance, run: PipelineRun, verdict: JudgeVerdict) -> RunScore:
     answer = answer_score(instance.checks, run.verdict, run.answer)
     evidence = evidence_score(
         instance.claims, run.selected, instance.anchor_id, run.resolved_ids, run.context_tokens
@@ -458,7 +489,9 @@ def _score(instance: BankInstance, run: PipelineRun) -> RunScore:
         [frozenset({block.carrier_id}) for block in run.blocks],
         instance.claims,
     )
-    return RunScore(answer, evidence, citations, classify_failure(answer, evidence, run.seeded))
+    return RunScore(
+        answer, evidence, citations, classify_failure(answer, evidence, run.seeded), verdict
+    )
 
 
 def _check_run(lab: Lab, kind: str, repeats: int, pipelines: Sequence[str]) -> None:
@@ -486,8 +519,29 @@ def _check_run(lab: Lab, kind: str, repeats: int, pipelines: Sequence[str]) -> N
             )
 
 
+def _check_judge(lab: Lab, kind: str, judge: Judge | None) -> Judge:
+    """The judge of this run kind: the fake judge for smoke, a gateway judge
+    otherwise, of another model family than the generator when official."""
+    if judge is None:
+        judge = FakeJudge() if kind == "smoke" else GatewayJudge(judge_settings_from_env())
+    fake = isinstance(judge, FakeJudge)
+    if kind == "smoke" and not fake:
+        raise ValueError("a smoke run requires the fake judge")
+    if kind != "smoke" and fake:
+        raise ValueError(f"a {kind} run requires a gateway judge, not the fake judge")
+    if kind == "official":
+        check_families(lab.settings.generation.model_family, judge.model_family)
+    return judge
+
+
 def _check_bank(bank: FrozenBank, world_dir: Path, lab: Lab) -> dict[str, Any]:
     """Refuse a bank this world and lab cannot score; return the world manifest."""
+    dataset_dir = Path(lab.settings.dataset_dir).resolve()
+    if dataset_dir != world_dir.resolve():
+        raise GroundingError(
+            f"the lab's dataset directory {dataset_dir} is not the world directory "
+            f"{world_dir.resolve()}; build the lab over the world the bank was grounded in"
+        )
     path = world_dir / WORLD_MANIFEST
     if not path.exists():
         raise GroundingError(f"world manifest {path} is missing")

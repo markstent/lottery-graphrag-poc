@@ -1,9 +1,11 @@
-"""Benchmark runner v2 (Phase 3 benchmark v2, Task 7): repeats, per-repeat
-scoring, frozen-bank checks and the reproducibility record.
+"""Benchmark runner v2 (Phase 3 benchmark v2, Tasks 7 and 8): repeats,
+per-repeat scoring, the judge, frozen-bank checks and the reproducibility
+record.
 
 Everything runs offline: the lab is the hashing lab over an in-memory
 store, B and C walk the static SCN-007 neighbourhood instead of Neo4j, and
-the bank is a two-instance frozen bank over the test corpus.
+the bank is a two-instance frozen bank over the test corpus. The gateway
+judge replies through a stub gateway.
 """
 
 from __future__ import annotations
@@ -26,6 +28,15 @@ from app.evaluation.grounding import (
     GroundingError,
     Unavailable,
 )
+from app.evaluation.judge import (
+    JUDGE_PROMPT_VERSION,
+    FakeJudge,
+    GatewayJudge,
+    JudgeItem,
+    JudgeSettings,
+    build_judge_prompt,
+    judge_prompt_hash,
+)
 from app.evaluation.runner import (
     RUN_KINDS,
     SCORER_VERSION,
@@ -37,6 +48,7 @@ from app.evaluation.runner import (
 from app.evaluation.scoring import classify_failure, evidence_score
 from app.evidence import EvidenceChunk
 from app.graph.config import GraphConfig
+from app.models.gateway import CompletionRequest
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.lab import Lab, WiredGraphPipelines, bc_graph_settings, graph_pipelines
 from app.retrieval.graph.neo4j_adapter import GraphReader
@@ -55,6 +67,7 @@ from app.retrieval.standard.vector_store import InMemoryVectorStore, SearchHit, 
 
 from tests.conftest import build_lab_offline
 from tests.test_graph_rag import build_corpus, record_corpus_chunk, resolved, scn007_adjacency
+from tests.test_judge import GOOD_REPLY, stub_gateway
 
 GRAPH = GraphConfig(uri="bolt://unused", user="unused", password="unused", database="unused")
 MANIFEST = {"generator_version": "2.0.0", "profile": "tiny", "world_seed": 2026, "scenario_seed": 7}
@@ -123,16 +136,36 @@ class ScriptedGenerator:
         return GenerationOutput(json.dumps({"verdict": "yes", "answer": "INC_S007_GR [1]."}), 1.0)
 
 
-def indexed_lab(store: VectorStore | None = None, **overrides: object) -> Lab:
-    """The offline lab with the test corpus indexed and a current index manifest."""
+def indexed_lab(world_dir: Path, store: VectorStore | None = None, **overrides: object) -> Lab:
+    """The offline lab over ``world_dir`` with the test corpus indexed and a
+    current index manifest."""
+    lab = build_lab_offline()
     values: dict[str, object] = {
+        "settings": dataclasses.replace(lab.settings, dataset_dir=str(world_dir)),
         "store": store or InMemoryVectorStore(),
         "index_manifest": {"record_serialiser_version": RECORD_SERIALISER_VERSION},
         **overrides,
     }
-    lab = dataclasses.replace(build_lab_offline(), **values)  # type: ignore[arg-type]
+    lab = dataclasses.replace(lab, **values)  # type: ignore[arg-type]
     index_corpus(lab.store, lab.embeddings, lab.sparse, [*build_corpus().values(), INCIDENT])
     return lab
+
+
+def gateway_judge(
+    raw: str = GOOD_REPLY,
+    family: str | None = "gemma",
+    calls: list[CompletionRequest] | None = None,
+) -> GatewayJudge:
+    """A gateway judge of another family than any generator here, replying ``raw``."""
+    settings = JudgeSettings("litellm", "judge-model", family, None, 0.0)
+    return GatewayJudge(settings, gateway=stub_gateway(raw, calls))
+
+
+def with_family(lab: Lab, family: str) -> Lab:
+    generation = dataclasses.replace(lab.settings.generation, model_family=family)
+    return dataclasses.replace(
+        lab, settings=dataclasses.replace(lab.settings, generation=generation)
+    )
 
 
 def _instance(question_id: str, text: str, carrier: str) -> BankInstance:
@@ -183,8 +216,8 @@ def bank_for_other_world(frozen_bank: FrozenBank) -> FrozenBank:
 
 
 @pytest.fixture
-def offline_lab() -> Lab:
-    return indexed_lab()
+def offline_lab(world_dir: Path) -> Lab:
+    return indexed_lab(world_dir)
 
 
 @pytest.fixture
@@ -194,14 +227,18 @@ def runner_smoke(offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path) -> 
 
 @pytest.fixture
 def runner_with_flaky_store(frozen_bank: FrozenBank, world_dir: Path) -> BenchmarkRunner:
-    lab = indexed_lab(FlakyStore())
-    return BenchmarkRunner(lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2)
+    lab = indexed_lab(world_dir, FlakyStore())
+    return BenchmarkRunner(
+        lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2, judge=gateway_judge()
+    )
 
 
 @pytest.fixture
 def runner_with_failing_generator(frozen_bank: FrozenBank, world_dir: Path) -> BenchmarkRunner:
-    lab = indexed_lab(generator=FailingGenerator())
-    return BenchmarkRunner(lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2)
+    lab = indexed_lab(world_dir, generator=FailingGenerator())
+    return BenchmarkRunner(
+        lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2, judge=gateway_judge()
+    )
 
 
 # --- The brief's tests --------------------------------------------------------
@@ -263,13 +300,31 @@ def test_runner_refuses_a_bank_of_another_version(
         BenchmarkRunner(offline_lab, GRAPH, old, world_dir, kind="smoke", repeats=1)
 
 
-def test_runner_refuses_a_world_without_a_manifest(
-    tmp_path: Path, offline_lab: Lab, frozen_bank: FrozenBank
-) -> None:
+def test_runner_refuses_a_world_without_a_manifest(tmp_path: Path, frozen_bank: FrozenBank) -> None:
+    empty = tmp_path / "empty"
     with pytest.raises(GroundingError, match="world manifest"):
-        BenchmarkRunner(
-            offline_lab, GRAPH, frozen_bank, tmp_path / "empty", kind="smoke", repeats=1
-        )
+        BenchmarkRunner(indexed_lab(empty), GRAPH, frozen_bank, empty, kind="smoke", repeats=1)
+
+
+def test_runner_refuses_a_lab_over_another_world(
+    tmp_path: Path, frozen_bank: FrozenBank, world_dir: Path
+) -> None:
+    """The lab's index must be built from the world the bank was grounded in."""
+    other = tmp_path / "other-world"
+    store = FlakyStore()
+    lab = indexed_lab(other, store)
+    with pytest.raises(GroundingError, match="dataset") as raised:
+        BenchmarkRunner(lab, GRAPH, frozen_bank, world_dir, kind="smoke", repeats=1)
+    assert str(other.resolve()) in str(raised.value)
+    assert str(world_dir.resolve()) in str(raised.value)
+    assert store.searches == 0
+
+
+def test_the_lab_world_is_compared_as_resolved_paths(
+    frozen_bank: FrozenBank, world_dir: Path
+) -> None:
+    lab = indexed_lab(world_dir / "." / ".." / world_dir.name)
+    BenchmarkRunner(lab, GRAPH, frozen_bank, world_dir, kind="smoke", repeats=1)
 
 
 @pytest.mark.parametrize("built_by", [None, "2.0.0"])
@@ -282,7 +337,7 @@ def test_runner_refuses_an_index_of_another_serialiser_before_any_question(
     question runs."""
     manifest = None if built_by is None else {"record_serialiser_version": built_by}
     store = FlakyStore()
-    lab = indexed_lab(store, index_manifest=manifest)
+    lab = indexed_lab(world_dir, store, index_manifest=manifest)
     with pytest.raises(GroundingError, match="record serialiser"):
         BenchmarkRunner(lab, GRAPH, frozen_bank, world_dir, kind="smoke", repeats=1)
     assert store.searches == 0
@@ -293,7 +348,7 @@ def test_runner_refuses_an_index_of_another_serialiser_before_any_question(
 
 def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> None:
     assert RUN_KINDS == ("smoke", "official", "sweep")
-    fake, scripted = indexed_lab(), indexed_lab(generator=ScriptedGenerator())
+    fake, scripted = indexed_lab(world_dir), indexed_lab(world_dir, generator=ScriptedGenerator())
     with pytest.raises(ValueError, match="run kind"):
         BenchmarkRunner(fake, GRAPH, frozen_bank, world_dir, kind="trial", repeats=1)
     with pytest.raises(ValueError, match="repeats"):
@@ -303,21 +358,28 @@ def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> 
     with pytest.raises(ValueError, match="repeats"):
         BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="official", repeats=2)
     with pytest.raises(ValueError, match="model family"):
-        BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="official", repeats=3)
-    settings = scripted.settings
-    family = dataclasses.replace(
-        settings, generation=dataclasses.replace(settings.generation, model_family="qwen")
-    )
+        BenchmarkRunner(
+            scripted,
+            GRAPH,
+            frozen_bank,
+            world_dir,
+            kind="official",
+            repeats=3,
+            judge=gateway_judge(),
+        )
     official = BenchmarkRunner(
-        dataclasses.replace(scripted, settings=family),
+        with_family(scripted, "qwen"),
         GRAPH,
         frozen_bank,
         world_dir,
         kind="official",
         repeats=3,
+        judge=gateway_judge(),
     )
     assert official.label is None
-    sweep = BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=1)
+    sweep = BenchmarkRunner(
+        scripted, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=1, judge=gateway_judge()
+    )
     assert sweep.label is None
 
 
@@ -378,8 +440,7 @@ def test_every_repeat_is_scored_with_the_v2_scorers(runner_smoke: BenchmarkRunne
                 expected = RunScore(
                     answer, evidence, citations, classify_failure(answer, evidence, run.seeded)
                 )
-                assert score == expected
-                assert score.judge is None
+                assert dataclasses.replace(score, judge=None) == expected
 
 
 def test_a_failed_repeat_has_no_score_and_the_run_continues(
@@ -398,8 +459,10 @@ def test_a_failed_repeat_has_no_score_and_the_run_continues(
 
 
 def test_any_other_pipeline_error_fails_the_run(frozen_bank: FrozenBank, world_dir: Path) -> None:
-    lab = indexed_lab(generator=FailingGenerator(RuntimeError("bug")))
-    runner = BenchmarkRunner(lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=1)
+    lab = indexed_lab(world_dir, generator=FailingGenerator(RuntimeError("bug")))
+    runner = BenchmarkRunner(
+        lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=1, judge=gateway_judge()
+    )
     with pytest.raises(RuntimeError, match="bug"):
         runner.run()
 
@@ -533,8 +596,9 @@ def test_reproducibility_payload_carries_every_field(
     assert (payload["run_kind"], payload["repeats"]) == ("smoke", 2)
     assert payload["generation_model_family"] is None
     assert payload["generation_quantisation"] is None
-    judge_fields = ("judge_model", "judge_model_family", "judge_prompt_version")
-    assert all(payload[name] is None for name in (*judge_fields, "judge_prompt_hash"))
+    assert (payload["judge_model"], payload["judge_model_family"]) == ("fake-judge-v1", None)
+    assert payload["judge_prompt_version"] == JUDGE_PROMPT_VERSION
+    assert payload["judge_prompt_hash"] == judge_prompt_hash()
     json.dumps(payload)  # stored as JSON
 
 
@@ -542,7 +606,7 @@ def test_record_reads_the_serialiser_from_the_index_manifest(
     frozen_bank: FrozenBank, world_dir: Path
 ) -> None:
     """The serialiser that built the index in use, never the code constant."""
-    lab = indexed_lab(index_manifest={"record_serialiser_version": "from-the-manifest"})
+    lab = indexed_lab(world_dir, index_manifest={"record_serialiser_version": "from-the-manifest"})
     bank = dataclasses.replace(frozen_bank, record_serialiser_version="from-the-manifest")
     runner = BenchmarkRunner(lab, GRAPH, bank, world_dir, kind="smoke", repeats=1)
     assert runner.record().record_serialiser_version == "from-the-manifest"
@@ -559,3 +623,145 @@ def test_generation_family_and_quantisation_come_from_the_environment(
     monkeypatch.delenv("GENERATION_MODEL_QUANTISATION")
     generation = from_env().generation
     assert (generation.model_family, generation.quantisation) == (None, None)
+
+
+# --- The judge (Task 8) ------------------------------------------------------------
+
+
+def test_a_smoke_run_judges_every_repeat_with_the_fake_judge(
+    runner_smoke: BenchmarkRunner,
+) -> None:
+    assert isinstance(runner_smoke.judge, FakeJudge)
+    for result in runner_smoke.run().results:
+        for scores in result.scores.values():
+            for score in scores:
+                assert score is not None and score.judge is not None
+                assert score.judge.model == "fake-judge-v1" and score.judge.scores is not None
+
+
+def test_the_judge_sees_each_blinded_repeat_and_nothing_else(
+    offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path
+) -> None:
+    calls: list[CompletionRequest] = []
+    judge = gateway_judge(calls=calls)
+    runner = BenchmarkRunner(
+        offline_lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2, judge=judge
+    )
+    world = runner.run()
+    expected = [
+        build_judge_prompt(
+            JudgeItem(
+                question=result.instance.text,
+                expected_answer=result.instance.expected_answer,
+                claim_statements=tuple(c.statement for c in result.instance.claims),
+                blocks=run.blocks,
+                answer=run.answer,
+                cited_blocks=run.cited_blocks,
+                blind_seed=f"{result.instance.instance_id}:{tag}:{run.repeat}",
+            )
+        )
+        for result in world.results
+        for tag, runs in result.runs.items()
+        for run in runs
+    ]
+    assert [(call.system, call.user) for call in calls] == expected
+    verdicts = [s.judge for r in world.results for scores in r.scores.values() for s in scores if s]
+    assert len(verdicts) == len(calls) == 2 * 3 * 2
+    assert all(
+        v is not None and v.scores is not None and v.model == "judge-model" for v in verdicts
+    )
+
+
+def test_a_judge_failure_is_recorded_beside_the_deterministic_scores(
+    offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path
+) -> None:
+    runner = BenchmarkRunner(
+        offline_lab,
+        GRAPH,
+        frozen_bank,
+        world_dir,
+        kind="sweep",
+        repeats=1,
+        judge=gateway_judge("not json"),
+    )
+    for result in runner.run().results:
+        for scores in result.scores.values():
+            (score,) = scores
+            assert score is not None and score.judge is not None
+            assert score.judge.scores is None and score.judge.failure
+            assert score.evidence.claims_total == 1
+
+
+def test_failed_repeats_are_not_judged(frozen_bank: FrozenBank, world_dir: Path) -> None:
+    calls: list[CompletionRequest] = []
+    lab = indexed_lab(world_dir, generator=FailingGenerator())
+    runner = BenchmarkRunner(
+        lab,
+        GRAPH,
+        frozen_bank,
+        world_dir,
+        kind="sweep",
+        repeats=1,
+        judge=gateway_judge(calls=calls),
+    )
+    runner.run()
+    assert calls == []
+
+
+def test_each_run_kind_takes_its_judge(
+    monkeypatch: pytest.MonkeyPatch, frozen_bank: FrozenBank, world_dir: Path
+) -> None:
+    fake = indexed_lab(world_dir)
+    scripted = with_family(indexed_lab(world_dir, generator=ScriptedGenerator()), "qwen")
+    with pytest.raises(ValueError, match="fake judge"):
+        BenchmarkRunner(
+            fake, GRAPH, frozen_bank, world_dir, kind="smoke", repeats=1, judge=gateway_judge()
+        )
+    for kind, repeats in (("sweep", 1), ("official", 3)):
+        with pytest.raises(ValueError, match="gateway judge"):
+            BenchmarkRunner(
+                scripted,
+                GRAPH,
+                frozen_bank,
+                world_dir,
+                kind=kind,
+                repeats=repeats,
+                judge=FakeJudge(),
+            )
+    # Without an explicit judge a sweep reads the judge settings from the environment.
+    monkeypatch.setenv("JUDGE_PROVIDER", "fake")
+    with pytest.raises(ValueError, match="JUDGE_PROVIDER"):
+        BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=1)
+    monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
+    monkeypatch.setenv("JUDGE_MODEL", "ollama/gemma4:31b")
+    monkeypatch.setenv("JUDGE_MODEL_FAMILY", "gemma")
+    sweep = BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=1)
+    assert isinstance(sweep.judge, GatewayJudge) and sweep.judge.model_name == "ollama/gemma4:31b"
+
+
+@pytest.mark.parametrize("judge_family", [None, "QWEN"])
+def test_an_official_run_needs_a_judge_of_another_family(
+    frozen_bank: FrozenBank, world_dir: Path, judge_family: str | None
+) -> None:
+    lab = with_family(indexed_lab(world_dir, generator=ScriptedGenerator()), "qwen")
+    with pytest.raises(ValueError, match="family"):
+        BenchmarkRunner(
+            lab,
+            GRAPH,
+            frozen_bank,
+            world_dir,
+            kind="official",
+            repeats=3,
+            judge=gateway_judge(family=judge_family),
+        )
+
+
+def test_the_record_names_the_judge(frozen_bank: FrozenBank, world_dir: Path) -> None:
+    lab = with_family(indexed_lab(world_dir, generator=ScriptedGenerator()), "qwen")
+    runner = BenchmarkRunner(
+        lab, GRAPH, frozen_bank, world_dir, kind="official", repeats=3, judge=gateway_judge()
+    )
+    payload = runner.record().to_payload()
+    assert (payload["judge_model"], payload["judge_model_family"]) == ("judge-model", "gemma")
+    assert payload["judge_prompt_version"] == JUDGE_PROMPT_VERSION
+    assert payload["judge_prompt_hash"] == judge_prompt_hash()

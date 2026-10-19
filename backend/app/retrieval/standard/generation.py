@@ -37,8 +37,8 @@ SYSTEM_PROMPT = (
     'set verdict to "unknown" and say so plainly in the answer.'
 )
 
-_FENCED_JSON = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
-_CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
+FENCED_JSON = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
+CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
 
 
 class GenerationError(RuntimeError):
@@ -131,12 +131,12 @@ def parse_answer(raw: str, block_count: int) -> ParsedAnswer:
     are not supported and cite nothing.
     """
     structured = _structured(raw) or next(
-        (found for block in _FENCED_JSON.finditer(raw) if (found := _structured(block.group(1)))),
+        (found for block in FENCED_JSON.finditer(raw) if (found := _structured(block.group(1)))),
         None,
     )
     verdict, answer = structured if structured else ("", raw)
     cited: list[int] = []
-    for match in _CITATION.finditer(answer):
+    for match in CITATION.finditer(answer):
         for part in match.group(1).split(","):
             number = int(part)
             if 1 <= number <= block_count and number not in cited:
