@@ -164,9 +164,8 @@ def stratum_key(instance: BankInstance) -> str:
 def summarize(run: BenchmarkRun) -> dict[str, Any]:
     """The machine-readable result of a run, written as ``summary.json``."""
     results = [result for world in run.worlds for result in world.results]
-    observations = [_observe(result) for result in results]
-    pipelines = [tag for tag in PIPELINES if any(tag in r.scores for r in results)]
-    comparisons = _comparisons(observations)
+    pipelines = _pipelines(results)
+    comparisons = _comparisons([_observe(result) for result in results])
     smoke = run.kind == "smoke"
     return {
         "schema_version": SUMMARY_SCHEMA_VERSION,
@@ -186,16 +185,30 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
             for world in run.worlds
         },
         "anchor_resolution_basis": {tag: ANCHOR_RESOLUTION_BASIS[tag] for tag in pipelines},
-        "metrics": {
-            key: _metric_table([o for o in observations if key in (o.stratum, OVERALL)], pipelines)
-            for key in (*STRATUM_KEYS, OVERALL)
-        },
+        "metrics": metric_tables(results),
         "comparisons": [c.to_payload() for c in comparisons],
         "headlines": [SMOKE_HEADLINE] if smoke else _headlines(comparisons),
         "judge_agreement": _judge_agreement(results, pipelines),
         "failures": _failures(results, pipelines),
         "reproducibility": run.record.to_payload(),
     }
+
+
+def metric_tables(
+    results: Sequence[InstanceResult],
+) -> dict[str, dict[str, dict[str, dict[str, Any]]]]:
+    """Per stratum key and overall, per metric and pipeline: the mean over
+    instances, the instance count ``n`` and the scored ``repeats``."""
+    observations = [_observe(result) for result in results]
+    pipelines = _pipelines(results)
+    return {
+        key: _metric_table([o for o in observations if key in (o.stratum, OVERALL)], pipelines)
+        for key in (*STRATUM_KEYS, OVERALL)
+    }
+
+
+def _pipelines(results: Sequence[InstanceResult]) -> list[str]:
+    return [tag for tag in PIPELINES if any(tag in r.scores for r in results)]
 
 
 def _observe(result: InstanceResult) -> _Observation:

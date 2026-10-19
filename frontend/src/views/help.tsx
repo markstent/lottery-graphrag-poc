@@ -525,8 +525,12 @@ export function Help() {
                       'Regenerates the demo dataset and truth ledger (~100s)',
                     ],
                     [
+                      'make run-smoke',
+                      'Scorer smoke test of bank 2.0.0 on worlds 2026, 2027 and 2028 with the fake model; not a result',
+                    ],
+                    [
                       'make run-benchmark',
-                      'Runs the 30-question harness; writes results.json, summary.json, report.md',
+                      'Official run of bank 2.0.0 on the same three worlds, three repeats; writes results.json, summary.json and report.md under data/evaluation/runs',
                     ],
                     [
                       'make ingest-graph && make index-vector',

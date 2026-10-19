@@ -489,6 +489,14 @@ def test_world_run_carries_the_bank_identity(
     assert world.unavailable == frozen_bank.unavailable
 
 
+def test_world_run_carries_its_own_record(runner_smoke: BenchmarkRunner) -> None:
+    world = runner_smoke.run()
+    assert world.record is not None
+    assert (world.record.world_seed, world.record.run_kind) == (2026, "smoke")
+    payload = BenchmarkRun("smoke", SMOKE_LABEL, world.record, [world]).to_payload()
+    assert payload["worlds"][0]["reproducibility"]["world_seed"] == 2026
+
+
 def test_benchmark_run_payload_is_json(runner_smoke: BenchmarkRunner) -> None:
     run = BenchmarkRun(
         kind="smoke",

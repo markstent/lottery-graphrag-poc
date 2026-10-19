@@ -16,12 +16,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app.api import queries
 from app.api.runs import QueryService
 from app.config import RetrievalSettings
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
+from app.graph.config import REPO_ROOT
 from app.graph.config import from_env as from_graph_env
 from app.main import create_app
 from app.retrieval.standard.generation import GenerationError, GenerationOutput
@@ -392,6 +394,23 @@ class TestDemoAndBenchmarks:
         with TestClient(app, raise_server_exceptions=False) as client:
             response = client.get("/api/v1/benchmarks/latest")
         return response.status_code, response.json() if response.status_code != 500 else None
+
+    def test_unset_benchmark_dir_reads_the_repository_runs(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        # The default must not depend on the server's working directory.
+        assert queries.DEFAULT_BENCHMARK_DIR == REPO_ROOT / "data" / "evaluation" / "runs"
+        self._publish(tmp_path, "run", "smoke", "2026-10-01T09:00:00+00:00")
+        monkeypatch.setattr(queries, "DEFAULT_BENCHMARK_DIR", tmp_path)
+        monkeypatch.delenv("BENCHMARK_DIR", raising=False)
+        app = create_app(
+            service_factory=lambda: QueryService(
+                settings=make_settings(dataset_dir=str(tiny_dataset)),
+                graph_config=from_graph_env(),
+            )
+        )
+        with TestClient(app) as client:
+            assert client.get("/api/v1/benchmarks/latest").json()["run_id"] == "run"
 
     def test_latest_benchmark_prefers_official_runs(
         self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path

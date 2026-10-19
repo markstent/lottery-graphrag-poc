@@ -305,7 +305,12 @@ def freeze_bank(world_dir: Path, ledger_path: Path) -> FrozenBank:
         unavailable=tuple(unavailable),
         bank_hash="",
     )
-    return replace(unhashed, bank_hash=_content_hash(_content(unhashed)))
+    return seal_bank(unhashed)
+
+
+def seal_bank(bank: FrozenBank) -> FrozenBank:
+    """The bank with ``bank_hash`` set to the hash of its content."""
+    return replace(bank, bank_hash=_content_hash(_content(bank)))
 
 
 def write_frozen_bank(bank: FrozenBank, path: Path) -> None:

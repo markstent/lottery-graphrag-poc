@@ -16,7 +16,10 @@ generate-dev-data
 ingest-graph
 index-vector
 test-graph
+ground-bank
+run-smoke
 run-benchmark
+run-sweep
 demo-reset
 ```
 

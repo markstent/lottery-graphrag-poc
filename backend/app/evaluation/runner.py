@@ -205,17 +205,22 @@ class InstanceResult:
 
 @dataclass(frozen=True, slots=True)
 class WorldRun:
-    """One world's results under one frozen bank."""
+    """One world's results under one frozen bank, with the record of the
+    runner that produced them (None only for hand-built runs)."""
 
     world_seed: int
     bank_hash: str
     results: list[InstanceResult]
     unavailable: tuple[Unavailable, ...]
+    record: ReproducibilityRecord | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class BenchmarkRun:
-    """A complete run: its kind, its label, its record and every world."""
+    """A complete run: its kind, its label, its record and every world.
+
+    Over several worlds the run record is the first world's; each world
+    keeps its own record (world, seed, bank and start time differ)."""
 
     kind: str
     label: str | None
@@ -232,6 +237,7 @@ class BenchmarkRun:
                     "world_seed": world.world_seed,
                     "bank_hash": world.bank_hash,
                     "unavailable": [dataclasses.asdict(u) for u in world.unavailable],
+                    "reproducibility": None if world.record is None else world.record.to_payload(),
                     "results": [
                         {
                             "instance": result.instance.to_payload(),
@@ -328,7 +334,9 @@ class BenchmarkRunner:
         finally:
             if wired is not None:
                 wired.reader.close()
-        return WorldRun(self.bank.world_seed, self.bank.bank_hash, results, unavailable)
+        return WorldRun(
+            self.bank.world_seed, self.bank.bank_hash, results, unavailable, self.record()
+        )
 
     def record(self) -> ReproducibilityRecord:
         settings = self.lab.settings

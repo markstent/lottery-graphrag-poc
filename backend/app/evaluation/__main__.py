@@ -2,7 +2,10 @@
 
 ``ground`` grounds bank 2.0.0 into one generated world and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
-bank page. Both are evaluator-only (ADR-008).
+bank page. ``run`` runs a smoke or official benchmark over one or more
+world seeds, ``sweep`` runs the multi-hop depth sweep and ``compare`` pairs
+two official runs of different generation models (H7). All are
+evaluator-only (ADR-008).
 """
 
 from __future__ import annotations
@@ -11,6 +14,7 @@ import argparse
 from collections import Counter
 from pathlib import Path
 
+from app.evaluation import official
 from app.evaluation.bank import BANK, NAME_ANCHORED, STRATA, LogicalQuestion
 from app.evaluation.grounding import (
     BankInstance,
@@ -19,6 +23,7 @@ from app.evaluation.grounding import (
     load_frozen_bank,
     write_frozen_bank,
 )
+from app.evaluation.runner import OFFICIAL_MIN_REPEATS
 
 DOC_COMMAND = "python -m app.evaluation bank-doc"
 
@@ -33,8 +38,61 @@ def main(argv: list[str] | None = None) -> int:
     doc = commands.add_parser("bank-doc", help="Render a frozen bank as Markdown.")
     doc.add_argument("--bank", type=Path, required=True, help="Frozen bank JSON to read.")
     doc.add_argument("--out", type=Path, required=True, help="Markdown page to write.")
+    run = commands.add_parser("run", help="Run the benchmark over one or more worlds.")
+    run.add_argument("--kind", choices=("smoke", "official"), required=True)
+    _seeds_argument(run)
+    run.add_argument(
+        "--repeats",
+        type=int,
+        default=None,
+        help=f"Repeats per pipeline (default 1 for smoke, {OFFICIAL_MIN_REPEATS} for official).",
+    )
+    run.add_argument("--strata", type=_names, default=None, help="Strata to run, e.g. H1,H3.")
+    _limit_argument(run)
+    _out_argument(run)
+    sweep = commands.add_parser("sweep", help="Run B and C on H1 at each graph depth.")
+    _seeds_argument(sweep)
+    sweep.add_argument(
+        "--depths",
+        type=_integers,
+        default=official.SWEEP_DEPTHS,
+        help="Comma-separated graph depths (default 0,1,2,3).",
+    )
+    sweep.add_argument("--repeats", type=int, default=OFFICIAL_MIN_REPEATS)
+    _limit_argument(sweep)
+    _out_argument(sweep)
+    compare = commands.add_parser("compare", help="Pair two official runs of different models.")
+    compare.add_argument("small", type=Path, help="Run directory of the small model.")
+    compare.add_argument("large", type=Path, help="Run directory of the large model.")
+    compare.add_argument("--out", type=Path, default=None, help="Directory for comparison.json.")
     args = parser.parse_args(argv)
 
+    if args.command == "run":
+        repeats = args.repeats or (1 if args.kind == "smoke" else OFFICIAL_MIN_REPEATS)
+        out = args.out or official.run_dir(official.run_id(args.kind))
+        official.run_benchmark(
+            args.kind,
+            args.seeds,
+            repeats=repeats,
+            out_dir=out,
+            strata=args.strata,
+            limit=args.limit,
+        )
+        print(f"wrote {out}")
+        return 0
+    if args.command == "sweep":
+        out = args.out or official.run_dir(official.run_id("sweep"))
+        official.run_sweep(
+            args.seeds, out_dir=out, depths=args.depths, repeats=args.repeats, limit=args.limit
+        )
+        print(f"wrote {out}")
+        return 0
+    if args.command == "compare":
+        comparison = official.compare_runs(args.small, args.large)
+        out = args.out or official.comparison_dir(official.run_id("compare"))
+        print(official.render_comparison(comparison))
+        print(f"wrote {official.write_comparison(comparison, out)}")
+        return 0
     if args.command == "ground":
         bank = freeze_bank(args.world, args.ledger)
         write_frozen_bank(bank, args.out)
@@ -53,6 +111,38 @@ def main(argv: list[str] | None = None) -> int:
     args.out.write_text(render_bank_doc(bank), encoding="utf-8")
     print(f"wrote {args.out}")
     return 0
+
+
+def _integers(text: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in text.split(","))
+
+
+def _names(text: str) -> list[str]:
+    return [part.strip() for part in text.split(",")]
+
+
+def _seeds_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--seeds",
+        type=_integers,
+        default=official.OFFICIAL_SEEDS,
+        help="Comma-separated world seeds (default 2026,2027,2028).",
+    )
+
+
+def _limit_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--limit", type=int, default=None, help="At most N instances per logical question."
+    )
+
+
+def _out_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Run directory (default data/evaluation/runs/<run id>).",
+    )
 
 
 def stratum_counts(bank: FrozenBank) -> list[str]:

@@ -7,7 +7,7 @@ UV := uv --directory $(BACKEND)
 PNPM := pnpm -C $(FRONTEND)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset
+.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank run-smoke run-benchmark run-sweep
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -92,3 +92,25 @@ serve-demo-api: ## Serve the API against the demo world
 demo-reset: ## Reset the presentation demo state (re-ingest graph + rebuild vector index)
 	$(MAKE) ingest-demo-graph index-demo-vector
 	@echo "demo reset complete: restart serve-demo-api to clear in-memory runs"
+
+# Benchmark v2 (docs/evaluation/reproducibility.md). Runs are written to
+# data/evaluation/runs/<run id>; worlds 2027 and 2028 are generated, indexed
+# and grounded on first use, and the seed 2026 graph is restored afterwards.
+SEEDS = 2026,2027,2028
+PRESENTATION_BANK = ../data/evaluation/bank/bank-2.0.0-seed2026.json
+
+ground-bank: ## Ground bank 2.0.0 into the presentation world (seed 2026)
+	$(UV) run python -m app.evaluation ground --world ../data/generated/dev-seed2026 \
+		--ledger ../data/truth/ledger.json --out $(PRESENTATION_BANK)
+
+run-smoke: ## Scorer smoke test on three worlds (fake generator and judge; needs services)
+	$(UV) run python -m app.evaluation run --kind smoke --seeds $(SEEDS)
+
+run-benchmark: ## Official run on three worlds, 3 repeats (reads GENERATION_* and JUDGE_*)
+	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
+	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
+	$(UV) run python -m app.evaluation run --kind official --seeds $(SEEDS) --repeats 3
+
+run-sweep: ## H1 depth sweep 0 to 3 for B and C on three worlds (reads JUDGE_* and GENERATION_*)
+	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
+	$(UV) run python -m app.evaluation sweep --seeds $(SEEDS) --depths 0,1,2,3

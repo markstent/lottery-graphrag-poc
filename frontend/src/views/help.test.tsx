@@ -51,4 +51,15 @@ describe('Help', () => {
     ).toBeVisible()
     expect(screen.getByRole('heading', { name: 'Glossary' })).toBeVisible()
   })
+
+  it('describes the benchmark v2 commands, not the retired 30-question harness', () => {
+    render(<Help />)
+
+    fireEvent.click(screen.getByRole('tab', { name: '4 · Backend & Glossary' }))
+    expect(screen.getByText('make run-smoke')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Official run of bank 2\.0\.0 on the same three worlds/),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/30-question/)).toBeNull()
+  })
 })

@@ -26,6 +26,7 @@ from app.api.schemas import (
     QueryResults,
     RecordedEvent,
 )
+from app.graph.config import REPO_ROOT
 
 # Saved presentation questions (fixed demo configuration). These are
 # pipeline-visible question texts only; they mirror the public phrasing used
@@ -126,6 +127,8 @@ def build_queries_router(service: QueryService) -> APIRouter:
 # The summary.json schema this API publishes; the benchmark harness writes it,
 # and the API reads it from disk only.
 SUMMARY_SCHEMA_VERSION = "2"
+# Where the harness CLI writes runs; BENCHMARK_DIR overrides it.
+DEFAULT_BENCHMARK_DIR = REPO_ROOT / "data" / "evaluation" / "runs"
 
 
 def latest_benchmark(runs_dir: Path) -> tuple[str, dict[str, Any]] | None:
@@ -155,7 +158,7 @@ def build_benchmarks_router() -> APIRouter:
 
     @router.get("/benchmarks/latest", response_model=BenchmarkSummary)
     def read_latest_benchmark() -> BenchmarkSummary:
-        latest = latest_benchmark(Path(os.environ.get("BENCHMARK_DIR", "data/evaluation/runs")))
+        latest = latest_benchmark(Path(os.environ.get("BENCHMARK_DIR") or DEFAULT_BENCHMARK_DIR))
         if latest is None:
             raise HTTPException(status_code=404, detail="no published benchmark run")
         run_id, summary = latest
