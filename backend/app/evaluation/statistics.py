@@ -18,7 +18,7 @@ MIN_CLUSTERS_FOR_CLAIM = (
 )
 ALPHA = 0.05
 
-_COMPARISON_NAMES = {
+COMPARISON_NAMES = {
     "B_vs_A": ("Graph", "text search"),
     "C_vs_B": ("Graph + Ontology", "Graph"),
 }
@@ -100,9 +100,21 @@ def holm(pvalues: Mapping[str, float]) -> dict[str, float]:
     return adjusted
 
 
-def _points(value: float) -> str:
+def points(value: float) -> str:
     """Difference as points with one decimal; negative zero prints as 0.0."""
     return f"{value * 100:.1f}".replace("-0.0", "0.0")
+
+
+def _counts(n: int, clusters: int) -> str:
+    pairs = "pair" if n == 1 else "pairs"
+    groups = "group" if clusters == 1 else "groups"
+    return f"{n} {pairs} in {clusters} {groups}"
+
+
+def _names(comparison: str) -> tuple[str, str]:
+    if comparison not in COMPARISON_NAMES:
+        raise ValueError(f"unknown comparison: {comparison}")
+    return COMPARISON_NAMES[comparison]
 
 
 def headline(
@@ -113,10 +125,8 @@ def headline(
     p_holm: float | None,
 ) -> str:
     """Plain-language sentence for one comparison in one stratum."""
-    if comparison not in _COMPARISON_NAMES:
-        raise ValueError(f"unknown comparison: {comparison}")
-    stronger, weaker = _COMPARISON_NAMES[comparison]
-    pairs = f"{interval.n} pairs in {interval.clusters} groups"
+    stronger, weaker = _names(comparison)
+    pairs = _counts(interval.n, interval.clusters)
     if interval.n < MIN_PAIRS_FOR_CLAIM or interval.clusters < MIN_CLUSTERS_FOR_CLAIM:
         return f"Too few pairs to say for {stronger} and {weaker} on {stratum_label} ({pairs})."
     if p_holm is None:
@@ -132,7 +142,25 @@ def headline(
             f"on {stratum_label} ({pairs})."
         )
     return (
-        f"{stronger} {verb} {weaker} by {_points(abs(interval.mean))} {metric_unit} "
-        f"(95 percent interval {_points(interval.low)} to {_points(interval.high)}, {pairs}) "
+        f"{stronger} {verb} {weaker} by {points(abs(interval.mean))} {metric_unit} "
+        f"(95 percent interval {points(interval.low)} to {points(interval.high)}, {pairs}) "
         f"on {stratum_label}."
+    )
+
+
+def subgroup_line(
+    comparison: str, stratum_label: str, metric_unit: str, interval: Interval | None
+) -> str:
+    """Descriptive sentence for a sub-group that is not tested: the interval and nothing more.
+
+    ``interval`` is None when the sub-group has no pairs.
+    """
+    stronger, weaker = _names(comparison)
+    label = stratum_label[:1].upper() + stratum_label[1:]
+    if interval is None:
+        return f"{label}: no pairs for {stronger} minus {weaker}; no test is run on this sub-group."
+    return (
+        f"{label}: {stronger} minus {weaker} {points(interval.mean)} {metric_unit} "
+        f"(95 percent interval {points(interval.low)} to {points(interval.high)}, "
+        f"{_counts(interval.n, interval.clusters)}); no test is run on this sub-group."
     )

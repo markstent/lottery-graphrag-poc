@@ -116,21 +116,16 @@ class DemoQuestion(BaseModel):
     benchmark_question_id: str | None = None
 
 
-class BenchmarkQuestionResult(BaseModel):
-    """One scored question from the latest published benchmark run."""
-
-    question_id: str
-    scores: dict[str, dict[str, Any]]
-    failure_classes: dict[str, str | None]
-
-
 class BenchmarkSummary(BaseModel):
-    """Response for GET /api/v1/benchmarks/latest (published results only)."""
+    """Response for GET /api/v1/benchmarks/latest.
+
+    ``summary`` is the run's ``summary.json`` (schema 2), passed through
+    unchanged: the only benchmark source the API publishes. ``run_kind``
+    and ``label`` are copied out of it so a client can tell a smoke or
+    sweep run from an official result without reading the summary.
+    """
 
     run_id: str
-    reproducibility: dict[str, Any]
-    questions: list[BenchmarkQuestionResult]
-    # Aggregate over scored questions, exactly as report.md renders it
-    # (written by the harness as summary.json). None for runs produced
-    # before summary.json existed.
-    summary: dict[str, Any] | None = None
+    run_kind: str
+    label: str | None
+    summary: dict[str, Any]

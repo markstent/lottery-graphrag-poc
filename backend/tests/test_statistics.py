@@ -6,6 +6,7 @@ from app.evaluation.statistics import (
     cluster_bootstrap,
     headline,
     holm,
+    subgroup_line,
     wilcoxon_p,
 )
 
@@ -88,7 +89,27 @@ def test_single_cluster_gives_the_too_few_form() -> None:
     interval = cluster_bootstrap(diffs, ["a"] * 12)
     assert interval.low == interval.high
     assert headline("B_vs_A", "single facts", "evidence points", interval, 0.001) == (
-        "Too few pairs to say for Graph and text search on single facts (12 pairs in 1 groups)."
+        "Too few pairs to say for Graph and text search on single facts (12 pairs in 1 group)."
+    )
+
+
+def test_counts_are_singular_for_one() -> None:
+    assert (
+        headline("B_vs_A", "single facts", "evidence points", Interval(0.1, 0.1, 0.1, 1, 1), None)
+        == "Too few pairs to say for Graph and text search on single facts (1 pair in 1 group)."
+    )
+
+
+def test_subgroup_line_reports_the_interval_and_runs_no_test() -> None:
+    interval = Interval(0.04, -0.03, 0.11, 18, 6)
+    assert subgroup_line("B_vs_A", "name-anchored questions", "evidence points", interval) == (
+        "Name-anchored questions: Graph minus text search 4.0 evidence points "
+        "(95 percent interval -3.0 to 11.0, 18 pairs in 6 groups); "
+        "no test is run on this sub-group."
+    )
+    assert subgroup_line("C_vs_B", "name-anchored questions", "evidence points", None) == (
+        "Name-anchored questions: no pairs for Graph + Ontology minus Graph; "
+        "no test is run on this sub-group."
     )
 
 

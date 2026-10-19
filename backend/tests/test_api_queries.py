@@ -365,32 +365,23 @@ class TestDemoAndBenchmarks:
         with TestClient(app) as client:
             assert client.get("/api/v1/benchmarks/latest").status_code == 404
 
-    def test_benchmarks_latest_serves_published_results(
-        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-    ) -> None:
-        run_dir = tmp_path / "run-001"
+    @staticmethod
+    def _publish(root: Path, name: str, kind: str, started_at: str, schema: str = "2") -> None:
+        run_dir = root / name
         run_dir.mkdir(parents=True)
-        (run_dir / "results.json").write_text(
-            json.dumps(
-                {
-                    "reproducibility": {"question_bank_version": "1.0.0"},
-                    "results": [
-                        {
-                            "question_id": "Q01",
-                            "scores": {
-                                "A": {"answer_score": 0.0, "failure_class": None},
-                                "C": {"answer_score": 1.0, "failure_class": None},
-                            },
-                        }
-                    ],
-                }
-            ),
-            encoding="utf-8",
-        )
-        (run_dir / "summary.json").write_text(
-            json.dumps({"total": 30, "scored": 22, "pipelines": {}}), encoding="utf-8"
-        )
-        monkeypatch.setenv("BENCHMARK_DIR", str(tmp_path))
+        summary = {
+            "schema_version": schema,
+            "run_kind": kind,
+            "label": "scorer smoke test" if kind == "smoke" else None,
+            "headlines": [f"{name} headline"],
+            "reproducibility": {"started_at": started_at},
+        }
+        (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+
+    def _latest(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, root: Path
+    ) -> tuple[int, dict[str, object]]:
+        monkeypatch.setenv("BENCHMARK_DIR", str(root))
         app = create_app(
             service_factory=lambda: QueryService(
                 settings=make_settings(dataset_dir=str(tiny_dataset)),
@@ -398,10 +389,35 @@ class TestDemoAndBenchmarks:
             )
         )
         with TestClient(app) as client:
-            payload = client.get("/api/v1/benchmarks/latest").json()
-        assert payload["run_id"] == "run-001"
-        assert payload["reproducibility"]["question_bank_version"] == "1.0.0"
-        assert payload["questions"][0]["question_id"] == "Q01"
-        assert payload["questions"][0]["scores"]["C"]["answer_score"] == 1.0
-        assert payload["summary"] is not None
-        assert payload["summary"]["scored"] == 22
+            response = client.get("/api/v1/benchmarks/latest")
+        return response.status_code, response.json()
+
+    def test_latest_benchmark_prefers_official_runs(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        self._publish(tmp_path, "official-old", "official", "2026-10-01T09:00:00+00:00")
+        self._publish(tmp_path, "official-new", "official", "2026-10-02T09:00:00+00:00")
+        self._publish(tmp_path, "smoke-newest", "smoke", "2026-10-03T09:00:00+00:00")
+        status, body = self._latest(tiny_dataset, monkeypatch, tmp_path)
+        assert status == 200
+        assert body["run_kind"] == "official"
+        assert body["run_id"] == "official-new"
+        assert body["label"] is None
+        assert body["summary"]["headlines"] == ["official-new headline"]
+
+    def test_latest_benchmark_falls_back_to_the_newest_labelled_run(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        self._publish(tmp_path, "b-smoke", "smoke", "2026-10-02T09:00:00+00:00")
+        self._publish(tmp_path, "a-sweep", "sweep", "2026-10-01T09:00:00+00:00")
+        status, body = self._latest(tiny_dataset, monkeypatch, tmp_path)
+        assert status == 200
+        assert (body["run_id"], body["run_kind"]) == ("b-smoke", "smoke")
+        assert body["label"] == "scorer smoke test"
+
+    def test_latest_benchmark_ignores_summaries_of_another_schema(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        self._publish(tmp_path, "run-v1", "official", "2026-10-09T09:00:00+00:00", schema="1")
+        status, _ = self._latest(tiny_dataset, monkeypatch, tmp_path)
+        assert status == 404

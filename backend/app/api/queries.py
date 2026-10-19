@@ -10,13 +10,13 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
 from app.api.runs import QueryService
 from app.api.schemas import (
     ApiError,
-    BenchmarkQuestionResult,
     BenchmarkSummary,
     DemoQuestion,
     EventStream,
@@ -122,39 +122,40 @@ def build_queries_router(service: QueryService) -> APIRouter:
     return router
 
 
+# The summary.json schema this API publishes; the benchmark harness writes it,
+# and the API reads it from disk only.
+SUMMARY_SCHEMA_VERSION = "2"
+
+
+def latest_benchmark(runs_dir: Path) -> tuple[str, dict[str, Any]] | None:
+    """The newest official run under ``runs_dir``, else the newest run of any kind.
+
+    A run is a directory holding a schema-2 ``summary.json``; newest means the
+    latest ``reproducibility.started_at``, then the directory name.
+    """
+    runs: list[tuple[str, dict[str, Any]]] = []
+    for path in runs_dir.glob("*/summary.json"):
+        summary = json.loads(path.read_text(encoding="utf-8"))
+        if summary.get("schema_version") == SUMMARY_SCHEMA_VERSION:
+            runs.append((path.parent.name, summary))
+    official = [run for run in runs if run[1]["run_kind"] == "official"]
+    pool = official or runs
+    if not pool:
+        return None
+    return max(pool, key=lambda run: (run[1]["reproducibility"]["started_at"], run[0]))
+
+
 def build_benchmarks_router() -> APIRouter:
     router = APIRouter()
 
     @router.get("/benchmarks/latest", response_model=BenchmarkSummary)
     def read_latest_benchmark() -> BenchmarkSummary:
-        runs_dir = Path(os.environ.get("BENCHMARK_DIR", "data/evaluation"))
-        candidates = sorted(
-            (path for path in runs_dir.glob("run-*") if (path / "results.json").exists()),
-            key=lambda path: path.name,
-        )
-        if not candidates:
+        latest = latest_benchmark(Path(os.environ.get("BENCHMARK_DIR", "data/evaluation/runs")))
+        if latest is None:
             raise HTTPException(status_code=404, detail="no published benchmark run")
-        latest = candidates[-1]
-        payload = json.loads((latest / "results.json").read_text(encoding="utf-8"))
-        summary_path = latest / "summary.json"
-        summary = (
-            json.loads(summary_path.read_text(encoding="utf-8")) if summary_path.exists() else None
-        )
-        questions = [
-            BenchmarkQuestionResult(
-                question_id=result["question_id"],
-                scores=result["scores"],
-                failure_classes={
-                    tag: score.get("failure_class") for tag, score in result["scores"].items()
-                },
-            )
-            for result in payload.get("results", [])
-        ]
+        run_id, summary = latest
         return BenchmarkSummary(
-            run_id=latest.name,
-            reproducibility=payload.get("reproducibility", {}),
-            questions=questions,
-            summary=summary,
+            run_id=run_id, run_kind=summary["run_kind"], label=summary["label"], summary=summary
         )
 
     return router
