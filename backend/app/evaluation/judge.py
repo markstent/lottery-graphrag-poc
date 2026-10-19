@@ -35,7 +35,13 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
-from app.models.gateway import Completion, CompletionRequest, GatewayError, complete
+from app.models.gateway import (
+    Completion,
+    CompletionRequest,
+    GatewayError,
+    complete,
+    parse_reasoning,
+)
 from app.retrieval.standard.generation import CITATION, FENCED_JSON
 
 if TYPE_CHECKING:
@@ -97,6 +103,8 @@ class JudgeSettings:
     model_family: str | None
     api_base: str | None
     temperature: float
+    # "default" or "off" (app.models.gateway.REASONING_MODES).
+    reasoning: str = "default"
 
 
 def judge_settings_from_env() -> JudgeSettings:
@@ -107,6 +115,9 @@ def judge_settings_from_env() -> JudgeSettings:
         model_family=os.environ.get("JUDGE_MODEL_FAMILY") or None,
         api_base=os.environ.get("JUDGE_API_BASE") or None,
         temperature=float(os.environ.get("JUDGE_TEMPERATURE") or 0),
+        reasoning=parse_reasoning(
+            os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING"
+        ),
     )
 
 
@@ -147,6 +158,8 @@ class JudgeItem:
 class Judge(Protocol):
     model_name: str
     model_family: str | None
+    # The gateway reasoning mode; None when the judge calls no model.
+    reasoning: str | None
 
     def judge(self, item: JudgeItem) -> JudgeVerdict: ...
 
@@ -265,6 +278,7 @@ class GatewayJudge:
         self.settings = settings
         self.model_name = settings.model
         self.model_family = settings.model_family
+        self.reasoning: str | None = settings.reasoning
         self._gateway = gateway
 
     def judge(self, item: JudgeItem) -> JudgeVerdict:
@@ -277,6 +291,7 @@ class GatewayJudge:
             max_tokens=JUDGE_MAX_TOKENS,
             api_base=self.settings.api_base,
             timeout_s=JUDGE_TIMEOUT_S,
+            reasoning=self.settings.reasoning,
         )
         started = time.perf_counter()
         try:
@@ -297,6 +312,7 @@ class FakeJudge:
 
     model_name = FAKE_JUDGE_MODEL
     model_family: str | None = None
+    reasoning: str | None = None
 
     def judge(self, item: JudgeItem) -> JudgeVerdict:
         identifiers = set(_IDENTIFIER.findall(item.expected_answer))

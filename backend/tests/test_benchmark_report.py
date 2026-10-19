@@ -80,6 +80,8 @@ def _record(kind: str) -> ReproducibilityRecord:
         judge_model_family="fake",
         judge_prompt_version="1.0.0",
         judge_prompt_hash="judgehash",
+        generation_reasoning="default",
+        judge_reasoning="default",
     )
 
 

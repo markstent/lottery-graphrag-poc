@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from app.datasets.config import WINDOW_DAYS, WINDOW_START
 from app.graph.config import DEFAULT_DATASET_DIR
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
+from app.models.gateway import parse_reasoning
 
 # End of the synthetic dataset window: the default "today" for record validity.
 DEFAULT_REFERENCE_DATE = WINDOW_START + timedelta(days=WINDOW_DAYS)
@@ -72,6 +73,8 @@ class GenerationSettings:
     # Recorded with every benchmark run; an official run requires the family.
     model_family: str | None = None
     quantisation: str | None = None
+    # "default" or "off" (app.models.gateway.REASONING_MODES); recorded with every run.
+    reasoning: str = "default"
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,6 +250,9 @@ def from_env() -> RetrievalSettings:
             max_tokens=_env_int("GENERATION_MAX_TOKENS", 1200),
             model_family=os.environ.get("GENERATION_MODEL_FAMILY") or None,
             quantisation=os.environ.get("GENERATION_MODEL_QUANTISATION") or None,
+            reasoning=parse_reasoning(
+                os.environ.get("GENERATION_REASONING") or "default", "GENERATION_REASONING"
+            ),
         ),
         graph=GraphRagSettings(
             max_depth=_env_int("GRAPH_DEPTH", 2),

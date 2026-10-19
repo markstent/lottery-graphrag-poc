@@ -208,3 +208,21 @@ def test_generation_max_tokens_defaults_to_1200(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.delenv("GENERATION_MAX_TOKENS", raising=False)
     assert from_env().generation.max_tokens == 1200
     assert GenerationSettings("fake", "m", 0.0, None).max_tokens == 1200
+
+
+def test_generation_reasoning_comes_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch, stub_litellm: StubLiteLLM
+) -> None:
+    from app.config import from_env
+    from app.retrieval.graph.lab import build_generator
+
+    monkeypatch.delenv("GENERATION_REASONING", raising=False)
+    assert from_env().generation.reasoning == "default"
+    monkeypatch.setenv("GENERATION_REASONING", "off")
+    settings = from_env()
+    assert settings.generation.reasoning == "off"
+    build_generator("litellm", settings).generate("q", [_chunk()])
+    assert stub_litellm.calls[0]["reasoning_effort"] == "none"
+    monkeypatch.setenv("GENERATION_REASONING", "minimal")
+    with pytest.raises(ValueError, match="GENERATION_REASONING"):
+        from_env()

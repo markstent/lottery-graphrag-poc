@@ -583,6 +583,8 @@ V2_FIELDS = {
     "judge_model_family",
     "judge_prompt_version",
     "judge_prompt_hash",
+    "generation_reasoning",
+    "judge_reasoning",
 }
 
 
@@ -625,6 +627,8 @@ def test_reproducibility_payload_carries_every_field(
     assert (payload["judge_model"], payload["judge_model_family"]) == ("fake-judge-v1", None)
     assert payload["judge_prompt_version"] == JUDGE_PROMPT_VERSION
     assert payload["judge_prompt_hash"] == judge_prompt_hash()
+    assert payload["generation_reasoning"] == settings.generation.reasoning
+    assert payload["judge_reasoning"] is None  # the fake judge calls no model
     json.dumps(payload)  # stored as JSON
 
 
@@ -792,3 +796,4 @@ def test_the_record_names_the_judge(frozen_bank: FrozenBank, world_dir: Path) ->
     assert (payload["judge_model"], payload["judge_model_family"]) == ("judge-model", "gemma")
     assert payload["judge_prompt_version"] == JUDGE_PROMPT_VERSION
     assert payload["judge_prompt_hash"] == judge_prompt_hash()
+    assert payload["judge_reasoning"] == "default"

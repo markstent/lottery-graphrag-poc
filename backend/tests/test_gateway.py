@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from app.models.gateway import CompletionRequest, GatewayError, complete
+from app.models.gateway import CompletionRequest, GatewayError, complete, parse_reasoning
 
 from tests.conftest import StubLiteLLM
 
@@ -29,3 +29,21 @@ def test_complete_raises_gateway_error_on_provider_failure(
     with pytest.raises(GatewayError) as raised:
         complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0))
     assert isinstance(raised.value.__cause__, RuntimeError)
+
+
+def test_reasoning_off_asks_the_provider_not_to_think(stub_litellm: StubLiteLLM) -> None:
+    complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0, reasoning="off"))
+    # LiteLLM maps reasoning_effort "none" to Ollama's think=false.
+    assert stub_litellm.calls[0]["reasoning_effort"] == "none"
+
+
+def test_default_reasoning_leaves_the_provider_unchanged(stub_litellm: StubLiteLLM) -> None:
+    complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0))
+    assert "reasoning_effort" not in stub_litellm.calls[0]
+
+
+def test_an_unknown_reasoning_mode_is_refused() -> None:
+    with pytest.raises(ValueError, match="reasoning"):
+        CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0, reasoning="low")
+    with pytest.raises(ValueError, match="GENERATION_REASONING"):
+        parse_reasoning("Off", "GENERATION_REASONING")

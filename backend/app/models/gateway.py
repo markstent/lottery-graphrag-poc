@@ -10,6 +10,19 @@ import time
 from dataclasses import dataclass
 
 _USAGE_KEYS = ("prompt_tokens", "completion_tokens", "total_tokens")
+# "default" leaves the provider's behaviour unchanged; "off" asks a thinking
+# model not to spend its token budget on hidden reasoning.
+REASONING_MODES = ("default", "off")
+# The OpenAI-style option LiteLLM maps per provider; for Ollama it becomes
+# think=false (litellm/llms/ollama/*/transformation.py).
+REASONING_OFF = {"reasoning_effort": "none"}
+
+
+def parse_reasoning(value: str, variable: str) -> str:
+    """A reasoning mode read from ``variable``; anything else is refused."""
+    if value not in REASONING_MODES:
+        raise ValueError(f"{variable} must be one of {list(REASONING_MODES)}, got {value!r}")
+    return value
 
 
 class GatewayError(RuntimeError):
@@ -25,6 +38,10 @@ class CompletionRequest:
     max_tokens: int
     api_base: str | None
     timeout_s: float
+    reasoning: str = "default"
+
+    def __post_init__(self) -> None:
+        parse_reasoning(self.reasoning, "reasoning")
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +68,7 @@ def complete(request: CompletionRequest) -> Completion:
             max_tokens=request.max_tokens,
             base_url=request.api_base,
             timeout=request.timeout_s,
+            **(REASONING_OFF if request.reasoning == "off" else {}),
         )
         content = response["choices"][0]["message"]["content"]
     except Exception as error:

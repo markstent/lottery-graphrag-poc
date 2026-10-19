@@ -137,6 +137,9 @@ class ReproducibilityRecord:
     judge_model_family: str | None
     judge_prompt_version: str | None
     judge_prompt_hash: str | None
+    # Gateway reasoning modes ("default" or "off"); the fake judge has none.
+    generation_reasoning: str
+    judge_reasoning: str | None
 
     def to_payload(self) -> dict[str, Any]:
         """Every field, JSON-ready."""
@@ -436,6 +439,8 @@ class BenchmarkRunner:
             judge_model_family=self.judge.model_family,
             judge_prompt_version=JUDGE_PROMPT_VERSION,
             judge_prompt_hash=judge_prompt_hash(),
+            generation_reasoning=settings.generation.reasoning,
+            judge_reasoning=self.judge.reasoning,
         )
 
     def _run_instance(

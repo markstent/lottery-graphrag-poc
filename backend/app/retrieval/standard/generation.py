@@ -177,8 +177,10 @@ class LiteLLMAnswerGenerator:
         api_base: str | None = None,
         max_tokens: int = 1200,
         timeout_s: float = 120.0,
+        reasoning: str = "default",
     ) -> None:
         self.model_name = model
+        self._reasoning = reasoning
         self._temperature = temperature
         self._api_base = api_base
         self._max_tokens = max_tokens
@@ -193,6 +195,7 @@ class LiteLLMAnswerGenerator:
             max_tokens=self._max_tokens,
             api_base=self._api_base,
             timeout_s=self._timeout_s,
+            reasoning=self._reasoning,
         )
         try:
             completion = complete(request)

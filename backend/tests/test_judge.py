@@ -7,6 +7,7 @@ gateway.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from collections.abc import Callable
@@ -160,7 +161,7 @@ def test_prompt_hash_covers_the_prompt_and_its_version() -> None:
 
 
 def test_judge_settings_come_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("PROVIDER", "MODEL", "MODEL_FAMILY", "API_BASE", "TEMPERATURE"):
+    for name in ("PROVIDER", "MODEL", "MODEL_FAMILY", "API_BASE", "TEMPERATURE", "REASONING"):
         monkeypatch.delenv(f"JUDGE_{name}", raising=False)
     assert judge_settings_from_env() == JudgeSettings("fake", "fake-judge-v1", None, None, 0.0)
     monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
@@ -168,9 +169,13 @@ def test_judge_settings_come_from_the_environment(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("JUDGE_MODEL_FAMILY", "gemma")
     monkeypatch.setenv("JUDGE_API_BASE", "http://localhost:11434")
     monkeypatch.setenv("JUDGE_TEMPERATURE", "0.2")
+    monkeypatch.setenv("JUDGE_REASONING", "off")
     assert judge_settings_from_env() == JudgeSettings(
-        "litellm", "ollama/gemma4:31b", "gemma", "http://localhost:11434", 0.2
+        "litellm", "ollama/gemma4:31b", "gemma", "http://localhost:11434", 0.2, "off"
     )
+    monkeypatch.setenv("JUDGE_REASONING", "on")
+    with pytest.raises(ValueError, match="JUDGE_REASONING"):
+        judge_settings_from_env()
 
 
 # --- Blinding ---------------------------------------------------------------------
@@ -283,7 +288,16 @@ def test_gateway_judge_sends_the_prompt_with_the_judge_settings() -> None:
     assert (request.system, request.user) == build_judge_prompt(ITEM)
     assert request.model == SETTINGS.model and request.temperature == SETTINGS.temperature
     assert request.api_base == SETTINGS.api_base and request.max_tokens == JUDGE_MAX_TOKENS
+    assert request.reasoning == "default"
     assert (judge.model_name, judge.model_family) == ("ollama/gemma4:31b", "gemma")
+
+
+def test_gateway_judge_passes_its_reasoning_mode() -> None:
+    calls: list[CompletionRequest] = []
+    settings = dataclasses.replace(SETTINGS, reasoning="off")
+    judge = GatewayJudge(settings, gateway=stub_gateway(GOOD_REPLY, calls))
+    judge.judge(ITEM)
+    assert calls[0].reasoning == "off" and judge.reasoning == "off"
 
 
 def test_a_gateway_failure_is_a_recorded_failure() -> None:

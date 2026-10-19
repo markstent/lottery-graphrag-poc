@@ -30,6 +30,9 @@ uv run python -m app.evaluation compare SMALL_RUN_DIR LARGE_RUN_DIR [--out DIR]
   A smoke run uses the fake generator and judge; a sweep or official run refuses the fake generator and needs `JUDGE_PROVIDER=litellm`; an official run also needs three repeats and the two model families, which must differ.
 - Every run, smoke or official, uses graph depth 2; only the sweep changes it.
 - The generation and judge models come from the environment (`GENERATION_*` and `JUDGE_*` in `.env.example`); nothing is read from a `.env` file.
+- `GENERATION_REASONING` and `JUDGE_REASONING` (`default` or `off`; any other value is refused) control a thinking model's hidden reasoning through the gateway.
+  `off` sends LiteLLM's `reasoning_effort="none"`, which LiteLLM turns into `think=false` for Ollama models.
+  Local thinking models need `off`: the first local pilot (`pilot-2026`) ran with `default`, and both models spent their token caps (1200 for generation, 300 for the judge) on hidden reasoning, returning empty answers for 159 of 198 generations and every judge call.
 
 ## Three worlds in turn
 
@@ -133,11 +136,13 @@ Generation:
 
 - `generation_model`, `generation_model_family`, `generation_quantisation`: the answer model.
 - `generation_temperature`, `max_tokens`: its parameters.
+- `generation_reasoning`: `default` (provider behaviour unchanged) or `off` (the gateway asks a thinking model not to think), from `GENERATION_REASONING`.
 - `prompt_version`, `prompt_hash`: the answer prompt version (2.0.0) and the sha256 of its system prompt.
 
 Judge:
 
 - `judge_model`, `judge_model_family`: the judge model.
+- `judge_reasoning`: `default` or `off`, from `JUDGE_REASONING`; null for the fake judge, which calls no model.
 - `judge_prompt_version`, `judge_prompt_hash`: the judge prompt version (1.0.0) and the sha256 of its system prompt plus version.
 
 Each repeat in `results.json` carries its own repeat index.
