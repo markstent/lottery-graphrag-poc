@@ -153,12 +153,20 @@ def subgroup_line(
 ) -> str:
     """Descriptive sentence for a sub-group that is not tested: the interval and nothing more.
 
-    ``interval`` is None when the sub-group has no pairs.
+    ``interval`` is None when the sub-group has no pairs. Below
+    ``MIN_CLUSTERS_FOR_CLAIM`` groups the bootstrap interval says little,
+    so the mean is printed alone.
     """
     stronger, weaker = _names(comparison)
     label = stratum_label[:1].upper() + stratum_label[1:]
     if interval is None:
         return f"{label}: no pairs for {stronger} minus {weaker}; no test is run on this sub-group."
+    if interval.clusters < MIN_CLUSTERS_FOR_CLAIM:
+        return (
+            f"{label}: {stronger} minus {weaker} {points(interval.mean)} {metric_unit}, "
+            f"too few groups for an interval ({_counts(interval.n, interval.clusters)}); "
+            "no test is run on this sub-group."
+        )
     return (
         f"{label}: {stronger} minus {weaker} {points(interval.mean)} {metric_unit} "
         f"(95 percent interval {points(interval.low)} to {points(interval.high)}, "

@@ -1,7 +1,10 @@
 import math
+import random
+from typing import Any
 
 import pytest
 from app.evaluation.statistics import (
+    MIN_CLUSTERS_FOR_CLAIM,
     Interval,
     cluster_bootstrap,
     headline,
@@ -158,3 +161,41 @@ def test_percentile_indices_for_ten_thousand_resamples() -> None:
 def test_unknown_comparison_raises_value_error() -> None:
     with pytest.raises(ValueError):
         headline("D_vs_A", "x", "u", Interval(0.1, 0.0, 0.2, 36, 12), 0.01)
+
+
+def test_subgroup_line_gives_no_interval_below_the_cluster_floor() -> None:
+    """Two groups cannot carry a 95 percent interval: the mean alone is printed."""
+    interval = Interval(0.04, -0.03, 0.11, 4, 2)
+    assert subgroup_line("B_vs_A", "name-anchored questions", "evidence points", interval) == (
+        "Name-anchored questions: Graph minus text search 4.0 evidence points, "
+        "too few groups for an interval (4 pairs in 2 groups); "
+        "no test is run on this sub-group."
+    )
+    at_floor = Interval(0.04, -0.03, 0.11, 6, MIN_CLUSTERS_FOR_CLAIM)
+    assert "95 percent interval" in subgroup_line("B_vs_A", "x", "u", at_floor)
+
+
+def test_holm_caps_adjusted_p_values_at_one() -> None:
+    assert holm({"a": 0.6, "b": 0.7, "c": 0.02}) == pytest.approx({"a": 1.0, "b": 1.0, "c": 0.06})
+
+
+def test_holm_gives_tied_p_values_the_same_adjustment_in_any_order() -> None:
+    expected = {"a": 0.03, "b": 0.03, "c": 0.04}
+    assert holm({"a": 0.01, "b": 0.01, "c": 0.04}) == pytest.approx(expected)
+    assert holm({"c": 0.04, "b": 0.01, "a": 0.01}) == pytest.approx(expected)
+
+
+def test_each_resample_draws_as_many_clusters_as_were_observed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    drawn: list[int] = []
+
+    class CountingRandom(random.Random):
+        def choices(self, population: Any, *args: Any, k: int = 1, **kwargs: Any) -> list[Any]:
+            drawn.append(k)
+            return super().choices(population, *args, k=k, **kwargs)
+
+    monkeypatch.setattr(random, "Random", CountingRandom)
+    interval = cluster_bootstrap([0.1, 0.2, 0.3, 0.4, 0.5], ["a", "a", "b", "c", "c"], resamples=50)
+    assert interval.clusters == 3
+    assert drawn == [3] * 50
