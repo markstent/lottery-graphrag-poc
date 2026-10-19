@@ -43,7 +43,7 @@ from app.events import (
 )
 from app.evidence import EvidenceChunk
 from app.ontology.loader import load_ontology
-from app.retrieval.graph.pipeline import GraphRagPipeline, path_line
+from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.ranking import score_nodes, temporal_validity
 from app.retrieval.graph.resolution import (
     QueryExpansion,
@@ -64,10 +64,14 @@ from app.retrieval.graph.traversal import (
     expand_ontology,
     load_static_provider_from_rows,
 )
-from app.retrieval.standard.context import SELECTION_CANDIDATE_CAP
+from app.retrieval.standard.context import SELECTION_EXCLUDED_LABEL
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import HashingEmbedder
-from app.retrieval.standard.generation import FakeAnswerGenerator, GenerationOutput
+from app.retrieval.standard.generation import (
+    FakeAnswerGenerator,
+    GenerationOutput,
+    context_block,
+)
 from app.retrieval.standard.index import index_corpus
 from app.retrieval.standard.reranking import LexicalReranker, build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder, SparseVector
@@ -123,9 +127,7 @@ def make_settings(**overrides: object) -> RetrievalSettings:
         ),
         "vector": VectorSettings(url="", collection="test"),
         "context": ContextSettings(budget_tokens=2000, dedupe_threshold=0.85),
-        "rerank": RerankSettings(
-            provider="lexical", model="unused", lexical_weight=0.3, candidates=40
-        ),
+        "rerank": RerankSettings(provider="lexical", model="unused", lexical_weight=0.3),
         "generation": GenerationSettings(
             provider="fake", model="fake-answer-v1", temperature=0.0, api_base=None
         ),
@@ -802,27 +804,41 @@ class TestOneJudgeSelection:
         ]
         assert outcomes and all("rerank_score" in e.payload for e in outcomes)
 
-    def test_nodes_beyond_the_candidate_cap_never_reach_the_judge(self) -> None:
-        settings = make_settings()
-        settings = dataclasses.replace(
-            settings, rerank=dataclasses.replace(settings.rerank, candidates=2)
-        )
-        pipeline = build_pipeline(settings)
+    def test_every_traversal_node_reaches_the_judge(self) -> None:
+        pipeline = build_pipeline()
         reranker = RecordingReranker()
         pipeline.reranker = reranker
         result = pipeline.run(QUESTION)
         judged_nodes = [c.chunk_id for c in reranker.calls[0][1] if c.kind == "node"]
-        assert judged_nodes == [e.node_id for e in result.node_evidence[:2]]
-        capped = [e for e in result.node_evidence if e.discard_reason == SELECTION_CANDIDATE_CAP]
-        assert len(capped) == len(result.node_evidence) - 2 > 0
-        cap_events = [
+        assert judged_nodes == [e.node_id for e in result.node_evidence]
+        assert all(e.rerank_score is not None for e in result.node_evidence)
+
+    def test_a_resolved_document_seeds_traversal_but_is_never_a_candidate(self) -> None:
+        document = ResolvedEntity("DOC_9", "Document", "DOC_9", "id", 1.0)
+        pipeline = build_pipeline(resolver=StaticEntityResolver([document]))
+        pipeline.neighbours = load_static_provider_from_rows(
+            [("DOC_9", "FROM_MARKET", "MKT_GR", "Market")]
+        )
+        reranker = RecordingReranker()
+        pipeline.reranker = reranker
+        result = pipeline.run(QUESTION)
+        seeds = [
+            e.payload["node_id"] for e in pipeline.events if e.event_type == GRAPH_SEED_SELECTED
+        ]
+        assert seeds == ["DOC_9"]
+        judged = {c.chunk_id for c in reranker.calls[0][1] if c.kind == "node"}
+        assert judged == {"MKT_GR"}
+        outcome = {e.node_id: e.discard_reason for e in result.node_evidence}
+        assert outcome["DOC_9"] == SELECTION_EXCLUDED_LABEL
+        discards = [
             e
             for e in pipeline.events
-            if e.event_type == GRAPH_CANDIDATE_DISCARDED
-            and e.payload.get("reason") == SELECTION_CANDIDATE_CAP
+            if e.event_type == GRAPH_CANDIDATE_DISCARDED and e.payload.get("node_id") == "DOC_9"
         ]
-        assert len(cap_events) == len(capped)
-        assert all(e.payload["rerank_score"] is None for e in cap_events)
+        assert [e.payload["reason"] for e in discards] == [SELECTION_EXCLUDED_LABEL]
+        assert discards[0].payload["rerank_score"] is None
+        # The document's text still reaches the judge through the document channel.
+        assert any(c.kind == "chunk" for c in reranker.calls[0][1])
 
 
 class TestFallbackSeed:
@@ -927,22 +943,9 @@ class TestNodeText:
         pipeline.run(QUESTION)
         node = next(c for c in reranker.calls[0][1] if c.chunk_id == "INC_S007_GR")
         assert node.text == self.RECORD_TEXT
-        block = next(b for b in generator.extra_blocks if self.RECORD_TEXT in b)
-        assert block.endswith("\nGraph path: INC_S007_GR, seed.")
-
-    def test_path_line_names_every_relationship_on_the_path(self) -> None:
-        relationships = {
-            "PLV_PAYMENTS_3": "RELATED_TO_VERSION",
-            "INC_S007_AT": "RELATED_TO_VERSION",
-        }
-        assert path_line(["INC_S007_GR"], relationships) == "Graph path: INC_S007_GR, seed."
-        assert path_line(["INC_S007_GR", "PLV_PAYMENTS_3"], relationships) == (
-            "Graph path: INC_S007_GR -RELATED_TO_VERSION-> PLV_PAYMENTS_3, 1 hop."
-        )
-        assert path_line(["INC_S007_GR", "PLV_PAYMENTS_3", "INC_S007_AT"], relationships) == (
-            "Graph path: INC_S007_GR -RELATED_TO_VERSION-> PLV_PAYMENTS_3"
-            " -RELATED_TO_VERSION-> INC_S007_AT, 2 hops."
-        )
+        # Formatted exactly like a document block: title line, then the text.
+        assert context_block(node) in generator.extra_blocks
+        assert all("Graph path" not in block for block in generator.extra_blocks)
 
     def test_a_node_without_a_record_block_gets_one_humanised_sentence(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         import duckdb

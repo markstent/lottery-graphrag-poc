@@ -54,9 +54,7 @@ def make_settings(**overrides: object) -> RetrievalSettings:
         ),
         "vector": VectorSettings(url="", collection="test"),
         "context": ContextSettings(budget_tokens=200, dedupe_threshold=0.85),
-        "rerank": RerankSettings(
-            provider="lexical", model="unused", lexical_weight=0.3, candidates=40
-        ),
+        "rerank": RerankSettings(provider="lexical", model="unused", lexical_weight=0.3),
         "generation": GenerationSettings(
             provider="fake", model="fake-answer-v1", temperature=0.0, api_base=None
         ),
@@ -163,9 +161,7 @@ class TestRetrievalCorrectness:
 
     def test_reranker_sets_scores_and_reorders(self) -> None:
         settings = make_settings(
-            rerank=RerankSettings(
-                provider="lexical", model="unused", lexical_weight=0.5, candidates=40
-            )
+            rerank=RerankSettings(provider="lexical", model="unused", lexical_weight=0.5)
         )
         pipeline = build_pipeline(make_corpus(), settings)
         result = pipeline.run("checkout regression in Greece")

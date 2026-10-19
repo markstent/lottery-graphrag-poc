@@ -27,7 +27,7 @@ question
   -> bounded traversal over the structured-record subgraph (Document targets excluded)
   -> ontology expansion (C only: most relevant MAPS_TO-bound entities of reached concepts)
   -> candidate scoring (see docs/retrieval/evidence-ranking.md)
-  -> structured channel: top RERANK_CANDIDATES nodes by score (the rest: candidate_cap)
+  -> structured channel: every traversal node in score order (excluded labels discarded)
   -> authoritative facts attached from the source tables (SourceLookup)
   -> document channel: the SAME hybrid search as pipeline A
   -> record blocks of structured candidates superseded
@@ -71,7 +71,6 @@ The walk is breadth-first over the **structured-record subgraph**:
   - `max_nodes_per_hop=100`
   - `max_edges_per_node_type=4` (per frontier node, per relationship type)
   - `max_total_nodes=200`
-  - structured candidates handed to the judge: `RERANK_CANDIDATES=40`
 - **Cut policy:** when candidate edges exceed a hop budget, they are explored
   in relationship-strength order (the same transparent weight table used by
   ranking, `RELATIONSHIP_WEIGHTS` in `app/retrieval/graph/traversal.py`), ties
@@ -101,6 +100,7 @@ otherwise, same limits, same weights.
 
 Seeds are the resolved entities, emitted as `graph.seed.selected`.
 They anchor the traversal and are judged like every other node: a seed has no reserved slot, and its candidate events carry `seed: true`.
+A directly resolved Document id may seed traversal, but Document nodes are never structured candidates: it is discarded with `excluded_label`, and its chunks reach the model through the document channel.
 
 When no entity resolves, the fallback searches the shared vector layer with the same models as pipeline A (`kinds=["record"]`, `limit=1`; pipeline C uses its expanded text).
 It seeds the best record block's graph node: the node id is the record id and the label comes from the record table (`source_lookup.label_for_table`).
@@ -127,8 +127,8 @@ Each node has one text, used for semantic ranking, by the judge and in the promp
 - A BusinessConcept node in pipeline C gets its ontology text (`resolution.concept_text`): `Concept <canonical name>: <definition> Labels: ...; Synonyms: ...`.
 - Anything else reads `<Label> <id>`.
 
-In the prompt a selected node is its title line, its text and its evidence path, for example `Graph path: GAME_UK_01 -AFFECTS-> INC_025, 1 hop.`.
-The path line is provenance shown to the model, never to the judge.
+In the prompt a selected node is formatted exactly like a document block: its title line, then its text.
+The evidence path stays in `GraphEvidence.path`, the citations and the telemetry for the UI.
 
 Structured candidates also get authoritative facts fetched from the parquet source tables (`SourceLookup`, memoised), kept on `GraphEvidence.authoritative` and in the citations of selected nodes.
 Quantitative claims in answers come from these records, not from document prose. `PaymentMethod` nodes are
@@ -144,6 +144,7 @@ Events use the section 8 names from `docs/07-api-event-spec.md`
 `graph.traversal.started`, `graph.node.discovered` (with `via_concept` for
 ontology-injected nodes),
 `graph.relationship.traversed`, `graph.ontology.expanded`,
+`graph.rerank.started` (candidate count and model),
 `graph.candidate.reranked` (one per judged node or document, with
 `candidate_id`, `kind`, `rerank_score`, `rank`),
 `graph.evidence_path.completed`, `graph.candidate.selected|discarded` (with

@@ -23,17 +23,22 @@ question texts and never encode expected answers.
 from __future__ import annotations
 
 import argparse
+import time
 
 from app.api.queries import DEMO_QUESTIONS
 from app.api.schemas import DemoQuestion
 from app.config import RetrievalSettings, from_env
 from app.events import (
+    GRAPH_CANDIDATE_RERANKED,
     GRAPH_ENTITY_RESOLVED,
     GRAPH_NODE_DISCOVERED,
     GRAPH_QUERY_EXPANDED,
     GRAPH_RELATIONSHIP_TRAVERSED,
+    GRAPH_RERANK_STARTED,
     GRAPH_SEED_SELECTED,
     GRAPH_TRAVERSAL_STARTED,
+    RAG_CANDIDATE_RERANKED,
+    RAG_RERANK_STARTED,
     ListEventSink,
     RetrievalEvent,
 )
@@ -69,9 +74,9 @@ HEADER_LINES: tuple[str, ...] = (
     (
         "- **B, graph relationships**: an id and market resolver seeds a bounded "
         "traversal over the structured-record subgraph (when nothing resolves, the "
-        "graph node of the best-matching record block); the top nodes by graph score "
-        "join A's document channel as structured candidates, judged on the same "
-        "record text A indexes; nodes carry authoritative facts from the source tables."
+        "graph node of the best-matching record block); every traversal node joins A's "
+        "document channel as a structured candidate, judged on the same record text "
+        "A indexes; nodes carry authoritative facts from the source tables."
     ),
     "  No ontology: no concept seeds, no `MAPS_TO` expansion, no query expansion.",
     (
@@ -101,6 +106,10 @@ HEADER_LINES: tuple[str, ...] = (
         "The answers come from the deterministic fake generator, which returns the "
         "structured JSON answer (verdict plus prose with [n] citations) built from the "
         "context titles only."
+    ),
+    (
+        "The timings line (run wall clock, and judge time from the rerank events) is "
+        "measured and varies run to run."
     ),
     (
         "Everything else (resolution, seeds, traversal, scores, discards, budgets) is "
@@ -158,8 +167,10 @@ def run_all(
 
         if "A" in pipelines:
             sink_a = ListEventSink()
+            started = time.perf_counter()
             result_a = lab.pipeline_a(sink=sink_a).run(demo.question)
-            lines.extend(trace_a(result_a, sink_a.events))
+            wall_ms = (time.perf_counter() - started) * 1000.0
+            lines.extend(trace_a(result_a, sink_a.events, wall_ms))
 
         if "B" in pipelines or "C" in pipelines:
             wired = wired_pipelines(lab, graph_config)
@@ -167,8 +178,10 @@ def run_all(
                 for tag, pipeline in wired.pipelines:
                     if tag not in pipelines:
                         continue
+                    started = time.perf_counter()
                     result_g = pipeline.run(demo.question)
-                    lines.extend(trace_g(tag, result_g, pipeline.events))
+                    wall_ms = (time.perf_counter() - started) * 1000.0
+                    lines.extend(trace_g(tag, result_g, pipeline.events, wall_ms))
             finally:
                 wired.reader.close()
 
@@ -195,6 +208,19 @@ def _fmt_chunk(chunk: EvidenceChunk) -> str:
     return f"`{chunk.chunk_id}` [{kind}] {chunk.title} ({', '.join(parts)})"
 
 
+def _fmt_timings(
+    events: list[RetrievalEvent], started_type: str, reranked_type: str, wall_ms: float
+) -> str:
+    """Run wall clock and judge time (rerank started to first reranked event)."""
+    line = f"- timings: run {wall_ms:.0f} ms"
+    started = next((e for e in events if e.event_type == started_type), None)
+    first = next((e for e in events if e.event_type == reranked_type), None)
+    if started is not None and first is not None:
+        judged = sum(1 for e in events if e.event_type == reranked_type)
+        line += f", judge {first.t_ms - started.t_ms:.0f} ms over {judged} candidates"
+    return line
+
+
 def _fmt_score(score: float | None) -> str:
     return "-" if score is None else f"{score:.3f}"
 
@@ -217,7 +243,9 @@ def _fmt_answer(answer: RagAnswer) -> list[str]:
     ]
 
 
-def trace_a(result: RagRunResult, events: list[RetrievalEvent]) -> list[str]:
+def trace_a(
+    result: RagRunResult, events: list[RetrievalEvent], wall_ms: float | None = None
+) -> list[str]:
     selected = [chunk for chunk in result.evidence if chunk.selected]
     discarded = [chunk for chunk in result.evidence if not chunk.selected]
     records = sum(1 for chunk in selected if chunk.kind == "record")
@@ -235,12 +263,19 @@ def trace_a(result: RagRunResult, events: list[RetrievalEvent]) -> list[str]:
         )
     lines.append(f"- events: {_fmt_events(events)}")
     lines.append(f"- context tokens: {result.answer.context_tokens}")
+    if wall_ms is not None:
+        lines.append(_fmt_timings(events, RAG_RERANK_STARTED, RAG_CANDIDATE_RERANKED, wall_ms))
     lines.append("")
     lines.extend(_fmt_answer(result.answer))
     return lines
 
 
-def trace_g(tag: PipelineId, result: GraphRunResult, events: list[RetrievalEvent]) -> list[str]:
+def trace_g(
+    tag: PipelineId,
+    result: GraphRunResult,
+    events: list[RetrievalEvent],
+    wall_ms: float | None = None,
+) -> list[str]:
     selected = [node for node in result.node_evidence if node.selected]
     discarded = [node for node in result.node_evidence if not node.selected]
     lines = [f"### Pipeline {tag}: {tag_label(tag)}", ""]
@@ -329,6 +364,8 @@ def trace_g(tag: PipelineId, result: GraphRunResult, events: list[RetrievalEvent
             lines.append(f"  - {_fmt_chunk(chunk)}")
     lines.append(f"- events: {_fmt_events(events)}")
     lines.append(f"- context tokens: {result.answer.context_tokens}")
+    if wall_ms is not None:
+        lines.append(_fmt_timings(events, GRAPH_RERANK_STARTED, GRAPH_CANDIDATE_RERANKED, wall_ms))
     lines.append("")
     lines.extend(_fmt_answer(result.answer))
     return lines

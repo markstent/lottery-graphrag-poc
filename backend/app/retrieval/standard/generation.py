@@ -78,6 +78,12 @@ class AnswerGenerator(Protocol):
         ...
 
 
+def context_block(chunk: EvidenceChunk) -> str:
+    """One context block: a title line, then the text. Every pipeline renders
+    documents, records and structured graph nodes with this one format."""
+    return f"{chunk.title} ({chunk.market_id}, {chunk.language_code})\n{chunk.text}"
+
+
 def build_user_prompt(
     question: str,
     contexts: list[EvidenceChunk],
@@ -87,10 +93,7 @@ def build_user_prompt(
 
     [n] in answers maps to the n-th block in that order.
     """
-    blocks = [
-        f"[{index}] {chunk.title} ({chunk.market_id}, {chunk.language_code})\n{chunk.text}"
-        for index, chunk in enumerate(contexts, start=1)
-    ]
+    blocks = [f"[{index}] {context_block(chunk)}" for index, chunk in enumerate(contexts, start=1)]
     next_index = len(blocks) + 1
     for block in extra_blocks or []:
         blocks.append(f"[{next_index}] {block}")

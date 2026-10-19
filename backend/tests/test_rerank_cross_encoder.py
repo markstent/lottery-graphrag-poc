@@ -42,27 +42,21 @@ def reranker_with(fake: FakeCrossEncoder) -> CrossEncoderReranker:
 
 def test_builder_rejects_unknown_model() -> None:
     settings = make_settings(
-        rerank=RerankSettings(
-            provider="cross_encoder", model="nope", lexical_weight=0.3, candidates=40
-        )
+        rerank=RerankSettings(provider="cross_encoder", model="nope", lexical_weight=0.3)
     )
     with pytest.raises(ValueError, match="supported"):
         build_reranker(settings)
 
 
 def test_builder_rejects_unknown_provider() -> None:
-    settings = make_settings(
-        rerank=RerankSettings(provider="nope", model="x", lexical_weight=0.3, candidates=40)
-    )
+    settings = make_settings(rerank=RerankSettings(provider="nope", model="x", lexical_weight=0.3))
     with pytest.raises(ValueError, match="provider"):
         build_reranker(settings)
 
 
 def test_builder_lexical_provider() -> None:
     settings = make_settings(
-        rerank=RerankSettings(
-            provider="lexical", model=DEFAULT_MODEL, lexical_weight=0.4, candidates=40
-        )
+        rerank=RerankSettings(provider="lexical", model=DEFAULT_MODEL, lexical_weight=0.4)
     )
     reranker = build_reranker(settings)
     assert isinstance(reranker, LexicalReranker)
@@ -107,7 +101,6 @@ def test_cross_encoder_ranks_relevant_passage_first() -> None:
                 provider="cross_encoder",
                 model=DEFAULT_MODEL,
                 lexical_weight=0.3,
-                candidates=40,
             )
         )
     )

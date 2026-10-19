@@ -24,7 +24,8 @@ The only differences between A, B and C are the graph layer and the ontology lay
 
 The judge sees the same text for the same record in every pipeline.
 A graph node whose row has a record block in A's corpus is judged on that record block, byte for byte, and the record block itself is superseded, so one fact never takes two slots.
-The path line the graph pipeline adds under a selected node (`Graph path: ...`) is provenance shown to the model, not to the judge.
+A structured prompt block is formatted exactly like a document block, the title line plus that text, so neither the budget nor the prompt carries a B- or C-only extra.
+The judge sees every candidate a pipeline produced within its hard caps: A's `top_k` hits, and in B and C the same hits plus every traversal node (bounded by `max_total_nodes`).
 
 Some node types have no record block in A's corpus by design: markets, platforms, channels, experiments and support cases (design section 5.4 lists the serialised tables).
 They are judged on one humanised sentence built from their authoritative columns ("<Label> <id>: <column name> <value>, ...").

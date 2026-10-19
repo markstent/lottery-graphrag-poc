@@ -19,8 +19,9 @@ Every pipeline answers from one token budget (`RAG_CONTEXT_TOKEN_BUDGET`, defaul
 One judge decides what fills them: the shared reranker scores every candidate a pipeline has against the raw question, and one selection walks the reranked list.
 
 - Pipeline A's candidates are its hybrid top-`RAG_TOP_K` hits: document chunks and record blocks.
-- Pipelines B and C have the same document channel plus a structured channel: the top `RERANK_CANDIDATES` traversal nodes by graph composite score (`docs/retrieval/evidence-ranking.md`).
-  Nodes beyond that cut never reach the judge and are discarded with `candidate_cap`.
+- Pipelines B and C have the same document channel plus a structured channel: every traversal node, bounded only by the traversal caps (`max_total_nodes`), in graph composite score order (`docs/retrieval/evidence-ranking.md`).
+  The judge sees every candidate a pipeline produced within its hard caps.
+  Nodes with an excluded label (`GraphRagSettings.excluded_labels`, default `Document`) are never structured candidates: a directly resolved document may seed traversal, but it is discarded with `excluded_label`, and its chunks reach the model through the document channel like A's.
 - Before judging, a record block whose record id is a structured candidate's node id is discarded as `superseded_by_structured_fact` (design 10a.8).
   This is safe because the node is judged on that record's exact text: if the node loses on score, the record would have lost too.
 - `reranker.rerank(question, structured + documents)` runs once per question and scores every candidate it is given.
@@ -33,8 +34,8 @@ One judge decides what fills them: the shared reranker scores every candidate a 
 A high-scoring document chunk therefore takes a slot ahead of a lower-scoring node, and the other way round: priority follows the judge, whatever the kind.
 
 The judge sees the same text for the same record in every pipeline: a node with a record block is judged on that block, byte for byte.
-In the prompt the graph pipeline adds one line under each selected node, for example `Graph path: GAME_UK_01 -AFFECTS-> INC_025, 1 hop.`.
-The path line is provenance shown to the model, not to the judge.
-The budget counts the judged text; the path line and the block titles (for every pipeline) are not counted.
+In the prompt a structured block is formatted exactly like a document block (`generation.context_block`): the title line, then the same text the judge scored.
+The prompt therefore carries no B- or C-only extra; the evidence path stays in `GraphEvidence.path`, the citations and the telemetry for the UI.
+The budget counts the block text; the title lines are not counted, for every pipeline alike.
 
 The final token count is recorded on `rag.context.assembled` and `graph.context.assembled`.

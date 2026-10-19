@@ -58,12 +58,12 @@ Default weights (`DEFAULT_RANKING_WEIGHTS`, overridable per experiment):
 
 ## Selection
 
-- The composite score orders the structured channel and drives telemetry; it does not select context.
-- The top `RERANK_CANDIDATES` (default 40) nodes by composite score become structured candidates; every node beyond that cut is discarded with `candidate_cap`.
+- The composite score orders the structured channel, drives telemetry and breaks the lexical judge's ties; it does not select context.
+- Every traversal node (bounded by `max_total_nodes`) becomes a structured candidate, except nodes with an excluded label (default `Document`), which are discarded with `excluded_label`.
 - Seeds get no special treatment: they usually rank first (distance and relationship components are 1.0) and are judged like every other node.
 - The structured candidates and pipeline A's document channel are judged together by the shared reranker on the raw question, and one selection under the shared budget and slots decides what enters the context (`docs/retrieval/context-budgeting.md`).
 - Every node keeps its components, its `rerank_score` (absent when it never reached the judge) and its outcome.
-  A discarded node carries `candidate_cap`, `out_of_scope_market`, or a selection reason (`context_budget`, `slot_limit`).
+  A discarded node carries `excluded_label`, `out_of_scope_market`, or a selection reason (`context_budget`, `slot_limit`).
   Discards are first-class telemetry for the UI.
 
 ## Fairness notes

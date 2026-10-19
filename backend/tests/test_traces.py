@@ -139,7 +139,7 @@ def test_trace_g_counts_the_selected_context_by_kind() -> None:
         selected=True,
     )
     capped = node.model_copy(
-        update={"node_id": "INC_002", "selected": False, "discard_reason": "candidate_cap"}
+        update={"node_id": "INC_002", "selected": False, "discard_reason": "excluded_label"}
     )
     result = GraphRunResult(
         run_id="r3",
@@ -158,7 +158,7 @@ def test_trace_g_counts_the_selected_context_by_kind() -> None:
     text = "\n".join(trace_g("B", result, []))
     assert "- selected context (4: 1 node, 1 record, 2 document)" in text
     assert "rerank 1.500" in text
-    assert "- discarded nodes: 1 (candidate_cap=1)" in text
+    assert "- discarded nodes: 1 (excluded_label=1)" in text
     assert "- seeds: (none)" in text
 
 
@@ -173,3 +173,24 @@ def test_answer_without_citations_reads_none() -> None:
         generation_model="fake-answer-v1",
     )
     assert "- cited blocks: none (0 shown)" in "\n".join(trace_a(result, []))
+
+
+def test_timings_line_reports_wall_clock_and_judge_time() -> None:
+    result = GraphRunResult(
+        run_id="r5",
+        question="q",
+        answer=_answer(),
+        node_evidence=[],
+        document_evidence=[],
+        ontology_concepts=[],
+        embedding_model="bge-m3",
+        generation_model="fake-answer-v1",
+    )
+    events = [
+        RetrievalEvent("graph.rerank.started", "B", 100.0, "e1", "t", {}),
+        RetrievalEvent("graph.candidate.reranked", "B", 350.0, "e2", "t", {}),
+        RetrievalEvent("graph.candidate.reranked", "B", 351.0, "e3", "t", {}),
+    ]
+    text = "\n".join(trace_g("B", result, events, wall_ms=1234.4))
+    assert "- timings: run 1234 ms, judge 250 ms over 2 candidates" in text
+    assert "timings" not in "\n".join(trace_g("B", result, events))

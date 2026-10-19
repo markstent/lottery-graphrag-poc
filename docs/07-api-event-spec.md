@@ -223,6 +223,7 @@ graph.traversal.started
 graph.node.discovered
 graph.relationship.traversed
 graph.ontology.expanded
+graph.rerank.started
 graph.candidate.reranked
 graph.candidate.selected
 graph.candidate.discarded
@@ -232,6 +233,8 @@ graph.generation.started
 graph.generation.completed
 ```
 
+`graph.rerank.started` carries `candidates` (how many candidates the judge is handed) and `model`, like `rag.rerank.started`.
+
 `graph.candidate.reranked` is emitted once per candidate the shared reranker judged, in reranked order, for graph nodes and documents alike.
 It carries `candidate_id` (a node id or a chunk id), `kind` (`node`, `chunk` or `record`), `rerank_score` and `rank` (1-based position after judging).
 It is the graph counterpart of `rag.candidate.reranked`; one judge scores both channels on the raw question (`docs/retrieval/context-budgeting.md`).
@@ -239,7 +242,7 @@ It is the graph counterpart of `rag.candidate.reranked`; one judge scores both c
 `graph.candidate.selected` and `graph.candidate.discarded` carry `rerank_score`, `null` when the candidate never reached the judge.
 Node events also carry `node_id`, `score` (the graph composite score), `hops` and `seed`; selected node events add the `weight_*` score components.
 Document events carry `chunk_id`, with `rank` on selection.
-Discard reasons are `candidate_cap` (beyond the structured channel's cut), `out_of_scope_market`, `superseded_by_structured_fact` (a record block whose node is a structured candidate), `context_budget`, `slot_limit` and `duplicate`.
+Discard reasons are `excluded_label` (a node whose label is never a structured candidate, such as a directly resolved Document seed), `out_of_scope_market`, `superseded_by_structured_fact` (a record block whose node is a structured candidate), `context_budget`, `slot_limit` and `duplicate`.
 
 `graph.seed.selected` is absent when no entity resolves and no record block matches the fallback search; a seed is never fabricated.
 

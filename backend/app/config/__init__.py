@@ -59,11 +59,6 @@ class RerankSettings:
     provider: str  # "lexical" | "cross_encoder"
     model: str  # cross-encoder model (fastembed)
     lexical_weight: float
-    # Structured candidates per question in pipelines B and C: the top graph
-    # nodes by composite score handed to the reranker. The document channel
-    # is capped by top_k for every pipeline; the reranker scores everything
-    # it is given.
-    candidates: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,7 +236,6 @@ def from_env() -> RetrievalSettings:
             provider=os.environ.get("RERANK_PROVIDER", default_rerank_provider),
             model=os.environ.get("RERANK_MODEL", "BAAI/bge-reranker-v2-m3"),
             lexical_weight=_env_float("RERANK_LEXICAL_WEIGHT", 0.3),
-            candidates=_env_int("RERANK_CANDIDATES", 40),
         ),
         generation=GenerationSettings(
             provider=os.environ.get("GENERATION_PROVIDER", "fake"),

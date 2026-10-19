@@ -36,9 +36,10 @@ SELECTION_SLOT_LIMIT = "slot_limit"
 # A record block whose record is already a structured graph candidate
 # (design 10a.8): the structured candidate is the authoritative copy.
 SELECTION_SUPERSEDED = "superseded_by_structured_fact"
-# A graph node beyond the structured channel's candidate cap
-# (RerankSettings.candidates): it never reaches the judge.
-SELECTION_CANDIDATE_CAP = "candidate_cap"
+# A graph node whose label is in GraphRagSettings.excluded_labels (a
+# directly resolved Document seed): it may anchor traversal but is never a
+# structured candidate; its text reaches the model through the document channel.
+SELECTION_EXCLUDED_LABEL = "excluded_label"
 
 # EvidenceChunk.kind of a structured graph candidate.
 NODE_KIND = "node"
