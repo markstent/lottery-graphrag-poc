@@ -98,9 +98,9 @@ def runner(
     instance.close()
 
 
-# Q01 grounds on any world; Q17 maps to an unplanted scenario; Q25's planted
-# incidents cannot exist in the scenario-free tiny world.
-QUESTIONS = ["Q01", "Q17", "Q25"]
+# Q01 grounds on any world; Q19 maps to SCN-004, which the tiny world does not
+# plant; Q25's planted incidents cannot exist in the scenario-free tiny world.
+QUESTIONS = ["Q01", "Q19", "Q25"]
 
 
 def test_runner_executes_and_scores(runner: BenchmarkRunner) -> None:
@@ -108,7 +108,7 @@ def test_runner_executes_and_scores(runner: BenchmarkRunner) -> None:
     statuses = {
         result.grounded.question.question_id: result.grounded.status for result in run.results
     }
-    assert statuses == {"Q01": "ok", "Q17": "not_planted", "Q25": "not_grounded"}
+    assert statuses == {"Q01": "ok", "Q19": "not_planted", "Q25": "not_grounded"}
 
     q01 = run.results[0]
     assert set(q01.runs) == {"A", "B", "C"}
@@ -161,7 +161,7 @@ def test_summary_matches_the_report_policy(runner: BenchmarkRunner) -> None:
         assert 0.0 <= stats["recall"] <= 1.0
     assert summary["unscored"] == [
         {
-            "question_id": "Q17",
+            "question_id": "Q19",
             "category": summary["unscored"][0]["category"],
             "status": "not_planted",
             "note": summary["unscored"][0]["note"],
