@@ -14,6 +14,7 @@ dependencies = [
     "pydantic>=2.13.5",
     "pyyaml>=6.0.2",
     "qdrant-client>=1.16.0",
+    "scipy>=1.16.0",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -66,7 +67,7 @@ module = "pyarrow.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = ["litellm.*", "qdrant_client.*"]
+module = ["litellm.*", "qdrant_client.*", "scipy.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
