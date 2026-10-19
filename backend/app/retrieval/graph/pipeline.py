@@ -147,12 +147,12 @@ class GraphRagPipeline:
         # concepts' labels and synonyms; A and B use the raw question.
         search_text = question
         if self.expansion is not None:
-            search_text = self.expansion.expand(question, resolved)
-            added_terms = (
-                search_text[len(question) + 1 :].split("; ") if search_text != question else []
-            )
+            expansion = self.expansion.expand(question, resolved)
+            search_text = expansion.text
             self.emitter.emit(
-                GRAPH_QUERY_EXPANDED, added_terms=len(added_terms), expanded_length=len(search_text)
+                GRAPH_QUERY_EXPANDED,
+                added_terms=len(expansion.added_terms),
+                expanded_length=len(search_text),
             )
         seeds = [entity.entity_id for entity in resolved]
         if not seeds:

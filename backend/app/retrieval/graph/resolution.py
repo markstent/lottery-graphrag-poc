@@ -91,31 +91,25 @@ class IdEntityResolver:
                 continue
             resolved.append(ResolvedEntity(token, found[0], token, "id", 1.0))
             seen.add(token)
-        for alias, market_id in self._market_matches(question):
-            if market_id in seen:
+        lower = question.lower()
+        for alias, market_id in self._market_aliases.items():
+            if market_id in seen or not re.search(rf"\b{re.escape(alias)}\b", lower):
                 continue
             resolved.append(ResolvedEntity(market_id, "Market", alias, "market_alias", 0.9))
             seen.add(market_id)
         return resolved
 
-    def market(self, question: str) -> str | None:
-        """The first market the question names by alias, or None."""
-        return next((market_id for _alias, market_id in self._market_matches(question)), None)
-
-    def _market_matches(self, question: str) -> Iterator[tuple[str, str]]:
-        lower = question.lower()
-        for alias, market_id in self._market_aliases.items():
-            if re.search(rf"\b{re.escape(alias)}\b", lower):
-                yield alias, market_id
-
 
 class TermEntityResolver:
     """Pipeline C: the B resolver plus ontology terms and their bound local codes.
 
-    Each term match yields its concept. A local display name also yields the
-    code it names; a label or synonym yields the concept's codes in the
-    market the question names (`market_hint`), if any. Codes without a graph
-    node are skipped. Duplicates are removed in first-seen order.
+    Each term match yields its concept. When the matched text is the local
+    display name of some of the concept's codes, it also yields those codes,
+    whatever the term's source (a local name equal to a label, such as
+    "Zahlenziehung", arrives as a label term). Otherwise it yields the
+    concept's codes in the first market the id resolver found, if any.
+    Codes without a graph node are skipped. Duplicates are removed in
+    first-seen order.
     """
 
     def __init__(
@@ -124,13 +118,11 @@ class TermEntityResolver:
         inner: IdEntityResolver,
         matcher: TermMatcher,
         bindings: Ontology,
-        market_hint: Callable[[str], str | None],
         local_names: Mapping[tuple[str, str], Sequence[str]],
     ) -> None:
         self._inner = inner
         self._matcher = matcher
         self._ontology = bindings
-        self._market_hint = market_hint
         self._local_names = {
             key: {name.casefold().strip() for name in names} for key, names in local_names.items()
         }
@@ -138,7 +130,7 @@ class TermEntityResolver:
     def resolve(self, question: str) -> list[ResolvedEntity]:
         resolved = self._inner.resolve(question)
         seen = {entity.entity_id for entity in resolved}
-        market = self._market_hint(question)
+        market = next((e.entity_id for e in resolved if e.origin == "market_alias"), None)
         for match in self._matcher.match(question):
             term = match.term
             matched_text = question[match.start : match.end]
@@ -146,7 +138,7 @@ class TermEntityResolver:
                 ResolvedEntity(
                     term.concept_id, CONCEPT_LABEL, matched_text, "term", TERM_CONFIDENCE
                 ),
-                *self._bound_codes(term.concept_id, term.text, term.source, market, matched_text),
+                *self._bound_codes(term.concept_id, term.text, market, matched_text),
             ]
             for entity in candidates:
                 if entity.entity_id not in seen:
@@ -155,14 +147,12 @@ class TermEntityResolver:
         return resolved
 
     def _bound_codes(
-        self, concept_id: str, text: str, source: str, market: str | None, matched_text: str
+        self, concept_id: str, text: str, market: str | None, matched_text: str
     ) -> Iterator[ResolvedEntity]:
-        for binding in self._ontology.codes_for(concept_id):
-            if source == "local_name":
-                if text not in self._local_names.get((binding.kind, binding.code), ()):
-                    continue
-            elif market is None or binding.market_id != market:
-                continue
+        bindings = self._ontology.codes_for(concept_id)
+        named = [b for b in bindings if text in self._local_names.get((b.kind, b.code), ())]
+        chosen = named or [b for b in bindings if market is not None and b.market_id == market]
+        for binding in chosen:
             found = self._inner.lookup_node(binding.code)
             if found is None or not found[1]:
                 continue
@@ -186,32 +176,40 @@ class StaticEntityResolver:
         return list(self._entities)
 
 
+@dataclass(frozen=True, slots=True)
+class QueryExpansionResult:
+    """The search text (question plus added terms) and the terms added, in order."""
+
+    text: str
+    added_terms: tuple[str, ...]
+
+
 class QueryExpansion:
     """Appends the resolved concepts' labels and synonyms to the question (pipeline C).
 
     The added terms follow the question on a new line, joined by "; ": the
     label in each market language (English first: the canonical name), then
-    the synonyms. A term is added once, and not at all when the question
-    already contains it as a whole word or it contains an earlier added term
-    ("Rubbellose" adds nothing to "Rubbellos").
+    the synonyms. Each distinct term (casefold) is added once, and not at all
+    when the question already contains it as a whole word.
     """
 
     def __init__(self, ontology: Ontology) -> None:
         self._ontology = ontology
 
-    def expand(self, question: str, resolved: Sequence[ResolvedEntity]) -> str:
+    def expand(self, question: str, resolved: Sequence[ResolvedEntity]) -> QueryExpansionResult:
         folded_question = question.casefold()
         added: dict[str, str] = {}
         for concept_id in _concepts_of(resolved):
             for text in self._terms_of(concept_id):
                 folded = text.casefold()
-                covered = any(earlier in folded for earlier in added)
-                if covered or re.search(rf"(?<!\w){re.escape(folded)}(?!\w)", folded_question):
+                if folded in added or re.search(
+                    rf"(?<!\w){re.escape(folded)}(?!\w)", folded_question
+                ):
                     continue
                 added[folded] = text
-        if not added:
-            return question
-        return f"{question}\n{'; '.join(added.values())}"
+        terms = tuple(added.values())
+        text = f"{question}\n{'; '.join(terms)}" if terms else question
+        return QueryExpansionResult(text=text, added_terms=terms)
 
     def _terms_of(self, concept_id: str) -> Iterator[str]:
         concept = self._ontology.concept(concept_id)

@@ -8,6 +8,8 @@ by semantic relevance and capped per concept.
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from app.config import DEFAULT_RANKING_WEIGHTS, GraphRagSettings
 from app.datasets.taxonomies import local_name_variants
@@ -16,6 +18,7 @@ from app.ontology.terms import TermMatcher, build_term_table
 from app.retrieval.graph.resolution import (
     IdEntityResolver,
     QueryExpansion,
+    QueryExpansionResult,
     ResolvedEntity,
     TermEntityResolver,
 )
@@ -54,7 +57,6 @@ def c_resolver() -> TermEntityResolver:
         inner=inner,
         matcher=TermMatcher(build_term_table(ontology, local_names)),
         bindings=ontology,
-        market_hint=inner.market,
         local_names=local_names,
     )
 
@@ -108,9 +110,18 @@ def test_c_resolver_origins_and_confidences() -> None:
     assert by_id["MKT_AT"].origin == "market_alias"
 
 
-def test_c_resolver_without_market_binds_no_code_for_a_label_term() -> None:
-    out = c_resolver().resolve("How does the Zahlenziehung work?")
+def test_c_resolver_without_market_binds_no_code_for_a_pure_label_or_synonym() -> None:
+    # "nationale Ziehung" is a German synonym and no code's local name.
+    out = c_resolver().resolve("Wie läuft die nationale Ziehung?")
     assert [e.entity_id for e in out] == ["CONCEPT_NATIONAL_DRAW"]
+
+
+def test_c_resolver_binds_a_local_name_that_is_also_a_label_without_a_market() -> None:
+    # "Zahlenziehung" is both the German label (term source "label") and the
+    # Austrian family's display name: the family binds with no market named.
+    out = c_resolver().resolve("Wie läuft die Zahlenziehung?")
+    assert [e.entity_id for e in out] == ["CONCEPT_NATIONAL_DRAW", "FAM_AT_ZAHLENZIEHUNG"]
+    assert out[1].via_concept == "CONCEPT_NATIONAL_DRAW"
 
 
 def test_c_resolver_binds_the_code_a_local_name_came_from() -> None:
@@ -127,7 +138,7 @@ def test_c_resolver_binds_the_code_a_local_name_came_from() -> None:
 
 def test_c_resolver_skips_bindings_without_a_graph_node() -> None:
     # MKT_GR's national draw family is absent from the modelled graph nodes.
-    ids = [e.entity_id for e in c_resolver().resolve("Zahlenziehung in Greece")]
+    ids = [e.entity_id for e in c_resolver().resolve("nationale Ziehung in Greece")]
     assert ids == ["MKT_GR", "CONCEPT_NATIONAL_DRAW"]
 
 
@@ -139,24 +150,24 @@ def test_c_resolver_deduplicates_in_stable_order() -> None:
 
 
 def test_query_expansion_adds_labels_once() -> None:
-    text = QueryExpansion(load_ontology()).expand(
-        "Στιγμιαίο Λαχείο", [concept("CONCEPT_RETAIL_INSTANT")]
+    text = (
+        QueryExpansion(load_ontology())
+        .expand("Στιγμιαίο Λαχείο", [concept("CONCEPT_RETAIL_INSTANT")])
+        .text
     )
-    assert text.count("Rubbellos") == 1 and "Scratchcard" in text
+    assert len(re.findall(r"(?<!\w)Rubbellos(?!\w)", text)) == 1 and "Scratchcard" in text
 
 
 def test_query_expansion_format_and_whole_word_skip() -> None:
-    text = QueryExpansion(load_ontology()).expand(
+    result = QueryExpansion(load_ontology()).expand(
         "Scratchcard sales", [concept("CONCEPT_RETAIL_INSTANT")]
     )
-    question, added = text.split("\n")
-    assert question == "Scratchcard sales"
-    terms = added.split("; ")
-    assert terms[:3] == ["Στιγμιαίο Λαχείο", "Rubbellos", "Stírací los"]
-    assert "Scratchcard" not in terms
-    assert "scratch card" in terms and "ξυστό" in terms
-    # Terms containing an earlier term add nothing: "Rubbellose", "stírací losy".
-    assert "Rubbellose" not in terms and "stírací losy" not in terms
+    terms = result.added_terms
+    assert result.text == f"Scratchcard sales\n{'; '.join(terms)}"
+    assert terms[:3] == ("Στιγμιαίο Λαχείο", "Rubbellos", "Stírací los")
+    # Skipped: in the question as a whole word, or a casefold duplicate ("stírací los").
+    assert "Scratchcard" not in terms and "stírací los" not in terms
+    assert {"scratch card", "ξυστό", "ξυστό λαχείο", "Rubbellose", "stírací losy"} <= set(terms)
     assert len({term.casefold() for term in terms}) == len(terms)
 
 
@@ -169,8 +180,8 @@ def test_query_expansion_uses_the_concept_of_a_binding() -> None:
         confidence=0.7,
         via_concept="CONCEPT_RETAIL_INSTANT",
     )
-    text = QueryExpansion(load_ontology()).expand("Rubbellos", [binding])
-    assert "Scratchcard" in text
+    result = QueryExpansion(load_ontology()).expand("Rubbellos", [binding])
+    assert "Scratchcard" in result.added_terms
 
 
 def test_query_expansion_ignores_ids_and_markets() -> None:
@@ -181,9 +192,8 @@ def test_query_expansion_ignores_ids_and_markets() -> None:
         origin="market_alias",
         confidence=0.9,
     )
-    assert QueryExpansion(load_ontology()).expand("News from Austria", [market]) == (
-        "News from Austria"
-    )
+    result = QueryExpansion(load_ontology()).expand("News from Austria", [market])
+    assert result == QueryExpansionResult(text="News from Austria", added_terms=())
 
 
 def _expansion_settings(**overrides: object) -> GraphRagSettings:
@@ -268,8 +278,6 @@ def test_market_alias_match_is_whole_word() -> None:
     resolver = IdEntityResolver(lookup_node=_lookup, market_aliases={"AT": "MKT_AT"})
     assert resolver.resolve("What happened at the draw?") != []
     assert resolver.resolve("A nationwide flatline") == []
-    assert resolver.market("What happened at the draw?") == "MKT_AT"
-    assert resolver.market("A nationwide flatline") is None
 
 
 def test_concept_terms_do_not_split_labels_into_words() -> None:

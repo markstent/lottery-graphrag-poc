@@ -110,7 +110,6 @@ def build_resolvers(
         inner=ids,
         matcher=TermMatcher(build_term_table(ontology, local_names)),
         bindings=ontology,
-        market_hint=ids.market,
         local_names=local_names,
     )
     return ids, terms

@@ -43,10 +43,11 @@ Resolution is deterministic and model-free (`app/retrieval/graph/resolution.py`)
   It never produces concepts.
 - Pipeline C uses `TermEntityResolver`, which runs the same id resolver first and then the ontology term matcher (`app/ontology/terms.py`) over every concept label, synonym and local display name in the four market languages.
   Each matched term yields its concept (`origin="term"`, confidence 0.8).
-  A local display name also yields the local code it names; a label or synonym yields the concept's codes in the market the question names, if any (`origin="concept_binding"`, `via_concept` set, confidence 0.7).
+  When the matched text is the local display name of some of the concept's codes (whatever the term's source: "Zahlenziehung" is both a German label and an Austrian family name), it also yields those codes; otherwise it yields the concept's codes in the first market the id resolver found, if any (`origin="concept_binding"`, `via_concept` set, confidence 0.7).
   Codes without a graph node are skipped; duplicates are removed in first-seen order.
 - Pipeline C then expands the question (`QueryExpansion`): the labels (English first, the canonical name) and synonyms of every resolved concept are appended on a new line, joined by `; `.
-  A term is added once, and not at all when the question already contains it as a whole word or it contains an earlier added term.
+  Each distinct term is added once, and not at all when the question already contains it as a whole word.
+  `expand` returns a `QueryExpansionResult` with the search `text` and the `added_terms`; the pipeline reports their count in `graph.query.expanded`.
   The expanded text drives C's document-channel embeddings (dense and sparse), the fallback seed search and the semantic ranking of graph nodes.
   The reranker and the generator always see the raw question, and pipelines A and B use the raw question everywhere.
 

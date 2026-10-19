@@ -363,11 +363,14 @@ class TestQueryExpansionInPipeline:
         expansion = QueryExpansion(load_ontology())
         expanded = expansion.expand(self.QUESTION, self._concept_entities())
         pipeline, queries = self._run(expansion)
-        assert expanded.startswith(f"{self.QUESTION}\n")
-        assert queries == [expanded]
+        assert expanded.added_terms
+        assert expanded.text.startswith(f"{self.QUESTION}\n")
+        assert queries == [expanded.text]
         event = next(e for e in pipeline.events if e.event_type == GRAPH_QUERY_EXPANDED)
-        added = expanded.split("\n", 1)[1].split("; ")
-        assert event.payload == {"added_terms": len(added), "expanded_length": len(expanded)}
+        assert event.payload == {
+            "added_terms": len(expanded.added_terms),
+            "expanded_length": len(expanded.text),
+        }
 
     def test_pipelines_without_expansion_search_with_the_raw_question(self) -> None:
         pipeline, queries = self._run(None)
