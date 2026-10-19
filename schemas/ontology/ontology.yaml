@@ -24,8 +24,8 @@ concepts:
   - id: CONCEPT_NATIONAL_DRAW
     parent: CONCEPT_DRAW_GAME
     type: Product
-    labels: {en: National Draw, el: Αριθμολαχείο, de: Zahlenlotterie, cs: Číselná loterie}
-    synonyms: {en: [main draw], el: [εθνική κλήρωση, κύρια κλήρωση], de: [nationale Ziehung, Lotto], cs: [národní loterie, hlavní losování]}
+    labels: {en: National Draw, el: Αριθμολαχείο, de: Zahlenziehung, cs: Číselná loterie}
+    synonyms: {en: [main draw], el: [εθνική κλήρωση, κύρια κλήρωση], de: [nationale Ziehung, Lotto, Zahlenlotterie], cs: [národní loterie, hlavní losování]}
     definition: The flagship number draw run by a single market for its own players.
   - id: CONCEPT_MULTINATIONAL_JACKPOT
     parent: CONCEPT_DRAW_GAME
@@ -60,14 +60,14 @@ concepts:
   - id: CONCEPT_RETAIL_INSTANT
     parent: CONCEPT_INSTANT_PRODUCT
     type: Product
-    labels: {en: Scratchcard, el: Ξυστό, de: Rubbellos, cs: Stírací los}
+    labels: {en: Scratchcard, el: Στιγμιαίο Λαχείο, de: Rubbellos, cs: Stírací los}
     synonyms: {en: [scratch card, scratch ticket, retail instant], el: [ξυστό, ξυστό λαχείο, ξυστά], de: [Rubbellose, Papierlos], cs: [stírací los, stírací losy]}
     definition: A printed instant ticket sold in retail outlets and scratched to reveal the result.
   - id: CONCEPT_DIGITAL_INSTANT
     parent: CONCEPT_INSTANT_PRODUCT
     type: Product
-    labels: {en: Online Instant, el: Ψηφιακό Ξυστό, de: Online-Rubbellos, cs: Online stírací los}
-    synonyms: {en: [digital scratchcard, e-instant], el: [ηλεκτρονικό ξυστό, διαδικτυακό ξυστό], de: [digitales Rubbellos, E-Sofortspiel], cs: [elektronický stírací los, digitální los]}
+    labels: {en: Online Instant, el: Ψηφιακό Στιγμιαίο, de: Online-Rubbellos, cs: Online stírací los}
+    synonyms: {en: [digital scratchcard, e-instant], el: [ψηφιακό ξυστό, ηλεκτρονικό ξυστό, διαδικτυακό ξυστό], de: [digitales Rubbellos, E-Sofortspiel], cs: [elektronický stírací los, digitální los]}
     definition: An instant game played on the web or in the app with an animated reveal.
   - id: CONCEPT_ADD_ON_PRODUCT
     parent: CONCEPT_LOTTERY_PRODUCT
@@ -283,9 +283,9 @@ bindings:
   - {kind: family, code: FAM_GR_ARITHMOLACHEIO, market: MKT_GR, concept: CONCEPT_NATIONAL_DRAW}
   - {kind: family, code: FAM_GR_POLYETHNIKO_TZAKPOT, market: MKT_GR, concept: CONCEPT_MULTINATIONAL_JACKPOT}
   - {kind: family, code: FAM_GR_SYCHNES_KLIROSEIS, market: MKT_GR, concept: CONCEPT_HIGH_FREQUENCY_GAME}
-  - {kind: family, code: FAM_GR_XYSTO, market: MKT_GR, concept: CONCEPT_RETAIL_INSTANT}
-  - {kind: family, code: FAM_GR_PSIFIAKO_XYSTO, market: MKT_GR, concept: CONCEPT_DIGITAL_INSTANT}
-  - {kind: family, code: FAM_AT_ZAHLENLOTTERIE, market: MKT_AT, concept: CONCEPT_NATIONAL_DRAW}
+  - {kind: family, code: FAM_GR_STIGMIAIO, market: MKT_GR, concept: CONCEPT_RETAIL_INSTANT}
+  - {kind: family, code: FAM_GR_PSIFIAKO_STIGMIAIO, market: MKT_GR, concept: CONCEPT_DIGITAL_INSTANT}
+  - {kind: family, code: FAM_AT_ZAHLENZIEHUNG, market: MKT_AT, concept: CONCEPT_NATIONAL_DRAW}
   - {kind: family, code: FAM_AT_LAENDER_JACKPOT, market: MKT_AT, concept: CONCEPT_MULTINATIONAL_JACKPOT}
   - {kind: family, code: FAM_AT_SCHNELLZIEHUNG, market: MKT_AT, concept: CONCEPT_HIGH_FREQUENCY_GAME}
   - {kind: family, code: FAM_AT_ZUSATZSPIEL, market: MKT_AT, concept: CONCEPT_ADD_ON_PRODUCT}

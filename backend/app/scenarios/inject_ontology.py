@@ -87,7 +87,7 @@ SCN010_REVIEW_HOUR = 9
 # SCN-011: the family bound to the retail instant meaning, per market code.
 SCN011_RETAIL_INSTANT_FAMILY = {
     "UK": "FAM_UK_SCRATCHCARD",
-    "GR": "FAM_GR_XYSTO",
+    "GR": "FAM_GR_STIGMIAIO",
     "AT": "FAM_AT_RUBBELLOS",
     "CZ": "FAM_CZ_STIRACI_LOS",
 }

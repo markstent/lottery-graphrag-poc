@@ -16,7 +16,7 @@ def test_decimal_prices_and_versions_survive() -> None:
 
 def test_greek_and_czech_sentences_split_on_boundaries() -> None:
     body = (
-        "Το Ξυστό πωλείται στα πρακτορεία. Η τιμή είναι 1,50 EUR. "
+        "Το Στιγμιαίο Λαχείο πωλείται στα πρακτορεία. Η τιμή είναι 1,50 EUR. "
         "Číselná loterie se losuje dvakrát týdně."
     )
     assert len(split_sentences(body)) == 3

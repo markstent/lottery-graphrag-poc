@@ -211,8 +211,8 @@ git commit -m "feat(datasets): documented distribution constants and v2 profile 
   - helpers: `segments_for(market_code: str, kind: str) -> tuple[str, str, str]` returning the three segment ids of a kind in canonical order (high, mid, low for VALUE; engaged, casual, dormant for ENGAGEMENT); `incident_type_for(market_id: str | None, canonical: str) -> str` where `canonical` is one of `PAYMENT, APPLICATION, DRAW, IDENTITY, RETAIL`; `support_category_for(market_id: str, canonical: str) -> str` where canonical is one of `PAYMENT, ACCOUNT, GAME, TECHNICAL`; `MARKET_LANGUAGE: dict[str, str]` (`MKT_UK: en, MKT_GR: el, MKT_AT: de, MKT_CZ: cs`).
 - Exact family ids and local names (language is the market language):
   - UK: `FAM_UK_NATIONAL_DRAW` "National Draw", `FAM_UK_ANNUITY` "Annuity Draw", `FAM_UK_RAPID_NUMBERS` "Rapid Numbers", `FAM_UK_FIXED_PRIZE` "Fixed Prize Raffle", `FAM_UK_SCRATCHCARD` "Scratchcard", `FAM_UK_ONLINE_INSTANT` "Online Instant"
-  - GR: `FAM_GR_ARITHMOLACHEIO` "Αριθμολαχείο", `FAM_GR_POLYETHNIKO_TZAKPOT` "Πολυεθνικό Τζάκποτ", `FAM_GR_SYCHNES_KLIROSEIS` "Συχνές Κληρώσεις", `FAM_GR_XYSTO` "Ξυστό", `FAM_GR_PSIFIAKO_XYSTO` "Ψηφιακό Ξυστό"
-  - AT: `FAM_AT_ZAHLENLOTTERIE` "Zahlenlotterie", `FAM_AT_LAENDER_JACKPOT` "Länderübergreifender Jackpot", `FAM_AT_SCHNELLZIEHUNG` "Schnellziehung", `FAM_AT_ZUSATZSPIEL` "Zusatzspiel", `FAM_AT_RUBBELLOS` "Rubbellos"
+  - GR: `FAM_GR_ARITHMOLACHEIO` "Αριθμολαχείο", `FAM_GR_POLYETHNIKO_TZAKPOT` "Πολυεθνικό Τζάκποτ", `FAM_GR_SYCHNES_KLIROSEIS` "Συχνές Κληρώσεις", `FAM_GR_STIGMIAIO` "Στιγμιαίο Λαχείο", `FAM_GR_PSIFIAKO_STIGMIAIO` "Ψηφιακό Στιγμιαίο"
+  - AT: `FAM_AT_ZAHLENZIEHUNG` "Zahlenziehung", `FAM_AT_LAENDER_JACKPOT` "Länderübergreifender Jackpot", `FAM_AT_SCHNELLZIEHUNG` "Schnellziehung", `FAM_AT_ZUSATZSPIEL` "Zusatzspiel", `FAM_AT_RUBBELLOS` "Rubbellos"
   - CZ: `FAM_CZ_CISELNA_LOTERIE` "Číselná loterie", `FAM_CZ_MEZINARODNI_JACKPOT` "Mezinárodní jackpot", `FAM_CZ_RYCHLA_CISLA` "Rychlá čísla", `FAM_CZ_STIRACI_LOS` "Stírací los"
 - Exact category ids: UK `CAT_UK_DRAW` "Draw games", `CAT_UK_NUMBERS` "Number games", `CAT_UK_INSTANT` "Instant games"; GR `CAT_GR_KLIROSEIS` "Κληρώσεις", `CAT_GR_ARITHMOPAICHNIDIA` "Αριθμοπαιχνίδια", `CAT_GR_STIGMIAIA` "Στιγμιαία"; AT `CAT_AT_ZIEHUNG` "Ziehungsspiele", `CAT_AT_ZAHLEN` "Zahlenspiele", `CAT_AT_SOFORT` "Sofortspiele", `CAT_AT_ZUSATZ` "Zusatzprodukte"; CZ `CAT_CZ_LOSOVANI` "Losované hry", `CAT_CZ_CISLA` "Číselné hry", `CAT_CZ_OKAMZITE` "Okamžité výhry".
 - Exact mechanic ids (`mechanic_code` is the local short code, description local language): UK `MECH_UK_NUMBER_MATCH`, `MECH_UK_QUICK_PICK`, `MECH_UK_SCRATCH`, `MECH_UK_INSTANT_ROUNDS`, `MECH_UK_SECOND_CHANCE`; GR `MECH_GR_EPILOGI_ARITHMON`, `MECH_GR_TYCHAIA_EPILOGI`, `MECH_GR_XYSIMO`, `MECH_GR_AMESOI_GYROI`; AT `MECH_AT_ZAHLENWAHL`, `MECH_AT_SCHNELLWAHL`, `MECH_AT_RUBBELN`, `MECH_AT_ZWEITE_CHANCE`; CZ `MECH_CZ_VYBER_CISEL`, `MECH_CZ_NAHODNY_TIP`, `MECH_CZ_STIRANI`.
@@ -403,7 +403,7 @@ def test_decimal_prices_and_versions_survive() -> None:
     assert chunk_text(body) == [body]
 
 def test_greek_and_czech_sentences_split_on_boundaries() -> None:
-    body = "Το Ξυστό πωλείται στα πρακτορεία. Η τιμή είναι 1,50 EUR. Číselná loterie se losuje dvakrát týdně."
+    body = "Το Στιγμιαίο Λαχείο πωλείται στα πρακτορεία. Η τιμή είναι 1,50 EUR. Číselná loterie se losuje dvakrát týdně."
     assert len(split_sentences(body)) == 3
 
 def test_windows_overlap_by_one_sentence() -> None:
@@ -644,7 +644,7 @@ def test_loads_v2_with_hierarchy_and_four_languages() -> None:
 
 def test_equivalent_local_families_share_a_concept() -> None:
     onto = load_ontology()
-    assert onto.concept_for("family", "FAM_GR_ARITHMOLACHEIO") == onto.concept_for("family", "FAM_AT_ZAHLENLOTTERIE") == "CONCEPT_NATIONAL_DRAW"
+    assert onto.concept_for("family", "FAM_GR_ARITHMOLACHEIO") == onto.concept_for("family", "FAM_AT_ZAHLENZIEHUNG") == "CONCEPT_NATIONAL_DRAW"
 
 def test_loader_rejects_unknown_parent(tmp_path) -> None:
     import pytest
@@ -695,9 +695,9 @@ git commit -m "feat(ontology): v2 ontology with hierarchy, four-language labels 
 ```python
 def test_term_matcher_finds_local_and_synonym_terms() -> None:
     onto = load_ontology()
-    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENLOTTERIE"): "Zahlenlotterie"})
+    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENZIEHUNG"): "Zahlenziehung"})
     matcher = TermMatcher(table)
-    hits = {m.term.concept_id for m in matcher.match("Wie läuft die Zahlenlotterie in Österreich?")}
+    hits = {m.term.concept_id for m in matcher.match("Wie läuft die Zahlenziehung in Österreich?")}
     assert "CONCEPT_NATIONAL_DRAW" in hits
 
 def test_term_matcher_is_whole_word_and_non_overlapping() -> None:
@@ -986,7 +986,7 @@ git commit -m "feat(scenarios): plant SCN-001 app release failure and SCN-009 pr
   - truth: `mechanic_concept = "CONCEPT_SYMBOL_REVEAL"`, `segment_concept = "CONCEPT_ENGAGED"`, `per_market: {market: {game_id, mechanic_code, segment_id, document_id, planted_ticket_count}}`, `planted_ids`, `uplift_note`;
   - required evidence: the three game ids and the three document ids.
 - `plant_transferable_campaign(plan)` (SCN-011): source and target markets drawn by `plan.rng` as an ordered pair of distinct markets that both have a retail instant game (the rules below name GR and AT for concreteness):
-  - source campaign: new `CMP` row (id from allocator), objective `OBJ_CROSS_SELL`, promotes the GR retail instant game (`FAM_GR_XYSTO`), window days 100 to 140, budget mid-range; exposures: `signal_count(40, daily_mean("campaign_exposures", "MKT_GR"), 0.5)` rows to GR engaged-segment players with `engaged = True` for 70 percent and conversion to the promoted game for 45 percent of engaged (both far above `distributions` baselines);
+  - source campaign: new `CMP` row (id from allocator), objective `OBJ_CROSS_SELL`, promotes the GR retail instant game (`FAM_GR_STIGMIAIO`), window days 100 to 140, budget mid-range; exposures: `signal_count(40, daily_mean("campaign_exposures", "MKT_GR"), 0.5)` rows to GR engaged-segment players with `engaged = True` for 70 percent and conversion to the promoted game for 45 percent of engaged (both far above `distributions` baselines);
   - a `CAMPAIGN_EVALUATION` document (el) created on day 150 describing the success with the local segment name and local game name (name only);
   - the AT counterpart exists in the base world by construction: the AT retail instant game (`FAM_AT_RUBBELLOS`) and the AT engaged segment; the injector asserts both exist and plants nothing in AT;
   - truth: `source_campaign_id`, `source_game_id`, `source_segment_id`, `target_market = "MKT_AT"`, `target_game_id`, `target_segment_id`, `concept_chain = ["CONCEPT_RETAIL_INSTANT", "CONCEPT_ENGAGED"]`, `planted_ids`, `expected_interpretation` (a recommendation with stated confidence, not certainty);

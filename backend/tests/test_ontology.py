@@ -22,7 +22,7 @@ def test_equivalent_local_families_share_a_concept() -> None:
     onto = load_ontology()
     assert (
         onto.concept_for("family", "FAM_GR_ARITHMOLACHEIO")
-        == onto.concept_for("family", "FAM_AT_ZAHLENLOTTERIE")
+        == onto.concept_for("family", "FAM_AT_ZAHLENZIEHUNG")
         == "CONCEPT_NATIONAL_DRAW"
     )
 
@@ -125,9 +125,9 @@ def test_ontology_error_is_a_value_error() -> None:
 
 def test_term_matcher_finds_local_and_synonym_terms() -> None:
     onto = load_ontology()
-    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENLOTTERIE"): ("Zahlenlotterie",)})
+    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENZIEHUNG"): ("Zahlenziehung",)})
     matcher = TermMatcher(table)
-    hits = {m.term.concept_id for m in matcher.match("Wie läuft die Zahlenlotterie in Österreich?")}
+    hits = {m.term.concept_id for m in matcher.match("Wie läuft die Zahlenziehung in Österreich?")}
     assert "CONCEPT_NATIONAL_DRAW" in hits
 
 
@@ -168,7 +168,7 @@ def test_term_table_is_lowercase_deduplicated_and_sorted() -> None:
     table = build_term_table(
         load_ontology(),
         {
-            ("family", "FAM_AT_ZAHLENLOTTERIE"): (" Zahlenlotterie ",),
+            ("family", "FAM_AT_ZAHLENZIEHUNG"): (" Zahlenziehung ",),
             ("family", "FAM_GR_ARITHMOLACHEIO"): (" Arithmolacheio Plus ",),
         },
     )

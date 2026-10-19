@@ -105,7 +105,7 @@ Each market gets its own reference data, the way four real operators on four sou
 
 - Market-local codes and display names for game families, game categories, mechanics, incident types, support categories, channels and player segments.
   Channel codes stay shared across markets (D-013); every other taxonomy is market-local.
-  Example: the national draw family is `FAM_UK_NATIONAL_DRAW` "National Draw" in the UK, `FAM_GR_ARITHMOLACHEIO` "Αριθμολαχείο" in Greece, `FAM_AT_ZAHLENLOTTERIE` "Zahlenlotterie" in Austria, `FAM_CZ_CISELNA_LOTERIE` "Číselná loterie" in Czechia.
+  Example: the national draw family is `FAM_UK_NATIONAL_DRAW` "National Draw" in the UK, `FAM_GR_ARITHMOLACHEIO` "Αριθμολαχείο" in Greece, `FAM_AT_ZAHLENZIEHUNG` "Zahlenziehung" in Austria, `FAM_CZ_CISELNA_LOTERIE` "Číselná loterie" in Czechia.
   Within a market, structural edges (`BELONGS_TO`, `INSTANCE_OF` category, `RELATED_TO` platform) work exactly as today.
   Across markets, nothing in the source layer links equivalent things.
 - Documents mention games, incidents and segments by local display name at least as often as by id, in the market's language for market documents (keep the existing 30 percent English share) and in English for corporate documents.
@@ -357,7 +357,7 @@ Four tabs, all driven by the API.
 
 - Warehouse: an entity-relationship map grouped by source system with live row counts; click a table for a paginated sample grid; click a row to follow it into the graph.
 - Graph: a meta-graph of labels sized by count and typed edges labelled with counts; toggle between the retrieval allow-list and the full schema; click a label for properties and a sample node.
-- Ontology: a tree on the left, a concept card in the centre (definition, four language labels, synonyms, allowed relationships), bound instances by market on the right, so "Αριθμολαχείο equals Zahlenlotterie equals National Draw" is visible.
+- Ontology: a tree on the left, a concept card in the centre (definition, four language labels, synonyms, allowed relationships), bound instances by market on the right, so "Αριθμολαχείο equals Zahlenziehung equals National Draw" is visible.
 - Scenarios: the eight planted stories as cards with planted status and counts, linking to the Help narrative and to the questions that test them.
 
 ### 7.7 Help
