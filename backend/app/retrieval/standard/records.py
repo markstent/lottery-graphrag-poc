@@ -25,6 +25,7 @@ from typing import Any
 import duckdb
 
 from app.datasets.schema import TABLE_PROVENANCE, TABLE_SCHEMAS
+from app.graph.mapping import game_available_via
 from app.retrieval.standard.corpus import CorpusChunk
 
 Row = dict[str, Any]
@@ -49,9 +50,7 @@ _GAME_NAMES = "string_agg(g.game_name || ' (' || g.game_id || ')', ', ' ORDER BY
 _QUERIES: dict[str, str] = {
     "games": """
         SELECT g.game_id AS record_id, g.*, m.market_name, f.name AS family_name,
-            c.name AS category_name, mech.mechanic_names,
-            NULLIF(concat_ws(', ', CASE WHEN g.digital_enabled THEN 'APP, WEB' END,
-                CASE WHEN g.retail_enabled THEN 'RETAIL' END), '') AS channels
+            c.name AS category_name, mech.mechanic_names
         FROM games g
         JOIN markets m ON m.market_id = g.market_id
         JOIN game_families f ON f.family_id = g.game_family_id
@@ -190,6 +189,10 @@ def _in(r: Row) -> str:
     return f" in {r['market_name']}" if r["market_name"] is not None else ""
 
 
+def _channels(r: Row) -> str | None:
+    return ", ".join(game_available_via(r)) or None
+
+
 def _players(ids: list[str]) -> str:
     listed = ", ".join(ids[:MAX_LISTED_PLAYERS])
     extra = len(ids) - MAX_LISTED_PLAYERS
@@ -202,7 +205,7 @@ SERIALISERS: dict[str, Callable[[Row], str]] = {
         f"Ticket price {r['ticket_price']} {r['currency_code']}.",
         f"Category {r['category_name']}.",
         _opt(r["mechanic_names"], f"Mechanics: {r['mechanic_names']}."),
-        _opt(r["channels"], f"Channels: {r['channels']}."),
+        _opt(_channels(r), f"Channels: {_channels(r)}."),
         f"Launched {r['launch_date']}.",
         _opt(r["retirement_date"], f"Retired {r['retirement_date']}."),
         f"Status {r['status']}.",

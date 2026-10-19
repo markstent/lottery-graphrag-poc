@@ -5,11 +5,13 @@ from __future__ import annotations
 from collections import Counter
 from pathlib import Path
 
+import duckdb
 import pytest
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
+from app.retrieval.graph.source_lookup import SNIPPET_COLUMNS
 from app.retrieval.standard.records import (
     SERIALISERS,
     RecordBlock,
@@ -83,6 +85,37 @@ def test_record_block_to_corpus_chunk_is_marked_as_record(blocks: list[RecordBlo
     assert payload["kind"] == "record" and payload["record_table"] == blocks[0].table
     evidence = chunk.to_evidence(similarity=0.5, rank=1)
     assert evidence.kind == "record" and evidence.record_table == blocks[0].table
+
+
+def test_incident_block_states_every_graph_snippet_fact(
+    world_dir: Path, blocks: list[RecordBlock]
+) -> None:
+    """Pipeline A's incident block and B/C's incident snippet cannot drift apart.
+
+    Every snippet column's value appears in the block; the market is stated by
+    its name in the text and by its id on the block.
+    """
+    columns = SNIPPET_COLUMNS["incidents"]
+    selected = ", ".join(f"i.{column}" for column in columns)
+    connection = duckdb.connect()
+    try:
+        cursor = connection.execute(
+            f"SELECT {selected}, m.market_name FROM read_parquet(?) i"
+            " JOIN read_parquet(?) m ON m.market_id = i.market_id"
+            " WHERE i.root_cause_code IS NOT NULL AND i.resolved_at IS NOT NULL"
+            " ORDER BY i.incident_id LIMIT 1",
+            [str(world_dir / "incidents.parquet"), str(world_dir / "markets.parquet")],
+        )
+        row = dict(zip([*columns, "market_name"], cursor.fetchone() or (), strict=True))
+    finally:
+        connection.close()
+    incident_id = row.pop("incident_id")
+    block = next(b for b in blocks if b.record_id == incident_id)
+    assert block.market_id == row.pop("market_id")
+    for column in ("started_at", "resolved_at"):
+        row[column] = row[column].replace(microsecond=0).isoformat()
+    for column, value in row.items():
+        assert str(value) in block.text, column
 
 
 def test_every_block_ends_with_provenance(blocks: list[RecordBlock]) -> None:

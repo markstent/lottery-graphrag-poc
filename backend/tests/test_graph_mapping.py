@@ -231,6 +231,7 @@ def test_node_rows_carry_validity_and_source_timestamp(
     assert "valid_to" not in game or game["valid_to"] == game["retirement_date"]
     incident = tiny_nodes["Incident"][0]
     assert incident["valid_from"] == incident["started_at"]
+    assert all("valid_to" not in row for row in tiny_nodes["Incident"])
     assert incident["source_timestamp"] == incident["started_at"]
     document = tiny_nodes["Document"][0]
     assert document["source_timestamp"] == document["created_at"]

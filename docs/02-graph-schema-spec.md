@@ -29,7 +29,8 @@ Pipeline B traverses the allow-list minus those three, which is 19 types (D-017)
 Every node carries `source_table` and `source_record_id`.
 `source_timestamp` is the first present of `created_at`, `started_at`, `opened_at`, `released_at`, `registration_date`, `first_seen_at` and `start_at` on the source row.
 Time-bounded entities also carry `valid_from`: PlatformVersion, AppVersion, Game, Campaign, Experiment, Incident and Document.
-All of these except AppVersion also carry `valid_to`; an app version is open-ended.
+All of these except AppVersion and Incident also carry `valid_to`; an app version is open-ended.
+An Incident has no `valid_to` because its `resolved_at` ends the outage, not the validity of the incident record, which stays a true historical fact.
 Null values are omitted from the node.
 The retrieval temporal-validity score reads these properties.
 

@@ -47,6 +47,7 @@ SNIPPET_COLUMNS: dict[str, tuple[str, ...]] = {
         "started_at",
         "resolved_at",
         "summary",
+        "root_cause_code",
     ),
     "platform_versions": ("platform_version_id", "platform_id", "version_label", "released_at"),
     "app_versions": ("app_version_id", "market_id", "version_label", "released_at"),

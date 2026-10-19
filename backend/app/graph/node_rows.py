@@ -380,8 +380,8 @@ def _operational_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]])
                 "severity": row["severity"],
                 "started_at": row["started_at"],
                 "resolved_at": row["resolved_at"],
+                # Resolution ends the outage, not the record's validity: no valid_to.
                 "valid_from": row["started_at"],
-                "valid_to": row["resolved_at"],
                 "summary": row["summary"],
                 "root_cause_code": row["root_cause_code"],
             },
