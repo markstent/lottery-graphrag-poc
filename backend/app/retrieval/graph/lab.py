@@ -22,7 +22,7 @@ from app.ontology.terms import TermMatcher, build_term_table
 from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import EntityResolver, QueryExpansion
-from app.retrieval.graph.source_lookup import SourceLookup, record_texts_of
+from app.retrieval.graph.source_lookup import SourceLookup, record_blocks_of
 from app.retrieval.graph.traversal import NeighbourProvider
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction
@@ -101,8 +101,8 @@ def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
         settings=settings,
         generator=generator,
         corpus=corpus,
-        # Nodes are judged on the record blocks A indexes, byte for byte.
-        source_lookup=SourceLookup(Path(settings.dataset_dir), record_texts_of(corpus.values())),
+        # Nodes are judged and shown on the record blocks A indexes, byte for byte.
+        source_lookup=SourceLookup(Path(settings.dataset_dir), record_blocks_of(corpus.values())),
         embeddings=embeddings,
         sparse=build_sparse_embedder(settings.embedding),
         store=store,

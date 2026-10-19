@@ -41,26 +41,22 @@ def reranker_with(fake: FakeCrossEncoder) -> CrossEncoderReranker:
 
 
 def test_builder_rejects_unknown_model() -> None:
-    settings = make_settings(
-        rerank=RerankSettings(provider="cross_encoder", model="nope", lexical_weight=0.3)
-    )
+    settings = make_settings(rerank=RerankSettings(provider="cross_encoder", model="nope"))
     with pytest.raises(ValueError, match="supported"):
         build_reranker(settings)
 
 
 def test_builder_rejects_unknown_provider() -> None:
-    settings = make_settings(rerank=RerankSettings(provider="nope", model="x", lexical_weight=0.3))
+    settings = make_settings(rerank=RerankSettings(provider="nope", model="x"))
     with pytest.raises(ValueError, match="provider"):
         build_reranker(settings)
 
 
 def test_builder_lexical_provider() -> None:
-    settings = make_settings(
-        rerank=RerankSettings(provider="lexical", model=DEFAULT_MODEL, lexical_weight=0.4)
-    )
+    settings = make_settings(rerank=RerankSettings(provider="lexical", model=DEFAULT_MODEL))
     reranker = build_reranker(settings)
     assert isinstance(reranker, LexicalReranker)
-    assert reranker.model_name == "lexical(w=0.4)"
+    assert reranker.model_name == "lexical-overlap"
 
 
 def test_cross_encoder_scores_in_one_call_and_orders_by_score_then_chunk_id() -> None:
@@ -100,7 +96,6 @@ def test_cross_encoder_ranks_relevant_passage_first() -> None:
             rerank=RerankSettings(
                 provider="cross_encoder",
                 model=DEFAULT_MODEL,
-                lexical_weight=0.3,
             )
         )
     )

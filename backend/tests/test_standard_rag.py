@@ -4,6 +4,7 @@ limits and deterministic fake-model integration."""
 from __future__ import annotations
 
 import dataclasses
+import json
 import re
 from pathlib import Path
 
@@ -44,6 +45,8 @@ from app.retrieval.standard.reranking import LexicalReranker, build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
+from tests.test_graph_rag import event_trace
+
 
 def make_settings(**overrides: object) -> RetrievalSettings:
     values: dict[str, object] = {
@@ -54,7 +57,7 @@ def make_settings(**overrides: object) -> RetrievalSettings:
         ),
         "vector": VectorSettings(url="", collection="test"),
         "context": ContextSettings(budget_tokens=200, dedupe_threshold=0.85),
-        "rerank": RerankSettings(provider="lexical", model="unused", lexical_weight=0.3),
+        "rerank": RerankSettings(provider="lexical", model="unused"),
         "generation": GenerationSettings(
             provider="fake", model="fake-answer-v1", temperature=0.0, api_base=None
         ),
@@ -160,10 +163,7 @@ class TestRetrievalCorrectness:
         assert [chunk.rank for chunk in result.evidence] == [1, 2, 3]
 
     def test_reranker_sets_scores_and_reorders(self) -> None:
-        settings = make_settings(
-            rerank=RerankSettings(provider="lexical", model="unused", lexical_weight=0.5)
-        )
-        pipeline = build_pipeline(make_corpus(), settings)
+        pipeline = build_pipeline(make_corpus())
         result = pipeline.run("checkout regression in Greece")
 
         reranked = [chunk for chunk in result.evidence if chunk.rerank_score is not None]
@@ -171,24 +171,31 @@ class TestRetrievalCorrectness:
         scores = [chunk.rerank_score for chunk in result.evidence]
         assert scores == sorted(scores, reverse=True)
 
-    def test_reranker_blends_incoming_rank_with_overlap(self) -> None:
+    def test_lexical_judge_scores_overlap_only_with_a_chunk_id_tie_break(self) -> None:
         def candidate(chunk_id: str, text: str, rank: int) -> EvidenceChunk:
             return dataclasses.replace(make_corpus()[0], chunk_id=chunk_id, text=text).to_evidence(
                 similarity=0.03, rank=rank
             )
 
-        reranked = LexicalReranker(lexical_weight=0.5).rerank(
+        reranked = LexicalReranker().rerank(
             "checkout regression",
             [
                 candidate("FIRST", "unrelated text", 1),
-                candidate("SECOND", "checkout regression", 2),
+                candidate("THIRD", "checkout only", 2),
+                candidate("SECOND", "checkout regression", 3),
+                candidate("ALSO", "checkout again", 4),
             ],
         )
-        # FIRST: 0.5 * 1/1 + 0.5 * 0 = 0.5; SECOND: 0.5 * 1/2 + 0.5 * 1 = 0.75.
+        # Overlap alone decides; the incoming rank plays no part, and equal
+        # overlap orders by chunk id, so the same text scores the same in
+        # every pipeline and channel.
         assert [(c.chunk_id, c.rerank_score, c.rank) for c in reranked] == [
-            ("SECOND", 0.75, 1),
-            ("FIRST", 0.5, 2),
+            ("SECOND", 1.0, 1),
+            ("ALSO", 0.5, 2),
+            ("THIRD", 0.5, 3),
+            ("FIRST", 0.0, 4),
         ]
+        assert LexicalReranker().model_name == "lexical-overlap"
 
     def test_evidence_and_events_carry_channel_ranks(self) -> None:
         pipeline = build_pipeline(make_corpus())
@@ -214,17 +221,22 @@ class TestRetrievalCorrectness:
         result = pipeline.run("checkout regression in Greece")
         assert all(chunk.rerank_score is not None for chunk in result.evidence)
 
-    def test_deterministic_runs_produce_identical_results(self) -> None:
-        first = build_pipeline(make_corpus()).run("checkout regression in Greece")
-        second = build_pipeline(make_corpus()).run("checkout regression in Greece")
-
-        assert first.answer.text == second.answer.text
-        assert [chunk.chunk_id for chunk in first.evidence] == [
-            chunk.chunk_id for chunk in second.evidence
-        ]
-        assert [chunk.selected for chunk in first.evidence] == [
-            chunk.selected for chunk in second.evidence
-        ]
+    @pytest.mark.parametrize("markets", [None, ["MKT_GR"]])
+    def test_deterministic_runs_produce_identical_results(self, markets: list[str] | None) -> None:
+        """Two runs give the same telemetry, outcomes and answer, event for event."""
+        runs = []
+        for _ in range(2):
+            pipeline = build_pipeline(make_corpus())
+            result = pipeline.run("checkout regression in Greece", markets=markets)
+            runs.append(
+                (
+                    event_trace(pipeline.events),
+                    [(c.chunk_id, c.selected, c.discard_reason) for c in result.evidence],
+                    result.answer.raw_text,
+                )
+            )
+        assert runs[0] == runs[1]
+        assert any(event_type == RAG_EVIDENCE_SELECTED for event_type, _, _ in runs[0][0])
 
     def test_empty_question_rejected(self) -> None:
         pipeline = build_pipeline(make_corpus())
@@ -240,6 +252,14 @@ class TestMarketScope:
         ids = {chunk.chunk_id for chunk in result.evidence}
         assert ids == {"CHNK_PAY_00"}
         assert result.evidence[0].rank == 1
+
+    def test_scoped_run_keeps_shared_market_less_evidence(self) -> None:
+        shared = dataclasses.replace(
+            make_corpus()[0], chunk_id="CHNK_SHARED_00", document_id="DOC_SHARED", market_id=""
+        )
+        pipeline = build_pipeline([*make_corpus(), shared])
+        result = pipeline.run("checkout regression in Greece", markets=["MKT_GR"])
+        assert {chunk.chunk_id for chunk in result.evidence} == {"CHNK_PAY_00", "CHNK_SHARED_00"}
 
     def test_empty_scope_means_all_markets(self) -> None:
         pipeline = build_pipeline(make_corpus())
@@ -478,9 +498,11 @@ class TestHybridVectorStore:
         hits = store.search(dense, sparse, limit=3, kinds=["record"])
         assert {hit.id for hit in hits} == {"c1", "c2"}
         assert all(hit.payload["kind"] == "record" for hit in hits)
-        # Market scope matches only non-empty market ids.
-        scoped = store.search(dense, sparse, limit=3, markets=["MKT_CZ", ""], kinds=["record"])
-        assert [hit.id for hit in scoped] == ["c1"]
+        # A market scope admits the scoped markets plus shared (market-less) evidence.
+        scoped = store.search(dense, sparse, limit=3, markets=["MKT_CZ"], kinds=["record"])
+        assert {hit.id for hit in scoped} == {"c1", "c2"}
+        other = store.search(dense, sparse, limit=3, markets=["MKT_GR"], kinds=["record"])
+        assert [hit.id for hit in other] == ["c2"]
 
     def test_build_index_refuses_dense_only_collection(
         self, monkeypatch: pytest.MonkeyPatch
@@ -496,6 +518,20 @@ class TestHybridVectorStore:
         with pytest.raises(RuntimeError, match="collection lacks a sparse vector"):
             index_module.build_index(make_settings(), rebuild=False)
         assert store.count() == 0
+
+
+def test_build_index_manifest_records_models_and_serialiser_version(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+
+    monkeypatch.setattr(index_module, "load_corpus", lambda _dir: make_corpus())
+    monkeypatch.setattr(index_module, "serialise_records", lambda _dir: [])
+    manifest = index_module.build_index(make_settings(dataset_dir=str(tmp_path)))
+    assert manifest["record_serialiser_version"] == RECORD_SERIALISER_VERSION
+    assert manifest["sparse_model"] == "hashing-sparse-1048576"
+    written = json.loads((tmp_path / "vector-index.json").read_text())
+    assert written == manifest
 
 
 def test_emitter_stamps_event_id_and_utc_timestamp() -> None:

@@ -18,6 +18,7 @@ from app.retrieval.standard.generation import (
     parse_answer,
 )
 
+from tests.test_graph_rag import RecordingReranker
 from tests.test_graph_rag import build_pipeline as build_graph_pipeline
 from tests.test_standard_rag import build_pipeline as build_rag_pipeline
 from tests.test_standard_rag import make_corpus
@@ -162,37 +163,32 @@ class CitingLastBlockGenerator:
     def __init__(self) -> None:
         self.blocks: list[str] = []
 
-    def generate(
-        self,
-        question: str,
-        contexts: list[EvidenceChunk],
-        extra_blocks: list[str] | None = None,
-    ) -> GenerationOutput:
-        self.blocks = [chunk.chunk_id for chunk in contexts] + list(extra_blocks or [])
+    def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
+        self.blocks = [chunk.chunk_id for chunk in contexts]
         answer = f"See [{len(self.blocks)}]."
         return GenerationOutput(json.dumps({"verdict": "yes", "answer": answer}), 1.0)
 
 
 def test_graph_citations_follow_prompt_block_order() -> None:
+    """One list in judge order: nodes and documents interleave as judged,
+    and cited block n is citations[n - 1]."""
     pipeline = build_graph_pipeline()
     generator = CitingLastBlockGenerator()
     pipeline.generator = generator
+    reranker = RecordingReranker()
+    pipeline.reranker = reranker
     result = pipeline.run("Why did checkout fail in Greece?")
 
-    documents = [chunk for chunk in result.document_evidence if chunk.selected]
     nodes = [evidence for evidence in result.node_evidence if evidence.selected]
     assert nodes, "the fixture must select structured nodes"
-    # Structured blocks open with their title line "<label>: <node_id> (<market>, -)".
-    prompt_ids = [
-        block.split("\n", 1)[0].split(": ", 1)[1].split(" (", 1)[0]
-        if index >= len(documents)
-        else block
-        for index, block in enumerate(generator.blocks)
-    ]
+    selected = {e.node_id for e in nodes} | {
+        chunk.chunk_id for chunk in result.document_evidence if chunk.selected
+    }
+    judge_order = [c.chunk_id for c in reranker.reranked if c.chunk_id in selected]
+    assert generator.blocks == judge_order
     cited_ids = [citation.chunk_id for citation in result.answer.citations]
-    assert cited_ids == prompt_ids
-    assert cited_ids[: len(documents)] == [chunk.chunk_id for chunk in documents]
-    assert result.answer.cited_blocks == [len(prompt_ids)]
+    assert cited_ids == generator.blocks
+    assert result.answer.cited_blocks == [len(cited_ids)]
     assert result.answer.verdict == "yes" and result.answer.raw_text.startswith("{")
 
 

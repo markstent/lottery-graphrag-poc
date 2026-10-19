@@ -11,6 +11,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import pytest
+from app.api.runs import _error_code
 from app.evidence import EvidenceChunk
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import StaticEntityResolver
@@ -18,8 +19,13 @@ from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction, HashingEmbedder
 from app.retrieval.standard.generation import AnswerGenerator, GenerationError, GenerationOutput
 from app.retrieval.standard.pipeline import StandardRagPipeline
-from app.retrieval.standard.reranking import build_reranker
-from app.retrieval.standard.sparse import HashingSparseEmbedder, SparseVector
+from app.retrieval.standard.reranking import CrossEncoderReranker, RerankError, build_reranker
+from app.retrieval.standard.sparse import (
+    FastembedBm25Embedder,
+    HashingSparseEmbedder,
+    SparseEmbeddingError,
+    SparseVector,
+)
 from app.retrieval.standard.vector_store import (
     InMemoryVectorStore,
     SearchHit,
@@ -41,7 +47,6 @@ class FailingGenerator:
         self,
         question: str,
         contexts: list[EvidenceChunk],
-        extra_blocks: list[str] | None = None,
     ) -> GenerationOutput:
         raise GenerationError("Model gateway call failed: provider unreachable")
 
@@ -169,3 +174,37 @@ class TestVectorStoreFailure:
         )
         with pytest.raises(RuntimeError, match="connection reset"):
             pipeline.run("What happened to INC_S007_GR?")
+
+
+class BrokenFastembedModel:
+    """Stands in for a fastembed model whose runtime fails (missing files, ONNX error)."""
+
+    def embed(self, texts: list[str]) -> object:
+        raise OSError("model file missing")
+
+    def query_embed(self, text: str) -> object:
+        raise OSError("model file missing")
+
+    def rerank(self, query: str, documents: list[str]) -> list[float]:
+        raise OSError("model file missing")
+
+
+class TestFastembedFailure:
+    def test_sparse_failures_raise_a_typed_error(self) -> None:
+        embedder = object.__new__(FastembedBm25Embedder)
+        embedder.model_name = "Qdrant/bm25"
+        embedder._model = BrokenFastembedModel()
+        with pytest.raises(SparseEmbeddingError, match="model file missing"):
+            embedder.embed_query("checkout")
+        with pytest.raises(SparseEmbeddingError, match="model file missing"):
+            embedder.embed_documents(["checkout"])
+
+    def test_cross_encoder_failures_raise_a_typed_error(self) -> None:
+        reranker = CrossEncoderReranker("BAAI/bge-reranker-v2-m3", encoder=BrokenFastembedModel())
+        chunk = build_graph_corpus()["CHNK_S007_GR_00"].to_evidence(similarity=0.1, rank=1)
+        with pytest.raises(RerankError, match="model file missing"):
+            reranker.rerank("checkout", [chunk])
+
+    def test_api_maps_fastembed_errors_like_the_other_adapters(self) -> None:
+        assert _error_code(SparseEmbeddingError("x")) == "EMBEDDING_ERROR"
+        assert _error_code(RerankError("x")) == "CONTEXT_BUILD_ERROR"

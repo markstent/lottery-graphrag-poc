@@ -39,7 +39,6 @@ class FailingGenerator:
         self,
         question: str,
         contexts: list[object],
-        extra_blocks: list[str] | None = None,
     ) -> GenerationOutput:
         raise GenerationError("Model gateway call failed: provider unreachable")
 
@@ -131,7 +130,9 @@ class TestRequestValidation:
         payload = _await_completion(client, run_id)
         assert payload["status"] == "completed"
         evidence = payload["results"]["A"]["evidence"]
-        assert all(chunk["market_id"] == "MKT_GR" for chunk in evidence)
+        # The scoped market, plus shared (market-less) evidence.
+        assert {chunk["market_id"] for chunk in evidence} <= {"MKT_GR", ""}
+        assert any(chunk["market_id"] == "MKT_GR" for chunk in evidence)
 
 
 class TestQueryLifecycle:
@@ -236,6 +237,65 @@ class TestErrorMapping:
         assert payload["status"] == "failed"
         assert payload["error"]["error_code"] == "VECTOR_RETRIEVAL_ERROR"
         assert "lacks a sparse vector" in payload["error"]["message"]
+
+    @pytest.mark.parametrize("manifest", [None, {"record_serialiser_version": "2.0.0"}])
+    def test_index_built_by_another_serialiser_maps_to_vector_error(
+        self,
+        tiny_dataset: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        manifest: dict[str, str] | None,
+    ) -> None:
+        import shutil
+
+        import app.retrieval.graph.lab as lab_module
+
+        class PopulatedStore(InMemoryVectorStore):
+            def count(self) -> int:
+                return 1
+
+        dataset_dir = tmp_path / "world"
+        shutil.copytree(tiny_dataset, dataset_dir)
+        (dataset_dir / "vector-index.json").unlink(missing_ok=True)
+        if manifest is not None:
+            (dataset_dir / "vector-index.json").write_text(json.dumps(manifest))
+        monkeypatch.setattr(lab_module, "build_store", lambda *_args: PopulatedStore())
+        settings: RetrievalSettings = make_settings(dataset_dir=str(dataset_dir))
+        service = QueryService(
+            settings=settings, graph_config=from_graph_env(), generator_name="fake"
+        )
+        with TestClient(create_app(service_factory=lambda: service)) as client:
+            run_id = client.post(
+                "/api/v1/queries",
+                json={"question": "Anything at all.", "configurations": ["A"]},
+            ).json()["run_id"]
+            payload = _await_completion(client, run_id)
+        assert payload["status"] == "failed"
+        assert payload["error"]["error_code"] == "VECTOR_RETRIEVAL_ERROR"
+        assert "record serialiser" in payload["error"]["message"]
+
+    def test_cold_start_indexing_stamps_the_serialiser_version(
+        self, tiny_dataset: Path, tmp_path: Path
+    ) -> None:
+        import shutil
+
+        from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+
+        dataset_dir = tmp_path / "world"
+        shutil.copytree(tiny_dataset, dataset_dir)
+        (dataset_dir / "vector-index.json").unlink(missing_ok=True)
+        settings: RetrievalSettings = make_settings(dataset_dir=str(dataset_dir))
+        service = QueryService(
+            settings=settings, graph_config=from_graph_env(), generator_name="fake"
+        )
+        with TestClient(create_app(service_factory=lambda: service)) as client:
+            run_id = client.post(
+                "/api/v1/queries",
+                json={"question": "Anything at all.", "configurations": ["A"]},
+            ).json()["run_id"]
+            assert _await_completion(client, run_id)["status"] == "completed"
+        written = json.loads((dataset_dir / "vector-index.json").read_text())
+        assert written["record_serialiser_version"] == RECORD_SERIALISER_VERSION
 
 
 class TestDemoAndBenchmarks:

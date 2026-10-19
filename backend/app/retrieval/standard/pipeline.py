@@ -33,11 +33,11 @@ from app.events import (
     RetrievalEvent,
     new_run_id,
 )
-from app.evidence import Citation, EvidenceChunk, RagAnswer, RagRunResult
+from app.evidence import RagAnswer, RagRunResult
 from app.retrieval.standard.context import assemble_context
 from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
-from app.retrieval.standard.generation import AnswerGenerator, parse_answer
+from app.retrieval.standard.generation import AnswerGenerator, citations_for, parse_answer
 from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
@@ -118,7 +118,7 @@ class StandardRagPipeline:
             )
 
         assembly = assemble_context(candidates, self.settings.context)
-        selected, discarded = assembly.document_selected, assembly.discarded
+        selected, discarded = assembly.selected, assembly.discarded
         for chunk in selected:
             self.emitter.emit(RAG_EVIDENCE_SELECTED, chunk_id=chunk.chunk_id, rank=chunk.rank)
         for chunk in discarded:
@@ -146,7 +146,7 @@ class StandardRagPipeline:
             model=self.generator.model_name,
             latency_ms=round(output.latency_ms, 1),
             context_tokens=context_tokens,
-            citations=[self._citation(chunk) for chunk in selected],
+            citations=citations_for(selected),
             usage=output.usage,
         )
         self.emitter.emit(
@@ -166,16 +166,4 @@ class StandardRagPipeline:
             evidence=evidence,
             embedding_model=self.embeddings.model_name,
             generation_model=self.generator.model_name,
-        )
-
-    @staticmethod
-    def _citation(chunk: EvidenceChunk) -> Citation:
-        return Citation(
-            chunk_id=chunk.chunk_id,
-            document_id=chunk.document_id,
-            title=chunk.title,
-            source_system=chunk.source_system,
-            source_record_id=chunk.document_id,
-            market_id=chunk.market_id,
-            language_code=chunk.language_code,
         )

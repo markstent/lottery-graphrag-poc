@@ -113,9 +113,9 @@ def supersede_records(
     A record block whose record id is a structured candidate's node id is
     superseded (design 10a.8): keeping both would spend two slots on one
     fact. The node is judged on that record's exact text, so with a
-    text-only pointwise judge (the production cross-encoder) a node that
-    loses means the record would have lost too. The CI lexical blend also
-    uses the incoming rank, so that safety does not hold there.
+    text-only pointwise judge (the production cross-encoder and the CI
+    lexical overlap judge) a node that loses means the record would have
+    lost too.
     """
     kept: list[EvidenceChunk] = []
     superseded: list[EvidenceChunk] = []
@@ -131,11 +131,13 @@ def supersede_records(
 class ContextAssembly:
     """Outcome of one context selection under the shared budget and slots.
 
-    ``document_selected`` (chunks and records) and ``structured_selected``
-    (graph nodes) each keep selection order; the prompt numbers documents
-    first and structured blocks second.
+    ``selected`` is the one list every pipeline hands the generator, in
+    judge order whatever the kind. ``document_selected`` (chunks and
+    records) and ``structured_selected`` (graph nodes) are the same
+    selection split by channel, for telemetry only.
     """
 
+    selected: list[EvidenceChunk]
     structured_selected: list[EvidenceChunk]
     document_selected: list[EvidenceChunk]
     discarded: list[EvidenceChunk]  # every discarded candidate with its reason
@@ -151,6 +153,7 @@ def assemble_context(candidates: list[EvidenceChunk], settings: ContextSettings)
         max_items=settings.evidence_slots,
     )
     return ContextAssembly(
+        selected=selected,
         structured_selected=[chunk for chunk in selected if chunk.kind == NODE_KIND],
         document_selected=[chunk for chunk in selected if chunk.kind != NODE_KIND],
         discarded=discarded,

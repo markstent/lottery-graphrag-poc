@@ -71,10 +71,11 @@ class VectorStore(Protocol):
         """Return up to ``limit`` hits fused from a dense and a sparse top-``limit``.
 
         ``markets`` restricts both channels to payloads whose ``market_id``
-        is one of the given full market ids (e.g. ``MKT_GR``). Only non-empty
-        market ids match, so market-less documents and records (empty
-        ``market_id``) are excluded from every scoped run, for every
-        pipeline alike. ``kinds`` restricts to payload ``kind`` values
+        is one of the given full market ids (e.g. ``MKT_GR``) or empty:
+        market-less documents and records (shared infrastructure, corporate
+        taxonomy, devices) are shared evidence and stay in every scoped
+        run, exactly as the graph pipelines keep market-less nodes.
+        ``kinds`` restricts to payload ``kind`` values
         (``chunk``, ``record``). ``None`` or an empty sequence means no
         restriction. The top-k is computed within the filter, never cropped
         afterwards.
@@ -94,11 +95,15 @@ class VectorStore(Protocol):
         ...
 
 
+# ``market_id`` of shared (market-less) evidence.
+SHARED_MARKET = ""
+
+
 def _market_scope(markets: Sequence[str] | None) -> list[str] | None:
-    """Scoped market ids without the empty market; ``None`` when unscoped."""
+    """The scoped market ids plus the shared market; ``None`` when unscoped."""
     if not markets:
         return None
-    return [market for market in markets if market]
+    return [*dict.fromkeys(market for market in markets if market), SHARED_MARKET]
 
 
 class InMemoryVectorStore:
@@ -264,8 +269,6 @@ class QdrantVectorStore:
         from qdrant_client import models
 
         scope = _market_scope(markets)
-        if scope == []:
-            return []
         conditions: list[Any] = []
         if scope is not None:
             conditions.append(

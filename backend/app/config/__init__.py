@@ -58,7 +58,6 @@ class RerankSettings:
 
     provider: str  # "lexical" | "cross_encoder"
     model: str  # cross-encoder model (fastembed)
-    lexical_weight: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,7 +105,8 @@ class GraphRagSettings:
     reference_date: date
     # Node labels traversal never follows or records. Documents belong to the
     # document channel for every pipeline (design G1; AGENTS.md graph
-    # augmentation principle).
+    # augmentation principle). Fixed design (D-026), so no environment
+    # variable sets it; it is recorded with every benchmark run.
     excluded_labels: tuple[str, ...] = ("Document",)
 
     def without_ontology(self) -> GraphRagSettings:
@@ -235,7 +235,6 @@ def from_env() -> RetrievalSettings:
         rerank=RerankSettings(
             provider=os.environ.get("RERANK_PROVIDER", default_rerank_provider),
             model=os.environ.get("RERANK_MODEL", "BAAI/bge-reranker-v2-m3"),
-            lexical_weight=_env_float("RERANK_LEXICAL_WEIGHT", 0.3),
         ),
         generation=GenerationSettings(
             provider=os.environ.get("GENERATION_PROVIDER", "fake"),
@@ -250,7 +249,9 @@ def from_env() -> RetrievalSettings:
             max_edges_per_node_type=_env_int("GRAPH_MAX_EDGES_PER_NODE_TYPE", 4),
             max_total_nodes=_env_int("GRAPH_MAX_TOTAL_NODES", 200),
             relationship_types=DEFAULT_RELATIONSHIP_TYPES,
-            ontology_expansion=os.environ.get("GRAPH_ONTOLOGY", "1") == "1",
+            # The lab sets concept expansion on for C and off for B
+            # (bc_graph_settings); there is no switch for it.
+            ontology_expansion=True,
             ranking=DEFAULT_RANKING_WEIGHTS,
             reference_date=date.fromisoformat(
                 os.environ.get("GRAPH_REFERENCE_DATE") or DEFAULT_REFERENCE_DATE.isoformat()

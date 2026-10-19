@@ -186,7 +186,6 @@ class FailingGenerator:
         self,
         question: str,
         contexts: list[EvidenceChunk],
-        extra_blocks: list[str] | None = None,
     ) -> GenerationOutput:
         raise GenerationError("Model gateway call failed: provider unreachable")
 

@@ -6,8 +6,10 @@
 - LiteLLMAnswerGenerator: the real gateway call (local Ollama or hosted
   OpenRouter through configuration).
 
-Every pipeline shares one prompt (PROMPT_VERSION), one generator and one
-parser (`parse_answer`), so answers are produced identically for A, B and C
+Every pipeline shares one prompt (PROMPT_VERSION), one generator, one
+parser (`parse_answer`) and one citation builder (`citations_for`), and
+hands the generator one list of selected evidence in judge order, so the
+same selected evidence gives the same prompt in A, B and C
 (docs/retrieval/retrieval-fairness.md). The model is asked for a JSON object
 with a verdict and a prose answer citing numbered sources as [n]; the parser
 keeps only citations that point at a block actually shown to the model.
@@ -21,7 +23,7 @@ import time
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.evidence import EvidenceChunk
+from app.evidence import Citation, EvidenceChunk
 
 PROMPT_VERSION = "2.0.0"
 
@@ -64,16 +66,11 @@ class ParsedAnswer:
 class AnswerGenerator(Protocol):
     model_name: str
 
-    def generate(
-        self,
-        question: str,
-        contexts: list[EvidenceChunk],
-        extra_blocks: list[str] | None = None,
-    ) -> GenerationOutput:
+    def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
         """Return the model output grounded in the given contexts.
 
-        `extra_blocks` carries structured-layer facts (graph pipeline) that
-        must be quoted rather than invented.
+        ``contexts`` is the pipeline's selected evidence in judge order:
+        document chunks, record blocks and graph nodes alike.
         """
         ...
 
@@ -84,22 +81,31 @@ def context_block(chunk: EvidenceChunk) -> str:
     return f"{chunk.title} ({chunk.market_id}, {chunk.language_code})\n{chunk.text}"
 
 
-def build_user_prompt(
-    question: str,
-    contexts: list[EvidenceChunk],
-    extra_blocks: list[str] | None = None,
-) -> str:
-    """Numbered context: documents first, then structured blocks.
-
-    [n] in answers maps to the n-th block in that order.
-    """
+def build_user_prompt(question: str, contexts: list[EvidenceChunk]) -> str:
+    """Numbered context in the order given (judge order); [n] in answers
+    maps to the n-th block."""
     blocks = [f"[{index}] {context_block(chunk)}" for index, chunk in enumerate(contexts, start=1)]
-    next_index = len(blocks) + 1
-    for block in extra_blocks or []:
-        blocks.append(f"[{next_index}] {block}")
-        next_index += 1
     joined = "\n\n".join(blocks) if blocks else "(no context retrieved)"
     return f"Context sources:\n{joined}\n\nQuestion: {question}"
+
+
+def citations_for(contexts: list[EvidenceChunk]) -> list[Citation]:
+    """One citation per prompt block, in prompt order: cited block n is
+    ``citations[n - 1]``. A graph node carries its source table and record
+    id through the same provenance fields as a record block."""
+    return [
+        Citation(
+            chunk_id=chunk.chunk_id,
+            document_id=chunk.document_id,
+            title=chunk.title,
+            source_system=chunk.source_system,
+            source_record_id=chunk.document_id,
+            record_table=chunk.record_table,
+            market_id=chunk.market_id,
+            language_code=chunk.language_code,
+        )
+        for chunk in contexts
+    ]
 
 
 def _structured(text: str) -> tuple[str, str] | None:
@@ -144,22 +150,15 @@ class FakeAnswerGenerator:
     def __init__(self) -> None:
         self.model_name = "fake-answer-v1"
 
-    def generate(
-        self,
-        question: str,
-        contexts: list[EvidenceChunk],
-        extra_blocks: list[str] | None = None,
-    ) -> GenerationOutput:
+    def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
         started = time.perf_counter()
         del question  # deterministic output: context titles only
-        blocks = len(extra_blocks or [])
-        if contexts or blocks:
-            titles = ", ".join(chunk.title for chunk in contexts[:2]) or "structured records"
+        if contexts:
+            titles = ", ".join(chunk.title for chunk in contexts[:2])
             verdict = "[fake-model] answered from the retrieved sources"
             answer = (
-                f"[fake-model] Based on {len(contexts)} retrieved source(s)"
-                + (f" and {blocks} authoritative structured record(s)" if blocks else "")
-                + f", the strongest evidence for the question is in: {titles} [1]."
+                f"[fake-model] Based on {len(contexts)} retrieved source(s), the strongest "
+                f"evidence for the question is in: {titles} [1]."
             )
         else:
             verdict = "unknown"
@@ -185,12 +184,7 @@ class LiteLLMAnswerGenerator:
         self._max_tokens = max_tokens
         self._timeout_s = timeout_s
 
-    def generate(
-        self,
-        question: str,
-        contexts: list[EvidenceChunk],
-        extra_blocks: list[str] | None = None,
-    ) -> GenerationOutput:
+    def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
         import litellm  # imported lazily: heavy import, not needed in CI
 
         started = time.perf_counter()
@@ -199,10 +193,7 @@ class LiteLLMAnswerGenerator:
                 model=self.model_name,
                 messages=[
                     {"role": "system", "content": _SYSTEM_PROMPT},
-                    {
-                        "role": "user",
-                        "content": build_user_prompt(question, contexts, extra_blocks),
-                    },
+                    {"role": "user", "content": build_user_prompt(question, contexts)},
                 ],
                 temperature=self._temperature,
                 max_tokens=self._max_tokens,

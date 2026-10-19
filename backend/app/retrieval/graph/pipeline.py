@@ -9,7 +9,7 @@
                 candidates superseded)
              -> one judge (the shared reranker, raw question) over both
              -> one selection (budget and slots shared with A)
-             -> LLM -> answer + citations
+             -> LLM over the selection in judge order -> answer + citations
 
 Pipeline B runs the identical pipeline with `ontology_expansion=False`
 (MAPS_TO excluded from the traversal allow-list), an id-and-market resolver
@@ -23,9 +23,11 @@ claims come from the structured layer, not the graph.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date
 
 from app.config import RetrievalSettings
+from app.datasets.schema import TABLE_PROVENANCE
 from app.events import (
     GRAPH_CANDIDATE_DISCARDED,
     GRAPH_CANDIDATE_RERANKED,
@@ -49,7 +51,6 @@ from app.events import (
     new_run_id,
 )
 from app.evidence import (
-    Citation,
     EvidenceChunk,
     GraphEvidence,
     GraphRunResult,
@@ -69,7 +70,7 @@ from app.retrieval.graph.resolution import (
     ResolvedEntity,
     concept_text,
 )
-from app.retrieval.graph.source_lookup import SourceLookup, describe, label_for_table
+from app.retrieval.graph.source_lookup import SourceLookup, bare_node_text, label_for_table
 from app.retrieval.graph.traversal import (
     NeighbourProvider,
     TraversalResult,
@@ -79,12 +80,13 @@ from app.retrieval.graph.traversal import (
 from app.retrieval.standard.context import (
     NODE_KIND,
     SELECTION_EXCLUDED_LABEL,
+    ContextAssembly,
     assemble_context,
     supersede_records,
 )
-from app.retrieval.standard.corpus import hit_to_evidence
+from app.retrieval.standard.corpus import CorpusChunk, hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
-from app.retrieval.standard.generation import AnswerGenerator, context_block, parse_answer
+from app.retrieval.standard.generation import AnswerGenerator, citations_for, parse_answer
 from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
@@ -243,46 +245,17 @@ class GraphRagPipeline:
                     node_id=node.node_id,
                     score=node.score,
                     rerank_score=None,
+                    hops=node.hops,
+                    seed=node.hops == 0,
                     reason="out_of_scope_market",
                 )
-        # The structured channel: every traversal node (bounded by the
-        # traversal caps) in graph composite score order, except excluded
-        # labels: a directly resolved Document may anchor traversal, but
-        # its text reaches the model through the document channel.
-        excluded = [
-            self._to_graph_evidence(node).model_copy(
-                update={"discard_reason": SELECTION_EXCLUDED_LABEL}
-            )
-            for node in scored
-            if node.node_label in graph_settings.excluded_labels
-        ]
-        drafts = self._attach_authoritative_facts(
-            [
-                self._to_graph_evidence(node)
-                for node in scored
-                if node.node_label not in graph_settings.excluded_labels
-            ]
-        )
-        # The document channel is identical to pipeline A's (fairness).
-        # Record blocks of structured candidates are superseded before
-        # judging (design 10a.8); then one judge scores both channels on
-        # the raw question and one selection fills the shared budget.
-        documents, superseded = supersede_records(
-            {evidence.node_id for evidence in drafts},
-            self._document_candidates(search_text, scope),
-        )
-        records = {chunk.document_id: chunk for chunk in superseded}
-        structured = [
-            _structured_chunk(
-                evidence, node_texts[evidence.node_id], rank, records.get(evidence.node_id)
-            )
-            for rank, evidence in enumerate(drafts, start=1)
-        ]
-        candidates = [*structured, *documents]
+        candidates = self._build_candidates(search_text, scope, scored, node_texts)
         self.emitter.emit(
-            GRAPH_RERANK_STARTED, candidates=len(candidates), model=self.reranker.model_name
+            GRAPH_RERANK_STARTED,
+            candidates=len(candidates.judged),
+            model=self.reranker.model_name,
         )
-        reranked = self.reranker.rerank(question, candidates)
+        reranked = self.reranker.rerank(question, candidates.judged)
         for candidate in reranked:
             self.emitter.emit(
                 GRAPH_CANDIDATE_RERANKED,
@@ -292,47 +265,15 @@ class GraphRagPipeline:
                 rank=candidate.rank,
             )
         assembly = assemble_context(reranked, self.settings.context)
-        judged = {chunk.chunk_id: chunk for chunk in reranked}
-        node_reasons = {
-            chunk.chunk_id: chunk.discard_reason
-            for chunk in assembly.discarded
-            if chunk.kind == NODE_KIND
-        }
-        node_evidence = [
-            _with_outcome(
-                evidence,
-                node_reasons.get(evidence.node_id),
-                judged[evidence.node_id].rerank_score,
-            )
-            for evidence in drafts
-        ]
-        for evidence in [*node_evidence, *excluded]:
-            if evidence.selected:
-                payload: dict[str, str | int | float | None] = {
-                    "node_id": evidence.node_id,
-                    "score": evidence.score,
-                    "rerank_score": evidence.rerank_score,
-                    "hops": evidence.hops,
-                    "seed": evidence.hops == 0,
-                }
-                for key, value in evidence.components.items():
-                    payload[f"weight_{key}"] = value
-                self.emitter.emit(GRAPH_CANDIDATE_SELECTED, **payload)
-            else:
-                self.emitter.emit(
-                    GRAPH_CANDIDATE_DISCARDED,
-                    node_id=evidence.node_id,
-                    score=evidence.score,
-                    rerank_score=evidence.rerank_score,
-                    hops=evidence.hops,
-                    seed=evidence.hops == 0,
-                    reason=evidence.discard_reason,
-                )
-        node_evidence.extend(excluded)
+        node_evidence = self._emit_node_outcomes(candidates, reranked, assembly)
 
         selected_chunks = assembly.document_selected
         discarded_chunks = sorted(
-            (chunk for chunk in [*superseded, *assembly.discarded] if chunk.kind != NODE_KIND),
+            (
+                chunk
+                for chunk in [*candidates.superseded, *assembly.discarded]
+                if chunk.kind != NODE_KIND
+            ),
             key=lambda chunk: (chunk.rerank_score is None, chunk.rank),
         )
         for chunk in selected_chunks:
@@ -357,9 +298,6 @@ class GraphRagPipeline:
             max_hops=max((len(path) - 1 for path in evidence_paths), default=0),
         )
 
-        evidence_by_id = {evidence.node_id: evidence for evidence in node_evidence}
-        # A structured block is formatted exactly like a document block.
-        structured_blocks = [context_block(chunk) for chunk in assembly.structured_selected]
         context_tokens = assembly.context_tokens
         self.emitter.emit(
             GRAPH_CONTEXT_ASSEMBLED,
@@ -369,13 +307,11 @@ class GraphRagPipeline:
             evidence_slots=self.settings.context.evidence_slots,
         )
 
+        # One list in judge order, exactly as pipeline A hands it over: the
+        # same selected evidence gives the same prompt in A, B and C.
         self.emitter.emit(GRAPH_GENERATION_STARTED, model=self.generator.model_name)
-        output = self.generator.generate(question, selected_chunks, structured_blocks)
-        parsed = parse_answer(
-            output.raw_text, block_count=len(selected_chunks) + len(structured_blocks)
-        )
-        # Citations follow prompt order (documents, then structured blocks)
-        # so cited block n is citations[n - 1].
+        output = self.generator.generate(question, assembly.selected)
+        parsed = parse_answer(output.raw_text, block_count=len(assembly.selected))
         answer = RagAnswer(
             text=parsed.answer,
             verdict=parsed.verdict,
@@ -384,12 +320,7 @@ class GraphRagPipeline:
             model=self.generator.model_name,
             latency_ms=round(output.latency_ms, 1),
             context_tokens=context_tokens,
-            citations=[
-                *_chunk_citations(selected_chunks),
-                *_node_citations(
-                    [evidence_by_id[chunk.chunk_id] for chunk in assembly.structured_selected]
-                ),
-            ],
+            citations=citations_for(assembly.selected),
             usage=output.usage,
         )
         self.emitter.emit(
@@ -416,6 +347,104 @@ class GraphRagPipeline:
             embedding_model=self.embeddings.model_name,
             generation_model=self.generator.model_name,
         )
+
+    def _build_candidates(
+        self,
+        search_text: str,
+        scope: Sequence[str] | None,
+        scored: list[ScoredNode],
+        node_texts: dict[str, str],
+    ) -> _Candidates:
+        """The structured channel next to A's document channel, ready to judge.
+
+        The structured channel is every in-scope traversal node (bounded by
+        the traversal caps) in graph composite score order, except excluded
+        labels: a directly resolved Document may anchor traversal, but its
+        text reaches the model through the document channel. The document
+        channel is identical to pipeline A's (fairness), minus the record
+        blocks of structured candidates, superseded before judging (design
+        10a.8).
+        """
+        excluded_labels = self.settings.graph.excluded_labels
+        excluded = [
+            self._to_graph_evidence(node).model_copy(
+                update={"discard_reason": SELECTION_EXCLUDED_LABEL}
+            )
+            for node in scored
+            if node.node_label in excluded_labels
+        ]
+        drafts = self._attach_authoritative_facts(
+            [
+                self._to_graph_evidence(node)
+                for node in scored
+                if node.node_label not in excluded_labels
+            ]
+        )
+        documents, superseded = supersede_records(
+            {evidence.node_id for evidence in drafts},
+            self._document_candidates(search_text, scope),
+        )
+        structured = [
+            _structured_chunk(
+                evidence,
+                node_texts[evidence.node_id],
+                rank,
+                self.source_lookup.record_block(evidence.node_label, evidence.node_id)
+                if self.source_lookup is not None
+                else None,
+            )
+            for rank, evidence in enumerate(drafts, start=1)
+        ]
+        return _Candidates(
+            drafts=drafts,
+            excluded=excluded,
+            superseded=superseded,
+            judged=[*structured, *documents],
+        )
+
+    def _emit_node_outcomes(
+        self, candidates: _Candidates, reranked: list[EvidenceChunk], assembly: ContextAssembly
+    ) -> list[GraphEvidence]:
+        """Each node's selection outcome, emitted as a selected or discarded
+        event; returns the judged nodes followed by the excluded ones."""
+        judged = {chunk.chunk_id: chunk for chunk in reranked}
+        node_reasons = {
+            chunk.chunk_id: chunk.discard_reason
+            for chunk in assembly.discarded
+            if chunk.kind == NODE_KIND
+        }
+        node_evidence = [
+            _with_outcome(
+                evidence,
+                node_reasons.get(evidence.node_id),
+                judged[evidence.node_id].rerank_score,
+            )
+            for evidence in candidates.drafts
+        ]
+        node_evidence.extend(candidates.excluded)
+        for evidence in node_evidence:
+            if evidence.selected:
+                payload: dict[str, str | int | float | None] = {
+                    "node_id": evidence.node_id,
+                    "score": evidence.score,
+                    "rerank_score": evidence.rerank_score,
+                    "hops": evidence.hops,
+                    "seed": evidence.hops == 0,
+                }
+                for key, value in evidence.components.items():
+                    payload[f"weight_{key}"] = value
+                self.emitter.emit(GRAPH_CANDIDATE_SELECTED, **payload)
+            else:
+                self.emitter.emit(
+                    GRAPH_CANDIDATE_DISCARDED,
+                    node_id=evidence.node_id,
+                    score=evidence.score,
+                    rerank_score=evidence.rerank_score,
+                    hops=evidence.hops,
+                    seed=evidence.hops == 0,
+                    reason=evidence.discard_reason,
+                )
+        return node_evidence
 
     def _concept_ids(self, resolved: list[ResolvedEntity], traversal: TraversalResult) -> set[str]:
         """BusinessConcept nodes reached as seeds or through traversal."""
@@ -450,12 +479,14 @@ class GraphRagPipeline:
         label = label_for_table(str(hits[0].payload.get("record_table", "")))
         if not node_id or label is None:
             return []
+        # No resolver confidence exists for a vector hit: the fused score is
+        # reported under its own key, never as a 0-1 confidence.
         seed = ResolvedEntity(
             entity_id=node_id,
             node_label=label,
             matched_text=search_text[:64],
             origin="vector_fallback",
-            confidence=hits[0].score,
+            confidence=None,
         )
         self.emitter.emit(
             GRAPH_ENTITY_RESOLVED,
@@ -463,7 +494,7 @@ class GraphRagPipeline:
             node_label=seed.node_label,
             origin=seed.origin,
             matched_text=seed.matched_text,
-            confidence=seed.confidence,
+            fused_score=hits[0].score,
             via_concept=None,
         )
         return [seed]
@@ -497,9 +528,8 @@ class GraphRagPipeline:
         """Each node's text and validity end, from one fetch per node.
 
         One text per node serves semantic scoring, the judge and the
-        prompt: a concept's ontology text (pipeline C), else the source
-        lookup's text (the record block A indexes, else one humanised
-        sentence), else "<Label> <id>".
+        prompt: a concept's ontology text (pipeline C), else the record
+        block A indexes for the node's row, else "<Label> <id>" (D-028).
         """
         texts: dict[str, str] = {}
         validity: dict[str, date | None] = {}
@@ -518,7 +548,7 @@ class GraphRagPipeline:
             return concept_text(self.ontology.concept(node_id))
         if self.source_lookup is not None:
             return self.source_lookup.node_text(node_label, node_id)
-        return describe(node_label, node_id, {})
+        return bare_node_text(node_label, node_id)
 
     def _document_candidates(
         self, search_text: str, markets: Sequence[str] | None = None
@@ -544,10 +574,12 @@ class GraphRagPipeline:
     ) -> tuple[list[ScoredNode], list[ScoredNode]]:
         """Split scored nodes into in-scope and out-of-scope evidence.
 
-        A node's market comes from its authoritative structured record
-        (Incident, Game, AppVersion, Player) or is the node id itself for
-        Market nodes. Nodes without a market (platforms, versions,
-        concepts, documents) are shared evidence and stay in scope.
+        A node's market comes from its authoritative structured record (the
+        same column its record block carries as its market, so the vector
+        filter and this split agree) or is the node id itself for Market
+        nodes. Nodes without a market (platforms, versions, concepts) are
+        shared evidence and stay in scope, as market-less blocks do in the
+        document channel.
         """
         in_scope: list[ScoredNode] = []
         excluded: list[ScoredNode] = []
@@ -565,10 +597,7 @@ class GraphRagPipeline:
         if self.source_lookup is None:
             return None
         facts = self.source_lookup.fetch(node_label, node_id)
-        if facts is None:
-            return None
-        market = facts.columns.get("market_id")
-        return market or None
+        return facts.market_id if facts is not None else None
 
     def _attach_authoritative_facts(
         self, node_evidence: list[GraphEvidence]
@@ -606,15 +635,19 @@ class GraphRagPipeline:
 
 
 def _structured_chunk(
-    evidence: GraphEvidence, text: str, rank: int, record: EvidenceChunk | None
+    evidence: GraphEvidence, text: str, rank: int, record: CorpusChunk | None
 ) -> EvidenceChunk:
     """A graph node as a context candidate, ranked within its channel.
 
-    A node that supersedes a record block reuses that block's title and
-    language, so the generator sees the same block for the same fact in A,
-    B and C; other nodes get a "<Label>: <id>" title.
+    A node whose row has a record block in A's corpus takes that block's
+    title, market, language and provenance from the source lookup, whether
+    or not the search returned the block, so the generator sees the same
+    block for the same fact in A, B and C. Any other node is shown as
+    "<Label>: <id>" with no market or language: its text is "<Label> <id>"
+    only (D-028). Its authoritative facts stay on the node's evidence.
     """
     authoritative = evidence.authoritative or {}
+    source_table = authoritative.get("source_table")
     return EvidenceChunk(
         kind=NODE_KIND,
         chunk_id=evidence.node_id,
@@ -623,12 +656,21 @@ def _structured_chunk(
         text=text,
         title=record.title if record else f"{evidence.node_label}: {evidence.node_id}",
         document_type=evidence.node_label,
-        market_id=authoritative.get("market_id", ""),
+        market_id=record.market_id if record else "",
         language_code=record.language_code if record else "-",
-        source_system=authoritative.get("source_table", "graph"),
+        source_system=record.source_system if record else _source_system(source_table),
+        record_table=record.record_table if record else source_table,
+        valid_from=record.valid_from if record else None,
+        valid_to=record.valid_to if record else None,
         similarity=evidence.score,
         rank=rank,
+        discovered_via="graph_traversal",
     )
+
+
+def _source_system(table: str | None) -> str:
+    """The source system owning a table; "graph" for a node without a row."""
+    return TABLE_PROVENANCE[table][0] if table in TABLE_PROVENANCE else "graph"
 
 
 def _with_outcome(
@@ -647,35 +689,12 @@ def _with_outcome(
     )
 
 
-def _chunk_citations(chunks: list[EvidenceChunk]) -> list[Citation]:
-    return [
-        Citation(
-            chunk_id=chunk.chunk_id,
-            document_id=chunk.document_id,
-            title=chunk.title,
-            source_system=chunk.source_system,
-            source_record_id=chunk.document_id,
-            market_id=chunk.market_id,
-            language_code=chunk.language_code,
-        )
-        for chunk in chunks
-    ]
+@dataclass(frozen=True, slots=True)
+class _Candidates:
+    """One question's candidates: ``judged`` goes to the judge (structured
+    then document channel); the rest is recorded for telemetry."""
 
-
-def _node_citations(nodes: list[GraphEvidence]) -> list[Citation]:
-    """Citations for the selected structured nodes, in the order given."""
-    citations: list[Citation] = []
-    for evidence in nodes:
-        authoritative = evidence.authoritative or {}
-        citations.append(
-            Citation(
-                chunk_id=evidence.node_id,
-                document_id=evidence.node_id,
-                title=f"{evidence.node_label}: {evidence.node_id}",
-                source_system=str(authoritative.get("source_table", "graph")),
-                source_record_id=str(authoritative.get("source_record_id", evidence.node_id)),
-                market_id=str(authoritative.get("market_id", "-")),
-                language_code="-",
-            )
-        )
-    return citations
+    drafts: list[GraphEvidence]  # structured candidates before their outcome
+    excluded: list[GraphEvidence]  # excluded labels, never judged
+    superseded: list[EvidenceChunk]  # record blocks of structured candidates
+    judged: list[EvidenceChunk]

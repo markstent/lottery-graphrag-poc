@@ -26,6 +26,7 @@ from app.retrieval.graph.resolution import (
     TermEntityResolver,
 )
 from app.retrieval.graph.source_lookup import SourceLookup
+from app.retrieval.graph.traversal import load_static_provider_from_rows
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.index import index_corpus
@@ -34,6 +35,7 @@ from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
 from tests.test_graph_rag import (
+    PromptCapture,
     RecordingReranker,
     build_corpus,
     make_settings,
@@ -244,3 +246,57 @@ def test_b_judges_a_documents_minus_the_records_its_nodes_supersede() -> None:
     documents_b = [(chunk.chunk_id, chunk.rank) for chunk in judged_b if chunk.kind != "node"]
     assert documents_b == expected
     assert len(expected) == len(documents_a) - 1
+
+
+def test_a_and_b_hand_the_generator_the_same_prompt_for_the_same_evidence() -> None:
+    """Same selected evidence, same prompt (design G1, 5.4; D-025).
+
+    B's two nodes are exactly A's two record hits, so both pipelines select
+    the same evidence; the generator must then receive the same blocks in
+    the same (judge) order, with the same titles, and answer identically.
+    """
+    incident = record_corpus_chunk(
+        "incidents", "INC_S007_GR", "Incident INC_S007_GR in Greece: checkout failed."
+    )
+    version = record_corpus_chunk(
+        "platform_versions",
+        "PLV_PAYMENTS_3",
+        "Platform version 3 (PLV_PAYMENTS_3) of Payments. Released 2025-05-01.",
+        market_id="",
+    )
+    records = {
+        (chunk.record_table or "", chunk.document_id): chunk for chunk in (incident, version)
+    }
+    lab = dataclasses.replace(
+        build_lab_offline(), source_lookup=SourceLookup(Path("unused"), records)
+    )
+    index_corpus(
+        lab.store, lab.embeddings, lab.sparse, [*build_corpus().values(), incident, version]
+    )
+    neighbours = load_static_provider_from_rows(
+        [("INC_S007_GR", "RELATED_TO_VERSION", "PLV_PAYMENTS_3", "PlatformVersion")]
+    )
+    (_, b), _c = graph_pipelines(
+        lab, neighbours, StaticEntityResolver(resolved()), StaticEntityResolver([])
+    )
+    question = "Why did checkout fail in Greece?"
+    generator_a, generator_b = PromptCapture(), PromptCapture()
+    a = lab.pipeline_a()
+    a.generator, b.generator = generator_a, generator_b
+    result_a, result_b = a.run(question), b.run(question)
+
+    shown_a = [chunk.document_id for chunk in generator_a.contexts]
+    shown_b = [chunk.document_id for chunk in generator_b.contexts]
+    assert sorted(shown_a) == ["DOC_S007_GR", "DOC_S007_UK", "INC_S007_GR", "PLV_PAYMENTS_3"]
+    assert {c.kind for c in generator_b.contexts} == {"node", "chunk"}
+    assert shown_b == shown_a
+    assert generator_b.prompt == generator_a.prompt
+    assert result_b.answer.raw_text == result_a.answer.raw_text
+    citations = [
+        (c.document_id, c.title, c.source_system, c.source_record_id, c.record_table)
+        for c in result_a.answer.citations
+    ]
+    assert citations == [
+        (c.document_id, c.title, c.source_system, c.source_record_id, c.record_table)
+        for c in result_b.answer.citations
+    ]

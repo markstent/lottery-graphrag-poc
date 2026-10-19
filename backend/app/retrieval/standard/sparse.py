@@ -25,6 +25,10 @@ _BM25_B = 0.75
 _FAKE_AVG_DOC_LEN = 20
 
 
+class SparseEmbeddingError(RuntimeError):
+    """Raised when the sparse embedding model fails to load or embed."""
+
+
 @dataclass(frozen=True, slots=True)
 class SparseVector:
     """Parallel index/value arrays of a sparse vector."""
@@ -51,13 +55,22 @@ class FastembedBm25Embedder:
 
         self.model_name = model
         cache_dir = Path(os.environ.get("FASTEMBED_CACHE", "~/.cache/fastembed")).expanduser()
-        self._model = SparseTextEmbedding(model_name=model, cache_dir=str(cache_dir))
+        try:
+            self._model = SparseTextEmbedding(model_name=model, cache_dir=str(cache_dir))
+        except Exception as error:  # fastembed raises varied download and runtime errors
+            raise SparseEmbeddingError(f"Sparse model {model} failed to load: {error}") from error
 
     def embed_documents(self, texts: list[str]) -> list[SparseVector]:
-        return [_to_vector(e) for e in self._model.embed(texts)]
+        try:
+            return [_to_vector(e) for e in self._model.embed(texts)]
+        except Exception as error:
+            raise SparseEmbeddingError(f"Sparse embedding failed: {error}") from error
 
     def embed_query(self, text: str) -> SparseVector:
-        return _to_vector(next(iter(self._model.query_embed(text))))
+        try:
+            return _to_vector(next(iter(self._model.query_embed(text))))
+        except Exception as error:
+            raise SparseEmbeddingError(f"Sparse query embedding failed: {error}") from error
 
 
 def _to_vector(embedding: object) -> SparseVector:

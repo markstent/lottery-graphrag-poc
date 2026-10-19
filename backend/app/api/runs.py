@@ -16,6 +16,7 @@ import threading
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 from app.api.schemas import QueryRequest
@@ -25,14 +26,19 @@ from app.graph.config import GraphConfig
 from app.retrieval.graph.lab import Lab, build_generator, build_lab, wired_pipelines
 from app.retrieval.standard.embeddings import EmbeddingError
 from app.retrieval.standard.generation import GenerationError
-from app.retrieval.standard.index import index_corpus
+from app.retrieval.standard.index import check_manifest, index_corpus, write_manifest
+from app.retrieval.standard.reranking import RerankError
+from app.retrieval.standard.sparse import SparseEmbeddingError
 from app.retrieval.standard.vector_store import SPARSE_VECTOR, VectorStoreError
 
-# Error classes from docs/07 section 11.
+# Error classes from docs/07 section 11. The reranker is the judge of
+# context selection, so its failures are context build errors.
 _ERROR_CODES: dict[type[Exception], str] = {
     GenerationError: "MODEL_ERROR",
     EmbeddingError: "EMBEDDING_ERROR",
+    SparseEmbeddingError: "EMBEDDING_ERROR",
     VectorStoreError: "VECTOR_RETRIEVAL_ERROR",
+    RerankError: "CONTEXT_BUILD_ERROR",
 }
 
 MAX_RUNS = 50
@@ -86,15 +92,18 @@ class QueryService:
                 # Cold-start indexing: the CLI flows rely on a pre-built
                 # index (make index-vector), but a service must be usable
                 # after a fresh start. A persisted Qdrant collection is
-                # already populated and is left untouched.
+                # already populated and is left untouched, once it is known
+                # to be hybrid and built by this record serialiser.
                 if lab.store.count() == 0:
                     if lab.corpus:
-                        index_corpus(
-                            lab.store, lab.embeddings, lab.sparse, list(lab.corpus.values())
-                        )
+                        corpus = list(lab.corpus.values())
+                        index_corpus(lab.store, lab.embeddings, lab.sparse, corpus)
+                        write_manifest(self._settings, lab.embeddings, lab.sparse, corpus)
                 elif SPARSE_VECTOR not in lab.store.collection_info()["sparse_vectors"]:
                     # A pre-hybrid (dense-only) collection would fail every search.
                     raise VectorStoreError("collection lacks a sparse vector; rebuild the index")
+                else:
+                    check_manifest(Path(self._settings.dataset_dir))
                 self._lab = lab
             return self._lab
 
@@ -151,7 +160,7 @@ class QueryService:
                 else:
                     self._run_graph(lab, record, tag)
             record.status = "completed"
-        except (GenerationError, EmbeddingError, VectorStoreError) as error:
+        except tuple(_ERROR_CODES) as error:
             record.status = "failed"
             record.error_code = _error_code(error)
             record.error_message = str(error)

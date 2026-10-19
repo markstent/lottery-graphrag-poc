@@ -280,6 +280,15 @@ def test_id_resolver_ignores_unknown_ids_and_unsafe_prefixes() -> None:
     assert resolver.resolve("Look at INC_999 and PLY_0001") == []
 
 
+def test_id_resolver_never_seeds_documents_chunks_or_concepts() -> None:
+    """Documents and chunks reach every pipeline through the document channel,
+    and B never starts from the ontology (D-026; design: B resolves ids of
+    structural record nodes and market aliases only)."""
+    every_id_exists = IdEntityResolver(lookup_node=lambda i: ("Node", True), market_aliases={})
+    question = "Compare DOC_S007_UK, CHNK_S007_UK_00, CONCEPT_PLATFORM_INCIDENT and INC_026"
+    assert [e.entity_id for e in every_id_exists.resolve(question)] == ["INC_026"]
+
+
 def test_market_alias_match_is_whole_word() -> None:
     resolver = IdEntityResolver(lookup_node=_lookup, market_aliases={"AT": "MKT_AT"})
     assert resolver.resolve("What happened at the draw?") != []

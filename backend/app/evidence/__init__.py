@@ -28,12 +28,16 @@ class EvidenceChunk(BaseModel):
         default="chunk",
         description="chunk (document text) | record (table row) | node (graph block)",
     )
-    record_table: str | None = Field(default=None, description="Source table when kind is record")
+    record_table: str | None = Field(
+        default=None,
+        description="Source table when kind is record, or of a graph node's authoritative row",
+    )
 
     similarity: float = Field(
         description=(
-            "Retrieval score at retrieval time: the fused reciprocal-rank score of "
-            "the dense and sparse channels (not a cosine)"
+            "Score within the candidate's channel: for chunks and records the fused "
+            "reciprocal-rank score of the dense and sparse channels (not a cosine); "
+            "for graph nodes the graph composite score"
         )
     )
     dense_rank: int | None = Field(
@@ -71,6 +75,9 @@ class Citation(BaseModel):
     title: str
     source_system: str
     source_record_id: str
+    record_table: str | None = Field(
+        default=None, description="Source table of a record block or graph node; None for documents"
+    )
     market_id: str
     language_code: str
 
@@ -78,9 +85,9 @@ class Citation(BaseModel):
 class RagAnswer(BaseModel):
     """Generated answer plus its cost and grounded citations.
 
-    `citations` lists every block shown to the model in prompt order
-    (documents, then structured nodes), so `cited_blocks[i]` refers to
-    `citations[cited_blocks[i] - 1]`.
+    `citations` lists every block shown to the model in prompt order (the
+    selected evidence in judge order, whatever its kind), so
+    `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
     """
 
     text: str = Field(description="Parsed prose answer; what the evaluator scores")

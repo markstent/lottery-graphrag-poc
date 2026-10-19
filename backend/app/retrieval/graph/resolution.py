@@ -23,21 +23,21 @@ from app.ontology.terms import TermMatcher
 
 _ID_TOKEN = re.compile(r"\b[A-Z]{2,12}(?:_[A-Z0-9]+)+\b")
 
-# Graph id prefixes that are safe seed candidates. Player-transaction ids are
-# never seeds: traversal limits plus the relationship allow-list already keep
-# retrieval away from transactional neighbours.
+# Graph id prefixes that are safe seed candidates: structural record nodes
+# only. Player-transaction ids are never seeds: traversal limits plus the
+# relationship allow-list already keep retrieval away from transactional
+# neighbours. Documents and chunks are not seeds (their text reaches every
+# pipeline through the document channel, D-026), and concept ids are not
+# seeds for the id resolver, so pipeline B never starts from the ontology.
 _SEED_PREFIXES = (
     "INC_",
     "MKT_",
     "PLV_",
     "PLT_",
     "GAME_",
-    "DOC_",
     "APPV_",
     "CMP_",
-    "CONCEPT_",
     "FAM_",
-    "CHNK_",
     "PLAYER_",
     "PAY_",
 )
@@ -54,8 +54,10 @@ class ResolvedEntity:
     entity_id: str
     node_label: str
     matched_text: str
-    origin: str  # "id" | "market_alias" | "term" | "concept_binding"
-    confidence: float
+    origin: str  # "id" | "market_alias" | "term" | "concept_binding" | "vector_fallback"
+    # Resolver confidence in [0, 1]; None for the vector fallback seed,
+    # whose fused retrieval score is reported as ``fused_score`` instead.
+    confidence: float | None
     # The concept a "concept_binding" entity was reached through.
     via_concept: str | None = None
 

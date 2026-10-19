@@ -320,7 +320,7 @@ def test_game_mechanic_node_supersedes_its_record_block(tmp_path) -> None:  # ty
         }
     )
     graph_pipeline.source_lookup = SourceLookup(
-        tmp_path, {("game_mechanics", "MECH_GR_EPILOGI"): MECHANIC_TEXT}
+        tmp_path, {("game_mechanics", "MECH_GR_EPILOGI"): record}
     )
     reranker = RecordingReranker()
     graph_pipeline.reranker = reranker

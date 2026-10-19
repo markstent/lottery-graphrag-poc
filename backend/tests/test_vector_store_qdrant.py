@@ -69,11 +69,11 @@ def test_qdrant_hybrid_upsert_search_reset_roundtrip() -> None:
         )
         assert [hit.id for hit in records] == ["REC_games_G1"]
 
-        # Market scope matches only non-empty market ids.
+        # A market scope admits the scoped market plus shared (empty-market) points.
         scoped = store.search(
-            dense.embed([query])[0], sparse.embed_query(query), limit=3, markets=["MKT_UK", ""]
+            dense.embed([query])[0], sparse.embed_query(query), limit=3, markets=["MKT_UK"]
         )
-        assert [hit.id for hit in scoped] == ["CHNK_MKT"]
+        assert {hit.id for hit in scoped} == {"CHNK_MKT", "REC_games_G1"}
 
         # Upsert overwrites cleanly.
         store.upsert(

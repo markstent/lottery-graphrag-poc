@@ -3,9 +3,11 @@
 The graph guides retrieval; quantitative facts come from the structured
 layer (AGENTS.md Graph Augmentation Principle). For each structured node
 this module reads the authoritative warehouse row from the dataset Parquet
-via DuckDB, and gives the text the node is judged and shown on: the exact
-record block pipeline A indexes for the same row when one exists, else one
-humanised sentence from the authoritative columns.
+via DuckDB (for citations, ranking validity, market scope and the UI), and
+gives the block the node is judged and shown on: the exact record block
+pipeline A indexes for the same row when one exists, else "<Label> <id>"
+only. The judge and the model never see warehouse text A could not index
+(D-028).
 """
 
 from __future__ import annotations
@@ -43,8 +45,9 @@ NODE_SOURCES: dict[str, tuple[str, str]] = {
     "GameMechanic": ("game_mechanics", "mechanic_id"),
 }
 
-# Columns quoted in the snippet, per table, in order. Kept small on purpose:
-# the snippet is evidence, not a row dump.
+# Authoritative columns read per table, in order: the facts a citation and
+# the UI show next to a node. Kept small on purpose: evidence, not a row
+# dump. They never reach the judge or the prompt.
 SNIPPET_COLUMNS: dict[str, tuple[str, ...]] = {
     "incidents": (
         "incident_id",
@@ -131,8 +134,12 @@ RECORD_LABELS: dict[str, str] = {
 }
 _RECORD_TABLES: dict[str, str] = {label: table for table, label in RECORD_LABELS.items()}
 
-RecordTexts = Mapping[tuple[str, str], str]
-"""Record block text keyed by (record table, record id)."""
+# The market column of tables whose market is not called ``market_id``; the
+# record serialiser exposes the same column as the block's market.
+MARKET_COLUMNS: dict[str, str] = {"payment_providers": "home_market_id"}
+
+RecordBlocks = Mapping[tuple[str, str], CorpusChunk]
+"""Indexed record blocks keyed by (record table, record id)."""
 
 
 def label_for_table(table: str) -> str | None:
@@ -140,28 +147,18 @@ def label_for_table(table: str) -> str | None:
     return RECORD_LABELS.get(table)
 
 
-def record_texts_of(chunks: Iterable[CorpusChunk]) -> dict[tuple[str, str], str]:
-    """The indexed record blocks' texts, keyed by (record table, record id)."""
+def record_blocks_of(chunks: Iterable[CorpusChunk]) -> dict[tuple[str, str], CorpusChunk]:
+    """The indexed record blocks, keyed by (record table, record id)."""
     return {
-        (chunk.record_table, chunk.document_id): chunk.text
+        (chunk.record_table, chunk.document_id): chunk
         for chunk in chunks
         if chunk.kind == "record" and chunk.record_table is not None
     }
 
 
-def describe(node_label: str, node_id: str, columns: Mapping[str, str]) -> str:
-    """One humanised sentence: "<Label> <id>: <column name> <value>, ...".
-
-    Column names read with spaces; missing values ("-") and the id itself
-    are omitted. A node without columns reads "<Label> <id>".
-    """
-    pairs = [
-        f"{column.replace('_', ' ')} {value}"
-        for column, value in columns.items()
-        if value not in ("-", node_id)
-    ]
-    head = f"{node_label} {node_id}"
-    return f"{head}: {', '.join(pairs)}" if pairs else head
+def bare_node_text(node_label: str, node_id: str) -> str:
+    """The text of a node without a record block: "<Label> <id>", nothing more."""
+    return f"{node_label} {node_id}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,9 +169,11 @@ class AuthoritativeFacts:
     source_record_id: str
     columns: dict[str, str]
 
-    def sentence(self) -> str:
-        """The authoritative columns as one humanised sentence (see ``describe``)."""
-        return describe(self.node_label, self.node_id, self.columns)
+    @property
+    def market_id(self) -> str | None:
+        """The record's market, ``None`` for shared (market-less) records."""
+        value = self.columns.get(MARKET_COLUMNS.get(self.source_table, "market_id"), "-")
+        return None if value == "-" else value
 
     @property
     def valid_to(self) -> date | None:
@@ -194,30 +193,32 @@ class AuthoritativeFacts:
 class SourceLookup:
     """Reads authoritative rows from the dataset Parquet files.
 
-    ``record_texts`` holds the record blocks pipeline A indexes (built once
+    ``record_blocks`` holds the record blocks pipeline A indexes (built once
     over the dataset by ``records.serialise_records``). Results are memoised
     per (label, id): ranking and evidence assembly both request facts for
     the same nodes.
     """
 
-    def __init__(self, dataset_dir: Path, record_texts: RecordTexts) -> None:
+    def __init__(self, dataset_dir: Path, record_blocks: RecordBlocks) -> None:
         self._dataset_dir = dataset_dir
-        self._record_texts = record_texts
+        self._record_blocks = record_blocks
         self._cache: dict[tuple[str, str], AuthoritativeFacts | None] = {}
+
+    def record_block(self, node_label: str, node_id: str) -> CorpusChunk | None:
+        """The record block A indexes for the node's row, whether or not a
+        search returned it; ``None`` when the row has no block."""
+        table = _RECORD_TABLES.get(node_label)
+        return self._record_blocks.get((table, node_id)) if table is not None else None
 
     def node_text(self, node_label: str, node_id: str) -> str:
         """The text a node is judged and shown on.
 
-        The node's record block, byte for byte, when pipeline A indexes one
-        for the same row, so the judge scores the same text for the same
-        record in every pipeline. Otherwise one humanised sentence from the
-        authoritative columns, or "<Label> <id>" for a node without facts.
+        The node's record block, byte for byte, so the judge scores the same
+        text for the same record in every pipeline; "<Label> <id>" for a
+        node whose row has no block.
         """
-        table = _RECORD_TABLES.get(node_label)
-        if table is not None and (table, node_id) in self._record_texts:
-            return self._record_texts[(table, node_id)]
-        facts = self.fetch(node_label, node_id)
-        return facts.sentence() if facts is not None else describe(node_label, node_id, {})
+        record = self.record_block(node_label, node_id)
+        return record.text if record is not None else bare_node_text(node_label, node_id)
 
     def fetch(self, node_label: str, node_id: str) -> AuthoritativeFacts | None:
         key = (node_label, node_id)
@@ -278,7 +279,7 @@ class SourceLookup:
             projection = ", ".join(f'"{column}"' for column in LINK_COLUMNS)
             rows: list[tuple[Any, ...]] = connection.execute(
                 f'SELECT {projection} FROM read_parquet(?) WHERE "{id_column}" = ? '
-                'ORDER BY "usage_weight" DESC LIMIT ?',
+                'ORDER BY "usage_weight" DESC, "player_id" LIMIT ?',
                 [str(path), node_id, MAX_LINK_ROWS],
             ).fetchall()
         finally:

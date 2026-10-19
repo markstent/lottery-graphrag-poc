@@ -29,7 +29,7 @@ from app.ontology.terms import TermMatcher, build_term_table
 from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import IdEntityResolver, QueryExpansion, TermEntityResolver
-from app.retrieval.graph.source_lookup import SourceLookup, record_texts_of
+from app.retrieval.graph.source_lookup import SourceLookup, record_blocks_of
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.index import index_corpus, load_indexed_corpus
@@ -38,7 +38,7 @@ from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 from neo4j import GraphDatabase
 
-from tests.test_graph_rag import make_settings
+from tests.test_graph_rag import event_trace, make_settings
 
 
 def resolvers_for(reader: GraphReader) -> tuple[IdEntityResolver, TermEntityResolver]:
@@ -114,7 +114,7 @@ def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipe
             generator=FakeAnswerGenerator(),
             settings=settings,
             reranker=build_reranker(settings),
-            source_lookup=SourceLookup(ingested, record_texts_of(corpus.values())),
+            source_lookup=SourceLookup(ingested, record_blocks_of(corpus.values())),
             pipeline="C",
             expansion=QueryExpansion(ontology),
             ontology=ontology,
@@ -171,10 +171,19 @@ def test_market_name_resolves_to_market_node(pipeline: GraphRagPipeline) -> None
 
 def test_pipeline_deterministic_on_live_graph(pipeline: GraphRagPipeline) -> None:
     question = "What happened around digital checkout recently?"
-    first = pipeline.run(question)
-    second = pipeline.run(question)
-    assert [e.node_id for e in first.node_evidence] == [e.node_id for e in second.node_evidence]
-    assert first.answer.text == second.answer.text
+    runs = []
+    for _ in range(2):
+        pipeline.sink.events.clear()
+        result = pipeline.run(question)
+        runs.append(
+            (
+                event_trace(pipeline.events),
+                [(e.node_id, e.selected, e.discard_reason) for e in result.node_evidence],
+                [(c.chunk_id, c.selected, c.discard_reason) for c in result.document_evidence],
+                result.answer.raw_text,
+            )
+        )
+    assert runs[0] == runs[1]
 
 
 def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: GraphConfig) -> None:
@@ -196,7 +205,7 @@ def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: Graph
             generator=FakeAnswerGenerator(),
             settings=dataclasses.replace(full_settings, graph=graph_settings),
             reranker=build_reranker(full_settings),
-            source_lookup=SourceLookup(ingested, record_texts_of(corpus.values())),
+            source_lookup=SourceLookup(ingested, record_blocks_of(corpus.values())),
             pipeline="B",
         )
         result = pipeline.run("What happened around digital checkout recently?")

@@ -40,6 +40,7 @@ from app.events import (
     GRAPH_RELATIONSHIP_TRAVERSED,
     GRAPH_SEED_SELECTED,
     GRAPH_TRAVERSAL_STARTED,
+    RetrievalEvent,
 )
 from app.evidence import EvidenceChunk
 from app.ontology.loader import load_ontology
@@ -70,9 +71,11 @@ from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import (
     FakeAnswerGenerator,
     GenerationOutput,
+    build_user_prompt,
     context_block,
 )
 from app.retrieval.standard.index import index_corpus
+from app.retrieval.standard.pipeline import StandardRagPipeline
 from app.retrieval.standard.reranking import LexicalReranker, build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder, SparseVector
 from app.retrieval.standard.vector_store import InMemoryVectorStore
@@ -127,7 +130,7 @@ def make_settings(**overrides: object) -> RetrievalSettings:
         ),
         "vector": VectorSettings(url="", collection="test"),
         "context": ContextSettings(budget_tokens=2000, dedupe_threshold=0.85),
-        "rerank": RerankSettings(provider="lexical", model="unused", lexical_weight=0.3),
+        "rerank": RerankSettings(provider="lexical", model="unused"),
         "generation": GenerationSettings(
             provider="fake", model="fake-answer-v1", temperature=0.0, api_base=None
         ),
@@ -427,11 +430,11 @@ class TestQueryExpansionInPipeline:
 
 
 class TestRankingAndEvidence:
-    def test_platform_version_and_uk_document_surface(self) -> None:
+    def test_platform_version_is_judged_and_uk_document_surfaces(self) -> None:
         pipeline = build_pipeline()
         result = pipeline.run("Why did checkout fail in Greece?")
-        node_ids = {evidence.node_id for evidence in result.node_evidence if evidence.selected}
-        assert "PLV_PAYMENTS_3" in node_ids
+        version = next(e for e in result.node_evidence if e.node_id == "PLV_PAYMENTS_3")
+        assert version.rerank_score is not None
         # Documents do not travel through the graph layer: the UK release
         # note enters the context through the shared vector channel, the
         # same one pipeline A uses.
@@ -598,6 +601,25 @@ class TestSourceLookup:
         assert incident.authoritative["source_table"] == "incidents"
 
 
+def test_payment_method_links_order_by_weight_then_player(tmp_path: Path) -> None:
+    import duckdb
+
+    connection = duckdb.connect()
+    connection.execute(
+        "COPY (SELECT * FROM (VALUES"
+        " ('PLAYER_C','PM_1',TIMESTAMP '2025-01-01',NULL,0.5),"
+        " ('PLAYER_A','PM_1',TIMESTAMP '2025-01-02',NULL,0.5),"
+        " ('PLAYER_B','PM_1',TIMESTAMP '2025-01-03',NULL,0.9))"
+        " AS t(player_id, payment_method_id, first_used_at, last_used_at, usage_weight)"
+        f") TO '{tmp_path / 'player_payment_method.parquet'}' (FORMAT PARQUET)"
+    )
+    connection.close()
+    facts = SourceLookup(tmp_path, {}).fetch("PaymentMethod", "PM_1")
+    assert facts is not None
+    players = [link.split("[", 1)[0] for link in facts.columns["links"].split("; ")]
+    assert players == ["PLAYER_B", "PLAYER_A", "PLAYER_C"]
+
+
 class TestMarketScope:
     @staticmethod
     def _incidents_dir(tmp_path) -> Path:  # type: ignore[no-untyped-def]
@@ -671,6 +693,79 @@ class TestMarketScope:
         selected = {evidence.node_id for evidence in result.node_evidence if evidence.selected}
         assert {"INC_S007_GR", "INC_S007_AT"} <= selected
 
+    def test_both_channels_agree_on_market_less_and_home_market_evidence(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        """Under a scope, shared evidence stays in both channels and a payment
+        provider's market is its home market in both (F7)."""
+        import duckdb
+
+        source_dir = tmp_path / "ds-providers"
+        source_dir.mkdir()
+        connection = duckdb.connect()
+        connection.execute(
+            "COPY (SELECT * FROM (VALUES"
+            " ('PAY_AT','Alpenpay','MKT_AT','PLT_PAYMENTS'),"
+            " ('PAY_GR','Hellaspay','MKT_GR','PLT_PAYMENTS'))"
+            " AS t(provider_id, name, home_market_id, platform_id)"
+            f") TO '{source_dir / 'payment_providers.parquet'}' (FORMAT PARQUET)"
+        )
+        connection.execute(
+            "COPY (SELECT * FROM (VALUES ('PLT_PAYMENTS','Payments','CORE','SUP_1'))"
+            " AS t(platform_id, platform_name, platform_type, supplier_id)"
+            f") TO '{source_dir / 'platforms.parquet'}' (FORMAT PARQUET)"
+        )
+        connection.close()
+        records = [
+            record_corpus_chunk(
+                "payment_providers",
+                "PAY_AT",
+                "Payment provider Alpenpay (PAY_AT) for checkout in Greece.",
+                "MKT_AT",
+            ),
+            record_corpus_chunk(
+                "payment_providers",
+                "PAY_GR",
+                "Payment provider Hellaspay (PAY_GR) for checkout in Greece.",
+                "MKT_GR",
+            ),
+            record_corpus_chunk(
+                "platforms", "PLT_PAYMENTS", "Platform Payments for checkout in Greece.", ""
+            ),
+        ]
+        rows = [
+            ("PLT_PAYMENTS", "PROVIDED_BY", "PAY_AT", "PaymentProvider"),
+            ("PLT_PAYMENTS", "PROVIDED_BY", "PAY_GR", "PaymentProvider"),
+        ]
+        seed = ResolvedEntity("PLT_PAYMENTS", "Platform", "PLT_PAYMENTS", "id", 1.0)
+        pipeline = build_pipeline(resolver=StaticEntityResolver([seed]))
+        pipeline.neighbours = load_static_provider_from_rows(rows)
+        pipeline.source_lookup = SourceLookup(
+            source_dir, {(r.record_table or "", r.document_id): r for r in records}
+        )
+        index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, records)
+        lab_a = StandardRagPipeline(
+            embeddings=pipeline.embeddings,
+            sparse=pipeline.sparse,
+            store=pipeline.store,
+            generator=pipeline.generator,
+            settings=dataclasses.replace(pipeline.settings, top_k=10),
+            reranker=pipeline.reranker,
+        )
+        pipeline.settings = dataclasses.replace(pipeline.settings, top_k=10)
+        result_a = lab_a.run(QUESTION, markets=["MKT_GR"])
+        result_b = pipeline.run(QUESTION, markets=["MKT_GR"])
+
+        retrieved_a = {c.document_id for c in result_a.evidence if c.kind == "record"}
+        assert retrieved_a == {"PAY_GR", "PLT_PAYMENTS"}
+        outcome = {e.node_id: e for e in result_b.node_evidence}
+        assert set(outcome) == {"PLT_PAYMENTS", "PAY_GR"}
+        discarded = [
+            e.payload
+            for e in pipeline.events
+            if e.event_type == GRAPH_CANDIDATE_DISCARDED
+            and e.payload.get("reason") == "out_of_scope_market"
+        ]
+        assert [(p["node_id"], p["hops"], p["seed"]) for p in discarded] == [("PAY_AT", 1, False)]
+
     def test_scope_is_recorded_on_the_resolution_event(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         pipeline = self._scope_pipeline(tmp_path)
         pipeline.run("Why did checkout fail in Greece?", markets=["MKT_GR"])
@@ -689,11 +784,32 @@ class TestTelemetryAndDeterminism:
         assert GRAPH_CONTEXT_ASSEMBLED in types
         assert sum(event.event_type == GRAPH_CANDIDATE_SELECTED for event in pipeline.events) >= 1
 
-    def test_deterministic_across_runs(self) -> None:
-        first = build_pipeline().run("Why did checkout fail in Greece?")
-        second = build_pipeline().run("Why did checkout fail in Greece?")
-        assert [e.node_id for e in first.node_evidence] == [e.node_id for e in second.node_evidence]
-        assert first.answer.text == second.answer.text
+    @pytest.mark.parametrize("markets", [None, ["MKT_GR"]])
+    def test_deterministic_across_runs(self, markets: list[str] | None, tmp_path: Path) -> None:
+        """Two runs give the same telemetry, outcomes and answer, event for event."""
+        record = record_corpus_chunk(
+            "incidents", "INC_S007_GR", "Incident INC_S007_GR in Greece: checkout failed."
+        )
+        runs = []
+        for _ in range(2):
+            pipeline = build_pipeline(
+                resolver=StaticEntityResolver(TestQueryExpansionInPipeline._concept_entities()),
+                expansion=QueryExpansion(load_ontology()),
+            )
+            pipeline.ontology = load_ontology()
+            index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+            pipeline.source_lookup = SourceLookup(tmp_path, {("incidents", "INC_S007_GR"): record})
+            result = pipeline.run(QUESTION, markets=markets)
+            runs.append(
+                (
+                    event_trace(pipeline.events),
+                    [(e.node_id, e.selected, e.discard_reason) for e in result.node_evidence],
+                    [(c.chunk_id, c.selected, c.discard_reason) for c in result.document_evidence],
+                    result.answer.raw_text,
+                )
+            )
+        assert runs[0] == runs[1]
+        assert (record.chunk_id, False, SELECTION_SUPERSEDED) in runs[0][2]
 
     def test_empty_question_rejected(self) -> None:
         with pytest.raises(ValueError, match="empty"):
@@ -718,35 +834,54 @@ def test_every_structured_label_resolves_to_a_real_source_table() -> None:
 
 
 class RecordingReranker(LexicalReranker):
-    """The lexical reranker, recording every (question, candidates) call."""
-
-    def __init__(self) -> None:
-        super().__init__(lexical_weight=0.3)
-        self.calls: list[tuple[str, list[EvidenceChunk]]] = []
-
-    def rerank(self, question: str, candidates: list[EvidenceChunk]) -> list[EvidenceChunk]:
-        self.calls.append((question, list(candidates)))
-        return super().rerank(question, candidates)
-
-
-class PromptCapture(FakeAnswerGenerator):
-    """The fake generator, keeping the structured blocks it was shown."""
+    """The lexical reranker, recording every (question, candidates) call
+    and the last reranked list."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.extra_blocks: list[str] = []
+        self.calls: list[tuple[str, list[EvidenceChunk]]] = []
+        self.reranked: list[EvidenceChunk] = []
 
-    def generate(
-        self,
-        question: str,
-        contexts: list[EvidenceChunk],
-        extra_blocks: list[str] | None = None,
-    ) -> GenerationOutput:
-        self.extra_blocks = list(extra_blocks or [])
-        return super().generate(question, contexts, extra_blocks)
+    def rerank(self, question: str, candidates: list[EvidenceChunk]) -> list[EvidenceChunk]:
+        self.calls.append((question, list(candidates)))
+        self.reranked = super().rerank(question, candidates)
+        return self.reranked
 
 
-def record_corpus_chunk(table: str, record_id: str, text: str) -> CorpusChunk:
+class PromptCapture(FakeAnswerGenerator):
+    """The fake generator, keeping the contexts it was given and the exact
+    user prompt the gateway generator would send for them."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.contexts: list[EvidenceChunk] = []
+        self.prompt = ""
+
+    def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
+        self.contexts = list(contexts)
+        self.prompt = build_user_prompt(question, contexts)
+        return super().generate(question, contexts)
+
+
+# The one wall-clock measurement in an event payload (generation latency).
+WALL_CLOCK_KEYS = frozenset({"latency_ms"})
+
+
+def event_trace(events: list[RetrievalEvent]) -> list[tuple[str, str, dict[str, object]]]:
+    """Each event as (event_type, pipeline, payload) without wall-clock keys."""
+    return [
+        (
+            event.event_type,
+            event.pipeline,
+            {key: value for key, value in event.payload.items() if key not in WALL_CLOCK_KEYS},
+        )
+        for event in events
+    ]
+
+
+def record_corpus_chunk(
+    table: str, record_id: str, text: str, market_id: str = "MKT_GR"
+) -> CorpusChunk:
     return CorpusChunk(
         chunk_id=f"REC_{table}_{record_id}",
         document_id=record_id,
@@ -754,7 +889,7 @@ def record_corpus_chunk(table: str, record_id: str, text: str) -> CorpusChunk:
         text=text,
         title=f"{table}: {record_id}",
         document_type=table.upper(),
-        market_id="MKT_GR",
+        market_id=market_id,
         language_code="en",
         source_system="warehouse",
         valid_from=None,
@@ -855,6 +990,11 @@ class TestFallbackSeed:
         assert seeds == ["INC_S007_GR"]
         fallback = next(e for e in pipeline.events if e.event_type == GRAPH_ENTITY_RESOLVED)
         assert fallback.payload["origin"] == "vector_fallback"
+        # A vector hit has no resolver confidence: its fused score is
+        # reported under its own key, never next to 0-1 confidences.
+        assert "confidence" not in fallback.payload
+        hit = next(c for c in result.document_evidence if c.chunk_id == record.chunk_id)
+        assert fallback.payload["fused_score"] == pytest.approx(hit.similarity, abs=1e-6)
         assert fallback.payload["node_label"] == "Incident"
         seed = next(e for e in result.node_evidence if e.node_id == "INC_S007_GR")
         assert seed.node_label == "Incident" and seed.hops == 0
@@ -933,42 +1073,63 @@ class TestNodeText:
         "Source: incident_management table incidents, record INC_S007_GR."
     )
 
-    def test_a_node_with_a_record_block_is_judged_on_the_record_text(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    @classmethod
+    def _record(cls) -> CorpusChunk:
+        return record_corpus_chunk("incidents", "INC_S007_GR", cls.RECORD_TEXT)
+
+    def test_a_node_with_a_record_block_is_judged_and_shown_as_that_block(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         pipeline = build_pipeline()
-        pipeline.source_lookup = SourceLookup(
-            tmp_path, {("incidents", "INC_S007_GR"): self.RECORD_TEXT}
-        )
+        record = self._record()
+        pipeline.source_lookup = SourceLookup(tmp_path, {("incidents", "INC_S007_GR"): record})
         reranker, generator = RecordingReranker(), PromptCapture()
         pipeline.reranker, pipeline.generator = reranker, generator
         pipeline.run(QUESTION)
         node = next(c for c in reranker.calls[0][1] if c.chunk_id == "INC_S007_GR")
         assert node.text == self.RECORD_TEXT
-        # Formatted exactly like a document block: title line, then the text.
-        assert context_block(node) in generator.extra_blocks
-        assert all("Graph path" not in block for block in generator.extra_blocks)
+        shown = next(c for c in generator.contexts if c.chunk_id == "INC_S007_GR")
+        # The prompt block is A's record block: same title line, same text.
+        assert context_block(shown) == context_block(record.to_evidence(similarity=0.0, rank=1))
+        assert "Graph path" not in generator.prompt
 
-    def test_a_node_superseding_a_record_reuses_its_title_and_language(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
-        """Same fact, same block: the generator sees A's record block in B and C."""
-        pipeline = build_pipeline()
-        record = record_corpus_chunk("incidents", "INC_S007_GR", self.RECORD_TEXT)
-        index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
-        pipeline.source_lookup = SourceLookup(
-            tmp_path, {("incidents", "INC_S007_GR"): self.RECORD_TEXT}
-        )
-        reranker = RecordingReranker()
-        pipeline.reranker = reranker
-        result = pipeline.run(QUESTION)
-        superseded = [
-            c for c in result.document_evidence if c.discard_reason == SELECTION_SUPERSEDED
-        ]
-        assert [c.chunk_id for c in superseded] == [record.chunk_id]
-        judged = {c.chunk_id: c for c in reranker.calls[0][1] if c.kind == "node"}
-        node = judged["INC_S007_GR"]
-        assert (node.title, node.language_code) == (record.title, record.language_code)
-        # A node without a record block keeps its graph title.
-        assert judged["GAME_GR_01"].title == "Game: GAME_GR_01"
+    def test_a_superseding_node_takes_the_block_from_the_source_lookup(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        """Same fact, same block, whether or not the record was a top-k hit."""
+        record = self._record()
+        lookup = SourceLookup(tmp_path, {("incidents", "INC_S007_GR"): record})
+        nodes: dict[bool, EvidenceChunk] = {}
+        for indexed in (True, False):
+            pipeline = build_pipeline()
+            if indexed:
+                index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+            pipeline.source_lookup = lookup
+            reranker = RecordingReranker()
+            pipeline.reranker = reranker
+            result = pipeline.run(QUESTION)
+            superseded = [
+                c.chunk_id
+                for c in result.document_evidence
+                if c.discard_reason == SELECTION_SUPERSEDED
+            ]
+            assert superseded == ([record.chunk_id] if indexed else [])
+            judged = {c.chunk_id: c for c in reranker.calls[0][1] if c.kind == "node"}
+            nodes[indexed] = judged["INC_S007_GR"]
+            # A node without a record block keeps its graph title, no market or language.
+            game = judged["GAME_GR_01"]
+            assert (game.title, game.market_id, game.language_code) == (
+                "Game: GAME_GR_01",
+                "",
+                "-",
+            )
+        for node in nodes.values():
+            assert (node.title, node.market_id, node.language_code, node.record_table) == (
+                record.title,
+                record.market_id,
+                record.language_code,
+                record.record_table,
+            )
+            assert node.discovered_via == "graph_traversal"
+        assert context_block(nodes[True]) == context_block(nodes[False])
 
-    def test_a_node_without_a_record_block_gets_one_humanised_sentence(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_a_node_without_a_record_block_is_only_its_label_and_id(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         import duckdb
 
         connection = duckdb.connect()
@@ -980,10 +1141,11 @@ class TestNodeText:
         )
         connection.close()
         lookup = SourceLookup(tmp_path, {})
-        assert lookup.node_text("SupportCase", "SUP_1") == (
-            "SupportCase SUP_1: market id MKT_UK, category code SUPC_UK_GAME, "
-            "summary text Login failed"
-        )
+        # The authoritative row exists (facts for citations and the UI) ...
+        facts = lookup.fetch("SupportCase", "SUP_1")
+        assert facts is not None and facts.columns["summary_text"] == "Login failed"
+        # ... but the judge and the model see no warehouse text A cannot index.
+        assert lookup.node_text("SupportCase", "SUP_1") == "SupportCase SUP_1"
         assert lookup.node_text("Supplier", "SUPP_1") == "Supplier SUPP_1"
 
     def test_concept_text_comes_from_the_ontology(self) -> None:
