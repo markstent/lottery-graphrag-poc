@@ -1,84 +1,76 @@
-"""Benchmark bank integrity tests (docs/05-benchmark-spec.md section 2 and 15)."""
+"""Benchmark bank 2.0.0 integrity tests."""
 
 from __future__ import annotations
 
-import string
+from collections import Counter
 
-from app.evaluation.bank import BANK, CATEGORY_DIFFICULTY, BankQuestion
-
-# docs/05 section 2 allocation: 4 questions in each of the first six
-# categories, 6 in the cross-market/ontology/pattern bucket.
-EXPECTED_ALLOCATION: dict[str, int] = {
-    "FACT": 4,
-    "SEMANTIC": 4,
-    "RELATIONSHIP": 4,
-    "TWO_HOP": 4,
-    "MULTI_HOP": 4,
-    "CROSS_DOMAIN": 4,
-    "CROSS_MARKET": 2,
-    "ONTOLOGY": 2,
-    "PATTERN": 1,
-    "TEMPORAL_ONTOLOGY": 1,
-}
-
-KNOWN_SCENARIOS = {f"SCN-{number:03d}" for number in range(1, 16)}
-SUPPORTED_PLACEHOLDERS = {"anchor", "target_date", "week_start"}
+import pytest
+from app.evaluation.bank import (
+    ANCHORS_PER_QUESTION,
+    BANK,
+    BANK_VERSION,
+    NAME_ANCHORED,
+    STRATA,
+    question_by_id,
+)
+from app.scenarios.catalogue import SCENARIO_CATALOGUE
 
 
-def test_thirty_questions_with_unique_ids() -> None:
-    assert len(BANK) == 30
-    ids = [question.question_id for question in BANK]
-    assert ids == [f"Q{number:02d}" for number in range(1, 31)]
-    assert len(set(ids)) == 30
+def test_bank_shape() -> None:
+    assert BANK_VERSION == "2.0.0" and len(BANK) == 22
+    assert len({q.question_id for q in BANK}) == 22
+    counts = Counter((q.stratum, q.sub_stratum) for q in BANK)
+    assert counts == {
+        ("H3", None): 4,
+        ("H1", None): 4,
+        ("H2", "id_anchored"): 4,
+        ("H2", "name_anchored"): 2,
+        ("H5", None): 8,
+    }
+    assert {q.stratum for q in BANK} == set(STRATA)
+    assert ANCHORS_PER_QUESTION == 3
+    assert NAME_ANCHORED == "entity resolution through the ontology"
 
 
-def test_category_allocation_matches_spec() -> None:
-    counts: dict[str, int] = {}
-    for question in BANK:
-        counts[question.category] = counts.get(question.category, 0) + 1
-    assert counts == EXPECTED_ALLOCATION
+def test_templates_carry_exactly_one_anchor_slot() -> None:
+    for q in BANK:
+        slots = q.template.count("{anchor}") + q.template.count("{anchor_name}")
+        assert slots == 1, q.question_id
 
 
-def test_difficulty_defined_for_every_category() -> None:
-    for question in BANK:
-        assert question.category in CATEGORY_DIFFICULTY
-        assert 1 <= CATEGORY_DIFFICULTY[question.category] <= 6
+def test_name_anchored_questions_quote_the_local_name() -> None:
+    for q in BANK:
+        assert ("{anchor_name}" in q.template) == (q.sub_stratum == "name_anchored")
+        if q.sub_stratum == "name_anchored":
+            assert '"{anchor_name}"' in q.template
 
 
-def test_templates_use_supported_placeholders_only() -> None:
-    for question in BANK:
-        placeholders = {
-            word for _, word, _, _ in string.Formatter().parse(question.template) if word
-        }
-        assert placeholders <= SUPPORTED_PLACEHOLDERS, question.question_id
+def test_planted_questions_name_catalogued_scenarios() -> None:
+    planted = {q.scenario_id for q in BANK if q.stratum == "H5"}
+    assert planted == {
+        "SCN-001",
+        "SCN-002",
+        "SCN-003",
+        "SCN-007",
+        "SCN-009",
+        "SCN-010",
+        "SCN-011",
+        "SCN-015",
+    }
+    assert planted <= {spec.scenario_id for spec in SCENARIO_CATALOGUE}
+    assert all(q.scenario_id is None for q in BANK if q.stratum != "H5")
 
 
-def test_scenario_references_are_known_catalogue_ids() -> None:
-    for question in BANK:
-        if question.scenario_id is not None:
-            assert question.scenario_id in KNOWN_SCENARIOS, question.question_id
+def test_h2_questions_are_ontology_dependent() -> None:
+    assert all(q.ontology_dependent for q in BANK if q.stratum == "H2")
+    assert {q.question_id for q in BANK if q.ontology_dependent} == {
+        *(f"L{n:02d}" for n in range(9, 15)),
+        "L20",
+        "L21",
+    }
 
 
-def test_fraud_profile_only_on_the_pattern_question() -> None:
-    for question in BANK:
-        if question.profile is not None:
-            assert question.question_id == "Q28"
-            assert question.profile == "fraud"
-
-
-def test_binding_keys_are_unique() -> None:
-    keys = [question.binding_key for question in BANK]
-    assert len(set(keys)) == len(keys)
-
-
-def test_markets_use_iso_style_codes() -> None:
-    for question in BANK:
-        assert question.markets
-        assert all(len(market) == 2 and market.isupper() for market in question.markets)
-
-
-def test_question_by_id_round_trip() -> None:
-    question: BankQuestion = BANK[0]
-    from app.evaluation.bank import question_by_id
-
-    assert question_by_id(question.question_id) is question
+def test_question_by_id() -> None:
+    assert question_by_id("L15").scenario_id == "SCN-001"
+    with pytest.raises(KeyError):
+        question_by_id("L99")
