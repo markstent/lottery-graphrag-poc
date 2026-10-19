@@ -165,7 +165,7 @@ def test_market_name_resolves_to_market_node(pipeline: GraphRagPipeline) -> None
         for event in pipeline.events
         if event.event_type == "graph.seed.selected"
     ]
-    assert any(seed.startswith("MKT_") for seed in seeds)
+    assert any(isinstance(seed, str) and seed.startswith("MKT_") for seed in seeds)
     assert result.node_evidence
 
 

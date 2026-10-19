@@ -208,4 +208,4 @@ def test_experiment_market_platform_and_channel_blocks(blocks: list[RecordBlock]
 
 def test_payment_provider_block_market_is_its_home_market(blocks: list[RecordBlock]) -> None:
     provider = next(b for b in blocks if b.table == "payment_providers" and b.market_id)
-    assert provider.market_id.startswith("MKT_")
+    assert provider.market_id is not None and provider.market_id.startswith("MKT_")

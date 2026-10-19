@@ -30,7 +30,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Protocol, cast
 
 from app.config import RetrievalSettings, from_env
 from app.datasets import __main__ as datasets_cli
@@ -112,7 +112,25 @@ class PrepareSteps:
     indexed_points: Callable[[WorldPaths], int]
 
 
-RunnerFactory = Callable[..., BenchmarkRunner]
+class WorldRunner(Protocol):
+    """What a run needs of a runner: one world's results."""
+
+    def run(self) -> WorldRun: ...
+
+
+class RunnerFactory(Protocol):
+    """Builds the runner of one prepared world; tests pass recorders."""
+
+    def __call__(
+        self,
+        paths: WorldPaths,
+        bank: FrozenBank,
+        *,
+        kind: str,
+        repeats: int,
+        pipelines: tuple[str, ...],
+        depth: int,
+    ) -> WorldRunner: ...
 
 
 def world_paths(seed: int) -> WorldPaths:
@@ -353,7 +371,7 @@ def run_benchmark(
     preflight(kind, repeats)
     selection = Selection(None if strata is None else tuple(strata), limit)
     steps = steps or default_steps()
-    factory = runner_factory or build_runner
+    factory: RunnerFactory = runner_factory or build_runner
     worlds: list[WorldRun] = []
     with _presentation_graph_restored(steps):
         for seed in seeds:
@@ -391,7 +409,7 @@ def run_sweep(
     preflight("sweep", repeats)
     selection = Selection((SWEEP_STRATUM,), limit)
     steps = steps or default_steps()
-    factory = runner_factory or build_runner
+    factory: RunnerFactory = runner_factory or build_runner
     by_depth: dict[int, list[WorldRun]] = defaultdict(list)
     with _presentation_graph_restored(steps):
         for seed in seeds:

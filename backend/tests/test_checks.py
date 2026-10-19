@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from app.evaluation.checks import (
+    Check,
     NumberCheck,
     SetCheck,
     TokenCheck,
@@ -122,7 +123,7 @@ def test_token_check_accepts_an_alias() -> None:
 
 
 def test_answer_score_is_the_mean_and_none_without_checks() -> None:
-    checks = [TokenCheck("MKT_GR"), VerdictCheck("yes")]
+    checks: list[Check] = [TokenCheck("MKT_GR"), VerdictCheck("yes")]
     assert answer_score(checks, "No", "MKT_GR") == 0.5
     assert answer_score([], "Yes", "MKT_GR") is None
 

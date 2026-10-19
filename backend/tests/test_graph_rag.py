@@ -548,7 +548,7 @@ def test_authoritative_facts_valid_to_parses_date_and_timestamp() -> None:
 
 
 class TestSourceLookup:
-    def test_retired_game_reports_superseded_validity(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_retired_game_reports_superseded_validity(self, tmp_path: Path) -> None:
         import duckdb
 
         connection = duckdb.connect()
@@ -567,7 +567,7 @@ class TestSourceLookup:
         assert components["GAME_GR_01"] == 0.3
         assert components["INC_S007_GR"] == 1.0
 
-    def test_authoritative_facts_attached(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_authoritative_facts_attached(self, tmp_path: Path) -> None:
         source_dir = tmp_path / "ds"
         source_dir.mkdir()
         import duckdb
@@ -622,7 +622,7 @@ def test_payment_method_links_order_by_weight_then_player(tmp_path: Path) -> Non
 
 class TestMarketScope:
     @staticmethod
-    def _incidents_dir(tmp_path) -> Path:  # type: ignore[no-untyped-def]
+    def _incidents_dir(tmp_path: Path) -> Path:
         source_dir = tmp_path / "ds-scope"
         source_dir.mkdir()
         import duckdb
@@ -647,7 +647,7 @@ class TestMarketScope:
         return source_dir
 
     @classmethod
-    def _scope_pipeline(cls, tmp_path) -> GraphRagPipeline:  # type: ignore[no-untyped-def]
+    def _scope_pipeline(cls, tmp_path: Path) -> GraphRagPipeline:
         """GR seed whose out-of-scope sibling INC_S007_AT (MKT_AT facts)
         is one RELATED_TO hop away (labelled, like the real adapter)."""
         source_dir = cls._incidents_dir(tmp_path)
@@ -670,7 +670,7 @@ class TestMarketScope:
         assert "CHNK_S007_GR_00" in chunk_ids
         assert "CHNK_S007_UK_00" not in chunk_ids
 
-    def test_out_of_scope_structured_nodes_are_discarded(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_out_of_scope_structured_nodes_are_discarded(self, tmp_path: Path) -> None:
         pipeline = self._scope_pipeline(tmp_path)
         result = pipeline.run("Why did checkout fail in Greece?", markets=["MKT_GR"])
 
@@ -686,14 +686,16 @@ class TestMarketScope:
         assert discards, "the out-of-scope sibling must be recorded as discarded"
         assert discards[0].payload["reason"] == "out_of_scope_market"
 
-    def test_unscoped_run_keeps_the_cross_market_sibling(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_unscoped_run_keeps_the_cross_market_sibling(self, tmp_path: Path) -> None:
         pipeline = self._scope_pipeline(tmp_path)
         result = pipeline.run("Why did checkout fail in Greece?")
 
         selected = {evidence.node_id for evidence in result.node_evidence if evidence.selected}
         assert {"INC_S007_GR", "INC_S007_AT"} <= selected
 
-    def test_both_channels_agree_on_market_less_and_home_market_evidence(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_both_channels_agree_on_market_less_and_home_market_evidence(
+        self, tmp_path: Path
+    ) -> None:
         """Under a scope, shared evidence stays in both channels and a payment
         provider's market is its home market in both (F7)."""
         import duckdb
@@ -766,7 +768,7 @@ class TestMarketScope:
         ]
         assert [(p["node_id"], p["hops"], p["seed"]) for p in discarded] == [("PAY_AT", 1, False)]
 
-    def test_scope_is_recorded_on_the_resolution_event(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_scope_is_recorded_on_the_resolution_event(self, tmp_path: Path) -> None:
         pipeline = self._scope_pipeline(tmp_path)
         pipeline.run("Why did checkout fail in Greece?", markets=["MKT_GR"])
 
@@ -817,7 +819,8 @@ class TestTelemetryAndDeterminism:
 
 
 def test_every_structured_label_resolves_to_a_real_source_table() -> None:
-    from app.datasets.schema import TABLE_SCHEMAS, split_columns
+    from app.datasets.schema import TABLE_SCHEMAS
+    from app.datasets.util import split_columns
     from app.retrieval.graph.ranking import STRUCTURED_LABELS
     from app.retrieval.graph.source_lookup import LINK_COLUMNS, NODE_SOURCES, SNIPPET_COLUMNS
 
@@ -1077,7 +1080,9 @@ class TestNodeText:
     def _record(cls) -> CorpusChunk:
         return record_corpus_chunk("incidents", "INC_S007_GR", cls.RECORD_TEXT)
 
-    def test_a_node_with_a_record_block_is_judged_and_shown_as_that_block(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_a_node_with_a_record_block_is_judged_and_shown_as_that_block(
+        self, tmp_path: Path
+    ) -> None:
         pipeline = build_pipeline()
         record = self._record()
         pipeline.source_lookup = SourceLookup(tmp_path, {("incidents", "INC_S007_GR"): record})
@@ -1091,7 +1096,9 @@ class TestNodeText:
         assert context_block(shown) == context_block(record.to_evidence(similarity=0.0, rank=1))
         assert "Graph path" not in generator.prompt
 
-    def test_a_superseding_node_takes_the_block_from_the_source_lookup(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_a_superseding_node_takes_the_block_from_the_source_lookup(
+        self, tmp_path: Path
+    ) -> None:
         """Same fact, same block, whether or not the record was a top-k hit."""
         record = self._record()
         lookup = SourceLookup(tmp_path, {("incidents", "INC_S007_GR"): record})
@@ -1129,7 +1136,7 @@ class TestNodeText:
             assert node.discovered_via == "graph_traversal"
         assert context_block(nodes[True]) == context_block(nodes[False])
 
-    def test_a_node_without_a_record_block_is_only_its_label_and_id(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+    def test_a_node_without_a_record_block_is_only_its_label_and_id(self, tmp_path: Path) -> None:
         import duckdb
 
         connection = duckdb.connect()

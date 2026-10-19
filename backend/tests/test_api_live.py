@@ -12,6 +12,7 @@ import os
 import time
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from app.api.runs import QueryService
@@ -26,12 +27,12 @@ from app.main import create_app
 from app.retrieval.graph import lab as lab_module
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.index import (
-    InMemoryVectorStore,
     index_corpus,
     load_indexed_corpus,
     write_manifest,
 )
 from app.retrieval.standard.sparse import HashingSparseEmbedder
+from app.retrieval.standard.vector_store import InMemoryVectorStore
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import build_ledger, write_ledger
 from fastapi.testclient import TestClient
@@ -113,7 +114,7 @@ def test_full_abc_run_over_http(client: TestClient) -> None:
     assert response.status_code == 202
     run_id = response.json()["run_id"]
 
-    payload = dict(status="running")
+    payload: dict[str, Any] = {"status": "running"}
     for _ in range(600):
         payload = client.get(f"/api/v1/queries/{run_id}").json()
         if payload["status"] != "running":

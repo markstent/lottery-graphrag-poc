@@ -7,6 +7,7 @@ instead of producing a fabricated success.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from app.api.runs import _error_code
@@ -35,6 +36,9 @@ from tests.test_graph_rag import make_settings, resolved, scn007_adjacency
 from tests.test_standard_rag import make_corpus
 from tests.test_standard_rag import make_settings as make_rag_settings
 
+if TYPE_CHECKING:
+    from fastembed import SparseTextEmbedding
+
 
 class FailingGenerator:
     """Gateway stub that always fails, like an unreachable provider."""
@@ -53,6 +57,7 @@ class FailingEmbedder:
     """Embedder stub that always fails, like a dead embedding host."""
 
     model_name = "failing-embedder-v1"
+    dimensions = 256
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         raise RuntimeError("embedding host refused connection")
@@ -191,7 +196,7 @@ class TestFastembedFailure:
     def test_sparse_failures_raise_a_typed_error(self) -> None:
         embedder = object.__new__(FastembedBm25Embedder)
         embedder.model_name = "Qdrant/bm25"
-        embedder._model = BrokenFastembedModel()
+        embedder._model = cast("SparseTextEmbedding", BrokenFastembedModel())
         with pytest.raises(SparseEmbeddingError, match="model file missing"):
             embedder.embed_query("checkout")
         with pytest.raises(SparseEmbeddingError, match="model file missing"):

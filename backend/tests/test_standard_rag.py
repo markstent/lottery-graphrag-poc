@@ -168,7 +168,8 @@ class TestRetrievalCorrectness:
 
         reranked = [chunk for chunk in result.evidence if chunk.rerank_score is not None]
         assert reranked, "reranking must record scores"
-        scores = [chunk.rerank_score for chunk in result.evidence]
+        assert len(reranked) == len(result.evidence)
+        scores = [chunk.rerank_score for chunk in reranked if chunk.rerank_score is not None]
         assert scores == sorted(scores, reverse=True)
 
     def test_lexical_judge_scores_overlap_only_with_a_chunk_id_tie_break(self) -> None:

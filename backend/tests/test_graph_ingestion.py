@@ -75,7 +75,7 @@ def _query(config: GraphConfig, cypher: str, **params: object) -> list[dict[str,
     driver = GraphDatabase.driver(config.uri, auth=(config.user, config.password))
     try:
         with driver.session(database=config.database) as session:
-            return [record.data() for record in session.run(cypher, **params)]
+            return [record.data() for record in session.run(cypher, params)]
     finally:
         driver.close()
 

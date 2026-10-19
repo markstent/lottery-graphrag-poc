@@ -143,7 +143,7 @@ def test_campaign_target_segment_derivation() -> None:
 
 def test_player_game_aggregation_excludes_anonymous_and_void() -> None:
     ts = datetime(2025, 3, 1, tzinfo=UTC)
-    tickets = [
+    tickets: list[dict[str, Any]] = [
         {"player_id": "P1", "game_id": "G1", "ticket_status": "SETTLED", "purchase_timestamp": ts},
         {
             "player_id": "P1",

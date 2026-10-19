@@ -183,7 +183,7 @@ def test_draw_base_jackpot_follows_jackpot_type_and_family() -> None:
         _game("GAME_UK_91", "FAM_UK_NATIONAL_DRAW", "PROGRESSIVE"),
         _game("GAME_UK_92", "FAM_UK_FIXED_PRIZE", "FIXED"),
     ]
-    first_draw = {}
+    first_draw: dict[str, Decimal] = {}
     for draw in generate_draws(stream(1, "draws"), games):
         first_draw.setdefault(draw.game_id, draw.jackpot_amount)
     assert first_draw == {

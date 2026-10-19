@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import random
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 from app.datasets.config import GenerationConfig
+from app.datasets.rows import KpiDailyRow, TicketRow
 from app.datasets.schema import ID_FORMATS
 from app.datasets.taxonomies import (
     GAME_FAMILIES,
@@ -32,15 +33,17 @@ from app.scenarios.planter import ScenarioPlanter
 
 SCN007_MARKETS = {"MKT_GR", "MKT_AT", "MKT_CZ"}
 
+ScenarioWorld = tuple[World, dict[str, ScenarioOutcome]]
 
-def _planted_world(scenario_seed: int) -> tuple[World, dict[str, ScenarioOutcome]]:
+
+def _planted_world(scenario_seed: int) -> ScenarioWorld:
     world = build_world(GenerationConfig(profile="tiny", world_seed=7, scenario_seed=scenario_seed))
     outcomes = apply_scenarios(world)
     return world, {outcome.spec.scenario_id: outcome for outcome in outcomes}
 
 
 @pytest.fixture(scope="module")
-def scenario_world() -> tuple[World, dict[str, ScenarioOutcome]]:
+def scenario_world() -> ScenarioWorld:
     return _planted_world(7)
 
 
@@ -51,21 +54,21 @@ def test_every_enabled_scenario_has_a_planter() -> None:
     assert len(BY_ID) == 15
 
 
-def test_planted_ids_do_not_encode_scenarios(scenario_world) -> None:
+def test_planted_ids_do_not_encode_scenarios(scenario_world: ScenarioWorld) -> None:
     _world, outcomes = scenario_world
     for outcome in outcomes.values():
         for table, ids in outcome.truth["planted_ids"].items():
             assert all("_S0" not in i for i in ids), (table, ids)
 
 
-def test_planted_ids_continue_the_table_sequence(scenario_world) -> None:
+def test_planted_ids_continue_the_table_sequence(scenario_world: ScenarioWorld) -> None:
     world, _outcomes = scenario_world
     incident_ids = sorted(r.incident_id for r in world.tables["incidents"])
     numbers = [int(i.split("_")[1]) for i in incident_ids]
     assert numbers == list(range(1, len(numbers) + 1))
 
 
-def test_planted_ids_exist_and_are_unique(scenario_world) -> None:
+def test_planted_ids_exist_and_are_unique(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     for table in ("incidents", "documents", "document_chunks", "sessions", "tickets"):
         ids = [row[0] for row in world.tables[table]]
@@ -76,7 +79,7 @@ def test_planted_ids_exist_and_are_unique(scenario_world) -> None:
             assert set(ids) <= {row[0] for row in world.tables[table]}
 
 
-def test_document_ids_and_chunk_ids_continue_sequences(scenario_world) -> None:
+def test_document_ids_and_chunk_ids_continue_sequences(scenario_world: ScenarioWorld) -> None:
     world, _outcomes = scenario_world
     numbers = sorted(int(d.document_id.split("_")[1]) for d in world.tables["documents"])
     assert numbers == list(range(1, len(numbers) + 1))
@@ -86,7 +89,7 @@ def test_document_ids_and_chunk_ids_continue_sequences(scenario_world) -> None:
         assert chunk.chunk_id == expected
 
 
-def test_scn007_documents_do_not_name_sibling_incidents(scenario_world) -> None:
+def test_scn007_documents_do_not_name_sibling_incidents(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     planted = outcomes["SCN-007"].truth["planted_ids"]
     docs = {d.document_id: d for d in world.tables["documents"]}
@@ -94,11 +97,11 @@ def test_scn007_documents_do_not_name_sibling_incidents(scenario_world) -> None:
     assert not any(inc in gr_doc.body for inc in planted["incidents"][1:])
 
 
-def test_scenario_world_passes_validation(scenario_world) -> None:
+def test_scenario_world_passes_validation(scenario_world: ScenarioWorld) -> None:
     assert validate_world(scenario_world[0]) == []
 
 
-def test_scn002_device_cluster_topology(scenario_world) -> None:
+def test_scn002_device_cluster_topology(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     outcome = outcomes["SCN-002"]
     truth = outcome.truth
@@ -139,7 +142,7 @@ def test_scn002_device_cluster_topology(scenario_world) -> None:
     )
 
 
-def test_scn003_payment_cluster_topology(scenario_world) -> None:
+def test_scn003_payment_cluster_topology(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-003"].truth
     members = set(truth["cluster_players"])
@@ -161,7 +164,7 @@ def test_scn003_payment_cluster_topology(scenario_world) -> None:
     assert all(count <= 3 for count in outside.values())
 
 
-def test_scn007_cross_market_incident_pattern(scenario_world) -> None:
+def test_scn007_cross_market_incident_pattern(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-007"].truth
     version = truth["root_cause_entity"]
@@ -207,7 +210,7 @@ def test_scn007_cross_market_incident_pattern(scenario_world) -> None:
         assert {c.category_code for c in market_cases} == {support_category_for(market, "PAYMENT")}
 
 
-def test_scn007_documents_use_local_terms(scenario_world) -> None:
+def test_scn007_documents_use_local_terms(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-007"].truth
     planted = truth["planted_ids"]
@@ -242,7 +245,7 @@ def test_scn007_documents_use_local_terms(scenario_world) -> None:
     assert truth["root_cause_entity"] in release[0].body
 
 
-def test_scn015_document_structured_conflict(scenario_world) -> None:
+def test_scn015_document_structured_conflict(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-015"].truth
 
@@ -287,7 +290,7 @@ def test_scn002_raises_when_no_market_is_eligible() -> None:
         plant_shared_device_cluster(plan)
 
 
-def test_baseline_noise_still_exists(scenario_world) -> None:
+def test_baseline_noise_still_exists(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     planted_incidents = {
         i for o in outcomes.values() for i in o.truth["planted_ids"].get("incidents", [])
@@ -303,7 +306,7 @@ def test_baseline_noise_still_exists(scenario_world) -> None:
     assert len(baseline_docs) == 24  # tiny profile volume
 
 
-def test_planted_rows_are_deterministic(scenario_world) -> None:
+def test_planted_rows_are_deterministic(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     ledger = build_ledger(list(outcomes.values()), world)
     rebuilt, rebuilt_outcomes = _planted_world(7)
@@ -312,7 +315,7 @@ def test_planted_rows_are_deterministic(scenario_world) -> None:
     assert rebuilt.tables == world.tables
 
 
-def test_targets_depend_on_the_scenario_seed(scenario_world) -> None:
+def test_targets_depend_on_the_scenario_seed(scenario_world: ScenarioWorld) -> None:
     """Design 10a.5: markets, games and clusters are drawn from the scenario seed."""
     _world, outcomes = scenario_world
     other = {seed: _planted_world(seed)[1] for seed in range(20, 32)}
@@ -328,14 +331,16 @@ def test_targets_depend_on_the_scenario_seed(scenario_world) -> None:
     assert len({o["SCN-011"].truth["target_market"] for o in other.values()}) > 1
 
 
-def test_scn007_depresses_gr_session_completion_without_manual_edits(scenario_world) -> None:
+def test_scn007_depresses_gr_session_completion_without_manual_edits(
+    scenario_world: ScenarioWorld,
+) -> None:
     world, outcomes = scenario_world
     outcome = outcomes["SCN-007"]
     market = outcome.truth["primary_market"]
     baseline = build_world(GenerationConfig(profile="tiny", world_seed=7, scenario_seed=7))
     dip_days = {outcome.start_date + timedelta(days=o) for o in range(outcome.duration_days)}
 
-    def completion(table: list, days: set | None = None) -> dict:
+    def completion(table: list[KpiDailyRow], days: set[date] | None = None) -> dict[date, float]:
         return {
             row.date: row.metric_value
             for row in table
@@ -350,12 +355,14 @@ def test_scn007_depresses_gr_session_completion_without_manual_edits(scenario_wo
     assert sum(during.values()) / len(during) <= 0.85 * (sum(before.values()) / len(before))
 
 
-def test_manifest_row_counts_match_tables_after_planting(scenario_world) -> None:
+def test_manifest_row_counts_match_tables_after_planting(scenario_world: ScenarioWorld) -> None:
     world, _outcomes = scenario_world
     assert world.manifest["row_counts"] == {name: len(rows) for name, rows in world.tables.items()}
 
 
-def test_scn001_cohort_sessions_are_on_the_release_and_device_family(scenario_world) -> None:
+def test_scn001_cohort_sessions_are_on_the_release_and_device_family(
+    scenario_world: ScenarioWorld,
+) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-001"].truth
     devices = {d.device_id: d for d in world.tables["devices"]}
@@ -366,7 +373,9 @@ def test_scn001_cohort_sessions_are_on_the_release_and_device_family(scenario_wo
     assert all(devices[s.device_id].device_family == truth["device_family"] for s in planted)
 
 
-def test_scn009_failures_share_one_provider_across_three_markets(scenario_world) -> None:
+def test_scn009_failures_share_one_provider_across_three_markets(
+    scenario_world: ScenarioWorld,
+) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-009"].truth
     method_provider = {m.payment_method_id: m.provider_id for m in world.tables["payment_methods"]}
@@ -393,7 +402,9 @@ def test_scenarios_fail_loudly_when_the_world_is_too_small() -> None:
         del PROFILES["micro"]
 
 
-def test_scn001_documents_and_contacts_use_the_market_language(scenario_world) -> None:
+def test_scn001_documents_and_contacts_use_the_market_language(
+    scenario_world: ScenarioWorld,
+) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-001"].truth
     market = truth["market"]
@@ -420,7 +431,7 @@ def test_scn001_documents_and_contacts_use_the_market_language(scenario_world) -
     assert {c.category_code for c in cases} == {support_category_for(market, "TECHNICAL")}
 
 
-def test_scn009_contacts_do_not_name_the_provider(scenario_world) -> None:
+def test_scn009_contacts_do_not_name_the_provider(scenario_world: ScenarioWorld) -> None:
     from app.datasets.taxonomies import PAYMENT_PROVIDERS
 
     world, outcomes = scenario_world
@@ -443,7 +454,9 @@ def test_scn009_contacts_do_not_name_the_provider(scenario_world) -> None:
     assert all(market in review.body for market in truth["affected_markets"])
 
 
-def test_scn010_uses_three_local_mechanic_codes_for_one_concept(scenario_world) -> None:
+def test_scn010_uses_three_local_mechanic_codes_for_one_concept(
+    scenario_world: ScenarioWorld,
+) -> None:
     from app.ontology.loader import load_ontology
 
     _world, outcomes = scenario_world
@@ -454,7 +467,7 @@ def test_scn010_uses_three_local_mechanic_codes_for_one_concept(scenario_world) 
     assert {onto.concept_for("mechanic", c) for c in codes} == {truth["mechanic_concept"]}
 
 
-def test_scn010_documents_are_local_language_and_name_only(scenario_world) -> None:
+def test_scn010_documents_are_local_language_and_name_only(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-010"].truth
     docs = {d.document_id: d for d in world.tables["documents"]}
@@ -466,7 +479,7 @@ def test_scn010_documents_are_local_language_and_name_only(scenario_world) -> No
         assert doc.source_record_id == ""
 
 
-def test_scn011_source_campaign_outperforms_baseline(scenario_world) -> None:
+def test_scn011_source_campaign_outperforms_baseline(scenario_world: ScenarioWorld) -> None:
     world, outcomes = scenario_world
     truth = outcomes["SCN-011"].truth
     rows = [
@@ -480,14 +493,16 @@ def test_scn011_source_campaign_outperforms_baseline(scenario_world) -> None:
     assert converted / len(engaged) >= 0.4
 
 
-def test_no_planted_row_contains_a_concept_id(scenario_world) -> None:
+def test_no_planted_row_contains_a_concept_id(scenario_world: ScenarioWorld) -> None:
     world, _ = scenario_world
     for table, rows in world.tables.items():
         for row in rows:
             assert "CONCEPT_" not in " ".join(str(v) for v in row), table
 
 
-def test_scn010_control_and_scn011_target_get_no_planted_rows(scenario_world) -> None:
+def test_scn010_control_and_scn011_target_get_no_planted_rows(
+    scenario_world: ScenarioWorld,
+) -> None:
     world, outcomes = scenario_world
     affinity, campaign = outcomes["SCN-010"].truth, outcomes["SCN-011"].truth
     assert affinity["control_market"] not in affinity["per_market"]
@@ -510,9 +525,9 @@ def test_scn010_control_and_scn011_target_get_no_planted_rows(scenario_world) ->
     }
 
 
-def _engaged_share(tickets: list, segment_of: dict[str, str], segment: str) -> float:
-    identified = [t for t in tickets if t.player_id is not None]
-    return sum(1 for t in identified if segment_of[t.player_id] == segment) / len(identified)
+def _engaged_share(tickets: list[TicketRow], segment_of: dict[str, str], segment: str) -> float:
+    identified = [t.player_id for t in tickets if t.player_id is not None]
+    return sum(1 for player in identified if segment_of[player] == segment) / len(identified)
 
 
 @pytest.mark.parametrize("scenario_seed", [7, 11, 23])

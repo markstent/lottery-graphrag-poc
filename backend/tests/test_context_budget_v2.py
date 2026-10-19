@@ -10,6 +10,7 @@ candidates are superseded before judging (design 10a.8).
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 
 from app.config import ContextSettings
 from app.events import GRAPH_CANDIDATE_DISCARDED
@@ -298,7 +299,7 @@ MECHANIC_TEXT = (
 )
 
 
-def test_game_mechanic_node_supersedes_its_record_block(tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_game_mechanic_node_supersedes_its_record_block(tmp_path: Path) -> None:
     graph_pipeline = _record_pipeline()
     record = dataclasses.replace(
         _record_block(),
