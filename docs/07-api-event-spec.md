@@ -189,6 +189,9 @@ rag.generation.started
 rag.generation.completed
 ```
 
+`rag.generation.completed` carries `model`, `latency_ms` and `context_tokens`, plus `verdict` (the parsed one-line verdict, empty when the model gave none) and `cited_blocks` (how many distinct shown context blocks the answer cites).
+The answer contract is described in `docs/retrieval/standard-rag.md`.
+
 Example:
 
 ```json
@@ -224,6 +227,9 @@ graph.context.assembled
 graph.generation.started
 graph.generation.completed
 ```
+
+`graph.generation.completed` carries `model`, `latency_ms` and `context_tokens`, plus `verdict` (the parsed one-line verdict, empty when the model gave none) and `cited_blocks` (how many distinct shown context blocks the answer cites).
+The answer contract is described in `docs/retrieval/standard-rag.md`.
 
 Example:
 

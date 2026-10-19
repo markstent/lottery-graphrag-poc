@@ -37,7 +37,7 @@ from app.evidence import Citation, EvidenceChunk, RagAnswer, RagRunResult
 from app.retrieval.standard.context import assemble_context
 from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
-from app.retrieval.standard.generation import AnswerGenerator
+from app.retrieval.standard.generation import AnswerGenerator, parse_answer
 from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
@@ -136,19 +136,26 @@ class StandardRagPipeline:
         )
 
         self.emitter.emit(RAG_GENERATION_STARTED, model=self.generator.model_name)
-        answer_text, latency_ms = self.generator.generate(question, selected)
+        output = self.generator.generate(question, selected)
+        parsed = parse_answer(output.raw_text, block_count=len(selected))
         answer = RagAnswer(
-            text=answer_text,
+            text=parsed.answer,
+            verdict=parsed.verdict,
+            cited_blocks=parsed.cited_blocks,
+            raw_text=output.raw_text,
             model=self.generator.model_name,
-            latency_ms=round(latency_ms, 1),
+            latency_ms=round(output.latency_ms, 1),
             context_tokens=context_tokens,
             citations=[self._citation(chunk) for chunk in selected],
+            usage=output.usage,
         )
         self.emitter.emit(
             RAG_GENERATION_COMPLETED,
             model=self.generator.model_name,
             latency_ms=answer.latency_ms,
             context_tokens=context_tokens,
+            verdict=answer.verdict,
+            cited_blocks=len(answer.cited_blocks),
         )
 
         evidence = sorted([*selected, *discarded], key=lambda chunk: chunk.rank)

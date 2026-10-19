@@ -35,7 +35,7 @@ from app.graph.config import GraphConfig
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.lab import Lab, build_lab, wired_pipelines
 from app.retrieval.graph.pipeline import GraphRagPipeline
-from app.retrieval.standard.generation import AnswerGenerator, GenerationError
+from app.retrieval.standard.generation import PROMPT_VERSION, AnswerGenerator, GenerationError
 from app.retrieval.standard.pipeline import StandardRagPipeline
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -68,6 +68,7 @@ class ReproducibilityRecord:
     embedding_model: str
     generation_model: str
     generation_temperature: float
+    prompt_version: str
     reranker: str
     top_k: int
     context_budget_tokens: int
@@ -88,6 +89,7 @@ class ReproducibilityRecord:
             "embedding_model": self.embedding_model,
             "generation_model": self.generation_model,
             "generation_temperature": self.generation_temperature,
+            "prompt_version": self.prompt_version,
             "reranker": self.reranker,
             "top_k": self.top_k,
             "context_budget_tokens": self.context_budget_tokens,
@@ -273,6 +275,7 @@ class BenchmarkRunner:
             embedding_model=self.lab.embeddings.model_name,
             generation_model=self.lab.generator.model_name,
             generation_temperature=settings.generation.temperature,
+            prompt_version=PROMPT_VERSION,
             reranker=self.lab.reranker.model_name,
             top_k=settings.top_k,
             context_budget_tokens=settings.context.budget_tokens,

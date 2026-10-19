@@ -70,11 +70,44 @@ Code lives in `backend/app/retrieval/standard/`.
   discarded chunks carry `context_budget` or `duplicate` reasons.
 - **Generation**: `generation.py` implements the ADR-003 gateway contract with
   a deterministic `FakeAnswerGenerator` (CI default) and a LiteLLM adapter
-  (`GENERATION_PROVIDER=litellm`). Citations are derived from the selected
-  context by the pipeline, never parsed from model output.
+  (`GENERATION_PROVIDER=litellm`); see the answer contract below.
 - **Telemetry**: `pipeline.py` emits the full `rag.*` event sequence from
   docs/07 section 7 into an `EventSink`; every candidate carries similarity,
   rank, rerank score and selected/discarded outcome.
+
+## Answer contract (prompt v2)
+
+Pipelines A, B and C share one generator, one prompt and one parser, so answers are produced identically for every configuration.
+The prompt version is `PROMPT_VERSION` in `generation.py` (currently `2.0.0`) and every benchmark run records it as `prompt_version` in its reproducibility record.
+
+The prompt numbers every context block shown to the model: document chunks first, then structured graph blocks.
+The system prompt tells the model to use only those numbered sources, to cite every claim as `[n]`, and to reply with exactly one JSON object:
+
+```json
+{"verdict": "<one line, or 'unknown' when the sources do not answer>", "answer": "<prose with [n] citations>"}
+```
+
+When the sources do not answer the question, the model must set `verdict` to `unknown` and say so in the answer.
+`GENERATION_MAX_TOKENS` (default 600) caps the completion length and `GENERATION_TEMPERATURE` (default 0) is passed through unchanged.
+
+`parse_answer` reads the model output with three strategies, in order:
+
+1. Strict JSON: the whole output is the JSON object with string `verdict` and `answer` keys.
+2. Fenced JSON: the object sits inside a fenced json code block somewhere in the output.
+3. Plain text: anything else, including JSON with missing keys or wrong types, keeps the whole output as the answer with an empty verdict.
+
+Cited blocks are the `[n]` markers in the parsed answer that point at a block actually shown to the model (`1..block_count`), deduplicated in order of first appearance.
+A marker outside that range is dropped, so an answer can never cite a source it was not given.
+
+`RagAnswer` carries the result:
+
+- `text` is the parsed prose answer, which the evaluator scores and the UI shows.
+- `verdict` is the one-line verdict, empty when the model gave none.
+- `cited_blocks` lists the cited block numbers; block `n` is `citations[n - 1]`, because `citations` lists every block in prompt order.
+- `raw_text` is the model output verbatim.
+- `usage` holds the prompt, completion and total token counts when the gateway reports them.
+
+A gateway failure or an empty output still raises `GenerationError`; the parser never turns a failed call into an answer.
 
 Index build (also `make index-vector`):
 

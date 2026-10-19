@@ -23,7 +23,7 @@ from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.graph.config import from_env as from_graph_env
 from app.main import create_app
-from app.retrieval.standard.generation import GenerationError
+from app.retrieval.standard.generation import GenerationError, GenerationOutput
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 from fastapi.testclient import TestClient
 
@@ -40,7 +40,7 @@ class FailingGenerator:
         question: str,
         contexts: list[object],
         extra_blocks: list[str] | None = None,
-    ) -> tuple[str, float]:
+    ) -> GenerationOutput:
         raise GenerationError("Model gateway call failed: provider unreachable")
 
 
@@ -158,6 +158,8 @@ class TestQueryLifecycle:
         assert payload["error"] is None
         result = payload["results"]["A"]
         assert result["answer"]["text"]
+        assert result["answer"]["verdict"]
+        assert result["answer"]["cited_blocks"] == [1]
         assert result["evidence"], "pipeline A must retrieve document chunks"
 
     def test_events_are_sequence_ordered_rag_events(self, client: TestClient) -> None:

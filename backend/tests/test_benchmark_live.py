@@ -26,7 +26,7 @@ from app.graph.config import GraphConfig
 from app.graph.ingest import ingest
 from app.retrieval.graph import lab as lab_module
 from app.retrieval.standard.embeddings import HashingEmbedder
-from app.retrieval.standard.generation import FakeAnswerGenerator, GenerationError
+from app.retrieval.standard.generation import FakeAnswerGenerator, GenerationError, GenerationOutput
 from app.retrieval.standard.index import InMemoryVectorStore, index_corpus, load_indexed_corpus
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.scenarios.engine import apply_scenarios
@@ -187,7 +187,7 @@ class FailingGenerator:
         question: str,
         contexts: list[EvidenceChunk],
         extra_blocks: list[str] | None = None,
-    ) -> tuple[str, float]:
+    ) -> GenerationOutput:
         raise GenerationError("Model gateway call failed: provider unreachable")
 
 

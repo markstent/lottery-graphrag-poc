@@ -69,7 +69,7 @@ from app.retrieval.graph.traversal import (
 from app.retrieval.standard.context import assemble_context
 from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
-from app.retrieval.standard.generation import AnswerGenerator
+from app.retrieval.standard.generation import AnswerGenerator, parse_answer
 from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
@@ -306,24 +306,36 @@ class GraphRagPipeline:
         )
 
         self.emitter.emit(GRAPH_GENERATION_STARTED, model=self.generator.model_name)
-        answer_text, latency_ms = self.generator.generate(
-            question, selected_chunks, structured_blocks
+        output = self.generator.generate(question, selected_chunks, structured_blocks)
+        parsed = parse_answer(
+            output.raw_text, block_count=len(selected_chunks) + len(structured_blocks)
         )
+        # Citations follow prompt order (documents, then structured blocks)
+        # so cited block n is citations[n - 1].
+        evidence_by_id = {evidence.node_id: evidence for evidence in node_evidence}
         answer = RagAnswer(
-            text=answer_text,
+            text=parsed.answer,
+            verdict=parsed.verdict,
+            cited_blocks=parsed.cited_blocks,
+            raw_text=output.raw_text,
             model=self.generator.model_name,
-            latency_ms=round(latency_ms, 1),
+            latency_ms=round(output.latency_ms, 1),
             context_tokens=context_tokens,
             citations=[
                 *_chunk_citations(selected_chunks),
-                *_node_citations(node_evidence),
+                *_node_citations(
+                    [evidence_by_id[chunk.chunk_id] for chunk in assembly.structured_selected]
+                ),
             ],
+            usage=output.usage,
         )
         self.emitter.emit(
             GRAPH_GENERATION_COMPLETED,
             model=self.generator.model_name,
             latency_ms=answer.latency_ms,
             context_tokens=context_tokens,
+            verdict=answer.verdict,
+            cited_blocks=len(answer.cited_blocks),
         )
 
         concepts = (
@@ -560,10 +572,9 @@ def _chunk_citations(chunks: list[EvidenceChunk]) -> list[Citation]:
 
 
 def _node_citations(nodes: list[GraphEvidence]) -> list[Citation]:
+    """Citations for the selected structured nodes, in the order given."""
     citations: list[Citation] = []
     for evidence in nodes:
-        if not evidence.selected:
-            continue
         authoritative = evidence.authoritative or {}
         citations.append(
             Citation(

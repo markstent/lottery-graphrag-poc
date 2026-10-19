@@ -70,6 +70,7 @@ class GenerationSettings:
     model: str
     temperature: float
     api_base: str | None
+    max_tokens: int = 600
 
 
 @dataclass(frozen=True, slots=True)
@@ -238,6 +239,7 @@ def from_env() -> RetrievalSettings:
             model=os.environ.get("GENERATION_MODEL", "fake-answer-v1"),
             temperature=_env_float("GENERATION_TEMPERATURE", 0.0),
             api_base=os.environ.get("GENERATION_API_BASE"),
+            max_tokens=_env_int("GENERATION_MAX_TOKENS", 600),
         ),
         graph=GraphRagSettings(
             max_depth=_env_int("GRAPH_DEPTH", 2),

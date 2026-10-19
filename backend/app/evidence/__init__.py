@@ -76,13 +76,26 @@ class Citation(BaseModel):
 
 
 class RagAnswer(BaseModel):
-    """Generated answer plus its cost and grounded citations."""
+    """Generated answer plus its cost and grounded citations.
 
-    text: str
+    `citations` lists every block shown to the model in prompt order
+    (documents, then structured nodes), so `cited_blocks[i]` refers to
+    `citations[cited_blocks[i] - 1]`.
+    """
+
+    text: str = Field(description="Parsed prose answer; what the evaluator scores")
+    verdict: str = Field(description="One-line verdict; empty when the model gave none")
+    cited_blocks: list[int] = Field(
+        description="1-based context blocks the answer cites, in first-seen order"
+    )
+    raw_text: str = Field(description="Model output verbatim")
     model: str
     latency_ms: float
     context_tokens: int
     citations: list[Citation]
+    usage: dict[str, int] | None = Field(
+        default=None, description="Gateway token counts when the provider reports them"
+    )
 
 
 class RagRunResult(BaseModel):
