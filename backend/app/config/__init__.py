@@ -112,8 +112,10 @@ class GraphRagSettings:
 # and document edges would flood traversal budget with leaf nodes whose
 # content the shared corpus already provides (HAS_CHUNK, REFERENCES).
 # Player transactional aggregates (PLAYS, EXPOSED_TO, AVAILABLE_VIA,
-# PROMOTES, HAS_DRAW, DEPLOYED_TO, HAS_MECHANIC) are also excluded: they
-# would flood traversal with thousands of neighbours. USES and USES_PAYMENT
+# PROMOTES, HAS_DRAW, DEPLOYED_TO) are also excluded: they would flood
+# traversal with thousands of neighbours. HAS_MECHANIC is included: its 23
+# low-fan-out edges open the Game -> GameMechanic -> MAPS_TO -> concept
+# path that lets the ontology reach a game's mechanics. USES and USES_PAYMENT
 # are included for every question and bounded by the per-type and per-hop
 # caps. Quantitative facts stay in the structured layer (AGENTS.md Graph
 # Augmentation Principle); the graph guides, it does not enumerate.
@@ -125,6 +127,7 @@ DEFAULT_RELATIONSHIP_TYPES: tuple[str, ...] = (
     "CATEGORISED_AS",
     "CONCERNS",
     "FROM_MARKET",
+    "HAS_MECHANIC",
     "INSTANCE_OF",
     "IS_A",
     "MAPS_TO",

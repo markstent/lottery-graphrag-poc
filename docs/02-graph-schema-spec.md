@@ -15,14 +15,15 @@ Market-local taxonomies (families, categories, mechanics, incident types, suppor
 AFFECTS, AFFECTS_MARKET, AVAILABLE_IN, AVAILABLE_VIA, BELONGS_TO, CATEGORISED_AS, CONCERNS, DEPLOYED_TO, EXPOSED_TO, FROM_MARKET, HAS_CHUNK, HAS_DRAW, HAS_MECHANIC, INSTANCE_OF, IS_A, MAPS_TO, OF_TYPE, PLAYS, PROMOTES, PROVIDED_BY, REFERENCES, RELATED_TO, RELATED_TO_VERSION, RELATED_TO_APP_VERSION, RUNS_ON, SIMILAR_TO, TARGETS, USES, USES_PAYMENT, VERSION_OF.
 
 **Traversal allow-list and ontology relationship types.**
-Retrieval traverses a 21-type structured allow-list (`DEFAULT_RELATIONSHIP_TYPES` in `app/config/__init__.py`), not all 30 types.
-Nine types are excluded on purpose.
+Retrieval traverses a 22-type structured allow-list (`DEFAULT_RELATIONSHIP_TYPES` in `app/config/__init__.py`), not all 30 types.
+Eight types are excluded on purpose.
 `HAS_CHUNK` and `REFERENCES` are document edges: the vector layer owns document retrieval for every pipeline.
-`PLAYS`, `EXPOSED_TO`, `AVAILABLE_VIA`, `PROMOTES`, `HAS_DRAW`, `DEPLOYED_TO` and `HAS_MECHANIC` are transactional or high-fan-out edges that would flood the traversal budget.
+`PLAYS`, `EXPOSED_TO`, `AVAILABLE_VIA`, `PROMOTES`, `HAS_DRAW` and `DEPLOYED_TO` are transactional or high-fan-out edges that would flood the traversal budget.
+`HAS_MECHANIC` is allowed: its 23 low-fan-out edges open the `Game -> GameMechanic -> MAPS_TO -> concept` path.
 `ONTOLOGY_RELATIONSHIP_TYPES` is `MAPS_TO`, `SIMILAR_TO` and `IS_A`.
 They exist only because of the enterprise ontology.
-Configuration C traverses the full 21-type allow-list.
-Pipeline B traverses the allow-list minus those three, which is 18 types (D-017).
+Configuration C traverses the full 22-type allow-list.
+Pipeline B traverses the allow-list minus those three, which is 19 types (D-017).
 
 **Provenance and validity properties.**
 Every node carries `source_table` and `source_record_id`.

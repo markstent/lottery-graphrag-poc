@@ -36,6 +36,7 @@ RELATIONSHIP_WEIGHTS: dict[str, float] = {
     "OF_TYPE": 0.7,
     "AFFECTS_MARKET": 0.6,
     "CATEGORISED_AS": 0.6,
+    "HAS_MECHANIC": 0.6,
     "RUNS_ON": 0.6,
     "VERSION_OF": 0.6,
     "RELATED_TO": 0.5,

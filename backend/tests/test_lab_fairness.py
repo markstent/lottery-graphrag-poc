@@ -63,3 +63,11 @@ def test_every_question_traverses_player_instruments(base: RetrievalSettings) ->
         assert relationship in base.graph.relationship_types
         assert relationship in settings_b.graph.relationship_types
         assert relationship in settings_c.graph.relationship_types
+
+
+def test_allow_list_sizes_and_mechanic_path(base: RetrievalSettings) -> None:
+    settings_b, settings_c = bc_graph_settings(base)
+    assert len(settings_c.graph.relationship_types) == 22
+    assert len(settings_b.graph.relationship_types) == 19
+    assert "HAS_MECHANIC" in settings_b.graph.relationship_types
+    assert "HAS_MECHANIC" in settings_c.graph.relationship_types
