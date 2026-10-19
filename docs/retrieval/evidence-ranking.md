@@ -41,7 +41,7 @@ Default weights (`DEFAULT_RANKING_WEIGHTS` in `app/config/__init__.py`; not read
 - `relationship_type`: the bottleneck relationship weight along the discovered path, that is the weakest edge from the seed to the node.
   Seeds weigh 1.0; `RELATED_TO_VERSION` and `RELATED_TO_APP_VERSION` 0.9; `AFFECTS`, `USES_PAYMENT` and `PROVIDED_BY` 0.8; `CONCERNS` and `OF_TYPE` 0.7; other structural types 0.4 to 0.6, with `MAPS_TO` (the ontology path) at 0.5; `USES` and unknown types 0.3.
 - `semantic_relevance`: cosine between the question vector and the node text, using the same dense model as pipeline A.
-  The node text is the one text a node has everywhere: the record block A indexes for the same row when one exists, else one humanised sentence from the authoritative columns, a concept's ontology text in pipeline C, or "<Label> <id>" for a node without facts.
+  The node text is the one text a node has everywhere: the record block A indexes for the same row when one exists, a concept's ontology text in pipeline C, or "<Label> <id>" for any other node (D-028).
   Pipeline C uses its expanded question here.
 - `temporal_validity`: read from the authoritative row of the node.
   The end of the validity window is `retirement_date` for games, `retired_at` for platform versions and `end_at` for campaigns and experiments.
@@ -52,7 +52,7 @@ Default weights (`DEFAULT_RANKING_WEIGHTS` in `app/config/__init__.py`; not read
 
 ## Selection
 
-- The composite score orders the structured channel, drives telemetry and supplies the lexical judge's incoming rank; it does not select context.
+- The composite score orders the structured channel (it is the node's `similarity` and its incoming `rank`) and drives telemetry; it does not select context, and neither judge reads it.
 - Every traversal node (bounded by `max_total_nodes`) becomes a structured candidate, except nodes with an excluded label (default `Document`), which are discarded with `excluded_label`.
 - Seeds get no special treatment: they usually rank first, because their distance and relationship components are 1.0, and are judged like every other node.
 - The structured candidates and pipeline A's document channel are judged together by the shared reranker on the raw question, and one selection under the shared budget and slots decides what enters the context (`docs/retrieval/context-budgeting.md`).

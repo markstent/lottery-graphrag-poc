@@ -9,11 +9,11 @@ Each question runs through three retrieval pipelines:
 
 - **A, conventional RAG**: dense (bge-m3) plus sparse embedding, hybrid search fused by reciprocal rank, cross-encoder reranking, one shared context budget and slot limit, generation.
   The index holds document chunks and structured record blocks, so A can retrieve table rows as well as document text.
-- **B, graph relationships**: an id and market resolver seeds a bounded traversal over the structured-record subgraph (when nothing resolves, the graph node of the best-matching record block); every traversal node joins A's document channel as a structured candidate, judged on the same record text A indexes; nodes carry authoritative facts from the source tables.
+- **B, graph relationships**: an id and market resolver seeds a bounded traversal over the structured-record subgraph (when nothing resolves, the graph node of the best-matching record block); every traversal node joins A's document channel as a structured candidate, judged and shown as the record block A indexes for its row (or only `<Label> <id>` when the row has none); nodes carry authoritative facts from the source tables for citations.
   No ontology: no concept seeds, no `MAPS_TO` expansion, no query expansion.
 - **C, graph relationships + enterprise ontology**: B plus the ontology term resolver (concept seeds and concept-bound entities, shown as `via_concept`), query expansion with concept labels and synonyms (`graph.query.expanded`), and ontology expansion during traversal.
 
-Same question, same synthetic world, same embedding model, one reranker that judges every candidate against the raw question, same generator and prompt, one context budget and slot count.
+Same question, same synthetic world, same embedding model, one reranker that judges every candidate against the raw question, same generator and prompt (the selection in judge order), one context budget and slot count.
 Only the retrieval layers differ.
 
 ## How it was produced
@@ -50,23 +50,23 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 
 ### Pipeline A: conventional RAG
 
-- selected context (12: 11 record, 1 document):
+- selected context (12: 12 record, 0 document):
   - `REC_games_GAME_UK_01` [record games] games: GAME_UK_01 (fused 0.0328, dense rank 1, sparse rank 1, rerank 4.036, rank 1)
-  - `REC_campaigns_CMP_002` [record campaigns] campaigns: CMP_002 (fused 0.0161, dense rank None, sparse rank 2, rerank -0.803, rank 2)
-  - `REC_games_GAME_UK_03` [record games] games: GAME_UK_03 (fused 0.0288, dense rank 4, sparse rank 16, rerank -1.096, rank 3)
-  - `REC_games_GAME_UK_04` [record games] games: GAME_UK_04 (fused 0.0285, dense rank 2, sparse rank 21, rerank -1.569, rank 4)
-  - `REC_games_GAME_UK_02` [record games] games: GAME_UK_02 (fused 0.0292, dense rank 3, sparse rank 15, rerank -1.591, rank 5)
-  - `REC_games_GAME_UK_06` [record games] games: GAME_UK_06 (fused 0.0278, dense rank 24, sparse rank 3, rerank -1.878, rank 6)
-  - `REC_games_GAME_UK_05` [record games] games: GAME_UK_05 (fused 0.0145, dense rank None, sparse rank 9, rerank -2.414, rank 7)
-  - `CHNK_0203_00` [chunk] Support Summary: Albion Millions (GAME_UK_01) (fused 0.0156, dense rank None, sparse rank 4, rerank -2.570, rank 8)
-  - `REC_games_GAME_GR_01` [record games] games: GAME_GR_01 (fused 0.0125, dense rank None, sparse rank 20, rerank -2.999, rank 9)
-  - `REC_games_GAME_AT_01` [record games] games: GAME_AT_01 (fused 0.0130, dense rank None, sparse rank 17, rerank -3.132, rank 10)
-  - `REC_games_GAME_CZ_01` [record games] games: GAME_CZ_01 (fused 0.0122, dense rank None, sparse rank 22, rerank -3.566, rank 11)
-  - `REC_games_GAME_AT_02` [record games] games: GAME_AT_02 (fused 0.0127, dense rank None, sparse rank 19, rerank -3.846, rank 12)
+  - `REC_campaigns_CMP_002` [record campaigns] campaigns: CMP_002 (fused 0.0122, dense rank None, sparse rank 22, rerank -0.803, rank 2)
+  - `REC_games_GAME_UK_03` [record games] games: GAME_UK_03 (fused 0.0291, dense rank 4, sparse rank 14, rerank -1.096, rank 3)
+  - `REC_games_GAME_UK_04` [record games] games: GAME_UK_04 (fused 0.0288, dense rank 2, sparse rank 19, rerank -1.569, rank 4)
+  - `REC_games_GAME_UK_02` [record games] games: GAME_UK_02 (fused 0.0296, dense rank 3, sparse rank 13, rerank -1.591, rank 5)
+  - `REC_games_GAME_UK_06` [record games] games: GAME_UK_06 (fused 0.0276, dense rank 27, sparse rank 2, rerank -1.878, rank 6)
+  - `REC_games_GAME_UK_05` [record games] games: GAME_UK_05 (fused 0.0149, dense rank None, sparse rank 7, rerank -2.414, rank 7)
+  - `REC_games_GAME_GR_01` [record games] games: GAME_GR_01 (fused 0.0128, dense rank None, sparse rank 18, rerank -2.999, rank 8)
+  - `REC_games_GAME_AT_01` [record games] games: GAME_AT_01 (fused 0.0133, dense rank None, sparse rank 15, rerank -3.132, rank 9)
+  - `REC_support_cases_SUP_00701` [record support_cases] support_cases: SUP_00701 (fused 0.0152, dense rank 6, sparse rank None, rerank -3.162, rank 10)
+  - `REC_games_GAME_CZ_01` [record games] games: GAME_CZ_01 (fused 0.0125, dense rank None, sparse rank 20, rerank -3.566, rank 11)
+  - `REC_games_GAME_AT_02` [record games] games: GAME_AT_02 (fused 0.0130, dense rank None, sparse rank 17, rerank -3.846, rank 12)
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
-- context tokens: 919
-- timings: run 2785 ms, judge 1872 ms over 40 candidates
+- context tokens: 918
+- timings: run 1880 ms, judge 1825 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -82,32 +82,32 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - seeds: `GAME_UK_01`
 - limits: depth<=2, nodes/hop<=100, edges/node type<=4, total<=200, rel types=19, ontology expansion=False
 - edges traversed: 60
-- selected context (12: 6 node, 5 record, 1 document)
-- selected node evidence (6):
+- selected context (12: 8 node, 4 record, 0 document)
+- selected node evidence (8):
   - `GAME_UK_01` (Game, 0 hop(s) via SEED, score 0.879, rerank 4.036, components {'graph_distance': 1.0, 'relationship_type': 1.0, 'semantic_relevance': 0.653494, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_01, game_id=GAME_UK_01, game_name=Albion Millions, market_id=MKT_UK, game_family_id=FAM_UK_NATIONAL_DRAW, ticket_price=2.50, currency_code=GBP
   - `INC_025` (Incident, 1 hop(s) via AFFECTS, score 0.694, rerank -2.683, components {'graph_distance': 0.666667, 'relationship_type': 0.8, 'semantic_relevance': 0.507585, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_025, incident_id=INC_025, market_id=MKT_UK, severity=MEDIUM, incident_type=ITYPE_UK_TERMINAL, started_at=2025-07-16 17:16:32, resolved_at=-
+  - `SUP_00121` (SupportCase, 1 hop(s) via CONCERNS, score 0.687, rerank -2.220, components {'graph_distance': 0.666667, 'relationship_type': 0.7, 'semantic_relevance': 0.558128, 'temporal_validity': 1.0}); source_table=support_cases, source_record_id=SUP_00121, support_case_id=SUP_00121, market_id=MKT_UK, category_code=SUPC_UK_GAME, opened_at=2025-02-20 10:12:09, summary_text=Synthetic support contact describing a player-reported issue.
+  - `SUP_00125` (SupportCase, 1 hop(s) via CONCERNS, score 0.681, rerank -2.755, components {'graph_distance': 0.666667, 'relationship_type': 0.7, 'semantic_relevance': 0.540902, 'temporal_validity': 1.0}); source_table=support_cases, source_record_id=SUP_00125, support_case_id=SUP_00125, market_id=MKT_UK, category_code=SUPC_UK_ACCOUNT, opened_at=2025-03-21 05:14:42, summary_text=Synthetic support contact describing a player-reported issue.
+  - `SUP_00049` (SupportCase, 1 hop(s) via CONCERNS, score 0.678, rerank -3.032, components {'graph_distance': 0.666667, 'relationship_type': 0.7, 'semantic_relevance': 0.533733, 'temporal_validity': 1.0}); source_table=support_cases, source_record_id=SUP_00049, support_case_id=SUP_00049, market_id=MKT_UK, category_code=SUPC_UK_TECHNICAL, opened_at=2025-11-07 06:57:30, summary_text=Synthetic support contact describing a player-reported issue.
   - `GAME_UK_02` (Game, 2 hop(s) via HAS_MECHANIC, score 0.646, rerank -1.591, components {'graph_distance': 0.5, 'relationship_type': 0.6, 'semantic_relevance': 0.630354, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_02, game_id=GAME_UK_02, game_name=Kingsport Draw, market_id=MKT_UK, game_family_id=FAM_UK_ANNUITY, ticket_price=3.00, currency_code=GBP
   - `GAME_UK_03` (Game, 2 hop(s) via HAS_MECHANIC, score 0.642, rerank -1.096, components {'graph_distance': 0.5, 'relationship_type': 0.6, 'semantic_relevance': 0.619853, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_03, game_id=GAME_UK_03, game_name=Thames Cash, market_id=MKT_UK, game_family_id=FAM_UK_RAPID_NUMBERS, ticket_price=1.00, currency_code=GBP
   - `GAME_UK_04` (Game, 2 hop(s) via INSTANCE_OF, score 0.627, rerank -1.569, components {'graph_distance': 0.5, 'relationship_type': 0.5, 'semantic_relevance': 0.648171, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_04, game_id=GAME_UK_04, game_name=Union Raffle, market_id=MKT_UK, game_family_id=FAM_UK_FIXED_PRIZE, ticket_price=1.50, currency_code=GBP
-  - `GAME_AT_01` (Game, 2 hop(s) via RUNS_ON, score 0.620, rerank -3.132, components {'graph_distance': 0.5, 'relationship_type': 0.6, 'semantic_relevance': 0.557961, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_AT_01, game_id=GAME_AT_01, game_name=Danube Classic, market_id=MKT_AT, game_family_id=FAM_AT_ZAHLENZIEHUNG, ticket_price=2.50, currency_code=EUR
-- discarded nodes: 55 (slot_limit=55)
-- hybrid channel blocks, shared with A (6):
-  - `REC_campaigns_CMP_002` [record campaigns] campaigns: CMP_002 (fused 0.0161, dense rank None, sparse rank 2, rerank -0.803, rank 2)
-  - `REC_games_GAME_UK_06` [record games] games: GAME_UK_06 (fused 0.0278, dense rank 24, sparse rank 3, rerank -1.878, rank 6)
-  - `REC_games_GAME_UK_05` [record games] games: GAME_UK_05 (fused 0.0145, dense rank None, sparse rank 9, rerank -2.414, rank 7)
-  - `CHNK_0203_00` [chunk] Support Summary: Albion Millions (GAME_UK_01) (fused 0.0156, dense rank None, sparse rank 4, rerank -2.570, rank 8)
-  - `REC_games_GAME_GR_01` [record games] games: GAME_GR_01 (fused 0.0125, dense rank None, sparse rank 20, rerank -2.999, rank 10)
-  - `REC_games_GAME_CZ_01` [record games] games: GAME_CZ_01 (fused 0.0122, dense rank None, sparse rank 22, rerank -3.566, rank 12)
+- discarded nodes: 53 (slot_limit=53)
+- hybrid channel blocks, shared with A (4):
+  - `REC_campaigns_CMP_002` [record campaigns] campaigns: CMP_002 (fused 0.0122, dense rank None, sparse rank 22, rerank -0.803, rank 2)
+  - `REC_games_GAME_UK_06` [record games] games: GAME_UK_06 (fused 0.0276, dense rank 27, sparse rank 2, rerank -1.878, rank 6)
+  - `REC_games_GAME_UK_05` [record games] games: GAME_UK_05 (fused 0.0149, dense rank None, sparse rank 7, rerank -2.414, rank 8)
+  - `REC_games_GAME_GR_01` [record games] games: GAME_GR_01 (fused 0.0128, dense rank None, sparse rank 18, rerank -2.999, rank 11)
 - events: graph.candidate.discarded=89, graph.candidate.reranked=93, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=60, graph.relationship.traversed=60, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
-- context tokens: 948
-- timings: run 7206 ms, judge 5616 ms over 93 candidates
+- context tokens: 959
+- timings: run 7384 ms, judge 5765 ms over 93 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
 - verdict: [fake-model] answered from the retrieved sources
 - cited blocks: [1] of 12 shown
 
-[fake-model] Based on 6 retrieved source(s) and 6 authoritative structured record(s), the strongest evidence for the question is in: campaigns: CMP_002, games: GAME_UK_06 [1].
+[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: games: GAME_UK_01, campaigns: CMP_002 [1].
 
 ### Pipeline C: graph relationships + enterprise ontology
 
@@ -122,32 +122,32 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discovered via_concept `CONCEPT_NATIONAL_DRAW`: 1 node(s): `FAM_GR_ARITHMOLACHEIO`
 - discovered via_concept `CONCEPT_NUMBER_SELECTION`: 1 node(s): `MECH_GR_EPILOGI_ARITHMON`
 - discovered via_concept `CONCEPT_QUICK_PICK`: 2 node(s): `MECH_GR_TYCHAIA_EPILOGI`, `MECH_AT_SCHNELLWAHL`
-- selected context (12: 8 node, 3 record, 1 document)
-- selected node evidence (8):
+- selected context (12: 9 node, 3 record, 0 document)
+- selected node evidence (9):
   - `GAME_UK_01` (Game, 0 hop(s) via SEED, score 0.879, rerank 4.036, components {'graph_distance': 1.0, 'relationship_type': 1.0, 'semantic_relevance': 0.653494, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_01, game_id=GAME_UK_01, game_name=Albion Millions, market_id=MKT_UK, game_family_id=FAM_UK_NATIONAL_DRAW, ticket_price=2.50, currency_code=GBP
   - `INC_025` (Incident, 1 hop(s) via AFFECTS, score 0.694, rerank -2.683, components {'graph_distance': 0.666667, 'relationship_type': 0.8, 'semantic_relevance': 0.507585, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_025, incident_id=INC_025, market_id=MKT_UK, severity=MEDIUM, incident_type=ITYPE_UK_TERMINAL, started_at=2025-07-16 17:16:32, resolved_at=-
+  - `SUP_00121` (SupportCase, 1 hop(s) via CONCERNS, score 0.687, rerank -2.220, components {'graph_distance': 0.666667, 'relationship_type': 0.7, 'semantic_relevance': 0.558128, 'temporal_validity': 1.0}); source_table=support_cases, source_record_id=SUP_00121, support_case_id=SUP_00121, market_id=MKT_UK, category_code=SUPC_UK_GAME, opened_at=2025-02-20 10:12:09, summary_text=Synthetic support contact describing a player-reported issue.
+  - `SUP_00125` (SupportCase, 1 hop(s) via CONCERNS, score 0.681, rerank -2.755, components {'graph_distance': 0.666667, 'relationship_type': 0.7, 'semantic_relevance': 0.540902, 'temporal_validity': 1.0}); source_table=support_cases, source_record_id=SUP_00125, support_case_id=SUP_00125, market_id=MKT_UK, category_code=SUPC_UK_ACCOUNT, opened_at=2025-03-21 05:14:42, summary_text=Synthetic support contact describing a player-reported issue.
+  - `SUP_00049` (SupportCase, 1 hop(s) via CONCERNS, score 0.678, rerank -3.032, components {'graph_distance': 0.666667, 'relationship_type': 0.7, 'semantic_relevance': 0.533733, 'temporal_validity': 1.0}); source_table=support_cases, source_record_id=SUP_00049, support_case_id=SUP_00049, market_id=MKT_UK, category_code=SUPC_UK_TECHNICAL, opened_at=2025-11-07 06:57:30, summary_text=Synthetic support contact describing a player-reported issue.
   - `GAME_UK_02` (Game, 2 hop(s) via HAS_MECHANIC, score 0.646, rerank -1.591, components {'graph_distance': 0.5, 'relationship_type': 0.6, 'semantic_relevance': 0.630354, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_02, game_id=GAME_UK_02, game_name=Kingsport Draw, market_id=MKT_UK, game_family_id=FAM_UK_ANNUITY, ticket_price=3.00, currency_code=GBP
   - `GAME_UK_03` (Game, 2 hop(s) via HAS_MECHANIC, score 0.642, rerank -1.096, components {'graph_distance': 0.5, 'relationship_type': 0.6, 'semantic_relevance': 0.619853, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_03, game_id=GAME_UK_03, game_name=Thames Cash, market_id=MKT_UK, game_family_id=FAM_UK_RAPID_NUMBERS, ticket_price=1.00, currency_code=GBP
   - `GAME_UK_04` (Game, 2 hop(s) via INSTANCE_OF, score 0.627, rerank -1.569, components {'graph_distance': 0.5, 'relationship_type': 0.5, 'semantic_relevance': 0.648171, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_UK_04, game_id=GAME_UK_04, game_name=Union Raffle, market_id=MKT_UK, game_family_id=FAM_UK_FIXED_PRIZE, ticket_price=1.50, currency_code=GBP
-  - `GAME_AT_01` (Game, 1 hop(s) via SIMILAR_TO, score 0.612, rerank -3.132, components {'graph_distance': 0.666667, 'relationship_type': 0.4, 'semantic_relevance': 0.557961, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_AT_01, game_id=GAME_AT_01, game_name=Danube Classic, market_id=MKT_AT, game_family_id=FAM_AT_ZAHLENZIEHUNG, ticket_price=2.50, currency_code=EUR
-  - `GAME_CZ_01` (Game, 1 hop(s) via SIMILAR_TO, score 0.609, rerank -3.566, components {'graph_distance': 0.666667, 'relationship_type': 0.4, 'semantic_relevance': 0.54945, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_CZ_01, game_id=GAME_CZ_01, game_name=Vltava Výhra, market_id=MKT_CZ, game_family_id=FAM_CZ_CISELNA_LOTERIE, ticket_price=20.00, currency_code=CZK
   - `GAME_GR_01` (Game, 2 hop(s) via SIMILAR_TO, score 0.573, rerank -2.999, components {'graph_distance': 0.5, 'relationship_type': 0.4, 'semantic_relevance': 0.566719, 'temporal_validity': 1.0}); source_table=games, source_record_id=GAME_GR_01, game_id=GAME_GR_01, game_name=Aegean Gold, market_id=MKT_GR, game_family_id=FAM_GR_ARITHMOLACHEIO, ticket_price=2.00, currency_code=EUR
-- discarded nodes: 85 (slot_limit=85)
-- hybrid channel blocks, shared with A (4):
-  - `REC_campaigns_CMP_002` [record campaigns] campaigns: CMP_002 (fused 0.0161, dense rank None, sparse rank 2, rerank -0.803, rank 2)
-  - `REC_games_GAME_UK_06` [record games] games: GAME_UK_06 (fused 0.0278, dense rank 24, sparse rank 3, rerank -1.878, rank 6)
-  - `REC_games_GAME_UK_05` [record games] games: GAME_UK_05 (fused 0.0145, dense rank None, sparse rank 9, rerank -2.414, rank 7)
-  - `CHNK_0203_00` [chunk] Support Summary: Albion Millions (GAME_UK_01) (fused 0.0156, dense rank None, sparse rank 4, rerank -2.570, rank 8)
+- discarded nodes: 84 (slot_limit=84)
+- hybrid channel blocks, shared with A (3):
+  - `REC_campaigns_CMP_002` [record campaigns] campaigns: CMP_002 (fused 0.0122, dense rank None, sparse rank 22, rerank -0.803, rank 2)
+  - `REC_games_GAME_UK_06` [record games] games: GAME_UK_06 (fused 0.0276, dense rank 27, sparse rank 2, rerank -1.878, rank 6)
+  - `REC_games_GAME_UK_05` [record games] games: GAME_UK_05 (fused 0.0149, dense rank None, sparse rank 7, rerank -2.414, rank 8)
 - events: graph.candidate.discarded=121, graph.candidate.reranked=122, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=92, graph.ontology.expanded=4, graph.query.expanded=1, graph.relationship.traversed=92, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
-- context tokens: 948
-- timings: run 9842 ms, judge 7704 ms over 122 candidates
+- context tokens: 959
+- timings: run 10082 ms, judge 7912 ms over 122 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
 - verdict: [fake-model] answered from the retrieved sources
 - cited blocks: [1] of 12 shown
 
-[fake-model] Based on 4 retrieved source(s) and 8 authoritative structured record(s), the strongest evidence for the question is in: campaigns: CMP_002, games: GAME_UK_06 [1].
+[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: games: GAME_UK_01, campaigns: CMP_002 [1].
 
 
 ## DEMO-02: cross_market_platform_incident
@@ -164,15 +164,15 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_incidents_INC_043` [record incidents] incidents: INC_043 (fused 0.0311, dense rank 7, sparse rank 2, rerank 0.374, rank 5)
   - `REC_incidents_INC_017` [record incidents] incidents: INC_017 (fused 0.0301, dense rank 8, sparse rank 5, rerank 0.354, rank 6)
   - `REC_incidents_INC_044` [record incidents] incidents: INC_044 (fused 0.0308, dense rank 6, sparse rank 4, rerank 0.038, rank 7)
-  - `REC_incidents_INC_006` [record incidents] incidents: INC_006 (fused 0.0251, dense rank 9, sparse rank 34, rerank -0.199, rank 8)
-  - `REC_incidents_INC_018` [record incidents] incidents: INC_018 (fused 0.0297, dense rank 5, sparse rank 10, rerank -0.209, rank 9)
-  - `CHNK_0132_00` [chunk] Incident Report: Αποτυχία πληρωμών (INC_022) (fused 0.0123, dense rank 21, sparse rank None, rerank -1.011, rank 10)
-  - `REC_incidents_INC_010` [record incidents] incidents: INC_010 (fused 0.0240, dense rank 19, sparse rank 28, rerank -1.055, rank 11)
-  - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0141, dense rank 11, sparse rank None, rerank -1.176, rank 12)
+  - `REC_incidents_INC_006` [record incidents] incidents: INC_006 (fused 0.0145, dense rank 9, sparse rank None, rerank -0.199, rank 8)
+  - `REC_incidents_INC_018` [record incidents] incidents: INC_018 (fused 0.0293, dense rank 5, sparse rank 12, rerank -0.209, rank 9)
+  - `CHNK_0132_00` [chunk] Incident Report: Αποτυχία πληρωμών (INC_022) (fused 0.0237, dense rank 27, sparse rank 22, rerank -1.011, rank 10)
+  - `REC_incidents_INC_010` [record incidents] incidents: INC_010 (fused 0.0230, dense rank 25, sparse rank 29, rerank -1.055, rank 11)
+  - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0137, dense rank 13, sparse rank None, rerank -1.176, rank 12)
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 1373
-- timings: run 2947 ms, judge 2862 ms over 40 candidates
+- timings: run 3120 ms, judge 3065 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -201,20 +201,20 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `CHNK_0256_00` [chunk] Release Note: APPV_UK_530 (Deferred Update) (fused 0.0328, dense rank 1, sparse rank 1, rerank 2.729, rank 2)
   - `REC_incidents_INC_043` [record incidents] incidents: INC_043 (fused 0.0311, dense rank 7, sparse rank 2, rerank 0.374, rank 5)
   - `REC_incidents_INC_044` [record incidents] incidents: INC_044 (fused 0.0308, dense rank 6, sparse rank 4, rerank 0.038, rank 7)
-  - `REC_incidents_INC_006` [record incidents] incidents: INC_006 (fused 0.0251, dense rank 9, sparse rank 34, rerank -0.199, rank 8)
-  - `CHNK_0132_00` [chunk] Incident Report: Αποτυχία πληρωμών (INC_022) (fused 0.0123, dense rank 21, sparse rank None, rerank -1.011, rank 10)
-  - `REC_incidents_INC_010` [record incidents] incidents: INC_010 (fused 0.0240, dense rank 19, sparse rank 28, rerank -1.055, rank 11)
-  - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0141, dense rank 11, sparse rank None, rerank -1.176, rank 12)
-- events: graph.candidate.discarded=118, graph.candidate.reranked=122, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=2, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=88, graph.relationship.traversed=88, graph.rerank.started=1, graph.seed.selected=2, graph.traversal.started=1
+  - `REC_incidents_INC_006` [record incidents] incidents: INC_006 (fused 0.0145, dense rank 9, sparse rank None, rerank -0.199, rank 8)
+  - `CHNK_0132_00` [chunk] Incident Report: Αποτυχία πληρωμών (INC_022) (fused 0.0237, dense rank 27, sparse rank 22, rerank -1.011, rank 10)
+  - `REC_incidents_INC_010` [record incidents] incidents: INC_010 (fused 0.0230, dense rank 25, sparse rank 29, rerank -1.055, rank 11)
+  - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0137, dense rank 13, sparse rank None, rerank -1.176, rank 12)
+- events: graph.candidate.discarded=118, graph.candidate.reranked=120, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=2, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=88, graph.relationship.traversed=88, graph.rerank.started=1, graph.seed.selected=2, graph.traversal.started=1
 - context tokens: 1373
-- timings: run 10831 ms, judge 8811 ms over 122 candidates
+- timings: run 10689 ms, judge 8826 ms over 120 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
 - verdict: [fake-model] answered from the retrieved sources
 - cited blocks: [1] of 12 shown
 
-[fake-model] Based on 7 retrieved source(s) and 5 authoritative structured record(s), the strongest evidence for the question is in: Release Note: APPV_UK_530 (Deferred Update), incidents: INC_043 [1].
+[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_042, Release Note: APPV_UK_530 (Deferred Update) [1].
 
 ### Pipeline C: graph relationships + enterprise ontology
 
@@ -243,21 +243,21 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded nodes: 110 (slot_limit=110)
 - hybrid channel blocks, shared with A (6):
   - `CHNK_0256_00` [chunk] Release Note: APPV_UK_530 (Deferred Update) (fused 0.0325, dense rank 1, sparse rank 2, rerank 2.729, rank 2)
-  - `REC_incidents_INC_043` [record incidents] incidents: INC_043 (fused 0.0312, dense rank 4, sparse rank 4, rerank 0.374, rank 5)
-  - `REC_incidents_INC_044` [record incidents] incidents: INC_044 (fused 0.0303, dense rank 6, sparse rank 6, rerank 0.038, rank 7)
-  - `REC_incidents_INC_006` [record incidents] incidents: INC_006 (fused 0.0258, dense rank 5, sparse rank 36, rerank -0.199, rank 8)
-  - `CHNK_0132_00` [chunk] Incident Report: Αποτυχία πληρωμών (INC_022) (fused 0.0120, dense rank 23, sparse rank None, rerank -1.011, rank 10)
-  - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0245, dense rank 10, sparse rank 38, rerank -1.176, rank 11)
+  - `REC_incidents_INC_043` [record incidents] incidents: INC_043 (fused 0.0310, dense rank 4, sparse rank 5, rerank 0.374, rank 5)
+  - `REC_incidents_INC_044` [record incidents] incidents: INC_044 (fused 0.0301, dense rank 6, sparse rank 7, rerank 0.038, rank 7)
+  - `REC_incidents_INC_006` [record incidents] incidents: INC_006 (fused 0.0254, dense rank 5, sparse rank 40, rerank -0.199, rank 8)
+  - `CHNK_0132_00` [chunk] Incident Report: Αποτυχία πληρωμών (INC_022) (fused 0.0224, dense rank 23, sparse rank 37, rerank -1.011, rank 10)
+  - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0143, dense rank 10, sparse rank None, rerank -1.176, rank 11)
 - events: graph.candidate.discarded=144, graph.candidate.reranked=145, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=4, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=112, graph.ontology.expanded=4, graph.query.expanded=1, graph.relationship.traversed=112, graph.rerank.started=1, graph.seed.selected=4, graph.traversal.started=1
 - context tokens: 1383
-- timings: run 13531 ms, judge 10595 ms over 145 candidates
+- timings: run 13647 ms, judge 10703 ms over 145 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
 - verdict: [fake-model] answered from the retrieved sources
 - cited blocks: [1] of 12 shown
 
-[fake-model] Based on 6 retrieved source(s) and 6 authoritative structured record(s), the strongest evidence for the question is in: Release Note: APPV_UK_530 (Deferred Update), incidents: INC_043 [1].
+[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_042, Release Note: APPV_UK_530 (Deferred Update) [1].
 
 
 ## DEMO-03: shared_payment_cluster
@@ -267,7 +267,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 ### Pipeline A: conventional RAG
 
 - selected context (12: 12 record, 0 document):
-  - `REC_devices_DEV_GR_001499` [record devices] devices: DEV_GR_001499 (fused 0.0159, dense rank None, sparse rank 3, rerank 3.324, rank 1)
+  - `REC_devices_DEV_GR_001499` [record devices] devices: DEV_GR_001499 (fused 0.0161, dense rank None, sparse rank 2, rerank 3.324, rank 1)
   - `REC_payment_methods_PAY_SHARED_004` [record payment_methods] payment_methods: PAY_SHARED_004 (fused 0.0240, dense rank 24, sparse rank 23, rerank 1.521, rank 2)
   - `REC_payment_methods_PAY_SHARED_033` [record payment_methods] payment_methods: PAY_SHARED_033 (fused 0.0269, dense rank 4, sparse rank 29, rerank 1.475, rank 3)
   - `REC_payment_methods_PAY_SHARED_065` [record payment_methods] payment_methods: PAY_SHARED_065 (fused 0.0218, dense rank 27, sparse rank 37, rerank 1.276, rank 4)
@@ -282,7 +282,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 791
-- timings: run 1913 ms, judge 1858 ms over 40 candidates
+- timings: run 1932 ms, judge 1870 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -298,32 +298,32 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - seeds: `PLAYER_GR_001283`
 - limits: depth<=2, nodes/hop<=100, edges/node type<=4, total<=200, rel types=19, ontology expansion=False
 - edges traversed: 17
-- selected context (12: 2 node, 10 record, 0 document)
-- selected node evidence (2):
-  - `PAY_GR_0004311` (PaymentMethod, 1 hop(s) via USES_PAYMENT, score 0.773, rerank 1.166, components {'graph_distance': 0.666667, 'relationship_type': 0.8, 'semantic_relevance': 0.732578, 'temporal_validity': 1.0}); source_table=player_payment_method, source_record_id=PAY_GR_0004311, accounts_sharing=1, links=PLAYER_GR_001283[weight=1.0,from=2025-05-15]
+- selected context (12: 1 node, 11 record, 0 document)
+- selected node evidence (1):
   - `DEV_GR_001499` (Device, 1 hop(s) via USES, score 0.630, rerank 3.324, components {'graph_distance': 0.666667, 'relationship_type': 0.3, 'semantic_relevance': 0.679583, 'temporal_validity': 1.0})
-- discarded nodes: 16 (slot_limit=16)
-- hybrid channel blocks, shared with A (10):
+- discarded nodes: 17 (slot_limit=17)
+- hybrid channel blocks, shared with A (11):
   - `REC_payment_methods_PAY_SHARED_004` [record payment_methods] payment_methods: PAY_SHARED_004 (fused 0.0240, dense rank 24, sparse rank 23, rerank 1.521, rank 2)
   - `REC_payment_methods_PAY_SHARED_033` [record payment_methods] payment_methods: PAY_SHARED_033 (fused 0.0269, dense rank 4, sparse rank 29, rerank 1.475, rank 3)
   - `REC_payment_methods_PAY_SHARED_065` [record payment_methods] payment_methods: PAY_SHARED_065 (fused 0.0218, dense rank 27, sparse rank 37, rerank 1.276, rank 4)
-  - `REC_payment_methods_PAY_SHARED_076` [record payment_methods] payment_methods: PAY_SHARED_076 (fused 0.0240, dense rank 25, sparse rank 22, rerank 0.954, rank 6)
-  - `REC_payment_methods_PAY_SHARED_018` [record payment_methods] payment_methods: PAY_SHARED_018 (fused 0.0154, dense rank 5, sparse rank None, rerank 0.904, rank 7)
-  - `REC_payment_methods_PAY_SHARED_035` [record payment_methods] payment_methods: PAY_SHARED_035 (fused 0.0135, dense rank None, sparse rank 14, rerank 0.788, rank 8)
-  - `REC_payment_methods_PAY_SHARED_023` [record payment_methods] payment_methods: PAY_SHARED_023 (fused 0.0243, dense rank 18, sparse rank 27, rerank 0.675, rank 9)
-  - `REC_payment_methods_PAY_SHARED_034` [record payment_methods] payment_methods: PAY_SHARED_034 (fused 0.0272, dense rank 2, sparse rank 30, rerank 0.671, rank 10)
-  - `REC_payment_methods_PAY_SHARED_075` [record payment_methods] payment_methods: PAY_SHARED_075 (fused 0.0159, dense rank 3, sparse rank None, rerank 0.584, rank 11)
-  - `REC_payment_methods_PAY_SHARED_067` [record payment_methods] payment_methods: PAY_SHARED_067 (fused 0.0274, dense rank 7, sparse rank 20, rerank 0.562, rank 12)
+  - `REC_payment_methods_PAY_SHARED_076` [record payment_methods] payment_methods: PAY_SHARED_076 (fused 0.0240, dense rank 25, sparse rank 22, rerank 0.954, rank 5)
+  - `REC_payment_methods_PAY_SHARED_018` [record payment_methods] payment_methods: PAY_SHARED_018 (fused 0.0154, dense rank 5, sparse rank None, rerank 0.904, rank 6)
+  - `REC_payment_methods_PAY_SHARED_035` [record payment_methods] payment_methods: PAY_SHARED_035 (fused 0.0135, dense rank None, sparse rank 14, rerank 0.788, rank 7)
+  - `REC_payment_methods_PAY_SHARED_023` [record payment_methods] payment_methods: PAY_SHARED_023 (fused 0.0243, dense rank 18, sparse rank 27, rerank 0.675, rank 8)
+  - `REC_payment_methods_PAY_SHARED_034` [record payment_methods] payment_methods: PAY_SHARED_034 (fused 0.0272, dense rank 2, sparse rank 30, rerank 0.671, rank 9)
+  - `REC_payment_methods_PAY_SHARED_075` [record payment_methods] payment_methods: PAY_SHARED_075 (fused 0.0159, dense rank 3, sparse rank None, rerank 0.584, rank 10)
+  - `REC_payment_methods_PAY_SHARED_067` [record payment_methods] payment_methods: PAY_SHARED_067 (fused 0.0274, dense rank 7, sparse rank 20, rerank 0.562, rank 11)
+  - `REC_payment_methods_PAY_SHARED_036` [record payment_methods] payment_methods: PAY_SHARED_036 (fused 0.0139, dense rank 12, sparse rank None, rerank 0.540, rank 12)
 - events: graph.candidate.discarded=46, graph.candidate.reranked=56, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=17, graph.relationship.traversed=17, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
-- context tokens: 745
-- timings: run 3160 ms, judge 2575 ms over 56 candidates
+- context tokens: 791
+- timings: run 3137 ms, judge 2517 ms over 56 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
 - verdict: [fake-model] answered from the retrieved sources
 - cited blocks: [1] of 12 shown
 
-[fake-model] Based on 10 retrieved source(s) and 2 authoritative structured record(s), the strongest evidence for the question is in: payment_methods: PAY_SHARED_004, payment_methods: PAY_SHARED_033 [1].
+[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: devices: DEV_GR_001499, payment_methods: PAY_SHARED_004 [1].
 
 ### Pipeline C: graph relationships + enterprise ontology
 
@@ -336,32 +336,32 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - ontology concepts: `CONCEPT_BUDGET_VALUE`, `CONCEPT_CASUAL`
 - discovered via_concept `CONCEPT_BUDGET_VALUE`: 3 node(s): `SEG_UK_BUDGET`, `SEG_AT_SPARSAM`, `SEG_CZ_USPORNI`
 - discovered via_concept `CONCEPT_CASUAL`: 3 node(s): `SEG_UK_CASUAL`, `SEG_AT_GELEGENTLICH`, `SEG_CZ_OBCASNI`
-- selected context (12: 2 node, 10 record, 0 document)
-- selected node evidence (2):
-  - `PAY_GR_0004311` (PaymentMethod, 1 hop(s) via USES_PAYMENT, score 0.773, rerank 1.166, components {'graph_distance': 0.666667, 'relationship_type': 0.8, 'semantic_relevance': 0.732578, 'temporal_validity': 1.0}); source_table=player_payment_method, source_record_id=PAY_GR_0004311, accounts_sharing=1, links=PLAYER_GR_001283[weight=1.0,from=2025-05-15]
+- selected context (12: 1 node, 11 record, 0 document)
+- selected node evidence (1):
   - `DEV_GR_001499` (Device, 1 hop(s) via USES, score 0.630, rerank 3.324, components {'graph_distance': 0.666667, 'relationship_type': 0.3, 'semantic_relevance': 0.679583, 'temporal_validity': 1.0})
-- discarded nodes: 24 (slot_limit=24)
-- hybrid channel blocks, shared with A (10):
+- discarded nodes: 25 (slot_limit=25)
+- hybrid channel blocks, shared with A (11):
   - `REC_payment_methods_PAY_SHARED_004` [record payment_methods] payment_methods: PAY_SHARED_004 (fused 0.0240, dense rank 24, sparse rank 23, rerank 1.521, rank 2)
   - `REC_payment_methods_PAY_SHARED_033` [record payment_methods] payment_methods: PAY_SHARED_033 (fused 0.0269, dense rank 4, sparse rank 29, rerank 1.475, rank 3)
   - `REC_payment_methods_PAY_SHARED_065` [record payment_methods] payment_methods: PAY_SHARED_065 (fused 0.0218, dense rank 27, sparse rank 37, rerank 1.276, rank 4)
-  - `REC_payment_methods_PAY_SHARED_076` [record payment_methods] payment_methods: PAY_SHARED_076 (fused 0.0240, dense rank 25, sparse rank 22, rerank 0.954, rank 6)
-  - `REC_payment_methods_PAY_SHARED_018` [record payment_methods] payment_methods: PAY_SHARED_018 (fused 0.0154, dense rank 5, sparse rank None, rerank 0.904, rank 7)
-  - `REC_payment_methods_PAY_SHARED_035` [record payment_methods] payment_methods: PAY_SHARED_035 (fused 0.0135, dense rank None, sparse rank 14, rerank 0.788, rank 8)
-  - `REC_payment_methods_PAY_SHARED_023` [record payment_methods] payment_methods: PAY_SHARED_023 (fused 0.0243, dense rank 18, sparse rank 27, rerank 0.675, rank 9)
-  - `REC_payment_methods_PAY_SHARED_034` [record payment_methods] payment_methods: PAY_SHARED_034 (fused 0.0272, dense rank 2, sparse rank 30, rerank 0.671, rank 10)
-  - `REC_payment_methods_PAY_SHARED_075` [record payment_methods] payment_methods: PAY_SHARED_075 (fused 0.0159, dense rank 3, sparse rank None, rerank 0.584, rank 11)
-  - `REC_payment_methods_PAY_SHARED_067` [record payment_methods] payment_methods: PAY_SHARED_067 (fused 0.0274, dense rank 7, sparse rank 20, rerank 0.562, rank 12)
+  - `REC_payment_methods_PAY_SHARED_076` [record payment_methods] payment_methods: PAY_SHARED_076 (fused 0.0240, dense rank 25, sparse rank 22, rerank 0.954, rank 5)
+  - `REC_payment_methods_PAY_SHARED_018` [record payment_methods] payment_methods: PAY_SHARED_018 (fused 0.0154, dense rank 5, sparse rank None, rerank 0.904, rank 6)
+  - `REC_payment_methods_PAY_SHARED_035` [record payment_methods] payment_methods: PAY_SHARED_035 (fused 0.0135, dense rank None, sparse rank 14, rerank 0.788, rank 7)
+  - `REC_payment_methods_PAY_SHARED_023` [record payment_methods] payment_methods: PAY_SHARED_023 (fused 0.0243, dense rank 18, sparse rank 27, rerank 0.675, rank 8)
+  - `REC_payment_methods_PAY_SHARED_034` [record payment_methods] payment_methods: PAY_SHARED_034 (fused 0.0272, dense rank 2, sparse rank 30, rerank 0.671, rank 9)
+  - `REC_payment_methods_PAY_SHARED_075` [record payment_methods] payment_methods: PAY_SHARED_075 (fused 0.0159, dense rank 3, sparse rank None, rerank 0.584, rank 10)
+  - `REC_payment_methods_PAY_SHARED_067` [record payment_methods] payment_methods: PAY_SHARED_067 (fused 0.0274, dense rank 7, sparse rank 20, rerank 0.562, rank 11)
+  - `REC_payment_methods_PAY_SHARED_036` [record payment_methods] payment_methods: PAY_SHARED_036 (fused 0.0139, dense rank 12, sparse rank None, rerank 0.540, rank 12)
 - events: graph.candidate.discarded=54, graph.candidate.reranked=64, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=25, graph.ontology.expanded=2, graph.query.expanded=1, graph.relationship.traversed=25, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
-- context tokens: 745
-- timings: run 3581 ms, judge 2765 ms over 64 candidates
+- context tokens: 791
+- timings: run 3788 ms, judge 2969 ms over 64 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
 - verdict: [fake-model] answered from the retrieved sources
 - cited blocks: [1] of 12 shown
 
-[fake-model] Based on 10 retrieved source(s) and 2 authoritative structured record(s), the strongest evidence for the question is in: payment_methods: PAY_SHARED_004, payment_methods: PAY_SHARED_033 [1].
+[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: devices: DEV_GR_001499, payment_methods: PAY_SHARED_004 [1].
 
 
 ## DEMO-04: shared_identity_cluster
@@ -386,7 +386,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 609
-- timings: run 1820 ms, judge 1764 ms over 40 candidates
+- timings: run 1824 ms, judge 1767 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -420,7 +420,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_devices_DEV_AT_000782` [record devices] devices: DEV_AT_000782 (fused 0.0128, dense rank 18, sparse rank None, rerank -3.945, rank 12)
 - events: graph.candidate.discarded=39, graph.candidate.reranked=50, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=10, graph.relationship.traversed=10, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 609
-- timings: run 2663 ms, judge 2259 ms over 50 candidates
+- timings: run 2665 ms, judge 2222 ms over 50 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -455,7 +455,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_devices_DEV_AT_000782` [record devices] devices: DEV_AT_000782 (fused 0.0128, dense rank 18, sparse rank None, rerank -3.945, rank 12)
 - events: graph.candidate.discarded=39, graph.candidate.reranked=50, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=10, graph.query.expanded=1, graph.relationship.traversed=10, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 609
-- timings: run 2633 ms, judge 2238 ms over 50 candidates
+- timings: run 2528 ms, judge 2186 ms over 50 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 

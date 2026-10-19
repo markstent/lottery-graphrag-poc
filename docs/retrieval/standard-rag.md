@@ -27,9 +27,10 @@ Code lives in `backend/app/retrieval/standard/`.
 
 - **Chunking** comes from the generation-time chunker (`app/datasets/util.py::chunk_text`, sentence-grouped); every pipeline consumes `document_chunks.parquet` as the single document source.
 - **Record blocks**: `records.py` serialises warehouse rows into short English sentences, one fixed template per table, with local names joined from the taxonomy tables and a provenance sentence at the end.
-  The tables are games, platform versions, incidents, campaigns, player segments, payment providers, app versions, game families, game mechanics, incident types, support categories, and the planted-pattern carriers: shared devices, shared payment methods and the players taking part in a share (design 10a.2).
+  The tables are games, platform versions, incidents, campaigns, player segments, payment providers, app versions, game families, game mechanics, incident types, support categories, markets, platforms, channels, experiments, support cases, and the planted-pattern carriers: shared devices, shared payment methods and the players taking part in a share (design 10a.2).
+  The serialiser is versioned (`RECORD_SERIALISER_VERSION`, currently 2.1.0); any change to a template or query bumps it and needs an index rebuild.
   Record blocks (`kind="record"`) are indexed next to the document chunks in one collection, and the lab loads the same chunks-plus-records corpus (`load_indexed_corpus`), so every hit resolves to a chunk for A, B and C alike.
-  Documents and records without a market carry `market_id == ""`.
+  Documents and records without a market carry `market_id == ""`; a payment provider's market is its home market.
 - **Embeddings**: `embeddings.py` (dense) and `sparse.py` (BM25), with deterministic hashing fakes for CI (`docs/retrieval/embeddings.md`).
 - **Vector store**: `vector_store.py` adapts Qdrant (shared collection, ADR-002; chunk ids map to deterministic UUID point ids) plus an in-memory store for tests.
   Each point has a named dense vector `dense` (cosine) and a named sparse vector `sparse` (Qdrant applies the IDF modifier, which BM25 requires).
@@ -40,7 +41,7 @@ Code lives in `backend/app/retrieval/standard/`.
   A hit's fused score becomes `EvidenceChunk.similarity`, so `similarity` is a reciprocal-rank score, not a cosine.
   Every hit also reports its `dense_rank` and `sparse_rank` (`None` when it was not in that channel's top-`limit`), copied onto `EvidenceChunk` and the `rag.candidate.retrieved` event.
   Every pipeline builds evidence from the hit payload through the shared `corpus.hit_to_evidence`, so no hit is dropped for lack of a corpus entry.
-  A market scope matches only non-empty market ids, so market-less items are excluded from scoped runs for every pipeline.
+  A market scope admits the scoped market ids plus the empty market, so market-less items (shared infrastructure, corporate taxonomy, devices) stay in scoped runs for every pipeline, exactly as the graph pipelines keep market-less nodes.
   `top_k` defaults to 40 (`RAG_TOP_K`).
 - **Reranking**: `reranking.py` holds the one judge shared by A, B and C (`docs/retrieval/reranking.md`).
 - **Context selection**: `context.py` fills one token budget and one slot count from the reranked list (`docs/retrieval/context-budgeting.md`).
@@ -52,7 +53,8 @@ Code lives in `backend/app/retrieval/standard/`.
 Pipelines A, B and C share one generator, one prompt and one parser.
 The prompt version is `PROMPT_VERSION` in `generation.py` (currently `2.0.0`), and every benchmark run records it as `prompt_version`.
 
-The prompt numbers every context block shown to the model: document chunks and record blocks first, then structured graph blocks.
+Every pipeline hands the generator one list, its selected evidence in judge order, and the prompt numbers the blocks in that order whatever their kind (document chunk, record block or graph node).
+The same selected evidence therefore gives the same prompt string in A, B and C, and one builder (`citations_for`) turns the list into citations.
 The system prompt tells the model to use only those numbered sources, to cite every claim as `[n]`, and to reply with exactly one JSON object:
 
 ```json
@@ -92,11 +94,12 @@ uv run python -m app.retrieval.standard --provider hashing  # deterministic, no 
 uv run python -m app.retrieval.standard --no-rebuild        # upsert into the existing collection
 ```
 
-The index manifest is written to `<dataset>/vector-index.json` with the dense and sparse model names, dimensions, vector names, chunk count and record count.
+The index manifest is written to `<dataset>/vector-index.json` with the dense and sparse model names, dimensions, vector names, the record serialiser version, chunk count and record count.
 `--no-rebuild` refuses a dense-only collection from before hybrid search; rebuild it instead.
+At cold start the API refuses a populated collection that is dense-only or whose manifest names another serialiser version (or is missing), with `VECTOR_RETRIEVAL_ERROR`; an empty collection is indexed in process and its manifest written.
 
 ## Tests
 
-- `backend/tests/test_standard_rag.py`: retrieval correctness (planted relevance, citations, determinism), context limits, telemetry completeness, the fake generator, the corpus loader, the in-memory hybrid search (fusion, kind and market filters) and the dense-only collection refusal.
+- `backend/tests/test_standard_rag.py`: retrieval correctness (planted relevance, citations, determinism over the full event sequence and every outcome), context limits, telemetry completeness, the fake generator, the corpus loader, the in-memory hybrid search (fusion, kind and market filters, shared evidence under a scope), the index manifest and the dense-only collection refusal.
 - `backend/tests/test_records.py`, `test_sparse_and_fusion.py`, `test_rerank_cross_encoder.py` and `test_generation_v2.py`: record serialisation, BM25 and fusion, the cross-encoder judge, and prompt v2 parsing.
 - `backend/tests/test_vector_store_qdrant.py`: live against Qdrant with `VECTOR_E2E=1` (CI provides the service container).

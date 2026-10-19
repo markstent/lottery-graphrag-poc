@@ -7,7 +7,8 @@ Example executions with real telemetry: `docs/retrieval/example-traces.md`.
 
 In v1 the graph pipelines seeded from a semantic and id-pattern resolver, chose their nodes by graph score under their own cap and showed them as separate fact snippets on top of the document budget.
 In v2 pipeline B resolves only ids and market names, and pipeline C adds the ontology term table, local-code bindings, query expansion and ranked concept expansion.
-Every traversal node goes to the one shared judge together with A's document channel, and a node with a record block is judged and shown on exactly A's text for that row (D-025).
+Every traversal node goes to the one shared judge together with A's document channel, and a node with a record block is judged and shown on exactly A's block for that row (D-025).
+The judge and the model see only text pipeline A could have indexed: a node without a record block is `<Label> <id>` and nothing more (D-028).
 Document nodes are never traversal targets or candidates (D-026), and the fallback seed is the graph node of the top record hit (D-027).
 
 ## Purpose
@@ -38,7 +39,7 @@ question
   -> record blocks of structured candidates superseded
   -> one judge: the shared reranker scores both channels on the raw question
   -> one selection under the shared token budget and slot count
-  -> the same generator and parameters as pipeline A
+  -> the same generator and parameters as pipeline A, given the selection in judge order
   -> answer + node evidence + document evidence + telemetry events
 ```
 
@@ -47,6 +48,7 @@ question
 Resolution is deterministic and model-free (`app/retrieval/graph/resolution.py`).
 
 - Pipeline B uses `IdEntityResolver`: graph ids found in the question by id pattern and safe prefix (checked against the graph), then market names and codes as whole words (`origin` `id` or `market_alias`).
+  The safe prefixes are those of structural record nodes; document, chunk and concept ids are never seeds, so B never starts from the ontology or from a document.
   It matches no ontology terms.
 - Pipeline C uses `TermEntityResolver`, which runs the same id resolver first and then the ontology term matcher (`app/ontology/terms.py`) over every concept label, synonym and local display name in the four market languages.
   Each matched term yields its concept (`origin="term"`, confidence 0.8).
@@ -90,27 +92,36 @@ A directly resolved Document id may seed traversal, but it is discarded with `ex
 
 When no entity resolves, the fallback searches the shared vector layer with A's models for the best record block (`kinds=["record"]`, `limit=1`; C uses its expanded text).
 The seed is that record's graph node: the node id is the record id and the label comes from the record table (`source_lookup.label_for_table`), with `origin="vector_fallback"`.
+A vector hit has no resolver confidence, so its `graph.entity.resolved` event carries the hit's fused score as `fused_score` and no `confidence`.
 No record hit means no seed: B and C then run on the document channel alone, and `graph.seed.selected` is absent.
 
 ## Document channel
 
 Document retrieval is identical to pipeline A: same corpus, same dense and sparse models, same hybrid search and `top_k`, same market scope.
 The only difference is C's expanded query text.
-`EvidenceChunk.discovered_via` is `"vector"` for every chunk; the field stays in the schema so later phases can attach further provenance without a breaking change.
+`EvidenceChunk.discovered_via` is `"vector"` for every document chunk and record block and `"graph_traversal"` for a graph node; a node's `similarity` holds its graph composite score.
+
+Under a market scope both channels keep shared evidence: the vector filter admits the scoped markets plus the empty market, and the structured channel keeps nodes whose authoritative row has no market.
+A node's market is the same column its record block carries (`home_market_id` for payment providers), and nodes in another market are discarded with `out_of_scope_market` (the event carries `hops` and `seed` like every other node outcome).
 
 ## Node text and authoritative facts
 
 Each node has one text, used for semantic ranking, by the judge and in the prompt (`SourceLookup.node_text`):
 
-- A node whose row has a record block in A's corpus gets that block's text, byte for byte (`record_texts_of` over the indexed corpus, keyed by record table and id).
-- A node with authoritative columns but no record block (markets, platforms, channels, experiments, support cases) gets one humanised sentence: `<Label> <id>: <column name> <value>, ...`, missing values omitted.
+- A node whose row has a record block in A's corpus gets that block's text, byte for byte (`record_blocks_of` over the indexed corpus, keyed by record table and id).
+  Every structured table has a serialiser (`records.SERIALISERS`, version `RECORD_SERIALISER_VERSION` 2.1.0), so this covers markets, platforms, channels, experiments and support cases too.
+  Players have blocks only when they take part in a shared device or payment method (design 10a.2), and payment methods only when shared.
 - A BusinessConcept node in pipeline C gets its ontology text (`resolution.concept_text`): `Concept <canonical name>: <definition> Labels: ...; Synonyms: ...`.
-- Anything else reads `<Label> <id>`.
+  The ontology is the layer C adds, so this is the one text A has no copy of by design.
+- Any other node reads `<Label> <id>` and nothing more: no warehouse value reaches the judge or the prompt unless A could index it (D-028).
 
 In the prompt a selected node is formatted exactly like a document block (`docs/retrieval/context-budgeting.md`).
-Structured candidates also get authoritative facts from the parquet source tables (`SourceLookup`, memoised), kept on `GraphEvidence.authoritative` and in the citations of selected nodes.
+A node with a record block takes that block's title, market and language from `SourceLookup.record_block`, whether or not the search returned the block, so the same fact is the same block in A, B and C.
+A node without one is titled `<Label>: <id>` with no market or language.
+Structured candidates also get authoritative facts from the parquet source tables (`SourceLookup`, memoised), kept on `GraphEvidence.authoritative` for ranking validity, market scope and the UI; they never enter the judge or the prompt.
+A node's citation carries its source table (`record_table`) and record id like a record block's.
 Quantitative claims in answers come from these records, not from document prose.
-`PaymentMethod` facts are link-table derived: `accounts_sharing` plus up to `MAX_LINK_ROWS=8` account links from `player_payment_method.parquet`, with weight and first-used date.
+`PaymentMethod` facts are link-table derived: `accounts_sharing` plus up to `MAX_LINK_ROWS=8` account links from `player_payment_method.parquet`, with weight and first-used date, ordered by weight and then player id.
 
 ## Telemetry
 
@@ -120,12 +131,14 @@ Section 9 of that document describes an `ontology.concept.*` event family for th
 ## Configuration
 
 All settings live in `GraphRagSettings` (`app/config/__init__.py`), with `GRAPH_*` environment variables in `.env.example`.
+Two are fixed design with no variable: concept expansion is on for C and off for B (`bc_graph_settings`), and `excluded_labels` is `("Document",)` (D-026, recorded with every benchmark run).
 Pipeline A never imports graph modules.
 
 ## Testing
 
 - `backend/tests/test_resolution.py`: B and C resolvers, local-name and market bindings, query expansion, ranked and capped ontology expansion.
-- `backend/tests/test_graph_rag.py`: offline fixture graph: caps, weight-ordered cuts, replayable paths, ontology expansion, transactional edges never traversed, excluded labels, score components, the one-judge call and its events, the record-anchored fallback seed, node texts and titles.
+- `backend/tests/test_graph_rag.py`: offline fixture graph: caps, weight-ordered cuts, replayable paths, ontology expansion, transactional edges never traversed, excluded labels, score components, the one-judge call and its events, the record-anchored fallback seed, node texts and titles, market scope in both channels, and determinism over the full event sequence and every outcome.
+- `backend/tests/test_lab_fairness.py`: the A/B/C contract, including the same prompt string and answer when A and B select the same evidence.
 - `backend/tests/test_context_budget_v2.py`: mixed selection across kinds, supersession before judging, dedupe of chunks only, the shared budget.
 - `backend/tests/test_graph_rag_live.py`: `GRAPH_E2E=1` against a real Neo4j (tiny world, seed 42): ingestion, A/B/C behaviour, determinism, B/C fairness.
   It wipes and re-ingests the tiny world; run `make ingest-graph` afterwards to restore the dev world.
@@ -134,4 +147,5 @@ Pipeline A never imports graph modules.
 
 - Neo4j unreachable: `GraphReader` raises, and the API surfaces a typed error.
 - Embedding backend unavailable: scoring raises before context assembly, and no answer is faked.
+- Sparse model or cross-encoder failing (fastembed): `SparseEmbeddingError` or `RerankError`, mapped by the API to `EMBEDDING_ERROR` and `CONTEXT_BUILD_ERROR`.
 - Traversal caps reached: the caps are recorded on `graph.traversal.started` and the walk never exceeds them; edges beyond a cap are not followed or recorded.

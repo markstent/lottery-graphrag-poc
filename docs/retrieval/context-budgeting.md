@@ -22,21 +22,22 @@ The shared reranker scores every candidate a pipeline has against the raw questi
 - Pipelines B and C have the same document channel plus a structured channel: every traversal node, bounded only by the traversal caps, in graph composite score order (`docs/retrieval/evidence-ranking.md`).
   Nodes with an excluded label (default `Document`) are never structured candidates and are discarded with `excluded_label`.
 - Before judging, a record block whose record id is a structured candidate's node id is discarded as `superseded_by_structured_fact` (design 10a.8).
-  The node is judged on that record's exact text, so with a text-only pointwise judge (the production cross-encoder) a node that loses means the record would have lost too.
-  That safety does not hold for the CI lexical blend, which also uses the incoming rank.
+  The node is judged on that record's exact text, so with a text-only pointwise judge (the production cross-encoder and the CI overlap judge) a node that loses means the record would have lost too.
 - `select_context` walks the reranked list.
   For each candidate the first failing check is its discard reason: the budget (`context_budget`; a smaller later candidate may still fit), then the slots (`slot_limit`), then near-duplicates (`duplicate`).
   The near-duplicate check (Jaccard >= `RAG_DEDUPE_THRESHOLD`, default 0.85) applies to document chunks only: records and nodes have unique ids, and two distinct rows with similar columns are different facts.
-- `assemble_context` returns the selected nodes (`structured_selected`) and the selected chunks and records (`document_selected`), each in selection order.
-  The prompt numbers documents first and structured blocks second, so citations stay aligned.
+- `assemble_context` returns the selection in judge order (`selected`), the one list every pipeline hands the generator, and the same selection split into nodes (`structured_selected`) and chunks and records (`document_selected`) for telemetry only.
+  The prompt numbers `selected` in order, so cited block n is `citations[n - 1]` in every pipeline.
 
 No channel has reserved slots: a high-scoring document chunk takes a slot ahead of a lower-scoring node, and the other way round.
 
 ## What the model sees
 
+Every pipeline hands the generator one list, its selection in judge order, so the same selected evidence gives the same prompt string in A, B and C (`backend/tests/test_lab_fairness.py`).
 A structured block is formatted exactly like a document block (`generation.context_block`): a title line, then the same text the judge scored.
-A node that supersedes a record block also takes that block's title and language code, so the generator sees the same block for the same fact in A, B and C.
-The prompt carries no B- or C-only extra; the evidence path stays in `GraphEvidence.path`, the citations and the telemetry for the UI.
+A node whose row has a record block takes that block's title, market and language from the source lookup, whether or not the search returned the block, so the same fact is the same block in A, B and C.
+A node without a record block is shown as `<Label>: <id>` with the text `<Label> <id>`: no warehouse value reaches the prompt unless A could index it (D-028).
+The prompt carries no B- or C-only extra; the evidence path and authoritative facts stay in `GraphEvidence`, the citations and the telemetry for the UI.
 The budget counts block text only, not title lines, for every pipeline alike.
 
 The final token count is recorded on `rag.context.assembled` and `graph.context.assembled`.

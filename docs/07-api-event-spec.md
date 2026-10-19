@@ -111,10 +111,14 @@ all markets. The scope is applied identically to every requested pipeline:
 
 - the document channel performs the vector search *within* the scope (the
   top-k is computed over in-scope chunks only, never cropped afterwards);
+  chunks and record blocks without a market are shared evidence and stay in
+  scope;
 - in pipelines B/C, structured evidence whose authoritative record carries a
   market outside the scope is discarded with the recorded reason
   `out_of_scope_market`; records without a market (platforms, versions,
-  business concepts, documents) are shared evidence and stay in scope.
+  business concepts) are shared evidence and stay in scope, as in the
+  document channel. A payment provider's market is its home market in both
+  channels.
 
 The accepted scope is echoed by `GET /queries/{run_id}` as `market_scope`
 and recorded on the first event of every pipeline (`markets` payload field).
@@ -243,6 +247,9 @@ It is the graph counterpart of `rag.candidate.reranked`; one judge scores both c
 Node events also carry `node_id`, `score` (the graph composite score), `hops` and `seed`; selected node events add the `weight_*` score components.
 Document events carry `chunk_id`, with `rank` on selection.
 Discard reasons are `excluded_label` (a node whose label is never a structured candidate, such as a directly resolved Document seed), `out_of_scope_market`, `superseded_by_structured_fact` (a record block whose node is a structured candidate), `context_budget`, `slot_limit` and `duplicate`.
+
+`graph.entity.resolved` carries `entity_id`, `node_label`, `origin`, `matched_text`, `via_concept` and the resolver's `confidence` (0 to 1).
+A fallback seed (`origin` `vector_fallback`) has no resolver confidence: it carries the record hit's fused retrieval score as `fused_score` and no `confidence`.
 
 `graph.seed.selected` is absent when no entity resolves and no record block matches the fallback search; a seed is never fabricated.
 
