@@ -344,27 +344,44 @@ def test_expected_answers_score_full_marks(tiny_dataset: Path, tiny_ledger: Path
     assert {k: v for k, v in scores.items() if any(s != 1.0 for s in v)} == {}
 
 
+CLUSTER_QUESTIONS = (
+    ("L16", "SCN-002", "player_device", "device_id", "shared_devices"),
+    ("L17", "SCN-003", "player_payment_method", "payment_method_id", "shared_instruments"),
+)
+
+
 def test_l16_and_l17_expect_every_player_linked_to_the_anchors_shared_items(
     grounding: WorldGrounding, tiny_dataset: Path, tiny_ledger: Path
 ) -> None:
     ledger = load_ledger(tiny_ledger)
-    for qid, sid, table, column, key in (
-        ("L16", "SCN-002", "player_device", "device_id", "shared_devices"),
-        ("L17", "SCN-003", "player_payment_method", "payment_method_id", "shared_instruments"),
-    ):
+    for qid, sid, table, column, key in CLUSTER_QUESTIONS:
         shared = scenario(ledger, sid).truth[key]
         links = duckdb.execute(
-            f"SELECT player_id, {column} FROM read_parquet(?)",
+            f"SELECT DISTINCT player_id, {column} FROM read_parquet(?)",
             [(tiny_dataset / f"{table}.parquet").as_posix()],
         ).fetchall()
         (instance,) = grounding.ground(question_by_id(qid)).instances
-        anchor_items = {item for player, item in links if player == instance.anchor_id}
-        mine = anchor_items & set(shared)
-        linked = {p for p, item in links if item in shared} - {instance.anchor_id}
+        mine = {item for player, item in links if player == instance.anchor_id} & set(shared)
+        users = Counter(item for _, item in links)
+        distractors = {p for p, item in links if users[item] >= 2} - {instance.anchor_id}
         (check,) = instance.checks
         assert isinstance(check, SetCheck)
         assert check.expected == {p for p, item in links if item in mine} - {instance.anchor_id}
-        assert {key for key, _ in check.universe} == linked
+        assert {key for key, _ in check.universe} == distractors
+
+
+def test_naming_a_distractor_player_costs_precision(grounding: WorldGrounding) -> None:
+    # The tiny world need not have distractors for both questions; at least one has.
+    scores = {}
+    for qid in ("L16", "L17"):
+        (instance,) = grounding.ground(question_by_id(qid)).instances
+        (check,) = instance.checks
+        assert isinstance(check, SetCheck)
+        extra = next((key for key, _ in check.universe if key not in check.expected), None)
+        if extra is not None:
+            answer = f"{instance.expected_answer} Also {extra}."
+            scores[qid] = check_score(check, answer, "")
+    assert scores and all(score < 1.0 for score in scores.values()), scores
 
 
 def test_planted_game_claims_are_carried_by_the_game_record_only(
@@ -485,6 +502,16 @@ def test_scn015_expects_the_authoritative_price(
 def test_dev_world_expected_answers_score_full_marks() -> None:
     scores = _self_scores(freeze_bank(DEV_WORLD, DEV_LEDGER))
     assert {k: v for k, v in scores.items() if any(s != 1.0 for s in v)} == {}
+
+
+@dev_world
+def test_dev_world_distractor_players_cost_precision(dev_grounding: WorldGrounding) -> None:
+    for qid in ("L16", "L17"):
+        (instance,) = dev_grounding.ground(question_by_id(qid)).instances
+        (check,) = instance.checks
+        assert isinstance(check, SetCheck)
+        extra = next(key for key, _ in check.universe if key not in check.expected)
+        assert check_score(check, f"{instance.expected_answer} Also {extra}.", "") < 1.0, qid
 
 
 @dev_world

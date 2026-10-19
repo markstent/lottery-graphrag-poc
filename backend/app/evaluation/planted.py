@@ -23,6 +23,9 @@ from app.evaluation.truth_ledger import TruthScenario
 
 PlantedGrounder = Callable[[TruthScenario, World, duckdb.DuckDBPyConnection], Draft]
 
+# A device or payment instrument counts as shared when this many players use it.
+MIN_SHARING_PLAYERS = 2
+
 # Required-evidence items naming a KPI series ("kpi:MKT_GR:session_completion")
 # have no record or chunk to carry them, so they make no claim.
 KPI_EVIDENCE_PREFIX = "kpi:"
@@ -194,8 +197,9 @@ def _cluster(
     The shared items come from the ledger and their links from the world
     tables. The expected set is every other player linked to a shared item
     the anchor uses (the planted cluster plus any baseline user), so the
-    answer is literally true; the universe is every player linked to any
-    shared item, minus the anchor.
+    answer is literally true. The universe is every player, minus the
+    anchor, linked to any item that two or more players share anywhere in
+    the world: the distractors a careless retriever is likely to name.
     """
     anchor = sorted(_texts(scenario, "cluster_players"))[0]
     shared = _texts(scenario, shared_key)
@@ -211,7 +215,13 @@ def _cluster(
     if not used:
         raise ValueError(f"{scenario.scenario_id} anchor {anchor} uses no shared {shared_kind}")
     expected = sorted({player for player, item in links if item in used} - {anchor})
-    universe = {player: () for player, _ in links if player != anchor}
+    sharing = connection.execute(
+        f"SELECT DISTINCT player_id FROM {table} WHERE {column} IN"
+        f" (SELECT {column} FROM {table} GROUP BY {column}"
+        " HAVING COUNT(DISTINCT player_id) >= ?) ORDER BY player_id",
+        [MIN_SHARING_PLAYERS],
+    ).fetchall()
+    universe = {str(row[0]): () for row in sharing if str(row[0]) != anchor}
     answer = f"Player {anchor} shares a {shared_kind} with {render_list(expected)}."
     return _draft(scenario, world, anchor, answer, (SetCheck.of(expected, universe),))
 
