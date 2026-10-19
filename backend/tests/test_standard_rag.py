@@ -37,7 +37,7 @@ from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.fusion import reciprocal_rank_fusion
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.pipeline import StandardRagPipeline
-from app.retrieval.standard.reranking import LexicalReranker
+from app.retrieval.standard.reranking import LexicalReranker, build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
@@ -51,7 +51,9 @@ def make_settings(**overrides: object) -> RetrievalSettings:
         ),
         "vector": VectorSettings(url="", collection="test"),
         "context": ContextSettings(budget_tokens=200, dedupe_threshold=0.85),
-        "rerank": RerankSettings(enabled=False, lexical_weight=0.3),
+        "rerank": RerankSettings(
+            provider="lexical", model="unused", lexical_weight=0.3, candidates=40
+        ),
         "generation": GenerationSettings(
             provider="fake", model="fake-answer-v1", temperature=0.0, api_base=None
         ),
@@ -122,6 +124,7 @@ def build_pipeline(
         store=store,
         generator=FakeAnswerGenerator(),
         settings=settings,
+        reranker=build_reranker(settings),
     )
 
 
@@ -156,7 +159,11 @@ class TestRetrievalCorrectness:
         assert [chunk.rank for chunk in result.evidence] == [1, 2, 3]
 
     def test_reranker_sets_scores_and_reorders(self) -> None:
-        settings = make_settings(rerank=RerankSettings(enabled=True, lexical_weight=0.5))
+        settings = make_settings(
+            rerank=RerankSettings(
+                provider="lexical", model="unused", lexical_weight=0.5, candidates=40
+            )
+        )
         pipeline = build_pipeline(make_corpus(), settings)
         result = pipeline.run("checkout regression in Greece")
 
@@ -203,10 +210,10 @@ class TestRetrievalCorrectness:
         result = pipeline.run("Greece checkout regression payment platform")
         assert "CHNK_EXTRA_00" in {chunk.chunk_id for chunk in result.evidence}
 
-    def test_reranker_disabled_keeps_similarity_order(self) -> None:
-        pipeline = build_pipeline(make_corpus())  # rerank disabled by default
+    def test_every_candidate_is_reranked_and_recorded(self) -> None:
+        pipeline = build_pipeline(make_corpus())
         result = pipeline.run("checkout regression in Greece")
-        assert all(chunk.rerank_score is None for chunk in result.evidence)
+        assert all(chunk.rerank_score is not None for chunk in result.evidence)
 
     def test_deterministic_runs_produce_identical_results(self) -> None:
         first = build_pipeline(make_corpus()).run("checkout regression in Greece")

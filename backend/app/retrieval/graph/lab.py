@@ -28,6 +28,7 @@ from app.retrieval.standard.generation import (
 )
 from app.retrieval.standard.index import build_embedder, build_store, load_indexed_corpus
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.reranking import Reranker, build_reranker
 from app.retrieval.standard.sparse import SparseEmbedder, build_sparse_embedder
 from app.retrieval.standard.vector_store import VectorStore
 
@@ -47,6 +48,7 @@ class Lab:
     embeddings: EmbeddingFunction
     sparse: SparseEmbedder
     store: VectorStore
+    reranker: Reranker
 
     def pipeline_a(self, sink: ListEventSink | None = None) -> StandardRagPipeline:
         return StandardRagPipeline(
@@ -55,6 +57,7 @@ class Lab:
             store=self.store,
             generator=self.generator,
             settings=self.settings,
+            reranker=self.reranker,
             pipeline="A",
             sink=sink if sink is not None else ListEventSink(),
         )
@@ -92,6 +95,7 @@ def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
         embeddings=embeddings,
         sparse=build_sparse_embedder(settings.embedding),
         store=store,
+        reranker=build_reranker(settings),
     )
 
 
@@ -122,6 +126,7 @@ def wired_pipelines(
                         store=lab.store,
                         generator=lab.generator,
                         settings=tuned,
+                        reranker=lab.reranker,
                         source_lookup=lab.source_lookup,
                         pipeline=tag,
                         sink=ListEventSink(),

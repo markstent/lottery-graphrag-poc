@@ -271,11 +271,7 @@ class BenchmarkRunner:
             embedding_model=self.lab.embeddings.model_name,
             generation_model=self.lab.generator.model_name,
             generation_temperature=settings.generation.temperature,
-            reranker=(
-                f"lexical(w={settings.rerank.lexical_weight})"
-                if settings.rerank.enabled
-                else "none"
-            ),
+            reranker=self.lab.reranker.model_name,
             top_k=settings.top_k,
             context_budget_tokens=settings.context.budget_tokens,
             graph_limits={

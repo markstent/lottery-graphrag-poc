@@ -30,6 +30,7 @@ from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.index import index_corpus, load_indexed_corpus
+from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 from neo4j import GraphDatabase
@@ -105,6 +106,7 @@ def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipe
             store=store,
             generator=FakeAnswerGenerator(),
             settings=settings,
+            reranker=build_reranker(settings),
             source_lookup=SourceLookup(ingested),
             pipeline="C",
         )
@@ -188,6 +190,7 @@ def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: Graph
             store=store,
             generator=FakeAnswerGenerator(),
             settings=dataclasses.replace(full_settings, graph=graph_settings),
+            reranker=build_reranker(full_settings),
             source_lookup=SourceLookup(ingested),
             pipeline="B",
         )

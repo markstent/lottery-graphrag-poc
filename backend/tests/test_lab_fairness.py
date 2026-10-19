@@ -8,11 +8,18 @@ divergent configuration. These tests pin that contract offline.
 from __future__ import annotations
 
 import dataclasses
+from pathlib import Path
 
 import pytest
 from app.config import RetrievalSettings
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
-from app.retrieval.graph.lab import bc_graph_settings
+from app.retrieval.graph.lab import Lab, bc_graph_settings
+from app.retrieval.graph.source_lookup import SourceLookup
+from app.retrieval.standard.embeddings import HashingEmbedder
+from app.retrieval.standard.generation import FakeAnswerGenerator
+from app.retrieval.standard.reranking import build_reranker
+from app.retrieval.standard.sparse import HashingSparseEmbedder
+from app.retrieval.standard.vector_store import InMemoryVectorStore
 
 from tests.test_graph_rag import make_settings
 
@@ -71,3 +78,18 @@ def test_allow_list_sizes_and_mechanic_path(base: RetrievalSettings) -> None:
     assert len(settings_b.graph.relationship_types) == 19
     assert "HAS_MECHANIC" in settings_b.graph.relationship_types
     assert "HAS_MECHANIC" in settings_c.graph.relationship_types
+
+
+def test_lab_pipeline_a_uses_the_lab_reranker_instance() -> None:
+    settings = make_settings()
+    lab = Lab(
+        settings=settings,
+        generator=FakeAnswerGenerator(),
+        corpus={},
+        source_lookup=SourceLookup(Path("unused")),
+        embeddings=HashingEmbedder(dimensions=settings.embedding.dimensions),
+        sparse=HashingSparseEmbedder(),
+        store=InMemoryVectorStore(),
+        reranker=build_reranker(settings),
+    )
+    assert lab.pipeline_a().reranker is lab.reranker

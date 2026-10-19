@@ -54,6 +54,7 @@ from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.index import index_corpus
+from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
@@ -107,7 +108,9 @@ def make_settings(**overrides: object) -> RetrievalSettings:
         ),
         "vector": VectorSettings(url="", collection="test"),
         "context": ContextSettings(budget_tokens=2000, dedupe_threshold=0.85),
-        "rerank": RerankSettings(enabled=False, lexical_weight=0.3),
+        "rerank": RerankSettings(
+            provider="lexical", model="unused", lexical_weight=0.3, candidates=40
+        ),
         "generation": GenerationSettings(
             provider="fake", model="fake-answer-v1", temperature=0.0, api_base=None
         ),
@@ -192,6 +195,7 @@ def build_pipeline(
         store=store,
         generator=FakeAnswerGenerator(),
         settings=settings,
+        reranker=build_reranker(settings),
     )
 
 

@@ -64,7 +64,7 @@ from app.retrieval.standard.context import estimate_tokens, select_context
 from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
-from app.retrieval.standard.reranking import LexicalReranker
+from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
 
@@ -85,6 +85,7 @@ class GraphRagPipeline:
         store: VectorStore,
         generator: AnswerGenerator,
         settings: RetrievalSettings,
+        reranker: Reranker,
         source_lookup: SourceLookup | None = None,
         pipeline: str = "C",
         sink: ListEventSink | None = None,
@@ -100,10 +101,8 @@ class GraphRagPipeline:
         self.pipeline = pipeline
         self.sink = sink if sink is not None else ListEventSink()
         self.emitter = EventEmitter(pipeline, self.sink)
-        # Same reranker wiring as pipeline A (retrieval fairness).
-        self.reranker: LexicalReranker | None = (
-            LexicalReranker(settings.rerank.lexical_weight) if settings.rerank.enabled else None
-        )
+        # The same reranker instance as pipeline A (retrieval fairness).
+        self.reranker = reranker
 
     @property
     def events(self) -> list[RetrievalEvent]:
@@ -404,9 +403,7 @@ class GraphRagPipeline:
             markets=markets,
         )
         candidates = [hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
-        if self.reranker is not None:
-            candidates = self.reranker.rerank(question, candidates)
-        return candidates
+        return self.reranker.rerank(question, candidates)
 
     def _apply_market_scope(
         self, scored: list[ScoredNode], markets: list[str]

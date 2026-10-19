@@ -1,7 +1,7 @@
 """Standard RAG pipeline (docs/retrieval/standard-rag.md).
 
     question -> dense + sparse embedding -> hybrid search (RRF) -> top-k
-             -> optional reranking -> context budget selection
+             -> reranking -> context budget selection
              -> LLM -> answer + citations
 
 Every candidate and selected chunk is recorded with its scores; every stage
@@ -13,7 +13,6 @@ contracts that the graph pipeline must match.
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Protocol
 
 from app.config import RetrievalSettings
 from app.events import (
@@ -39,13 +38,9 @@ from app.retrieval.standard.context import estimate_tokens, select_context
 from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
-from app.retrieval.standard.reranking import LexicalReranker
+from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
-
-
-class Reranker(Protocol):
-    def rerank(self, question: str, candidates: list[EvidenceChunk]) -> list[EvidenceChunk]: ...
 
 
 class StandardRagPipeline:
@@ -59,7 +54,7 @@ class StandardRagPipeline:
         store: VectorStore,
         generator: AnswerGenerator,
         settings: RetrievalSettings,
-        reranker: Reranker | None = None,
+        reranker: Reranker,
         pipeline: str = "A",
         sink: ListEventSink | None = None,
     ) -> None:
@@ -68,13 +63,7 @@ class StandardRagPipeline:
         self.store = store
         self.generator = generator
         self.settings = settings
-        self.reranker: Reranker | None = (
-            reranker
-            if reranker is not None
-            else (
-                LexicalReranker(settings.rerank.lexical_weight) if settings.rerank.enabled else None
-            )
-        )
+        self.reranker = reranker
         self.pipeline = pipeline
         self.sink = sink if sink is not None else ListEventSink()
         self.emitter = EventEmitter(pipeline, self.sink)
@@ -115,17 +104,18 @@ class StandardRagPipeline:
                 rank=candidate.rank,
             )
 
-        if self.reranker is not None:
-            self.emitter.emit(RAG_RERANK_STARTED, candidates=len(candidates))
-            candidates = self.reranker.rerank(question, candidates)
-            for candidate in candidates:
-                self.emitter.emit(
-                    RAG_CANDIDATE_RERANKED,
-                    chunk_id=candidate.chunk_id,
-                    similarity=candidate.similarity,
-                    rerank_score=candidate.rerank_score,
-                    rank=candidate.rank,
-                )
+        self.emitter.emit(
+            RAG_RERANK_STARTED, candidates=len(candidates), model=self.reranker.model_name
+        )
+        candidates = self.reranker.rerank(question, candidates)
+        for candidate in candidates:
+            self.emitter.emit(
+                RAG_CANDIDATE_RERANKED,
+                chunk_id=candidate.chunk_id,
+                similarity=candidate.similarity,
+                rerank_score=candidate.rerank_score,
+                rank=candidate.rank,
+            )
 
         selected, discarded = select_context(
             candidates,

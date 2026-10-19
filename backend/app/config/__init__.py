@@ -46,10 +46,12 @@ class ContextSettings:
 
 @dataclass(frozen=True, slots=True)
 class RerankSettings:
-    """Reranking is optional and applied fairly (docs/retrieval/reranking.md)."""
+    """One reranker shared by every pipeline (docs/retrieval/reranking.md)."""
 
-    enabled: bool
+    provider: str  # "lexical" | "cross_encoder"
+    model: str  # cross-encoder model (fastembed)
     lexical_weight: float
+    candidates: int  # top incoming candidates the cross-encoder scores
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,6 +195,9 @@ def _env_float(name: str, default: float) -> float:
 
 def from_env() -> RetrievalSettings:
     """Read settings from the environment with local-development defaults."""
+    default_rerank_provider = (
+        "lexical" if os.environ.get("EMBEDDING_PROVIDER") == "hashing" else "cross_encoder"
+    )
     return RetrievalSettings(
         dataset_dir=os.environ.get("DATASET_DIR", str(DEFAULT_DATASET_DIR)),
         top_k=_env_int("RAG_TOP_K", 40),
@@ -213,8 +218,10 @@ def from_env() -> RetrievalSettings:
             dedupe_threshold=_env_float("RAG_DEDUPE_THRESHOLD", 0.85),
         ),
         rerank=RerankSettings(
-            enabled=os.environ.get("RAG_RERANK_ENABLED", "1") == "1",
-            lexical_weight=_env_float("RAG_RERANK_LEXICAL_WEIGHT", 0.3),
+            provider=os.environ.get("RERANK_PROVIDER", default_rerank_provider),
+            model=os.environ.get("RERANK_MODEL", "BAAI/bge-reranker-v2-m3"),
+            lexical_weight=_env_float("RERANK_LEXICAL_WEIGHT", 0.3),
+            candidates=_env_int("RERANK_CANDIDATES", 40),
         ),
         generation=GenerationSettings(
             provider=os.environ.get("GENERATION_PROVIDER", "fake"),

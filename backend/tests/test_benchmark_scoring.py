@@ -170,8 +170,11 @@ def test_reproducibility_record_carries_the_ontology_version(tmp_path: Path) -> 
             settings=make_settings(),
             embeddings=SimpleNamespace(model_name="hashing-256"),
             generator=SimpleNamespace(model_name="fake-answer-v1"),
+            reranker=SimpleNamespace(model_name="lexical(w=0.3)"),
         ),
     )
     runner.world_dir = tmp_path
 
-    assert runner._record().ontology_version == "2.0.0"
+    record = runner._record()
+    assert record.ontology_version == "2.0.0"
+    assert record.reranker == "lexical(w=0.3)"

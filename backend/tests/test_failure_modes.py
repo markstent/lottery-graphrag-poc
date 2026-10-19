@@ -18,6 +18,7 @@ from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction, HashingEmbedder
 from app.retrieval.standard.generation import AnswerGenerator, GenerationError
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder, SparseVector
 from app.retrieval.standard.vector_store import (
     InMemoryVectorStore,
@@ -92,6 +93,7 @@ def build_standard(
         store=store,
         generator=generator,
         settings=settings,
+        reranker=build_reranker(settings),
     )
 
 
@@ -109,6 +111,7 @@ def build_graph(
         store=store,
         generator=generator,
         settings=settings,
+        reranker=build_reranker(settings),
     )
 
 
