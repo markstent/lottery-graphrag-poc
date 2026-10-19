@@ -112,16 +112,7 @@ def build_queries_router(service: QueryService) -> APIRouter:
         record = service.snapshot(run_id)
         if record is None:
             raise HTTPException(status_code=404, detail="unknown run_id")
-        events = [
-            RecordedEvent(
-                sequence=event["sequence"],
-                event_type=event["event_type"],
-                pipeline=event["pipeline"],
-                t_ms=event["t_ms"],
-                payload=event["payload"],
-            )
-            for event in record.events
-        ]
+        events = [RecordedEvent(**event) for event in record.events]
         return EventStream(run_id=record.run_id, status=record.status, events=events)  # type: ignore[arg-type]
 
     @router.get("/demo/questions", response_model=list[DemoQuestion])

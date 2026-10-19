@@ -4,6 +4,7 @@ limits and deterministic fake-model integration."""
 from __future__ import annotations
 
 import dataclasses
+import re
 from pathlib import Path
 
 import pyarrow as pa
@@ -28,6 +29,8 @@ from app.events import (
     RAG_GENERATION_STARTED,
     RAG_QUERY_RECEIVED,
     RAG_VECTOR_SEARCH_STARTED,
+    EventEmitter,
+    ListEventSink,
 )
 from app.evidence import EvidenceChunk
 from app.retrieval.standard import index as index_module
@@ -497,3 +500,14 @@ class TestHybridVectorStore:
         with pytest.raises(RuntimeError, match="collection lacks a sparse vector"):
             index_module.build_index(make_settings(), rebuild=False)
         assert store.count() == 0
+
+
+def test_emitter_stamps_event_id_and_utc_timestamp() -> None:
+    sink = ListEventSink()
+    emitter = EventEmitter(pipeline="A", sink=sink)
+    first, second = emitter.emit("x.one"), emitter.emit("x.two")
+    assert re.fullmatch(r"[0-9a-f]{32}", first.event_id)
+    assert first.event_id != second.event_id
+    assert first.timestamp.endswith("+00:00")
+    assert first.as_dict()["event_id"] == first.event_id
+    assert first.as_dict()["timestamp"] == first.timestamp

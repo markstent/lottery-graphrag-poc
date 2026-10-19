@@ -85,6 +85,8 @@ class RecordedEvent(BaseModel):
     """One replayable execution event (docs/07 section 6)."""
 
     sequence: int
+    event_id: str
+    timestamp: str
     event_type: str
     pipeline: str
     t_ms: float

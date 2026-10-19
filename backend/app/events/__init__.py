@@ -10,6 +10,7 @@ import time
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 # Standard RAG event types (docs/07 section 7).
@@ -53,10 +54,15 @@ class RetrievalEvent:
     event_type: str
     pipeline: str
     t_ms: float
+    event_id: str
+    timestamp: str
     payload: dict[str, EventValue] = field(default_factory=dict)
 
     def as_dict(self) -> dict[str, Any]:
+        """The one serialisation of an event (stored, replayed and streamed as is)."""
         return {
+            "event_id": self.event_id,
+            "timestamp": self.timestamp,
             "event_type": self.event_type,
             "pipeline": self.pipeline,
             "t_ms": round(self.t_ms, 1),
@@ -101,6 +107,8 @@ class EventEmitter:
             event_type=event_type,
             pipeline=self.pipeline,
             t_ms=self.clock(),
+            event_id=uuid.uuid4().hex,
+            timestamp=datetime.now(UTC).isoformat(),
             payload=payload,
         )
         self.sink.emit(event)

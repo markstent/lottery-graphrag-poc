@@ -170,6 +170,9 @@ Event structure:
 
 Events must be ordered by `sequence`.
 
+`event_id` is a unique opaque identifier (a UUID4 hex string) assigned when the event is emitted.
+`timestamp` is the wall-clock emission time in ISO 8601 UTC (for example `2026-01-01T10:00:00.123456+00:00`); `t_ms` remains the monotonic offset used for replay timing.
+
 ---
 
 ## 7. Standard RAG Events

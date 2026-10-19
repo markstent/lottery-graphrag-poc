@@ -20,7 +20,7 @@ from typing import Any
 
 from app.api.schemas import QueryRequest
 from app.config import RetrievalSettings
-from app.events import ListEventSink
+from app.events import EventEmitter, ListEventSink, RetrievalEvent
 from app.graph.config import GraphConfig
 from app.retrieval.graph.lab import Lab, build_generator, build_lab, wired_pipelines
 from app.retrieval.standard.embeddings import EmbeddingError
@@ -147,7 +147,7 @@ class QueryService:
                     sink = ListEventSink()
                     result = lab.pipeline_a(sink=sink).run(record.question, markets=scope)
                     record.results["A"] = result
-                    self._attach(record, "A", sink.events)
+                    self._attach(record, sink.events)
                 else:
                     self._run_graph(lab, record, tag)
             record.status = "completed"
@@ -170,32 +170,19 @@ class QueryService:
                     continue
                 result = pipeline.run(record.question, markets=record.market_scope or None)
                 record.results[pipeline_tag] = result
-                self._attach(record, pipeline_tag, pipeline.events)
+                self._attach(record, pipeline.events)
         finally:
             wired.reader.close()
 
-    def _attach(self, record: RunRecord, pipeline: str, events: list[Any]) -> None:
+    def _attach(self, record: RunRecord, events: list[RetrievalEvent]) -> None:
         with self._lock:
             for event in events:
-                record.events.append(
-                    {
-                        "sequence": len(record.events) + 1,
-                        "event_type": event.event_type,
-                        "pipeline": pipeline,
-                        "t_ms": round(event.t_ms, 1),
-                        "payload": dict(event.payload),
-                    }
-                )
+                record.events.append({"sequence": len(record.events) + 1, **event.as_dict()})
 
     def _attach_error(self, record: RunRecord, code: str, message: str) -> None:
         """Record the docs/07 section 11 error event on the failed run."""
-        with self._lock:
-            record.events.append(
-                {
-                    "sequence": len(record.events) + 1,
-                    "event_type": "run.error",
-                    "pipeline": "+".join(record.configurations),
-                    "t_ms": 0.0,
-                    "payload": {"error_code": code, "message": message, "retryable": True},
-                }
-            )
+        sink = ListEventSink()
+        EventEmitter("+".join(record.configurations), sink, clock=lambda: 0.0).emit(
+            "run.error", error_code=code, message=message, retryable=True
+        )
+        self._attach(record, sink.events)

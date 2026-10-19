@@ -177,6 +177,17 @@ class TestQueryLifecycle:
         again = client.get(f"/api/v1/queries/{run_id}/events").json()
         assert again == stream
 
+    def test_recorded_events_carry_ids_and_timestamps(self, client: TestClient) -> None:
+        run_id = client.post(
+            "/api/v1/queries",
+            json={"question": "What is the price of GAME_UK_01?", "configurations": ["A"]},
+        ).json()["run_id"]
+        _await_completion(client, run_id)
+        events = client.get(f"/api/v1/queries/{run_id}/events").json()["events"]
+        assert events
+        assert all(e["event_id"] and e["timestamp"].endswith("+00:00") for e in events)
+        assert len({e["event_id"] for e in events}) == len(events)
+
     def test_unknown_run_returns_404(self, client: TestClient) -> None:
         assert client.get("/api/v1/queries/RUN-UNKNOWN").status_code == 404
         assert client.get("/api/v1/queries/RUN-UNKNOWN/events").status_code == 404
@@ -197,6 +208,7 @@ class TestErrorMapping:
         error_events = [event for event in stream["events"] if event["event_type"] == "run.error"]
         assert len(error_events) == 1
         assert error_events[0]["payload"]["error_code"] == "MODEL_ERROR"
+        assert error_events[0]["event_id"] and error_events[0]["timestamp"].endswith("+00:00")
 
     def test_dense_only_collection_maps_to_vector_error(
         self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch
