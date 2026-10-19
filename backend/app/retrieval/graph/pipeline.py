@@ -4,7 +4,9 @@
              -> bounded traversal (+ ontology expansion for pipeline C)
              -> transparent evidence ranking
              -> authoritative source lookup
-             -> shared document chunks via graph-reached documents
+             -> shared document chunks (record blocks superseded by
+                structured facts)
+             -> one context assembly (budget and slots shared with A)
              -> LLM -> answer + citations
 
 Pipeline differences are configuration only: pipeline B runs the identical
@@ -60,7 +62,7 @@ from app.retrieval.graph.traversal import (
     bounded_traversal,
     expand_ontology,
 )
-from app.retrieval.standard.context import estimate_tokens, select_context
+from app.retrieval.standard.context import SELECTION_SUPERSEDED, assemble_context
 from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
@@ -68,8 +70,8 @@ from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
 
-SELECTION_BELOW_SCORE = "below_score_limit"
-SELECTION_BUDGET = "context_budget"
+# EvidenceChunk.kind of a structured graph block in context assembly.
+NODE_KIND = "node"
 
 
 class GraphRagPipeline:
@@ -208,64 +210,72 @@ class GraphRagPipeline:
                     score=node.score,
                     reason="out_of_scope_market",
                 )
-        # Seeds are query anchors, not discovered evidence: they are always
-        # recorded and selected (docs/07 section 8 keeps seed events
-        # separate from candidate events), but they do not consume the
-        # evidence-node budget, which goes to traversal discoveries.
-        seed_nodes = [node for node in scored if node.hops == 0]
-        candidate_nodes = [node for node in scored if node.hops > 0]
-        selected_nodes = candidate_nodes[: graph_settings.max_evidence_nodes]
-        discarded_nodes = candidate_nodes[graph_settings.max_evidence_nodes :]
-
-        node_evidence: list[GraphEvidence] = []
-        for node in seed_nodes:
-            node_evidence.append(self._to_graph_evidence(node, selected=True))
-            payload: dict[str, str | int | float | None] = {
-                "node_id": node.node_id,
-                "score": node.score,
-                "hops": node.hops,
-                "seed": True,
-            }
-            for key, value in node.components.items():
-                payload[f"weight_{key}"] = value
-            self.emitter.emit(GRAPH_CANDIDATE_SELECTED, **payload)
-        for node in selected_nodes:
-            node_evidence.append(self._to_graph_evidence(node, selected=True))
-            payload = {
-                "node_id": node.node_id,
-                "score": node.score,
-                "hops": node.hops,
-                "seed": False,
-            }
-            for key, value in node.components.items():
-                payload[f"weight_{key}"] = value
-            self.emitter.emit(GRAPH_CANDIDATE_SELECTED, **payload)
-        for node in discarded_nodes:
-            node_evidence.append(self._to_graph_evidence(node, selected=False))
-            self.emitter.emit(
-                GRAPH_CANDIDATE_DISCARDED,
-                node_id=node.node_id,
-                score=node.score,
-                reason=SELECTION_BELOW_SCORE,
-            )
-
-        # Authoritative structured facts for selected structured nodes.
-        node_evidence = self._attach_authoritative_facts(node_evidence)
+        # Seeds are query anchors: they enter the context first, then
+        # discovered candidates in score order. Structured blocks and
+        # document chunks share one token budget and one evidence-slot count
+        # with pipeline A (retrieval fairness).
+        ordered = [
+            *(node for node in scored if node.hops == 0),
+            *(node for node in scored if node.hops > 0),
+        ]
+        drafts = self._attach_authoritative_facts([self._to_graph_evidence(n) for n in ordered])
+        structured = [
+            _structured_chunk(evidence, rank) for rank, evidence in enumerate(drafts, start=1)
+        ]
 
         # Document retrieval: identical channel to pipeline A (fairness).
-        document_chunks = self._document_chunks(question, scope)
-        selected_chunks, discarded_chunks = select_context(
-            document_chunks,
-            budget_tokens=self.settings.context.budget_tokens,
-            dedupe_threshold=self.settings.context.dedupe_threshold,
+        # A record block for a node entering as a structured fact is
+        # superseded: the structured block is the authoritative copy.
+        structured_ids = {evidence.node_id for evidence in drafts}
+        document_chunks: list[EvidenceChunk] = []
+        superseded: list[EvidenceChunk] = []
+        for chunk in self._document_chunks(question, scope):
+            if chunk.kind == "record" and chunk.document_id in structured_ids:
+                superseded.append(chunk.model_copy(update={"discard_reason": SELECTION_SUPERSEDED}))
+            else:
+                document_chunks.append(chunk)
+
+        assembly = assemble_context(structured, document_chunks, self.settings.context)
+        node_reasons = {
+            chunk.chunk_id: chunk.discard_reason
+            for chunk in assembly.discarded
+            if chunk.kind == NODE_KIND
+        }
+        node_evidence = [
+            _with_outcome(evidence, node_reasons.get(evidence.node_id)) for evidence in drafts
+        ]
+        for evidence in node_evidence:
+            if evidence.selected:
+                payload: dict[str, str | int | float | None] = {
+                    "node_id": evidence.node_id,
+                    "score": evidence.score,
+                    "hops": evidence.hops,
+                    "seed": evidence.hops == 0,
+                }
+                for key, value in evidence.components.items():
+                    payload[f"weight_{key}"] = value
+                self.emitter.emit(GRAPH_CANDIDATE_SELECTED, **payload)
+            else:
+                self.emitter.emit(
+                    GRAPH_CANDIDATE_DISCARDED,
+                    node_id=evidence.node_id,
+                    score=evidence.score,
+                    reason=evidence.discard_reason,
+                )
+
+        selected_chunks = assembly.document_selected
+        discarded_chunks = sorted(
+            [
+                *superseded,
+                *(chunk for chunk in assembly.discarded if chunk.kind != NODE_KIND),
+            ],
+            key=lambda chunk: chunk.rank,
         )
         for chunk in selected_chunks:
             self.emitter.emit(GRAPH_CANDIDATE_SELECTED, chunk_id=chunk.chunk_id, rank=chunk.rank)
         for chunk in discarded_chunks:
             self.emitter.emit(
-                GRAPH_CANDIDATE_DISCARDED,
-                chunk_id=chunk.chunk_id,
-                reason=chunk.discard_reason or SELECTION_BUDGET,
+                GRAPH_CANDIDATE_DISCARDED, chunk_id=chunk.chunk_id, reason=chunk.discard_reason
             )
 
         evidence_paths = [evidence.path for evidence in node_evidence if evidence.selected]
@@ -275,17 +285,14 @@ class GraphRagPipeline:
             max_hops=max((len(path) - 1 for path in evidence_paths), default=0),
         )
 
-        structured_blocks = [
-            evidence_snippet(evidence) for evidence in node_evidence if evidence.selected
-        ]
-        context_tokens = sum(estimate_tokens(block) for block in structured_blocks) + sum(
-            estimate_tokens(chunk.text) for chunk in selected_chunks
-        )
+        structured_blocks = [chunk.text for chunk in assembly.structured_selected]
+        context_tokens = assembly.context_tokens
         self.emitter.emit(
             GRAPH_CONTEXT_ASSEMBLED,
-            structured_nodes=sum(1 for evidence in node_evidence if evidence.selected),
+            structured_nodes=len(assembly.structured_selected),
             document_chunks=len(selected_chunks),
             context_tokens=context_tokens,
+            evidence_slots=self.settings.context.evidence_slots,
         )
 
         self.emitter.emit(GRAPH_GENERATION_STARTED, model=self.generator.model_name)
@@ -439,11 +446,16 @@ class GraphRagPipeline:
     def _attach_authoritative_facts(
         self, node_evidence: list[GraphEvidence]
     ) -> list[GraphEvidence]:
+        """Authoritative structured facts for every structured candidate.
+
+        Facts are attached before assembly because they are part of the
+        block whose tokens count against the shared budget.
+        """
         if self.source_lookup is None:
             return node_evidence
         attached: list[GraphEvidence] = []
         for evidence in node_evidence:
-            if evidence.selected and evidence.node_label in STRUCTURED_LABELS:
+            if evidence.node_label in STRUCTURED_LABELS:
                 facts = self.source_lookup.fetch(evidence.node_label, evidence.node_id)
                 if facts is not None:
                     attached.append(
@@ -454,7 +466,7 @@ class GraphRagPipeline:
         return attached
 
     @staticmethod
-    def _to_graph_evidence(node: ScoredNode, *, selected: bool) -> GraphEvidence:
+    def _to_graph_evidence(node: ScoredNode) -> GraphEvidence:
         return GraphEvidence(
             node_id=node.node_id,
             node_label=node.node_label,
@@ -463,9 +475,35 @@ class GraphRagPipeline:
             rel_type=node.rel_type,
             score=node.score,
             components=node.components,
-            selected=selected,
-            discard_reason=None if selected else SELECTION_BELOW_SCORE,
         )
+
+
+def _structured_chunk(evidence: GraphEvidence, rank: int) -> EvidenceChunk:
+    """A graph node as a context candidate competing for the shared budget."""
+    authoritative = evidence.authoritative or {}
+    return EvidenceChunk(
+        kind=NODE_KIND,
+        chunk_id=evidence.node_id,
+        document_id=evidence.node_id,
+        chunk_index=0,
+        text=evidence_snippet(evidence),
+        title=f"{evidence.node_label}: {evidence.node_id}",
+        document_type=evidence.node_label,
+        market_id=authoritative.get("market_id", ""),
+        language_code="-",
+        source_system=authoritative.get("source_table", "graph"),
+        similarity=evidence.score,
+        rank=rank,
+    )
+
+
+def _with_outcome(evidence: GraphEvidence, discard_reason: str | None) -> GraphEvidence:
+    """Assembly outcome on a node; only selected nodes keep their facts."""
+    if discard_reason is None:
+        return evidence.model_copy(update={"selected": True})
+    return evidence.model_copy(
+        update={"selected": False, "discard_reason": discard_reason, "authoritative": None}
+    )
 
 
 def evidence_snippet(evidence: GraphEvidence) -> str:

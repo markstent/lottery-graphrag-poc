@@ -43,6 +43,8 @@ def test_b_and_c_differ_only_in_graph_traversal(base: RetrievalSettings) -> None
     assert diff_labels(base, settings_b) == ["graph"]
     assert diff_labels(base, settings_c) in ([], ["graph"])
     assert diff_labels(settings_b, settings_c) == ["graph"]
+    # One total budget and evidence-slot count for A (base), B and C.
+    assert settings_b.context == settings_c.context == base.context
 
 
 def test_b_excludes_every_ontology_relationship_and_nothing_else(

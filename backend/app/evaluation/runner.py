@@ -71,6 +71,7 @@ class ReproducibilityRecord:
     reranker: str
     top_k: int
     context_budget_tokens: int
+    context: dict[str, Any]
     graph_limits: dict[str, Any]
     ontology_version: str
     started_at: str
@@ -90,6 +91,7 @@ class ReproducibilityRecord:
             "reranker": self.reranker,
             "top_k": self.top_k,
             "context_budget_tokens": self.context_budget_tokens,
+            "context": self.context,
             "graph_limits": self.graph_limits,
             "ontology_version": self.ontology_version,
             "started_at": self.started_at,
@@ -274,12 +276,15 @@ class BenchmarkRunner:
             reranker=self.lab.reranker.model_name,
             top_k=settings.top_k,
             context_budget_tokens=settings.context.budget_tokens,
+            context={
+                "dedupe_threshold": settings.context.dedupe_threshold,
+                "evidence_slots": settings.context.evidence_slots,
+            },
             graph_limits={
                 "depth": settings.graph.max_depth,
                 "nodes_per_hop": settings.graph.max_nodes_per_hop,
                 "edges_per_node_type": settings.graph.max_edges_per_node_type,
                 "total_nodes": settings.graph.max_total_nodes,
-                "evidence_nodes": settings.graph.max_evidence_nodes,
                 "relationship_types": len(settings.graph.relationship_types),
             },
             ontology_version=ONTOLOGY_VERSION,

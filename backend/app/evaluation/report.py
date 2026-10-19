@@ -115,6 +115,7 @@ def render_report(run: BenchmarkRun) -> str:
         "ontology_version",
     ):
         lines.append(f"- {key}: `{record[key]}`")
+    lines.append(f"- context: `{record['context']}`")
     lines.append(f"- graph_limits: `{record['graph_limits']}`")
     lines.append("")
 

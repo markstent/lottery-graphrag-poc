@@ -119,7 +119,6 @@ def make_settings(**overrides: object) -> RetrievalSettings:
             max_nodes_per_hop=100,
             max_edges_per_node_type=4,
             max_total_nodes=200,
-            max_evidence_nodes=8,
             relationship_types=DEFAULT_RELATIONSHIP_TYPES,
             ontology_expansion=True,
             ranking=DEFAULT_RANKING_WEIGHTS,
@@ -207,7 +206,6 @@ class TestBoundedTraversal:
                 max_nodes_per_hop=3,
                 max_edges_per_node_type=1,
                 max_total_nodes=200,
-                max_evidence_nodes=8,
                 relationship_types=("AFFECTS", "AFFECTS_MARKET", "RELATED_TO"),
                 ontology_expansion=True,
                 ranking=DEFAULT_RANKING_WEIGHTS,
@@ -226,7 +224,6 @@ class TestBoundedTraversal:
                 max_nodes_per_hop=25,
                 max_edges_per_node_type=4,
                 max_total_nodes=5,
-                max_evidence_nodes=4,
                 relationship_types=DEFAULT_RELATIONSHIP_TYPES,
                 ontology_expansion=True,
                 ranking=DEFAULT_RANKING_WEIGHTS,
@@ -374,13 +371,14 @@ class TestRankingAndEvidence:
 
     def test_beyond_limit_nodes_discarded_with_reason(self) -> None:
         settings = make_settings()
-        graph_settings = dataclasses.replace(settings.graph, max_evidence_nodes=2)
-        settings = dataclasses.replace(settings, graph=graph_settings)
+        context = dataclasses.replace(settings.context, evidence_slots=2)
+        settings = dataclasses.replace(settings, context=context)
         pipeline = build_pipeline(settings)
         result = pipeline.run("Why did checkout fail in Greece?")
         discarded = [evidence for evidence in result.node_evidence if not evidence.selected]
         assert discarded
-        assert all(evidence.discard_reason == "below_score_limit" for evidence in discarded)
+        assert all(evidence.discard_reason == "slot_limit" for evidence in discarded)
+        assert sum(evidence.selected for evidence in result.node_evidence) == 2
         assert sum(
             event.event_type == GRAPH_CANDIDATE_DISCARDED for event in pipeline.events
         ) >= len(discarded)

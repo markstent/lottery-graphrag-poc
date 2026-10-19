@@ -24,7 +24,10 @@ class EvidenceChunk(BaseModel):
     source_system: str
     valid_from: str | None = None
     valid_to: str | None = None
-    kind: str = Field(default="chunk", description="chunk (document text) | record (table row)")
+    kind: str = Field(
+        default="chunk",
+        description="chunk (document text) | record (table row) | node (graph block)",
+    )
     record_table: str | None = Field(default=None, description="Source table when kind is record")
 
     similarity: float = Field(
@@ -53,7 +56,10 @@ class EvidenceChunk(BaseModel):
     selected: bool = False
     discard_reason: str | None = Field(
         default=None,
-        description="Why the chunk was not selected: context_budget | duplicate | below_rank",
+        description=(
+            "Why the chunk was not selected: context_budget | slot_limit | duplicate"
+            " | superseded_by_structured_fact"
+        ),
     )
 
 

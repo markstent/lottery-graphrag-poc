@@ -1,7 +1,7 @@
 """Standard RAG pipeline (docs/retrieval/standard-rag.md).
 
     question -> dense + sparse embedding -> hybrid search (RRF) -> top-k
-             -> reranking -> context budget selection
+             -> reranking -> context assembly (shared budget and slots)
              -> LLM -> answer + citations
 
 Every candidate and selected chunk is recorded with its scores; every stage
@@ -34,7 +34,7 @@ from app.events import (
     new_run_id,
 )
 from app.evidence import Citation, EvidenceChunk, RagAnswer, RagRunResult
-from app.retrieval.standard.context import estimate_tokens, select_context
+from app.retrieval.standard.context import assemble_context
 from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
@@ -117,11 +117,8 @@ class StandardRagPipeline:
                 rank=candidate.rank,
             )
 
-        selected, discarded = select_context(
-            candidates,
-            budget_tokens=self.settings.context.budget_tokens,
-            dedupe_threshold=self.settings.context.dedupe_threshold,
-        )
+        assembly = assemble_context([], candidates, self.settings.context)
+        selected, discarded = assembly.document_selected, assembly.discarded
         for chunk in selected:
             self.emitter.emit(RAG_EVIDENCE_SELECTED, chunk_id=chunk.chunk_id, rank=chunk.rank)
         for chunk in discarded:
@@ -129,12 +126,13 @@ class StandardRagPipeline:
                 RAG_EVIDENCE_DISCARDED, chunk_id=chunk.chunk_id, reason=chunk.discard_reason
             )
 
-        context_tokens = sum(estimate_tokens(chunk.text) for chunk in selected)
+        context_tokens = assembly.context_tokens
         self.emitter.emit(
             RAG_CONTEXT_ASSEMBLED,
             selected=len(selected),
             discarded=len(discarded),
             context_tokens=context_tokens,
+            evidence_slots=self.settings.context.evidence_slots,
         )
 
         self.emitter.emit(RAG_GENERATION_STARTED, model=self.generator.model_name)

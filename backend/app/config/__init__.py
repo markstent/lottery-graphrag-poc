@@ -42,6 +42,9 @@ class ContextSettings:
 
     budget_tokens: int
     dedupe_threshold: float
+    # Evidence items (structured graph blocks plus document chunks) any
+    # pipeline may place in context: the same count for A, B and C.
+    evidence_slots: int = 12
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +94,6 @@ class GraphRagSettings:
     max_nodes_per_hop: int
     max_edges_per_node_type: int
     max_total_nodes: int
-    max_evidence_nodes: int
     relationship_types: tuple[str, ...]
     ontology_expansion: bool
     ranking: RankingWeights
@@ -103,7 +105,6 @@ class GraphRagSettings:
             max_nodes_per_hop=self.max_nodes_per_hop,
             max_edges_per_node_type=self.max_edges_per_node_type,
             max_total_nodes=self.max_total_nodes,
-            max_evidence_nodes=self.max_evidence_nodes,
             relationship_types=tuple(
                 rel for rel in self.relationship_types if rel not in ONTOLOGY_RELATIONSHIP_TYPES
             ),
@@ -177,7 +178,6 @@ class RetrievalSettings:
             max_nodes_per_hop=100,
             max_edges_per_node_type=4,
             max_total_nodes=200,
-            max_evidence_nodes=12,
             relationship_types=DEFAULT_RELATIONSHIP_TYPES,
             ontology_expansion=True,
             ranking=DEFAULT_RANKING_WEIGHTS,
@@ -216,6 +216,7 @@ def from_env() -> RetrievalSettings:
         context=ContextSettings(
             budget_tokens=_env_int("RAG_CONTEXT_TOKEN_BUDGET", 2000),
             dedupe_threshold=_env_float("RAG_DEDUPE_THRESHOLD", 0.85),
+            evidence_slots=_env_int("RAG_EVIDENCE_SLOTS", 12),
         ),
         rerank=RerankSettings(
             provider=os.environ.get("RERANK_PROVIDER", default_rerank_provider),
@@ -234,7 +235,6 @@ def from_env() -> RetrievalSettings:
             max_nodes_per_hop=_env_int("GRAPH_MAX_NODES_PER_HOP", 100),
             max_edges_per_node_type=_env_int("GRAPH_MAX_EDGES_PER_NODE_TYPE", 4),
             max_total_nodes=_env_int("GRAPH_MAX_TOTAL_NODES", 200),
-            max_evidence_nodes=_env_int("GRAPH_MAX_EVIDENCE_NODES", 12),
             relationship_types=DEFAULT_RELATIONSHIP_TYPES,
             ontology_expansion=os.environ.get("GRAPH_ONTOLOGY", "1") == "1",
             ranking=DEFAULT_RANKING_WEIGHTS,
