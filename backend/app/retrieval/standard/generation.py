@@ -28,7 +28,7 @@ from app.models.gateway import CompletionRequest, GatewayError, complete
 
 PROMPT_VERSION = "2.0.0"
 
-_SYSTEM_PROMPT = (
+SYSTEM_PROMPT = (
     "You are an enterprise analyst. Answer using only the numbered context "
     "sources; do not use outside knowledge. Respond with exactly one JSON object "
     'and nothing else: {"verdict": "<one line, or \'unknown\' when the sources do '
@@ -187,7 +187,7 @@ class LiteLLMAnswerGenerator:
     def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
         request = CompletionRequest(
             model=self.model_name,
-            system=_SYSTEM_PROMPT,
+            system=SYSTEM_PROMPT,
             user=build_user_prompt(question, contexts),
             temperature=self._temperature,
             max_tokens=self._max_tokens,

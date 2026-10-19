@@ -69,6 +69,9 @@ class GenerationSettings:
     temperature: float
     api_base: str | None
     max_tokens: int = 1200
+    # Recorded with every benchmark run; an official run requires the family.
+    model_family: str | None = None
+    quantisation: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,6 +245,8 @@ def from_env() -> RetrievalSettings:
             temperature=_env_float("GENERATION_TEMPERATURE", 0.0),
             api_base=os.environ.get("GENERATION_API_BASE"),
             max_tokens=_env_int("GENERATION_MAX_TOKENS", 1200),
+            model_family=os.environ.get("GENERATION_MODEL_FAMILY") or None,
+            quantisation=os.environ.get("GENERATION_MODEL_QUANTISATION") or None,
         ),
         graph=GraphRagSettings(
             max_depth=_env_int("GRAPH_DEPTH", 2),

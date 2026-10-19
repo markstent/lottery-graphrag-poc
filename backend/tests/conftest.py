@@ -1,12 +1,26 @@
-"""Shared fixtures: a stand-in for the lazily imported litellm module."""
+"""Shared fixtures: a stand-in for the lazily imported litellm module and
+an offline retrieval lab."""
 
 from __future__ import annotations
 
 import sys
 import types
+from pathlib import Path
 from typing import Any
 
 import pytest
+from app.datasets.taxonomies import local_name_variants
+from app.ontology.loader import load_ontology
+from app.ontology.terms import TermMatcher, build_term_table
+from app.retrieval.graph.lab import Lab
+from app.retrieval.graph.source_lookup import SourceLookup
+from app.retrieval.standard.embeddings import HashingEmbedder
+from app.retrieval.standard.generation import FakeAnswerGenerator
+from app.retrieval.standard.reranking import build_reranker
+from app.retrieval.standard.sparse import HashingSparseEmbedder
+from app.retrieval.standard.vector_store import InMemoryVectorStore
+
+from tests.test_graph_rag import make_settings
 
 
 class StubLiteLLM(types.ModuleType):
@@ -49,3 +63,21 @@ def stub_litellm_empty(monkeypatch: pytest.MonkeyPatch) -> StubLiteLLM:
 @pytest.fixture
 def stub_litellm_raises(monkeypatch: pytest.MonkeyPatch) -> StubLiteLLM:
     return _install(monkeypatch, StubLiteLLM(None, RuntimeError("provider down")))
+
+
+def build_lab_offline() -> Lab:
+    """A lab on the hashing embedders, an empty in-memory store and the fake generator."""
+    settings = make_settings()
+    ontology = load_ontology()
+    return Lab(
+        settings=settings,
+        generator=FakeAnswerGenerator(),
+        corpus={},
+        source_lookup=SourceLookup(Path("unused"), {}),
+        embeddings=HashingEmbedder(dimensions=settings.embedding.dimensions),
+        sparse=HashingSparseEmbedder(),
+        store=InMemoryVectorStore(),
+        reranker=build_reranker(settings),
+        ontology=ontology,
+        term_matcher=TermMatcher(build_term_table(ontology, local_name_variants())),
+    )

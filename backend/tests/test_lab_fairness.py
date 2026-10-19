@@ -12,10 +12,7 @@ from pathlib import Path
 
 import pytest
 from app.config import RetrievalSettings
-from app.datasets.taxonomies import local_name_variants
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
-from app.ontology.loader import load_ontology
-from app.ontology.terms import TermMatcher, build_term_table
 from app.retrieval.graph.lab import Lab, bc_graph_settings, graph_pipelines
 from app.retrieval.graph.neo4j_adapter import build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
@@ -27,13 +24,9 @@ from app.retrieval.graph.resolution import (
 )
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import load_static_provider_from_rows
-from app.retrieval.standard.embeddings import HashingEmbedder
-from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.index import index_corpus
-from app.retrieval.standard.reranking import build_reranker
-from app.retrieval.standard.sparse import HashingSparseEmbedder
-from app.retrieval.standard.vector_store import InMemoryVectorStore
 
+from tests.conftest import build_lab_offline
 from tests.test_graph_rag import (
     PromptCapture,
     RecordingReranker,
@@ -101,23 +94,6 @@ def test_allow_list_sizes_and_mechanic_path(base: RetrievalSettings) -> None:
     assert len(settings_b.graph.relationship_types) == 19
     assert "HAS_MECHANIC" in settings_b.graph.relationship_types
     assert "HAS_MECHANIC" in settings_c.graph.relationship_types
-
-
-def build_lab_offline() -> Lab:
-    settings = make_settings()
-    ontology = load_ontology()
-    return Lab(
-        settings=settings,
-        generator=FakeAnswerGenerator(),
-        corpus={},
-        source_lookup=SourceLookup(Path("unused"), {}),
-        embeddings=HashingEmbedder(dimensions=settings.embedding.dimensions),
-        sparse=HashingSparseEmbedder(),
-        store=InMemoryVectorStore(),
-        reranker=build_reranker(settings),
-        ontology=ontology,
-        term_matcher=TermMatcher(build_term_table(ontology, local_name_variants())),
-    )
 
 
 @pytest.fixture
