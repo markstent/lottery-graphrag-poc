@@ -1,233 +1,116 @@
-"""Deterministic scoring tests (docs/05-benchmark-spec.md sections 6, 8, 14)."""
+"""Evidence metrics over discoveries and failure classes (Phase 3 benchmark v2, Task 3)."""
 
 from __future__ import annotations
 
-import dataclasses
 import json
 from pathlib import Path
-from types import SimpleNamespace
-from typing import cast
 
 import pytest
-from app.evaluation.runner import BenchmarkRunner
-from app.evaluation.scoring import (
-    PipelineRunResult,
-    check_score,
-    classify_failure,
-    evidence_metrics,
-    score_checks,
+from app.evaluation.claims import Claim
+from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_score
+
+
+def test_evidence_score_excludes_the_anchor_and_scores_discoveries() -> None:
+    claims = (Claim("a", "s", frozenset({"INC_2"})), Claim("b", "s", frozenset({"INC_3"})))
+    score = evidence_score(
+        claims,
+        ["INC_1", "INC_2", "DOC_9"],
+        anchor_id="INC_1",
+        resolved_ids=["INC_1"],
+        context_tokens=500,
+    )
+    assert (
+        score.recall,
+        score.precision,
+        score.claims_found,
+        score.efficiency_per_1k,
+        score.anchor_resolved,
+    ) == (0.5, 0.5, 1, 2.0, True)
+    assert score.f1 == 0.5 and score.claims_total == 2
+
+
+def test_no_surviving_claim_means_no_evidence_score() -> None:
+    score = evidence_score((), ["X"], anchor_id="X", resolved_ids=[], context_tokens=10)
+    assert score.recall is None and score.f1 is None and score.anchor_resolved is True
+    assert score.precision is None and score.claims_found is None
+    assert score.efficiency_per_1k is None and score.claims_total == 0
+
+
+def test_claims_carried_only_by_the_anchor_do_not_survive() -> None:
+    claims = (Claim("a", "s", frozenset({"INC_1"})),)
+    score = evidence_score(claims, ["INC_1"], anchor_id="INC_1", resolved_ids=[], context_tokens=9)
+    assert score.recall is None and score.claims_total == 0
+
+
+def test_anchor_resolution_reads_resolved_ids_when_not_selected() -> None:
+    claims = (Claim("a", "s", frozenset({"INC_2"})),)
+    resolved = evidence_score(
+        claims, [], anchor_id="INC_1", resolved_ids=["INC_1"], context_tokens=0
+    )
+    unresolved = evidence_score(
+        claims, ["INC_2"], anchor_id="INC_1", resolved_ids=[], context_tokens=0
+    )
+    assert resolved.anchor_resolved is True and unresolved.anchor_resolved is False
+
+
+def test_empty_selection_scores_zero_and_no_tokens_means_no_efficiency() -> None:
+    claims = (Claim("a", "s", frozenset({"INC_2"})),)
+    score = evidence_score(claims, [], anchor_id="INC_1", resolved_ids=[], context_tokens=0)
+    assert (score.recall, score.precision, score.f1, score.efficiency_per_1k) == (
+        0.0,
+        0.0,
+        0.0,
+        None,
+    )
+
+
+def test_one_selected_item_carrying_several_claims_counts_once_for_precision() -> None:
+    claims = (Claim("a", "s", frozenset({"CHNK_1"})), Claim("b", "s", frozenset({"CHNK_1"})))
+    score = evidence_score(
+        claims, ["CHNK_1", "CHNK_1", "INC_4"], anchor_id="X", resolved_ids=[], context_tokens=1000
+    )
+    assert (score.recall, score.precision, score.claims_found, score.efficiency_per_1k) == (
+        1.0,
+        0.5,
+        2,
+        2.0,
+    )
+    assert score.f1 == pytest.approx(2 / 3)
+
+
+def _evidence(recall: float | None, anchor_resolved: bool) -> EvidenceScore:
+    return EvidenceScore(recall, None, None, None, 0, None, anchor_resolved)
+
+
+@pytest.mark.parametrize(
+    ("answer", "evidence", "seeded", "expected"),
+    [
+        (1.0, _evidence(1.0, True), True, None),
+        (None, _evidence(None, False), True, None),
+        (0.0, _evidence(1.0, False), True, "entity_resolution_failure"),
+        (0.0, _evidence(0.0, False), False, "retrieval_failure"),
+        (1.0, _evidence(0.4, True), True, "retrieval_failure"),
+        (0.0, _evidence(1.0, True), True, "generation_failure"),
+        (0.0, _evidence(1.0, False), False, "generation_failure"),
+        (0.0, _evidence(None, True), True, "generation_failure"),
+    ],
 )
-from app.retrieval.graph.lab import Lab
-from app.retrieval.standard.generation import PROMPT_VERSION
-
-
-class TestNumberCheck:
-    def test_decimal_formatting_is_normalised(self) -> None:
-        check = ("number", "2.5")
-        assert check_score(check, "The price is GBP 2.50 per ticket.") == 1.0
-        assert check_score(check, "2,50 euros apply.") == 1.0
-        assert check_score(check, "The price is 2.05.") == 0.0
-
-    def test_integers(self) -> None:
-        assert check_score(("number", "30"), "There were 30 cases.") == 1.0
-        assert check_score(("number", "30"), "About 130 cases.") == 0.0
-
-
-class TestTokenCheck:
-    def test_word_boundaries_prevent_substring_hits(self) -> None:
-        assert check_score(("token", "INC_01"), "seen in INC_010 and INC_011.") == 0.0
-        assert check_score(("token", "INC_010"), "seen in INC_010 and INC_011.") == 1.0
-
-    def test_case_insensitive(self) -> None:
-        assert check_score(("token", "game_uk_01"), "Source GAME_UK_01 says so.") == 1.0
-
-
-class TestSetCheck:
-    def test_partial_recall(self) -> None:
-        check = ("set", frozenset({"APP", "WEB", "RETAIL"}))
-        assert check_score(check, "offered via APP and WEB only.") == 2 / 3
-
-    def test_empty_expected_scores_zero(self) -> None:
-        assert check_score(("set", frozenset()), "anything") == 0.0
-
-
-class TestScoreChecks:
-    def test_mean_of_checks(self) -> None:
-        checks = (("number", "2.5"), ("token", "GAME_UK_01"))
-        score = score_checks(checks, "GAME_UK_01 costs 2.5")
-        assert score == 1.0
-        assert score_checks(checks, "GAME_UK_01 costs 3.0") == 0.5
-
-    def test_no_checks_means_none(self) -> None:
-        assert score_checks((), "anything") is None
-
-
-class TestEvidenceMetrics:
-    def test_recall_and_precision(self) -> None:
-        recall, precision = evidence_metrics(
-            required=("INC_A", "INC_B", "DOC_C"),
-            retrieved=("INC_A", "DOC_C", "GAME_X"),
-        )
-        assert recall == 2 / 3
-        assert precision == 2 / 3
-
-    def test_no_required_evidence(self) -> None:
-        assert evidence_metrics((), ("INC_A",)) == (None, None)
-
-    def test_empty_retrieval(self) -> None:
-        recall, precision = evidence_metrics(("INC_A",), ())
-        assert recall == 0.0
-        assert precision == 0.0
-
-
-class TestFailureClassification:
-    def test_healthy_run_has_no_failure(self) -> None:
-        assert (
-            classify_failure(
-                answer_score=1.0,
-                evidence_recall=1.0,
-                seed_ids=("GAME_UK_01",),
-                required=("GAME_UK_01",),
-                retrieved_nodes=("GAME_UK_01",),
-                discarded_nodes=(),
-            )
-            is None
-        )
-
-    def test_pipeline_a_failure_is_retrieval(self) -> None:
-        assert (
-            classify_failure(
-                answer_score=0.0,
-                evidence_recall=0.0,
-                seed_ids=(),
-                required=("GAME_UK_01",),
-                retrieved_nodes=(),
-                discarded_nodes=(),
-            )
-            == "retrieval_failure"
-        )
-
-    def test_required_node_in_discard_is_traversal_failure(self) -> None:
-        assert (
-            classify_failure(
-                answer_score=0.0,
-                evidence_recall=0.0,
-                seed_ids=("INC_S007_GR",),
-                required=("INC_S007_AT",),
-                retrieved_nodes=("INC_S007_GR",),
-                discarded_nodes=("INC_S007_AT",),
-            )
-            == "graph_traversal_failure"
-        )
-
-    def test_good_evidence_but_wrong_answer_is_generation(self) -> None:
-        assert (
-            classify_failure(
-                answer_score=0.0,
-                evidence_recall=1.0,
-                seed_ids=("GAME_UK_01",),
-                required=("GAME_UK_01",),
-                retrieved_nodes=("GAME_UK_01",),
-                discarded_nodes=(),
-            )
-            == "generation_failure"
-        )
-
-    def test_missing_seed_is_entity_resolution(self) -> None:
-        assert (
-            classify_failure(
-                answer_score=0.0,
-                evidence_recall=0.0,
-                seed_ids=("GAME_UK_01",),
-                required=("GAME_UK_01",),
-                retrieved_nodes=("INC_009",),
-                discarded_nodes=(),
-            )
-            == "entity_resolution_failure"
-        )
-
-
-class TestPipelineRunResult:
-    def test_retrieved_evidence_deduplicates_in_order(self) -> None:
-        run = PipelineRunResult(
-            pipeline="C",
-            answer="",
-            selected_nodes=("GAME_UK_01", "DOC_0001"),
-            discarded_nodes=(),
-            seed_ids=("GAME_UK_01",),
-            selected_document_ids=("DOC_0001", "DOC_0002"),
-            context_tokens=100,
-            latency_ms=12.0,
-            event_counts={},
-        )
-        assert run.retrieved_evidence() == ("GAME_UK_01", "DOC_0001", "DOC_0002")
-
-
-def test_reproducibility_record_carries_the_ontology_version(tmp_path: Path) -> None:
-    """The run record names the ontology the graph was built from, never a fallback."""
-    from tests.test_graph_rag import make_settings
-
-    runner = object.__new__(BenchmarkRunner)
-    runner.lab = cast(
-        Lab,
-        SimpleNamespace(
-            settings=make_settings(),
-            embeddings=SimpleNamespace(model_name="hashing-256", dimensions=256),
-            sparse=SimpleNamespace(model_name="hashing-sparse-1048576"),
-            generator=SimpleNamespace(model_name="fake-answer-v1"),
-            reranker=SimpleNamespace(model_name="lexical-overlap"),
-            record_serialiser_version="2.1.0",
-        ),
-    )
-    runner.world_dir = tmp_path
-
-    record = runner._record()
-    assert record.ontology_version == "2.0.0"
-    assert record.reranker == "lexical-overlap"
-    assert record.to_payload()["prompt_version"] == PROMPT_VERSION
-
-
-def test_reproducibility_payload_carries_every_field_and_the_retrieval_constants(
-    tmp_path: Path,
+def test_failure_classes(
+    answer: float | None, evidence: EvidenceScore, seeded: bool, expected: str | None
 ) -> None:
-    """Every record field reaches the stored payload (docs/05 section 11)."""
-    from app.retrieval.standard.fusion import RRF_K
+    assert classify_failure(answer, evidence, seeded) == expected
+
+
+def test_lab_reports_the_serialiser_of_the_index_it_loaded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import app.retrieval.graph.lab as lab_module
+    from app.retrieval.graph.lab import build_lab
+    from app.retrieval.standard.generation import FakeAnswerGenerator
+    from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+    from app.retrieval.standard.vector_store import InMemoryVectorStore
 
     from tests.test_graph_rag import make_settings
-
-    settings = make_settings()
-    runner = object.__new__(BenchmarkRunner)
-    runner.lab = cast(
-        Lab,
-        SimpleNamespace(
-            settings=settings,
-            embeddings=SimpleNamespace(model_name="hashing-256", dimensions=256),
-            sparse=SimpleNamespace(model_name="hashing-sparse-1048576"),
-            generator=SimpleNamespace(model_name="fake-answer-v1"),
-            reranker=SimpleNamespace(model_name="lexical-overlap"),
-            record_serialiser_version="from-the-manifest",
-        ),
-    )
-    runner.world_dir = tmp_path
-    record = runner._record()
-    payload = record.to_payload()
-    assert set(payload) == {field.name for field in dataclasses.fields(record)}
-    assert payload["sparse_model"] == "hashing-sparse-1048576"
-    # The serialiser that built the index in use, never the code constant.
-    assert payload["record_serialiser_version"] == "from-the-manifest"
-    assert payload["rrf_k"] == RRF_K
-    assert payload["embedding_dimensions"] == 256
-    assert payload["reference_date"] == settings.graph.reference_date.isoformat()
-    assert payload["ranking_weights"] == dataclasses.asdict(settings.graph.ranking)
-    assert payload["excluded_labels"] == ["Document"]
-    assert payload["max_tokens"] == settings.generation.max_tokens
-    json.dumps(payload)  # stored as JSON
-
-
-def _populated_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, manifest: str | None) -> Path:
-    """A world dir with a populated in-memory index and the given manifest."""
-    import app.retrieval.graph.lab as lab_module
-    from app.retrieval.standard.vector_store import InMemoryVectorStore
 
     class PopulatedStore(InMemoryVectorStore):
         def count(self) -> int:
@@ -235,43 +118,9 @@ def _populated_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, manifest: 
 
     monkeypatch.setattr(lab_module, "build_store", lambda *_args: PopulatedStore())
     monkeypatch.setattr(lab_module, "load_indexed_corpus", lambda _dir: {})
-    if manifest is not None:
-        (tmp_path / "vector-index.json").write_text(
-            json.dumps({"record_serialiser_version": manifest})
-        )
-    return tmp_path
-
-
-@pytest.mark.parametrize("manifest", [None, "2.0.0"])
-def test_runner_refuses_an_index_of_another_serialiser_before_any_question(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, manifest: str | None
-) -> None:
-    from app.graph.config import from_env as graph_env
-    from app.retrieval.standard.generation import FakeAnswerGenerator
-    from app.retrieval.standard.vector_store import VectorStoreError
-
-    from tests.test_graph_rag import make_settings
-
-    world = _populated_world(tmp_path, monkeypatch, manifest)
-    with pytest.raises(VectorStoreError, match="record serialiser"):
-        BenchmarkRunner(
-            settings=make_settings(dataset_dir=str(world)),
-            graph_config=graph_env(),
-            generator=FakeAnswerGenerator(),
-            world_dir=world,
-        )
-
-
-def test_lab_reports_the_serialiser_of_the_index_it_loaded(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from app.retrieval.graph.lab import build_lab
-    from app.retrieval.standard.generation import FakeAnswerGenerator
-    from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
-
-    from tests.test_graph_rag import make_settings
-
-    world = _populated_world(tmp_path, monkeypatch, RECORD_SERIALISER_VERSION)
-    lab = build_lab(make_settings(dataset_dir=str(world)), FakeAnswerGenerator())
+    (tmp_path / "vector-index.json").write_text(
+        json.dumps({"record_serialiser_version": RECORD_SERIALISER_VERSION})
+    )
+    lab = build_lab(make_settings(dataset_dir=str(tmp_path)), FakeAnswerGenerator())
     assert lab.index_manifest == {"record_serialiser_version": RECORD_SERIALISER_VERSION}
     assert lab.record_serialiser_version == RECORD_SERIALISER_VERSION

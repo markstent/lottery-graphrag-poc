@@ -1,9 +1,7 @@
 """Failure-mode tests (docs/08 Phase 12): pipelines surface real errors.
 
 A failing gateway, embedder or vector store must raise out of ``run()``
-instead of producing a fabricated success. The benchmark runner additionally
-contains gateway failures per question as ``generation_failure`` results
-(covered live in ``test_benchmark_live.py``).
+instead of producing a fabricated success.
 """
 
 from __future__ import annotations

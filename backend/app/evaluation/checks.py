@@ -14,7 +14,7 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Literal, cast
 
-from app.evaluation.claims import Claim
+from app.evaluation.claims import Claim, word_pattern
 
 _CITATION = r"\[\d+(?:\s*,\s*\d+)*\]"
 _CITATION_PATTERN = re.compile(_CITATION)
@@ -243,8 +243,7 @@ def _set_score(check: SetCheck, text: str) -> float:
 
 
 def _mentions(text: str, name: str) -> bool:
-    pattern = r"(?<!\w)" + re.escape(name) + r"(?!\w)"
-    return re.search(pattern, text, flags=re.IGNORECASE) is not None
+    return word_pattern(name).search(text.casefold()) is not None
 
 
 def _normalise_number(text: str) -> str:
