@@ -22,9 +22,10 @@ from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation.__main__ import main as cli_main
 from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, BANK_VERSION, question_by_id
-from app.evaluation.checks import NumberCheck, SetCheck, TokenCheck, normalise
+from app.evaluation.checks import NumberCheck, SetCheck, TokenCheck, check_score, normalise
 from app.evaluation.grounders import Draft, ground_l01
 from app.evaluation.grounding import (
+    FrozenBank,
     GroundingError,
     Unavailable,
     WorldGrounding,
@@ -274,8 +275,8 @@ def test_planted_anchors_and_answers_come_from_the_ledger(
     (instance,) = grounding.ground(question_by_id("L16")).instances
     (check,) = instance.checks
     assert instance.anchor_id == cluster[0] and instance.anchor_id in instance.text
-    assert isinstance(check, SetCheck) and check.expected == set(cluster[1:])
-    assert set(cluster) <= {key for key, _ in check.universe}
+    assert isinstance(check, SetCheck)
+    assert set(cluster[1:]) <= {key for key, _ in check.universe}
     truth = scenario(ledger, "SCN-001").truth
     (instance,) = grounding.ground(question_by_id("L15")).instances
     assert instance.anchor_id == truth["incident_id"]
@@ -291,7 +292,7 @@ def test_planted_claims_follow_the_required_evidence(
         evidence = scenario(ledger, question.scenario_id).required_evidence
         (instance,) = grounding.ground(question).instances
         expected = {e for e in evidence if e != instance.anchor_id and not e.startswith("kpi:")}
-        assert {claim.claim_id for claim in instance.claims} <= expected, question.question_id
+        assert {claim.claim_id for claim in instance.claims} == expected, question.question_id
         for claim in instance.claims:
             assert instance.anchor_id not in claim.carriers
             if claim.claim_id.startswith("DOC_"):
@@ -328,6 +329,52 @@ def test_planted_grounding_is_deterministic(
             assert grounding.ground(question) == again.ground(question), question.question_id
     finally:
         again.close()
+
+
+def _self_scores(bank: FrozenBank) -> dict[str, list[float]]:
+    """Each instance's check scores for its own expected answer."""
+    return {
+        i.instance_id: [check_score(c, i.expected_answer, "") for c in i.checks]
+        for i in bank.instances
+    }
+
+
+def test_expected_answers_score_full_marks(tiny_dataset: Path, tiny_ledger: Path) -> None:
+    scores = _self_scores(freeze_bank(tiny_dataset, tiny_ledger))
+    assert {k: v for k, v in scores.items() if any(s != 1.0 for s in v)} == {}
+
+
+def test_l16_and_l17_expect_every_player_linked_to_the_anchors_shared_items(
+    grounding: WorldGrounding, tiny_dataset: Path, tiny_ledger: Path
+) -> None:
+    ledger = load_ledger(tiny_ledger)
+    for qid, sid, table, column, key in (
+        ("L16", "SCN-002", "player_device", "device_id", "shared_devices"),
+        ("L17", "SCN-003", "player_payment_method", "payment_method_id", "shared_instruments"),
+    ):
+        shared = scenario(ledger, sid).truth[key]
+        links = duckdb.execute(
+            f"SELECT player_id, {column} FROM read_parquet(?)",
+            [(tiny_dataset / f"{table}.parquet").as_posix()],
+        ).fetchall()
+        (instance,) = grounding.ground(question_by_id(qid)).instances
+        anchor_items = {item for player, item in links if player == instance.anchor_id}
+        mine = anchor_items & set(shared)
+        linked = {p for p, item in links if item in shared} - {instance.anchor_id}
+        (check,) = instance.checks
+        assert isinstance(check, SetCheck)
+        assert check.expected == {p for p, item in links if item in mine} - {instance.anchor_id}
+        assert {key for key, _ in check.universe} == linked
+
+
+def test_planted_game_claims_are_carried_by_the_game_record_only(
+    grounding: WorldGrounding,
+) -> None:
+    for qid in ("L20", "L21"):
+        (instance,) = grounding.ground(question_by_id(qid)).instances
+        for claim in instance.claims:
+            if claim.claim_id.startswith("GAME_"):
+                assert claim.carriers == {claim.claim_id}, qid
 
 
 def test_frozen_bank_is_byte_identical_across_groundings(
@@ -432,6 +479,12 @@ def test_scn015_expects_the_authoritative_price(
     truth = scenario(dev_ledger, "SCN-015").truth
     check = dev_grounding.ground(question_by_id("L22")).instances[0].checks[0]
     assert isinstance(check, NumberCheck) and check.value == normalise(truth["authoritative_price"])
+
+
+@dev_world
+def test_dev_world_expected_answers_score_full_marks() -> None:
+    scores = _self_scores(freeze_bank(DEV_WORLD, DEV_LEDGER))
+    assert {k: v for k, v in scores.items() if any(s != 1.0 for s in v)} == {}
 
 
 @dev_world

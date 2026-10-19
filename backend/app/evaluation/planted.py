@@ -18,7 +18,7 @@ import duckdb
 
 from app.evaluation.checks import Check, NumberCheck, SetCheck, TokenCheck, normalise
 from app.evaluation.claims import ClaimSpec
-from app.evaluation.grounders import Draft, World, price_forms, render_list
+from app.evaluation.grounders import Draft, World, price_forms, render_list, without
 from app.evaluation.truth_ledger import TruthScenario
 
 PlantedGrounder = Callable[[TruthScenario, World, duckdb.DuckDBPyConnection], Draft]
@@ -32,13 +32,15 @@ def ground_l15(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnecti
     incident = _text(scenario, "incident_id")
     release = _text(scenario, "app_version_id")
     answer = f"Incident {incident} was caused by app release {release}."
-    return _draft(scenario, incident, answer, (TokenCheck(release),))
+    return _draft(scenario, world, incident, answer, (TokenCheck(release),))
 
 
 def ground_l16(
     scenario: TruthScenario, world: World, connection: duckdb.DuckDBPyConnection
 ) -> Draft:
-    return _cluster(scenario, connection, "player_device", "device_id", "shared_devices", "device")
+    return _cluster(
+        scenario, world, connection, "player_device", "device_id", "shared_devices", "device"
+    )
 
 
 def ground_l17(
@@ -46,6 +48,7 @@ def ground_l17(
 ) -> Draft:
     return _cluster(
         scenario,
+        world,
         connection,
         "player_payment_method",
         "payment_method_id",
@@ -70,10 +73,10 @@ def ground_l18(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnecti
         f" {render_list(related)}, and {unaffected} was unaffected."
     )
     checks = (
-        SetCheck.of(related, world.markets),
+        SetCheck.of(related, without(world.markets, primary, unaffected)),
         TokenCheck(unaffected, _aliases(world.markets, unaffected)),
     )
-    return _draft(scenario, anchor, answer, checks)
+    return _draft(scenario, world, anchor, answer, checks)
 
 
 def ground_l19(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnection) -> Draft:
@@ -84,9 +87,8 @@ def ground_l19(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnecti
         f"Support case {anchor} traces to payment provider {provider},"
         f" which affects {render_list(markets)}."
     )
-    return _draft(
-        scenario, anchor, answer, (TokenCheck(provider), SetCheck.of(markets, world.markets))
-    )
+    checks = (TokenCheck(provider), SetCheck.of(markets, world.markets))
+    return _draft(scenario, world, anchor, answer, checks)
 
 
 def ground_l20(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnection) -> Draft:
@@ -106,7 +108,8 @@ def ground_l20(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnecti
         f"The games in other markets with the same mechanic affinity as {anchor}"
         f" are {render_list(others)}."
     )
-    return _draft(scenario, anchor, answer, (SetCheck.of(others, world.game_universe()),))
+    check = SetCheck.of(others, without(world.game_universe(), anchor))
+    return _draft(scenario, world, anchor, answer, (check,))
 
 
 def ground_l21(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnection) -> Draft:
@@ -114,7 +117,7 @@ def ground_l21(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnecti
     target = _text(scenario, "target_game_id")
     answer = f"The best transfer target for campaign {campaign} is game {target}."
     check = TokenCheck(target, _aliases(world.game_universe(), target))
-    return _draft(scenario, campaign, answer, (check,))
+    return _draft(scenario, world, campaign, answer, (check,))
 
 
 def ground_l22(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnection) -> Draft:
@@ -125,13 +128,13 @@ def ground_l22(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnecti
         raise ValueError(f"{scenario.scenario_id} names game {game_id}, absent from the world")
     currency = world.games[game_id].currency
     price, shortest = price_forms(Decimal(normalise(_number(scenario, "authoritative_price"))))
-    stale = price_forms(Decimal(normalise(_number(scenario, "stale_price"))))[0]
     document = _text(scenario, "conflicting_document")
+    # The stale price is not quoted: a second number would halve the number check.
     answer = (
         f"The current ticket price of {game_id} is {price} {currency};"
-        f" rules document {document} states {stale} {currency} and is superseded."
+        f" rules document {document}, which states a different price, is superseded."
     )
-    return _draft(scenario, game_id, answer, (NumberCheck(shortest, currency),))
+    return _draft(scenario, world, game_id, answer, (NumberCheck(shortest, currency),))
 
 
 PLANTED_GROUNDERS: dict[str, PlantedGrounder] = {
@@ -149,15 +152,19 @@ PLANTED_GROUNDERS: dict[str, PlantedGrounder] = {
 # ---------------------------------------------------------------- shared helpers
 
 
-def _draft(scenario: TruthScenario, anchor: str, answer: str, checks: tuple[Check, ...]) -> Draft:
-    return Draft(anchor, anchor, answer, checks, evidence_specs(scenario, anchor))
+def _draft(
+    scenario: TruthScenario, world: World, anchor: str, answer: str, checks: tuple[Check, ...]
+) -> Draft:
+    return Draft(anchor, anchor, answer, checks, evidence_specs(scenario, world, anchor))
 
 
-def evidence_specs(scenario: TruthScenario, anchor: str) -> tuple[ClaimSpec, ...]:
+def evidence_specs(scenario: TruthScenario, world: World, anchor: str) -> tuple[ClaimSpec, ...]:
     """One claim per required-evidence item besides the anchor and KPI series.
 
-    A document is carried by its chunks; any other item by its own record
-    and by every record or chunk that names it.
+    A document is carried by its chunks and a game by its own record only
+    (dozens of records name a game, so its id alone states nothing about the
+    pattern); any other item by its own record and every record or chunk
+    that names it.
     """
     specs = []
     for item in scenario.required_evidence:
@@ -166,6 +173,8 @@ def evidence_specs(scenario: TruthScenario, anchor: str) -> tuple[ClaimSpec, ...
         statement = f"{item} is evidence of the planted pattern."
         if item.startswith("DOC_"):
             specs.append(ClaimSpec(item, statement, (), (), (item,)))
+        elif item in world.games:
+            specs.append(ClaimSpec(item, statement, (item,), ()))
         else:
             specs.append(ClaimSpec(item, statement, (item,), ((item,),)))
     return tuple(specs)
@@ -173,6 +182,7 @@ def evidence_specs(scenario: TruthScenario, anchor: str) -> tuple[ClaimSpec, ...
 
 def _cluster(
     scenario: TruthScenario,
+    world: World,
     connection: duckdb.DuckDBPyConnection,
     table: str,
     column: str,
@@ -181,19 +191,29 @@ def _cluster(
 ) -> Draft:
     """A cluster question: the anchor is the first cluster player by id.
 
-    The universe is the cluster plus every player linked to a shared item,
-    so naming a non-cluster player who also used one costs precision.
+    The shared items come from the ledger and their links from the world
+    tables. The expected set is every other player linked to a shared item
+    the anchor uses (the planted cluster plus any baseline user), so the
+    answer is literally true; the universe is every player linked to any
+    shared item, minus the anchor.
     """
-    cluster = sorted(_texts(scenario, "cluster_players"))
+    anchor = sorted(_texts(scenario, "cluster_players"))[0]
     shared = _texts(scenario, shared_key)
-    anchor, others = cluster[0], cluster[1:]
     placeholders = ", ".join("?" for _ in shared)
-    linked = connection.execute(
-        f"SELECT DISTINCT player_id FROM {table} WHERE {column} IN ({placeholders})", shared
-    ).fetchall()
-    universe = {player: () for player in {*cluster, *(str(row[0]) for row in linked)}}
-    answer = f"Player {anchor} shares a {shared_kind} with {render_list(others)}."
-    return _draft(scenario, anchor, answer, (SetCheck.of(others, universe),))
+    links = [
+        (str(player), str(item))
+        for player, item in connection.execute(
+            f"SELECT DISTINCT player_id, {column} FROM {table} WHERE {column} IN ({placeholders})",
+            shared,
+        ).fetchall()
+    ]
+    used = {item for player, item in links if player == anchor}
+    if not used:
+        raise ValueError(f"{scenario.scenario_id} anchor {anchor} uses no shared {shared_kind}")
+    expected = sorted({player for player, item in links if item in used} - {anchor})
+    universe = {player: () for player, _ in links if player != anchor}
+    answer = f"Player {anchor} shares a {shared_kind} with {render_list(expected)}."
+    return _draft(scenario, world, anchor, answer, (SetCheck.of(expected, universe),))
 
 
 def _aliases(universe: Mapping[str, Sequence[str]], key: str) -> tuple[str, ...]:

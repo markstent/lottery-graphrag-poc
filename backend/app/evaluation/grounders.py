@@ -437,7 +437,7 @@ def ground_l09(world: World) -> list[Draft]:
             f" ({world.label(concept)}) are {render_list(others)}."
         )
         specs = tuple(_family_spec(world, other_id) for other_id in others)
-        check = SetCheck.of(others, world.game_universe())
+        check = SetCheck.of(others, without(world.game_universe(), game_id))
         drafts.append(Draft(game_id, game_id, answer, (check,), specs))
     return drafts
 
@@ -471,7 +471,13 @@ def ground_l10(world: World) -> list[Draft]:
             for other_id in others
         )
         drafts.append(
-            Draft(incident_id, incident_id, answer, (SetCheck.of(others, universe),), specs)
+            Draft(
+                incident_id,
+                incident_id,
+                answer,
+                (SetCheck.of(others, without(universe, incident_id)),),
+                specs,
+            )
         )
     return drafts
 
@@ -505,7 +511,13 @@ def ground_l11(world: World) -> list[Draft]:
             for other_id in others
         )
         drafts.append(
-            Draft(segment_id, segment_id, answer, (SetCheck.of(others, universe),), specs)
+            Draft(
+                segment_id,
+                segment_id,
+                answer,
+                (SetCheck.of(others, without(universe, segment_id)),),
+                specs,
+            )
         )
     return drafts
 
@@ -532,7 +544,7 @@ def ground_l12(world: World) -> list[Draft]:
             f" main mechanic {main} ({world.label(concept)}) are {render_list(others)}."
         )
         specs = tuple(_mechanic_spec(world, other_id, concept) for other_id in others)
-        check = SetCheck.of(others, world.game_universe())
+        check = SetCheck.of(others, without(world.game_universe(), game_id))
         drafts.append(Draft(game_id, game_id, answer, (check,), specs))
     return drafts
 
@@ -641,6 +653,12 @@ def _mechanic_spec(world: World, game_id: str, concept: str) -> ClaimSpec:
         (game_id,),
         ((game_id, world.games[game_id].name), words),
     )
+
+
+def without(universe: Mapping[str, tuple[str, ...]], *keys: str) -> dict[str, tuple[str, ...]]:
+    """The universe minus `keys`: ids an expected answer names besides its
+    set (the anchor, a market it rules out) never count as predictions."""
+    return {key: aliases for key, aliases in universe.items() if key not in keys}
 
 
 def price_forms(price: Decimal) -> tuple[str, str]:
