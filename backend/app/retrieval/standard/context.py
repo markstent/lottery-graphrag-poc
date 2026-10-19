@@ -56,11 +56,15 @@ def select_context(
     budget_tokens: int,
     dedupe_threshold: float = 0.85,
     max_items: int | None = None,
+    dedupe: bool = True,
 ) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
     """Split ranked candidates into (selected, discarded-with-reason).
 
     ``max_items`` caps how many candidates are selected (evidence slots);
-    None means no cap. Discarded chunks keep their discard_reason so the UI
+    None means no cap. ``dedupe=False`` skips the near-duplicate check:
+    structured graph blocks use it because node ids are unique, and two
+    distinct authoritative records with similar categorical columns are
+    different facts, never duplicates. Discarded chunks keep their discard_reason so the UI
     and the benchmark can show why context looks the way it does.
     """
     selected: list[EvidenceChunk] = []
@@ -77,7 +81,7 @@ def select_context(
             discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_SLOT_LIMIT}))
             continue
         token_set = _token_set(candidate.text)
-        if any(
+        if dedupe and any(
             _jaccard(token_set, existing) >= dedupe_threshold for existing in selected_token_sets
         ):
             discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_DUPLICATE}))
@@ -107,18 +111,32 @@ def assemble_context(
     """Fill one budget and one slot count: structured blocks, then documents.
 
     Structured blocks (graph nodes with their authoritative facts) are
-    selected first; documents get the remaining tokens and slots. Pipeline A
-    passes no structured blocks, so A, B and C share the same totals.
+    selected first, without the near-duplicate check (see select_context).
+    A record block whose record was selected as a structured block is then
+    superseded (design 10a.8): the structured block is the authoritative
+    copy, so the record block never competes for budget or slots. Records
+    of structured nodes that were not selected stay document candidates.
+    Documents get the remaining tokens and slots. Pipeline A passes no
+    structured blocks, so A, B and C share the same totals.
     """
     structured_selected, structured_discarded = select_context(
         structured,
         budget_tokens=settings.budget_tokens,
         dedupe_threshold=settings.dedupe_threshold,
         max_items=settings.evidence_slots,
+        dedupe=False,
     )
+    structured_ids = {chunk.document_id for chunk in structured_selected}
+    superseded: list[EvidenceChunk] = []
+    remaining: list[EvidenceChunk] = []
+    for chunk in documents:
+        if chunk.kind == "record" and chunk.document_id in structured_ids:
+            superseded.append(chunk.model_copy(update={"discard_reason": SELECTION_SUPERSEDED}))
+        else:
+            remaining.append(chunk)
     structured_tokens = sum(estimate_tokens(chunk.text) for chunk in structured_selected)
     document_selected, document_discarded = select_context(
-        documents,
+        remaining,
         budget_tokens=settings.budget_tokens - structured_tokens,
         dedupe_threshold=settings.dedupe_threshold,
         max_items=settings.evidence_slots - len(structured_selected),
@@ -127,6 +145,6 @@ def assemble_context(
     return ContextAssembly(
         structured_selected=structured_selected,
         document_selected=document_selected,
-        discarded=[*structured_discarded, *document_discarded],
+        discarded=[*structured_discarded, *superseded, *document_discarded],
         context_tokens=structured_tokens + document_tokens,
     )

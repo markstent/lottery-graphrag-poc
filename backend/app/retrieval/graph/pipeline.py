@@ -4,9 +4,9 @@
              -> bounded traversal (+ ontology expansion for pipeline C)
              -> transparent evidence ranking
              -> authoritative source lookup
-             -> shared document chunks (record blocks superseded by
-                structured facts)
-             -> one context assembly (budget and slots shared with A)
+             -> shared document chunks
+             -> one context assembly (budget and slots shared with A;
+                record blocks of selected nodes superseded)
              -> LLM -> answer + citations
 
 Pipeline differences are configuration only: pipeline B runs the identical
@@ -62,7 +62,7 @@ from app.retrieval.graph.traversal import (
     bounded_traversal,
     expand_ontology,
 )
-from app.retrieval.standard.context import SELECTION_SUPERSEDED, assemble_context
+from app.retrieval.standard.context import assemble_context
 from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
@@ -224,17 +224,9 @@ class GraphRagPipeline:
         ]
 
         # Document retrieval: identical channel to pipeline A (fairness).
-        # A record block for a node entering as a structured fact is
-        # superseded: the structured block is the authoritative copy.
-        structured_ids = {evidence.node_id for evidence in drafts}
-        document_chunks: list[EvidenceChunk] = []
-        superseded: list[EvidenceChunk] = []
-        for chunk in self._document_chunks(question, scope):
-            if chunk.kind == "record" and chunk.document_id in structured_ids:
-                superseded.append(chunk.model_copy(update={"discard_reason": SELECTION_SUPERSEDED}))
-            else:
-                document_chunks.append(chunk)
-
+        # Record blocks of selected structured nodes are superseded inside
+        # the assembly (design 10a.8).
+        document_chunks = self._document_chunks(question, scope)
         assembly = assemble_context(structured, document_chunks, self.settings.context)
         node_reasons = {
             chunk.chunk_id: chunk.discard_reason
@@ -260,15 +252,14 @@ class GraphRagPipeline:
                     GRAPH_CANDIDATE_DISCARDED,
                     node_id=evidence.node_id,
                     score=evidence.score,
+                    hops=evidence.hops,
+                    seed=evidence.hops == 0,
                     reason=evidence.discard_reason,
                 )
 
         selected_chunks = assembly.document_selected
         discarded_chunks = sorted(
-            [
-                *superseded,
-                *(chunk for chunk in assembly.discarded if chunk.kind != NODE_KIND),
-            ],
+            (chunk for chunk in assembly.discarded if chunk.kind != NODE_KIND),
             key=lambda chunk: chunk.rank,
         )
         for chunk in selected_chunks:

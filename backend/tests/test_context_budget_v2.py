@@ -224,3 +224,62 @@ def test_graph_context_tokens_respect_the_shared_budget() -> None:
     )
     run = graph_pipeline.run("What is the price of GAME_GR_01?")
     assert run.answer.context_tokens <= budget
+
+
+def record_chunk(record_id: str, words: int) -> EvidenceChunk:
+    return doc_chunk(f"REC_games_{record_id}", words).model_copy(
+        update={"kind": "record", "document_id": record_id, "record_table": "games"}
+    )
+
+
+def test_record_block_of_a_selected_node_is_superseded_in_assembly() -> None:
+    structured = [node_chunk("GAME_GR_01", words=5)]
+    docs = [record_chunk("GAME_GR_01", words=5), doc_chunk("d0", words=5)]
+    result = assemble_context(structured, docs, settings(10_000, slots=2))
+    reasons = {chunk.chunk_id: chunk.discard_reason for chunk in result.discarded}
+    assert reasons == {"REC_games_GAME_GR_01": SELECTION_SUPERSEDED}
+    # The superseded record does not take the remaining slot.
+    assert [chunk.chunk_id for chunk in result.document_selected] == ["d0"]
+
+
+def test_record_block_of_a_dropped_node_stays_a_document_candidate() -> None:
+    structured = [node_chunk("n0", words=5), node_chunk("GAME_GR_01", words=5)]
+    docs = [record_chunk("GAME_GR_01", words=5)]
+    result = assemble_context(structured, docs, settings(10_000, slots=2))
+    assert [chunk.chunk_id for chunk in result.structured_selected] == ["n0", "GAME_GR_01"]
+
+    dropped = assemble_context(structured, docs, settings(10_000, slots=1))
+    reasons = {chunk.chunk_id: chunk.discard_reason for chunk in dropped.discarded}
+    assert reasons["GAME_GR_01"] == SELECTION_SLOT_LIMIT
+    # Not superseded: it competed in the document pass (and lost its slot).
+    assert reasons["REC_games_GAME_GR_01"] == SELECTION_SLOT_LIMIT
+
+    budget = estimate_tokens(structured[0].text) + estimate_tokens(docs[0].text)
+    by_budget = assemble_context(
+        [structured[0], node_chunk("GAME_GR_01", words=400)], docs, settings(budget)
+    )
+    assert [chunk.chunk_id for chunk in by_budget.document_selected] == ["REC_games_GAME_GR_01"]
+
+
+def test_structured_blocks_are_never_dropped_as_duplicates() -> None:
+    shared = (
+        "Game market_id=MKT_GR status=ACTIVE category=DRAW channel=RETAIL currency=EUR"
+        " draw_day=FRIDAY jackpot=ROLLING operator=SYNTHETIC_GR licence=GR_LOTTERY"
+        " region=EU format=6_49 tier=STANDARD"
+    )
+    first = node_chunk("GAME_GR_01", words=1).model_copy(update={"text": f"{shared} GAME_GR_01"})
+    second = node_chunk("GAME_GR_02", words=1).model_copy(update={"text": f"{shared} GAME_GR_02"})
+    left, right = set(first.text.lower().split()), set(second.text.lower().split())
+    assert len(left & right) / len(left | right) > 0.85  # above the dedupe threshold
+
+    result = assemble_context([first, second], [], settings(10_000))
+    assert [chunk.chunk_id for chunk in result.structured_selected] == ["GAME_GR_01", "GAME_GR_02"]
+    assert not result.discarded
+
+    # Documents with the same texts keep the near-duplicate check.
+    docs = [
+        doc_chunk("d0", 1).model_copy(update={"text": first.text}),
+        doc_chunk("d1", 1).model_copy(update={"text": second.text}),
+    ]
+    discarded = assemble_context([], docs, settings(10_000)).discarded
+    assert [chunk.discard_reason for chunk in discarded] == [SELECTION_DUPLICATE]
