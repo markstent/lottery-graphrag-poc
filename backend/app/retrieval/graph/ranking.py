@@ -21,6 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from app.config import RankingWeights
+from app.retrieval.graph.source_lookup import NODE_SOURCES
 from app.retrieval.graph.traversal import (
     DEFAULT_RELATIONSHIP_WEIGHT,
     RELATIONSHIP_WEIGHTS,
@@ -28,20 +29,11 @@ from app.retrieval.graph.traversal import (
 )
 from app.retrieval.standard.embeddings import EmbeddingFunction
 
-# Node labels that carry authoritative structured facts. Documents are
+# Node labels that carry authoritative structured facts (every label with a
+# source table in NODE_SOURCES). Documents are
 # deliberately absent: they are retrieved from the shared vector layer,
 # whose chunk payloads already carry their metadata and validity window.
-STRUCTURED_LABELS = frozenset(
-    {
-        "Incident",
-        "PlatformVersion",
-        "AppVersion",
-        "Game",
-        "Market",
-        "Player",
-        "PaymentMethod",
-    }
-)
+STRUCTURED_LABELS = frozenset(NODE_SOURCES)
 
 
 @dataclass(frozen=True, slots=True)

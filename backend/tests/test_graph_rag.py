@@ -564,3 +564,18 @@ def test_concept_phrase_match_is_whole_word() -> None:
     )
     assert resolver.resolve("A withdrawal was delayed") == []
     assert [e.entity_id for e in resolver.resolve("The DRAW was late")] == ["CONCEPT_X"]
+
+
+def test_every_structured_label_resolves_to_a_real_source_table() -> None:
+    from app.datasets.schema import TABLE_SCHEMAS, split_columns
+    from app.retrieval.graph.ranking import STRUCTURED_LABELS
+    from app.retrieval.graph.source_lookup import NODE_SOURCES, SNIPPET_COLUMNS
+
+    assert set(NODE_SOURCES) == STRUCTURED_LABELS
+    for label in STRUCTURED_LABELS:
+        table, id_column = NODE_SOURCES[label]
+        assert table in TABLE_SCHEMAS, label
+        columns = {name for name, _ in split_columns(TABLE_SCHEMAS[table])}
+        assert id_column in columns, label
+        if table in SNIPPET_COLUMNS:
+            assert set(SNIPPET_COLUMNS[table]) <= columns, label
