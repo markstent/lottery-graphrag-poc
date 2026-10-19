@@ -23,7 +23,9 @@ from app.datasets.distributions import (
 )
 from app.datasets.master_data import (
     CHANNELS,
+    CURRENCIES,
     GAME_SPECS,
+    LANGUAGES,
     MARKET_CURRENCY,
     MARKETS,
     PLATFORMS,
@@ -34,18 +36,15 @@ from app.datasets.rows import (
     AccountRow,
     AppVersionRow,
     ChannelRow,
-    CurrencyRow,
     DeviceRow,
     GameMechanicMapRow,
     GameRow,
-    LanguageRow,
     PaymentMethodRow,
     PlatformRow,
     PlatformVersionRow,
     PlayerDeviceRow,
     PlayerPaymentMethodRow,
     PlayerRow,
-    RegionRow,
     RetailerRow,
     SupplierRow,
 )
@@ -79,18 +78,9 @@ def generate_master_rows() -> dict[str, list[tuple[Any, ...]]]:
     """Fixed master tables (no randomness)."""
     return {
         "markets": list(MARKETS),
-        "regions": [RegionRow(*region) for region in REGIONS],
-        "currencies": [
-            CurrencyRow("GBP", "Pound sterling"),
-            CurrencyRow("EUR", "Euro"),
-            CurrencyRow("CZK", "Czech koruna"),
-        ],
-        "languages": [
-            LanguageRow("en", "English"),
-            LanguageRow("el", "Greek"),
-            LanguageRow("de", "German"),
-            LanguageRow("cs", "Czech"),
-        ],
+        "regions": list(REGIONS),
+        "currencies": list(CURRENCIES),
+        "languages": list(LANGUAGES),
         "channels": [ChannelRow(*channel) for channel in CHANNELS],
         "suppliers": [SupplierRow(*supplier) for supplier in SUPPLIERS],
         "game_families": list(GAME_FAMILIES),
@@ -147,7 +137,7 @@ def generate_retailers(rng: random.Random, total: int) -> list[RetailerRow]:
     counts = _split(total, MARKET_RETAIL_SHARE)
     index = 0
     for code in ("UK", "GR", "AT", "CZ"):
-        market_regions = [r[0] for r in REGIONS if r[1] == f"MKT_{code}"]
+        market_regions = [r.region_id for r in REGIONS if r.market_id == f"MKT_{code}"]
         for i in range(counts[code]):
             index += 1
             active_from = date(2024, 12, 1) + timedelta(days=index % 30)
@@ -258,7 +248,9 @@ def generate_players_and_devices(
                     synthetic_age_band=rng.choice(
                         ("AGE_18_24", "AGE_25_34", "AGE_35_44", "AGE_45_54", "AGE_55_PLUS")
                     ),
-                    synthetic_region_id=rng.choice([r[0] for r in REGIONS if r[1] == market_id]),
+                    synthetic_region_id=rng.choice(
+                        [r.region_id for r in REGIONS if r.market_id == market_id]
+                    ),
                     registration_date=registration,
                     acquisition_channel=rng.choice(
                         ("PAID_SOCIAL", "ORGANIC", "RETAIL_CROSSSELL", "REFERRAL")

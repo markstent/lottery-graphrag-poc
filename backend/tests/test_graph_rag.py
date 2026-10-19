@@ -569,7 +569,7 @@ def test_concept_phrase_match_is_whole_word() -> None:
 def test_every_structured_label_resolves_to_a_real_source_table() -> None:
     from app.datasets.schema import TABLE_SCHEMAS, split_columns
     from app.retrieval.graph.ranking import STRUCTURED_LABELS
-    from app.retrieval.graph.source_lookup import NODE_SOURCES, SNIPPET_COLUMNS
+    from app.retrieval.graph.source_lookup import LINK_COLUMNS, NODE_SOURCES, SNIPPET_COLUMNS
 
     assert set(NODE_SOURCES) == STRUCTURED_LABELS
     for label in STRUCTURED_LABELS:
@@ -577,5 +577,7 @@ def test_every_structured_label_resolves_to_a_real_source_table() -> None:
         assert table in TABLE_SCHEMAS, label
         columns = {name for name, _ in split_columns(TABLE_SCHEMAS[table])}
         assert id_column in columns, label
-        if table in SNIPPET_COLUMNS:
-            assert set(SNIPPET_COLUMNS[table]) <= columns, label
+        # PaymentMethod resolves through its player link table, rendered by LINK_COLUMNS.
+        snippet = LINK_COLUMNS if label == "PaymentMethod" else SNIPPET_COLUMNS[table]
+        assert snippet, label
+        assert set(snippet) <= columns, label

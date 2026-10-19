@@ -137,6 +137,8 @@ def node_statement(label: str) -> str:
 def relationship_statement(rel_type: str, label_a: str, label_b: str) -> str:
     """MERGE statement for one relationship type between two fixed labels."""
     _require_relationship_type(rel_type)
+    _require_label(label_a)
+    _require_label(label_b)
     return _RELATIONSHIP_STATEMENT.format(rel_type=rel_type, label_a=label_a, label_b=label_b)
 
 

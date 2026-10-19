@@ -80,6 +80,6 @@ class GenerationConfig:
 
     profile: str
     world_seed: int
-    # Reserved for the Phase 5 scenario engine. Recorded from day one so the
-    # determinism contract never changes shape.
+    # Seeds the scenario engine's per-scenario RNG streams
+    # (`app.scenarios.engine`); recorded in the manifest with `world_seed`.
     scenario_seed: int = 0

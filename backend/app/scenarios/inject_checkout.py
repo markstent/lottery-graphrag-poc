@@ -36,7 +36,7 @@ from app.datasets.rows import (
 )
 from app.datasets.taxonomies import MARKET_LANGUAGE, PAYMENT_PROVIDERS
 from app.scenarios.inject_operations import SEVERITY_WEIGHT
-from app.scenarios.planter import ScenarioPlanter, at
+from app.scenarios.planter import SECONDS_PER_DAY, ScenarioPlanter, at
 
 # SCN-001 eligibility: a release late enough for baseline before it and early
 # enough for the 10-day window and its documents; a cohort of eight players.
@@ -75,8 +75,6 @@ SCN009_REVIEW_DAY = 245
 SCN009_REVIEW_HOUR = 10
 SCN009_SESSION_BASE, SCN009_SESSION_SHARE = 6, 0.25
 SCN009_SUPPORT_BASE, SCN009_SUPPORT_SHARE = 4, 0.4
-
-SECONDS_PER_DAY = 24 * 60 * 60
 
 # Support summaries per market language: one sentence, no internal ". ".
 SCN001_SUPPORT_TEMPLATES = {

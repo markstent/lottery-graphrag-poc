@@ -44,9 +44,7 @@ from app.datasets.rows import (
     TicketRow,
 )
 from app.datasets.taxonomies import MARKET_LANGUAGE, segments_for
-from app.scenarios.planter import ScenarioPlanter, at
-
-SECONDS_PER_DAY = 24 * 60 * 60
+from app.scenarios.planter import SECONDS_PER_DAY, ScenarioPlanter, at
 
 # SCN-010: the mechanic meanings the scenario draws from, with the truth-only
 # concept each one denotes and the local mechanic code per market code.

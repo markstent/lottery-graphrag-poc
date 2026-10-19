@@ -168,7 +168,6 @@ def plant_cross_market_platform_incident(plan: ScenarioPlanter) -> None:
             f"see {release_note.document_id}."
         ),
         "required_path": [primary_incident, version, first_related],
-        "planted_incidents": [i.incident_id for i in incidents],
         "kpi_effect": (
             f"session_completion down / payment_failure_rate up for {primary} during the incident"
         ),

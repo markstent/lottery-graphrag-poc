@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.datasets.rows import MarketRow
+from app.datasets.rows import CurrencyRow, LanguageRow, MarketRow, RegionRow
 
 # ---------------------------------------------------------------- markets ---
 
@@ -21,37 +21,36 @@ MARKETS: tuple[MarketRow, ...] = (
     MarketRow("MKT_CZ", "CZ", "Czech Republic", "CZK", "cs", "Europe/Prague", 0.58, 0.69),
 )
 
-REGIONS: list[tuple[str, str, str]] = [
-    # region_id, market_id, name
-    ("REG_UK_NORTH", "MKT_UK", "UK Northern"),
-    ("REG_UK_MIDLANDS", "MKT_UK", "UK Midlands"),
-    ("REG_UK_LONDON", "MKT_UK", "UK London"),
-    ("REG_UK_SOUTH", "MKT_UK", "UK Southern"),
-    ("REG_GR_MAINLAND", "MKT_GR", "GR Mainland"),
-    ("REG_GR_ISLANDS", "MKT_GR", "GR Islands"),
-    ("REG_GR_PELOPONNESE", "MKT_GR", "GR Peloponnese"),
-    ("REG_GR_CRETE", "MKT_GR", "GR Crete"),
-    ("REG_AT_EAST", "MKT_AT", "AT Eastern"),
-    ("REG_AT_ALPS", "MKT_AT", "AT Alpine"),
-    ("REG_AT_SOUTH", "MKT_AT", "AT Southern"),
-    ("REG_AT_URBAN", "MKT_AT", "AT Urban Corridor"),
-    ("REG_CZ_WEST", "MKT_CZ", "CZ Western"),
-    ("REG_CZ_MORAVIA", "MKT_CZ", "CZ Moravian"),
-    ("REG_CZ_SILESIA", "MKT_CZ", "CZ Silesian"),
-    ("REG_CZ_PRAGUE", "MKT_CZ", "CZ Prague Region"),
-]
+REGIONS: tuple[RegionRow, ...] = (
+    RegionRow("REG_UK_NORTH", "MKT_UK", "UK Northern"),
+    RegionRow("REG_UK_MIDLANDS", "MKT_UK", "UK Midlands"),
+    RegionRow("REG_UK_LONDON", "MKT_UK", "UK London"),
+    RegionRow("REG_UK_SOUTH", "MKT_UK", "UK Southern"),
+    RegionRow("REG_GR_MAINLAND", "MKT_GR", "GR Mainland"),
+    RegionRow("REG_GR_ISLANDS", "MKT_GR", "GR Islands"),
+    RegionRow("REG_GR_PELOPONNESE", "MKT_GR", "GR Peloponnese"),
+    RegionRow("REG_GR_CRETE", "MKT_GR", "GR Crete"),
+    RegionRow("REG_AT_EAST", "MKT_AT", "AT Eastern"),
+    RegionRow("REG_AT_ALPS", "MKT_AT", "AT Alpine"),
+    RegionRow("REG_AT_SOUTH", "MKT_AT", "AT Southern"),
+    RegionRow("REG_AT_URBAN", "MKT_AT", "AT Urban Corridor"),
+    RegionRow("REG_CZ_WEST", "MKT_CZ", "CZ Western"),
+    RegionRow("REG_CZ_MORAVIA", "MKT_CZ", "CZ Moravian"),
+    RegionRow("REG_CZ_SILESIA", "MKT_CZ", "CZ Silesian"),
+    RegionRow("REG_CZ_PRAGUE", "MKT_CZ", "CZ Prague Region"),
+)
 
-CURRENCIES: list[tuple[str, str]] = [
-    ("GBP", "Pound sterling"),
-    ("EUR", "Euro"),
-    ("CZK", "Czech koruna"),
-]
-LANGUAGES: list[tuple[str, str]] = [
-    ("en", "English"),
-    ("el", "Greek"),
-    ("de", "German"),
-    ("cs", "Czech"),
-]
+CURRENCIES: tuple[CurrencyRow, ...] = (
+    CurrencyRow("GBP", "Pound sterling"),
+    CurrencyRow("EUR", "Euro"),
+    CurrencyRow("CZK", "Czech koruna"),
+)
+LANGUAGES: tuple[LanguageRow, ...] = (
+    LanguageRow("en", "English"),
+    LanguageRow("el", "Greek"),
+    LanguageRow("de", "German"),
+    LanguageRow("cs", "Czech"),
+)
 CHANNELS: list[tuple[str, str]] = [
     ("APP", "Mobile application"),
     ("WEB", "Web portal"),

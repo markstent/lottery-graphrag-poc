@@ -29,6 +29,10 @@ def test_relationship_statements_match_fixed_endpoints() -> None:
 def test_relationship_type_registry_is_valid() -> None:
     with pytest.raises(KeyError):
         statements.relationship_statement("NOT_A_REL", "Game", "Market")
+    with pytest.raises(KeyError):
+        statements.relationship_statement("AFFECTS", "NotALabel", "Game")
+    with pytest.raises(KeyError):
+        statements.relationship_statement("AFFECTS", "Incident", "NotALabel")
 
 
 def test_schema_statements_cover_constraints_and_indexes() -> None:

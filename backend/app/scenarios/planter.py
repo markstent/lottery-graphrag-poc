@@ -32,6 +32,8 @@ from app.scenarios.catalogue import ScenarioSpec
 _SEQUENCE_FIELD = "{n"
 _MARKET_FIELD = "{market}"
 
+SECONDS_PER_DAY = 24 * 60 * 60
+
 # Shared shape of planted failing sessions and complaints, used by every
 # scenario that plants them so their rows look alike across scenarios.
 # Length of a planted failing session in minutes (half-open range).
