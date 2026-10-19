@@ -3,7 +3,9 @@
 The boundary is structural, not conventional:
 
 1. No module under ``app/retrieval``, ``app/api``, ``app/datasets``,
-   ``app/graph`` or ``app/ontology`` may import ``app.evaluation`` or reference the truth path.
+   ``app/graph``, ``app/ontology`` or ``app/scenarios`` may import
+   ``app.evaluation`` or reference the truth path by name; the scenario
+   package reaches its output path only through ``DEFAULT_TRUTH_PATH``.
 2. The scenario package may write the ledger but must never import the
    loader; producer and consumer share only the JSON contract.
 3. ``app.evaluation`` is imported by nothing under ``app/`` except itself.
@@ -23,7 +25,7 @@ from app.scenarios.catalogue import ENABLED
 from app.scenarios.engine import apply_scenarios
 
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
-ISOLATED_NAMESPACES = ("retrieval", "api", "datasets", "graph", "ontology")
+ISOLATED_NAMESPACES = ("retrieval", "api", "datasets", "graph", "ontology", "scenarios")
 FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "app.evaluation")
 
 
