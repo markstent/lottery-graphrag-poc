@@ -68,6 +68,20 @@ def test_declared_documents_carry_through_every_chunk(carrier_index: CarrierInde
     assert carrier_index.carriers(spec) == frozenset({"INC_Z", "CHNK_0002_00"})
 
 
+@pytest.mark.parametrize(
+    "spec",
+    [
+        ClaimSpec("c1", "s", ("INC_TYPO",), ()),
+        ClaimSpec("c1", "s", ("INC_X",), (), document_ids=("DOC_9999",)),
+    ],
+)
+def test_ids_absent_from_the_world_are_refused(
+    carrier_index: CarrierIndex, spec: ClaimSpec
+) -> None:
+    with pytest.raises(ValueError, match="absent from the world"):
+        carrier_index.carriers(spec)
+
+
 def test_anchor_exclusion_drops_claims_carried_only_by_the_anchor() -> None:
     claims = (
         Claim("a", "s", frozenset({"GAME_UK_01"})),

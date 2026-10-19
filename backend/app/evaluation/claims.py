@@ -92,6 +92,18 @@ class CarrierIndex:
         return cls(texts=texts, chunk_documents={chunk_id: doc for chunk_id, doc, _ in chunks})
 
     def carriers(self, spec: ClaimSpec) -> frozenset[str]:
+        """Every record and chunk that carries the claim.
+
+        Raises ``ValueError`` when the spec names a record or document the
+        world does not hold, so a mistyped id never becomes a claim no
+        pipeline could reach.
+        """
+        unknown_records = [r for r in spec.record_ids if r not in self.texts]
+        known_documents = set(self.chunk_documents.values())
+        unknown_documents = [d for d in spec.document_ids if d not in known_documents]
+        if unknown_records or unknown_documents:
+            missing = ", ".join([*unknown_records, *unknown_documents])
+            raise ValueError(f"claim {spec.claim_id} names ids absent from the world: {missing}")
         documents = set(spec.document_ids)
         declared = {chunk for chunk, doc in self.chunk_documents.items() if doc in documents}
         carriers = {*spec.record_ids, *declared}
