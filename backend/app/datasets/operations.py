@@ -72,7 +72,12 @@ def generate_incidents(
     games: list[GameRow],
     total: int,
 ) -> tuple[list[IncidentRow], list[IncidentGameMapRow]]:
-    """Platform incidents with version links and game impact mapping."""
+    """Platform incidents with version links and game impact mapping.
+
+    An app-platform incident references an app version released on or before its
+    start, from its own market (any market for a corporate incident). When none
+    qualifies the link is None and no random draw is consumed.
+    """
     versions_by_platform: dict[str, list[PlatformVersionRow]] = {}
     for version in platform_versions:
         versions_by_platform.setdefault(version.platform_id, []).append(version)
@@ -97,12 +102,17 @@ def generate_incidents(
         platform_version_id = (
             candidates[rng.randrange(len(candidates))].platform_version_id if candidates else None
         )
-        app_version_id: str | None = None
-        if platform_id in _APP_PLATFORMS:
-            app_version_id = app_versions[rng.randrange(len(app_versions))].app_version_id
         started = _WINDOW_START_TS + timedelta(
             days=rng.randrange(WINDOW_DAYS), seconds=rng.randrange(24 * 60 * 60)
         )
+        app_version_id: str | None = None
+        if platform_id in _APP_PLATFORMS:
+            eligible = sorted(
+                v.app_version_id
+                for v in app_versions
+                if v.released_at <= started and market_id in (None, v.market_id)
+            )
+            app_version_id = rng.choice(eligible) if eligible else None
         resolved = (
             started + timedelta(minutes=rng.randrange(30, 60 * 72))
             if rng.random() < INCIDENT_RESOLVED_SHARE

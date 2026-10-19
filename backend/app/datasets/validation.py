@@ -150,6 +150,20 @@ def _time_errors(tables: dict[str, list[Any]], window_start: date) -> list[str]:
             errors.append(
                 f"time: incident {incident.incident_id} started before platform version release"
             )
+    app_versions = {v.app_version_id: v for v in tables["app_versions"]}
+    for incident in tables["incidents"]:
+        app_version = app_versions.get(incident.app_version_id or "")
+        if app_version is None:
+            continue
+        if incident.started_at < app_version.released_at:
+            errors.append(
+                f"time: incident {incident.incident_id} references an app version "
+                "released after it started"
+            )
+        if incident.market_id is not None and app_version.market_id != incident.market_id:
+            errors.append(
+                f"market: incident {incident.incident_id} app version belongs to another market"
+            )
     incident_start = {i.incident_id: i.started_at for i in tables["incidents"]}
     for case in tables["support_cases"]:
         if case.closed_at is not None and case.closed_at < case.opened_at:

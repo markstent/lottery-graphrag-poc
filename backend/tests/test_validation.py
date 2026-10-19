@@ -216,3 +216,14 @@ def test_manifest_taxonomy_counts_are_derived(tiny_world: World) -> None:
         "segments": 24,
         "providers": 6,
     }
+
+
+def test_incident_app_versions_are_released_and_same_market(tiny_world: World) -> None:
+    versions = {v.app_version_id: v for v in tiny_world.tables["app_versions"]}
+    for incident in tiny_world.tables["incidents"]:
+        if incident.app_version_id is None:
+            continue
+        version = versions[incident.app_version_id]
+        assert version.released_at <= incident.started_at
+        if incident.market_id is not None:
+            assert version.market_id == incident.market_id
