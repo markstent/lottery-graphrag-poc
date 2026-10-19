@@ -76,6 +76,15 @@ def test_parse_answer_reads_fenced_json() -> None:
     assert parsed.verdict == "no" and parsed.answer == "Not offered [1]."
 
 
+def test_parse_answer_skips_an_earlier_non_json_fence() -> None:
+    raw = (
+        "Setup:\n```python\nprint(1)\n```\n"
+        'Answer:\n```json\n{"verdict": "no", "answer": "Not offered [1]."}\n```'
+    )
+    parsed = parse_answer(raw, block_count=1)
+    assert parsed.verdict == "no" and parsed.answer == "Not offered [1]."
+
+
 def test_parse_answer_json_missing_keys_falls_to_plain_text() -> None:
     raw = '{"answer": "Price is 2.50 [1]."}'
     parsed = parse_answer(raw, block_count=1)

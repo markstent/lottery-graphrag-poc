@@ -121,8 +121,10 @@ def parse_answer(raw: str, block_count: int) -> ParsedAnswer:
     A bracket may group comma-separated numbers ([1, 2]); ranges such as [1-3]
     are not supported and cite nothing.
     """
-    fenced = _FENCED_JSON.search(raw)
-    structured = _structured(raw) or (_structured(fenced.group(1)) if fenced else None)
+    structured = _structured(raw) or next(
+        (found for block in _FENCED_JSON.finditer(raw) if (found := _structured(block.group(1)))),
+        None,
+    )
     verdict, answer = structured if structured else ("", raw)
     cited: list[int] = []
     for match in _CITATION.finditer(answer):
