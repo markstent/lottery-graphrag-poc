@@ -73,6 +73,7 @@ Cells that are not tested still report their interval.
 
 A cell is tested only when it has at least 10 pairs (`MIN_PAIRS_FOR_CLAIM`) and at least 6 clusters (`MIN_CLUSTERS_FOR_CLAIM`).
 Six is the smallest number of clusters at which a two-sided signed-rank test can reach p < 0.05; with fewer, no result could ever be significant.
+Six groups are only the floor for a raw p < 0.05: Holm over up to 14 tests needs a smaller raw p for the smallest-ranked test, and with tied or zero cluster means scipy uses the normal approximation instead of the exact distribution.
 Twelve pairs in four groups therefore make no claim.
 
 ## Headlines
@@ -87,8 +88,9 @@ The sentence takes one of four forms (the numbers here are examples):
 - "Too few pairs to say for Graph and text search on planted patterns (8 pairs in 8 groups).", when the cell is below either minimum.
 
 Two more lines describe the name-anchored sub-group, with its interval and the words "no test is run on this sub-group".
+Below six groups the sub-group line prints the mean alone, with "too few groups for an interval (N pairs in K groups)", because a bootstrap over so few groups says little.
 
-A smoke run keeps every statistic in `summary.json`, but its only headline says it is a scorer smoke test and not a result.
+A smoke run keeps every statistic in `summary.json`, but its only headline says it is a scorer smoke test and not a result, and the comparisons table of its `report.md` marks tested cells "tested (smoke run, not a result)".
 
 ## Agreement of the judge
 

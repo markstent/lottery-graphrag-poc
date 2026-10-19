@@ -22,7 +22,7 @@ uv run python -m app.evaluation sweep [--seeds ...] [--depths 0,1,2,3] [--repeat
 uv run python -m app.evaluation compare SMALL_RUN_DIR LARGE_RUN_DIR [--out DIR]
 ```
 
-- `--repeats` defaults to 1 for a smoke run and 3 for an official run or a sweep; an official run refuses fewer than 3.
+- `--repeats` defaults to 1 for a smoke run and 3 for an official run or a sweep; it must be a whole number of at least 1 (`--repeats 0` is refused, not replaced by the default), and an official run refuses fewer than 3.
 - `--strata` keeps only the instances of those strata.
 - `--limit N` keeps at most N instances of each logical question, in bank order.
 - A run with `--strata` or `--limit` records them as its `selection` and is labelled, for example "subset run (strata H1; at most 2 instances per question)"; it is never published as the official result (see below).
@@ -55,6 +55,9 @@ Where each seed lives:
 
 After the last world, and also when any world fails, the presentation world's graph (seed 2026) is ingested again, so Live Lab and Data Model read the world they expect.
 When a world fails and the restore fails too, the world's error is raised with the restore failure attached as a note and logged; run `make ingest-graph` to restore the graph by hand.
+
+Grounding refuses a truth ledger of another world seed than the world's `_manifest.json`.
+A bank file that matches its own hash but cannot be read (a missing or mistyped field) counts as failing, so the bank is grounded again rather than the run crashing.
 
 The runner refuses to score a world when the lab reads another dataset directory than the world, or when the frozen bank was grounded in another world, by another bank version or over another record serialiser than the index in use.
 
@@ -93,21 +96,23 @@ For every pipeline, stratum and the two compared metrics (`answer` and `evidence
 Every run stores the record below as `reproducibility` in `summary.json` and `results.json`, in two parts:
 
 - `worlds`: each world's full record, in run order.
-- `run`: the fields every world's record shares, plus `started_at`, which is when the run's first world started (the API orders runs by it).
+- `run`: the fields every world's record shares, plus `started_at` (described below).
   A field that differs between worlds, such as `world_seed`, `world_dir`, `scenario_seed` or `bank_hash` in a three-world run, appears only under `worlds`.
 
-`report.md` lists the shared fields, then for each world the fields that differ.
+`report.md` prints the run's start as "Run started" at the top, lists the shared fields, then for each world the fields that differ, its own `started_at` included.
 A sweep stores the same two parts for each depth in `sweep.json`.
 
 Code and bank:
 
 - `git_sha`: the commit the run ran on (`unknown` outside a git checkout).
+- `git_dirty`: true when `git status --porcelain` listed uncommitted changes, so the code was not exactly `git_sha`; null when git was unavailable.
 - `question_bank_version` and `bank_version`: the bank version in the code and in the frozen bank (both 2.0.0).
 - `bank_hash`: sha256 of the frozen bank's canonical JSON.
 - `scorer_version`: version of the deterministic scorer (2.0.0).
 - `run_kind`: `smoke`, `official` or `sweep`.
 - `repeats`: generation repeats per pipeline and instance.
-- `started_at`: when the world's runner was built, in UTC (the API orders runs by this time).
+- `started_at`: when the world's runner was built, in UTC.
+  Under `run` it is the first world's `started_at`, which is when the run started; the API orders runs by it.
 
 World:
 
@@ -115,6 +120,7 @@ World:
 - `generator_version`, `profile`, `world_seed`, `scenario_seed`: from the world's `_manifest.json`.
 - `reference_date`: records whose validity ended before this date rank as superseded in graph evidence ranking.
 - `ontology_version`: the ontology the graph and C use.
+- `graph_label_version`: the version of the graph's node labels and relationship types (`LABEL_VERSION` in `app/graph/config.py`).
 
 Retrieval:
 
@@ -143,9 +149,16 @@ Judge:
 
 - `judge_model`, `judge_model_family`: the judge model.
 - `judge_reasoning`: `default` or `off`, from `JUDGE_REASONING`; null for the fake judge, which calls no model.
-- `judge_prompt_version`, `judge_prompt_hash`: the judge prompt version (1.0.0) and the sha256 of its system prompt plus version.
+- `judge_temperature`: the judge's temperature, from `JUDGE_TEMPERATURE`; null for the fake judge.
+- `judge_prompt_version`, `judge_prompt_hash`: the judge prompt version (1.0.0) and the sha256 of its system prompt, its version and its user-message template.
 
 Each repeat in `results.json` carries its own repeat index.
+
+## Logs
+
+The runner writes one structured INFO record per scored repeat to the `app.evaluation.runner` logger, with these fields as record attributes: `world_seed`, `bank_hash`, `instance_id`, `question_id`, `pipeline`, `repeat`, `latency_ms`, `generation_error`, `judge_failure` and `judge_latency_ms`.
+No run id reaches the runner, so the world seed and the bank hash identify the run.
+The records never carry a question's expected answer, the generated answer or any secret.
 
 ## What is deterministic
 

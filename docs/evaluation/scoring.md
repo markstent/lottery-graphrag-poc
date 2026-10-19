@@ -136,7 +136,7 @@ Rules:
 - A judge failure (gateway error or an unusable reply) is recorded with its reason and has no scores; it is never scored as zero.
 - Judge scores are reported beside the deterministic scores and never replace them.
 - Agreement: for every judged repeat with an answer score, "judge correctness is 2" is compared with "answer score is at least 0.5"; the summary reports the agreement rate and Cohen's kappa, overall and per pipeline.
-- `judge_prompt_hash` is the sha256 of the system prompt plus its version only, so a change to the layout of the user message does not change the hash.
+- `judge_prompt_hash` is the sha256 of the system prompt, its version and the user-message template (`JUDGE_USER_TEMPLATE`), so a change to the layout of the user message changes the hash.
 
 ## Cost, latency and tokens
 
