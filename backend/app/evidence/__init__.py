@@ -27,7 +27,18 @@ class EvidenceChunk(BaseModel):
     kind: str = Field(default="chunk", description="chunk (document text) | record (table row)")
     record_table: str | None = Field(default=None, description="Source table when kind is record")
 
-    similarity: float = Field(description="Vector similarity at retrieval time")
+    similarity: float = Field(
+        description=(
+            "Retrieval score at retrieval time: the fused reciprocal-rank score of "
+            "the dense and sparse channels (not a cosine)"
+        )
+    )
+    dense_rank: int | None = Field(
+        default=None, description="1-based rank in the dense channel; None if absent or unknown"
+    )
+    sparse_rank: int | None = Field(
+        default=None, description="1-based rank in the sparse channel; None if absent or unknown"
+    )
     rank: int = Field(description="Position after ranking (1-based)")
     discovered_via: str = Field(
         default="vector",

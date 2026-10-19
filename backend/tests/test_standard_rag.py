@@ -37,6 +37,7 @@ from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.fusion import reciprocal_rank_fusion
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.reranking import LexicalReranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
@@ -163,6 +164,44 @@ class TestRetrievalCorrectness:
         assert reranked, "reranking must record scores"
         scores = [chunk.rerank_score for chunk in result.evidence]
         assert scores == sorted(scores, reverse=True)
+
+    def test_reranker_blends_incoming_rank_with_overlap(self) -> None:
+        def candidate(chunk_id: str, text: str, rank: int) -> EvidenceChunk:
+            return dataclasses.replace(make_corpus()[0], chunk_id=chunk_id, text=text).to_evidence(
+                similarity=0.03, rank=rank
+            )
+
+        reranked = LexicalReranker(lexical_weight=0.5).rerank(
+            "checkout regression",
+            [
+                candidate("FIRST", "unrelated text", 1),
+                candidate("SECOND", "checkout regression", 2),
+            ],
+        )
+        # FIRST: 0.5 * 1/1 + 0.5 * 0 = 0.5; SECOND: 0.5 * 1/2 + 0.5 * 1 = 0.75.
+        assert [(c.chunk_id, c.rerank_score, c.rank) for c in reranked] == [
+            ("SECOND", 0.75, 1),
+            ("FIRST", 0.5, 2),
+        ]
+
+    def test_evidence_and_events_carry_channel_ranks(self) -> None:
+        pipeline = build_pipeline(make_corpus())
+        result = pipeline.run("Greece checkout regression payment platform")
+        top = result.evidence[0]
+        assert top.chunk_id == "CHNK_PAY_00"
+        assert top.dense_rank == 1 and top.sparse_rank == 1
+        retrieved = [e for e in pipeline.events if e.event_type == RAG_CANDIDATE_RETRIEVED]
+        assert retrieved[0].payload["dense_rank"] == 1
+        assert retrieved[0].payload["sparse_rank"] == 1
+
+    def test_hit_absent_from_corpus_still_becomes_evidence(self) -> None:
+        pipeline = build_pipeline(make_corpus())
+        extra = dataclasses.replace(
+            make_corpus()[0], chunk_id="CHNK_EXTRA_00", document_id="DOC_EXTRA"
+        )
+        index_module.index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [extra])
+        result = pipeline.run("Greece checkout regression payment platform")
+        assert "CHNK_EXTRA_00" in {chunk.chunk_id for chunk in result.evidence}
 
     def test_reranker_disabled_keeps_similarity_order(self) -> None:
         pipeline = build_pipeline(make_corpus())  # rerank disabled by default

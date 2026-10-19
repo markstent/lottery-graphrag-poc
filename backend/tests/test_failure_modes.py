@@ -107,7 +107,6 @@ def build_graph(
         embeddings=embeddings,
         sparse=HashingSparseEmbedder(),
         store=store,
-        corpus=corpus,
         generator=generator,
         settings=settings,
     )

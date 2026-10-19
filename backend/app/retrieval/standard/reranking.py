@@ -1,8 +1,11 @@
 """Optional reranking (docs/retrieval/reranking.md).
 
-The default reranker blends vector similarity with transparent lexical
-overlap (query-token coverage). It is deliberately simple and inspectable:
-no hidden hand-tuned rule that favours one pipeline. If reranking is enabled
+The default reranker blends the candidate's incoming retrieval rank with
+transparent lexical overlap (query-token coverage). It blends on rank, not on
+the raw retrieval score: since hybrid retrieval that score is a fused
+reciprocal-rank score whose scale depends on how many channels returned the
+chunk, so it is not comparable with overlap. It is deliberately simple and
+inspectable: no hidden hand-tuned rule that favours one pipeline. If reranking is enabled
 for the baseline, the graph pipeline gets an equivalent candidate-ranking
 opportunity (Phase 9).
 """
@@ -14,7 +17,10 @@ from app.retrieval.standard.embeddings import _tokenise
 
 
 class LexicalReranker:
-    """Blends similarity with lexical overlap; deterministic."""
+    """Blends ``1 / incoming rank`` with lexical overlap; deterministic.
+
+    ``score = (1 - w) * (1 / rank_in) + w * overlap``.
+    """
 
     def __init__(self, lexical_weight: float = 0.3) -> None:
         if not 0.0 <= lexical_weight <= 1.0:
@@ -28,9 +34,7 @@ class LexicalReranker:
         for candidate in candidates:
             chunk_tokens = set(_tokenise(candidate.text))
             overlap = len(query_tokens & chunk_tokens) / len(query_tokens) if query_tokens else 0.0
-            score = (
-                1.0 - self.lexical_weight
-            ) * candidate.similarity + self.lexical_weight * overlap
+            score = (1.0 - self.lexical_weight) / candidate.rank + self.lexical_weight * overlap
             updated = candidate.model_copy(update={"rerank_score": round(score, 6)})
             scored.append((score, updated))
         scored.sort(key=lambda entry: (-entry[0], entry[1].chunk_id))

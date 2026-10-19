@@ -24,6 +24,7 @@ from app.datasets.world import build_world
 from app.graph.config import from_env as from_graph_env
 from app.main import create_app
 from app.retrieval.standard.generation import GenerationError
+from app.retrieval.standard.vector_store import InMemoryVectorStore
 from fastapi.testclient import TestClient
 
 from tests.test_standard_rag import make_settings
@@ -194,6 +195,33 @@ class TestErrorMapping:
         error_events = [event for event in stream["events"] if event["event_type"] == "run.error"]
         assert len(error_events) == 1
         assert error_events[0]["payload"]["error_code"] == "MODEL_ERROR"
+
+    def test_dense_only_collection_maps_to_vector_error(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import app.retrieval.graph.lab as lab_module
+
+        class DenseOnlyStore(InMemoryVectorStore):
+            def count(self) -> int:
+                return 1
+
+            def collection_info(self) -> dict[str, object]:
+                return {"vectors": [""], "sparse_vectors": [], "points": 1}
+
+        monkeypatch.setattr(lab_module, "build_store", lambda *_args: DenseOnlyStore())
+        settings: RetrievalSettings = make_settings(dataset_dir=str(tiny_dataset))
+        service = QueryService(
+            settings=settings, graph_config=from_graph_env(), generator_name="fake"
+        )
+        with TestClient(create_app(service_factory=lambda: service)) as client:
+            run_id = client.post(
+                "/api/v1/queries",
+                json={"question": "Anything at all.", "configurations": ["A"]},
+            ).json()["run_id"]
+            payload = _await_completion(client, run_id)
+        assert payload["status"] == "failed"
+        assert payload["error"]["error_code"] == "VECTOR_RETRIEVAL_ERROR"
+        assert "lacks a sparse vector" in payload["error"]["message"]
 
 
 class TestDemoAndBenchmarks:

@@ -36,7 +36,7 @@ from app.events import (
 )
 from app.evidence import Citation, EvidenceChunk, RagAnswer, RagRunResult
 from app.retrieval.standard.context import estimate_tokens, select_context
-from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
 from app.retrieval.standard.reranking import LexicalReranker
@@ -103,16 +103,15 @@ class StandardRagPipeline:
             query_vector, query_terms, limit=self.settings.top_k, markets=scope
         )
         # similarity holds the fused (RRF) score of the hybrid search.
-        candidates = [
-            self._payload_to_evidence(hit.id, hit.score, hit.payload, rank)
-            for rank, hit in enumerate(hits, start=1)
-        ]
+        candidates = [hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
         for candidate in candidates:
             self.emitter.emit(
                 RAG_CANDIDATE_RETRIEVED,
                 chunk_id=candidate.chunk_id,
                 document_id=candidate.document_id,
                 similarity=candidate.similarity,
+                dense_rank=candidate.dense_rank,
+                sparse_rank=candidate.sparse_rank,
                 rank=candidate.rank,
             )
 
@@ -174,26 +173,6 @@ class StandardRagPipeline:
             generation_model=self.generator.model_name,
         )
 
-    def _payload_to_evidence(
-        self, point_id: str, similarity: float, payload: dict[str, object], rank: int
-    ) -> EvidenceChunk:
-        chunk = CorpusChunk(
-            chunk_id=str(payload.get("chunk_id", point_id)),
-            document_id=str(payload.get("document_id", "")),
-            chunk_index=int(str(payload.get("chunk_index", 0))),
-            text=str(payload.get("text", "")),
-            title=str(payload.get("title", "")),
-            document_type=str(payload.get("document_type", "")),
-            market_id=str(payload.get("market_id", "")),
-            language_code=str(payload.get("language_code", "")),
-            source_system=str(payload.get("source_system", "")),
-            valid_from=_optional_text(payload.get("valid_from")),
-            valid_to=_optional_text(payload.get("valid_to")),
-            kind=str(payload.get("kind", "chunk")),
-            record_table=_optional_text(payload.get("record_table")),
-        )
-        return chunk.to_evidence(similarity=similarity, rank=rank)
-
     @staticmethod
     def _citation(chunk: EvidenceChunk) -> Citation:
         return Citation(
@@ -205,9 +184,3 @@ class StandardRagPipeline:
             market_id=chunk.market_id,
             language_code=chunk.language_code,
         )
-
-
-def _optional_text(value: object) -> str | None:
-    if value is None or value == "" or value == "None":
-        return None
-    return str(value)

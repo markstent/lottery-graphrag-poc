@@ -12,8 +12,8 @@ import uuid
 
 import pytest
 from app.retrieval.standard.embeddings import HashingEmbedder
-from app.retrieval.standard.sparse import HashingSparseEmbedder
-from app.retrieval.standard.vector_store import QdrantVectorStore
+from app.retrieval.standard.sparse import HashingSparseEmbedder, SparseVector
+from app.retrieval.standard.vector_store import InMemoryVectorStore, QdrantVectorStore
 
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
 
@@ -87,6 +87,31 @@ def test_qdrant_hybrid_upsert_search_reset_roundtrip() -> None:
         store.reset()
         assert store.count() == 0
         assert store.collection_info()["sparse_vectors"] == ["sparse"]
+    finally:
+        with contextlib.suppress(Exception):  # best-effort cleanup
+            store._client.delete_collection(collection_name=collection)
+
+
+def test_qdrant_rrf_matches_in_memory_fusion() -> None:
+    """Server-side Fusion.RRF and fusion.RRF_K give identical ranks and scores."""
+    collection = f"poc_test_{uuid.uuid4().hex[:12]}"
+    store = QdrantVectorStore(url=QDRANT_URL, collection=collection, dimensions=2)
+    memory = InMemoryVectorStore()
+    # Dense order P1, P2, P3; sparse order P3, P2 (P1 shares no term).
+    ids = ["P1", "P2", "P3"]
+    dense = [[1.0, 0.0], [0.8, 0.6], [0.0, 1.0]]
+    sparse = [SparseVector((9,), (1.0,)), SparseVector((1,), (1.0,)), SparseVector((1,), (2.0,))]
+    payloads: list[dict[str, object]] = [{"kind": "chunk", "market_id": ""} for _ in ids]
+    try:
+        store.ensure_collection()
+        for target in (store, memory):
+            target.upsert(ids, dense, sparse, payloads)
+        query = ([1.0, 0.0], SparseVector((1,), (1.0,)))
+        live = store.search(*query, limit=3)
+        local = memory.search(*query, limit=3)
+        assert [hit.id for hit in live] == [hit.id for hit in local] == ["P3", "P2", "P1"]
+        for live_hit, local_hit in zip(live, local, strict=True):
+            assert live_hit.score == pytest.approx(local_hit.score, rel=1e-6)
     finally:
         with contextlib.suppress(Exception):  # best-effort cleanup
             store._client.delete_collection(collection_name=collection)

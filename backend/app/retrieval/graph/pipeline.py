@@ -61,7 +61,7 @@ from app.retrieval.graph.traversal import (
     expand_ontology,
 )
 from app.retrieval.standard.context import estimate_tokens, select_context
-from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
 from app.retrieval.standard.reranking import LexicalReranker
@@ -83,7 +83,6 @@ class GraphRagPipeline:
         embeddings: EmbeddingFunction,
         sparse: SparseEmbedder,
         store: VectorStore,
-        corpus: dict[str, CorpusChunk],
         generator: AnswerGenerator,
         settings: RetrievalSettings,
         source_lookup: SourceLookup | None = None,
@@ -95,7 +94,6 @@ class GraphRagPipeline:
         self.embeddings = embeddings
         self.sparse = sparse
         self.store = store
-        self.corpus = corpus
         self.generator = generator
         self.settings = settings
         self.source_lookup = source_lookup
@@ -405,11 +403,7 @@ class GraphRagPipeline:
             limit=self.settings.top_k,
             markets=markets,
         )
-        candidates = [
-            chunk.to_evidence(similarity=hit.score, rank=rank)
-            for rank, hit in enumerate(hits, start=1)
-            if (chunk := self.corpus.get(hit.id)) is not None
-        ]
+        candidates = [hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
         if self.reranker is not None:
             candidates = self.reranker.rerank(question, candidates)
         return candidates

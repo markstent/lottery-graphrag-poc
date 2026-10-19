@@ -81,6 +81,12 @@ def index_corpus(
         sparse=sparse.embed_documents(texts),
         payloads=[chunk.to_payload() for chunk in corpus],
     )
+    store_count = store.count()
+    if store_count < len(corpus):
+        raise RuntimeError(
+            f"Index verification failed: store holds {store_count} points, "
+            f"expected at least {len(corpus)}"
+        )
 
 
 def build_index(settings: RetrievalSettings, rebuild: bool = True) -> dict[str, object]:

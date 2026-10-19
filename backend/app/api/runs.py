@@ -26,7 +26,7 @@ from app.retrieval.graph.lab import Lab, build_generator, build_lab, wired_pipel
 from app.retrieval.standard.embeddings import EmbeddingError
 from app.retrieval.standard.generation import GenerationError
 from app.retrieval.standard.index import index_corpus
-from app.retrieval.standard.vector_store import VectorStoreError
+from app.retrieval.standard.vector_store import SPARSE_VECTOR, VectorStoreError
 
 # Error classes from docs/07 section 11.
 _ERROR_CODES: dict[type[Exception], str] = {
@@ -87,8 +87,14 @@ class QueryService:
                 # index (make index-vector), but a service must be usable
                 # after a fresh start. A persisted Qdrant collection is
                 # already populated and is left untouched.
-                if lab.store.count() == 0 and lab.corpus:
-                    index_corpus(lab.store, lab.embeddings, lab.sparse, list(lab.corpus.values()))
+                if lab.store.count() == 0:
+                    if lab.corpus:
+                        index_corpus(
+                            lab.store, lab.embeddings, lab.sparse, list(lab.corpus.values())
+                        )
+                elif SPARSE_VECTOR not in lab.store.collection_info()["sparse_vectors"]:
+                    # A pre-hybrid (dense-only) collection would fail every search.
+                    raise VectorStoreError("collection lacks a sparse vector; rebuild the index")
                 self._lab = lab
             return self._lab
 

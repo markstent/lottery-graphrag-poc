@@ -47,13 +47,23 @@ Code lives in `backend/app/retrieval/standard/`.
   filter and fuses them with reciprocal rank fusion (Qdrant: `query_points`
   with two `Prefetch` entries and `FusionQuery(fusion=Fusion.RRF)`; in
   memory: `fusion.reciprocal_rank_fusion`). A hit's `score` is the fused
-  score and becomes `EvidenceChunk.similarity`. The in-memory store also
+  score and becomes `EvidenceChunk.similarity`.
+  Since hybrid retrieval, `similarity` is the fused reciprocal-rank score of
+  the dense and sparse channels, not a cosine.
+  The RRF constant (`fusion.RRF_K = 1` with 1-based ranks) matches Qdrant's
+  server-side `Fusion.RRF` (`1 / (position + 2)`, 0-based) so both stores
+  rank and score identically; a live test checks the parity. The in-memory store also
   reports each hit's `dense_rank`/`sparse_rank`; Qdrant fuses server side
-  and does not expose them (`None`). A market scope matches only non-empty
+  and does not expose them (`None`). Both ranks are copied onto
+  `EvidenceChunk` and the `rag.candidate.retrieved` event.
+  Every pipeline builds evidence from the hit payload through the shared
+  `corpus.hit_to_evidence`, so no hit is dropped for lack of a corpus entry. A market scope matches only non-empty
   market ids, so market-less items are excluded from scoped runs for every
   pipeline. `top_k` defaults to 40 (`RAG_TOP_K`).
-- **Reranking**: `reranking.py` blends similarity with lexical overlap
-  (weight 0.3 by default); disabled and enabled modes both record per-candidate
+- **Reranking**: `reranking.py` blends the incoming rank with lexical
+  overlap, `score = (1 - w) * (1 / rank_in) + w * overlap` (w = 0.3 by
+  default); it blends on rank because the fused score is not on the scale of
+  overlap; disabled and enabled modes both record per-candidate
   scores. The graph pipeline gets an equivalent candidate-ranking opportunity.
 - **Context budget**: `context.py` walks candidates in rank order within a
   token budget (default 2000), skipping near-duplicates (Jaccard >= 0.85);

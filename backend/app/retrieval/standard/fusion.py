@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-# Standard RRF constant from Cormack et al. (2009); damps the weight of top ranks.
-RRF_K = 60
+# Matches Qdrant's server-side Fusion.RRF so the in-memory store and Qdrant
+# rank identically. Qdrant 1.14.1 scores 1 / (position + 2) with a 0-based
+# position (lib/segment/src/common/reciprocal_rank_fusion.rs, RFF_RANKING_K =
+# 2.0), which is 1 / (rank + 1) with the 1-based rank used here. Verified
+# against the running server: tests/test_vector_store_qdrant.py.
+RRF_K = 1
 
 
 def reciprocal_rank_fusion(rankings: list[list[str]], k: int = RRF_K) -> list[tuple[str, float]]:

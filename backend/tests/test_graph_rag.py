@@ -190,7 +190,6 @@ def build_pipeline(
         embeddings=embeddings,
         sparse=sparse,
         store=store,
-        corpus=corpus,
         generator=FakeAnswerGenerator(),
         settings=settings,
     )
@@ -331,6 +330,17 @@ class TestRankingAndEvidence:
         # same one pipeline A uses.
         chunk_ids = {chunk.chunk_id for chunk in result.document_evidence}
         assert "CHNK_S007_UK_00" in chunk_ids
+
+    def test_hit_absent_from_corpus_still_becomes_evidence(self) -> None:
+        pipeline = build_pipeline()
+        extra = dataclasses.replace(
+            build_corpus()["CHNK_S007_UK_00"], chunk_id="CHNK_EXTRA_00", document_id="DOC_EXTRA"
+        )
+        index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [extra])
+        result = pipeline.run("Why did checkout fail in Greece?")
+        evidence = {chunk.chunk_id: chunk for chunk in result.document_evidence}
+        assert "CHNK_EXTRA_00" in evidence
+        assert evidence["CHNK_EXTRA_00"].dense_rank is not None
         assert all(chunk.discovered_via == "vector" for chunk in result.document_evidence)
         # Cross-market siblings are reached through ontology expansion; with
         # authoritative summaries (real runs) they rank into the selected set

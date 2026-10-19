@@ -40,8 +40,8 @@ class Lab:
 
     settings: RetrievalSettings
     generator: AnswerGenerator
-    # The indexed corpus: document chunks plus record blocks, so every
-    # vector hit resolves for every pipeline.
+    # The indexed corpus (document chunks plus record blocks); used to
+    # populate an empty store on API cold start.
     corpus: dict[str, CorpusChunk]
     source_lookup: SourceLookup
     embeddings: EmbeddingFunction
@@ -120,7 +120,6 @@ def wired_pipelines(
                         embeddings=lab.embeddings,
                         sparse=lab.sparse,
                         store=lab.store,
-                        corpus=lab.corpus,
                         generator=lab.generator,
                         settings=tuned,
                         source_lookup=lab.source_lookup,

@@ -14,6 +14,7 @@ from pathlib import Path
 import duckdb
 
 from app.evidence import EvidenceChunk
+from app.retrieval.standard.vector_store import SearchHit
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,7 +53,12 @@ class CorpusChunk:
         }
 
     def to_evidence(
-        self, similarity: float, rank: int, discovered_via: str = "vector"
+        self,
+        similarity: float,
+        rank: int,
+        discovered_via: str = "vector",
+        dense_rank: int | None = None,
+        sparse_rank: int | None = None,
     ) -> EvidenceChunk:
         return EvidenceChunk(
             chunk_id=self.chunk_id,
@@ -67,11 +73,46 @@ class CorpusChunk:
             valid_from=self.valid_from,
             valid_to=self.valid_to,
             similarity=round(similarity, 6),
+            dense_rank=dense_rank,
+            sparse_rank=sparse_rank,
             rank=rank,
             discovered_via=discovered_via,
             kind=self.kind,
             record_table=self.record_table,
         )
+
+
+def hit_to_evidence(hit: SearchHit, rank: int) -> EvidenceChunk:
+    """Evidence from a search hit's payload alone (no corpus lookup).
+
+    Shared by every pipeline so a hit always becomes evidence the same way;
+    ``similarity`` is the fused score.
+    """
+    payload = hit.payload
+    chunk = CorpusChunk(
+        chunk_id=str(payload.get("chunk_id", hit.id)),
+        document_id=str(payload.get("document_id", "")),
+        chunk_index=int(str(payload.get("chunk_index", 0))),
+        text=str(payload.get("text", "")),
+        title=str(payload.get("title", "")),
+        document_type=str(payload.get("document_type", "")),
+        market_id=str(payload.get("market_id", "")),
+        language_code=str(payload.get("language_code", "")),
+        source_system=str(payload.get("source_system", "")),
+        valid_from=_optional_text(payload.get("valid_from")),
+        valid_to=_optional_text(payload.get("valid_to")),
+        kind=str(payload.get("kind", "chunk")),
+        record_table=_optional_text(payload.get("record_table")),
+    )
+    return chunk.to_evidence(
+        similarity=hit.score, rank=rank, dense_rank=hit.dense_rank, sparse_rank=hit.sparse_rank
+    )
+
+
+def _optional_text(value: object) -> str | None:
+    if value is None or value == "" or value == "None":
+        return None
+    return str(value)
 
 
 def load_corpus(dataset_dir: Path) -> list[CorpusChunk]:
