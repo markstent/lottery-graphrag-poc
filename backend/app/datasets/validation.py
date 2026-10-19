@@ -127,9 +127,14 @@ def _time_errors(tables: dict[str, list[Any]], window_start: date) -> list[str]:
     for draw in tables["draws"]:
         if draw.draw_timestamp.date() < launch.get(draw.game_id, window_start):
             errors.append(f"time: draw {draw.draw_id} precedes game launch")
+    app_release = {v.app_version_id: v.released_at for v in tables["app_versions"]}
     for session in tables["sessions"]:
         if session.ended_at is not None and session.ended_at <= session.started_at:
             errors.append(f"time: session {session.session_id} ends before it starts")
+        if session.app_version_id and session.started_at < app_release[session.app_version_id]:
+            errors.append(
+                f"time: session {session.session_id} runs an app version released after it started"
+            )
     registration = {p.player_id: p.registration_date for p in tables["players"]}
     for account in tables["accounts"]:
         if account.created_at.date() < registration.get(account.player_id, window_start):

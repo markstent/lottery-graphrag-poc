@@ -124,10 +124,10 @@ def _weighted_players(players: list[PlayerRow], rng: random.Random) -> list[floa
     """Long-tail activity weight per player, boosted by engagement segment."""
     # Segment ids are market-local; each market lists engaged, casual, dormant in kind order.
     boosts = {
-        segment_id: boost
+        segment_id: ENGAGEMENT_ACTIVITY_BOOST[kind]
         for code in MARKET_SPLIT
-        for segment_id, boost in zip(
-            segments_for(code, "ENGAGEMENT"), ENGAGEMENT_ACTIVITY_BOOST.values(), strict=True
+        for segment_id, kind in zip(
+            segments_for(code, "ENGAGEMENT"), ("ENGAGED", "CASUAL", "DORMANT"), strict=True
         )
     }
     return [
@@ -239,7 +239,15 @@ def generate_sessions(
     app_versions_by_market: dict[str, list[AppVersionRow]],
     total_sessions: int,
 ) -> list[SessionRow]:
-    """Digital and retail sessions with long-tail player distribution."""
+    """Digital and retail sessions with long-tail player distribution.
+
+    An APP session only runs an app version its market had released by the
+    session start. Within the released versions the second release of the
+    market is the dominant deployed version once it exists (before that the
+    first release is); other sessions pick uniformly among the released
+    versions. A session that would be APP before the market's first release
+    (day 10 of the window) falls back to the WEB channel with no device.
+    """
     cum_weights = _cumulative(_weighted_players(players, rng))
     outcomes = list(SESSION_OUTCOME_WEIGHTS)
     outcome_weights = list(SESSION_OUTCOME_WEIGHTS.values())
@@ -263,12 +271,18 @@ def generate_sessions(
         ended = started + timedelta(minutes=rng.randrange(1, 45))
         app_version_id: str | None = None
         if channel == "APP":
-            market_versions = app_versions_by_market[player.market_id]
-            # The second release is the dominant deployed version (phase 5 plants its story).
-            dominant = rng.random() < DOMINANT_APP_VERSION_SHARE
-            app_version_id = (
-                market_versions[1] if dominant else rng.choice(market_versions)
-            ).app_version_id
+            released = [
+                v for v in app_versions_by_market[player.market_id] if v.released_at <= started
+            ]
+            if released:
+                # The second release is the dominant deployed version once it is out.
+                dominant = released[min(1, len(released) - 1)]
+                app_version_id = (
+                    dominant if rng.random() < DOMINANT_APP_VERSION_SHARE else rng.choice(released)
+                ).app_version_id
+            else:
+                channel = "WEB"
+                device_id = None
         sessions.append(
             SessionRow(
                 session_id=ID_FORMATS["sessions"].format(n=i + 1),

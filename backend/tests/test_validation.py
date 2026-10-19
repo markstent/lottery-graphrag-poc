@@ -65,6 +65,31 @@ def test_pre_launch_ticket_is_reported(tiny_world: World) -> None:
     assert any("precedes game launch" in e for e in errors)
 
 
+def test_sessions_never_run_an_unreleased_app_version(tiny_world: World) -> None:
+    released = {v.app_version_id: v.released_at for v in tiny_world.tables["app_versions"]}
+    app_sessions = [s for s in tiny_world.tables["sessions"] if s.app_version_id is not None]
+    assert app_sessions
+    assert all(released[s.app_version_id] <= s.started_at for s in app_sessions)
+
+
+def test_session_on_unreleased_app_version_is_reported(tiny_world: World) -> None:
+    tables = {name: list(rows) for name, rows in tiny_world.tables.items()}
+    version = max(tables["app_versions"], key=lambda v: v.released_at)
+    broken = list(tables["sessions"])
+    broken[0] = broken[0]._replace(
+        market_id=version.market_id,
+        channel_code="APP",
+        app_version_id=version.app_version_id,
+        started_at=version.released_at - timedelta(days=1),
+        ended_at=version.released_at - timedelta(hours=23),
+    )
+    tables["sessions"] = broken
+    world = World(tiny_world.config, tables)
+
+    errors = validate_world(world)
+    assert any("app version released after it started" in e for e in errors)
+
+
 def test_volume_targets_match_profile(tiny_world: World) -> None:
     volumes = PROFILES[tiny_world.config.profile]
     assert len(tiny_world.tables["players"]) == volumes.players
