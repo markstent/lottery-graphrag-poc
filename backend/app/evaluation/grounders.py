@@ -202,8 +202,10 @@ class Draft:
     checks: tuple[Check, ...]
     specs: tuple[ClaimSpec, ...]
     # Name-anchored drafts sharing a concept share an answer; grounding keeps
-    # one anchor per concept. None for every other draft.
+    # one anchor per concept and spreads the picks over languages. Both are
+    # None for every other draft.
     concept: str | None = None
+    language: str | None = None
 
 
 Grounder = Callable[[World], list[Draft]]
@@ -552,7 +554,8 @@ def ground_l13(world: World) -> list[Draft]:
         )
         specs = tuple(_family_spec(world, game_id) for game_id in games)
         check = SetCheck.of(games, world.game_universe())
-        drafts.append(Draft(family_id, name, answer, (check,), specs, concept))
+        language = MARKET_LANGUAGE[world.family_markets[family_id]]
+        drafts.append(Draft(family_id, name, answer, (check,), specs, concept, language))
     return drafts
 
 
@@ -572,7 +575,8 @@ def ground_l14(world: World) -> list[Draft]:
         )
         specs = tuple(_mechanic_spec(world, game_id, concept) for game_id in games)
         check = SetCheck.of(games, world.game_universe())
-        drafts.append(Draft(mechanic_id, description, answer, (check,), specs, concept))
+        language = MARKET_LANGUAGE[world.mechanic_markets[mechanic_id]]
+        drafts.append(Draft(mechanic_id, description, answer, (check,), specs, concept, language))
     return drafts
 
 

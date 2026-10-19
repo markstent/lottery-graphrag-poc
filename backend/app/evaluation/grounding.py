@@ -116,16 +116,27 @@ def sample_anchors(
     return sorted(eligible, key=digest)[:k]
 
 
-def _one_per_concept(question_id: str, by_anchor: Mapping[str, Draft]) -> dict[str, Draft]:
-    """The first anchor in hash order for each concept, so no two instances share an answer."""
-    kept: dict[str, Draft] = {}
-    concepts: set[str | None] = set()
-    for anchor in sample_anchors(question_id, list(by_anchor), k=len(by_anchor)):
-        draft = by_anchor[anchor]
-        if draft.concept not in concepts:
-            concepts.add(draft.concept)
-            kept[anchor] = draft
-    return kept
+def name_anchor_order(question_id: str, drafts: Sequence[Draft]) -> list[Draft]:
+    """One draft per concept, spread over languages, in pick order.
+
+    Concepts are walked in the hash order of their first code. Each concept
+    picks its first code in hash order whose language no earlier pick used;
+    when every language it binds is used, it falls back to its first code.
+    The name-anchored sub-stratum tests local-language resolution, so its
+    instances never share an answer and avoid sharing a language.
+    """
+    by_anchor = {draft.anchor_id: draft for draft in drafts}
+    ordered = [by_anchor[a] for a in sample_anchors(question_id, list(by_anchor), len(by_anchor))]
+    codes: dict[str | None, list[Draft]] = {}
+    for draft in ordered:
+        codes.setdefault(draft.concept, []).append(draft)
+    used: set[str | None] = set()
+    picks: list[Draft] = []
+    for candidates in codes.values():
+        pick = next((d for d in candidates if d.language not in used), candidates[0])
+        used.add(pick.language)
+        picks.append(pick)
+    return picks
 
 
 class WorldGrounding:
@@ -166,13 +177,17 @@ class WorldGrounding:
             raise GroundingError(f"{question.question_id} lists an anchor twice")
         note = f"{len(drafts)} eligible anchors"
         if any(draft.concept is not None for draft in drafts):
-            by_anchor = _one_per_concept(question.question_id, by_anchor)
-            note = f"{len(by_anchor)} eligible anchors (one per concept, of {len(drafts)} codes)"
-        if len(by_anchor) < ANCHORS_PER_QUESTION:
+            picks = name_anchor_order(question.question_id, drafts)
+            chosen = [draft.anchor_id for draft in picks[:ANCHORS_PER_QUESTION]]
+            note = f"{len(picks)} eligible anchors (one per concept, of {len(drafts)} codes)"
+            eligible = len(picks)
+        else:
+            chosen = sample_anchors(question.question_id, list(by_anchor))
+            eligible = len(drafts)
+        if eligible < ANCHORS_PER_QUESTION:
             note += f", fewer than the {ANCHORS_PER_QUESTION} the bank asks for"
-        chosen = sample_anchors(question.question_id, list(by_anchor))
         instances = tuple(self._instance(question, by_anchor[anchor]) for anchor in chosen)
-        return GroundingOutcome(instances, len(by_anchor), note)
+        return GroundingOutcome(instances, eligible, note)
 
     def _instance(self, question: LogicalQuestion, draft: Draft) -> BankInstance:
         claims = exclude_anchor([self._claim(spec) for spec in draft.specs], draft.anchor_id)

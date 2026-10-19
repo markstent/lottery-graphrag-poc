@@ -20,11 +20,12 @@ from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, question_by_id
 from app.evaluation.checks import NumberCheck, SetCheck
-from app.evaluation.grounders import ground_l01
+from app.evaluation.grounders import Draft, ground_l01
 from app.evaluation.grounding import (
     GroundingError,
     WorldGrounding,
     instance_from_payload,
+    name_anchor_order,
     sample_anchors,
 )
 from app.scenarios.engine import apply_scenarios
@@ -179,6 +180,47 @@ def test_name_anchored_instances_never_share_an_answer(grounding: WorldGrounding
         answers = [instance.checks for instance in outcome.instances]
         assert len(set(answers)) == len(answers), qid
         assert "one per concept" in outcome.note
+
+
+def _draft(code: str, concept: str, language: str) -> Draft:
+    return Draft(code, code, "", (), (), concept, language)
+
+
+def test_name_anchors_spread_over_languages() -> None:
+    # Three concepts, each with an English code and codes in two other
+    # languages; the English code is built to come first in hash order, so
+    # one pick per concept by hash alone would be three English names.
+    drafts = []
+    for concept in ("C1", "C2", "C3"):
+        others = [_draft(f"{concept}_DE", concept, "de"), _draft(f"{concept}_CS", concept, "cs")]
+        english = next(
+            code
+            for n in range(1000)
+            if sample_anchors("L13", [code := f"{concept}_EN_{n}", *(d.anchor_id for d in others)])[
+                0
+            ]
+            == code
+        )
+        drafts += [_draft(english, concept, "en"), *others]
+    by_hash = {d.concept: d for d in reversed(_hash_ordered(drafts))}
+    assert {d.language for d in by_hash.values()} == {"en"}
+    picks = name_anchor_order("L13", drafts)
+    assert [d.concept for d in picks] == list(
+        dict.fromkeys(d.concept for d in _hash_ordered(drafts))
+    )
+    assert len({d.language for d in picks}) == 3
+
+
+def test_name_anchors_fall_back_to_the_first_code_when_languages_run_out() -> None:
+    drafts = [_draft("A_EN", "A", "en"), _draft("B_EN", "B", "en")]
+    assert [d.anchor_id for d in name_anchor_order("L13", drafts)] == [
+        d.anchor_id for d in _hash_ordered(drafts)
+    ]
+
+
+def _hash_ordered(drafts: list[Draft]) -> list[Draft]:
+    by_anchor = {d.anchor_id: d for d in drafts}
+    return [by_anchor[a] for a in sample_anchors("L13", list(by_anchor), len(by_anchor))]
 
 
 def test_cross_market_anchors_have_a_market_of_their_own(
