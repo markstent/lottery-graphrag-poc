@@ -13,12 +13,19 @@ BOOTSTRAP_RESAMPLES = 10_000
 BOOTSTRAP_SEED = 2026
 CONFIDENCE = 0.95
 MIN_PAIRS_FOR_CLAIM = 10
+MIN_CLUSTERS_FOR_CLAIM = (
+    6  # fewest clusters at which a two-sided signed-rank test can reach p < 0.05
+)
 ALPHA = 0.05
 
 _COMPARISON_NAMES = {
     "B_vs_A": ("Graph", "text search"),
     "C_vs_B": ("Graph + Ontology", "Graph"),
 }
+
+
+# Each tail of the interval holds this many thousandths of the resamples (25 for 95 percent).
+_TAIL_PER_MILLE = round((1 - CONFIDENCE) / 2 * 1000)
 
 
 @dataclass(frozen=True)
@@ -30,6 +37,20 @@ class Interval:
     clusters: int
 
 
+def _check_paired(diffs: Sequence[float], clusters: Sequence[str]) -> None:
+    if not diffs or len(diffs) != len(clusters):
+        raise ValueError("diffs and clusters must be non-empty and the same length")
+    if not all(math.isfinite(d) for d in diffs):
+        raise ValueError("diffs must be finite")
+
+
+def _group(diffs: Sequence[float], clusters: Sequence[str]) -> list[list[float]]:
+    grouped: dict[str, list[float]] = defaultdict(list)
+    for diff, cluster in zip(diffs, clusters, strict=True):
+        grouped[cluster].append(diff)
+    return list(grouped.values())
+
+
 def cluster_bootstrap(
     diffs: Sequence[float],
     clusters: Sequence[str],
@@ -37,37 +58,39 @@ def cluster_bootstrap(
     seed: int = BOOTSTRAP_SEED,
 ) -> Interval:
     """Percentile interval for the mean difference, resampling whole clusters with replacement."""
-    if not diffs or len(diffs) != len(clusters):
-        raise ValueError("diffs and clusters must be non-empty and the same length")
-    grouped: dict[str, list[float]] = defaultdict(list)
-    for diff, cluster in zip(diffs, clusters, strict=True):
-        grouped[cluster].append(diff)
-    groups = list(grouped.values())
+    _check_paired(diffs, clusters)
+    groups = _group(diffs, clusters)
     rng = random.Random(seed)
     means: list[float] = []
     for _ in range(resamples):
         pooled = [d for group in rng.choices(groups, k=len(groups)) for d in group]
         means.append(statistics.mean(pooled))
     means.sort()
-    tail = (1 - CONFIDENCE) / 2
     return Interval(
         mean=statistics.mean(diffs),
-        low=means[math.floor(tail * resamples)],
-        high=means[math.ceil((1 - tail) * resamples) - 1],
+        low=means[resamples * _TAIL_PER_MILLE // 1000],
+        high=means[-(-resamples * (1000 - _TAIL_PER_MILLE) // 1000) - 1],
         n=len(diffs),
         clusters=len(groups),
     )
 
 
-def wilcoxon_p(diffs: Sequence[float]) -> float:
-    """Two-sided Wilcoxon signed-rank p-value with Pratt zero handling."""
-    if all(d == 0 for d in diffs):
+def wilcoxon_p(diffs: Sequence[float], clusters: Sequence[str]) -> float:
+    """Two-sided Wilcoxon signed-rank p-value (Pratt) on per-cluster mean differences.
+
+    The independent unit is the cluster, so pairs are averaged within each cluster first.
+    """
+    _check_paired(diffs, clusters)
+    means = [statistics.mean(group) for group in _group(diffs, clusters)]
+    if all(m == 0 for m in means):
         return 1.0
-    return float(wilcoxon(diffs, zero_method="pratt", alternative="two-sided").pvalue)
+    return float(wilcoxon(means, zero_method="pratt", alternative="two-sided").pvalue)
 
 
 def holm(pvalues: Mapping[str, float]) -> dict[str, float]:
     """Holm step-down adjusted p-values: monotone and capped at 1."""
+    if not all(math.isfinite(p) for p in pvalues.values()):
+        raise ValueError("p-values must be finite")
     ordered = sorted(pvalues.items(), key=lambda item: item[1])
     adjusted: dict[str, float] = {}
     running = 0.0
@@ -75,6 +98,11 @@ def holm(pvalues: Mapping[str, float]) -> dict[str, float]:
         running = max(running, min(1.0, (len(ordered) - rank) * p))
         adjusted[name] = running
     return adjusted
+
+
+def _points(value: float) -> str:
+    """Difference as points with one decimal; negative zero prints as 0.0."""
+    return f"{value * 100:.1f}".replace("-0.0", "0.0")
 
 
 def headline(
@@ -85,9 +113,11 @@ def headline(
     p_holm: float | None,
 ) -> str:
     """Plain-language sentence for one comparison in one stratum."""
+    if comparison not in _COMPARISON_NAMES:
+        raise ValueError(f"unknown comparison: {comparison}")
     stronger, weaker = _COMPARISON_NAMES[comparison]
-    pairs = f"{interval.n} pairs"
-    if interval.n < MIN_PAIRS_FOR_CLAIM:
+    pairs = f"{interval.n} pairs in {interval.clusters} groups"
+    if interval.n < MIN_PAIRS_FOR_CLAIM or interval.clusters < MIN_CLUSTERS_FOR_CLAIM:
         return f"Too few pairs to say for {stronger} and {weaker} on {stratum_label} ({pairs})."
     if p_holm is None:
         raise ValueError("p_holm is required when there are enough pairs for a claim")
@@ -101,9 +131,8 @@ def headline(
             f"No detectable difference between {stronger} and {weaker} "
             f"on {stratum_label} ({pairs})."
         )
-    points = f"{abs(interval.mean) * 100:.1f}"
-    bounds = f"{interval.low * 100:.1f} to {interval.high * 100:.1f}"
     return (
-        f"{stronger} {verb} {weaker} by {points} {metric_unit} "
-        f"(95 percent interval {bounds}, {pairs}) on {stratum_label}."
+        f"{stronger} {verb} {weaker} by {_points(abs(interval.mean))} {metric_unit} "
+        f"(95 percent interval {_points(interval.low)} to {_points(interval.high)}, {pairs}) "
+        f"on {stratum_label}."
     )
