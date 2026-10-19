@@ -357,7 +357,8 @@ def render_report(run: BenchmarkRun) -> str:
         *([f"Label: {summary['label']}."] if summary["label"] else []),
         f"Selection: {run.selection.describe()}.",
         f"Bank version {summary['bank_version']}, worlds "
-        f"{', '.join(str(seed) for seed in summary['worlds'])}, started {record['started_at']}.",
+        f"{', '.join(str(seed) for seed in summary['worlds'])}.",
+        f"Run started: {record['started_at']} (when the first world started).",
         "",
         "## Headlines",
         "",
@@ -366,7 +367,7 @@ def render_report(run: BenchmarkRun) -> str:
     ]
     for key in (*STRATUM_KEYS, OVERALL):
         lines += _stratum_section(summary, key)
-    lines += _comparison_section(summary["comparisons"])
+    lines += _comparison_section(summary["comparisons"], smoke=run.kind == "smoke")
     lines += _agreement_section(summary["judge_agreement"])
     lines += _failure_section(summary["failures"], summary["unavailable"])
     lines += reproducibility_section(summary["reproducibility"])
@@ -374,8 +375,12 @@ def render_report(run: BenchmarkRun) -> str:
 
 
 def reproducibility_section(reproducibility: dict[str, Any]) -> list[str]:
-    """The run's shared record, then what differs in each world."""
-    shared = reproducibility["run"]
+    """The run's shared record, then what differs in each world.
+
+    ``started_at`` differs between worlds, so it is listed per world; the
+    run's start (its first world's) is printed above the report.
+    """
+    shared = {k: v for k, v in reproducibility["run"].items() if k != "started_at"}
     lines = ["## Reproducibility", "", "Shared by every world:", ""]
     lines += [f"- {name}: `{value}`" for name, value in shared.items()]
     for world in reproducibility["worlds"]:
@@ -415,7 +420,11 @@ def _stratum_section(summary: dict[str, Any], key: str) -> list[str]:
     return [*lines, ""]
 
 
-def _comparison_section(comparisons: Sequence[dict[str, Any]]) -> list[str]:
+def _comparison_section(comparisons: Sequence[dict[str, Any]], smoke: bool) -> list[str]:
+    """The comparisons table; a smoke run's tested cells say they are not a result."""
+    words = (
+        {**REASON_WORDS, "tested": "tested (smoke run, not a result)"} if smoke else REASON_WORDS
+    )
     lines = [
         "## Comparisons",
         "",
@@ -434,7 +443,7 @@ def _comparison_section(comparisons: Sequence[dict[str, Any]]) -> list[str]:
         lines.append(
             f"| {c['stratum']} | {c['metric']} | {c['comparison']} | {c['n']} | {c['clusters']} "
             f"| {mean} | {interval} | {_p(c['p'])} | {_p(c['p_holm'])} "
-            f"| {REASON_WORDS[c['reason']]} |"
+            f"| {words[c['reason']]} |"
         )
     return [*lines, ""]
 

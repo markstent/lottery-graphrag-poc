@@ -24,6 +24,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import logging
 import subprocess
 import time
 from collections.abc import Sequence
@@ -32,7 +33,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.evaluation.bank import BANK_VERSION, question_by_id
+from app.datasets.config import REPO_ROOT
+from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import CitationMetrics, answer_score, citation_metrics
 from app.evaluation.claims import selection_carrier
 from app.evaluation.grounding import BankInstance, FrozenBank, GroundingError, Unavailable
@@ -50,7 +52,7 @@ from app.evaluation.judge import (
 from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_score
 from app.events import GRAPH_ENTITY_RESOLVED
 from app.evidence import EvidenceChunk
-from app.graph.config import GraphConfig
+from app.graph.config import LABEL_VERSION, GraphConfig
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.lab import Lab, bc_graph_settings, wired_pipelines
 from app.retrieval.graph.pipeline import GraphRagPipeline
@@ -74,20 +76,28 @@ PIPELINES = ("A", "B", "C")
 OFFICIAL_MIN_REPEATS = 3
 WORLD_MANIFEST = "_manifest.json"
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+logger = logging.getLogger(__name__)
+
+
+def _git(*args: str) -> str | None:
+    """The output of one git command in the repository; None when git is unavailable."""
+    try:
+        return subprocess.run(
+            ["git", *args], capture_output=True, text=True, cwd=REPO_ROOT, check=True
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return None
 
 
 def _git_sha() -> str:
-    try:
-        return subprocess.run(
-            ["git", "rev-parse", "HEAD"],
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-            check=True,
-        ).stdout.strip()
-    except (OSError, subprocess.CalledProcessError):
-        return "unknown"
+    output = _git("rev-parse", "HEAD")
+    return "unknown" if output is None else output.strip()
+
+
+def _git_dirty() -> bool | None:
+    """Whether the checkout has uncommitted changes; None when git is unavailable."""
+    output = _git("status", "--porcelain")
+    return None if output is None else bool(output.strip())
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +105,8 @@ class ReproducibilityRecord:
     """The docs/05 section 11 provenance block stored with every run."""
 
     git_sha: str
+    # True when the checkout had uncommitted changes; None when git was unavailable.
+    git_dirty: bool | None
     question_bank_version: str
     world_dir: str
     generator_version: str
@@ -120,6 +132,7 @@ class ReproducibilityRecord:
     reference_date: str
     excluded_labels: list[str]
     ontology_version: str
+    graph_label_version: str
     started_at: str
     # Benchmark v2.
     bank_version: str
@@ -137,6 +150,8 @@ class ReproducibilityRecord:
     judge_model_family: str | None
     judge_prompt_version: str | None
     judge_prompt_hash: str | None
+    # None for the fake judge, which calls no model.
+    judge_temperature: float | None
     # Gateway reasoning modes ("default" or "off"); the fake judge has none.
     generation_reasoning: str
     judge_reasoning: str | None
@@ -354,18 +369,12 @@ class BenchmarkRunner:
         # Every pipeline shares the one recording generator, as they share the lab's.
         self._run_lab = dataclasses.replace(lab, generator=self._shown)
 
-    def run(self, question_ids: Sequence[str] | None = None, limit: int | None = None) -> WorldRun:
-        """Run the bank's instances in bank order, optionally only those of
-        ``question_ids`` (unknown ids raise ``KeyError``) and at most ``limit``."""
-        instances = list(self.bank.instances)
-        unavailable = self.bank.unavailable
-        if question_ids is not None:
-            wanted = {question_by_id(question_id).question_id for question_id in question_ids}
-            instances = [i for i in instances if i.question_id in wanted]
-            unavailable = tuple(u for u in unavailable if u.question_id in wanted)
-        if limit is not None:
-            instances = instances[:limit]
+    def run(self) -> WorldRun:
+        """Run the bank's instances in bank order.
 
+        A run over part of the bank selects it before the runner is built
+        (``official.select_instances``), so the selection is recorded.
+        """
         wired = None
         if set(self.pipelines) & {"B", "C"}:
             wired = wired_pipelines(self._run_lab, self.graph_config)
@@ -376,12 +385,12 @@ class BenchmarkRunner:
             if wired is not None:
                 available.update(wired.pipelines)
             pipelines = {tag: available[tag] for tag in self.pipelines}
-            results = [self._run_instance(instance, pipelines) for instance in instances]
+            results = [self._run_instance(instance, pipelines) for instance in self.bank.instances]
         finally:
             if wired is not None:
                 wired.reader.close()
         return WorldRun(
-            self.bank.world_seed, self.bank.bank_hash, results, unavailable, self.record()
+            self.bank.world_seed, self.bank.bank_hash, results, self.bank.unavailable, self.record()
         )
 
     def record(self) -> ReproducibilityRecord:
@@ -390,6 +399,7 @@ class BenchmarkRunner:
         manifest = self.world_manifest
         return ReproducibilityRecord(
             git_sha=_git_sha(),
+            git_dirty=_git_dirty(),
             question_bank_version=BANK_VERSION,
             world_dir=self.world_dir.as_posix(),
             generator_version=str(manifest.get("generator_version", "unknown")),
@@ -423,6 +433,7 @@ class BenchmarkRunner:
             reference_date=settings.graph.reference_date.isoformat(),
             excluded_labels=list(settings.graph.excluded_labels),
             ontology_version=ONTOLOGY_VERSION,
+            graph_label_version=LABEL_VERSION,
             started_at=self.started_at,
             bank_version=self.bank.bank_version,
             bank_hash=self.bank.bank_hash,
@@ -439,6 +450,7 @@ class BenchmarkRunner:
             judge_model_family=self.judge.model_family,
             judge_prompt_version=JUDGE_PROMPT_VERSION,
             judge_prompt_hash=judge_prompt_hash(),
+            judge_temperature=self.judge.temperature,
             generation_reasoning=settings.generation.reasoning,
             judge_reasoning=self.judge.reasoning,
         )
@@ -466,7 +478,29 @@ class BenchmarkRunner:
                 None if r.generation_failed else _score(instance, r, self._judge(instance, r))
                 for r in repeats
             ]
+            for run, score in zip(repeats, scores[tag], strict=True):
+                self._log_repeat(instance, run, score)
         return InstanceResult(instance=instance, runs=runs, scores=scores)
+
+    def _log_repeat(self, instance: BankInstance, run: PipelineRun, score: RunScore | None) -> None:
+        """One structured INFO record per repeat: identifiers, timings and
+        failures only, never an answer or an expected answer."""
+        verdict = None if score is None else score.judge
+        logger.info(
+            "benchmark repeat scored",
+            extra={
+                "world_seed": self.bank.world_seed,
+                "bank_hash": self.bank.bank_hash,
+                "instance_id": instance.instance_id,
+                "question_id": instance.question_id,
+                "pipeline": run.pipeline,
+                "repeat": run.repeat,
+                "latency_ms": run.latency_ms,
+                "generation_error": run.generation_error,
+                "judge_failure": None if verdict is None else verdict.failure,
+                "judge_latency_ms": None if verdict is None else verdict.latency_ms,
+            },
+        )
 
     def _judge(self, instance: BankInstance, run: PipelineRun) -> JudgeVerdict:
         """Judge one successful repeat; the seed blinds the block order."""

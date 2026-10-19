@@ -85,6 +85,17 @@ JUDGE_SYSTEM_PROMPT = (
     '"abstention": <0, 1 or 2>}.'
 )
 
+# The user message of one judged repeat, filled by build_judge_prompt; part
+# of the prompt hash, so a layout change shows in the record.
+JUDGE_USER_TEMPLATE = (
+    "Question: {question}\n\n"
+    "Reference answer: {expected_answer}\n\n"
+    "Key facts a complete answer states:\n{facts}\n\n"
+    "Context sources the answerer was shown:\n{sources}\n\n"
+    "Answer to grade:\n{answer}\n\n"
+    "Sources the answer cites: {cited}"
+)
+
 # Any bracket holding a digit: a citation marker or a malformed one.
 _DIGIT_BRACKET = re.compile(r"\[[^\[\]]*\d[^\[\]]*\]")
 _IDENTIFIER = re.compile(r"\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b")
@@ -158,8 +169,9 @@ class JudgeItem:
 class Judge(Protocol):
     model_name: str
     model_family: str | None
-    # The gateway reasoning mode; None when the judge calls no model.
+    # The gateway reasoning mode and temperature; None when the judge calls no model.
     reasoning: str | None
+    temperature: float | None
 
     def judge(self, item: JudgeItem) -> JudgeVerdict: ...
 
@@ -210,20 +222,22 @@ def build_judge_prompt(item: JudgeItem) -> tuple[str, str]:
         or "(no context was shown)"
     )
     cited = [str(renumber[n]) for n in item.cited_blocks if n in renumber]
-    user = (
-        f"Question: {item.question}\n\n"
-        f"Reference answer: {item.expected_answer}\n\n"
-        f"Key facts a complete answer states:\n{facts}\n\n"
-        f"Context sources the answerer was shown:\n{sources}\n\n"
-        f"Answer to grade:\n{answer}\n\n"
-        f"Sources the answer cites: {', '.join(cited) or 'none'}"
+    user = JUDGE_USER_TEMPLATE.format(
+        question=item.question,
+        expected_answer=item.expected_answer,
+        facts=facts,
+        sources=sources,
+        answer=answer,
+        cited=", ".join(cited) or "none",
     )
     return JUDGE_SYSTEM_PROMPT, user
 
 
 def judge_prompt_hash() -> str:
-    """The sha256 of the system prompt and its version, for the record."""
-    return hashlib.sha256((JUDGE_SYSTEM_PROMPT + JUDGE_PROMPT_VERSION).encode("utf-8")).hexdigest()
+    """The sha256 of the system prompt, its version and the user-message
+    template, for the record."""
+    text = JUDGE_SYSTEM_PROMPT + JUDGE_PROMPT_VERSION + JUDGE_USER_TEMPLATE
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def parse_judge(raw: str) -> JudgeScores:
@@ -279,6 +293,7 @@ class GatewayJudge:
         self.model_name = settings.model
         self.model_family = settings.model_family
         self.reasoning: str | None = settings.reasoning
+        self.temperature: float | None = settings.temperature
         self._gateway = gateway
 
     def judge(self, item: JudgeItem) -> JudgeVerdict:
@@ -313,6 +328,7 @@ class FakeJudge:
     model_name = FAKE_JUDGE_MODEL
     model_family: str | None = None
     reasoning: str | None = None
+    temperature: float | None = None
 
     def judge(self, item: JudgeItem) -> JudgeVerdict:
         identifiers = set(_IDENTIFIER.findall(item.expected_answer))

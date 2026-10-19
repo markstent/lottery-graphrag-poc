@@ -31,8 +31,8 @@ from app.graph.config import REPO_ROOT
 # Saved presentation questions (fixed demo configuration). These are
 # pipeline-visible question texts only; they mirror the public phrasing used
 # by the trace CLI and never encode expected answers.
-# Phase 3 replaces these with bank 2.0.0 questions generated from the ledger
-# per world, so no scenario-planted id is hard-coded here.
+# Phase 4 (spec 10a.1) replaces these with bank 2.0.0 questions generated
+# from the ledger per world, so no scenario-planted id is hard-coded here.
 DEMO_QUESTIONS: list[DemoQuestion] = [
     DemoQuestion(
         id="DEMO-01",

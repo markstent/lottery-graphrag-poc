@@ -23,6 +23,7 @@ from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
+from app.evaluation import report
 from app.graph.config import REPO_ROOT
 from app.graph.config import from_env as from_graph_env
 from app.main import create_app
@@ -75,11 +76,11 @@ def failing_client(tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch) -> Itera
         yield test_client
 
 
-def _await_completion(client: TestClient, run_id: str, attempts: int = 200) -> dict:
+def _await_completion(client: TestClient, run_id: str, attempts: int = 200) -> dict[str, Any]:
     import time
 
     for _ in range(attempts):
-        payload = client.get(f"/api/v1/queries/{run_id}").json()
+        payload: dict[str, Any] = client.get(f"/api/v1/queries/{run_id}").json()
         if payload["status"] != "running":
             return payload
         time.sleep(0.05)
@@ -487,3 +488,9 @@ class TestDemoAndBenchmarks:
         self._publish(tmp_path, "run-v1", "official", "2026-10-09T09:00:00+00:00", schema="1")
         status, _ = self._latest(tiny_dataset, monkeypatch, tmp_path)
         assert status == 404
+
+
+def test_the_api_reads_the_summary_schema_the_report_writes() -> None:
+    """The API publishes only summaries of its schema version; a bump on
+    one side alone would silently hide every run."""
+    assert queries.SUMMARY_SCHEMA_VERSION == report.SUMMARY_SCHEMA_VERSION

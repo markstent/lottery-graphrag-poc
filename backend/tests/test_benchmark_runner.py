@@ -12,7 +12,10 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import inspect
 import json
+import logging
+import subprocess
 from pathlib import Path
 from typing import cast
 
@@ -47,7 +50,7 @@ from app.evaluation.runner import (
 )
 from app.evaluation.scoring import classify_failure, evidence_score
 from app.evidence import EvidenceChunk
-from app.graph.config import GraphConfig
+from app.graph.config import LABEL_VERSION, GraphConfig
 from app.models.gateway import CompletionRequest
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.lab import Lab, WiredGraphPipelines, bc_graph_settings, graph_pipelines
@@ -155,9 +158,10 @@ def gateway_judge(
     raw: str = GOOD_REPLY,
     family: str | None = "gemma",
     calls: list[CompletionRequest] | None = None,
+    temperature: float = 0.0,
 ) -> GatewayJudge:
     """A gateway judge of another family than any generator here, replying ``raw``."""
-    settings = JudgeSettings("litellm", "judge-model", family, None, 0.0)
+    settings = JudgeSettings("litellm", "judge-model", family, None, temperature)
     return GatewayJudge(settings, gateway=stub_gateway(raw, calls))
 
 
@@ -470,18 +474,19 @@ def test_any_other_pipeline_error_fails_the_run(frozen_bank: FrozenBank, world_d
         runner.run()
 
 
-def test_question_ids_limit_and_pipelines_select_the_work(
+def test_the_runner_runs_the_bank_it_is_given_with_its_pipelines(
     offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path
 ) -> None:
+    """The runner takes no selection of its own: a run's selection is made
+    (and recorded) by ``select_instances`` before the runner is built."""
+    bank = dataclasses.replace(frozen_bank, instances=frozen_bank.instances[1:])
     runner = BenchmarkRunner(
-        offline_lab, GRAPH, frozen_bank, world_dir, kind="smoke", repeats=1, pipelines=("A",)
+        offline_lab, GRAPH, bank, world_dir, kind="smoke", repeats=1, pipelines=("A",)
     )
-    world = runner.run(question_ids=["L06"])
+    world = runner.run()
     assert [r.instance.question_id for r in world.results] == ["L06"]
     assert set(world.results[0].runs) == {"A"}
-    assert [r.instance.question_id for r in runner.run(limit=1).results] == ["L05"]
-    with pytest.raises(KeyError):
-        runner.run(question_ids=["L99"])
+    assert list(inspect.signature(BenchmarkRunner.run).parameters) == ["self"]
 
 
 def test_world_run_carries_the_bank_identity(
@@ -585,6 +590,9 @@ V2_FIELDS = {
     "judge_prompt_hash",
     "generation_reasoning",
     "judge_reasoning",
+    "judge_temperature",
+    "git_dirty",
+    "graph_label_version",
 }
 
 
@@ -629,6 +637,9 @@ def test_reproducibility_payload_carries_every_field(
     assert payload["judge_prompt_hash"] == judge_prompt_hash()
     assert payload["generation_reasoning"] == settings.generation.reasoning
     assert payload["judge_reasoning"] is None  # the fake judge calls no model
+    assert payload["judge_temperature"] is None
+    assert payload["graph_label_version"] == LABEL_VERSION
+    assert isinstance(payload["git_dirty"], bool)  # the tests run in a git checkout
     json.dumps(payload)  # stored as JSON
 
 
@@ -789,11 +800,75 @@ def test_an_official_run_needs_a_judge_of_another_family(
 
 def test_the_record_names_the_judge(frozen_bank: FrozenBank, world_dir: Path) -> None:
     lab = with_family(indexed_lab(world_dir, generator=ScriptedGenerator()), "qwen")
+    judge = gateway_judge(temperature=0.25)
     runner = BenchmarkRunner(
-        lab, GRAPH, frozen_bank, world_dir, kind="official", repeats=3, judge=gateway_judge()
+        lab, GRAPH, frozen_bank, world_dir, kind="official", repeats=3, judge=judge
     )
     payload = runner.record().to_payload()
     assert (payload["judge_model"], payload["judge_model_family"]) == ("judge-model", "gemma")
+    assert payload["judge_temperature"] == 0.25
     assert payload["judge_prompt_version"] == JUDGE_PROMPT_VERSION
     assert payload["judge_prompt_hash"] == judge_prompt_hash()
     assert payload["judge_reasoning"] == "default"
+
+
+# --- Git state and structured logs (final review fixes) ---------------------------
+
+
+def _completed(stdout: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.CompletedProcess(args=["git"], returncode=0, stdout=stdout, stderr="")
+
+
+def test_git_dirty_reads_the_porcelain_status(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _completed(" M x.py\n"))
+    assert runner_module._git_dirty() is True
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: _completed(""))
+    assert runner_module._git_dirty() is False
+
+
+def test_git_dirty_is_none_without_git(monkeypatch: pytest.MonkeyPatch) -> None:
+    def missing(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise FileNotFoundError("git")
+
+    monkeypatch.setattr(subprocess, "run", missing)
+    assert runner_module._git_dirty() is None
+    assert runner_module._git_sha() == "unknown"
+
+
+def test_every_repeat_writes_one_structured_log_record(
+    runner_with_failing_generator: BenchmarkRunner,
+    frozen_bank: FrozenBank,
+    world_dir: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    lab = indexed_lab(world_dir, generator=ScriptedGenerator())
+    runner = BenchmarkRunner(
+        lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2, judge=gateway_judge("bad")
+    )
+    with caplog.at_level(logging.INFO, logger=runner_module.__name__):
+        world = runner.run()
+        runner_with_failing_generator.run()
+    records = [r for r in caplog.records if r.name == runner_module.__name__]
+    assert len(records) == 2 * (2 * 3 * 2)  # two runs of 2 instances x 3 pipelines x 2 repeats
+    assert all(r.levelno == logging.INFO for r in records)
+    first, failed = vars(records[0]), vars(records[12])
+    assert first | LOG_FIELDS_OF_FIRST == first
+    assert first["latency_ms"] == world.results[0].runs["A"][0].latency_ms
+    assert first["judge_failure"] and first["judge_latency_ms"] >= 0
+    assert failed["generation_error"] == "gateway down"
+    assert failed["judge_failure"] is None and failed["judge_latency_ms"] is None
+    for record in records:
+        text = record.getMessage() + json.dumps(vars(record), default=str)
+        assert "INC_S007_GR [1]." not in text  # the answer
+        assert frozen_bank.instances[0].expected_answer not in text
+
+
+LOG_FIELDS_OF_FIRST = {
+    "world_seed": 2026,
+    "bank_hash": "bank-hash",
+    "instance_id": "L05-2026-INC_S007_GR",
+    "question_id": "L05",
+    "pipeline": "A",
+    "repeat": 0,
+    "generation_error": None,
+}

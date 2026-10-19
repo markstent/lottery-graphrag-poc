@@ -13,6 +13,7 @@ import json
 from collections.abc import Callable
 
 import pytest
+from app.evaluation import judge as judge_module
 from app.evaluation.checks import CitationMetrics
 from app.evaluation.judge import (
     ANSWER_CHAR_CAP,
@@ -155,9 +156,16 @@ def test_versioned_constants() -> None:
     assert (ANSWER_CHAR_CAP, JUDGE_MAX_TOKENS) == (2400, 300)
 
 
-def test_prompt_hash_covers_the_prompt_and_its_version() -> None:
-    expected = hashlib.sha256((JUDGE_SYSTEM_PROMPT + JUDGE_PROMPT_VERSION).encode()).hexdigest()
-    assert judge_prompt_hash() == expected
+def test_prompt_hash_covers_the_prompt_its_version_and_the_user_template(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    text = JUDGE_SYSTEM_PROMPT + JUDGE_PROMPT_VERSION + judge_module.JUDGE_USER_TEMPLATE
+    assert judge_prompt_hash() == hashlib.sha256(text.encode()).hexdigest()
+    before = judge_prompt_hash()
+    monkeypatch.setattr(
+        judge_module, "JUDGE_USER_TEMPLATE", judge_module.JUDGE_USER_TEMPLATE.replace("\n\n", "\n")
+    )
+    assert judge_prompt_hash() != before
 
 
 def test_judge_settings_come_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:

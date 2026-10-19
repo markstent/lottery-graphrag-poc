@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 import pytest
 from app.evaluation.checks import CitationMetrics, TokenCheck
@@ -40,6 +41,7 @@ FAMILY = {
 def _record(kind: str) -> ReproducibilityRecord:
     return ReproducibilityRecord(
         git_sha="abc123",
+        git_dirty=False,
         question_bank_version="2.0.0",
         world_dir="data/generated/dev-seed2026",
         generator_version="1.0.0",
@@ -64,6 +66,7 @@ def _record(kind: str) -> ReproducibilityRecord:
         reference_date="2026-01-01",
         excluded_labels=[],
         ontology_version="1",
+        graph_label_version="v2",
         started_at="2026-10-19T10:00:00+00:00",
         bank_version="2.0.0",
         bank_hash="bankhash",
@@ -80,6 +83,7 @@ def _record(kind: str) -> ReproducibilityRecord:
         judge_model_family="fake",
         judge_prompt_version="1.0.0",
         judge_prompt_hash="judgehash",
+        judge_temperature=0.0,
         generation_reasoning="default",
         judge_reasoning="default",
     )
@@ -185,7 +189,7 @@ def synthetic_run() -> BenchmarkRun:
 
 
 @pytest.fixture(scope="module")
-def synthetic_summary(synthetic_run: BenchmarkRun) -> dict[str, object]:
+def synthetic_summary(synthetic_run: BenchmarkRun) -> dict[str, Any]:
     return summarize(synthetic_run)
 
 
@@ -243,7 +247,7 @@ def test_report_shows_only_summarised_numbers(synthetic_run: BenchmarkRun) -> No
 
 
 def test_headlines_cover_each_stratum_and_the_name_anchored_subgroup(
-    synthetic_summary: dict[str, object],
+    synthetic_summary: dict[str, Any],
 ) -> None:
     headlines = synthetic_summary["headlines"]
     assert isinstance(headlines, list)
@@ -256,7 +260,7 @@ def test_headlines_cover_each_stratum_and_the_name_anchored_subgroup(
     assert all(line.endswith("no test is run on this sub-group.") for line in subgroup)
 
 
-def test_out_of_family_cells_run_no_test(synthetic_summary: dict[str, object]) -> None:
+def test_out_of_family_cells_run_no_test(synthetic_summary: dict[str, Any]) -> None:
     comparisons = synthetic_summary["comparisons"]
     assert isinstance(comparisons, list)
     name = [c for c in comparisons if c["stratum"] == "H2_name"]
@@ -264,7 +268,7 @@ def test_out_of_family_cells_run_no_test(synthetic_summary: dict[str, object]) -
     assert all(c["n"] == 6 and c["clusters"] == 6 for c in name if c["metric"] == "evidence_f1")
 
 
-def test_pairs_cluster_by_question_and_world(synthetic_summary: dict[str, object]) -> None:
+def test_pairs_cluster_by_question_and_world(synthetic_summary: dict[str, Any]) -> None:
     comparisons = synthetic_summary["comparisons"]
     assert isinstance(comparisons, list)
     h1 = next(c for c in comparisons if c["stratum"] == "H1" and c["metric"] == "evidence_f1")
@@ -272,7 +276,7 @@ def test_pairs_cluster_by_question_and_world(synthetic_summary: dict[str, object
     assert h1["low"] <= h1["mean"] <= h1["high"]
 
 
-def test_counts_failures_agreement_and_basis(synthetic_summary: dict[str, object]) -> None:
+def test_counts_failures_agreement_and_basis(synthetic_summary: dict[str, Any]) -> None:
     summary = synthetic_summary
     assert summary["worlds"] == [2026, 2027]
     assert summary["bank_version"] == "2.0.0"
@@ -323,7 +327,7 @@ def test_judge_failures_are_counted_and_not_zero() -> None:
 
 
 def test_comparisons_name_why_they_were_or_were_not_tested(
-    synthetic_summary: dict[str, object],
+    synthetic_summary: dict[str, Any],
 ) -> None:
     comparisons = synthetic_summary["comparisons"]
     assert isinstance(comparisons, list)
@@ -366,3 +370,21 @@ def test_twelve_pairs_in_four_groups_make_no_claim() -> None:
         "Too few pairs to say for Graph and text search on multi-hop questions "
         "(12 pairs in 4 groups)."
     )
+
+
+def test_the_run_start_is_printed_once_outside_the_shared_list(
+    synthetic_run: BenchmarkRun,
+) -> None:
+    report = render_report(synthetic_run)
+    assert "Run started: 2026-10-19T10:00:00+00:00 (when the first world started)." in report
+    shared = report.split("Shared by every world:")[1].split("### World")[0]
+    assert "started_at" not in shared
+    worlds = report.split("Shared by every world:")[1].split("### World")[1:]
+    assert all("- started_at: `2026-10-19T10:00:00+00:00`" in world for world in worlds)
+
+
+def test_smoke_comparisons_say_they_are_not_a_result(smoke_run: BenchmarkRun) -> None:
+    report = render_report(smoke_run)
+    assert "| tested (smoke run, not a result) |" in report
+    assert "| tested |" not in report
+    assert "| tested |" in render_report(_benchmark("official", h5_per_world=6))
