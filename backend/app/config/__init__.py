@@ -22,6 +22,8 @@ class EmbeddingSettings:
     model: str
     dimensions: int
     host: str
+    sparse_provider: str = "fastembed"  # "fastembed" | "hashing"
+    sparse_model: str = "Qdrant/bm25"
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,14 +191,19 @@ def _env_float(name: str, default: float) -> float:
 
 def from_env() -> RetrievalSettings:
     """Read settings from the environment with local-development defaults."""
+    embedding_provider = os.environ.get("EMBEDDING_PROVIDER", "ollama")
     return RetrievalSettings(
         dataset_dir=os.environ.get("DATASET_DIR", str(DEFAULT_DATASET_DIR)),
         top_k=_env_int("RAG_TOP_K", 8),
         embedding=EmbeddingSettings(
-            provider=os.environ.get("EMBEDDING_PROVIDER", "ollama"),
+            provider=embedding_provider,
             model=os.environ.get("EMBEDDING_MODEL", "bge-m3"),
             dimensions=_env_int("EMBEDDING_DIMENSIONS", 1024),
             host=os.environ.get("OLLAMA_HOST", "http://localhost:11434"),
+            sparse_provider=os.environ.get(
+                "SPARSE_PROVIDER", "hashing" if embedding_provider == "hashing" else "fastembed"
+            ),
+            sparse_model=os.environ.get("SPARSE_MODEL", "Qdrant/bm25"),
         ),
         vector=VectorSettings(
             url=os.environ.get("QDRANT_URL", "http://localhost:6333"),
