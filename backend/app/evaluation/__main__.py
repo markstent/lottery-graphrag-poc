@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     _seeds_argument(run)
     run.add_argument(
         "--repeats",
-        type=int,
+        type=_repeats,
         default=None,
         help=f"Repeats per pipeline (default 1 for smoke, {OFFICIAL_MIN_REPEATS} for official).",
     )
@@ -58,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
         default=official.SWEEP_DEPTHS,
         help="Comma-separated graph depths (default 0,1,2,3).",
     )
-    sweep.add_argument("--repeats", type=int, default=OFFICIAL_MIN_REPEATS)
+    sweep.add_argument("--repeats", type=_repeats, default=OFFICIAL_MIN_REPEATS)
     _limit_argument(sweep)
     _out_argument(sweep)
     compare = commands.add_parser("compare", help="Pair two official runs of different models.")
@@ -68,7 +68,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "run":
-        repeats = args.repeats or (1 if args.kind == "smoke" else OFFICIAL_MIN_REPEATS)
+        repeats = args.repeats
+        if repeats is None:
+            repeats = 1 if args.kind == "smoke" else OFFICIAL_MIN_REPEATS
         out = args.out or official.run_dir(official.run_id(args.kind))
         official.run_benchmark(
             args.kind,
@@ -111,6 +113,19 @@ def main(argv: list[str] | None = None) -> int:
     args.out.write_text(render_bank_doc(bank), encoding="utf-8")
     print(f"wrote {args.out}")
     return 0
+
+
+def _repeats(text: str) -> int:
+    """A repeat count: a whole number of at least 1."""
+    try:
+        repeats = int(text)
+    except ValueError:
+        repeats = 0
+    if repeats < 1:
+        raise argparse.ArgumentTypeError(
+            f"repeats must be a whole number of at least 1, got {text}"
+        )
+    return repeats
 
 
 def _integers(text: str) -> tuple[int, ...]:

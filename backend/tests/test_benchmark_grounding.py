@@ -10,9 +10,10 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import Counter
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import duckdb
 import pytest
@@ -552,3 +553,45 @@ def test_dev_world_segment_claims_have_no_player_carrier(dev_grounding: WorldGro
             for claim in instance.claims
             for carrier in claim.carriers
         )
+
+
+def test_a_ledger_of_another_world_seed_is_refused(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    payload = json.loads(tiny_ledger.read_text(encoding="utf-8"))
+    payload["world"]["world_seed"] = 43
+    ledger = tmp_path / "ledger.json"
+    ledger.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(GroundingError, match=r"world seed 43.*world seed 42"):
+        freeze_bank(tiny_dataset, ledger)
+
+
+def _rehashed(content: dict[str, object]) -> str:
+    """A bank file whose bank_hash matches its (possibly malformed) content."""
+    canonical = json.dumps(content, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
+    bank_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    return json.dumps({**content, "bank_hash": bank_hash}, sort_keys=True, indent=2) + "\n"
+
+
+@pytest.mark.parametrize(
+    "break_content",
+    [
+        lambda c: c["instances"][0].pop("text"),  # KeyError
+        lambda c: c.__setitem__("unavailable", 7),  # TypeError
+        lambda c: c.__setitem__("world_seed", "forty-two"),  # ValueError
+    ],
+)
+def test_a_malformed_but_correctly_hashed_bank_is_a_grounding_error(
+    tiny_dataset: Path,
+    tiny_ledger: Path,
+    tmp_path: Path,
+    break_content: Callable[[dict[str, Any]], object],
+) -> None:
+    path = tmp_path / "bank.json"
+    write_frozen_bank(freeze_bank(tiny_dataset, tiny_ledger), path)
+    content = json.loads(path.read_text(encoding="utf-8"))
+    content.pop("bank_hash")
+    break_content(content)
+    path.write_text(_rehashed(content), encoding="utf-8")
+    with pytest.raises(GroundingError, match="malformed"):
+        load_frozen_bank(path)

@@ -370,6 +370,18 @@ def test_an_edited_bank_file_is_grounded_again(recorder: Recorder) -> None:
     assert recorder.grounded == [2027, 2027]
 
 
+def test_a_malformed_but_correctly_hashed_bank_is_grounded_again(recorder: Recorder) -> None:
+    paths = prepare_world(2027, recorder.steps)
+    content = json.loads(paths.bank_path.read_text())
+    content.pop("bank_hash")
+    content["instances"][0].pop("text")
+    canonical = json.dumps(content, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
+    content["bank_hash"] = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    paths.bank_path.write_text(json.dumps(content))
+    prepare_world(2027, recorder.steps)
+    assert recorder.grounded == [2027, 2027]
+
+
 # --- Instance selection --------------------------------------------------------
 
 
@@ -463,7 +475,7 @@ def test_run_files_are_written_atomically(
         replaced.append((Path(source), Path(target)))
         real_replace(source, target)
 
-    monkeypatch.setattr(official.os, "replace", spy)
+    monkeypatch.setattr(os, "replace", spy)
     run_benchmark(
         "smoke",
         (2026,),
@@ -490,7 +502,7 @@ def test_a_failed_write_leaves_no_partial_file(
     def broken(source: str | os.PathLike[str], target: str | os.PathLike[str]) -> None:
         raise OSError("disk full")
 
-    monkeypatch.setattr(official.os, "replace", broken)
+    monkeypatch.setattr(os, "replace", broken)
     with pytest.raises(OSError, match="disk full"):
         run_benchmark(
             "smoke",
@@ -697,6 +709,28 @@ def test_cli_sweep_passes_its_depths(captured: dict[str, Any], data_dir: Path) -
     assert kwargs["depths"] == (1, 3)
     assert kwargs["repeats"] == 3
     assert kwargs["out_dir"].name.endswith("-sweep")
+
+
+@pytest.mark.parametrize("command", [["run", "--kind", "official"], ["sweep"]])
+@pytest.mark.parametrize("repeats", ["0", "-1", "two"])
+def test_cli_refuses_repeats_below_one(
+    captured: dict[str, Any],
+    data_dir: Path,
+    capsys: pytest.CaptureFixture[str],
+    command: list[str],
+    repeats: str,
+) -> None:
+    """``--repeats 0`` is refused, never silently replaced by the default."""
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main([*command, "--repeats", repeats])
+    assert exit_info.value.code == 2
+    assert "repeats must be a whole number of at least 1" in capsys.readouterr().err
+    assert captured == {}
+
+
+def test_cli_run_passes_an_explicit_repeat_count(captured: dict[str, Any], data_dir: Path) -> None:
+    cli.main(["run", "--kind", "official", "--repeats", "5"])
+    assert captured["run"][1]["repeats"] == 5
 
 
 def test_cli_compare_writes_comparison_json(tmp_path: Path) -> None:

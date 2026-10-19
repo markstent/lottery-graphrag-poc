@@ -282,11 +282,22 @@ class FrozenBank:
 
 
 def freeze_bank(world_dir: Path, ledger_path: Path) -> FrozenBank:
-    """Ground every bank question, in bank order, into one hashed bank."""
+    """Ground every bank question, in bank order, into one hashed bank.
+
+    Raises :class:`GroundingError` when the ledger belongs to another world
+    seed than the world's ``_manifest.json``.
+    """
+    manifest = (world_dir / "_manifest.json").read_bytes()
     grounding = WorldGrounding(world_dir, ledger_path)
     instances: list[BankInstance] = []
     unavailable: list[Unavailable] = []
     try:
+        world_seed = json.loads(manifest).get("world_seed")
+        if world_seed != grounding.world_seed:
+            raise GroundingError(
+                f"the ledger {ledger_path} is of world seed {grounding.world_seed}, but the "
+                f"world {world_dir} is of world seed {world_seed}; use the world's own ledger"
+            )
         for question in BANK:
             outcome = grounding.ground(question)
             instances.extend(outcome.instances)
@@ -298,7 +309,7 @@ def freeze_bank(world_dir: Path, ledger_path: Path) -> FrozenBank:
     unhashed = FrozenBank(
         bank_version=BANK_VERSION,
         world_seed=grounding.world_seed,
-        world_manifest_hash=_sha256((world_dir / "_manifest.json").read_bytes()),
+        world_manifest_hash=_sha256(manifest),
         record_serialiser_version=RECORD_SERIALISER_VERSION,
         ledger_hash=_sha256(ledger_path.read_bytes()),
         instances=tuple(instances),
@@ -320,7 +331,8 @@ def write_frozen_bank(bank: FrozenBank, path: Path) -> None:
 
 
 def load_frozen_bank(path: Path) -> FrozenBank:
-    """Read a written bank; raises :class:`GroundingError` when its hash does not match."""
+    """Read a written bank; raises :class:`GroundingError` when its hash does
+    not match or its content is malformed, so a caller grounds it again."""
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict) or "bank_hash" not in payload:
         raise GroundingError(f"{path} is not a frozen bank")
@@ -328,7 +340,10 @@ def load_frozen_bank(path: Path) -> FrozenBank:
     actual = _content_hash(payload)
     if recorded != actual:
         raise GroundingError(f"{path} has bank hash {recorded} but its content hashes to {actual}")
-    return _bank_from_content(payload, actual)
+    try:
+        return _bank_from_content(payload, actual)
+    except (KeyError, TypeError, ValueError) as error:
+        raise GroundingError(f"{path} is a malformed frozen bank: {error!r}") from error
 
 
 def _content(bank: FrozenBank) -> dict[str, object]:
