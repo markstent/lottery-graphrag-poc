@@ -1,10 +1,10 @@
-"""One total context budget and evidence-slot cap for every pipeline.
+"""One judge, one total context budget and one evidence-slot cap for every pipeline.
 
-Structured graph blocks (pipelines B and C) and document chunks share one
-token budget and one evidence-slot count, so A, B and C answer from the same
-amount of context (docs/retrieval/retrieval-fairness.md). Record blocks for
-nodes that enter as structured facts are superseded rather than duplicated
-(design 10a.8).
+Structured graph candidates (pipelines B and C) and document candidates are
+reranked together and selected from one list into one token budget and one
+evidence-slot count, so A, B and C answer from the same amount of context
+(docs/retrieval/retrieval-fairness.md). Record blocks of structured
+candidates are superseded before judging (design 10a.8).
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from app.events import GRAPH_CANDIDATE_DISCARDED
 from app.evidence import EvidenceChunk
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import ResolvedEntity, StaticEntityResolver
+from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import NeighbourEdge, StaticNeighbourProvider
 from app.retrieval.standard.context import (
     SELECTION_BUDGET,
@@ -25,6 +26,7 @@ from app.retrieval.standard.context import (
     assemble_context,
     estimate_tokens,
     select_context,
+    supersede_records,
 )
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import HashingEmbedder
@@ -34,7 +36,7 @@ from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
-from tests.test_graph_rag import build_corpus, make_settings
+from tests.test_graph_rag import RecordingReranker, build_corpus, make_settings
 
 
 def _words(prefix: str, count: int) -> str:
@@ -79,46 +81,49 @@ def settings(budget: int, slots: int = 12) -> ContextSettings:
     return ContextSettings(budget_tokens=budget, dedupe_threshold=0.85, evidence_slots=slots)
 
 
-def test_structured_blocks_count_against_the_same_budget() -> None:
-    structured = [node_chunk(f"n{i}", words=200) for i in range(3)]
-    docs = [doc_chunk(f"d{i}", words=200) for i in range(3)]
-    result = assemble_context(structured, docs, settings(300))
-    assert result.context_tokens <= 300 and not result.document_selected
-    assert {chunk.discard_reason for chunk in result.discarded} == {SELECTION_BUDGET}
-
-
-def test_documents_use_the_budget_left_by_structured_blocks() -> None:
-    structured = [node_chunk("n0", words=20)]
-    docs = [doc_chunk(f"d{i}", words=20) for i in range(4)]
-    one_block = estimate_tokens(structured[0].text)
-    doc_tokens = estimate_tokens(docs[0].text)
-    result = assemble_context(structured, docs, settings(one_block + 2 * doc_tokens))
-    assert len(result.structured_selected) == 1
-    assert len(result.document_selected) == 2
-    assert result.context_tokens == sum(
-        estimate_tokens(chunk.text)
-        for chunk in [*result.structured_selected, *result.document_selected]
-    )
-
-
-def test_slot_limit_applies_across_structured_and_documents() -> None:
-    structured = [node_chunk(f"n{i}", words=5) for i in range(3)]
-    docs = [doc_chunk(f"d{i}", words=5) for i in range(4)]
-    result = assemble_context(structured, docs, settings(10_000, slots=5))
-    assert len(result.structured_selected) == 3
-    assert len(result.document_selected) == 2
-    slot_discards = [c.chunk_id for c in result.discarded if c.discard_reason == "slot_limit"]
-    assert slot_discards == ["d2", "d3"]
-
-
-def test_structured_blocks_alone_can_fill_every_slot() -> None:
-    structured = [node_chunk(f"n{i}", words=5) for i in range(4)]
-    docs = [doc_chunk("d0", words=5)]
-    result = assemble_context(structured, docs, settings(10_000, slots=3))
-    assert len(result.structured_selected) == 3
+def test_nodes_and_documents_count_against_the_same_budget() -> None:
+    candidates = [node_chunk("n0", words=100), doc_chunk("d0", words=100), node_chunk("n1", 100)]
+    result = assemble_context(candidates, settings(200))
+    assert result.context_tokens <= 200
+    assert [chunk.chunk_id for chunk in result.structured_selected] == ["n0"]
     assert not result.document_selected
-    reasons = {chunk.chunk_id: chunk.discard_reason for chunk in result.discarded}
-    assert reasons == {"n3": SELECTION_SLOT_LIMIT, "d0": SELECTION_SLOT_LIMIT}
+    assert {chunk.discard_reason for chunk in result.discarded} == {SELECTION_BUDGET}
+    assert result.context_tokens == estimate_tokens(candidates[0].text)
+
+
+def test_a_higher_ranked_document_takes_a_slot_ahead_of_a_node() -> None:
+    reranked = [doc_chunk("d0", words=5), node_chunk("n0", words=5), node_chunk("n1", words=5)]
+    result = assemble_context(reranked, settings(10_000, slots=2))
+    assert [chunk.chunk_id for chunk in result.document_selected] == ["d0"]
+    assert [chunk.chunk_id for chunk in result.structured_selected] == ["n0"]
+    assert {chunk.chunk_id: chunk.discard_reason for chunk in result.discarded} == {
+        "n1": SELECTION_SLOT_LIMIT
+    }
+
+
+def test_a_higher_ranked_node_takes_a_slot_ahead_of_a_document() -> None:
+    reranked = [node_chunk("n0", words=5), doc_chunk("d0", words=5), doc_chunk("d1", words=5)]
+    result = assemble_context(reranked, settings(10_000, slots=1))
+    assert [chunk.chunk_id for chunk in result.structured_selected] == ["n0"]
+    assert not result.document_selected
+    assert [chunk.discard_reason for chunk in result.discarded] == [SELECTION_SLOT_LIMIT] * 2
+
+
+def test_each_kind_keeps_selection_order() -> None:
+    reranked = [
+        node_chunk("n1", 5),
+        doc_chunk("d1", 5),
+        node_chunk("n0", 5),
+        record_chunk("GAME_GR_01", 5),
+        doc_chunk("d0", 5),
+    ]
+    result = assemble_context(reranked, settings(10_000))
+    assert [chunk.chunk_id for chunk in result.structured_selected] == ["n1", "n0"]
+    assert [chunk.chunk_id for chunk in result.document_selected] == [
+        "d1",
+        "REC_games_GAME_GR_01",
+        "d0",
+    ]
 
 
 def test_select_context_checks_budget_then_slots_then_duplicates() -> None:
@@ -200,9 +205,13 @@ def _record_pipeline() -> GraphRagPipeline:
     )
 
 
-def test_record_block_for_a_selected_node_is_superseded() -> None:
+def test_record_block_of_a_structured_candidate_is_superseded_before_judging() -> None:
     graph_pipeline = _record_pipeline()
+    reranker = RecordingReranker()
+    graph_pipeline.reranker = reranker
     run = graph_pipeline.run("What is the price of GAME_GR_01?")
+    judged = {candidate.chunk_id for candidate in reranker.calls[0][1]}
+    assert "GAME_GR_01" in judged and "REC_games_GAME_GR_01" not in judged
     reasons = {c.chunk_id: c.discard_reason for c in run.document_evidence}
     assert reasons.get("REC_games_GAME_GR_01") == SELECTION_SUPERSEDED
     assert any(node.node_id == "GAME_GR_01" and node.selected for node in run.node_evidence)
@@ -213,6 +222,7 @@ def test_record_block_for_a_selected_node_is_superseded() -> None:
         and event.payload.get("chunk_id") == "REC_games_GAME_GR_01"
     ]
     assert [event.payload["reason"] for event in superseded_events] == [SELECTION_SUPERSEDED]
+    assert superseded_events[0].payload["rerank_score"] is None
 
 
 def test_graph_context_tokens_respect_the_shared_budget() -> None:
@@ -232,54 +242,90 @@ def record_chunk(record_id: str, words: int) -> EvidenceChunk:
     )
 
 
-def test_record_block_of_a_selected_node_is_superseded_in_assembly() -> None:
-    structured = [node_chunk("GAME_GR_01", words=5)]
-    docs = [record_chunk("GAME_GR_01", words=5), doc_chunk("d0", words=5)]
-    result = assemble_context(structured, docs, settings(10_000, slots=2))
-    reasons = {chunk.chunk_id: chunk.discard_reason for chunk in result.discarded}
-    assert reasons == {"REC_games_GAME_GR_01": SELECTION_SUPERSEDED}
-    # The superseded record does not take the remaining slot.
-    assert [chunk.chunk_id for chunk in result.document_selected] == ["d0"]
+def test_supersede_records_drops_only_records_of_structured_candidates() -> None:
+    docs = [
+        record_chunk("GAME_GR_01", words=5),
+        record_chunk("GAME_GR_02", words=5),
+        doc_chunk("d0", words=5).model_copy(update={"document_id": "GAME_GR_01"}),
+    ]
+    kept, superseded = supersede_records({"GAME_GR_01"}, docs)
+    assert [chunk.chunk_id for chunk in kept] == ["REC_games_GAME_GR_02", "d0"]
+    assert [(chunk.chunk_id, chunk.discard_reason) for chunk in superseded] == [
+        ("REC_games_GAME_GR_01", SELECTION_SUPERSEDED)
+    ]
 
 
-def test_record_block_of_a_dropped_node_stays_a_document_candidate() -> None:
-    structured = [node_chunk("n0", words=5), node_chunk("GAME_GR_01", words=5)]
-    docs = [record_chunk("GAME_GR_01", words=5)]
-    result = assemble_context(structured, docs, settings(10_000, slots=2))
-    assert [chunk.chunk_id for chunk in result.structured_selected] == ["n0", "GAME_GR_01"]
-
-    dropped = assemble_context(structured, docs, settings(10_000, slots=1))
-    reasons = {chunk.chunk_id: chunk.discard_reason for chunk in dropped.discarded}
-    assert reasons["GAME_GR_01"] == SELECTION_SLOT_LIMIT
-    # Not superseded: it competed in the document pass (and lost its slot).
-    assert reasons["REC_games_GAME_GR_01"] == SELECTION_SLOT_LIMIT
-
-    budget = estimate_tokens(structured[0].text) + estimate_tokens(docs[0].text)
-    by_budget = assemble_context(
-        [structured[0], node_chunk("GAME_GR_01", words=400)], docs, settings(budget)
-    )
-    assert [chunk.chunk_id for chunk in by_budget.document_selected] == ["REC_games_GAME_GR_01"]
-
-
-def test_structured_blocks_are_never_dropped_as_duplicates() -> None:
+def _shared_text(suffix: str) -> str:
     shared = (
         "Game market_id=MKT_GR status=ACTIVE category=DRAW channel=RETAIL currency=EUR"
         " draw_day=FRIDAY jackpot=ROLLING operator=SYNTHETIC_GR licence=GR_LOTTERY"
         " region=EU format=6_49 tier=STANDARD"
     )
-    first = node_chunk("GAME_GR_01", words=1).model_copy(update={"text": f"{shared} GAME_GR_01"})
-    second = node_chunk("GAME_GR_02", words=1).model_copy(update={"text": f"{shared} GAME_GR_02"})
-    left, right = set(first.text.lower().split()), set(second.text.lower().split())
+    return f"{shared} {suffix}"
+
+
+def test_nodes_and_records_are_never_dropped_as_duplicates() -> None:
+    first, second = _shared_text("GAME_GR_01"), _shared_text("GAME_GR_02")
+    left, right = set(first.lower().split()), set(second.lower().split())
     assert len(left & right) / len(left | right) > 0.85  # above the dedupe threshold
 
-    result = assemble_context([first, second], [], settings(10_000))
-    assert [chunk.chunk_id for chunk in result.structured_selected] == ["GAME_GR_01", "GAME_GR_02"]
+    nodes = [
+        node_chunk("GAME_GR_01", words=1).model_copy(update={"text": first}),
+        node_chunk("GAME_GR_02", words=1).model_copy(update={"text": second}),
+    ]
+    records = [
+        record_chunk("GAME_GR_03", 1).model_copy(update={"text": first}),
+        record_chunk("GAME_GR_04", 1).model_copy(update={"text": second}),
+    ]
+    result = assemble_context([*nodes, *records], settings(10_000))
+    assert len(result.structured_selected) == 2 and len(result.document_selected) == 2
     assert not result.discarded
 
-    # Documents with the same texts keep the near-duplicate check.
+    # Document chunks with the same texts keep the near-duplicate check.
     docs = [
-        doc_chunk("d0", 1).model_copy(update={"text": first.text}),
-        doc_chunk("d1", 1).model_copy(update={"text": second.text}),
+        doc_chunk("d0", 1).model_copy(update={"text": first}),
+        doc_chunk("d1", 1).model_copy(update={"text": second}),
     ]
-    discarded = assemble_context([], docs, settings(10_000)).discarded
-    assert [chunk.discard_reason for chunk in discarded] == [SELECTION_DUPLICATE]
+    discarded = assemble_context(docs, settings(10_000)).discarded
+    assert [(chunk.chunk_id, chunk.discard_reason) for chunk in discarded] == [
+        ("d1", SELECTION_DUPLICATE)
+    ]
+
+
+MECHANIC_TEXT = (
+    "Game mechanic EPILOGI (MECH_GR_EPILOGI) in Greece: Pick your numbers. Language el. "
+    "Source: product_catalogue table game_mechanics, record MECH_GR_EPILOGI."
+)
+
+
+def test_game_mechanic_node_supersedes_its_record_block(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    graph_pipeline = _record_pipeline()
+    record = dataclasses.replace(
+        _record_block(),
+        chunk_id="REC_game_mechanics_MECH_GR_EPILOGI",
+        document_id="MECH_GR_EPILOGI",
+        text=MECHANIC_TEXT,
+        title="game_mechanics: MECH_GR_EPILOGI",
+        record_table="game_mechanics",
+    )
+    index_corpus(graph_pipeline.store, graph_pipeline.embeddings, graph_pipeline.sparse, [record])
+    graph_pipeline.neighbours = StaticNeighbourProvider(
+        {
+            "MKT_GR": [
+                NeighbourEdge("MKT_GR", "AVAILABLE_IN", "GAME_GR_01", "Game"),
+            ],
+            "GAME_GR_01": [
+                NeighbourEdge("GAME_GR_01", "HAS_MECHANIC", "MECH_GR_EPILOGI", "GameMechanic"),
+            ],
+        }
+    )
+    graph_pipeline.source_lookup = SourceLookup(
+        tmp_path, {("game_mechanics", "MECH_GR_EPILOGI"): MECHANIC_TEXT}
+    )
+    reranker = RecordingReranker()
+    graph_pipeline.reranker = reranker
+    run = graph_pipeline.run("Which mechanic does GAME_GR_01 use?")
+    reasons = {c.chunk_id: c.discard_reason for c in run.document_evidence}
+    assert reasons["REC_game_mechanics_MECH_GR_EPILOGI"] == SELECTION_SUPERSEDED
+    node = next(c for c in reranker.calls[0][1] if c.chunk_id == "MECH_GR_EPILOGI")
+    assert node.kind == "node" and node.text == MECHANIC_TEXT

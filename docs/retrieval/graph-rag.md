@@ -23,14 +23,16 @@ The graph is an augmentation layer. Documents never travel through it.
 question
   -> entity resolution (B: ids and markets; C: plus ontology terms and bound codes)
   -> query expansion (C only: concept labels and synonyms appended)
-  -> seed selection (always selected, outside the evidence cap)
-  -> bounded traversal over the structured-record subgraph
+  -> seed selection (resolved entities; else the graph node of the best record block)
+  -> bounded traversal over the structured-record subgraph (Document targets excluded)
   -> ontology expansion (C only: most relevant MAPS_TO-bound entities of reached concepts)
   -> candidate scoring (see docs/retrieval/evidence-ranking.md)
-  -> evidence selection (max_evidence_nodes, reasons recorded)
+  -> structured channel: top RERANK_CANDIDATES nodes by score (the rest: candidate_cap)
   -> authoritative facts attached from the source tables (SourceLookup)
-  -> document retrieval: the SAME vector channel as pipeline A
-  -> context assembly under the shared token budget
+  -> document channel: the SAME hybrid search as pipeline A
+  -> record blocks of structured candidates superseded
+  -> one judge: the shared reranker scores both channels on the raw question
+  -> one selection under the shared token budget and slot count
   -> the same generator, same parameters as pipeline A
   -> answer + node evidence + document evidence + telemetry events
 ```
@@ -55,27 +57,21 @@ Resolution is deterministic and model-free (`app/retrieval/graph/resolution.py`)
 
 The walk is breadth-first over the **structured-record subgraph**:
 
-- Relationship allow-list (`DEFAULT_RELATIONSHIP_TYPES` in
-  `app/config/__init__.py`, 14 types):
-  `AFFECTS, AFFECTS_MARKET, AVAILABLE_IN, BELONGS_TO, CONCERNS, FROM_MARKET,
-  INSTANCE_OF, MAPS_TO, RELATED_TO, RELATED_TO_VERSION, RUNS_ON, SIMILAR_TO,
-  TARGETS, VERSION_OF`.
-- Documents and chunks are excluded on purpose. The vector layer owns
-  document retrieval for every pipeline (retrieval fairness); document edges
-  would spend traversal budget on leaf nodes whose content the shared corpus
-  already provides.
-- Player-transactional edges (`PLAYS`, `EXPOSED_TO`, `USES`, `AVAILABLE_VIA`,
-  `PROMOTES`, `HAS_DRAW`, `DEPLOYED_TO`, `RELATED_TO_APP_VERSION`) are
-  excluded: they fan out to thousands of neighbours. Fraud-topology questions
-  (SCN-003 profile) add `USES_PAYMENT` and `USES` per run through
-  configuration, never through code branching.
+- Relationship allow-list (`DEFAULT_RELATIONSHIP_TYPES` in `app/config/__init__.py`, 22 types for C, 19 for B without the ontology types):
+  `AFFECTS, AFFECTS_MARKET, AVAILABLE_IN, BELONGS_TO, CATEGORISED_AS, CONCERNS, FROM_MARKET, HAS_MECHANIC, INSTANCE_OF, IS_A, MAPS_TO, OF_TYPE, PROVIDED_BY, RELATED_TO, RELATED_TO_APP_VERSION, RELATED_TO_VERSION, RUNS_ON, SIMILAR_TO, TARGETS, USES, USES_PAYMENT, VERSION_OF`.
+- Document nodes are not traversal targets: `GraphRagSettings.excluded_labels` defaults to `("Document",)` and is carried into pipeline B by `without_ontology()`.
+  No edge whose target label is excluded is followed or recorded; the neighbour statements drop those targets before the per-type cap, so a document never takes a permitted neighbour's place.
+  Documents belong to the document channel for every pipeline (design G1; AGENTS.md graph augmentation principle).
+  `HAS_CHUNK` and `REFERENCES` are not in the allow-list either.
+- Player-transactional edges (`PLAYS`, `EXPOSED_TO`, `AVAILABLE_VIA`, `PROMOTES`, `HAS_DRAW`, `DEPLOYED_TO`) are excluded: they fan out to thousands of neighbours.
+  `USES` and `USES_PAYMENT` are included for every question and bounded by the per-type and per-hop caps.
 - Traversal is undirected: `(a)-[r]-(b)`.
 - Caps (all configurable, defaults in `.env.example`):
   - `max_depth=2`
   - `max_nodes_per_hop=100`
   - `max_edges_per_node_type=4` (per frontier node, per relationship type)
   - `max_total_nodes=200`
-  - `max_evidence_nodes=12`
+  - structured candidates handed to the judge: `RERANK_CANDIDATES=40`
 - **Cut policy:** when candidate edges exceed a hop budget, they are explored
   in relationship-strength order (the same transparent weight table used by
   ranking, `RELATIONSHIP_WEIGHTS` in `app/retrieval/graph/traversal.py`), ties
@@ -103,26 +99,39 @@ otherwise, same limits, same weights.
 
 ## Seeds
 
-Seeds are query anchors: always selected and emitted with `seed: true`, and
-they do not consume `max_evidence_nodes`. Seed events are separate from
-candidate events (docs/07-api-event-spec.md section 8).
+Seeds are the resolved entities, emitted as `graph.seed.selected`.
+They anchor the traversal and are judged like every other node: a seed has no reserved slot, and its candidate events carry `seed: true`.
+
+When no entity resolves, the fallback searches the shared vector layer with the same models as pipeline A (`kinds=["record"]`, `limit=1`; pipeline C uses its expanded text).
+It seeds the best record block's graph node: the node id is the record id and the label comes from the record table (`source_lookup.label_for_table`).
+The seed is resolved with `origin="vector_fallback"`, has a real label and takes part in ranking like any node.
+No record hit means no seed: B and C then run on the document channel alone, and `graph.seed.selected` is absent.
+A seed is never fabricated.
 
 ## Document channel (fairness)
 
-Document retrieval is identical to pipeline A: same corpus, same embedding
-model, same `top_k`, same reranker, same `select_context` budget and dedupe.
-The only difference is pipeline C's expanded query text for the dense and
-sparse search (see above).
+Document retrieval is identical to pipeline A: same corpus, same embedding model, same hybrid search and `top_k`, same market scope.
+The only difference is pipeline C's expanded query text for the dense and sparse search (see above).
+The documents are judged together with the structured candidates by the same reranker on the raw question, and one selection fills the shared budget and slots (`docs/retrieval/context-budgeting.md`).
 The graph adds structured records and paths, not a second document channel.
 `EvidenceChunk.discovered_via` is `"vector"` for every chunk; the field stays
 in the schema so later phases can attach further provenance without a
 breaking change.
 
-## Authoritative facts
+## Node text and authoritative facts
 
-Selected structured nodes get authoritative facts fetched from the parquet
-source tables (`SourceLookup`, memoised). Quantitative claims in answers come
-from these records, not from document prose. `PaymentMethod` nodes are
+Each node has one text, used for semantic ranking, by the judge and in the prompt (`SourceLookup.node_text`):
+
+- A node whose row has a record block in A's corpus gets that block's text, byte for byte (`record_texts_of` over the indexed corpus, keyed by record table and id).
+- A node with authoritative columns but no record block (markets, platforms, channels, experiments, support cases) gets one humanised sentence: `<Label> <id>: <column name> <value>, ...`, missing values omitted.
+- A BusinessConcept node in pipeline C gets its ontology text (`resolution.concept_text`): `Concept <canonical name>: <definition> Labels: ...; Synonyms: ...`.
+- Anything else reads `<Label> <id>`.
+
+In the prompt a selected node is its title line, its text and its evidence path, for example `Graph path: GAME_UK_01 -AFFECTS-> INC_025, 1 hop.`.
+The path line is provenance shown to the model, never to the judge.
+
+Structured candidates also get authoritative facts fetched from the parquet source tables (`SourceLookup`, memoised), kept on `GraphEvidence.authoritative` and in the citations of selected nodes.
+Quantitative claims in answers come from these records, not from document prose. `PaymentMethod` nodes are
 link-table derived: facts are the account links from
 `player_payment_method.parquet` (`accounts_sharing` plus up to
 `MAX_LINK_ROWS=8` rendered links with weight and first-used date).
@@ -135,7 +144,10 @@ Events use the section 8 names from `docs/07-api-event-spec.md`
 `graph.traversal.started`, `graph.node.discovered` (with `via_concept` for
 ontology-injected nodes),
 `graph.relationship.traversed`, `graph.ontology.expanded`,
-`graph.evidence_path.completed`, `graph.candidate.selected|discarded`,
+`graph.candidate.reranked` (one per judged node or document, with
+`candidate_id`, `kind`, `rerank_score`, `rank`),
+`graph.evidence_path.completed`, `graph.candidate.selected|discarded` (with
+`rerank_score`),
 `graph.context.assembled`, `graph.generation.*`).
 
 Known discrepancy: section 9 of the same document describes an
@@ -155,9 +167,12 @@ and pipeline A never imports graph modules.
 - `backend/tests/test_resolution.py`: B and C resolvers, local-name and
   market bindings, query expansion, ranked and capped ontology expansion.
 - `backend/tests/test_graph_rag.py`: offline fixture graph: caps,
-  weight-ordered cuts, replayable paths, ontology expansion, seeds outside
-  the cap, transactional edges never traversed, truth-ledger isolation,
-  score-component checks against `DEFAULT_RANKING_WEIGHTS`.
+  weight-ordered cuts, replayable paths, ontology expansion, transactional
+  edges never traversed, excluded labels, score-component checks against
+  `DEFAULT_RANKING_WEIGHTS`, the one-judge call and its events, the
+  candidate cap, the record-anchored fallback seed and node texts.
+- `backend/tests/test_context_budget_v2.py`: mixed selection across kinds,
+  supersession before judging, dedupe of chunks only, the shared budget.
 - `backend/tests/test_graph_rag_live.py`: `GRAPH_E2E=1` against a real Neo4j
   (tiny world, seed 42): ingestion, A/B/C behaviour, determinism, B/C
   fairness. Wipes and re-ingests the tiny world; run `make ingest-graph`

@@ -50,8 +50,10 @@ class GraphReader:
         ids: list[str],
         rel_types: tuple[str, ...],
         per_type: int,
+        excluded_labels: tuple[str, ...],
     ) -> list[NeighbourEdge]:
-        """Edges from the given ids after per-type caps.
+        """Edges from the given ids after per-type caps; excluded target
+        labels are dropped before the cap.
 
         The statement carries its own hard safety LIMIT; the hop-level and
         total caps are applied by the traversal, which orders edges by
@@ -59,7 +61,12 @@ class GraphReader:
         """
         records = self._driver.execute_query(
             statements.RETRIEVAL_NEIGHBOURS,
-            {"ids": ids, "rel_types": list(rel_types), "per_type": per_type},
+            {
+                "ids": ids,
+                "rel_types": list(rel_types),
+                "per_type": per_type,
+                "excluded_labels": list(excluded_labels),
+            },
             database_=self._database,
         ).records
         return [
@@ -72,11 +79,13 @@ class GraphReader:
             for record in records
         ]
 
-    def concept_bound(self, concept_id: str, limit: int) -> list[tuple[str, str]]:
+    def concept_bound(
+        self, concept_id: str, limit: int, excluded_labels: tuple[str, ...]
+    ) -> list[tuple[str, str]]:
         """Entities bound to a BusinessConcept via MAPS_TO (id, label)."""
         records = self._driver.execute_query(
             statements.RETRIEVAL_CONCEPT_BOUND,
-            {"concept_id": concept_id, "limit": limit},
+            {"concept_id": concept_id, "limit": limit, "excluded_labels": list(excluded_labels)},
             database_=self._database,
         ).records
         return [(str(record["entity_id"]), str(record["entity_label"])) for record in records]

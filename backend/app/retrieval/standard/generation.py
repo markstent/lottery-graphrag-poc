@@ -173,7 +173,7 @@ class LiteLLMAnswerGenerator:
         model: str,
         temperature: float = 0.0,
         api_base: str | None = None,
-        max_tokens: int = 600,
+        max_tokens: int = 1200,
         timeout_s: float = 120.0,
     ) -> None:
         self.model_name = model

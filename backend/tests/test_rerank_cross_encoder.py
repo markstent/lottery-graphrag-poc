@@ -36,8 +36,8 @@ class FakeCrossEncoder:
         return [float(len(document)) for document in documents]
 
 
-def reranker_with(fake: FakeCrossEncoder, candidates: int = 40) -> CrossEncoderReranker:
-    return CrossEncoderReranker(DEFAULT_MODEL, candidates=candidates, encoder=fake)
+def reranker_with(fake: FakeCrossEncoder) -> CrossEncoderReranker:
+    return CrossEncoderReranker(DEFAULT_MODEL, encoder=fake)
 
 
 def test_builder_rejects_unknown_model() -> None:
@@ -82,19 +82,15 @@ def test_cross_encoder_scores_in_one_call_and_orders_by_score_then_chunk_id() ->
     ]
 
 
-def test_cross_encoder_scores_only_top_candidates_and_keeps_the_rest_in_order() -> None:
+def test_cross_encoder_scores_every_candidate_it_is_given() -> None:
     fake = FakeCrossEncoder()
-    out = reranker_with(fake, candidates=2).rerank(
-        "q",
-        [chunk("a", "x", 1), chunk("b", "xxx", 2), chunk("c", "xxxxxxxx", 3), chunk("d", "xx", 4)],
+    texts = ["x" * (index % 7 + 1) for index in range(50)]
+    out = reranker_with(fake).rerank(
+        "q", [chunk(f"c{index:02d}", text, index + 1) for index, text in enumerate(texts)]
     )
-    assert fake.calls == [("q", ["x", "xxx"])]
-    assert [(c.chunk_id, c.rerank_score, c.rank) for c in out] == [
-        ("b", 3.0, 1),
-        ("a", 1.0, 2),
-        ("c", None, 3),
-        ("d", None, 4),
-    ]
+    assert fake.calls == [("q", texts)]
+    assert all(c.rerank_score is not None for c in out)
+    assert [c.rank for c in out] == list(range(1, 51))
 
 
 def test_cross_encoder_empty_candidates() -> None:

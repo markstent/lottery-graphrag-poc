@@ -201,6 +201,7 @@ UNWIND $ids AS fid
 CALL (fid) {
   MATCH (a {id: fid})-[r]-(b)
   WHERE type(r) IN $rel_types AND coalesce(b.id, '') <> fid
+    AND NOT labels(b)[0] IN $excluded_labels
   WITH type(r) AS rel_type, b.id AS to_id, labels(b)[0] AS to_label
   ORDER BY rel_type, to_id
   WITH rel_type, collect({to_id: to_id, to_label: to_label}) AS items
@@ -215,6 +216,7 @@ LIMIT 5000
 
 RETRIEVAL_CONCEPT_BOUND = """
 MATCH (e)-[:MAPS_TO]->(c {id: $concept_id})
+WHERE NOT labels(e)[0] IN $excluded_labels
 RETURN e.id AS entity_id, labels(e)[0] AS entity_label
 ORDER BY entity_id
 LIMIT $limit

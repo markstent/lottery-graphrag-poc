@@ -59,7 +59,11 @@ class RerankSettings:
     provider: str  # "lexical" | "cross_encoder"
     model: str  # cross-encoder model (fastembed)
     lexical_weight: float
-    candidates: int  # top incoming candidates the cross-encoder scores
+    # Structured candidates per question in pipelines B and C: the top graph
+    # nodes by composite score handed to the reranker. The document channel
+    # is capped by top_k for every pipeline; the reranker scores everything
+    # it is given.
+    candidates: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +74,7 @@ class GenerationSettings:
     model: str
     temperature: float
     api_base: str | None
-    max_tokens: int = 600
+    max_tokens: int = 1200
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +109,10 @@ class GraphRagSettings:
     ranking: RankingWeights
     # Records whose validity ended before this date rank as superseded.
     reference_date: date
+    # Node labels traversal never follows or records. Documents belong to the
+    # document channel for every pipeline (design G1; AGENTS.md graph
+    # augmentation principle).
+    excluded_labels: tuple[str, ...] = ("Document",)
 
     def without_ontology(self) -> GraphRagSettings:
         """Pipeline B view: same limits, no ontology relationships."""
@@ -119,6 +127,7 @@ class GraphRagSettings:
             ontology_expansion=False,
             ranking=self.ranking,
             reference_date=self.reference_date,
+            excluded_labels=self.excluded_labels,
         )
 
 
@@ -239,7 +248,7 @@ def from_env() -> RetrievalSettings:
             model=os.environ.get("GENERATION_MODEL", "fake-answer-v1"),
             temperature=_env_float("GENERATION_TEMPERATURE", 0.0),
             api_base=os.environ.get("GENERATION_API_BASE"),
-            max_tokens=_env_int("GENERATION_MAX_TOKENS", 600),
+            max_tokens=_env_int("GENERATION_MAX_TOKENS", 1200),
         ),
         graph=GraphRagSettings(
             max_depth=_env_int("GRAPH_DEPTH", 2),

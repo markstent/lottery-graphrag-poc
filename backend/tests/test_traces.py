@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from app.api.queries import DEMO_QUESTIONS
 from app.events import RetrievalEvent
-from app.evidence import EvidenceChunk, GraphRunResult, RagAnswer, RagRunResult
+from app.evidence import EvidenceChunk, GraphEvidence, GraphRunResult, RagAnswer, RagRunResult
 from app.retrieval.graph.traces import HEADER, select_questions, trace_a, trace_g
 
 
@@ -124,3 +124,52 @@ def test_trace_g_shows_query_expansion_and_via_concept_discoveries() -> None:
     assert "graph.query.expanded: 3 term(s) added, search text 140 chars" in text
     assert "discovered via_concept `CONCEPT_INCIDENT`: 1 node(s): `INC_001`" in text
     assert "MKT_UK" not in text
+
+
+def test_trace_g_counts_the_selected_context_by_kind() -> None:
+    node = GraphEvidence(
+        node_id="INC_001",
+        node_label="Incident",
+        hops=0,
+        path=["INC_001"],
+        rel_type="SEED",
+        score=0.9,
+        components={},
+        rerank_score=1.5,
+        selected=True,
+    )
+    capped = node.model_copy(
+        update={"node_id": "INC_002", "selected": False, "discard_reason": "candidate_cap"}
+    )
+    result = GraphRunResult(
+        run_id="r3",
+        question="q",
+        answer=_answer(),
+        node_evidence=[node, capped],
+        document_evidence=[
+            _chunk("rec-1", "record", True),
+            _chunk("doc-1", "chunk", True),
+            _chunk("doc-2", "chunk", True),
+        ],
+        ontology_concepts=[],
+        embedding_model="bge-m3",
+        generation_model="fake-answer-v1",
+    )
+    text = "\n".join(trace_g("B", result, []))
+    assert "- selected context (4: 1 node, 1 record, 2 document)" in text
+    assert "rerank 1.500" in text
+    assert "- discarded nodes: 1 (candidate_cap=1)" in text
+    assert "- seeds: (none)" in text
+
+
+def test_answer_without_citations_reads_none() -> None:
+    answer = _answer().model_copy(update={"cited_blocks": []})
+    result = RagRunResult(
+        run_id="r4",
+        question="q",
+        answer=answer,
+        evidence=[],
+        embedding_model="bge-m3",
+        generation_model="fake-answer-v1",
+    )
+    assert "- cited blocks: none (0 shown)" in "\n".join(trace_a(result, []))

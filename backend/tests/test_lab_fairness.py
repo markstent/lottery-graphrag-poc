@@ -28,11 +28,12 @@ from app.retrieval.graph.resolution import (
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
+from app.retrieval.standard.index import index_corpus
 from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
-from tests.test_graph_rag import make_settings, scn007_adjacency
+from tests.test_graph_rag import RecordingReranker, build_corpus, make_settings, scn007_adjacency
 
 
 def diff_labels(base_settings: object, other: object) -> list[str]:
@@ -100,7 +101,7 @@ def build_lab_offline() -> Lab:
         settings=settings,
         generator=FakeAnswerGenerator(),
         corpus={},
-        source_lookup=SourceLookup(Path("unused")),
+        source_lookup=SourceLookup(Path("unused"), {}),
         embeddings=HashingEmbedder(dimensions=settings.embedding.dimensions),
         sparse=HashingSparseEmbedder(),
         store=InMemoryVectorStore(),
@@ -174,3 +175,33 @@ def test_build_resolvers_gives_b_the_id_resolver_and_c_the_term_resolver(lab: La
     assert isinstance(c.resolver, TermEntityResolver)
     assert b.expansion is None
     assert c.expansion is not None
+
+
+def test_one_shared_judge_sees_the_same_documents_in_a_b_and_c() -> None:
+    """A, B and C hand the shared reranker the same document candidates.
+
+    No entity resolves and the static store holds no record, so B and C have
+    no seed and no structured candidates: what remains is exactly A's
+    document channel, judged by the same instance on the raw question.
+    """
+    reranker = RecordingReranker()
+    lab = dataclasses.replace(build_lab_offline(), reranker=reranker)
+    index_corpus(lab.store, lab.embeddings, lab.sparse, list(build_corpus().values()))
+    b, c = (
+        pipeline
+        for _, pipeline in graph_pipelines(
+            lab, scn007_adjacency(), StaticEntityResolver([]), StaticEntityResolver([])
+        )
+    )
+    a = lab.pipeline_a()
+    assert a.reranker is b.reranker is c.reranker is reranker
+    question = "Why did checkout fail in Greece?"
+    for pipeline in (a, b, c):
+        pipeline.run(question)
+    assert len(reranker.calls) == 3
+    judged = [
+        (asked, [(chunk.chunk_id, chunk.rank) for chunk in candidates if chunk.kind != "node"])
+        for asked, candidates in reranker.calls
+    ]
+    assert judged[0][1], "A must judge document candidates"
+    assert judged[0] == judged[1] == judged[2] == (question, judged[0][1])

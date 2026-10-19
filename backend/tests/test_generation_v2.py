@@ -182,9 +182,9 @@ def test_graph_citations_follow_prompt_block_order() -> None:
     documents = [chunk for chunk in result.document_evidence if chunk.selected]
     nodes = [evidence for evidence in result.node_evidence if evidence.selected]
     assert nodes, "the fixture must select structured nodes"
-    # Structured blocks open with "<label>:<node_id>;" (evidence_snippet).
+    # Structured blocks open with their title line "<label>: <node_id>".
     prompt_ids = [
-        block.split(";", 1)[0].split(":", 1)[1] if index >= len(documents) else block
+        block.split("\n", 1)[0].split(": ", 1)[1] if index >= len(documents) else block
         for index, block in enumerate(generator.blocks)
     ]
     cited_ids = [citation.chunk_id for citation in result.answer.citations]
@@ -208,3 +208,11 @@ def test_generation_completed_events_carry_verdict_and_citation_count() -> None:
         assert pipeline.events[-1].event_type == event_type
         assert payload["verdict"] == "[fake-model] answered from the retrieved sources"
         assert payload["cited_blocks"] == 1
+
+
+def test_generation_max_tokens_defaults_to_1200(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import GenerationSettings, from_env
+
+    monkeypatch.delenv("GENERATION_MAX_TOKENS", raising=False)
+    assert from_env().generation.max_tokens == 1200
+    assert GenerationSettings("fake", "m", 0.0, None).max_tokens == 1200

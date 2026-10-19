@@ -58,8 +58,8 @@ def test_qdrant_hybrid_upsert_search_reset_roundtrip() -> None:
         assert hits[0].payload["chunk_id"] == "CHNK_PAY"
         assert "_external_id" not in hits[0].payload
         assert hits[0].score >= hits[-1].score
-        # Qdrant fuses server side: no per-channel ranks.
-        assert hits[0].dense_rank is None and hits[0].sparse_rank is None
+        # Fused on the client: per-channel ranks are known.
+        assert hits[0].dense_rank == 1 and hits[0].sparse_rank == 1
 
         records = store.search(
             dense.embed(["instant lottery"])[0],
@@ -92,13 +92,17 @@ def test_qdrant_hybrid_upsert_search_reset_roundtrip() -> None:
             store._client.delete_collection(collection_name=collection)
 
 
-def test_qdrant_rrf_matches_in_memory_fusion() -> None:
-    """Server-side Fusion.RRF and fusion.RRF_K give identical ranks and scores."""
+def test_qdrant_and_in_memory_stores_fuse_identically_with_ordered_ties() -> None:
+    """Same corpus and query: same fused order, scores and channel ranks.
+
+    Dense order Z1, M2, A3; sparse order A3, M2 (Z1 shares no term). With
+    ``limit=2`` each channel keeps two points, so Z1 (dense rank 1) and A3
+    (sparse rank 1) tie on score; the dense rank orders them, not the id.
+    """
     collection = f"poc_test_{uuid.uuid4().hex[:12]}"
     store = QdrantVectorStore(url=QDRANT_URL, collection=collection, dimensions=2)
     memory = InMemoryVectorStore()
-    # Dense order P1, P2, P3; sparse order P3, P2 (P1 shares no term).
-    ids = ["P1", "P2", "P3"]
+    ids = ["Z1", "M2", "A3"]
     dense = [[1.0, 0.0], [0.8, 0.6], [0.0, 1.0]]
     sparse = [SparseVector((9,), (1.0,)), SparseVector((1,), (1.0,)), SparseVector((1,), (2.0,))]
     payloads: list[dict[str, object]] = [{"kind": "chunk", "market_id": ""} for _ in ids]
@@ -107,11 +111,18 @@ def test_qdrant_rrf_matches_in_memory_fusion() -> None:
         for target in (store, memory):
             target.upsert(ids, dense, sparse, payloads)
         query = ([1.0, 0.0], SparseVector((1,), (1.0,)))
-        live = store.search(*query, limit=3)
-        local = memory.search(*query, limit=3)
-        assert [hit.id for hit in live] == [hit.id for hit in local] == ["P3", "P2", "P1"]
-        for live_hit, local_hit in zip(live, local, strict=True):
-            assert live_hit.score == pytest.approx(local_hit.score, rel=1e-6)
+        for limit, expected in ((2, ["M2", "Z1"]), (3, ["A3", "M2", "Z1"])):
+            live = store.search(*query, limit=limit)
+            local = memory.search(*query, limit=limit)
+            assert [hit.id for hit in live] == [hit.id for hit in local] == expected
+            for live_hit, local_hit in zip(live, local, strict=True):
+                assert live_hit.score == pytest.approx(local_hit.score, rel=1e-9)
+                assert (live_hit.dense_rank, live_hit.sparse_rank) == (
+                    local_hit.dense_rank,
+                    local_hit.sparse_rank,
+                )
+        tied = memory.search(*query, limit=2)
+        assert (tied[1].dense_rank, tied[1].sparse_rank) == (1, None)
     finally:
         with contextlib.suppress(Exception):  # best-effort cleanup
             store._client.delete_collection(collection_name=collection)

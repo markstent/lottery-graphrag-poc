@@ -223,6 +223,7 @@ graph.traversal.started
 graph.node.discovered
 graph.relationship.traversed
 graph.ontology.expanded
+graph.candidate.reranked
 graph.candidate.selected
 graph.candidate.discarded
 graph.evidence_path.completed
@@ -230,6 +231,17 @@ graph.context.assembled
 graph.generation.started
 graph.generation.completed
 ```
+
+`graph.candidate.reranked` is emitted once per candidate the shared reranker judged, in reranked order, for graph nodes and documents alike.
+It carries `candidate_id` (a node id or a chunk id), `kind` (`node`, `chunk` or `record`), `rerank_score` and `rank` (1-based position after judging).
+It is the graph counterpart of `rag.candidate.reranked`; one judge scores both channels on the raw question (`docs/retrieval/context-budgeting.md`).
+
+`graph.candidate.selected` and `graph.candidate.discarded` carry `rerank_score`, `null` when the candidate never reached the judge.
+Node events also carry `node_id`, `score` (the graph composite score), `hops` and `seed`; selected node events add the `weight_*` score components.
+Document events carry `chunk_id`, with `rank` on selection.
+Discard reasons are `candidate_cap` (beyond the structured channel's cut), `out_of_scope_market`, `superseded_by_structured_fact` (a record block whose node is a structured candidate), `context_budget`, `slot_limit` and `duplicate`.
+
+`graph.seed.selected` is absent when no entity resolves and no record block matches the fallback search; a seed is never fabricated.
 
 `graph.generation.completed` carries `model`, `latency_ms` and `context_tokens`, plus `verdict` (the parsed one-line verdict, empty when the model gave none) and `cited_blocks` (how many distinct shown context blocks the answer cites).
 The answer contract is described in `docs/retrieval/standard-rag.md`.
@@ -241,13 +253,11 @@ Example:
   "event_type": "graph.relationship.traversed",
   "pipeline": "C",
   "payload": {
-    "source_id": "GAME_GR_04",
-    "source_type": "Game",
+    "from_id": "GAME_GR_01",
     "relationship_type": "RUNS_ON",
-    "target_id": "PLATFORM_MOBILE_02",
-    "target_type": "Platform",
-    "hop": 1,
-    "confidence": 1.0
+    "to_id": "PLT_APP_IOS",
+    "to_label": "Platform",
+    "hop": 1
   }
 }
 ```

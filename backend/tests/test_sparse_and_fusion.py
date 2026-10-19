@@ -6,7 +6,7 @@ import os
 
 import pytest
 from app.config import EmbeddingSettings
-from app.retrieval.standard.fusion import reciprocal_rank_fusion
+from app.retrieval.standard.fusion import RRF_K, reciprocal_rank_fusion
 from app.retrieval.standard.sparse import (
     FastembedBm25Embedder,
     HashingSparseEmbedder,
@@ -45,6 +45,25 @@ def test_rrf_prefers_items_high_in_both_rankings() -> None:
 def test_rrf_scores_and_tie_break() -> None:
     fused = reciprocal_rank_fusion([["x"], ["y"]], k=10)
     assert fused == [("x", 1 / 11), ("y", 1 / 11)]
+
+
+def test_rrf_default_k_is_the_published_constant() -> None:
+    assert RRF_K == 60
+    assert reciprocal_rank_fusion([["a"]]) == [("a", 1 / 61)]
+
+
+def test_rrf_ties_break_on_dense_rank_then_id() -> None:
+    # "z" (dense rank 1) and "a" (sparse rank 1 only) tie on score; the
+    # dense rank decides, not the id.
+    assert [item for item, _ in reciprocal_rank_fusion([["z", "m"], ["a", "m"]])] == [
+        "m",
+        "z",
+        "a",
+    ]
+    # Absent from the dense channel sorts last; then the id decides.
+    fused = reciprocal_rank_fusion([["x"], ["b"], ["a"]])
+    assert [item for item, _ in fused] == ["x", "a", "b"]
+    assert len({score for _, score in fused}) == 1
 
 
 def _settings(provider: str, sparse_provider: str) -> EmbeddingSettings:

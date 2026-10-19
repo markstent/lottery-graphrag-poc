@@ -1,27 +1,30 @@
 """Context budget selection (docs/retrieval/context-budgeting.md).
 
 Every pipeline answers from one total token budget and one evidence-slot
-count (retrieval fairness): pipeline A spends both on document chunks;
-pipelines B and C spend them on structured graph blocks first and give
-the remainder to document chunks.
+count (retrieval fairness), and one judge decides what fills them: the
+shared reranker scores every candidate a pipeline has, and selection walks
+the reranked list. Pipeline A's candidates are its hybrid hits; pipelines B
+and C add structured graph candidates to the same list.
 
-Selection walks candidates in rank order. For each candidate the checks
-run in a fixed order, and the first failing check is the discard reason:
+For each candidate the checks run in a fixed order, and the first failing
+check is the discard reason:
 
 1. budget: the candidate's tokens do not fit the remaining budget
    (``context_budget``); a smaller later candidate may still fit;
 2. slots: every evidence slot is already filled (``slot_limit``);
-3. duplicates: the candidate is a near-duplicate of selected text
-   (``duplicate``).
+3. duplicates: a document chunk is a near-duplicate of a selected chunk
+   (``duplicate``). Records and graph nodes have unique ids and are never
+   near-duplicates of each other: two distinct authoritative rows with
+   similar columns are different facts.
 
-Priority therefore follows ranking: high-scoring evidence enters first;
-diversity is protected by the duplicate filter. The final token count is
-recorded on the event stream.
+Priority therefore follows the judge: high-scoring evidence enters first,
+whatever its kind. The final token count is recorded on the event stream.
 """
 
 from __future__ import annotations
 
 import math
+from collections.abc import Collection
 from dataclasses import dataclass
 
 from app.config import ContextSettings
@@ -30,9 +33,15 @@ from app.evidence import EvidenceChunk
 SELECTION_BUDGET = "context_budget"
 SELECTION_DUPLICATE = "duplicate"
 SELECTION_SLOT_LIMIT = "slot_limit"
-# A record block whose record already enters as a structured graph fact
-# (design 10a.8): the structured block is the authoritative copy.
+# A record block whose record is already a structured graph candidate
+# (design 10a.8): the structured candidate is the authoritative copy.
 SELECTION_SUPERSEDED = "superseded_by_structured_fact"
+# A graph node beyond the structured channel's candidate cap
+# (RerankSettings.candidates): it never reaches the judge.
+SELECTION_CANDIDATE_CAP = "candidate_cap"
+
+# EvidenceChunk.kind of a structured graph candidate.
+NODE_KIND = "node"
 
 
 def estimate_tokens(text: str) -> int:
@@ -56,15 +65,13 @@ def select_context(
     budget_tokens: int,
     dedupe_threshold: float = 0.85,
     max_items: int | None = None,
-    dedupe: bool = True,
 ) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
     """Split ranked candidates into (selected, discarded-with-reason).
 
     ``max_items`` caps how many candidates are selected (evidence slots);
-    None means no cap. ``dedupe=False`` skips the near-duplicate check:
-    structured graph blocks use it because node ids are unique, and two
-    distinct authoritative records with similar categorical columns are
-    different facts, never duplicates. Discarded chunks keep their discard_reason so the UI
+    None means no cap. The near-duplicate check compares document chunks
+    (``kind == "chunk"``) with the chunks already selected; records and
+    nodes skip it. Discarded candidates keep their discard_reason so the UI
     and the benchmark can show why context looks the way it does.
     """
     selected: list[EvidenceChunk] = []
@@ -80,71 +87,69 @@ def select_context(
         if max_items is not None and len(selected) >= max_items:
             discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_SLOT_LIMIT}))
             continue
-        token_set = _token_set(candidate.text)
-        if dedupe and any(
-            _jaccard(token_set, existing) >= dedupe_threshold for existing in selected_token_sets
-        ):
-            discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_DUPLICATE}))
-            continue
+        if candidate.kind == "chunk":
+            token_set = _token_set(candidate.text)
+            if any(
+                _jaccard(token_set, existing) >= dedupe_threshold
+                for existing in selected_token_sets
+            ):
+                discarded.append(
+                    candidate.model_copy(update={"discard_reason": SELECTION_DUPLICATE})
+                )
+                continue
+            selected_token_sets.append(token_set)
         selected.append(candidate.model_copy(update={"selected": True}))
-        selected_token_sets.append(token_set)
         used += tokens
 
     return selected, discarded
 
 
-@dataclass(frozen=True, slots=True)
-class ContextAssembly:
-    """Outcome of one context assembly under the shared budget and slots."""
+def supersede_records(
+    structured_ids: Collection[str], documents: list[EvidenceChunk]
+) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
+    """Split document candidates into (kept, superseded) before judging.
 
-    structured_selected: list[EvidenceChunk]
-    document_selected: list[EvidenceChunk]
-    discarded: list[EvidenceChunk]  # every discarded item with its reason
-    context_tokens: int
-
-
-def assemble_context(
-    structured: list[EvidenceChunk],
-    documents: list[EvidenceChunk],
-    settings: ContextSettings,
-) -> ContextAssembly:
-    """Fill one budget and one slot count: structured blocks, then documents.
-
-    Structured blocks (graph nodes with their authoritative facts) are
-    selected first, without the near-duplicate check (see select_context).
-    A record block whose record was selected as a structured block is then
-    superseded (design 10a.8): the structured block is the authoritative
-    copy, so the record block never competes for budget or slots. Records
-    of structured nodes that were not selected stay document candidates.
-    Documents get the remaining tokens and slots. Pipeline A passes no
-    structured blocks, so A, B and C share the same totals.
+    A record block whose record id is a structured candidate's node id is
+    superseded (design 10a.8): the node is judged on that record's exact
+    text, so if the node loses on score the record would have lost too, and
+    keeping both would spend two slots on one fact.
     """
-    structured_selected, structured_discarded = select_context(
-        structured,
-        budget_tokens=settings.budget_tokens,
-        dedupe_threshold=settings.dedupe_threshold,
-        max_items=settings.evidence_slots,
-        dedupe=False,
-    )
-    structured_ids = {chunk.document_id for chunk in structured_selected}
+    kept: list[EvidenceChunk] = []
     superseded: list[EvidenceChunk] = []
-    remaining: list[EvidenceChunk] = []
     for chunk in documents:
         if chunk.kind == "record" and chunk.document_id in structured_ids:
             superseded.append(chunk.model_copy(update={"discard_reason": SELECTION_SUPERSEDED}))
         else:
-            remaining.append(chunk)
-    structured_tokens = sum(estimate_tokens(chunk.text) for chunk in structured_selected)
-    document_selected, document_discarded = select_context(
-        remaining,
-        budget_tokens=settings.budget_tokens - structured_tokens,
+            kept.append(chunk)
+    return kept, superseded
+
+
+@dataclass(frozen=True, slots=True)
+class ContextAssembly:
+    """Outcome of one context selection under the shared budget and slots.
+
+    ``document_selected`` (chunks and records) and ``structured_selected``
+    (graph nodes) each keep selection order; the prompt numbers documents
+    first and structured blocks second.
+    """
+
+    structured_selected: list[EvidenceChunk]
+    document_selected: list[EvidenceChunk]
+    discarded: list[EvidenceChunk]  # every discarded candidate with its reason
+    context_tokens: int
+
+
+def assemble_context(candidates: list[EvidenceChunk], settings: ContextSettings) -> ContextAssembly:
+    """Select reranked candidates into one budget and one slot count."""
+    selected, discarded = select_context(
+        candidates,
+        budget_tokens=settings.budget_tokens,
         dedupe_threshold=settings.dedupe_threshold,
-        max_items=settings.evidence_slots - len(structured_selected),
+        max_items=settings.evidence_slots,
     )
-    document_tokens = sum(estimate_tokens(chunk.text) for chunk in document_selected)
     return ContextAssembly(
-        structured_selected=structured_selected,
-        document_selected=document_selected,
-        discarded=[*structured_discarded, *superseded, *document_discarded],
-        context_tokens=structured_tokens + document_tokens,
+        structured_selected=[chunk for chunk in selected if chunk.kind == NODE_KIND],
+        document_selected=[chunk for chunk in selected if chunk.kind != NODE_KIND],
+        discarded=discarded,
+        context_tokens=sum(estimate_tokens(chunk.text) for chunk in selected),
     )

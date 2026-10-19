@@ -6,7 +6,8 @@
 Every point carries a dense vector (``dense``, cosine) and a sparse BM25
 vector (``sparse``, dot product; Qdrant applies the IDF modifier). A search
 runs a dense top-``limit`` and a sparse top-``limit`` inside the same filter
-and fuses the two rankings with reciprocal rank fusion. Payloads carry the
+and fuses the two rankings on the client with ``reciprocal_rank_fusion``
+(both stores, so ties break identically everywhere). Payloads carry the
 evidence provenance fields so search results can build EvidenceChunk objects
 without extra lookups.
 """
@@ -38,8 +39,7 @@ class SearchHit:
 
     ``score`` is the reciprocal-rank-fusion score. ``dense_rank`` and
     ``sparse_rank`` are the 1-based ranks in each channel, ``None`` when the
-    point was not in that channel's top-``limit`` or the backend does not
-    expose per-channel ranks (Qdrant fuses server side).
+    point was not in that channel's top-``limit``.
     """
 
     id: str
@@ -256,8 +256,11 @@ class QdrantVectorStore:
         markets: Sequence[str] | None = None,
         kinds: Sequence[str] | None = None,
     ) -> list[SearchHit]:
-        """Server-side RRF over two prefetches; per-channel ranks are not
-        exposed by Qdrant, so ``dense_rank`` and ``sparse_rank`` are ``None``."""
+        """A dense and a sparse top-``limit`` in one batch, fused on the client.
+
+        Each channel is ordered by score then id before fusion, so the
+        result never depends on how the server orders equal scores.
+        """
         from qdrant_client import models
 
         scope = _market_scope(markets)
@@ -273,43 +276,47 @@ class QdrantVectorStore:
                 models.FieldCondition(key="kind", match=models.MatchAny(any=list(kinds)))
             )
         query_filter = models.Filter(must=conditions) if conditions else None
-        try:
-            result = self._client.query_points(
-                collection_name=self._collection,
-                prefetch=[
-                    models.Prefetch(
-                        query=dense, using=DENSE_VECTOR, limit=limit, filter=query_filter
-                    ),
-                    models.Prefetch(
-                        query=models.SparseVector(
-                            indices=list(sparse.indices), values=list(sparse.values)
-                        ),
-                        using=SPARSE_VECTOR,
-                        limit=limit,
-                        filter=query_filter,
-                    ),
-                ],
-                query=models.FusionQuery(fusion=models.Fusion.RRF),
+        requests = [
+            models.QueryRequest(
+                query=dense, using=DENSE_VECTOR, limit=limit, filter=query_filter, with_payload=True
+            ),
+            models.QueryRequest(
+                query=models.SparseVector(indices=list(sparse.indices), values=list(sparse.values)),
+                using=SPARSE_VECTOR,
                 limit=limit,
+                filter=query_filter,
                 with_payload=True,
+            ),
+        ]
+        try:
+            responses = self._client.query_batch_points(
+                collection_name=self._collection, requests=requests
             )
         except Exception as error:
             raise VectorStoreError(f"Qdrant search failed: {error}") from error
-        hits: list[SearchHit] = []
-        for point in result.points:
-            payload = dict(point.payload or {})
-            # Restore the caller's id; Qdrant only accepts uint/UUID point ids.
-            external_id = str(payload.pop("_external_id", point.id))
-            hits.append(
-                SearchHit(
-                    id=external_id,
-                    score=float(point.score),
-                    dense_rank=None,
-                    sparse_rank=None,
-                    payload=payload,
-                )
+        payloads: dict[str, VectorPayload] = {}
+        channels: list[list[str]] = []
+        for response in responses:
+            scored: list[tuple[str, float]] = []
+            for point in response.points:
+                payload = dict(point.payload or {})
+                # Restore the caller's id; Qdrant only accepts uint/UUID point ids.
+                external_id = str(payload.pop("_external_id", point.id))
+                payloads[external_id] = payload
+                scored.append((external_id, float(point.score)))
+            channels.append(_top(scored, limit))
+        dense_ranks = {point_id: rank for rank, point_id in enumerate(channels[0], start=1)}
+        sparse_ranks = {point_id: rank for rank, point_id in enumerate(channels[1], start=1)}
+        return [
+            SearchHit(
+                id=point_id,
+                score=score,
+                dense_rank=dense_ranks.get(point_id),
+                sparse_rank=sparse_ranks.get(point_id),
+                payload=payloads[point_id],
             )
-        return hits
+            for point_id, score in reciprocal_rank_fusion(channels)[:limit]
+        ]
 
     def _point_id(self, external_id: str) -> str:
         """Deterministic UUID for an external id, stable across rebuilds."""

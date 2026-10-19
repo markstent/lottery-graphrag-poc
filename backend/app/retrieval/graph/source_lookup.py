@@ -1,14 +1,16 @@
-"""Authoritative source lookup for graph evidence.
+"""Authoritative source lookup and judged text for graph evidence.
 
 The graph guides retrieval; quantitative facts come from the structured
-layer (AGENTS.md Graph Augmentation Principle). For each selected structured
-node this module reads the authoritative warehouse row from the dataset
-Parquet via DuckDB and renders a compact factual snippet that the generator
-must quote rather than invent.
+layer (AGENTS.md Graph Augmentation Principle). For each structured node
+this module reads the authoritative warehouse row from the dataset Parquet
+via DuckDB, and gives the text the node is judged and shown on: the exact
+record block pipeline A indexes for the same row when one exists, else one
+humanised sentence from the authoritative columns.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -16,7 +18,8 @@ from typing import Any
 
 import duckdb
 
-from app.retrieval.standard.records import VALIDITY_COLUMNS
+from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.records import SERIALISERS, VALIDITY_COLUMNS
 
 # Graph label -> (parquet table, id column). Only labels whose rows carry
 # facts an answer might quote.
@@ -37,6 +40,7 @@ NODE_SOURCES: dict[str, tuple[str, str]] = {
     "Campaign": ("campaigns", "campaign_id"),
     "Experiment": ("experiments", "experiment_id"),
     "SupportCase": ("support_cases", "support_case_id"),
+    "GameMechanic": ("game_mechanics", "mechanic_id"),
 }
 
 # Columns quoted in the snippet, per table, in order. Kept small on purpose:
@@ -60,6 +64,7 @@ SNIPPET_COLUMNS: dict[str, tuple[str, ...]] = {
         "retired_at",
     ),
     "app_versions": ("app_version_id", "market_id", "version_label", "released_at"),
+    "game_mechanics": ("mechanic_id", "market_id", "mechanic_code", "description", "language_code"),
     "games": (
         "game_id",
         "game_name",
@@ -117,6 +122,47 @@ LINK_COLUMNS: tuple[str, ...] = ("player_id", "first_used_at", "last_used_at", "
 # blow the context budget.
 MAX_LINK_ROWS = 8
 
+# Graph label of every serialised record table (records.SERIALISERS). A
+# record block's row is the graph node with the record's id and this label.
+RECORD_LABELS: dict[str, str] = {
+    **{table: label for label, (table, _) in NODE_SOURCES.items() if table in SERIALISERS},
+    "devices": "Device",
+    "payment_methods": "PaymentMethod",
+}
+_RECORD_TABLES: dict[str, str] = {label: table for table, label in RECORD_LABELS.items()}
+
+RecordTexts = Mapping[tuple[str, str], str]
+"""Record block text keyed by (record table, record id)."""
+
+
+def label_for_table(table: str) -> str | None:
+    """Graph label of a serialised record table; ``None`` for other tables."""
+    return RECORD_LABELS.get(table)
+
+
+def record_texts_of(chunks: Iterable[CorpusChunk]) -> dict[tuple[str, str], str]:
+    """The indexed record blocks' texts, keyed by (record table, record id)."""
+    return {
+        (chunk.record_table, chunk.document_id): chunk.text
+        for chunk in chunks
+        if chunk.kind == "record" and chunk.record_table is not None
+    }
+
+
+def describe(node_label: str, node_id: str, columns: Mapping[str, str]) -> str:
+    """One humanised sentence: "<Label> <id>: <column name> <value>, ...".
+
+    Column names read with spaces; missing values ("-") and the id itself
+    are omitted. A node without columns reads "<Label> <id>".
+    """
+    pairs = [
+        f"{column.replace('_', ' ')} {value}"
+        for column, value in columns.items()
+        if value not in ("-", node_id)
+    ]
+    head = f"{node_label} {node_id}"
+    return f"{head}: {', '.join(pairs)}" if pairs else head
+
 
 @dataclass(frozen=True, slots=True)
 class AuthoritativeFacts:
@@ -126,9 +172,9 @@ class AuthoritativeFacts:
     source_record_id: str
     columns: dict[str, str]
 
-    def snippet(self) -> str:
-        pairs = ", ".join(f"{key}={value}" for key, value in self.columns.items())
-        return f"[authoritative {self.source_table}] {pairs}"
+    def sentence(self) -> str:
+        """The authoritative columns as one humanised sentence (see ``describe``)."""
+        return describe(self.node_label, self.node_id, self.columns)
 
     @property
     def valid_to(self) -> date | None:
@@ -148,13 +194,30 @@ class AuthoritativeFacts:
 class SourceLookup:
     """Reads authoritative rows from the dataset Parquet files.
 
-    Results are memoised per (label, id): ranking and evidence assembly
-    both request facts for the same nodes.
+    ``record_texts`` holds the record blocks pipeline A indexes (built once
+    over the dataset by ``records.serialise_records``). Results are memoised
+    per (label, id): ranking and evidence assembly both request facts for
+    the same nodes.
     """
 
-    def __init__(self, dataset_dir: Path) -> None:
+    def __init__(self, dataset_dir: Path, record_texts: RecordTexts) -> None:
         self._dataset_dir = dataset_dir
+        self._record_texts = record_texts
         self._cache: dict[tuple[str, str], AuthoritativeFacts | None] = {}
+
+    def node_text(self, node_label: str, node_id: str) -> str:
+        """The text a node is judged and shown on.
+
+        The node's record block, byte for byte, when pipeline A indexes one
+        for the same row, so the judge scores the same text for the same
+        record in every pipeline. Otherwise one humanised sentence from the
+        authoritative columns, or "<Label> <id>" for a node without facts.
+        """
+        table = _RECORD_TABLES.get(node_label)
+        if table is not None and (table, node_id) in self._record_texts:
+            return self._record_texts[(table, node_id)]
+        facts = self.fetch(node_label, node_id)
+        return facts.sentence() if facts is not None else describe(node_label, node_id, {})
 
     def fetch(self, node_label: str, node_id: str) -> AuthoritativeFacts | None:
         key = (node_label, node_id)

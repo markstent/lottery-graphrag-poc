@@ -7,7 +7,7 @@ question
  -> dense + sparse (BM25) embedding
  -> hybrid search (dense top-k + sparse top-k, reciprocal rank fusion)
  -> top-k
- -> optional reranking
+ -> the shared judge (cross-encoder reranker)
  -> context budget selection
  -> LLM
  -> answer + citations
@@ -42,32 +42,20 @@ Code lives in `backend/app/retrieval/standard/`.
   ADR-002; external chunk ids map to deterministic UUID point ids) plus an
   in-memory store for tests. Each point has a named dense vector `dense`
   (cosine) and a named sparse vector `sparse` (Qdrant applies the IDF
-  modifier, which fastembed BM25 requires). `search(dense, sparse, limit,
-  markets, kinds)` runs a dense and a sparse top-`limit` inside the same
-  filter and fuses them with reciprocal rank fusion (Qdrant: `query_points`
-  with two `Prefetch` entries and `FusionQuery(fusion=Fusion.RRF)`; in
-  memory: `fusion.reciprocal_rank_fusion`). A hit's `score` is the fused
-  score and becomes `EvidenceChunk.similarity`.
-  Since hybrid retrieval, `similarity` is the fused reciprocal-rank score of
-  the dense and sparse channels, not a cosine.
-  The RRF constant (`fusion.RRF_K = 1` with 1-based ranks) matches Qdrant's
-  server-side `Fusion.RRF` (`1 / (position + 2)`, 0-based) so both stores
-  rank and score identically; a live test checks the parity. The in-memory store also
-  reports each hit's `dense_rank`/`sparse_rank`; Qdrant fuses server side
-  and does not expose them (`None`). Both ranks are copied onto
-  `EvidenceChunk` and the `rag.candidate.retrieved` event.
+  modifier, which fastembed BM25 requires).
+  `search(dense, sparse, limit, markets, kinds)` runs a dense and a sparse top-`limit` inside the same filter and fuses them on the client with `fusion.reciprocal_rank_fusion`, in both stores (Qdrant: one `query_batch_points` call with two `QueryRequest`s).
+  The fused score is the sum of `1 / (60 + rank)` over the channels (`fusion.RRF_K = 60`, the published default, 1-based ranks).
+  Ties break by score descending, then dense rank ascending (absent from the dense channel last), then id ascending, and each channel is ordered by score then id before fusion, so equal scores never depend on server order.
+  The in-memory and Qdrant stores therefore return the same fused order, scores and channel ranks by construction; a live test checks the parity, ties included.
+  A hit's `score` is the fused score and becomes `EvidenceChunk.similarity`: since hybrid retrieval, `similarity` is the fused reciprocal-rank score of the dense and sparse channels, not a cosine.
+  Every hit reports its `dense_rank` and `sparse_rank` (`None` when it was not in that channel's top-`limit`); both are copied onto `EvidenceChunk` and the `rag.candidate.retrieved` event.
   Every pipeline builds evidence from the hit payload through the shared
   `corpus.hit_to_evidence`, so no hit is dropped for lack of a corpus entry. A market scope matches only non-empty
   market ids, so market-less items are excluded from scoped runs for every
   pipeline. `top_k` defaults to 40 (`RAG_TOP_K`).
-- **Reranking**: `reranking.py` blends the incoming rank with lexical
-  overlap, `score = (1 - w) * (1 / rank_in) + w * overlap` (w = 0.3 by
-  default); it blends on rank because the fused score is not on the scale of
-  overlap; disabled and enabled modes both record per-candidate
-  scores. The graph pipeline gets an equivalent candidate-ranking opportunity.
-- **Context budget**: `context.py` walks candidates in rank order within a
-  token budget (default 2000), skipping near-duplicates (Jaccard >= 0.85);
-  discarded chunks carry `context_budget` or `duplicate` reasons.
+- **Reranking**: `reranking.py` holds the one judge shared by A, B and C (`docs/retrieval/reranking.md`).
+  The cross-encoder `BAAI/bge-reranker-v2-m3` scores every candidate it is given against the raw question, in one call; the lexical reranker is the deterministic CI judge.
+- **Context budget**: `context.py` walks the reranked candidates within one token budget (default 2000) and one slot count (default 12), skipping near-duplicate document chunks (Jaccard >= 0.85); discarded candidates carry `context_budget`, `slot_limit` or `duplicate` (`docs/retrieval/context-budgeting.md`).
 - **Generation**: `generation.py` implements the ADR-003 gateway contract with
   a deterministic `FakeAnswerGenerator` (CI default) and a LiteLLM adapter
   (`GENERATION_PROVIDER=litellm`); see the answer contract below.
@@ -88,7 +76,7 @@ The system prompt tells the model to use only those numbered sources, to cite ev
 ```
 
 When the sources do not answer the question, the model must set `verdict` to `unknown` and say so in the answer.
-`GENERATION_MAX_TOKENS` (default 600) caps the completion length and `GENERATION_TEMPERATURE` (default 0) is passed through unchanged.
+`GENERATION_MAX_TOKENS` (default 1200, room for models that spend completion tokens on hidden thinking) caps the completion length and `GENERATION_TEMPERATURE` (default 0) is passed through unchanged.
 
 `parse_answer` reads the model output with three strategies, in order:
 

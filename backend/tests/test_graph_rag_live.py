@@ -29,7 +29,7 @@ from app.ontology.terms import TermMatcher, build_term_table
 from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import IdEntityResolver, QueryExpansion, TermEntityResolver
-from app.retrieval.graph.source_lookup import SourceLookup
+from app.retrieval.graph.source_lookup import SourceLookup, record_texts_of
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.index import index_corpus, load_indexed_corpus
@@ -114,9 +114,10 @@ def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipe
             generator=FakeAnswerGenerator(),
             settings=settings,
             reranker=build_reranker(settings),
-            source_lookup=SourceLookup(ingested),
+            source_lookup=SourceLookup(ingested, record_texts_of(corpus.values())),
             pipeline="C",
             expansion=QueryExpansion(ontology),
+            ontology=ontology,
         )
 
 
@@ -195,7 +196,7 @@ def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: Graph
             generator=FakeAnswerGenerator(),
             settings=dataclasses.replace(full_settings, graph=graph_settings),
             reranker=build_reranker(full_settings),
-            source_lookup=SourceLookup(ingested),
+            source_lookup=SourceLookup(ingested, record_texts_of(corpus.values())),
             pipeline="B",
         )
         result = pipeline.run("What happened around digital checkout recently?")

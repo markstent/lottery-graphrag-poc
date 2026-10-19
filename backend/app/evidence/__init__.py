@@ -123,6 +123,9 @@ class GraphEvidence(BaseModel):
     rel_type: str
     score: float
     components: dict[str, float]
+    rerank_score: float | None = Field(
+        default=None, description="Shared reranker score; None when the node was never judged"
+    )
     selected: bool = False
     discard_reason: str | None = None
     authoritative: dict[str, str] | None = Field(

@@ -68,9 +68,10 @@ HEADER_LINES: tuple[str, ...] = (
     ),
     (
         "- **B, graph relationships**: an id and market resolver seeds a bounded "
-        "traversal over the structured-record subgraph; selected nodes carry "
-        "authoritative facts from the source tables; documents come from the same "
-        "hybrid channel as A."
+        "traversal over the structured-record subgraph (when nothing resolves, the "
+        "graph node of the best-matching record block); the top nodes by graph score "
+        "join A's document channel as structured candidates, judged on the same "
+        "record text A indexes; nodes carry authoritative facts from the source tables."
     ),
     "  No ontology: no concept seeds, no `MAPS_TO` expansion, no query expansion.",
     (
@@ -81,8 +82,9 @@ HEADER_LINES: tuple[str, ...] = (
     ),
     "",
     (
-        "Same question, same synthetic world, same embedding model, same reranker, same "
-        "generator and prompt, one context budget."
+        "Same question, same synthetic world, same embedding model, one reranker that "
+        "judges every candidate against the raw question, same generator and prompt, "
+        "one context budget and slot count."
     ),
     "Only the retrieval layers differ.",
     "",
@@ -111,9 +113,10 @@ HEADER_LINES: tuple[str, ...] = (
     "## How to read a trace",
     "",
     (
-        "- *selected context* (A): each selected block with its kind (`chunk` for "
-        "document text, `record` for a table row), fused score, cross-encoder score and "
-        "final rank (per-channel dense and sparse ranks only when the store reports them)."
+        "- *selected context*: how many graph nodes, record blocks and document chunks "
+        "the one selection placed in context; for A and the shared document channel, "
+        "each block with its kind (`chunk` for document text, `record` for a table "
+        "row), fused score, dense and sparse ranks, cross-encoder score and final rank."
     ),
     (
         "- *resolved entities* (B, C): resolver output with its origin; concept-bound "
@@ -126,7 +129,7 @@ HEADER_LINES: tuple[str, ...] = (
     ),
     (
         "- *selected node evidence*: graph nodes chosen as evidence with hop distance, "
-        "relationship, score components and authoritative facts."
+        "relationship, graph score components, cross-encoder score and authoritative facts."
     ),
     "- *events*: counts of the structured telemetry stream that drives the UI.",
     "- *Answer*: the parsed verdict, the prose answer and the cited context blocks.",
@@ -182,23 +185,32 @@ def _fmt_events(events: list[RetrievalEvent]) -> str:
 
 def _fmt_chunk(chunk: EvidenceChunk) -> str:
     kind = f"record {chunk.record_table}" if chunk.kind == "record" else chunk.kind
-    parts = [f"fused {chunk.similarity:.4f}"]
-    # Channel ranks are only known when the store reports them (the in-memory
-    # store does; Qdrant's server-side fusion returns the fused score only).
-    if chunk.dense_rank is not None or chunk.sparse_rank is not None:
-        parts.append(f"dense rank {chunk.dense_rank}, sparse rank {chunk.sparse_rank}")
+    parts = [
+        f"fused {chunk.similarity:.4f}",
+        f"dense rank {chunk.dense_rank}, sparse rank {chunk.sparse_rank}",
+    ]
     if chunk.rerank_score is not None:
         parts.append(f"rerank {chunk.rerank_score:.3f}")
     parts.append(f"rank {chunk.rank}")
     return f"`{chunk.chunk_id}` [{kind}] {chunk.title} ({', '.join(parts)})"
 
 
+def _fmt_score(score: float | None) -> str:
+    return "-" if score is None else f"{score:.3f}"
+
+
 def _fmt_answer(answer: RagAnswer) -> list[str]:
+    shown = len(answer.citations)
+    cited = (
+        f"{answer.cited_blocks} of {shown} shown"
+        if answer.cited_blocks
+        else f"none ({shown} shown)"
+    )
     return [
         f"**Answer** ({answer.model}, {answer.latency_ms:.0f} ms):",
         "",
         f"- verdict: {answer.verdict or '(none)'}",
-        f"- cited blocks: {answer.cited_blocks} of {len(answer.citations)} shown",
+        f"- cited blocks: {cited}",
         "",
         answer.text,
         "",
@@ -251,7 +263,7 @@ def trace_g(tag: PipelineId, result: GraphRunResult, events: list[RetrievalEvent
     seeds = [
         event.payload["node_id"] for event in events if event.event_type == GRAPH_SEED_SELECTED
     ]
-    lines.append(f"- seeds: {', '.join(f'`{seed}`' for seed in seeds) or '(vector fallback)'}")
+    lines.append(f"- seeds: {', '.join(f'`{seed}`' for seed in seeds) or '(none)'}")
     traversal = next((e for e in events if e.event_type == GRAPH_TRAVERSAL_STARTED), None)
     if traversal is not None:
         payload = traversal.payload
@@ -286,6 +298,12 @@ def trace_g(tag: PipelineId, result: GraphRunResult, events: list[RetrievalEvent
             f"- discovered via_concept `{concept}`: {len(node_ids)} node(s): {shown}{more}"
         )
 
+    doc_selected = [chunk for chunk in result.document_evidence if chunk.selected]
+    records = sum(1 for chunk in doc_selected if chunk.kind == "record")
+    lines.append(
+        f"- selected context ({len(selected) + len(doc_selected)}: {len(selected)} node, "
+        f"{records} record, {len(doc_selected) - records} document)"
+    )
     lines.append(f"- selected node evidence ({len(selected)}):")
     for node in selected:
         facts = ""
@@ -295,11 +313,16 @@ def trace_g(tag: PipelineId, result: GraphRunResult, events: list[RetrievalEvent
             )
         lines.append(
             f"  - `{node.node_id}` ({node.node_label}, {node.hops} hop(s) via "
-            f"{node.rel_type}, score {node.score:.3f}, "
+            f"{node.rel_type}, score {node.score:.3f}, rerank {_fmt_score(node.rerank_score)}, "
             f"components {node.components}){facts}"
         )
-    lines.append(f"- discarded nodes: {len(discarded)}")
-    doc_selected = [chunk for chunk in result.document_evidence if chunk.selected]
+    reasons: dict[str, int] = {}
+    for node in discarded:
+        reasons[str(node.discard_reason)] = reasons.get(str(node.discard_reason), 0) + 1
+    lines.append(
+        f"- discarded nodes: {len(discarded)}"
+        + (f" ({', '.join(f'{r}={n}' for r, n in sorted(reasons.items()))})" if reasons else "")
+    )
     if doc_selected:
         lines.append(f"- hybrid channel blocks, shared with A ({len(doc_selected)}):")
         for chunk in doc_selected:

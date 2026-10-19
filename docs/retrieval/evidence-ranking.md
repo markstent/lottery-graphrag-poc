@@ -10,7 +10,7 @@ Status: implemented (HITL-08). Reference implementation:
   favours graph results. The baseline must stay credible (AGENTS.md,
   Experimental Integrity).
 - Shared by pipelines B and C; A is untouched. C differs from B only by the
-  ontology relationships and concept seeds.
+  ontology layer: ontology relationships, concept seeds, query expansion and concept texts.
 - The relationship weight table is defined once
   (`RELATIONSHIP_WEIGHTS` in `app/retrieval/graph/traversal.py`) and is used
   for both ranking and traversal cut priority, so the two can never disagree.
@@ -46,9 +46,9 @@ Default weights (`DEFAULT_RANKING_WEIGHTS`, overridable per experiment):
   `RELATED_TO_VERSION` 0.9; `AFFECTS` / `USES_PAYMENT` 0.8; market-level
   associations 0.4 to 0.6; `MAPS_TO` 0.5 (the ontology evidence path);
   unknown types default to 0.3.
-- `semantic_relevance`: cosine between the question vector and the node text
-  (label + id + authoritative fact snippet) using the same embedding model as
-  pipeline A. The graph never uses a different semantic model.
+- `semantic_relevance`: cosine between the question vector and the node text using the same embedding model as pipeline A.
+  The node text is the one text a node has everywhere: the record block A indexes for the same row when one exists, else one humanised sentence from the authoritative columns, a concept's ontology text in pipeline C, or "<Label> <id>" for a node without facts.
+  The graph never uses a different semantic model.
 - `temporal_validity`: read from the authoritative row of the node.
   The end of the validity window is `retirement_date` for games, `retired_at` for platform versions, `end_at` for campaigns and experiments and `valid_to` for documents.
   Incidents and app versions have no end, so they are always current (a resolved incident stays a valid record).
@@ -58,24 +58,20 @@ Default weights (`DEFAULT_RANKING_WEIGHTS`, overridable per experiment):
 
 ## Selection
 
-- Nodes are ranked; the top `max_evidence_nodes` (default 12) non-seed nodes
-  are selected.
-- Seeds are always selected and recorded separately with `seed: true`; they
-  do not consume the cap.
-- Every non-selected candidate is kept with its components and a
-  `discard_reason` (`below_score_limit`, or the budget reason from context
-  selection). Discards are first-class telemetry for the UI.
-- Context assembly then applies the shared token budget and dedupe threshold
-  (`select_context`), identical to pipeline A.
+- The composite score orders the structured channel and drives telemetry; it does not select context.
+- The top `RERANK_CANDIDATES` (default 40) nodes by composite score become structured candidates; every node beyond that cut is discarded with `candidate_cap`.
+- Seeds get no special treatment: they usually rank first (distance and relationship components are 1.0) and are judged like every other node.
+- The structured candidates and pipeline A's document channel are judged together by the shared reranker on the raw question, and one selection under the shared budget and slots decides what enters the context (`docs/retrieval/context-budgeting.md`).
+- Every node keeps its components, its `rerank_score` (absent when it never reached the judge) and its outcome.
+  A discarded node carries `candidate_cap`, `out_of_scope_market`, or a selection reason (`context_budget`, `slot_limit`).
+  Discards are first-class telemetry for the UI.
 
 ## Fairness notes
 
 - Identical components and weights are used for B and C; only the traversal
   allow-list differs (`MAPS_TO` removed in B).
-- Node evidence is complementary to the chunk context: structured blocks are
-  built from `SourceLookup` snippets of selected nodes, while documents come
-  from the shared vector channel. The token budget applies to document chunks;
-  structured snippets are short, curated fact lines, not free text.
+- Structured and document candidates compete for one token budget and one slot count under one judge; no channel has reserved slots.
+  A node with a record block is judged on that record's exact text, so the judge cannot prefer a fact because of the channel it came through.
 - Do not tune any weight to make a specific scenario pass. Changes to this
   table are experimental-configuration changes and must be re-validated
   against the benchmark (Phase 10) before official runs.

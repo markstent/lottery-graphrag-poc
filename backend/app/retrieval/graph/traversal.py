@@ -92,17 +92,22 @@ class NeighbourProvider(Protocol):
         ids: list[str],
         rel_types: tuple[str, ...],
         per_type: int,
+        excluded_labels: tuple[str, ...],
     ) -> list[NeighbourEdge]:
         """Edges from the given ids after per-type caps.
 
-        Hop-level and total caps are applied by ``bounded_traversal``,
-        which orders edges by relationship strength so a cut is never
-        alphabetical.
+        Targets with an excluded label are dropped before the per-type cap,
+        so they never take a permitted neighbour's place. Hop-level and
+        total caps are applied by ``bounded_traversal``, which orders edges
+        by relationship strength so a cut is never alphabetical.
         """
         ...
 
-    def concept_bound(self, concept_id: str, limit: int) -> list[tuple[str, str]]:
-        """Entities bound to one BusinessConcept via MAPS_TO (id, label)."""
+    def concept_bound(
+        self, concept_id: str, limit: int, excluded_labels: tuple[str, ...]
+    ) -> list[tuple[str, str]]:
+        """Entities bound to one BusinessConcept via MAPS_TO (id, label),
+        excluded labels dropped before the limit."""
         ...
 
 
@@ -132,6 +137,7 @@ class StaticNeighbourProvider:
         ids: list[str],
         rel_types: tuple[str, ...],
         per_type: int,
+        excluded_labels: tuple[str, ...],
     ) -> list[NeighbourEdge]:
         edges: list[NeighbourEdge] = []
         for node_id in ids:
@@ -140,7 +146,7 @@ class StaticNeighbourProvider:
                 self._adjacency.get(node_id, []),
                 key=lambda edge: (edge.rel_type, edge.to_id),
             ):
-                if edge.rel_type not in rel_types:
+                if edge.rel_type not in rel_types or edge.to_label in excluded_labels:
                     continue
                 if taken_per_type.get(edge.rel_type, 0) >= per_type:
                     continue
@@ -148,11 +154,13 @@ class StaticNeighbourProvider:
                 edges.append(edge)
         return edges
 
-    def concept_bound(self, concept_id: str, limit: int) -> list[tuple[str, str]]:
+    def concept_bound(
+        self, concept_id: str, limit: int, excluded_labels: tuple[str, ...]
+    ) -> list[tuple[str, str]]:
         bound = [
             (edge.to_id, edge.to_label)
             for edge in self._adjacency.get(concept_id, [])
-            if edge.rel_type == "MAPS_TO"
+            if edge.rel_type == "MAPS_TO" and edge.to_label not in excluded_labels
         ]
         return bound[:limit]
 
@@ -174,8 +182,9 @@ def bounded_traversal(
     """Breadth-first traversal with hard caps; deterministic order.
 
     Each frontier node contributes at most ``max_edges_per_node_type``
-    edges per relationship type (document edges uncapped: they are the
-    retrieval targets with naturally small degree). When candidate edges
+    edges per relationship type. Edges whose target label is in
+    ``excluded_labels`` are neither followed nor recorded: the provider
+    drops them before its per-type cap. When candidate edges
     exceed the hop-level node budget, they are explored in relationship
     strength order (same transparent table as evidence ranking), so a cut
     is never alphabetical and never silently favours id formats.
@@ -204,6 +213,7 @@ def bounded_traversal(
             frontier,
             settings.relationship_types,
             settings.max_edges_per_node_type,
+            settings.excluded_labels,
         )
         ordered = sorted(
             found,
@@ -265,7 +275,8 @@ def expand_ontology(
     entities as traversal nodes one hop behind the concept: at most
     ``max_edges_per_node_type`` per concept, ordered by ``semantic``
     relevance to the (expanded) question, ties by id, subject to the same
-    total node cap. Entities already reached are not candidates. Returns
+    total node cap. Entities already reached are not candidates.
+    Entities with an excluded label are not candidates either. Returns
     the updated traversal, per-concept counts of newly injected entities
     (for telemetry), and the injected edges.
     """
@@ -289,7 +300,7 @@ def expand_ontology(
         candidates = [
             (entity_id, entity_label)
             for entity_id, entity_label in provider.concept_bound(
-                concept_id, settings.max_nodes_per_hop
+                concept_id, settings.max_nodes_per_hop, settings.excluded_labels
             )
             if entity_id not in hops
         ]

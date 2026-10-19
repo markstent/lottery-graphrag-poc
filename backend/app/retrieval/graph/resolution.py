@@ -18,7 +18,7 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.ontology.model import LANGUAGES, Ontology
+from app.ontology.model import LANGUAGES, Concept, Ontology
 from app.ontology.terms import TermMatcher
 
 _ID_TOKEN = re.compile(r"\b[A-Z]{2,12}(?:_[A-Z0-9]+)+\b")
@@ -217,6 +217,23 @@ class QueryExpansion:
             yield concept.labels[language]
         for language in LANGUAGES:
             yield from concept.synonyms.get(language, ())
+
+
+def concept_text(concept: Concept) -> str:
+    """A BusinessConcept node's text, from the ontology (pipeline C).
+
+    "Concept <canonical name>: <definition> Labels: <language>: <label>; ...
+    Synonyms: <language>: <synonym>, ...; ..." with the English label as the
+    canonical name and languages in market order.
+    """
+    labels = "; ".join(f"{language}: {concept.labels[language]}" for language in LANGUAGES)
+    synonyms = "; ".join(
+        f"{language}: {', '.join(concept.synonyms[language])}"
+        for language in LANGUAGES
+        if concept.synonyms.get(language)
+    )
+    text = f"Concept {concept.labels['en']}: {concept.definition} Labels: {labels}."
+    return f"{text} Synonyms: {synonyms}." if synonyms else text
 
 
 def _concepts_of(resolved: Sequence[ResolvedEntity]) -> list[str]:
