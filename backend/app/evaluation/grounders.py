@@ -6,6 +6,10 @@ expected answer, the answer checks and the claim specs. Eligibility bounds
 are those of the Phase 3 plan; a grounder never widens one. Sampling,
 carrier resolution and anchor exclusion happen in ``app.evaluation.grounding``.
 
+An incident's markets are its own market when set, otherwise the markets of
+the games it affects; incidents without a market of their own are never
+anchors of the cross-market questions (L05, L10).
+
 Taxonomy names (families, mechanics, segments) come from
 ``local_name_variants()``; the world tables say which records exist. Ontology
 equivalence comes from ``load_ontology()`` bindings; Neo4j is never read.
@@ -23,7 +27,14 @@ import duckdb
 
 from app.datasets.document_templates import MARKET_NAMES
 from app.datasets.taxonomies import MARKET_LANGUAGE, local_name_variants
-from app.evaluation.checks import Check, NumberCheck, SetCheck, TokenCheck, VerdictCheck
+from app.evaluation.checks import (
+    UNIT_SYMBOLS,
+    Check,
+    NumberCheck,
+    SetCheck,
+    TokenCheck,
+    VerdictCheck,
+)
 from app.evaluation.claims import ClaimSpec
 from app.ontology.model import Ontology
 
@@ -52,11 +63,14 @@ class Game:
 
 @dataclass(frozen=True, slots=True)
 class Incident:
-    # None for a corporate incident, which belongs to no market.
+    # None for a corporate incident, which belongs to no market of its own.
     market_id: str | None
     platform_version_id: str | None
     incident_type: str
     started_on: date
+    # The incident's markets: its own market when set, otherwise the
+    # markets of the games it affects (empty when it affects none).
+    markets: frozenset[str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,18 +140,20 @@ def load_world(connection: duckdb.DuckDBPyConnection, ontology: Ontology) -> Wor
             " digital_enabled FROM games ORDER BY 1"
         )
     }
-    incidents = {
-        str(r[0]): Incident(_text(r[1]), _text(r[2]), str(r[3]), _date(r[4]))
-        for r in rows(
-            "SELECT incident_id, market_id, platform_version_id, incident_type,"
-            " CAST(started_at AS DATE) FROM incidents ORDER BY 1"
-        )
-    }
     incident_games: dict[str, list[str]] = defaultdict(list)
     for incident_id, game_id in rows(
         "SELECT DISTINCT incident_id, game_id FROM incident_game_map ORDER BY 1, 2"
     ):
         incident_games[str(incident_id)].append(str(game_id))
+    incidents: dict[str, Incident] = {}
+    for r in rows(
+        "SELECT incident_id, market_id, platform_version_id, incident_type,"
+        " CAST(started_at AS DATE) FROM incidents ORDER BY 1"
+    ):
+        incident_id, market_id = str(r[0]), _text(r[1])
+        affected = {games[game_id].market_id for game_id in incident_games[incident_id]}
+        belongs = frozenset({market_id} if market_id is not None else affected)
+        incidents[incident_id] = Incident(market_id, _text(r[2]), str(r[3]), _date(r[4]), belongs)
     uses = tuple(
         MechanicUse(
             str(r[0]), str(r[1]), float(str(r[2])), _optional_date(r[3]), _optional_date(r[4])
@@ -185,6 +201,9 @@ class Draft:
     expected_answer: str
     checks: tuple[Check, ...]
     specs: tuple[ClaimSpec, ...]
+    # Name-anchored drafts sharing a concept share an answer; grounding keeps
+    # one anchor per concept. None for every other draft.
+    concept: str | None = None
 
 
 Grounder = Callable[[World], list[Draft]]
@@ -198,7 +217,10 @@ def ground_l01(world: World) -> list[Draft]:
     for game_id, game in world.games.items():
         two_decimal, shortest = _price_forms(game.price)
         statement = f"The ticket price of {game_id} is {two_decimal} {game.currency}."
-        markers = ((game_id, game.name), tuple(dict.fromkeys((two_decimal, shortest))))
+        # The shortest form alone matches scores and version labels ("1.0" in
+        # "2024.1.0"), so a carrier must state the two-decimal price and its currency.
+        currency = tuple(dict.fromkeys((game.currency, UNIT_SYMBOLS[game.currency])))
+        markers = ((game_id, game.name), (two_decimal,), currency)
         drafts.append(
             Draft(
                 game_id,
@@ -240,7 +262,9 @@ def ground_l04(world: World) -> list[Draft]:
             statement = f"Yes, game {game_id} is available on digital channels."
         else:
             statement = f"No, game {game_id} is not available on digital channels."
-        spec = ClaimSpec("digital", statement, (), ((game_id, game.name), ("digital",)))
+        # Record blocks never state the flag as a word, so only the record
+        # carries it; that is the anchor, so L04 scores the answer alone.
+        spec = ClaimSpec("digital", statement, (game_id,), ())
         check = VerdictCheck("yes" if game.digital else "no")
         drafts.append(Draft(game_id, game_id, statement, (check,), (spec,)))
     return drafts
@@ -256,12 +280,11 @@ def ground_l05(world: World) -> list[Draft]:
         if version is None or incident.market_id is None:
             continue
         others = [
-            (other_id, market)
+            (other_id, sorted(found))
             for other_id, other in world.incidents.items()
-            if other.platform_version_id == version
-            and (market := _other_market(incident, other)) is not None
+            if other.platform_version_id == version and (found := _other_markets(incident, other))
         ]
-        markets = sorted({market for _, market in others})
+        markets = sorted({market for _, found in others for market in found})
         if not MIN_SET <= len(markets) <= MAX_SET:
             continue
         answer = (
@@ -271,11 +294,11 @@ def ground_l05(world: World) -> list[Draft]:
         specs = tuple(
             ClaimSpec(
                 other_id,
-                f"Incident {other_id} in {market} was seen on platform version {version}.",
+                f"Incident {other_id} in {_join(found)} was seen on platform version {version}.",
                 (other_id,),
                 ((other_id,), (version,)),
             )
-            for other_id, market in others
+            for other_id, found in others
         )
         drafts.append(
             Draft(incident_id, incident_id, answer, (SetCheck.of(markets, world.markets),), specs)
@@ -426,7 +449,7 @@ def ground_l10(world: World) -> list[Draft]:
         others = sorted(
             other_id
             for other_id, other in world.incidents.items()
-            if _other_market(incident, other) is not None
+            if _other_markets(incident, other)
             and world.concept("incident_type", other.incident_type) == concept
         )
         if not MIN_SET <= len(others) <= MAX_SET:
@@ -473,8 +496,8 @@ def ground_l11(world: World) -> list[Draft]:
             ClaimSpec(
                 other_id,
                 f"Segment {other_id} is a {world.label(concept)} segment.",
+                (other_id,),
                 (),
-                ((other_id, world.name("segment", other_id)),),
             )
             for other_id in others
         )
@@ -529,7 +552,7 @@ def ground_l13(world: World) -> list[Draft]:
         )
         specs = tuple(_family_spec(world, game_id) for game_id in games)
         check = SetCheck.of(games, world.game_universe())
-        drafts.append(Draft(family_id, name, answer, (check,), specs))
+        drafts.append(Draft(family_id, name, answer, (check,), specs, concept))
     return drafts
 
 
@@ -549,7 +572,7 @@ def ground_l14(world: World) -> list[Draft]:
         )
         specs = tuple(_mechanic_spec(world, game_id, concept) for game_id in games)
         check = SetCheck.of(games, world.game_universe())
-        drafts.append(Draft(mechanic_id, description, answer, (check,), specs))
+        drafts.append(Draft(mechanic_id, description, answer, (check,), specs, concept))
     return drafts
 
 
@@ -574,11 +597,13 @@ GROUNDERS: dict[str, Grounder] = {
 # ---------------------------------------------------------------- shared helpers
 
 
-def _other_market(incident: Incident, other: Incident) -> str | None:
-    """`other`'s market when it differs from `incident`'s; a corporate incident has none."""
-    if other.market_id is None or other.market_id == incident.market_id:
-        return None
-    return other.market_id
+def _other_markets(incident: Incident, other: Incident) -> frozenset[str]:
+    """`other`'s markets besides `incident`'s.
+
+    A corporate incident (no market of its own) counts in the markets of the
+    games it affects. Anchors of the cross-market questions always have a market.
+    """
+    return other.markets - incident.markets
 
 
 def _family_spec(world: World, game_id: str) -> ClaimSpec:

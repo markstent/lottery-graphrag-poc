@@ -116,6 +116,18 @@ def sample_anchors(
     return sorted(eligible, key=digest)[:k]
 
 
+def _one_per_concept(question_id: str, by_anchor: Mapping[str, Draft]) -> dict[str, Draft]:
+    """The first anchor in hash order for each concept, so no two instances share an answer."""
+    kept: dict[str, Draft] = {}
+    concepts: set[str | None] = set()
+    for anchor in sample_anchors(question_id, list(by_anchor), k=len(by_anchor)):
+        draft = by_anchor[anchor]
+        if draft.concept not in concepts:
+            concepts.add(draft.concept)
+            kept[anchor] = draft
+    return kept
+
+
 class WorldGrounding:
     """Grounds bank questions against one generated world and its truth ledger.
 
@@ -152,12 +164,15 @@ class WorldGrounding:
         by_anchor = {draft.anchor_id: draft for draft in drafts}
         if len(by_anchor) != len(drafts):
             raise GroundingError(f"{question.question_id} lists an anchor twice")
+        note = f"{len(drafts)} eligible anchors"
+        if any(draft.concept is not None for draft in drafts):
+            by_anchor = _one_per_concept(question.question_id, by_anchor)
+            note = f"{len(by_anchor)} eligible anchors (one per concept, of {len(drafts)} codes)"
+        if len(by_anchor) < ANCHORS_PER_QUESTION:
+            note += f", fewer than the {ANCHORS_PER_QUESTION} the bank asks for"
         chosen = sample_anchors(question.question_id, list(by_anchor))
         instances = tuple(self._instance(question, by_anchor[anchor]) for anchor in chosen)
-        note = f"{len(drafts)} eligible anchors"
-        if len(drafts) < ANCHORS_PER_QUESTION:
-            note += f", fewer than the {ANCHORS_PER_QUESTION} the bank asks for"
-        return GroundingOutcome(instances, len(drafts), note)
+        return GroundingOutcome(instances, len(by_anchor), note)
 
     def _instance(self, question: LogicalQuestion, draft: Draft) -> BankInstance:
         claims = exclude_anchor([self._claim(spec) for spec in draft.specs], draft.anchor_id)

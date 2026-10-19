@@ -41,7 +41,7 @@ _NUMBER_PATTERN = re.compile(
 )
 _THOUSANDS_SEPARATOR = re.compile(r",(?=\d{3}(?!\d))")
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+|\s*\n\s*")
-_UNIT_SYMBOLS = {"GBP": "£", "EUR": "€", "CZK": "Kč", "%": "%"}
+UNIT_SYMBOLS = {"GBP": "£", "EUR": "€", "CZK": "Kč", "%": "%"}
 _VERDICTS = ("yes", "no")
 
 
@@ -211,7 +211,7 @@ def _number_score(check: NumberCheck, text: str) -> float:
 
 
 def _unit_adjacent(text: str, match: re.Match[str], unit: str) -> bool:
-    forms = sorted({unit, _UNIT_SYMBOLS.get(unit, unit)})
+    forms = sorted({unit, UNIT_SYMBOLS.get(unit, unit)})
     units = "|".join(re.escape(form) for form in forms)
     after = re.compile(rf" ?(?:{units})(?!\w)")
     before = re.compile(rf"(?<!\w)(?:{units}) ?$")

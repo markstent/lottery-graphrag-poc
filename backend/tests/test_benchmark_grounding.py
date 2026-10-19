@@ -20,6 +20,7 @@ from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, question_by_id
 from app.evaluation.checks import NumberCheck, SetCheck
+from app.evaluation.grounders import ground_l01
 from app.evaluation.grounding import (
     GroundingError,
     WorldGrounding,
@@ -161,6 +162,41 @@ def test_outcome_note_records_the_eligible_count(grounding: WorldGrounding) -> N
     assert outcome.note == "20 eligible anchors"
 
 
+def test_l04_scores_the_answer_alone(grounding: WorldGrounding) -> None:
+    outcome = grounding.ground(question_by_id("L04"))
+    assert outcome.instances and all(not i.claims for i in outcome.instances)
+
+
+def test_segment_claims_are_carried_by_segment_records_only(grounding: WorldGrounding) -> None:
+    for instance in grounding.ground(question_by_id("L11")).instances:
+        for claim in instance.claims:
+            assert claim.carriers == {claim.claim_id}
+
+
+def test_name_anchored_instances_never_share_an_answer(grounding: WorldGrounding) -> None:
+    for qid in ("L13", "L14"):
+        outcome = grounding.ground(question_by_id(qid))
+        answers = [instance.checks for instance in outcome.instances]
+        assert len(set(answers)) == len(answers), qid
+        assert "one per concept" in outcome.note
+
+
+def test_cross_market_anchors_have_a_market_of_their_own(
+    grounding: WorldGrounding, tiny_dataset: Path
+) -> None:
+    path = (tiny_dataset / "incidents.parquet").as_posix()
+    corporate = {
+        str(row[0])
+        for row in duckdb.execute(
+            "SELECT incident_id FROM read_parquet(?) WHERE market_id IS NULL", [path]
+        ).fetchall()
+    }
+    for qid in ("L05", "L10"):
+        assert (
+            not {i.anchor_id for i in grounding.ground(question_by_id(qid)).instances} & corporate
+        )
+
+
 def test_planted_questions_have_no_structural_grounder(grounding: WorldGrounding) -> None:
     with pytest.raises(GroundingError, match="L15"):
         grounding.ground(question_by_id("L15"))
@@ -170,3 +206,37 @@ def test_planted_questions_have_no_structural_grounder(grounding: WorldGrounding
 def test_dev_world_meets_the_structural_counts(dev_grounding: WorldGrounding) -> None:
     counts = Counter(i.question_id for q in STRUCTURAL for i in dev_grounding.ground(q).instances)
     assert all(counts[q.question_id] == ANCHORS_PER_QUESTION for q in STRUCTURAL)
+
+
+@dev_world
+def test_dev_world_price_carriers_state_the_price(dev_grounding: WorldGrounding) -> None:
+    # Every game, not only the sampled ones: a support case or incident
+    # carries a price claim only when its text states that price.
+    index = dev_grounding._index
+    for draft in ground_l01(dev_grounding._world):
+        (spec,) = draft.specs
+        two_decimal = spec.markers[1][0]
+        for carrier in index.carriers(spec):
+            if carrier.startswith(("SUP_", "INC_")):
+                assert two_decimal in index.texts[carrier], (draft.anchor_id, carrier)
+
+
+@dev_world
+def test_dev_world_corporate_incidents_count_in_their_games_markets(
+    dev_grounding: WorldGrounding,
+) -> None:
+    instance = next(
+        i for i in dev_grounding.ground(question_by_id("L05")).instances if i.anchor_id == "INC_033"
+    )
+    (check,) = instance.checks
+    assert isinstance(check, SetCheck) and "MKT_CZ" in check.expected
+
+
+@dev_world
+def test_dev_world_segment_claims_have_no_player_carrier(dev_grounding: WorldGrounding) -> None:
+    for instance in dev_grounding.ground(question_by_id("L11")).instances:
+        assert all(
+            not carrier.startswith("PLAYER_")
+            for claim in instance.claims
+            for carrier in claim.carriers
+        )
