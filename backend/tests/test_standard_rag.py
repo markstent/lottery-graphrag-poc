@@ -30,11 +30,14 @@ from app.events import (
     RAG_VECTOR_SEARCH_STARTED,
 )
 from app.evidence import EvidenceChunk
+from app.retrieval.standard import index as index_module
 from app.retrieval.standard.context import estimate_tokens, select_context
 from app.retrieval.standard.corpus import CorpusChunk, load_corpus
 from app.retrieval.standard.embeddings import HashingEmbedder
+from app.retrieval.standard.fusion import reciprocal_rank_fusion
 from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
 
@@ -110,13 +113,11 @@ def build_pipeline(
     settings = settings or make_settings()
     embeddings = HashingEmbedder(dimensions=settings.embedding.dimensions)
     store = InMemoryVectorStore()
-    store.upsert(
-        ids=[chunk.chunk_id for chunk in corpus],
-        vectors=embeddings.embed([chunk.text for chunk in corpus]),
-        payloads=[chunk.to_payload() for chunk in corpus],
-    )
+    sparse = HashingSparseEmbedder()
+    index_module.index_corpus(store, embeddings, sparse, corpus)
     return StandardRagPipeline(
         embeddings=embeddings,
+        sparse=sparse,
         store=store,
         generator=FakeAnswerGenerator(),
         settings=settings,
@@ -358,3 +359,95 @@ class TestCorpusLoader:
         evidence: EvidenceChunk = first.to_evidence(similarity=0.5, rank=1)
         assert evidence.rank == 1
         assert evidence.selected is False
+
+    def test_load_corpus_maps_missing_market_to_empty(self, tmp_path: Path) -> None:
+        documents = pa.table(
+            {
+                "document_id": pa.array(["DOC_1"]),
+                "document_type": pa.array(["POLICY"]),
+                "market_id": pa.array([None], type=pa.string()),
+                "language_code": pa.array(["en"]),
+                "title": pa.array(["Group Policy"]),
+                "source_system_code": pa.array(["document_store"]),
+                "valid_from": pa.array([None], type=pa.timestamp("us")),
+                "valid_to": pa.array([None], type=pa.timestamp("us")),
+            }
+        )
+        chunks = pa.table(
+            {
+                "chunk_id": pa.array(["CHNK_1_00"]),
+                "document_id": pa.array(["DOC_1"]),
+                "chunk_index": pa.array([0], type=pa.int32()),
+                "text": pa.array(["group policy"]),
+            }
+        )
+        pq.write_table(documents, tmp_path / "documents.parquet")
+        pq.write_table(chunks, tmp_path / "document_chunks.parquet")
+
+        assert [chunk.market_id for chunk in load_corpus(tmp_path)] == [""]
+
+
+class TestHybridVectorStore:
+    TEXTS = (
+        "payment checkout failure in Greece",
+        "retail terminal outage in Prague",
+        "Στιγμιαίο Λαχείο κανόνες",
+    )
+
+    def filled_store(self, payloads: list[dict[str, object]]) -> InMemoryVectorStore:
+        store = InMemoryVectorStore()
+        store.upsert(
+            [f"c{i}" for i in range(len(self.TEXTS))],
+            HashingEmbedder(64).embed(list(self.TEXTS)),
+            HashingSparseEmbedder().embed_documents(list(self.TEXTS)),
+            payloads,
+        )
+        return store
+
+    def test_in_memory_hybrid_search_fuses_dense_and_sparse(self) -> None:
+        store = self.filled_store([{"market_id": "MKT_GR", "kind": "chunk"}] * 3)
+        query = "Στιγμιαίο Λαχείο"
+        hits = store.search(
+            HashingEmbedder(64).embed([query])[0],
+            HashingSparseEmbedder().embed_query(query),
+            limit=3,
+        )
+        assert hits[0].id == "c2"
+        assert hits[0].sparse_rank == 1
+        assert hits[0].dense_rank == 1
+        expected = reciprocal_rank_fusion([["c2"], ["c2"]])[0][1]
+        assert hits[0].score == pytest.approx(expected)
+        assert [hit.score for hit in hits] == sorted((hit.score for hit in hits), reverse=True)
+
+    def test_kind_filter_restricts_to_records(self) -> None:
+        store = self.filled_store(
+            [
+                {"market_id": "MKT_GR", "kind": "chunk"},
+                {"market_id": "MKT_CZ", "kind": "record"},
+                {"market_id": "", "kind": "record"},
+            ]
+        )
+        query = "payment checkout failure"
+        dense = HashingEmbedder(64).embed([query])[0]
+        sparse = HashingSparseEmbedder().embed_query(query)
+        hits = store.search(dense, sparse, limit=3, kinds=["record"])
+        assert {hit.id for hit in hits} == {"c1", "c2"}
+        assert all(hit.payload["kind"] == "record" for hit in hits)
+        # Market scope matches only non-empty market ids.
+        scoped = store.search(dense, sparse, limit=3, markets=["MKT_CZ", ""], kinds=["record"])
+        assert [hit.id for hit in scoped] == ["c1"]
+
+    def test_build_index_refuses_dense_only_collection(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class DenseOnlyStore(InMemoryVectorStore):
+            def collection_info(self) -> dict[str, object]:
+                return {"vectors": ["dense"], "sparse_vectors": [], "points": 0}
+
+        store = DenseOnlyStore()
+        monkeypatch.setattr(index_module, "build_store", lambda *_args: store)
+        monkeypatch.setattr(index_module, "load_corpus", lambda _dir: make_corpus())
+        monkeypatch.setattr(index_module, "serialise_records", lambda _dir: [])
+        with pytest.raises(RuntimeError, match="collection lacks a sparse vector"):
+            index_module.build_index(make_settings(), rebuild=False)
+        assert store.count() == 0

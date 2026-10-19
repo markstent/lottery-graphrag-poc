@@ -18,9 +18,10 @@ from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction, HashingEmbedder
 from app.retrieval.standard.generation import AnswerGenerator, GenerationError
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.sparse import HashingSparseEmbedder, SparseVector
 from app.retrieval.standard.vector_store import (
     InMemoryVectorStore,
-    VectorPayload,
+    SearchHit,
     VectorStore,
 )
 
@@ -58,10 +59,12 @@ class FailingStore(InMemoryVectorStore):
 
     def search(
         self,
-        vector: list[float],
+        dense: list[float],
+        sparse: SparseVector,
         limit: int,
         markets: Sequence[str] | None = None,
-    ) -> list[tuple[str, float, VectorPayload]]:
+        kinds: Sequence[str] | None = None,
+    ) -> list[SearchHit]:
         raise RuntimeError("vector store connection reset")
 
 
@@ -72,7 +75,8 @@ def fill_store(
     chunks = list(corpus) if isinstance(corpus, list) else list(corpus.values())
     store.upsert(
         ids=[chunk.chunk_id for chunk in chunks],
-        vectors=[[0.1] * dimensions for _ in chunks],
+        dense=[[0.1] * dimensions for _ in chunks],
+        sparse=HashingSparseEmbedder().embed_documents([chunk.text for chunk in chunks]),
         payloads=[chunk.to_payload() for chunk in chunks],
     )
 
@@ -84,6 +88,7 @@ def build_standard(
     fill_store(store, make_corpus(), settings.embedding.dimensions)
     return StandardRagPipeline(
         embeddings=embeddings,
+        sparse=HashingSparseEmbedder(),
         store=store,
         generator=generator,
         settings=settings,
@@ -100,6 +105,7 @@ def build_graph(
         resolver=StaticEntityResolver(resolved()),
         neighbours=scn007_adjacency(),
         embeddings=embeddings,
+        sparse=HashingSparseEmbedder(),
         store=store,
         corpus=corpus,
         generator=generator,

@@ -106,10 +106,18 @@ class HashingSparseEmbedder:
         return self._collapse(dict.fromkeys(_tokenise(text), 1.0))
 
 
+def resolve_sparse_provider(settings: EmbeddingSettings) -> str:
+    """The sparse provider; unset follows the dense provider's family."""
+    if settings.sparse_provider is not None:
+        return settings.sparse_provider
+    return "hashing" if settings.provider == "hashing" else "fastembed"
+
+
 def build_sparse_embedder(settings: EmbeddingSettings) -> SparseEmbedder:
     """Construct the sparse embedder named by settings."""
-    if settings.sparse_provider == "fastembed":
+    provider = resolve_sparse_provider(settings)
+    if provider == "fastembed":
         return FastembedBm25Embedder(settings.sparse_model)
-    if settings.sparse_provider == "hashing":
+    if provider == "hashing":
         return HashingSparseEmbedder()
-    raise ValueError(f"Unknown sparse provider: {settings.sparse_provider!r}")
+    raise ValueError(f"Unknown sparse provider: {provider!r}")

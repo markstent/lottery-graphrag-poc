@@ -65,6 +65,7 @@ from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
 from app.retrieval.standard.reranking import LexicalReranker
+from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
 
 SELECTION_BELOW_SCORE = "below_score_limit"
@@ -80,6 +81,7 @@ class GraphRagPipeline:
         resolver: EntityResolver,
         neighbours: NeighbourProvider,
         embeddings: EmbeddingFunction,
+        sparse: SparseEmbedder,
         store: VectorStore,
         corpus: dict[str, CorpusChunk],
         generator: AnswerGenerator,
@@ -91,6 +93,7 @@ class GraphRagPipeline:
         self.resolver = resolver
         self.neighbours = neighbours
         self.embeddings = embeddings
+        self.sparse = sparse
         self.store = store
         self.corpus = corpus
         self.generator = generator
@@ -338,12 +341,18 @@ class GraphRagPipeline:
 
     def _fallback_seed(self, question: str, markets: Sequence[str] | None = None) -> list[str]:
         """No entity resolved: seed from the shared vector layer's best
-        document (same embedding model and corpus as pipeline A)."""
-        query_vector = self.embeddings.embed([question])[0]
-        hits = self.store.search(query_vector, limit=1, markets=markets)
+        document (same embedding models and corpus as pipeline A; record
+        blocks are excluded so the seed is always a Document node)."""
+        hits = self.store.search(
+            self.embeddings.embed([question])[0],
+            self.sparse.embed_query(question),
+            limit=1,
+            markets=markets,
+            kinds=["chunk"],
+        )
         if not hits:
             return []
-        document_id = str(hits[0][2].get("document_id", ""))
+        document_id = str(hits[0].payload.get("document_id", ""))
         if not document_id:
             return []
         self.emitter.emit(
@@ -352,7 +361,7 @@ class GraphRagPipeline:
             node_label="Document",
             origin="vector_fallback",
             matched_text=question[:64],
-            confidence=hits[0][1],
+            confidence=hits[0].score,
         )
         return [document_id]
 
@@ -385,16 +394,21 @@ class GraphRagPipeline:
         """Document retrieval stage, identical to pipeline A's retrieval.
 
         Documents stay in the vector layer for every pipeline (ADR-002,
-        retrieval fairness): same corpus, same embedding model, same top_k,
-        same reranker, same market scope. The graph contributes structured
+        retrieval fairness): same corpus (document chunks and record blocks),
+        same dense and sparse models, same hybrid search and top_k, same
+        reranker, same market scope. The graph contributes structured
         records and evidence paths, not a second document channel.
         """
-        query_vector = self.embeddings.embed([question])[0]
-        hits = self.store.search(query_vector, limit=self.settings.top_k, markets=markets)
+        hits = self.store.search(
+            self.embeddings.embed([question])[0],
+            self.sparse.embed_query(question),
+            limit=self.settings.top_k,
+            markets=markets,
+        )
         candidates = [
-            chunk.to_evidence(similarity=similarity, rank=rank)
-            for rank, (chunk_id, similarity, _payload) in enumerate(hits, start=1)
-            if (chunk := self.corpus.get(chunk_id)) is not None
+            chunk.to_evidence(similarity=hit.score, rank=rank)
+            for rank, hit in enumerate(hits, start=1)
+            if (chunk := self.corpus.get(hit.id)) is not None
         ]
         if self.reranker is not None:
             candidates = self.reranker.rerank(question, candidates)

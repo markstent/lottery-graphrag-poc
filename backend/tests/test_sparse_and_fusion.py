@@ -11,6 +11,7 @@ from app.retrieval.standard.sparse import (
     FastembedBm25Embedder,
     HashingSparseEmbedder,
     build_sparse_embedder,
+    resolve_sparse_provider,
 )
 
 
@@ -70,10 +71,13 @@ def test_from_env_sparse_defaults_follow_provider(monkeypatch: pytest.MonkeyPatc
 
     monkeypatch.delenv("SPARSE_PROVIDER", raising=False)
     monkeypatch.setenv("EMBEDDING_PROVIDER", "hashing")
-    assert from_env().embedding.sparse_provider == "hashing"
+    assert from_env().embedding.sparse_provider is None
+    assert resolve_sparse_provider(from_env().embedding) == "hashing"
     monkeypatch.setenv("EMBEDDING_PROVIDER", "ollama")
-    assert from_env().embedding.sparse_provider == "fastembed"
+    assert resolve_sparse_provider(from_env().embedding) == "fastembed"
     assert from_env().embedding.sparse_model == "Qdrant/bm25"
+    monkeypatch.setenv("SPARSE_PROVIDER", "hashing")
+    assert resolve_sparse_provider(from_env().embedding) == "hashing"
 
 
 @pytest.mark.skipif(os.environ.get("SPARSE_E2E") != "1", reason="downloads a model")

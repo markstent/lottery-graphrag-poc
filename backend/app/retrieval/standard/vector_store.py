@@ -1,10 +1,14 @@
-"""Vector store adapters over the shared Qdrant layer (ADR-002).
+"""Hybrid (dense + sparse) vector store adapters over the shared Qdrant layer (ADR-002).
 
 - QdrantVectorStore: the real store used for development and benchmarks.
-- InMemoryVectorStore: cosine brute force for CI and tests; same contract.
+- InMemoryVectorStore: brute force for CI and tests; same contract.
 
-Payloads carry the evidence provenance fields so search results can build
-EvidenceChunk objects without extra lookups.
+Every point carries a dense vector (``dense``, cosine) and a sparse BM25
+vector (``sparse``, dot product; Qdrant applies the IDF modifier). A search
+runs a dense top-``limit`` and a sparse top-``limit`` inside the same filter
+and fuses the two rankings with reciprocal rank fusion. Payloads carry the
+evidence provenance fields so search results can build EvidenceChunk objects
+without extra lookups.
 """
 
 from __future__ import annotations
@@ -12,34 +16,68 @@ from __future__ import annotations
 import re
 import uuid
 from collections.abc import Sequence
+from dataclasses import dataclass
 from typing import Any, Protocol
 
+from app.retrieval.standard.fusion import reciprocal_rank_fusion
+from app.retrieval.standard.sparse import SparseVector
+
 VectorPayload = dict[str, Any]
+
+DENSE_VECTOR = "dense"
+SPARSE_VECTOR = "sparse"
 
 
 class VectorStoreError(RuntimeError):
     """Raised when a vector backend fails."""
 
 
+@dataclass(frozen=True, slots=True)
+class SearchHit:
+    """One fused search result.
+
+    ``score`` is the reciprocal-rank-fusion score. ``dense_rank`` and
+    ``sparse_rank`` are the 1-based ranks in each channel, ``None`` when the
+    point was not in that channel's top-``limit`` or the backend does not
+    expose per-channel ranks (Qdrant fuses server side).
+    """
+
+    id: str
+    score: float
+    dense_rank: int | None
+    sparse_rank: int | None
+    payload: VectorPayload
+
+
 class VectorStore(Protocol):
     def upsert(
-        self, ids: list[str], vectors: list[list[float]], payloads: list[VectorPayload]
+        self,
+        ids: list[str],
+        dense: list[list[float]],
+        sparse: list[SparseVector],
+        payloads: list[VectorPayload],
     ) -> None:
         """Insert or overwrite points."""
         ...
 
     def search(
         self,
-        vector: list[float],
+        dense: list[float],
+        sparse: SparseVector,
         limit: int,
         markets: Sequence[str] | None = None,
-    ) -> list[tuple[str, float, VectorPayload]]:
-        """Return the (id, similarity, payload) nearest neighbours.
+        kinds: Sequence[str] | None = None,
+    ) -> list[SearchHit]:
+        """Return up to ``limit`` hits fused from a dense and a sparse top-``limit``.
 
-        ``markets`` restricts the search to payloads whose ``market_id`` is
-        in the given full market ids (e.g. ``MKT_GR``); the top-k is
-        computed within the scope, never cropped afterwards. ``None`` or an
-        empty sequence means all markets.
+        ``markets`` restricts both channels to payloads whose ``market_id``
+        is one of the given full market ids (e.g. ``MKT_GR``). Only non-empty
+        market ids match, so market-less documents and records (empty
+        ``market_id``) are excluded from every scoped run, for every
+        pipeline alike. ``kinds`` restricts to payload ``kind`` values
+        (``chunk``, ``record``). ``None`` or an empty sequence means no
+        restriction. The top-k is computed within the filter, never cropped
+        afterwards.
         """
         ...
 
@@ -51,52 +89,114 @@ class VectorStore(Protocol):
         """Number of stored points."""
         ...
 
+    def collection_info(self) -> dict[str, Any]:
+        """``{"vectors": [names], "sparse_vectors": [names], "points": n}``."""
+        ...
+
+
+def _market_scope(markets: Sequence[str] | None) -> list[str] | None:
+    """Scoped market ids without the empty market; ``None`` when unscoped."""
+    if not markets:
+        return None
+    return [market for market in markets if market]
+
 
 class InMemoryVectorStore:
-    """Brute-force cosine store; vectors must be L2-normalised."""
+    """Brute-force hybrid store; dense vectors must be L2-normalised."""
 
     def __init__(self) -> None:
-        self._vectors: dict[str, list[float]] = {}
+        self._dense: dict[str, list[float]] = {}
+        self._sparse: dict[str, dict[int, float]] = {}
         self._payloads: dict[str, VectorPayload] = {}
 
     def upsert(
-        self, ids: list[str], vectors: list[list[float]], payloads: list[VectorPayload]
+        self,
+        ids: list[str],
+        dense: list[list[float]],
+        sparse: list[SparseVector],
+        payloads: list[VectorPayload],
     ) -> None:
-        for point_id, vector, payload in zip(ids, vectors, payloads, strict=True):
-            self._vectors[point_id] = vector
+        for point_id, vector, terms, payload in zip(ids, dense, sparse, payloads, strict=True):
+            self._dense[point_id] = vector
+            self._sparse[point_id] = dict(zip(terms.indices, terms.values, strict=True))
             self._payloads[point_id] = payload
 
     def search(
         self,
-        vector: list[float],
+        dense: list[float],
+        sparse: SparseVector,
         limit: int,
         markets: Sequence[str] | None = None,
-    ) -> list[tuple[str, float, VectorPayload]]:
-        scores = [
-            (point_id, _dot(vector, stored), self._payloads[point_id])
-            for point_id, stored in self._vectors.items()
-            if markets is None or self._payloads[point_id].get("market_id") in markets
+        kinds: Sequence[str] | None = None,
+    ) -> list[SearchHit]:
+        scope = _market_scope(markets)
+        kind_scope = list(kinds) if kinds else None
+        candidates = [
+            point_id
+            for point_id, payload in self._payloads.items()
+            if (scope is None or payload.get("market_id") in scope)
+            and (kind_scope is None or payload.get("kind") in kind_scope)
         ]
-        scores.sort(key=lambda entry: (-entry[1], entry[0]))
-        return scores[:limit]
+        dense_ranking = _top(
+            [(point_id, _dot(dense, self._dense[point_id])) for point_id in candidates], limit
+        )
+        query_terms = dict(zip(sparse.indices, sparse.values, strict=True))
+        # Like Qdrant, the sparse channel only returns points sharing a term.
+        sparse_scores = [
+            (point_id, score)
+            for point_id in candidates
+            if (score := _sparse_dot(query_terms, self._sparse[point_id])) > 0
+        ]
+        sparse_ranking = _top(sparse_scores, limit)
+        dense_ranks = {point_id: rank for rank, point_id in enumerate(dense_ranking, start=1)}
+        sparse_ranks = {point_id: rank for rank, point_id in enumerate(sparse_ranking, start=1)}
+        fused = reciprocal_rank_fusion([dense_ranking, sparse_ranking])[:limit]
+        return [
+            SearchHit(
+                id=point_id,
+                score=score,
+                dense_rank=dense_ranks.get(point_id),
+                sparse_rank=sparse_ranks.get(point_id),
+                payload=self._payloads[point_id],
+            )
+            for point_id, score in fused
+        ]
 
     def reset(self) -> None:
-        self._vectors.clear()
+        self._dense.clear()
+        self._sparse.clear()
         self._payloads.clear()
 
     def count(self) -> int:
-        return len(self._vectors)
+        return len(self._dense)
+
+    def collection_info(self) -> dict[str, Any]:
+        return {
+            "vectors": [DENSE_VECTOR],
+            "sparse_vectors": [SPARSE_VECTOR],
+            "points": self.count(),
+        }
+
+
+def _top(scores: list[tuple[str, float]], limit: int) -> list[str]:
+    """Ids by score descending then id, cut to ``limit``."""
+    scores.sort(key=lambda entry: (-entry[1], entry[0]))
+    return [point_id for point_id, _ in scores[:limit]]
 
 
 def _dot(left: list[float], right: list[float]) -> float:
     return sum(a * b for a, b in zip(left, right, strict=True))
 
 
+def _sparse_dot(query: dict[int, float], document: dict[int, float]) -> float:
+    return sum(weight * document.get(index, 0.0) for index, weight in query.items())
+
+
 _COLLECTION_NAME = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 
 class QdrantVectorStore:
-    """Qdrant adapter; collections use cosine distance.
+    """Qdrant adapter with named vectors ``dense`` (cosine) and ``sparse``.
 
     `dimensions` must match the embedding model. Call `ensure_collection`
     before the first upsert of a fresh collection.
@@ -116,20 +216,29 @@ class QdrantVectorStore:
         self._client: Any = QdrantClient(url=url, timeout=30, check_compatibility=False)
 
     def upsert(
-        self, ids: list[str], vectors: list[list[float]], payloads: list[VectorPayload]
+        self,
+        ids: list[str],
+        dense: list[list[float]],
+        sparse: list[SparseVector],
+        payloads: list[VectorPayload],
     ) -> None:
-        from qdrant_client.models import PointStruct
+        from qdrant_client import models
 
         points = [
-            PointStruct(
+            models.PointStruct(
                 id=self._point_id(point_id),
-                vector=vector,
+                vector={
+                    DENSE_VECTOR: vector,
+                    SPARSE_VECTOR: models.SparseVector(
+                        indices=list(terms.indices), values=list(terms.values)
+                    ),
+                },
                 payload={"_external_id": point_id, **payload},
             )
-            for point_id, vector, payload in zip(ids, vectors, payloads, strict=True)
+            for point_id, vector, terms, payload in zip(ids, dense, sparse, payloads, strict=True)
         ]
         # Batched: one call for the whole corpus can outlive the client
-        # timeout on larger worlds (demo profile has ~3k chunks).
+        # timeout on larger worlds (demo profile has thousands of points).
         batch_size = 256
         try:
             for start in range(0, len(points), batch_size):
@@ -141,34 +250,66 @@ class QdrantVectorStore:
 
     def search(
         self,
-        vector: list[float],
+        dense: list[float],
+        sparse: SparseVector,
         limit: int,
         markets: Sequence[str] | None = None,
-    ) -> list[tuple[str, float, VectorPayload]]:
-        try:
-            from qdrant_client.models import FieldCondition, Filter, MatchAny
+        kinds: Sequence[str] | None = None,
+    ) -> list[SearchHit]:
+        """Server-side RRF over two prefetches; per-channel ranks are not
+        exposed by Qdrant, so ``dense_rank`` and ``sparse_rank`` are ``None``."""
+        from qdrant_client import models
 
-            query_filter = (
-                Filter(must=[FieldCondition(key="market_id", match=MatchAny(any=list(markets)))])
-                if markets
-                else None
+        scope = _market_scope(markets)
+        if scope == []:
+            return []
+        conditions: list[Any] = []
+        if scope is not None:
+            conditions.append(
+                models.FieldCondition(key="market_id", match=models.MatchAny(any=scope))
             )
+        if kinds:
+            conditions.append(
+                models.FieldCondition(key="kind", match=models.MatchAny(any=list(kinds)))
+            )
+        query_filter = models.Filter(must=conditions) if conditions else None
+        try:
             result = self._client.query_points(
                 collection_name=self._collection,
-                query=vector,
-                query_filter=query_filter,
+                prefetch=[
+                    models.Prefetch(
+                        query=dense, using=DENSE_VECTOR, limit=limit, filter=query_filter
+                    ),
+                    models.Prefetch(
+                        query=models.SparseVector(
+                            indices=list(sparse.indices), values=list(sparse.values)
+                        ),
+                        using=SPARSE_VECTOR,
+                        limit=limit,
+                        filter=query_filter,
+                    ),
+                ],
+                query=models.FusionQuery(fusion=models.Fusion.RRF),
                 limit=limit,
                 with_payload=True,
             )
         except Exception as error:
             raise VectorStoreError(f"Qdrant search failed: {error}") from error
-        points: list[tuple[str, float, VectorPayload]] = []
+        hits: list[SearchHit] = []
         for point in result.points:
             payload = dict(point.payload or {})
             # Restore the caller's id; Qdrant only accepts uint/UUID point ids.
             external_id = str(payload.pop("_external_id", point.id))
-            points.append((external_id, float(point.score), payload))
-        return points
+            hits.append(
+                SearchHit(
+                    id=external_id,
+                    score=float(point.score),
+                    dense_rank=None,
+                    sparse_rank=None,
+                    payload=payload,
+                )
+            )
+        return hits
 
     def _point_id(self, external_id: str) -> str:
         """Deterministic UUID for an external id, stable across rebuilds."""
@@ -188,8 +329,23 @@ class QdrantVectorStore:
         except Exception as error:
             raise VectorStoreError(f"Qdrant count failed: {error}") from error
 
+    def collection_info(self) -> dict[str, Any]:
+        """Vector names of the live collection; an unnamed (legacy) dense
+        vector is reported as ``""``."""
+        try:
+            info = self._client.get_collection(collection_name=self._collection)
+        except Exception as error:
+            raise VectorStoreError(f"Qdrant collection info failed: {error}") from error
+        vectors = info.config.params.vectors
+        sparse_vectors = info.config.params.sparse_vectors or {}
+        return {
+            "vectors": sorted(vectors) if isinstance(vectors, dict) else [""],
+            "sparse_vectors": sorted(sparse_vectors),
+            "points": int(info.points_count or 0),
+        }
+
     def ensure_collection(self) -> None:
-        from qdrant_client.models import Distance, VectorParams
+        from qdrant_client import models
 
         try:
             existing = [
@@ -198,7 +354,16 @@ class QdrantVectorStore:
             if self._collection not in existing:
                 self._client.create_collection(
                     collection_name=self._collection,
-                    vectors_config=VectorParams(size=self._dimensions, distance=Distance.COSINE),
+                    vectors_config={
+                        DENSE_VECTOR: models.VectorParams(
+                            size=self._dimensions, distance=models.Distance.COSINE
+                        )
+                    },
+                    # fastembed's Qdrant/bm25 emits term-frequency weights only;
+                    # the IDF half of BM25 is computed server side.
+                    sparse_vectors_config={
+                        SPARSE_VECTOR: models.SparseVectorParams(modifier=models.Modifier.IDF)
+                    },
                 )
         except Exception as error:
             raise VectorStoreError(f"Qdrant collection setup failed: {error}") from error

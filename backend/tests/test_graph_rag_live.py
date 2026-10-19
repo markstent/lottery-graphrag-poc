@@ -27,9 +27,10 @@ from app.retrieval.graph.entities import DictionaryEntityResolver
 from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.source_lookup import SourceLookup
-from app.retrieval.standard.corpus import load_corpus
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
+from app.retrieval.standard.index import index_corpus, load_indexed_corpus
+from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 from neo4j import GraphDatabase
 
@@ -86,14 +87,10 @@ def ingested(graph_config: GraphConfig, tiny_dataset: Path) -> Path:
 def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipeline]:
     settings: RetrievalSettings = make_settings(dataset_dir=str(ingested))
     embeddings = HashingEmbedder(dimensions=settings.embedding.dimensions)
-    corpus = {chunk.chunk_id: chunk for chunk in load_corpus(ingested)}
+    sparse = HashingSparseEmbedder()
+    corpus = load_indexed_corpus(ingested)
     store = InMemoryVectorStore()
-    if corpus:
-        store.upsert(
-            ids=list(corpus),
-            vectors=embeddings.embed([chunk.text for chunk in corpus.values()]),
-            payloads=[chunk.to_payload() for chunk in corpus.values()],
-        )
+    index_corpus(store, embeddings, sparse, list(corpus.values()))
     with GraphReader(graph_config) as reader:
         resolver = DictionaryEntityResolver(
             lookup_node=reader.lookup_node,
@@ -104,6 +101,7 @@ def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipe
             resolver=resolver,
             neighbours=reader,
             embeddings=embeddings,
+            sparse=sparse,
             store=store,
             corpus=corpus,
             generator=FakeAnswerGenerator(),
@@ -173,14 +171,10 @@ def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: Graph
     graph_settings = make_settings(dataset_dir=str(ingested)).graph.without_ontology()
     full_settings = make_settings(dataset_dir=str(ingested))
     embeddings = HashingEmbedder(dimensions=full_settings.embedding.dimensions)
-    corpus = {chunk.chunk_id: chunk for chunk in load_corpus(ingested)}
+    sparse = HashingSparseEmbedder()
+    corpus = load_indexed_corpus(ingested)
     store = InMemoryVectorStore()
-    if corpus:
-        store.upsert(
-            ids=list(corpus),
-            vectors=embeddings.embed([chunk.text for chunk in corpus.values()]),
-            payloads=[chunk.to_payload() for chunk in corpus.values()],
-        )
+    index_corpus(store, embeddings, sparse, list(corpus.values()))
     with GraphReader(graph_config) as reader:
         resolver = DictionaryEntityResolver(
             lookup_node=reader.lookup_node,
@@ -191,6 +185,7 @@ def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: Graph
             resolver=resolver,
             neighbours=reader,
             embeddings=embeddings,
+            sparse=sparse,
             store=store,
             corpus=corpus,
             generator=FakeAnswerGenerator(),

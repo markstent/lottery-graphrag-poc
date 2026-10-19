@@ -75,7 +75,10 @@ class CorpusChunk:
 
 
 def load_corpus(dataset_dir: Path) -> list[CorpusChunk]:
-    """Load chunks joined with document metadata, ordered by chunk_id."""
+    """Load chunks joined with document metadata, ordered by chunk_id.
+
+    A document without a market gets ``market_id == ""`` (matches no market scope).
+    """
     query = """
         SELECT
             c.chunk_id,
@@ -84,7 +87,7 @@ def load_corpus(dataset_dir: Path) -> list[CorpusChunk]:
             c.text,
             d.title,
             d.document_type,
-            d.market_id,
+            COALESCE(d.market_id, '') AS market_id,
             d.language_code,
             d.source_system_code AS source_system,
             CAST(d.valid_from AS VARCHAR) AS valid_from,

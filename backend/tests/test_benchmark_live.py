@@ -25,10 +25,10 @@ from app.evidence import EvidenceChunk
 from app.graph.config import GraphConfig
 from app.graph.ingest import ingest
 from app.retrieval.graph import lab as lab_module
-from app.retrieval.standard.corpus import load_corpus
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator, GenerationError
-from app.retrieval.standard.index import InMemoryVectorStore
+from app.retrieval.standard.index import InMemoryVectorStore, index_corpus, load_indexed_corpus
+from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import build_ledger, write_ledger
 
@@ -81,14 +81,10 @@ def runner(
 ) -> Iterator[BenchmarkRunner]:
     settings: RetrievalSettings = make_settings(dataset_dir=str(ingested))
     embeddings = HashingEmbedder(dimensions=settings.embedding.dimensions)
-    corpus = {chunk.chunk_id: chunk for chunk in load_corpus(ingested)}
+    sparse = HashingSparseEmbedder()
+    corpus = load_indexed_corpus(ingested)
     store = InMemoryVectorStore()
-    if corpus:
-        store.upsert(
-            ids=list(corpus),
-            vectors=embeddings.embed([chunk.text for chunk in corpus.values()]),
-            payloads=[chunk.to_payload() for chunk in corpus.values()],
-        )
+    index_corpus(store, embeddings, sparse, list(corpus.values()))
     monkeypatch.setattr(lab_module, "build_embedder", lambda _settings: embeddings)
     monkeypatch.setattr(lab_module, "build_store", lambda _vs, _dim, _prov: store)
     instance = BenchmarkRunner(

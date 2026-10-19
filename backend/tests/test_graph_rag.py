@@ -53,6 +53,8 @@ from app.retrieval.graph.traversal import (
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
+from app.retrieval.standard.index import index_corpus
+from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
 
@@ -180,15 +182,13 @@ def build_pipeline(
     embeddings = HashingEmbedder(dimensions=settings.embedding.dimensions)
     corpus = build_corpus()
     store = InMemoryVectorStore()
-    store.upsert(
-        ids=[chunk.chunk_id for chunk in corpus.values()],
-        vectors=embeddings.embed([chunk.text for chunk in corpus.values()]),
-        payloads=[chunk.to_payload() for chunk in corpus.values()],
-    )
+    sparse = HashingSparseEmbedder()
+    index_corpus(store, embeddings, sparse, list(corpus.values()))
     return GraphRagPipeline(
         resolver=resolver or StaticEntityResolver(resolved()),
         neighbours=scn007_adjacency(),
         embeddings=embeddings,
+        sparse=sparse,
         store=store,
         corpus=corpus,
         generator=FakeAnswerGenerator(),

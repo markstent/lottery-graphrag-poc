@@ -1,6 +1,6 @@
 """Standard RAG pipeline (docs/retrieval/standard-rag.md).
 
-    question -> embedding -> vector search -> top-k
+    question -> dense + sparse embedding -> hybrid search (RRF) -> top-k
              -> optional reranking -> context budget selection
              -> LLM -> answer + citations
 
@@ -40,6 +40,7 @@ from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
 from app.retrieval.standard.reranking import LexicalReranker
+from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
 
 
@@ -54,6 +55,7 @@ class StandardRagPipeline:
         self,
         *,
         embeddings: EmbeddingFunction,
+        sparse: SparseEmbedder,
         store: VectorStore,
         generator: AnswerGenerator,
         settings: RetrievalSettings,
@@ -62,6 +64,7 @@ class StandardRagPipeline:
         sink: ListEventSink | None = None,
     ) -> None:
         self.embeddings = embeddings
+        self.sparse = sparse
         self.store = store
         self.generator = generator
         self.settings = settings
@@ -90,15 +93,19 @@ class StandardRagPipeline:
 
         self.emitter.emit(RAG_EMBEDDING_STARTED, model=self.embeddings.model_name)
         query_vector = self.embeddings.embed([question])[0]
+        query_terms = self.sparse.embed_query(question)
         self.emitter.emit(
             RAG_EMBEDDING_COMPLETED, model=self.embeddings.model_name, dimensions=len(query_vector)
         )
 
         self.emitter.emit(RAG_VECTOR_SEARCH_STARTED, top_k=self.settings.top_k)
-        hits = self.store.search(query_vector, limit=self.settings.top_k, markets=scope)
+        hits = self.store.search(
+            query_vector, query_terms, limit=self.settings.top_k, markets=scope
+        )
+        # similarity holds the fused (RRF) score of the hybrid search.
         candidates = [
-            self._payload_to_evidence(point_id, similarity, payload, rank)
-            for rank, (point_id, similarity, payload) in enumerate(hits, start=1)
+            self._payload_to_evidence(hit.id, hit.score, hit.payload, rank)
+            for rank, hit in enumerate(hits, start=1)
         ]
         for candidate in candidates:
             self.emitter.emit(

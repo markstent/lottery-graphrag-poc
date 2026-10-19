@@ -25,6 +25,7 @@ from app.graph.config import GraphConfig
 from app.retrieval.graph.lab import Lab, build_generator, build_lab, wired_pipelines
 from app.retrieval.standard.embeddings import EmbeddingError
 from app.retrieval.standard.generation import GenerationError
+from app.retrieval.standard.index import index_corpus
 from app.retrieval.standard.vector_store import VectorStoreError
 
 # Error classes from docs/07 section 11.
@@ -87,14 +88,7 @@ class QueryService:
                 # after a fresh start. A persisted Qdrant collection is
                 # already populated and is left untouched.
                 if lab.store.count() == 0 and lab.corpus:
-                    ids = list(lab.corpus)
-                    lab.store.upsert(
-                        ids=ids,
-                        vectors=lab.embeddings.embed(
-                            [lab.corpus[chunk_id].text for chunk_id in ids]
-                        ),
-                        payloads=[lab.corpus[chunk_id].to_payload() for chunk_id in ids],
-                    )
+                    index_corpus(lab.store, lab.embeddings, lab.sparse, list(lab.corpus.values()))
                 self._lab = lab
             return self._lab
 

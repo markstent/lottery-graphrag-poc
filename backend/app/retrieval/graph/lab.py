@@ -19,15 +19,16 @@ from app.retrieval.graph.entities import EntityResolver
 from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolver
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.source_lookup import SourceLookup
-from app.retrieval.standard.corpus import CorpusChunk, load_corpus
+from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import (
     AnswerGenerator,
     FakeAnswerGenerator,
     LiteLLMAnswerGenerator,
 )
-from app.retrieval.standard.index import build_embedder, build_store
+from app.retrieval.standard.index import build_embedder, build_store, load_indexed_corpus
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.sparse import SparseEmbedder, build_sparse_embedder
 from app.retrieval.standard.vector_store import VectorStore
 
 PipelineId = Literal["A", "B", "C"]
@@ -39,14 +40,18 @@ class Lab:
 
     settings: RetrievalSettings
     generator: AnswerGenerator
+    # The indexed corpus: document chunks plus record blocks, so every
+    # vector hit resolves for every pipeline.
     corpus: dict[str, CorpusChunk]
     source_lookup: SourceLookup
     embeddings: EmbeddingFunction
+    sparse: SparseEmbedder
     store: VectorStore
 
     def pipeline_a(self, sink: ListEventSink | None = None) -> StandardRagPipeline:
         return StandardRagPipeline(
             embeddings=self.embeddings,
+            sparse=self.sparse,
             store=self.store,
             generator=self.generator,
             settings=self.settings,
@@ -82,9 +87,10 @@ def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
     return Lab(
         settings=settings,
         generator=generator,
-        corpus={chunk.chunk_id: chunk for chunk in load_corpus(Path(settings.dataset_dir))},
+        corpus=load_indexed_corpus(Path(settings.dataset_dir)),
         source_lookup=SourceLookup(Path(settings.dataset_dir)),
         embeddings=embeddings,
+        sparse=build_sparse_embedder(settings.embedding),
         store=store,
     )
 
@@ -112,6 +118,7 @@ def wired_pipelines(
                         resolver=resolver,
                         neighbours=reader,
                         embeddings=lab.embeddings,
+                        sparse=lab.sparse,
                         store=lab.store,
                         corpus=lab.corpus,
                         generator=lab.generator,
