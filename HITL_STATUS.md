@@ -21,7 +21,7 @@ Only the project owner may mark a gate `APPROVED`.
 
 | Checkpoint | Status | Date | Notes |
 |---|---|---|---|
-| CP1 Experiment (part 1: data layer) | PRESENTED | 2026-10-19 | World v2, ontology v2, eight scenarios, graph model v2 and the B/C allow-list split delivered on `overhaul/v2` at 50196a4; awaiting owner approval. Pipelines v2, bank 2.0.0 and the harness follow as Phase 2 and 3 before CP1 closes. |
+| CP1 Experiment (part 1: data layer) | APPROVED | 2026-10-19 | World v2, ontology v2, eight scenarios, graph model v2 and the B/C allow-list split delivered on `overhaul/v2` at 50196a4; approved by the project owner in session ("approve") with product names changed to generic terms (20fcb7e); merged to main. Pipelines v2, bank 2.0.0 and the harness follow as Phase 2 and 3 before CP1 closes. |
 | CP2 Product | PENDING | | Overview, Live Lab, Data Model, Help on the live API |
 | CP3 Official run | PENDING | | model and cost choice, dry run, then official run and Results |
 
