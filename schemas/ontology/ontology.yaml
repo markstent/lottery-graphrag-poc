@@ -24,8 +24,8 @@ concepts:
   - id: CONCEPT_NATIONAL_DRAW
     parent: CONCEPT_DRAW_GAME
     type: Product
-    labels: {en: National Draw, el: Αριθμολαχείο, de: Zahlenlotto, cs: Číselná loterie}
-    synonyms: {en: [national lottery, main draw], el: [εθνική κλήρωση, κύρια κλήρωση], de: [nationale Ziehung, Lotto], cs: [národní loterie, hlavní losování]}
+    labels: {en: National Draw, el: Αριθμολαχείο, de: Zahlenlotterie, cs: Číselná loterie}
+    synonyms: {en: [main draw], el: [εθνική κλήρωση, κύρια κλήρωση], de: [nationale Ziehung, Lotto], cs: [národní loterie, hlavní losování]}
     definition: The flagship number draw run by a single market for its own players.
   - id: CONCEPT_MULTINATIONAL_JACKPOT
     parent: CONCEPT_DRAW_GAME
@@ -285,7 +285,7 @@ bindings:
   - {kind: family, code: FAM_GR_SYCHNES_KLIROSEIS, market: MKT_GR, concept: CONCEPT_HIGH_FREQUENCY_GAME}
   - {kind: family, code: FAM_GR_XYSTO, market: MKT_GR, concept: CONCEPT_RETAIL_INSTANT}
   - {kind: family, code: FAM_GR_PSIFIAKO_XYSTO, market: MKT_GR, concept: CONCEPT_DIGITAL_INSTANT}
-  - {kind: family, code: FAM_AT_ZAHLENLOTTO, market: MKT_AT, concept: CONCEPT_NATIONAL_DRAW}
+  - {kind: family, code: FAM_AT_ZAHLENLOTTERIE, market: MKT_AT, concept: CONCEPT_NATIONAL_DRAW}
   - {kind: family, code: FAM_AT_LAENDER_JACKPOT, market: MKT_AT, concept: CONCEPT_MULTINATIONAL_JACKPOT}
   - {kind: family, code: FAM_AT_SCHNELLZIEHUNG, market: MKT_AT, concept: CONCEPT_HIGH_FREQUENCY_GAME}
   - {kind: family, code: FAM_AT_ZUSATZSPIEL, market: MKT_AT, concept: CONCEPT_ADD_ON_PRODUCT}

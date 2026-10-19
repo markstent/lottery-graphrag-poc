@@ -32,11 +32,12 @@ class TermMatch:
 
 
 def build_term_table(
-    ontology: Ontology, local_names: Mapping[tuple[str, str], str]
+    ontology: Ontology, local_names: Mapping[tuple[str, str], Sequence[str]]
 ) -> tuple[Term, ...]:
     """All labels, synonyms and local display names as terms, deduplicated and sorted.
 
-    `local_names` maps a binding's `(kind, code)` to the display name the generator gives it.
+    `local_names` maps a binding's `(kind, code)` to the display names the generator gives it
+    (`app.datasets.taxonomies.local_name_variants()`).
     Duplicates on `(text, concept_id)` keep the first source seen: label, synonym, local_name.
     """
     seen: dict[tuple[str, str], Term] = {}
@@ -54,8 +55,7 @@ def build_term_table(
             for synonym in synonyms:
                 add(synonym, language, concept.concept_id, "synonym")
     for binding in ontology.bindings:
-        name = local_names.get((binding.kind, binding.code))
-        if name is not None:
+        for name in local_names.get((binding.kind, binding.code), ()):
             add(name, LOCAL_NAME_LANGUAGE, binding.concept_id, "local_name")
     return tuple(sorted(seen.values(), key=lambda t: (t.text, t.concept_id, t.language)))
 

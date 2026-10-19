@@ -281,7 +281,7 @@ GAME_SPECS: tuple[GameSpec, ...] = (
         "GAME_AT_01",
         "AT",
         "Danube Classic",
-        "FAM_AT_ZAHLENLOTTO",
+        "FAM_AT_ZAHLENLOTTERIE",
         "CAT_AT_ZIEHUNG",
         ("MECH_AT_ZAHLENWAHL",),
         250,

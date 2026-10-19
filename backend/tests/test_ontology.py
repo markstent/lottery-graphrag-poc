@@ -22,7 +22,7 @@ def test_equivalent_local_families_share_a_concept() -> None:
     onto = load_ontology()
     assert (
         onto.concept_for("family", "FAM_GR_ARITHMOLACHEIO")
-        == onto.concept_for("family", "FAM_AT_ZAHLENLOTTO")
+        == onto.concept_for("family", "FAM_AT_ZAHLENLOTTERIE")
         == "CONCEPT_NATIONAL_DRAW"
     )
 
@@ -125,9 +125,9 @@ def test_ontology_error_is_a_value_error() -> None:
 
 def test_term_matcher_finds_local_and_synonym_terms() -> None:
     onto = load_ontology()
-    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENLOTTO"): "Zahlenlotto"})
+    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENLOTTERIE"): ("Zahlenlotterie",)})
     matcher = TermMatcher(table)
-    hits = {m.term.concept_id for m in matcher.match("Wie läuft das Zahlenlotto in Österreich?")}
+    hits = {m.term.concept_id for m in matcher.match("Wie läuft die Zahlenlotterie in Österreich?")}
     assert "CONCEPT_NATIONAL_DRAW" in hits
 
 
@@ -168,8 +168,8 @@ def test_term_table_is_lowercase_deduplicated_and_sorted() -> None:
     table = build_term_table(
         load_ontology(),
         {
-            ("family", "FAM_AT_ZAHLENLOTTO"): " Zahlenlotto ",
-            ("family", "FAM_GR_ARITHMOLACHEIO"): " Arithmolacheio Plus ",
+            ("family", "FAM_AT_ZAHLENLOTTERIE"): (" Zahlenlotterie ",),
+            ("family", "FAM_GR_ARITHMOLACHEIO"): (" Arithmolacheio Plus ",),
         },
     )
     assert all(t.text == t.text.casefold().strip() and t.text for t in table)
@@ -177,7 +177,7 @@ def test_term_table_is_lowercase_deduplicated_and_sorted() -> None:
     assert keys == sorted(keys)
     assert len({(t.text, t.concept_id) for t in table}) == len(table)
     assert any(t.source == "local_name" and t.text == "arithmolacheio plus" for t in table)
-    assert not any(t.source == "local_name" and t.text == "zahlenlotto" for t in table)
+    assert not any(t.source == "local_name" and t.text == "zahlenlotterie" for t in table)
 
 
 def test_similarity_links_equivalent_products_across_markets() -> None:
@@ -219,7 +219,7 @@ def test_cross_market_similar_excludes_same_market_and_zero_and_caps_top_k() -> 
 
 def test_term_matcher_maps_offsets_when_casefold_changes_length() -> None:
     onto = load_ontology()
-    matcher = TermMatcher(build_term_table(onto, {("family", "X"): "Außenstelle"}))
+    matcher = TermMatcher(build_term_table(onto, {("family", "X"): ("Außenstelle",)}))
     assert not matcher.match("nothing here")
     matcher = TermMatcher([Term("außenstelle".casefold(), "de", "CONCEPT_S", "local_name")])
     text = "Die Außenstelle meldet Zahlungsfehler."
@@ -252,11 +252,27 @@ def test_term_matcher_prefers_longer_greek_term() -> None:
 
 
 def test_every_local_code_has_exactly_one_binding_and_vice_versa() -> None:
-    from app.datasets.taxonomies import local_names
+    from app.datasets.taxonomies import local_name_variants, local_names
 
     onto = load_ontology()
     codes = set(local_names())
+    assert set(local_name_variants()) == codes
     bound = {(b.kind, b.code) for b in onto.bindings}
     assert codes == bound
     assert len(onto.bindings) == len(bound)
     assert all(onto.concept(b.concept_id) for b in onto.bindings)
+
+
+def test_mechanic_codes_and_local_descriptions_are_both_terms() -> None:
+    from app.datasets.taxonomies import GAME_MECHANICS, local_name_variants
+
+    variants = local_name_variants()
+    mechanics = [key for key in variants if key[0] == "mechanic"]
+    assert len(mechanics) == len(GAME_MECHANICS)
+    assert all(len(variants[key]) == 2 for key in mechanics)
+    matcher = TermMatcher(build_term_table(load_ontology(), variants))
+    hits = matcher.match("Spieler nutzen Zufällig gewählte Zahlenreihen am Wochenende.")
+    assert {m.term.concept_id for m in hits} >= {"CONCEPT_QUICK_PICK"}
+    assert any(
+        m.term.source == "local_name" and m.term.concept_id == "CONCEPT_QUICK_PICK" for m in hits
+    )

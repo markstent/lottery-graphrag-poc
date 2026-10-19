@@ -212,7 +212,7 @@ git commit -m "feat(datasets): documented distribution constants and v2 profile 
 - Exact family ids and local names (language is the market language):
   - UK: `FAM_UK_NATIONAL_DRAW` "National Draw", `FAM_UK_ANNUITY` "Annuity Draw", `FAM_UK_RAPID_NUMBERS` "Rapid Numbers", `FAM_UK_FIXED_PRIZE` "Fixed Prize Raffle", `FAM_UK_SCRATCHCARD` "Scratchcard", `FAM_UK_ONLINE_INSTANT` "Online Instant"
   - GR: `FAM_GR_ARITHMOLACHEIO` "Αριθμολαχείο", `FAM_GR_POLYETHNIKO_TZAKPOT` "Πολυεθνικό Τζάκποτ", `FAM_GR_SYCHNES_KLIROSEIS` "Συχνές Κληρώσεις", `FAM_GR_XYSTO` "Ξυστό", `FAM_GR_PSIFIAKO_XYSTO` "Ψηφιακό Ξυστό"
-  - AT: `FAM_AT_ZAHLENLOTTO` "Zahlenlotto", `FAM_AT_LAENDER_JACKPOT` "Länderübergreifender Jackpot", `FAM_AT_SCHNELLZIEHUNG` "Schnellziehung", `FAM_AT_ZUSATZSPIEL` "Zusatzspiel", `FAM_AT_RUBBELLOS` "Rubbellos"
+  - AT: `FAM_AT_ZAHLENLOTTERIE` "Zahlenlotterie", `FAM_AT_LAENDER_JACKPOT` "Länderübergreifender Jackpot", `FAM_AT_SCHNELLZIEHUNG` "Schnellziehung", `FAM_AT_ZUSATZSPIEL` "Zusatzspiel", `FAM_AT_RUBBELLOS` "Rubbellos"
   - CZ: `FAM_CZ_CISELNA_LOTERIE` "Číselná loterie", `FAM_CZ_MEZINARODNI_JACKPOT` "Mezinárodní jackpot", `FAM_CZ_RYCHLA_CISLA` "Rychlá čísla", `FAM_CZ_STIRACI_LOS` "Stírací los"
 - Exact category ids: UK `CAT_UK_DRAW` "Draw games", `CAT_UK_NUMBERS` "Number games", `CAT_UK_INSTANT` "Instant games"; GR `CAT_GR_KLIROSEIS` "Κληρώσεις", `CAT_GR_ARITHMOPAICHNIDIA` "Αριθμοπαιχνίδια", `CAT_GR_STIGMIAIA` "Στιγμιαία"; AT `CAT_AT_ZIEHUNG` "Ziehungsspiele", `CAT_AT_ZAHLEN` "Zahlenspiele", `CAT_AT_SOFORT` "Sofortspiele", `CAT_AT_ZUSATZ` "Zusatzprodukte"; CZ `CAT_CZ_LOSOVANI` "Losované hry", `CAT_CZ_CISLA` "Číselné hry", `CAT_CZ_OKAMZITE` "Okamžité výhry".
 - Exact mechanic ids (`mechanic_code` is the local short code, description local language): UK `MECH_UK_NUMBER_MATCH`, `MECH_UK_QUICK_PICK`, `MECH_UK_SCRATCH`, `MECH_UK_INSTANT_ROUNDS`, `MECH_UK_SECOND_CHANCE`; GR `MECH_GR_EPILOGI_ARITHMON`, `MECH_GR_TYCHAIA_EPILOGI`, `MECH_GR_XYSIMO`, `MECH_GR_AMESOI_GYROI`; AT `MECH_AT_ZAHLENWAHL`, `MECH_AT_SCHNELLWAHL`, `MECH_AT_RUBBELN`, `MECH_AT_ZWEITE_CHANCE`; CZ `MECH_CZ_VYBER_CISEL`, `MECH_CZ_NAHODNY_TIP`, `MECH_CZ_STIRANI`.
@@ -644,7 +644,7 @@ def test_loads_v2_with_hierarchy_and_four_languages() -> None:
 
 def test_equivalent_local_families_share_a_concept() -> None:
     onto = load_ontology()
-    assert onto.concept_for("family", "FAM_GR_ARITHMOLACHEIO") == onto.concept_for("family", "FAM_AT_ZAHLENLOTTO") == "CONCEPT_NATIONAL_DRAW"
+    assert onto.concept_for("family", "FAM_GR_ARITHMOLACHEIO") == onto.concept_for("family", "FAM_AT_ZAHLENLOTTERIE") == "CONCEPT_NATIONAL_DRAW"
 
 def test_loader_rejects_unknown_parent(tmp_path) -> None:
     import pytest
@@ -695,9 +695,9 @@ git commit -m "feat(ontology): v2 ontology with hierarchy, four-language labels 
 ```python
 def test_term_matcher_finds_local_and_synonym_terms() -> None:
     onto = load_ontology()
-    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENLOTTO"): "Zahlenlotto"})
+    table = build_term_table(onto, {("family", "FAM_AT_ZAHLENLOTTERIE"): "Zahlenlotterie"})
     matcher = TermMatcher(table)
-    hits = {m.term.concept_id for m in matcher.match("Wie läuft das Zahlenlotto in Österreich?")}
+    hits = {m.term.concept_id for m in matcher.match("Wie läuft die Zahlenlotterie in Österreich?")}
     assert "CONCEPT_NATIONAL_DRAW" in hits
 
 def test_term_matcher_is_whole_word_and_non_overlapping() -> None:

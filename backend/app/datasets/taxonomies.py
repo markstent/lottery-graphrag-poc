@@ -37,7 +37,7 @@ _FAMILIES: dict[str, tuple[tuple[str, str], ...]] = {
         ("FAM_GR_PSIFIAKO_XYSTO", "Ψηφιακό Ξυστό"),
     ),
     "MKT_AT": (
-        ("FAM_AT_ZAHLENLOTTO", "Zahlenlotto"),
+        ("FAM_AT_ZAHLENLOTTERIE", "Zahlenlotterie"),
         ("FAM_AT_LAENDER_JACKPOT", "Länderübergreifender Jackpot"),
         ("FAM_AT_SCHNELLZIEHUNG", "Schnellziehung"),
         ("FAM_AT_ZUSATZSPIEL", "Zusatzspiel"),
@@ -279,3 +279,17 @@ def local_names() -> dict[tuple[str, str], str]:
     names.update({("segment", r.segment_id): r.name for r in PLAYER_SEGMENTS})
     names.update({("channel", code): description for code, description in CHANNELS})
     return names
+
+
+def local_name_variants() -> dict[tuple[str, str], tuple[str, ...]]:
+    """Every surface form of every local code, keyed like `local_names()`.
+
+    Mechanics contribute both their code and their local-language description;
+    every other code contributes its one display name.
+    """
+    variants: dict[tuple[str, str], tuple[str, ...]] = {
+        key: (name,) for key, name in local_names().items()
+    }
+    for r in GAME_MECHANICS:
+        variants[("mechanic", r.mechanic_id)] = (r.mechanic_code, r.description)
+    return variants
