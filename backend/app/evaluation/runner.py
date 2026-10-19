@@ -216,28 +216,69 @@ class WorldRun:
 
 
 @dataclass(frozen=True, slots=True)
+class Selection:
+    """Which part of the bank a run scored: strata (None for all) and at most
+    ``limit`` instances per logical question (None for all)."""
+
+    strata: tuple[str, ...] | None = None
+    limit: int | None = None
+
+    @property
+    def full(self) -> bool:
+        return self.strata is None and self.limit is None
+
+    def describe(self) -> str:
+        """Plain words, for example "strata H1; at most 2 instances per question"."""
+        if self.full:
+            return "the whole bank"
+        parts = []
+        if self.strata is not None:
+            parts.append("strata " + ", ".join(self.strata))
+        if self.limit is not None:
+            noun = "instance" if self.limit == 1 else "instances"
+            parts.append(f"at most {self.limit} {noun} per question")
+        return "; ".join(parts)
+
+    def to_payload(self) -> dict[str, Any]:
+        return {"strata": None if self.strata is None else list(self.strata), "limit": self.limit}
+
+
+@dataclass(frozen=True, slots=True)
 class BenchmarkRun:
     """A complete run: its kind, its label, its record and every world.
 
-    Over several worlds the run record is the first world's; each world
-    keeps its own record (world, seed, bank and start time differ)."""
+    ``record`` stands in for the worlds' records only when no world carries
+    one (hand-built runs); the published record is :meth:`reproducibility`.
+    """
 
     kind: str
     label: str | None
     record: ReproducibilityRecord
     worlds: list[WorldRun]
+    selection: Selection = Selection()
+
+    def reproducibility(self) -> dict[str, Any]:
+        """``run``: the fields every world's record shares, plus the run's
+        ``started_at`` (its first world's); ``worlds``: each world's record."""
+        records = [world.record for world in self.worlds if world.record is not None]
+        payloads = [record.to_payload() for record in records or [self.record]]
+        first = payloads[0]
+        shared = {
+            key: value for key, value in first.items() if all(p[key] == value for p in payloads)
+        }
+        return {"run": {**shared, "started_at": first["started_at"]}, "worlds": payloads}
 
     def to_payload(self) -> dict[str, Any]:
         return {
             "kind": self.kind,
             "label": self.label,
-            "reproducibility": self.record.to_payload(),
+            "selection": self.selection.to_payload(),
+            "reproducibility": self.reproducibility(),
             "worlds": [
                 {
                     "world_seed": world.world_seed,
                     "bank_hash": world.bank_hash,
                     "unavailable": [dataclasses.asdict(u) for u in world.unavailable],
-                    "reproducibility": None if world.record is None else world.record.to_payload(),
                     "results": [
                         {
                             "instance": result.instance.to_payload(),
@@ -504,24 +545,40 @@ def _score(instance: BankInstance, run: PipelineRun, verdict: JudgeVerdict) -> R
 
 def _check_run(lab: Lab, kind: str, repeats: int, pipelines: Sequence[str]) -> None:
     """Refuse a run whose kind, repeats, pipelines or generator do not fit."""
+    unknown = [tag for tag in pipelines if tag not in PIPELINES]
+    if unknown or not pipelines:
+        raise ValueError(f"unknown pipelines {unknown}; expected some of {PIPELINES}")
+    check_run_config(
+        kind,
+        repeats,
+        isinstance(lab.generator, FakeAnswerGenerator),
+        lab.settings.generation.model_family,
+    )
+
+
+def check_run_config(
+    kind: str, repeats: int, fake_generator: bool, generation_family: str | None
+) -> None:
+    """Refuse a run kind, repeat count or generator that do not fit together.
+
+    Smoke runs need the fake generator; sweep and official runs refuse it, so
+    no answer metric of theirs comes from the fake model; an official run
+    needs three repeats and the generation model family.
+    """
     if kind not in RUN_KINDS:
         raise ValueError(f"unknown run kind {kind!r}; expected one of {RUN_KINDS}")
     if repeats < 1:
         raise ValueError(f"repeats must be at least 1, got {repeats}")
-    unknown = [tag for tag in pipelines if tag not in PIPELINES]
-    if unknown or not pipelines:
-        raise ValueError(f"unknown pipelines {unknown}; expected some of {PIPELINES}")
-    fake = isinstance(lab.generator, FakeAnswerGenerator)
-    if kind == "smoke" and not fake:
+    if kind == "smoke" and not fake_generator:
         raise ValueError("a smoke run requires the fake generator")
+    if kind != "smoke" and fake_generator:
+        raise ValueError(f"a {kind} run refuses the fake generator")
     if kind == "official":
-        if fake:
-            raise ValueError("an official run refuses the fake generator")
         if repeats < OFFICIAL_MIN_REPEATS:
             raise ValueError(
                 f"an official run needs at least {OFFICIAL_MIN_REPEATS} repeats, got {repeats}"
             )
-        if not lab.settings.generation.model_family:
+        if not generation_family:
             raise ValueError(
                 "an official run requires the generation model family (GENERATION_MODEL_FAMILY)"
             )

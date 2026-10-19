@@ -12,7 +12,8 @@ A repeat whose generation failed (a gateway error) has no score at all, and it i
 ## Claims and carriers
 
 Each bank instance lists the claims a correct answer makes.
-A claim is one plain sentence, for example "Incident INC_024 in MKT_CZ was seen on platform version PLV_IDENTITY_2.", plus its carriers.
+A claim is one plain sentence plus its carriers.
+For example, the multi-hop (H1) question "Which other markets had incidents on the same platform version as incident INC_037?" has the claim "Incident INC_024 in MKT_CZ was seen on platform version PLV_IDENTITY_2." in seed 2026.
 A carrier is a source item that states the fact: a structured record id, or the id of any document chunk whose text states it.
 So the evidence metric credits a pipeline for whichever source it found, a record or a document.
 
@@ -22,12 +23,14 @@ Retrieval code never sees them (ADR-008).
 Rules from bank 2.0.0 that shape the carriers:
 
 - L11 claims are carried by the segment's record id only.
+- L13 and L14 anchors are one per ontology concept, spread across languages.
+  L14 has exactly three qualifying concepts in seed 2026, so it has no margin: a world with fewer gives L14 fewer than three instances.
 - L20 and L21 game claims are carried by the game's record id only.
 - Planted (H5) claims and expected answers come from the truth ledger only.
 
 ## The anchor is excluded
 
-Every structural question names an anchor, for example the incident in "Which platform version was incident INC_022 seen on?".
+Every structural question names an anchor, for example incident INC_037 in the question above.
 The pipeline is given that id, so finding it is no discovery.
 The anchor is therefore removed from every claim's carriers and from the pipeline's selected evidence before the evidence metrics are computed.
 A claim left with no carrier is dropped.

@@ -227,7 +227,7 @@ def runner_smoke(offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path) -> 
 
 @pytest.fixture
 def runner_with_flaky_store(frozen_bank: FrozenBank, world_dir: Path) -> BenchmarkRunner:
-    lab = indexed_lab(world_dir, FlakyStore())
+    lab = indexed_lab(world_dir, FlakyStore(), generator=ScriptedGenerator())
     return BenchmarkRunner(
         lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2, judge=gateway_judge()
     )
@@ -494,7 +494,22 @@ def test_world_run_carries_its_own_record(runner_smoke: BenchmarkRunner) -> None
     assert world.record is not None
     assert (world.record.world_seed, world.record.run_kind) == (2026, "smoke")
     payload = BenchmarkRun("smoke", SMOKE_LABEL, world.record, [world]).to_payload()
-    assert payload["worlds"][0]["reproducibility"]["world_seed"] == 2026
+    assert payload["reproducibility"]["worlds"][0]["world_seed"] == 2026
+
+
+def test_a_sweep_refuses_the_fake_generator(
+    offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path
+) -> None:
+    with pytest.raises(ValueError, match="fake generator"):
+        BenchmarkRunner(
+            offline_lab,
+            GRAPH,
+            frozen_bank,
+            world_dir,
+            kind="sweep",
+            repeats=1,
+            judge=gateway_judge(),
+        )
 
 
 def test_benchmark_run_payload_is_json(runner_smoke: BenchmarkRunner) -> None:
@@ -506,7 +521,7 @@ def test_benchmark_run_payload_is_json(runner_smoke: BenchmarkRunner) -> None:
     )
     payload = json.loads(json.dumps(run.to_payload()))
     assert (payload["kind"], payload["label"]) == ("smoke", SMOKE_LABEL)
-    assert payload["reproducibility"]["run_kind"] == "smoke"
+    assert payload["reproducibility"]["run"]["run_kind"] == "smoke"
     (world,) = payload["worlds"]
     assert world["unavailable"] == [{"question_id": "L22", "reason": "scenario not planted"}]
     first = world["results"][0]
@@ -652,8 +667,9 @@ def test_the_judge_sees_each_blinded_repeat_and_nothing_else(
 ) -> None:
     calls: list[CompletionRequest] = []
     judge = gateway_judge(calls=calls)
+    lab = indexed_lab(world_dir, generator=ScriptedGenerator())
     runner = BenchmarkRunner(
-        offline_lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2, judge=judge
+        lab, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=2, judge=judge
     )
     world = runner.run()
     expected = [
@@ -684,7 +700,7 @@ def test_a_judge_failure_is_recorded_beside_the_deterministic_scores(
     offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path
 ) -> None:
     runner = BenchmarkRunner(
-        offline_lab,
+        indexed_lab(world_dir, generator=ScriptedGenerator()),
         GRAPH,
         frozen_bank,
         world_dir,

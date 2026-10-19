@@ -21,6 +21,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+import logging
 import os
 import tempfile
 from collections import Counter, defaultdict
@@ -43,6 +44,7 @@ from app.evaluation.grounding import (
     load_frozen_bank,
     write_frozen_bank,
 )
+from app.evaluation.judge import GatewayJudge, check_families, judge_settings_from_env
 from app.evaluation.report import (
     COMPARED_METRICS,
     OVERALL,
@@ -60,7 +62,9 @@ from app.evaluation.runner import (
     BenchmarkRun,
     BenchmarkRunner,
     ReproducibilityRecord,
+    Selection,
     WorldRun,
+    check_run_config,
 )
 from app.evaluation.statistics import cluster_bootstrap, points
 from app.graph import __main__ as graph_cli
@@ -78,6 +82,8 @@ SWEEP_DEPTHS = (0, 1, 2, 3)
 SWEEP_STRATUM = "H1"
 SWEEP_PIPELINES = ("B", "C")
 DATA_DIR = REPO_ROOT / "data"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -299,6 +305,31 @@ def build_runner(
     )
 
 
+def preflight(kind: str, repeats: int) -> None:
+    """Check the run kind, repeats, generator and judge settings from the
+    environment before any world is prepared, as the runner will after.
+
+    A smoke run always gets the fake generator and the fake judge
+    (:func:`build_runner`); other kinds need the gateway for both.
+    """
+    generation = from_env().generation
+    fake = kind == "smoke" or generation.provider == "fake"
+    check_run_config(kind, repeats, fake, generation.model_family)
+    if kind != "smoke":
+        judge = GatewayJudge(judge_settings_from_env())
+        if kind == "official":
+            check_families(generation.model_family, judge.model_family)
+
+
+def run_label(kind: str, selection: Selection) -> str | None:
+    """Smoke runs are labelled as such; a run over part of the bank says so."""
+    if kind == "smoke":
+        return SMOKE_LABEL
+    if not selection.full:
+        return f"subset run ({selection.describe()})"
+    return None
+
+
 def run_id(kind: str, now: datetime | None = None) -> str:
     """``YYYYMMDDTHHMMSSZ-kind`` in UTC: sorts in time order, safe as a file name."""
     moment = now or datetime.now(UTC)
@@ -319,6 +350,8 @@ def run_benchmark(
     """Prepare and run each world in turn, restore the presentation graph,
     then write the run's three files into ``out_dir``."""
     _refuse_used_dir(out_dir)
+    preflight(kind, repeats)
+    selection = Selection(None if strata is None else tuple(strata), limit)
     steps = steps or default_steps()
     factory = runner_factory or build_runner
     worlds: list[WorldRun] = []
@@ -330,9 +363,7 @@ def run_benchmark(
                 paths, bank, kind=kind, repeats=repeats, pipelines=PIPELINES, depth=depth
             )
             worlds.append(runner.run())
-    run = BenchmarkRun(
-        kind, SMOKE_LABEL if kind == "smoke" else None, _first_record(worlds), worlds
-    )
+    run = BenchmarkRun(kind, run_label(kind, selection), _first_record(worlds), worlds, selection)
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_atomic(out_dir / "results.json", _json(run.to_payload()))
     _write_atomic(out_dir / "report.md", render_report(run))
@@ -357,6 +388,8 @@ def run_sweep(
     API never publishes a sweep.
     """
     _refuse_used_dir(out_dir)
+    preflight("sweep", repeats)
+    selection = Selection((SWEEP_STRATUM,), limit)
     steps = steps or default_steps()
     factory = runner_factory or build_runner
     by_depth: dict[int, list[WorldRun]] = defaultdict(list)
@@ -375,7 +408,7 @@ def run_sweep(
                 )
                 by_depth[depth].append(runner.run())
     runs = {
-        depth: BenchmarkRun("sweep", None, _first_record(worlds), worlds)
+        depth: BenchmarkRun("sweep", None, _first_record(worlds), worlds, selection)
         for depth, worlds in by_depth.items()
     }
     sweep = sweep_summary(runs)
@@ -395,12 +428,13 @@ def sweep_summary(runs: dict[int, BenchmarkRun]) -> dict[str, Any]:
         "bank_version": first.record.bank_version,
         "worlds": [world.world_seed for world in first.worlds],
         "stratum": SWEEP_STRATUM,
+        "selection": first.selection.to_payload(),
         "pipelines": list(SWEEP_PIPELINES),
         "note": "Descriptive means per depth; no test is run and no headline is made.",
         "depths": {
             str(depth): {
                 "metrics": metric_tables([r for w in run.worlds for r in w.results])[SWEEP_STRATUM],
-                "reproducibility": run.record.to_payload(),
+                "reproducibility": run.reproducibility(),
             }
             for depth, run in sorted(runs.items())
         },
@@ -444,9 +478,15 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
     for name, payload in runs.items():
         if payload["kind"] != "official":
             raise ValueError(f"the {name} run is a {payload['kind']} run, not an official run")
-    models = {name: p["reproducibility"]["generation_model"] for name, p in runs.items()}
+    models = {name: p["reproducibility"]["run"]["generation_model"] for name, p in runs.items()}
     if models["small"] == models["large"]:
         raise ValueError(f"both runs used generation model {models['small']}")
+    selections = {name: p["selection"] for name, p in runs.items()}
+    if selections["small"] != selections["large"]:
+        raise ValueError(
+            f"the runs scored different selections of the bank: {selections['small']} and "
+            f"{selections['large']}"
+        )
     banks = {name: _bank_hashes(p) for name, p in runs.items()}
     if banks["small"] != banks["large"]:
         raise ValueError(
@@ -484,6 +524,7 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
         "small": _run_identity(small, runs["small"]),
         "large": _run_identity(large, runs["large"]),
         "bank_hashes": banks["small"],
+        "selection": selections["small"],
         "note": "Large minus small, as a clustered 95 percent interval; no test is run.",
         "cells": cells,
     }
@@ -558,7 +599,7 @@ def _bank_hashes(payload: dict[str, Any]) -> dict[str, str]:
 
 
 def _run_identity(run_dir: Path, payload: dict[str, Any]) -> dict[str, Any]:
-    record = payload["reproducibility"]
+    record = payload["reproducibility"]["run"]
     return {
         "run": run_dir.name,
         "generation_model": record["generation_model"],
@@ -569,11 +610,28 @@ def _run_identity(run_dir: Path, payload: dict[str, Any]) -> dict[str, Any]:
 
 @contextmanager
 def _presentation_graph_restored(steps: PrepareSteps) -> Iterator[None]:
-    """Ingest the presentation world on exit, whether the block failed or not."""
+    """Ingest the presentation world on exit, whether the block failed or not.
+
+    When the block failed, its error is raised; a failed restore is logged
+    and attached to it as a note rather than replacing it.
+    """
+    presentation = world_paths(PRESENTATION_SEED)
     try:
         yield
-    finally:
-        steps.ingest(world_paths(PRESENTATION_SEED))
+    except BaseException as error:
+        try:
+            steps.ingest(presentation)
+        except Exception as restore_error:
+            logger.error(
+                "restoring the presentation graph failed after a failed run",
+                extra={"world_seed": PRESENTATION_SEED, "error": repr(restore_error)},
+            )
+            error.add_note(
+                f"restoring the presentation graph (seed {PRESENTATION_SEED}) also failed: "
+                f"{restore_error!r}"
+            )
+        raise
+    steps.ingest(presentation)
 
 
 def _first_record(worlds: Sequence[WorldRun]) -> ReproducibilityRecord:

@@ -369,7 +369,14 @@ class TestDemoAndBenchmarks:
             assert client.get("/api/v1/benchmarks/latest").status_code == 404
 
     @staticmethod
-    def _publish(root: Path, name: str, kind: str, started_at: str, schema: str = "2") -> None:
+    def _publish(
+        root: Path,
+        name: str,
+        kind: str,
+        started_at: str,
+        schema: str = "2",
+        selection: dict[str, Any] | None = None,
+    ) -> None:
         run_dir = root / name
         run_dir.mkdir(parents=True)
         summary = {
@@ -377,8 +384,11 @@ class TestDemoAndBenchmarks:
             "run_kind": kind,
             "label": "scorer smoke test" if kind == "smoke" else None,
             "headlines": [f"{name} headline"],
-            "reproducibility": {"started_at": started_at},
+            "selection": selection or {"strata": None, "limit": None},
+            "reproducibility": {"run": {"started_at": started_at}, "worlds": []},
         }
+        if selection is not None:
+            summary["label"] = "subset run"
         (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
 
     def _latest(
@@ -411,6 +421,24 @@ class TestDemoAndBenchmarks:
         )
         with TestClient(app) as client:
             assert client.get("/api/v1/benchmarks/latest").json()["run_id"] == "run"
+
+    def test_a_subset_official_run_is_not_the_official_latest(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        subset = {"strata": ["H1"], "limit": 2}
+        self._publish(tmp_path, "full", "official", "2026-10-01T09:00:00+00:00")
+        self._publish(tmp_path, "pilot", "official", "2026-10-02T09:00:00+00:00", selection=subset)
+        status, body = self._latest(tiny_dataset, monkeypatch, tmp_path)
+        assert (status, body["run_id"]) == (200, "full")
+
+    def test_a_subset_official_run_falls_back_like_other_runs(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        limited = {"strata": None, "limit": 2}
+        self._publish(tmp_path, "smoke", "smoke", "2026-10-01T09:00:00+00:00")
+        self._publish(tmp_path, "pilot", "official", "2026-10-02T09:00:00+00:00", selection=limited)
+        status, body = self._latest(tiny_dataset, monkeypatch, tmp_path)
+        assert (status, body["run_id"], body["label"]) == (200, "pilot", "subset run")
 
     def test_latest_benchmark_prefers_official_runs(
         self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path

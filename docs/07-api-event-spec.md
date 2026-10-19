@@ -512,6 +512,8 @@ GET  /api/v1/demo/questions      fixed demo configuration
 GET  /api/v1/benchmarks/latest   published harness output only
 ```
 
+`GET /api/v1/benchmarks/latest` returns the newest official run of the whole bank, else the newest run of any kind with its label; the rule and the `summary.json` it serves are in `docs/evaluation/reproducibility.md`.
+
 Deliberate differences from the sketch: replay is served from the recorded
 event sequence (in-memory, bounded to the last 50 runs of the API process)
 rather than a durable event log, and `POST /queries` returns 202 with

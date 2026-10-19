@@ -132,10 +132,12 @@ DEFAULT_BENCHMARK_DIR = REPO_ROOT / "data" / "evaluation" / "runs"
 
 
 def latest_benchmark(runs_dir: Path) -> tuple[str, dict[str, Any]] | None:
-    """The newest official run under ``runs_dir``, else the newest run of any kind.
+    """The newest official run of the whole bank under ``runs_dir``, else the
+    newest run of any kind (a subset official run, such as a pilot, counts as
+    any kind and is published with its label).
 
     A run is a directory holding a schema-2 ``summary.json``; newest means the
-    latest ``reproducibility.started_at`` as a point in time, then the
+    latest ``reproducibility.run.started_at`` as a point in time, then the
     directory name. A malformed summary raises rather than being skipped.
     """
     runs: list[tuple[str, dict[str, Any]]] = []
@@ -143,14 +145,22 @@ def latest_benchmark(runs_dir: Path) -> tuple[str, dict[str, Any]] | None:
         summary = json.loads(path.read_text(encoding="utf-8"))
         if summary.get("schema_version") == SUMMARY_SCHEMA_VERSION:
             runs.append((path.parent.name, summary))
-    official = [run for run in runs if run[1]["run_kind"] == "official"]
+    official = [run for run in runs if run[1]["run_kind"] == "official" and _full(run[1])]
     pool = official or runs
     if not pool:
         return None
     return max(
         pool,
-        key=lambda run: (datetime.fromisoformat(run[1]["reproducibility"]["started_at"]), run[0]),
+        key=lambda run: (
+            datetime.fromisoformat(run[1]["reproducibility"]["run"]["started_at"]),
+            run[0],
+        ),
     )
+
+
+def _full(summary: dict[str, Any]) -> bool:
+    """Whether the run scored the whole bank (no strata, no per-question limit)."""
+    return bool(summary["selection"] == {"strata": None, "limit": None})
 
 
 def build_benchmarks_router() -> APIRouter:

@@ -25,6 +25,9 @@ uv run python -m app.evaluation compare SMALL_RUN_DIR LARGE_RUN_DIR [--out DIR]
 - `--repeats` defaults to 1 for a smoke run and 3 for an official run or a sweep; an official run refuses fewer than 3.
 - `--strata` keeps only the instances of those strata.
 - `--limit N` keeps at most N instances of each logical question, in bank order.
+- A run with `--strata` or `--limit` records them as its `selection` and is labelled, for example "subset run (strata H1; at most 2 instances per question)"; it is never published as the official result (see below).
+- Before any world is prepared, the run checks its kind, its repeats and the generator and judge settings in the environment, so a wrong setting fails in seconds rather than after a world is generated.
+  A smoke run uses the fake generator and judge; a sweep or official run refuses the fake generator and needs `JUDGE_PROVIDER=litellm`; an official run also needs three repeats and the two model families, which must differ.
 - Every run, smoke or official, uses graph depth 2; only the sweep changes it.
 - The generation and judge models come from the environment (`GENERATION_*` and `JUDGE_*` in `.env.example`); nothing is read from a `.env` file.
 
@@ -48,6 +51,7 @@ Where each seed lives:
 | 2027, 2028 | `data/generated/dev-seed{seed}` | `data/truth/dev-seed{seed}.json` | `data/evaluation/bank/bank-2.0.0-seed{seed}.json` | `QDRANT_COLLECTION` plus `_seed{seed}` |
 
 After the last world, and also when any world fails, the presentation world's graph (seed 2026) is ingested again, so Live Lab and Data Model read the world they expect.
+When a world fails and the restore fails too, the world's error is raised with the restore failure attached as a note and logged; run `make ingest-graph` to restore the graph by hand.
 
 The runner refuses to score a world when the lab reads another dataset directory than the world, or when the frozen bank was grounded in another world, by another bank version or over another record serialiser than the index in use.
 
@@ -60,15 +64,16 @@ A run refuses a directory that already holds a run.
 
 | File | Written by | Contents |
 |---|---|---|
-| `results.json` | `run` | Every instance, every repeat of every pipeline (answer, shown blocks, selected carriers, resolved ids, tokens, latency) and every score, per world, each world with its own record. |
+| `results.json` | `run` | The selection, the record, and per world every instance, every repeat of every pipeline (answer, shown blocks, selected carriers, resolved ids, tokens, latency) and every score. |
 | `report.md` | `run`, `sweep` | The summary rendered as tables. |
-| `summary.json` | `run` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures and the run record (see [statistics.md](statistics.md)). |
+| `summary.json` | `run` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record (see [statistics.md](statistics.md)). |
 | `sweep.json` | `sweep` | Per depth: the H1 metrics per pipeline (B and C) and that depth's record; no test and no headline. |
 | `comparison.json` | `compare` | H7: large minus small per pipeline, stratum and metric, as clustered intervals. |
 
 Each file is written to a temporary file in the same directory and then moved into place, so a reader never sees half a file.
 `summary.json` is written last.
-The API publishes `summary.json` only: `GET /api/v1/benchmarks/latest` reads `data/evaluation/runs/*/summary.json` (or `BENCHMARK_DIR`), schema version 2 only, and prefers the newest official run by start time.
+The API publishes `summary.json` only: `GET /api/v1/benchmarks/latest` reads `data/evaluation/runs/*/summary.json` (or `BENCHMARK_DIR`), schema version 2 only, and prefers the newest official run of the whole bank (`selection` with no strata and no limit) by start time.
+When there is none, it publishes the newest run of any kind, a subset official run included, with its label.
 A sweep writes no `summary.json`, so it is never published as the latest run.
 `compare` writes to `data/evaluation/comparisons/<run id>/` unless `--out` names another directory.
 
@@ -76,14 +81,20 @@ A sweep writes no `summary.json`, so it is never published as the latest run.
 
 ## Model comparison (H7)
 
-`compare` takes two official runs that used different generation models over the same frozen banks (the same bank hash for every world) and refuses anything else.
+`compare` takes two official runs that used different generation models over the same frozen banks (the same bank hash for every world) and the same selection, and refuses anything else.
 It pairs instances by instance id; an instance's value is the mean over its scored repeats.
 For every pipeline, stratum and the two compared metrics (`answer` and `evidence_f1`) it reports the mean difference, large minus small, with the clustered bootstrap interval of [statistics.md](statistics.md), and no test.
 
 ## The reproducibility record
 
-Every run stores the record below: as `reproducibility` in `summary.json` and `results.json`, and once per world under `worlds` in `results.json`.
-Over several worlds the run-level record is the first world's; the world-level records differ only in the world fields (`world_dir`, `world_seed`, `scenario_seed`, `generator_version`, `profile`), `bank_hash`, `record_serialiser_version` and `started_at`.
+Every run stores the record below as `reproducibility` in `summary.json` and `results.json`, in two parts:
+
+- `worlds`: each world's full record, in run order.
+- `run`: the fields every world's record shares, plus `started_at`, which is when the run's first world started (the API orders runs by it).
+  A field that differs between worlds, such as `world_seed`, `world_dir`, `scenario_seed` or `bank_hash` in a three-world run, appears only under `worlds`.
+
+`report.md` lists the shared fields, then for each world the fields that differ.
+A sweep stores the same two parts for each depth in `sweep.json`.
 
 Code and bank:
 

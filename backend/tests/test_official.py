@@ -42,7 +42,7 @@ from app.evaluation.official import (
     select_instances,
     world_paths,
 )
-from app.evaluation.runner import BenchmarkRun, WorldRun
+from app.evaluation.runner import BenchmarkRun, Selection, WorldRun
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
 from tests.test_benchmark_report import _graded, _instance, _record, _result, _world
@@ -55,9 +55,10 @@ def _sha(path: Path) -> str:
 class Recorder:
     """The four preparation steps and the runner factory, recording every call."""
 
-    def __init__(self, tmp: Path, fail_on: int | None = None) -> None:
+    def __init__(self, tmp: Path, fail_on: int | None = None, restore_fails: bool = False) -> None:
         self.tmp = tmp / "run"
         self.fail_on = fail_on
+        self.restore_fails = restore_fails
         self.generated: list[int] = []
         self.ingested: list[int] = []
         self.indexed: list[int] = []
@@ -66,7 +67,7 @@ class Recorder:
         self.runners: list[dict[str, Any]] = []
         self.steps = PrepareSteps(
             generate=self.generate,
-            ingest=lambda paths: self.ingested.append(paths.seed),
+            ingest=self.ingest,
             index=self.index,
             ground=self.ground,
             indexed_points=lambda paths: self.points.get(paths.collection, 0),
@@ -85,6 +86,12 @@ class Recorder:
         (paths.world_dir / "_manifest.json").write_text(json.dumps(manifest))
         paths.ledger_path.parent.mkdir(parents=True, exist_ok=True)
         paths.ledger_path.write_text(json.dumps({"world_seed": paths.seed}))
+
+    def ingest(self, paths: WorldPaths) -> None:
+        restoring = paths.seed == PRESENTATION_SEED and PRESENTATION_SEED in self.ingested
+        self.ingested.append(paths.seed)
+        if restoring and self.restore_fails:
+            raise ConnectionError("Neo4j is down")
 
     def index(self, paths: WorldPaths) -> None:
         self.indexed.append(paths.seed)
@@ -155,7 +162,11 @@ class FakeRunner:
         if self.fail:
             raise RuntimeError(f"world {self.seed} failed")
         record = dataclasses.replace(
-            _record(self.kind), world_seed=self.seed, graph_limits={"depth": self.depth}
+            _record(self.kind),
+            world_seed=self.seed,
+            world_dir=f"data/generated/dev-seed{self.seed}",
+            bank_hash=self.bank.bank_hash,
+            graph_limits={"depth": self.depth},
         )
         results = [
             _result(instance, {t: v for t, v in _graded(k).items() if t in self.pipelines})
@@ -181,6 +192,20 @@ def recorder(tmp_path: Path, data_dir: Path) -> Recorder:
 @pytest.fixture
 def recorder_failing_on_2027(tmp_path: Path, data_dir: Path) -> Recorder:
     return Recorder(tmp_path, fail_on=2027)
+
+
+@pytest.fixture
+def gateway_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Generation and judge settings an official run or a sweep accepts."""
+    for name, value in {
+        "GENERATION_PROVIDER": "litellm",
+        "GENERATION_MODEL": "ollama/qwen3.6:latest",
+        "GENERATION_MODEL_FAMILY": "qwen",
+        "JUDGE_PROVIDER": "litellm",
+        "JUDGE_MODEL": "ollama/gemma4:31b",
+        "JUDGE_MODEL_FAMILY": "gemma",
+    }.items():
+        monkeypatch.setenv(name, value)
 
 
 # --- The brief's tests --------------------------------------------------------
@@ -423,7 +448,8 @@ def test_a_run_writes_results_summary_and_report(recorder: Recorder) -> None:
     assert summary["schema_version"] == "2"
     assert summary["label"] == "scorer smoke test"
     assert summary["worlds"] == [2026, 2027]
-    assert [w["reproducibility"]["world_seed"] for w in results["worlds"]] == [2026, 2027]
+    assert [w["world_seed"] for w in results["reproducibility"]["worlds"]] == [2026, 2027]
+    assert results["selection"] == summary["selection"] == {"strata": None, "limit": None}
     assert (recorder.tmp / "report.md").read_text().startswith("# Benchmark run")
 
 
@@ -495,7 +521,9 @@ def test_a_run_refuses_a_directory_that_holds_a_run(recorder: Recorder) -> None:
 # --- Depth sweep ---------------------------------------------------------------
 
 
-def test_the_sweep_runs_h1_with_b_and_c_at_every_depth(recorder: Recorder) -> None:
+def test_the_sweep_runs_h1_with_b_and_c_at_every_depth(
+    recorder: Recorder, gateway_env: None
+) -> None:
     runs = run_sweep(
         (2026, 2027),
         depths=(0, 1),
@@ -519,7 +547,7 @@ def test_the_sweep_runs_h1_with_b_and_c_at_every_depth(recorder: Recorder) -> No
 
 
 def test_the_sweep_summary_lists_metrics_per_depth_and_makes_no_claim(
-    recorder: Recorder,
+    recorder: Recorder, gateway_env: None
 ) -> None:
     run_sweep(
         (2026,),
@@ -533,7 +561,9 @@ def test_the_sweep_summary_lists_metrics_per_depth_and_makes_no_claim(
     assert sweep["run_kind"] == "sweep"
     assert sorted(sweep["depths"]) == ["0", "2"]
     assert sorted(sweep["depths"]["2"]["metrics"]["evidence_f1"]) == ["B", "C"]
-    assert sweep["depths"]["2"]["reproducibility"]["graph_limits"] == {"depth": 2}
+    record = sweep["depths"]["2"]["reproducibility"]
+    assert record["run"]["graph_limits"] == {"depth": 2}
+    assert [w["world_seed"] for w in record["worlds"]] == [2026]
     text = json.dumps(sweep)
     assert "p_holm" not in text and "headlines" not in text
     # The API publishes summary.json only, so a sweep never becomes the latest run.
@@ -543,7 +573,7 @@ def test_the_sweep_summary_lists_metrics_per_depth_and_makes_no_claim(
 
 
 def test_a_failed_sweep_still_restores_the_presentation_graph(
-    recorder_failing_on_2027: Recorder,
+    recorder_failing_on_2027: Recorder, gateway_env: None
 ) -> None:
     with pytest.raises(RuntimeError):
         run_sweep(
@@ -676,3 +706,152 @@ def test_cli_compare_writes_comparison_json(tmp_path: Path) -> None:
     assert cli.main(["compare", str(small), str(large), "--out", str(out)]) == 0
     written = json.loads((out / "comparison.json").read_text())
     assert written["hypothesis"] == "H7"
+
+
+# --- Fix round 1: run record, restore failures, selection, preflight -----------
+
+
+def test_a_multi_world_summary_names_no_single_world_at_run_level(recorder: Recorder) -> None:
+    run_benchmark(
+        "smoke",
+        (2026, 2027),
+        repeats=1,
+        out_dir=recorder.tmp,
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    summary = json.loads((recorder.tmp / "summary.json").read_text())
+    record = summary["reproducibility"]
+    for field in ("world_seed", "world_dir", "bank_hash"):
+        assert field not in record["run"]
+    assert record["run"]["generation_model"] == "fake-gen"
+    assert record["run"]["started_at"] == "2026-10-19T10:00:00+00:00"
+    assert [w["world_seed"] for w in record["worlds"]] == [2026, 2027]
+    assert record["worlds"][0]["bank_hash"] != record["worlds"][1]["bank_hash"]
+    report = (recorder.tmp / "report.md").read_text()
+    assert "### World 2026" in report and "### World 2027" in report
+    run_part = report.split("### World 2026")[0].split("## Reproducibility")[1]
+    assert "world_seed" not in run_part and "bank_hash" not in run_part
+
+
+def test_a_failed_restore_keeps_the_world_failure(tmp_path: Path, data_dir: Path) -> None:
+    recorder = Recorder(tmp_path, fail_on=2027, restore_fails=True)
+    with pytest.raises(RuntimeError, match="world 2027") as raised:
+        run_benchmark(
+            "smoke",
+            (2026, 2027),
+            repeats=1,
+            out_dir=recorder.tmp,
+            steps=recorder.steps,
+            runner_factory=recorder.runner,
+        )
+    notes = getattr(raised.value, "__notes__", [])
+    assert any("presentation graph" in note and "Neo4j is down" in note for note in notes)
+    assert recorder.ingested == [2026, 2027, 2026]
+
+
+def test_a_failed_restore_after_a_good_run_is_raised(tmp_path: Path, data_dir: Path) -> None:
+    recorder = Recorder(tmp_path, restore_fails=True)
+    with pytest.raises(ConnectionError, match="Neo4j is down"):
+        run_benchmark(
+            "smoke",
+            (2026,),
+            repeats=1,
+            out_dir=recorder.tmp,
+            steps=recorder.steps,
+            runner_factory=recorder.runner,
+        )
+
+
+def test_a_subset_run_records_its_selection_and_is_labelled(
+    recorder: Recorder, gateway_env: None
+) -> None:
+    run = run_benchmark(
+        "official",
+        (2026,),
+        repeats=3,
+        out_dir=recorder.tmp,
+        strata=["H1"],
+        limit=1,
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    summary = json.loads((recorder.tmp / "summary.json").read_text())
+    results = json.loads((recorder.tmp / "results.json").read_text())
+    assert summary["selection"] == results["selection"] == {"strata": ["H1"], "limit": 1}
+    assert run.label == summary["label"]
+    assert summary["label"] == "subset run (strata H1; at most 1 instance per question)"
+    assert (
+        "Selection: strata H1; at most 1 instance per question."
+        in (recorder.tmp / "report.md").read_text()
+    )
+
+
+def test_a_full_official_run_has_no_label(recorder: Recorder, gateway_env: None) -> None:
+    run_benchmark(
+        "official",
+        (2026,),
+        repeats=3,
+        out_dir=recorder.tmp,
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    summary = json.loads((recorder.tmp / "summary.json").read_text())
+    assert summary["label"] is None
+    assert summary["selection"] == {"strata": None, "limit": None}
+
+
+def test_compare_refuses_runs_of_different_selections(tmp_path: Path) -> None:
+    small = _write_run(tmp_path / "small", _official("small-model"))
+    subset = dataclasses.replace(
+        _official("large-model"), selection=Selection(strata=("H1",), limit=None)
+    )
+    large = _write_run(tmp_path / "large", subset)
+    with pytest.raises(ValueError, match="selection"):
+        compare_runs(small, large)
+
+
+@pytest.mark.parametrize(
+    ("kind", "repeats", "env", "match"),
+    [
+        ("nightly", 1, {}, "unknown run kind"),
+        ("smoke", 0, {}, "repeats"),
+        ("official", 1, {}, "at least 3 repeats"),
+        ("official", 3, {"GENERATION_PROVIDER": "fake"}, "fake generator"),
+        ("official", 3, {"GENERATION_MODEL_FAMILY": ""}, "GENERATION_MODEL_FAMILY"),
+        ("official", 3, {"JUDGE_PROVIDER": "fake"}, "JUDGE_PROVIDER"),
+        ("official", 3, {"JUDGE_MODEL_FAMILY": "Qwen"}, "family"),
+        ("sweep", 3, {"GENERATION_PROVIDER": "fake"}, "fake generator"),
+        ("sweep", 3, {"JUDGE_PROVIDER": "fake"}, "JUDGE_PROVIDER"),
+    ],
+)
+def test_settings_are_checked_before_any_world_is_prepared(
+    recorder: Recorder,
+    gateway_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    kind: str,
+    repeats: int,
+    env: dict[str, str],
+    match: str,
+) -> None:
+    for name, value in env.items():
+        monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError, match=match):
+        if kind == "sweep":
+            run_sweep(
+                (2026,),
+                out_dir=recorder.tmp,
+                repeats=repeats,
+                steps=recorder.steps,
+                runner_factory=recorder.runner,
+            )
+        else:
+            run_benchmark(
+                kind,
+                (2026,),
+                repeats=repeats,
+                out_dir=recorder.tmp,
+                steps=recorder.steps,
+                runner_factory=recorder.runner,
+            )
+    assert recorder.generated == recorder.ingested == []

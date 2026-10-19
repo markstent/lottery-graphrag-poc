@@ -190,7 +190,8 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
         "headlines": [SMOKE_HEADLINE] if smoke else _headlines(comparisons),
         "judge_agreement": _judge_agreement(results, pipelines),
         "failures": _failures(results, pipelines),
-        "reproducibility": run.record.to_payload(),
+        "selection": run.selection.to_payload(),
+        "reproducibility": run.reproducibility(),
     }
 
 
@@ -348,12 +349,13 @@ def _failures(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> di
 def render_report(run: BenchmarkRun) -> str:
     """``report.md``: the numbers of ``summarize``, rendered."""
     summary = summarize(run)
-    record = summary["reproducibility"]
+    record = summary["reproducibility"]["run"]
     lines = [
         "# Benchmark run",
         "",
         f"Run kind: {summary['run_kind']}.",
         *([f"Label: {summary['label']}."] if summary["label"] else []),
+        f"Selection: {run.selection.describe()}.",
         f"Bank version {summary['bank_version']}, worlds "
         f"{', '.join(str(seed) for seed in summary['worlds'])}, started {record['started_at']}.",
         "",
@@ -367,9 +369,20 @@ def render_report(run: BenchmarkRun) -> str:
     lines += _comparison_section(summary["comparisons"])
     lines += _agreement_section(summary["judge_agreement"])
     lines += _failure_section(summary["failures"], summary["unavailable"])
-    lines += ["## Reproducibility", ""]
-    lines += [f"- {name}: `{value}`" for name, value in record.items()]
+    lines += reproducibility_section(summary["reproducibility"])
     return "\n".join(lines) + "\n"
+
+
+def reproducibility_section(reproducibility: dict[str, Any]) -> list[str]:
+    """The run's shared record, then what differs in each world."""
+    shared = reproducibility["run"]
+    lines = ["## Reproducibility", "", "Shared by every world:", ""]
+    lines += [f"- {name}: `{value}`" for name, value in shared.items()]
+    for world in reproducibility["worlds"]:
+        own = {k: v for k, v in world.items() if k not in shared or shared[k] != v}
+        lines += ["", f"### World {world['world_seed']}", ""]
+        lines += [f"- {name}: `{value}`" for name, value in own.items()] or ["- as above"]
+    return [*lines, ""]
 
 
 def _stratum_section(summary: dict[str, Any], key: str) -> list[str]:

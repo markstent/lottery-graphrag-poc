@@ -295,7 +295,7 @@ def test_counts_failures_agreement_and_basis(synthetic_summary: dict[str, object
         "B": "resolution",
         "C": "resolution",
     }
-    assert summary["reproducibility"]["bank_hash"] == "bankhash"
+    assert summary["reproducibility"]["run"]["bank_hash"] == "bankhash"
     assert summary["metrics"]["overall"]["judge_correctness"]["B"]["mean"] == pytest.approx(2.0)
     assert summary["metrics"]["H1"]["latency_ms"]["A"]["mean"] == pytest.approx(150.0)
     json.dumps(summary, allow_nan=False)
