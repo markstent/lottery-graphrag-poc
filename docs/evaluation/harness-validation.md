@@ -252,7 +252,9 @@ All bank questions were grounded and scored.
   planted-pattern and document-conflict questions are genuinely hard, not
   artefacts of the fake generator.
 - Q12 evidence is 0.0 for all pipelines: the binding support cases sit below
-  the fixed traversal fan-out (noted in docs/evaluation/question-bank.md).
+  the fixed traversal fan-out of the v1 harness (this record is the only note
+  of it; the v1 bank page never carried one, and the page is now generated
+  for bank 2.0.0).
 - Q03 evidence is 0.25 for B/C: the binding platform-version row is not a
   first-class evidence node; version recency is resolved by convention.
 - Real-model latencies (28-51s per question) are dominated by local 35B
