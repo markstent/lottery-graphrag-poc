@@ -88,6 +88,8 @@ SUPPORT_CLOSED_SHARE = 0.85
 MARKET_DOCUMENT_ENGLISH_SHARE = 0.30
 # Share of entity mentions that use the name only, without an identifier.
 MENTION_NAME_ONLY_SHARE = 0.5
+# Share of monthly market reviews that cover the reporting period, not one game.
+REVIEW_SUBJECTLESS_SHARE = 0.4
 
 # Payment provider mix per market.
 PROVIDER_MIX: dict[str, dict[str, float]] = {

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import random
 import re
 from collections import Counter
 
 import pytest
 from app.datasets.config import GenerationConfig
+from app.datasets.documents import WorldIndex, generate_documents
 from app.datasets.taxonomies import MARKET_LANGUAGE
 from app.datasets.util import split_sentences
 from app.datasets.world import World, build_world
@@ -179,3 +181,39 @@ def test_template_fields_keep_template_order_without_duplicates() -> None:
     from app.datasets.documents import _fields
 
     assert _fields("{a} and {b} and {a}") == ["a", "b"]
+
+
+def test_some_monthly_reviews_cover_the_reporting_period(tiny_world: World) -> None:
+    reviews = [
+        d for d in tiny_world.tables["documents"] if d.document_type == "MONTHLY_MARKET_REVIEW"
+    ]
+    subjectless = [d for d in reviews if d.source_record_id == ""]
+    assert subjectless
+    for doc in subjectless:
+        assert doc.title == "Monthly Market Review: Reporting Period"
+        assert doc.market_id is not None
+
+
+def test_cross_market_incidents_get_corporate_english_documents(tiny_world: World) -> None:
+    cross_market = {i.incident_id for i in tiny_world.tables["incidents"] if i.market_id is None}
+    assert cross_market
+    # The full document type plan, so every incident document type is drawn many times.
+    documents, _ = generate_documents(
+        random.Random(0), 253, WorldIndex.from_tables(tiny_world.tables)
+    )
+    corporate_incident_docs = [d for d in documents if d.source_record_id in cross_market]
+    assert corporate_incident_docs
+    for doc in corporate_incident_docs:
+        assert doc.document_type in ("INCIDENT_REPORT", "POST_INCIDENT_REVIEW")
+        assert doc.market_id is None
+        assert doc.language_code == "en"
+
+
+def test_baseline_incident_summaries_name_their_platform_version(tiny_world: World) -> None:
+    labels = {
+        v.platform_version_id: v.version_label for v in tiny_world.tables["platform_versions"]
+    }
+    versioned = [i for i in tiny_world.tables["incidents"] if i.platform_version_id]
+    assert versioned
+    for incident in versioned:
+        assert labels[incident.platform_version_id] in incident.summary

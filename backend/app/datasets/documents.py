@@ -22,6 +22,7 @@ from app.datasets.distributions import (
     MARKET_DOCUMENT_ENGLISH_SHARE,
     MARKET_SPLIT,
     MENTION_NAME_ONLY_SHARE,
+    REVIEW_SUBJECTLESS_SHARE,
 )
 from app.datasets.document_templates import MARKET_NAMES, REPORTING_PERIOD, TEMPLATES
 from app.datasets.rows import (
@@ -240,7 +241,12 @@ def _subject_for(
             related["campaign"] = Ref(campaign.campaign_name, campaign.campaign_id)
         return _Subject(kind, related["game"], game.market_id, related)
     if kind == "incident":
-        incidents = index.incidents_by_market.get(market_id, [])
+        # Cross-market incidents (no market) join every market's pool; a document
+        # about one becomes a corporate English document.
+        incidents = [
+            *index.incidents_by_market.get(market_id, []),
+            *index.incidents_by_market.get(None, []),
+        ]
         if not incidents:
             return None
         incident = rng.choice(incidents)
@@ -353,7 +359,14 @@ def generate_documents(
                 "en" if rng.random() < MARKET_DOCUMENT_ENGLISH_SHARE else MARKET_LANGUAGE[market_id]
             )
 
-        subject = _subject_for(rng, index, kind, market_id)
+        subject: _Subject | None
+        if doc_type == "MONTHLY_MARKET_REVIEW" and rng.random() < REVIEW_SUBJECTLESS_SHARE:
+            subject = None
+        else:
+            subject = _subject_for(rng, index, kind, market_id)
+        if subject is not None and subject.kind == "incident" and subject.market_id is None:
+            market_id = None
+            language = "en"
         body_market = market_id
         if subject is not None and subject.market_id is not None:
             body_market = subject.market_id

@@ -81,6 +81,7 @@ def generate_incidents(
         games_by_market.setdefault(game.market_id, []).append(game)
     severities = [severity for severity, _ in SEVERITY_WEIGHTS]
     severity_weights = [weight for _, weight in SEVERITY_WEIGHTS]
+    version_label = {v.platform_version_id: v.version_label for v in platform_versions}
     version_cutoff = _WINDOW_START_TS + timedelta(days=WINDOW_DAYS - 30)
 
     incidents: list[IncidentRow] = []
@@ -108,6 +109,11 @@ def generate_incidents(
             else None
         )
         canonical, summary = _INCIDENT_BY_PLATFORM[platform_id]
+        if platform_version_id is not None:
+            summary = (
+                f"{summary} Seen on platform version {version_label[platform_version_id]} "
+                f"({platform_version_id})."
+            )
         severity = rng.choices(severities, weights=severity_weights)[0]
         incidents.append(
             IncidentRow(
