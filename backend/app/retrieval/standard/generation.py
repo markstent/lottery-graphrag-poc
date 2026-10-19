@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from app.evidence import Citation, EvidenceChunk
+from app.models.gateway import CompletionRequest, GatewayError, complete
 
 PROMPT_VERSION = "2.0.0"
 
@@ -38,7 +39,6 @@ _SYSTEM_PROMPT = (
 
 _FENCED_JSON = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 _CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
-_USAGE_KEYS = ("prompt_tokens", "completion_tokens", "total_tokens")
 
 
 class GenerationError(RuntimeError):
@@ -185,35 +185,17 @@ class LiteLLMAnswerGenerator:
         self._timeout_s = timeout_s
 
     def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
-        import litellm  # imported lazily: heavy import, not needed in CI
-
-        started = time.perf_counter()
+        request = CompletionRequest(
+            model=self.model_name,
+            system=_SYSTEM_PROMPT,
+            user=build_user_prompt(question, contexts),
+            temperature=self._temperature,
+            max_tokens=self._max_tokens,
+            api_base=self._api_base,
+            timeout_s=self._timeout_s,
+        )
         try:
-            response = litellm.completion(
-                model=self.model_name,
-                messages=[
-                    {"role": "system", "content": _SYSTEM_PROMPT},
-                    {"role": "user", "content": build_user_prompt(question, contexts)},
-                ],
-                temperature=self._temperature,
-                max_tokens=self._max_tokens,
-                base_url=self._api_base,
-                timeout=self._timeout_s,
-            )
-            content = response["choices"][0]["message"]["content"]
-        except Exception as error:
-            raise GenerationError(f"Model gateway call failed: {error}") from error
-        if not isinstance(content, str) or not content.strip():
-            raise GenerationError("Model gateway returned an empty answer")
-        latency_ms = (time.perf_counter() - started) * 1000
-        return GenerationOutput(content.strip(), latency_ms, _usage(response))
-
-
-def _usage(response: object) -> dict[str, int] | None:
-    """Token counts the gateway reported, if any."""
-    usage = getattr(response, "usage", None)
-    if usage is None:
-        return None
-    counts = {key: getattr(usage, key, None) for key in _USAGE_KEYS}
-    reported = {key: value for key, value in counts.items() if isinstance(value, int)}
-    return reported or None
+            completion = complete(request)
+        except GatewayError as error:
+            raise GenerationError(str(error)) from error
+        return GenerationOutput(completion.text, completion.latency_ms, completion.usage)

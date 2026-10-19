@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import json
-import sys
-import types
-from typing import Any
 
 import pytest
 from app.events import GRAPH_GENERATION_COMPLETED, RAG_GENERATION_COMPLETED
 from app.evidence import EvidenceChunk
+from app.models.gateway import GatewayError
 from app.retrieval.standard.generation import (
     PROMPT_VERSION,
     FakeAnswerGenerator,
+    GenerationError,
     GenerationOutput,
     LiteLLMAnswerGenerator,
     parse_answer,
 )
 
+from tests.conftest import StubLiteLLM
 from tests.test_graph_rag import RecordingReranker
 from tests.test_graph_rag import build_pipeline as build_graph_pipeline
 from tests.test_standard_rag import build_pipeline as build_rag_pipeline
@@ -129,30 +129,24 @@ def test_prompt_version_is_v2() -> None:
     assert PROMPT_VERSION == "2.0.0"
 
 
-def test_litellm_generator_records_usage_and_passes_max_tokens(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[dict[str, Any]] = []
-
-    class Response(dict[str, Any]):
-        """Subscriptable choices and an attribute usage, like a litellm ModelResponse."""
-
-        usage = types.SimpleNamespace(prompt_tokens=120, completion_tokens=30, total_tokens=150)
-
-    def completion(**kwargs: Any) -> Response:
-        calls.append(kwargs)
-        return Response(
-            choices=[{"message": {"content": '{"verdict": "yes", "answer": "2.50 [1]."}'}}]
-        )
-
-    monkeypatch.setitem(sys.modules, "litellm", types.SimpleNamespace(completion=completion))
+def test_litellm_generator_records_usage_and_passes_max_tokens(stub_litellm: StubLiteLLM) -> None:
     generator = LiteLLMAnswerGenerator(model="stub/model", temperature=0.0, max_tokens=321)
     output = generator.generate("What is the price?", [_chunk()])
 
     assert isinstance(output, GenerationOutput)
-    assert output.raw_text == '{"verdict": "yes", "answer": "2.50 [1]."}'
-    assert output.usage == {"prompt_tokens": 120, "completion_tokens": 30, "total_tokens": 150}
-    assert calls[0]["max_tokens"] == 321 and calls[0]["temperature"] == 0.0
+    assert output.raw_text == "ok"
+    assert output.usage == {"prompt_tokens": 3, "completion_tokens": 1, "total_tokens": 4}
+    assert (
+        stub_litellm.calls[0]["max_tokens"] == 321 and stub_litellm.calls[0]["temperature"] == 0.0
+    )
+
+
+def test_generator_maps_gateway_errors_to_generation_errors(
+    stub_litellm_raises: StubLiteLLM,
+) -> None:
+    with pytest.raises(GenerationError) as raised:
+        LiteLLMAnswerGenerator(model="m").generate("q", [])
+    assert isinstance(raised.value.__cause__, GatewayError)
 
 
 class CitingLastBlockGenerator:
