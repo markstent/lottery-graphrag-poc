@@ -165,14 +165,17 @@ _QUERIES: dict[str, str] = {
     """,
 }
 
-# Validity window columns, matching graph ingestion except that an incident's
-# resolution is not the end of its validity.
-_VALIDITY: dict[str, tuple[str | None, str | None]] = {
+# Validity window columns (valid_from, valid_to) per table, shared by record
+# blocks and authoritative facts. They match graph ingestion except that an
+# incident's resolution is not the end of its validity.
+VALIDITY_COLUMNS: dict[str, tuple[str | None, str | None]] = {
     "games": ("launch_date", "retirement_date"),
     "platform_versions": ("released_at", "retired_at"),
     "incidents": ("started_at", None),
     "campaigns": ("start_at", "end_at"),
     "app_versions": ("released_at", None),
+    "experiments": ("start_at", "end_at"),
+    "documents": ("valid_from", "valid_to"),
 }
 
 
@@ -344,7 +347,7 @@ def _block(table: str, row: Row) -> RecordBlock:
     source_system, _ = TABLE_PROVENANCE[table]
     record_id = str(row["record_id"])
     provenance = f"Source: {source_system} table {table}, record {record_id}."
-    valid_from, valid_to = _VALIDITY.get(table, (None, None))
+    valid_from, valid_to = VALIDITY_COLUMNS.get(table, (None, None))
     return RecordBlock(
         record_id=record_id,
         table=table,

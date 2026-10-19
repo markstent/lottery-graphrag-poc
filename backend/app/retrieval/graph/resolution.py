@@ -130,7 +130,7 @@ class TermEntityResolver:
     def resolve(self, question: str) -> list[ResolvedEntity]:
         resolved = self._inner.resolve(question)
         seen = {entity.entity_id for entity in resolved}
-        market = next((e.entity_id for e in resolved if e.origin == "market_alias"), None)
+        market = next((e.entity_id for e in resolved if e.node_label == "Market"), None)
         for match in self._matcher.match(question):
             term = match.term
             matched_text = question[match.start : match.end]

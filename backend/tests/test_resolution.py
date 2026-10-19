@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 
 import pytest
-from app.config import DEFAULT_RANKING_WEIGHTS, GraphRagSettings
+from app.config import DEFAULT_RANKING_WEIGHTS, DEFAULT_REFERENCE_DATE, GraphRagSettings
 from app.datasets.taxonomies import local_name_variants
 from app.ontology.loader import load_ontology
 from app.ontology.terms import TermMatcher, build_term_table
@@ -142,6 +142,11 @@ def test_c_resolver_skips_bindings_without_a_graph_node() -> None:
     assert ids == ["MKT_GR", "CONCEPT_NATIONAL_DRAW"]
 
 
+def test_c_resolver_market_named_by_id_hints_the_local_code() -> None:
+    ids = [e.entity_id for e in c_resolver().resolve("nationale Ziehung in MKT_AT")]
+    assert ids == ["MKT_AT", "CONCEPT_NATIONAL_DRAW", "FAM_AT_ZAHLENZIEHUNG"]
+
+
 def test_c_resolver_deduplicates_in_stable_order() -> None:
     out = c_resolver().resolve("Rubbellos, Scratchcard and Rubbellos again in Austria")
     ids = [e.entity_id for e in out]
@@ -206,6 +211,7 @@ def _expansion_settings(**overrides: object) -> GraphRagSettings:
         "relationship_types": ("AFFECTS",),
         "ontology_expansion": True,
         "ranking": DEFAULT_RANKING_WEIGHTS,
+        "reference_date": DEFAULT_REFERENCE_DATE,
     }
     values.update(overrides)
     return GraphRagSettings(**values)  # type: ignore[arg-type]

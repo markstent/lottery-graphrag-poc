@@ -9,11 +9,13 @@ expansion, telemetry and determinism are covered offline. A live-graph test
 from __future__ import annotations
 
 import dataclasses
+from datetime import date
 from pathlib import Path
 
 import pytest
 from app.config import (
     DEFAULT_RANKING_WEIGHTS,
+    DEFAULT_REFERENCE_DATE,
     DEFAULT_RELATIONSHIP_TYPES,
     ContextSettings,
     EmbeddingSettings,
@@ -39,8 +41,9 @@ from app.events import (
 )
 from app.ontology.loader import load_ontology
 from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.graph.ranking import score_nodes, temporal_validity
 from app.retrieval.graph.resolution import QueryExpansion, ResolvedEntity, StaticEntityResolver
-from app.retrieval.graph.source_lookup import SourceLookup
+from app.retrieval.graph.source_lookup import AuthoritativeFacts, SourceLookup
 from app.retrieval.graph.traversal import (
     NeighbourEdge,
     StaticNeighbourProvider,
@@ -120,6 +123,7 @@ def make_settings(**overrides: object) -> RetrievalSettings:
             relationship_types=DEFAULT_RELATIONSHIP_TYPES,
             ontology_expansion=True,
             ranking=DEFAULT_RANKING_WEIGHTS,
+            reference_date=DEFAULT_REFERENCE_DATE,
         ),
     }
     values.update(overrides)
@@ -221,6 +225,7 @@ class TestBoundedTraversal:
                 relationship_types=("AFFECTS", "AFFECTS_MARKET", "RELATED_TO"),
                 ontology_expansion=True,
                 ranking=DEFAULT_RANKING_WEIGHTS,
+                reference_date=DEFAULT_REFERENCE_DATE,
             )
         )
         traversal = bounded_traversal(scn007_adjacency(), ["INC_S007_GR"], settings.graph)
@@ -239,6 +244,7 @@ class TestBoundedTraversal:
                 relationship_types=DEFAULT_RELATIONSHIP_TYPES,
                 ontology_expansion=True,
                 ranking=DEFAULT_RANKING_WEIGHTS,
+                reference_date=DEFAULT_REFERENCE_DATE,
             )
         )
         traversal = bounded_traversal(scn007_adjacency(), ["INC_S007_GR"], settings.graph)
@@ -485,7 +491,73 @@ class TestRankingAndEvidence:
         assert "CHNK_S007_UK_00" in chunk_ids
 
 
+def test_superseded_record_ranks_lower_than_current() -> None:
+    reference = date(2026, 1, 1)
+    assert temporal_validity(date(2025, 6, 1), reference) == 0.3
+    assert temporal_validity(None, reference) == 1.0
+    assert temporal_validity(date(2026, 1, 1), reference) == 1.0
+
+
+def test_score_nodes_ranks_superseded_below_current_when_otherwise_equal() -> None:
+    settings = make_settings(
+        graph=GraphRagSettings(
+            max_depth=1,
+            max_nodes_per_hop=100,
+            max_edges_per_node_type=4,
+            max_total_nodes=200,
+            relationship_types=("AFFECTS", "AFFECTS_MARKET"),
+            ontology_expansion=True,
+            ranking=DEFAULT_RANKING_WEIGHTS,
+            reference_date=DEFAULT_REFERENCE_DATE,
+        )
+    )
+    traversal = bounded_traversal(scn007_adjacency(), ["INC_S007_GR"], settings.graph)
+    labels = {"GAME_GR_01": "Game", "MKT_GR": "Market", "INC_S007_GR": "Incident"}
+    scored = score_nodes(
+        traversal,
+        labels,
+        {},
+        DEFAULT_RANKING_WEIGHTS,
+        validity={"GAME_GR_01": date(2025, 3, 1)},
+        reference=date(2026, 1, 1),
+    )
+    by_id = {node.node_id: node for node in scored}
+    assert by_id["GAME_GR_01"].components["temporal_validity"] == 0.3
+    assert by_id["MKT_GR"].components["temporal_validity"] == 1.0
+    assert by_id["GAME_GR_01"].score < by_id["MKT_GR"].score
+
+
+def _facts(table: str, **columns: str) -> AuthoritativeFacts:
+    return AuthoritativeFacts("X", "Game", table, "X", columns)
+
+
+def test_authoritative_facts_valid_to_parses_date_and_timestamp() -> None:
+    assert _facts("games", retirement_date="2025-03-01").valid_to == date(2025, 3, 1)
+    assert _facts("experiments", end_at="2025-07-04 12:30:00").valid_to == date(2025, 7, 4)
+    assert _facts("games", retirement_date="-").valid_to is None
+    assert _facts("incidents", resolved_at="2025-05-23 00:00:00").valid_to is None
+
+
 class TestSourceLookup:
+    def test_retired_game_reports_superseded_validity(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        import duckdb
+
+        connection = duckdb.connect()
+        connection.execute(
+            "COPY (SELECT * FROM (VALUES"
+            " ('GAME_GR_01','Xysimo','MKT_GR','FAM_GR_1',2.0,'EUR',DATE '2025-03-01'))"
+            " AS t(game_id, game_name, market_id, game_family_id, ticket_price,"
+            " currency_code, retirement_date)"
+            f") TO '{tmp_path / 'games.parquet'}' (FORMAT PARQUET)"
+        )
+        connection.close()
+        pipeline = build_pipeline(settings=make_settings(dataset_dir=str(tmp_path)))
+        pipeline.source_lookup = SourceLookup(tmp_path)
+        result = pipeline.run("Why did checkout fail in Greece?")
+        components = {e.node_id: e.components["temporal_validity"] for e in result.node_evidence}
+        assert components["GAME_GR_01"] == 0.3
+        assert components["INC_S007_GR"] == 1.0
+
     def test_authoritative_facts_attached(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         source_dir = tmp_path / "ds"
         source_dir.mkdir()

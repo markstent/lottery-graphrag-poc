@@ -22,6 +22,7 @@ claims come from the structured layer, not the graph.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import date
 
 from app.config import RetrievalSettings
 from app.events import (
@@ -388,24 +389,34 @@ class GraphRagPipeline:
             labels.setdefault(entity.entity_id, entity.node_label)
         for edge in traversal.edges:
             labels.setdefault(edge.to_id, edge.to_label)
-        semantic = semantic_scores(search_text, self._node_texts(labels), self.embeddings)
-        return score_nodes(traversal, labels, semantic, self.settings.graph.ranking)
+        texts, validity = self._node_texts_and_validity(labels)
+        semantic = semantic_scores(search_text, texts, self.embeddings)
+        graph = self.settings.graph
+        return score_nodes(
+            traversal, labels, semantic, graph.ranking, validity, graph.reference_date
+        )
 
     def _bound_relevance(self, search_text: str, candidates: list[tuple[str, str]]) -> list[float]:
         """Semantic relevance of ontology-bound candidates, for expansion ranking."""
-        scores = semantic_scores(search_text, self._node_texts(dict(candidates)), self.embeddings)
+        texts, _validity = self._node_texts_and_validity(dict(candidates))
+        scores = semantic_scores(search_text, texts, self.embeddings)
         return [scores[node_id] for node_id, _label in candidates]
 
-    def _node_texts(self, labels: dict[str, str]) -> dict[str, str]:
+    def _node_texts_and_validity(
+        self, labels: dict[str, str]
+    ) -> tuple[dict[str, str], dict[str, date | None]]:
+        """Node texts for semantic scoring and validity ends, from one fetch per node."""
         texts: dict[str, str] = {}
+        validity: dict[str, date | None] = {}
         for node_id, node_label in labels.items():
             parts = [node_label, node_id]
             if self.source_lookup is not None and node_label in STRUCTURED_LABELS:
                 facts = self.source_lookup.fetch(node_label, node_id)
                 if facts is not None:
                     parts.append(facts.snippet())
+                    validity[node_id] = facts.valid_to
             texts[node_id] = " ".join(parts)
-        return texts
+        return texts, validity
 
     def _document_chunks(
         self, search_text: str, question: str, markets: Sequence[str] | None = None

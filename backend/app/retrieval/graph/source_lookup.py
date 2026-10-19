@@ -10,10 +10,13 @@ must quote rather than invent.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from typing import Any
 
 import duckdb
+
+from app.retrieval.standard.records import VALIDITY_COLUMNS
 
 # Graph label -> (parquet table, id column). Only labels whose rows carry
 # facts an answer might quote.
@@ -49,7 +52,13 @@ SNIPPET_COLUMNS: dict[str, tuple[str, ...]] = {
         "summary",
         "root_cause_code",
     ),
-    "platform_versions": ("platform_version_id", "platform_id", "version_label", "released_at"),
+    "platform_versions": (
+        "platform_version_id",
+        "platform_id",
+        "version_label",
+        "released_at",
+        "retired_at",
+    ),
     "app_versions": ("app_version_id", "market_id", "version_label", "released_at"),
     "games": (
         "game_id",
@@ -58,6 +67,7 @@ SNIPPET_COLUMNS: dict[str, tuple[str, ...]] = {
         "game_family_id",
         "ticket_price",
         "currency_code",
+        "retirement_date",
     ),
     "documents": (
         "document_id",
@@ -89,6 +99,8 @@ SNIPPET_COLUMNS: dict[str, tuple[str, ...]] = {
         "experiment_id",
         "market_id",
         "experiment_name",
+        "start_at",
+        "end_at",
         "primary_metric",
         "result_summary",
     ),
@@ -117,6 +129,13 @@ class AuthoritativeFacts:
     def snippet(self) -> str:
         pairs = ", ".join(f"{key}={value}" for key, value in self.columns.items())
         return f"[authoritative {self.source_table}] {pairs}"
+
+    @property
+    def valid_to(self) -> date | None:
+        """End of the record's validity window, from its authoritative row."""
+        end_column = VALIDITY_COLUMNS.get(self.source_table, (None, None))[1]
+        value = self.columns.get(end_column, "-") if end_column else "-"
+        return None if value == "-" else date.fromisoformat(value[:10])
 
     def to_payload(self) -> dict[str, str]:
         return {

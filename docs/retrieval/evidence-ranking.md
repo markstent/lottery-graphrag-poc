@@ -49,8 +49,12 @@ Default weights (`DEFAULT_RANKING_WEIGHTS`, overridable per experiment):
 - `semantic_relevance`: cosine between the question vector and the node text
   (label + id + authoritative fact snippet) using the same embedding model as
   pipeline A. The graph never uses a different semantic model.
-- `temporal_validity`: 1.0 when the record has no end date or a current
-  validity window, 0.3 when superseded.
+- `temporal_validity`: read from the authoritative row of the node.
+  The end of the validity window is `retirement_date` for games, `retired_at` for platform versions, `end_at` for campaigns and experiments and `valid_to` for documents.
+  Incidents and app versions have no end, so they are always current (a resolved incident stays a valid record).
+  The component is 1.0 when the record has no end date or its end is on or after the reference date, and 0.3 when it ended before.
+  The reference date is `GRAPH_REFERENCE_DATE` (an ISO date), defaulting to the end of the dataset window (2026-01-01).
+  A node without an authoritative row is treated as current.
 
 ## Selection
 

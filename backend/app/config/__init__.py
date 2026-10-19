@@ -9,9 +9,14 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from datetime import date, timedelta
 
+from app.datasets.config import WINDOW_DAYS, WINDOW_START
 from app.graph.config import DEFAULT_DATASET_DIR
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
+
+# End of the synthetic dataset window: the default "today" for record validity.
+DEFAULT_REFERENCE_DATE = WINDOW_START + timedelta(days=WINDOW_DAYS)
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +102,8 @@ class GraphRagSettings:
     relationship_types: tuple[str, ...]
     ontology_expansion: bool
     ranking: RankingWeights
+    # Records whose validity ended before this date rank as superseded.
+    reference_date: date
 
     def without_ontology(self) -> GraphRagSettings:
         """Pipeline B view: same limits, no ontology relationships."""
@@ -110,6 +117,7 @@ class GraphRagSettings:
             ),
             ontology_expansion=False,
             ranking=self.ranking,
+            reference_date=self.reference_date,
         )
 
 
@@ -181,6 +189,7 @@ class RetrievalSettings:
             relationship_types=DEFAULT_RELATIONSHIP_TYPES,
             ontology_expansion=True,
             ranking=DEFAULT_RANKING_WEIGHTS,
+            reference_date=DEFAULT_REFERENCE_DATE,
         )
     )
 
@@ -238,5 +247,8 @@ def from_env() -> RetrievalSettings:
             relationship_types=DEFAULT_RELATIONSHIP_TYPES,
             ontology_expansion=os.environ.get("GRAPH_ONTOLOGY", "1") == "1",
             ranking=DEFAULT_RANKING_WEIGHTS,
+            reference_date=date.fromisoformat(
+                os.environ.get("GRAPH_REFERENCE_DATE") or DEFAULT_REFERENCE_DATE.isoformat()
+            ),
         ),
     )
