@@ -12,11 +12,11 @@ nothing. It runs retrieval and returns observable events plus answers.
 
 from __future__ import annotations
 
+import dataclasses
 import threading
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 from app.api.schemas import QueryRequest
@@ -26,10 +26,10 @@ from app.graph.config import GraphConfig
 from app.retrieval.graph.lab import Lab, build_generator, build_lab, wired_pipelines
 from app.retrieval.standard.embeddings import EmbeddingError
 from app.retrieval.standard.generation import GenerationError
-from app.retrieval.standard.index import check_manifest, index_corpus, write_manifest
+from app.retrieval.standard.index import index_corpus, persists_index, write_manifest
 from app.retrieval.standard.reranking import RerankError
 from app.retrieval.standard.sparse import SparseEmbeddingError
-from app.retrieval.standard.vector_store import SPARSE_VECTOR, VectorStoreError
+from app.retrieval.standard.vector_store import VectorStoreError
 
 # Error classes from docs/07 section 11. The reranker is the judge of
 # context selection, so its failures are context build errors.
@@ -91,19 +91,19 @@ class QueryService:
                 )
                 # Cold-start indexing: the CLI flows rely on a pre-built
                 # index (make index-vector), but a service must be usable
-                # after a fresh start. A persisted Qdrant collection is
-                # already populated and is left untouched, once it is known
-                # to be hybrid and built by this record serialiser.
-                if lab.store.count() == 0:
-                    if lab.corpus:
-                        corpus = list(lab.corpus.values())
-                        index_corpus(lab.store, lab.embeddings, lab.sparse, corpus)
-                        write_manifest(self._settings, lab.embeddings, lab.sparse, corpus)
-                elif SPARSE_VECTOR not in lab.store.collection_info()["sparse_vectors"]:
-                    # A pre-hybrid (dense-only) collection would fail every search.
-                    raise VectorStoreError("collection lacks a sparse vector; rebuild the index")
-                else:
-                    check_manifest(Path(self._settings.dataset_dir))
+                # after a fresh start. build_lab has already refused a
+                # populated index this code must not use; a valid one is
+                # left untouched. Only a persistent (Qdrant) index gets a
+                # manifest: an in-memory index dies with the process and
+                # must not overwrite the manifest of the real one.
+                if lab.store.count() == 0 and lab.corpus:
+                    corpus = list(lab.corpus.values())
+                    index_corpus(lab.store, lab.embeddings, lab.sparse, corpus)
+                    if persists_index(self._settings.embedding.provider):
+                        manifest = write_manifest(
+                            self._settings, lab.embeddings, lab.sparse, corpus
+                        )
+                        lab = dataclasses.replace(lab, index_manifest=manifest)
                 self._lab = lab
             return self._lab
 

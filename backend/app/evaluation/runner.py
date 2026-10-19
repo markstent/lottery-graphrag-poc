@@ -39,7 +39,6 @@ from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.standard.fusion import RRF_K
 from app.retrieval.standard.generation import PROMPT_VERSION, AnswerGenerator, GenerationError
 from app.retrieval.standard.pipeline import StandardRagPipeline
-from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -72,7 +71,8 @@ class ReproducibilityRecord:
     embedding_dimensions: int
     sparse_model: str
     rrf_k: int
-    record_serialiser_version: str
+    # From the manifest of the index the lab loaded; None when it started empty.
+    record_serialiser_version: str | None
     generation_model: str
     generation_temperature: float
     max_tokens: int
@@ -269,7 +269,7 @@ class BenchmarkRunner:
             embedding_dimensions=self.lab.embeddings.dimensions,
             sparse_model=self.lab.sparse.model_name,
             rrf_k=RRF_K,
-            record_serialiser_version=RECORD_SERIALISER_VERSION,
+            record_serialiser_version=self.lab.record_serialiser_version,
             generation_model=self.lab.generator.model_name,
             generation_temperature=settings.generation.temperature,
             max_tokens=settings.generation.max_tokens,

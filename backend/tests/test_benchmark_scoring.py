@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 
+import pytest
 from app.evaluation.runner import BenchmarkRunner
 from app.evaluation.scoring import (
     PipelineRunResult,
@@ -175,6 +176,7 @@ def test_reproducibility_record_carries_the_ontology_version(tmp_path: Path) -> 
             sparse=SimpleNamespace(model_name="hashing-sparse-1048576"),
             generator=SimpleNamespace(model_name="fake-answer-v1"),
             reranker=SimpleNamespace(model_name="lexical-overlap"),
+            record_serialiser_version="2.1.0",
         ),
     )
     runner.world_dir = tmp_path
@@ -190,7 +192,6 @@ def test_reproducibility_payload_carries_every_field_and_the_retrieval_constants
 ) -> None:
     """Every record field reaches the stored payload (docs/05 section 11)."""
     from app.retrieval.standard.fusion import RRF_K
-    from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
     from tests.test_graph_rag import make_settings
 
@@ -204,6 +205,7 @@ def test_reproducibility_payload_carries_every_field_and_the_retrieval_constants
             sparse=SimpleNamespace(model_name="hashing-sparse-1048576"),
             generator=SimpleNamespace(model_name="fake-answer-v1"),
             reranker=SimpleNamespace(model_name="lexical-overlap"),
+            record_serialiser_version="from-the-manifest",
         ),
     )
     runner.world_dir = tmp_path
@@ -211,7 +213,8 @@ def test_reproducibility_payload_carries_every_field_and_the_retrieval_constants
     payload = record.to_payload()
     assert set(payload) == {field.name for field in dataclasses.fields(record)}
     assert payload["sparse_model"] == "hashing-sparse-1048576"
-    assert payload["record_serialiser_version"] == RECORD_SERIALISER_VERSION
+    # The serialiser that built the index in use, never the code constant.
+    assert payload["record_serialiser_version"] == "from-the-manifest"
     assert payload["rrf_k"] == RRF_K
     assert payload["embedding_dimensions"] == 256
     assert payload["reference_date"] == settings.graph.reference_date.isoformat()
@@ -219,3 +222,56 @@ def test_reproducibility_payload_carries_every_field_and_the_retrieval_constants
     assert payload["excluded_labels"] == ["Document"]
     assert payload["max_tokens"] == settings.generation.max_tokens
     json.dumps(payload)  # stored as JSON
+
+
+def _populated_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, manifest: str | None) -> Path:
+    """A world dir with a populated in-memory index and the given manifest."""
+    import app.retrieval.graph.lab as lab_module
+    from app.retrieval.standard.vector_store import InMemoryVectorStore
+
+    class PopulatedStore(InMemoryVectorStore):
+        def count(self) -> int:
+            return 1
+
+    monkeypatch.setattr(lab_module, "build_store", lambda *_args: PopulatedStore())
+    monkeypatch.setattr(lab_module, "load_indexed_corpus", lambda _dir: {})
+    if manifest is not None:
+        (tmp_path / "vector-index.json").write_text(
+            json.dumps({"record_serialiser_version": manifest})
+        )
+    return tmp_path
+
+
+@pytest.mark.parametrize("manifest", [None, "2.0.0"])
+def test_runner_refuses_an_index_of_another_serialiser_before_any_question(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, manifest: str | None
+) -> None:
+    from app.graph.config import from_env as graph_env
+    from app.retrieval.standard.generation import FakeAnswerGenerator
+    from app.retrieval.standard.vector_store import VectorStoreError
+
+    from tests.test_graph_rag import make_settings
+
+    world = _populated_world(tmp_path, monkeypatch, manifest)
+    with pytest.raises(VectorStoreError, match="record serialiser"):
+        BenchmarkRunner(
+            settings=make_settings(dataset_dir=str(world)),
+            graph_config=graph_env(),
+            generator=FakeAnswerGenerator(),
+            world_dir=world,
+        )
+
+
+def test_lab_reports_the_serialiser_of_the_index_it_loaded(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.retrieval.graph.lab import build_lab
+    from app.retrieval.standard.generation import FakeAnswerGenerator
+    from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+
+    from tests.test_graph_rag import make_settings
+
+    world = _populated_world(tmp_path, monkeypatch, RECORD_SERIALISER_VERSION)
+    lab = build_lab(make_settings(dataset_dir=str(world)), FakeAnswerGenerator())
+    assert lab.index_manifest == {"record_serialiser_version": RECORD_SERIALISER_VERSION}
+    assert lab.record_serialiser_version == RECORD_SERIALISER_VERSION

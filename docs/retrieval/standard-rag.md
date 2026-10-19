@@ -96,7 +96,8 @@ uv run python -m app.retrieval.standard --no-rebuild        # upsert into the ex
 
 The index manifest is written to `<dataset>/vector-index.json` with the dense and sparse model names, dimensions, vector names, the record serialiser version, chunk count and record count.
 `--no-rebuild` refuses a dense-only collection from before hybrid search; rebuild it instead.
-At cold start the API refuses a populated collection that is dense-only or whose manifest names another serialiser version (or is missing), with `VECTOR_RETRIEVAL_ERROR`; an empty collection is indexed in process and its manifest written.
+`build_lab` (shared by the API, the benchmark runner and the trace CLI) refuses a populated collection that is dense-only or whose manifest names another serialiser version (or is missing), with `VectorStoreError` (`VECTOR_RETRIEVAL_ERROR` in the API), and exposes the manifest as `Lab.index_manifest`; the reproducibility record takes `record_serialiser_version` from it.
+At cold start the API indexes an empty collection in process, and writes the manifest only for a persistent (Qdrant) index: an in-memory index never overwrites `vector-index.json`.
 
 ## Tests
 

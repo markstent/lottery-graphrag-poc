@@ -31,11 +31,16 @@ from app.retrieval.standard.generation import (
     FakeAnswerGenerator,
     LiteLLMAnswerGenerator,
 )
-from app.retrieval.standard.index import build_embedder, build_store, load_indexed_corpus
+from app.retrieval.standard.index import (
+    build_embedder,
+    build_store,
+    check_manifest,
+    load_indexed_corpus,
+)
 from app.retrieval.standard.pipeline import StandardRagPipeline
 from app.retrieval.standard.reranking import Reranker, build_reranker
 from app.retrieval.standard.sparse import SparseEmbedder, build_sparse_embedder
-from app.retrieval.standard.vector_store import VectorStore
+from app.retrieval.standard.vector_store import SPARSE_VECTOR, VectorStore, VectorStoreError
 
 PipelineId = Literal["A", "B", "C"]
 
@@ -56,6 +61,16 @@ class Lab:
     reranker: Reranker
     ontology: Ontology
     term_matcher: TermMatcher
+    # Manifest of the populated index the lab was built on (checked against
+    # this code's record serialiser); None when the store started empty.
+    index_manifest: dict[str, object] | None = None
+
+    @property
+    def record_serialiser_version(self) -> str | None:
+        """The serialiser that built the index in use, from its manifest."""
+        if self.index_manifest is None:
+            return None
+        return str(self.index_manifest["record_serialiser_version"])
 
     def pipeline_a(self, sink: ListEventSink | None = None) -> StandardRagPipeline:
         return StandardRagPipeline(
@@ -93,8 +108,17 @@ class WiredGraphPipelines:
 
 
 def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
+    """Build the shared components; refuse a populated index this code must
+    not use (dense-only, or built by another record serialiser), so the API,
+    the benchmark runner and the trace CLI are guarded alike."""
     embeddings = build_embedder(settings.embedding)
     store = build_store(settings.vector, embeddings.dimensions, settings.embedding.provider)
+    manifest: dict[str, object] | None = None
+    if store.count() > 0:
+        if SPARSE_VECTOR not in store.collection_info()["sparse_vectors"]:
+            # A pre-hybrid (dense-only) collection would fail every search.
+            raise VectorStoreError("collection lacks a sparse vector; rebuild the index")
+        manifest = check_manifest(Path(settings.dataset_dir))
     ontology = load_ontology()
     corpus = load_indexed_corpus(Path(settings.dataset_dir))
     return Lab(
@@ -109,6 +133,7 @@ def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
         reranker=build_reranker(settings),
         ontology=ontology,
         term_matcher=TermMatcher(build_term_table(ontology, local_name_variants())),
+        index_manifest=manifest,
     )
 
 

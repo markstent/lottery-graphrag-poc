@@ -274,17 +274,8 @@ class TestErrorMapping:
         assert payload["error"]["error_code"] == "VECTOR_RETRIEVAL_ERROR"
         assert "record serialiser" in payload["error"]["message"]
 
-    def test_cold_start_indexing_stamps_the_serialiser_version(
-        self, tiny_dataset: Path, tmp_path: Path
-    ) -> None:
-        import shutil
-
-        from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
-
-        dataset_dir = tmp_path / "world"
-        shutil.copytree(tiny_dataset, dataset_dir)
-        (dataset_dir / "vector-index.json").unlink(missing_ok=True)
-        settings: RetrievalSettings = make_settings(dataset_dir=str(dataset_dir))
+    @staticmethod
+    def _cold_start(settings: RetrievalSettings) -> None:
         service = QueryService(
             settings=settings, graph_config=from_graph_env(), generator_name="fake"
         )
@@ -294,6 +285,50 @@ class TestErrorMapping:
                 json={"question": "Anything at all.", "configurations": ["A"]},
             ).json()["run_id"]
             assert _await_completion(client, run_id)["status"] == "completed"
+
+    def test_in_memory_cold_start_never_writes_a_manifest(
+        self, tiny_dataset: Path, tmp_path: Path
+    ) -> None:
+        """An in-memory index dies with the process: it must not overwrite the
+        manifest of the persistent index built for the same world."""
+        import shutil
+
+        dataset_dir = tmp_path / "world"
+        shutil.copytree(tiny_dataset, dataset_dir)
+        manifest = dataset_dir / "vector-index.json"
+        manifest.write_text('{"record_serialiser_version": "built-elsewhere"}')
+        self._cold_start(make_settings(dataset_dir=str(dataset_dir)))
+        assert manifest.read_text() == '{"record_serialiser_version": "built-elsewhere"}'
+        manifest.unlink()
+        self._cold_start(make_settings(dataset_dir=str(dataset_dir)))
+        assert not manifest.exists()
+
+    def test_persistent_cold_start_indexing_stamps_the_serialiser_version(
+        self, tiny_dataset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import dataclasses
+        import shutil
+
+        import app.retrieval.graph.lab as lab_module
+        from app.retrieval.standard.embeddings import HashingEmbedder
+        from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+
+        dataset_dir = tmp_path / "world"
+        shutil.copytree(tiny_dataset, dataset_dir)
+        (dataset_dir / "vector-index.json").unlink(missing_ok=True)
+        base = make_settings(dataset_dir=str(dataset_dir))
+        # A persistent provider (the empty store stands in for a fresh Qdrant collection).
+        settings = dataclasses.replace(
+            base,
+            embedding=dataclasses.replace(
+                base.embedding, provider="ollama", sparse_provider="hashing"
+            ),
+            rerank=dataclasses.replace(base.rerank, provider="lexical"),
+        )
+        embedder = HashingEmbedder(dimensions=settings.embedding.dimensions)
+        monkeypatch.setattr(lab_module, "build_embedder", lambda _settings: embedder)
+        monkeypatch.setattr(lab_module, "build_store", lambda *_args: InMemoryVectorStore())
+        self._cold_start(settings)
         written = json.loads((dataset_dir / "vector-index.json").read_text())
         assert written["record_serialiser_version"] == RECORD_SERIALISER_VERSION
 

@@ -386,7 +386,8 @@ class RecordBlock:
             text=self.text,
             title=f"{self.table}: {self.record_id}",
             document_type=self.table.upper(),
-            # Market-less records (corporate taxonomy, devices) match no market filter.
+            # Market-less records (corporate taxonomy, devices) are shared evidence:
+            # every market scope admits the empty market.
             market_id=self.market_id or "",
             language_code="en",
             source_system=self.source_system,

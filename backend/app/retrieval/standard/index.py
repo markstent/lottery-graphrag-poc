@@ -52,8 +52,14 @@ def build_embedder(settings: EmbeddingSettings) -> EmbeddingFunction:
     raise ValueError(f"Unknown embedding provider: {settings.provider!r}")
 
 
+def persists_index(provider: str) -> bool:
+    """Whether the provider's store outlives the process (Qdrant); only such
+    an index has a manifest. The hashing fake uses an in-memory store."""
+    return provider != "hashing"
+
+
 def build_store(settings: VectorSettings, dimensions: int, provider: str) -> VectorStore:
-    if provider == "hashing":
+    if not persists_index(provider):
         # The deterministic fake never needs an external service.
         return InMemoryVectorStore()
     store = QdrantVectorStore(
@@ -148,23 +154,24 @@ def write_manifest(
     return manifest
 
 
-def check_manifest(dataset_dir: Path) -> None:
-    """Refuse an index built by another record serialiser (or of unknown origin).
+def check_manifest(dataset_dir: Path) -> dict[str, object]:
+    """The manifest of an index this code may use; refuse any other.
 
     Record blocks are the text A retrieves and B and C judge their nodes
-    on, so an index of other block wording would break that parity.
+    on, so an index of other block wording (or of unknown origin: no
+    manifest) would break that parity.
     """
     path = dataset_dir / MANIFEST_NAME
-    built = (
-        json.loads(path.read_text(encoding="utf-8")).get("record_serialiser_version")
-        if path.exists()
-        else None
+    manifest: dict[str, object] = (
+        json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     )
+    built = manifest.get("record_serialiser_version")
     if built != RECORD_SERIALISER_VERSION:
         raise VectorStoreError(
             f"index was built by record serialiser {built or 'unknown (no manifest)'}, "
             f"code is {RECORD_SERIALISER_VERSION}; rebuild the index (make index-vector)"
         )
+    return manifest
 
 
 def main() -> None:
