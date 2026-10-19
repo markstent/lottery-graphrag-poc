@@ -75,8 +75,9 @@ HEADER_LINES: tuple[str, ...] = (
         "- **B, graph relationships**: an id and market resolver seeds a bounded "
         "traversal over the structured-record subgraph (when nothing resolves, the "
         "graph node of the best-matching record block); every traversal node joins A's "
-        "document channel as a structured candidate, judged on the same record text "
-        "A indexes; nodes carry authoritative facts from the source tables."
+        "document channel as a structured candidate, judged and shown as the record "
+        "block A indexes for its row (or only `<Label> <id>` when the row has none); "
+        "nodes carry authoritative facts from the source tables for citations."
     ),
     "  No ontology: no concept seeds, no `MAPS_TO` expansion, no query expansion.",
     (
@@ -88,8 +89,8 @@ HEADER_LINES: tuple[str, ...] = (
     "",
     (
         "Same question, same synthetic world, same embedding model, one reranker that "
-        "judges every candidate against the raw question, same generator and prompt, "
-        "one context budget and slot count."
+        "judges every candidate against the raw question, same generator and prompt "
+        "(the selection in judge order), one context budget and slot count."
     ),
     "Only the retrieval layers differ.",
     "",

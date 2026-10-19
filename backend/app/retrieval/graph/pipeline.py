@@ -604,8 +604,10 @@ class GraphRagPipeline:
     ) -> list[GraphEvidence]:
         """Authoritative structured facts for every structured candidate.
 
-        Facts are attached before assembly because they are part of the
-        block whose tokens count against the shared budget.
+        Facts are attached before the candidates are built, because a
+        node's candidate takes its source table from them; selected nodes
+        keep them for citations and the UI. They never enter the judged or
+        prompt text (D-028).
         """
         if self.source_lookup is None:
             return node_evidence

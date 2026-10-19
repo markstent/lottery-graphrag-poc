@@ -25,7 +25,12 @@ from app.graph.ingest import ingest
 from app.main import create_app
 from app.retrieval.graph import lab as lab_module
 from app.retrieval.standard.embeddings import HashingEmbedder
-from app.retrieval.standard.index import InMemoryVectorStore, index_corpus, load_indexed_corpus
+from app.retrieval.standard.index import (
+    InMemoryVectorStore,
+    index_corpus,
+    load_indexed_corpus,
+    write_manifest,
+)
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import build_ledger, write_ledger
@@ -81,6 +86,8 @@ def client(
     corpus = load_indexed_corpus(ingested)
     store = InMemoryVectorStore()
     index_corpus(store, embeddings, sparse, list(corpus.values()))
+    # A pre-built index carries its manifest, as `make index-vector` writes it.
+    write_manifest(settings, embeddings, sparse, list(corpus.values()))
     monkeypatch.setattr(lab_module, "build_embedder", lambda _settings: embeddings)
     monkeypatch.setattr(lab_module, "build_store", lambda _vs, _dim, _prov: store)
     service = QueryService(
