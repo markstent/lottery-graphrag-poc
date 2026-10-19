@@ -12,8 +12,19 @@ from pathlib import Path
 
 import pytest
 from app.config import RetrievalSettings
+from app.datasets.taxonomies import local_name_variants
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
-from app.retrieval.graph.lab import Lab, bc_graph_settings
+from app.ontology.loader import load_ontology
+from app.ontology.terms import TermMatcher, build_term_table
+from app.retrieval.graph.lab import Lab, bc_graph_settings, graph_pipelines
+from app.retrieval.graph.neo4j_adapter import build_resolvers
+from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.graph.resolution import (
+    IdEntityResolver,
+    QueryExpansion,
+    StaticEntityResolver,
+    TermEntityResolver,
+)
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
@@ -21,7 +32,7 @@ from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
-from tests.test_graph_rag import make_settings
+from tests.test_graph_rag import make_settings, scn007_adjacency
 
 
 def diff_labels(base_settings: object, other: object) -> list[str]:
@@ -82,9 +93,10 @@ def test_allow_list_sizes_and_mechanic_path(base: RetrievalSettings) -> None:
     assert "HAS_MECHANIC" in settings_c.graph.relationship_types
 
 
-def test_lab_pipeline_a_uses_the_lab_reranker_instance() -> None:
+def build_lab_offline() -> Lab:
     settings = make_settings()
-    lab = Lab(
+    ontology = load_ontology()
+    return Lab(
         settings=settings,
         generator=FakeAnswerGenerator(),
         corpus={},
@@ -93,5 +105,72 @@ def test_lab_pipeline_a_uses_the_lab_reranker_instance() -> None:
         sparse=HashingSparseEmbedder(),
         store=InMemoryVectorStore(),
         reranker=build_reranker(settings),
+        ontology=ontology,
+        term_matcher=TermMatcher(build_term_table(ontology, local_name_variants())),
     )
+
+
+@pytest.fixture
+def lab() -> Lab:
+    return build_lab_offline()
+
+
+@pytest.fixture
+def b_and_c(lab: Lab) -> tuple[GraphRagPipeline, GraphRagPipeline]:
+    pipelines = graph_pipelines(
+        lab, scn007_adjacency(), StaticEntityResolver([]), StaticEntityResolver([])
+    )
+    assert [tag for tag, _ in pipelines] == ["B", "C"]
+    b, c = (pipeline for _, pipeline in pipelines)
+    return b, c
+
+
+def test_lab_pipeline_a_uses_the_lab_reranker_instance(lab: Lab) -> None:
     assert lab.pipeline_a().reranker is lab.reranker
+
+
+def test_a_b_c_share_every_retrieval_component(
+    lab: Lab, b_and_c: tuple[GraphRagPipeline, GraphRagPipeline]
+) -> None:
+    a = lab.pipeline_a()
+    b, c = b_and_c
+    for attr in ("embeddings", "sparse", "reranker", "store", "generator"):
+        assert getattr(a, attr) is getattr(b, attr) is getattr(c, attr)
+        assert getattr(a, attr) is getattr(lab, attr)
+    assert b.source_lookup is c.source_lookup is lab.source_lookup
+    assert a.settings.top_k == b.settings.top_k == c.settings.top_k
+    assert a.settings.context == b.settings.context == c.settings.context
+
+
+def test_b_and_c_share_reference_date_and_ranking_weights(
+    b_and_c: tuple[GraphRagPipeline, GraphRagPipeline],
+) -> None:
+    b, c = b_and_c
+    assert b.settings.graph.reference_date == c.settings.graph.reference_date
+    assert b.settings.graph.ranking == c.settings.graph.ranking
+
+
+def test_b_has_no_term_resolver_and_c_has_one(lab: Lab) -> None:
+    id_resolver, term_resolver = StaticEntityResolver([]), StaticEntityResolver([])
+    b, c = (p for _, p in graph_pipelines(lab, scn007_adjacency(), id_resolver, term_resolver))
+    assert b.resolver is id_resolver
+    assert b.expansion is None
+    assert c.resolver is term_resolver
+    assert isinstance(c.expansion, QueryExpansion)
+
+
+class StubReader:
+    def lookup_node(self, node_id: str) -> tuple[str, bool] | None:
+        return None
+
+    def markets(self) -> dict[str, str]:
+        return {}
+
+
+def test_build_resolvers_gives_b_the_id_resolver_and_c_the_term_resolver(lab: Lab) -> None:
+    ids, terms = build_resolvers(StubReader(), lab.ontology, lab.term_matcher)  # type: ignore[arg-type]
+    b, c = (p for _, p in graph_pipelines(lab, scn007_adjacency(), ids, terms))
+    assert isinstance(b.resolver, IdEntityResolver)
+    assert isinstance(c.resolver, TermEntityResolver)
+    assert b.expansion is None
+    assert c.expansion is not None

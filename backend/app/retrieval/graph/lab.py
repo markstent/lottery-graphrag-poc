@@ -13,13 +13,17 @@ from pathlib import Path
 from typing import Literal
 
 from app.config import RetrievalSettings
+from app.datasets.taxonomies import local_name_variants
 from app.events import ListEventSink
 from app.graph.config import GraphConfig
 from app.ontology.loader import load_ontology
+from app.ontology.model import Ontology
+from app.ontology.terms import TermMatcher, build_term_table
 from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import EntityResolver, QueryExpansion
 from app.retrieval.graph.source_lookup import SourceLookup
+from app.retrieval.graph.traversal import NeighbourProvider
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import (
@@ -50,6 +54,8 @@ class Lab:
     sparse: SparseEmbedder
     store: VectorStore
     reranker: Reranker
+    ontology: Ontology
+    term_matcher: TermMatcher
 
     def pipeline_a(self, sink: ListEventSink | None = None) -> StandardRagPipeline:
         return StandardRagPipeline(
@@ -89,6 +95,7 @@ class WiredGraphPipelines:
 def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
     embeddings = build_embedder(settings.embedding)
     store = build_store(settings.vector, embeddings.dimensions, settings.embedding.provider)
+    ontology = load_ontology()
     return Lab(
         settings=settings,
         generator=generator,
@@ -98,6 +105,8 @@ def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
         sparse=build_sparse_embedder(settings.embedding),
         store=store,
         reranker=build_reranker(settings),
+        ontology=ontology,
+        term_matcher=TermMatcher(build_term_table(ontology, local_name_variants())),
     )
 
 
@@ -115,40 +124,50 @@ def wired_pipelines(
     """
     reader = GraphReader(graph_config)
     try:
-        ontology = load_ontology()
-        id_resolver, term_resolver = build_resolvers(reader, ontology)
-        settings_b, settings_c = bc_graph_settings(lab.settings)
-        variants: tuple[
-            tuple[PipelineId, RetrievalSettings, EntityResolver, QueryExpansion | None], ...
-        ] = (
-            ("B", settings_b, id_resolver, None),
-            ("C", settings_c, term_resolver, QueryExpansion(ontology)),
+        id_resolver, term_resolver = build_resolvers(reader, lab.ontology, lab.term_matcher)
+        return WiredGraphPipelines(
+            reader=reader,
+            pipelines=graph_pipelines(lab, reader, id_resolver, term_resolver),
         )
-        pipelines: list[tuple[PipelineId, GraphRagPipeline]] = []
-        for tag, tuned, resolver, expansion in variants:
-            pipelines.append(
-                (
-                    tag,
-                    GraphRagPipeline(
-                        resolver=resolver,
-                        neighbours=reader,
-                        embeddings=lab.embeddings,
-                        sparse=lab.sparse,
-                        store=lab.store,
-                        generator=lab.generator,
-                        settings=tuned,
-                        reranker=lab.reranker,
-                        source_lookup=lab.source_lookup,
-                        pipeline=tag,
-                        sink=ListEventSink(),
-                        expansion=expansion,
-                    ),
-                )
-            )
-        return WiredGraphPipelines(reader=reader, pipelines=pipelines)
     except Exception:
         reader.close()
         raise
+
+
+def graph_pipelines(
+    lab: Lab,
+    neighbours: NeighbourProvider,
+    id_resolver: EntityResolver,
+    term_resolver: EntityResolver,
+) -> list[tuple[PipelineId, GraphRagPipeline]]:
+    """Construct B and C from the lab's shared components (no I/O)."""
+    settings_b, settings_c = bc_graph_settings(lab.settings)
+    variants: tuple[
+        tuple[PipelineId, RetrievalSettings, EntityResolver, QueryExpansion | None], ...
+    ] = (
+        ("B", settings_b, id_resolver, None),
+        ("C", settings_c, term_resolver, QueryExpansion(lab.ontology)),
+    )
+    return [
+        (
+            tag,
+            GraphRagPipeline(
+                resolver=resolver,
+                neighbours=neighbours,
+                embeddings=lab.embeddings,
+                sparse=lab.sparse,
+                store=lab.store,
+                generator=lab.generator,
+                settings=tuned,
+                reranker=lab.reranker,
+                source_lookup=lab.source_lookup,
+                pipeline=tag,
+                sink=ListEventSink(),
+                expansion=expansion,
+            ),
+        )
+        for tag, tuned, resolver, expansion in variants
+    ]
 
 
 def bc_graph_settings(

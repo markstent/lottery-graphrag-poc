@@ -20,13 +20,15 @@ from app.config import RetrievalSettings
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
+from app.datasets.taxonomies import local_name_variants
 from app.datasets.world import build_world
 from app.graph.config import GraphConfig
 from app.graph.ingest import ingest
 from app.ontology.loader import load_ontology
+from app.ontology.terms import TermMatcher, build_term_table
 from app.retrieval.graph.neo4j_adapter import GraphReader, build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
-from app.retrieval.graph.resolution import QueryExpansion
+from app.retrieval.graph.resolution import IdEntityResolver, QueryExpansion, TermEntityResolver
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator
@@ -37,6 +39,13 @@ from app.retrieval.standard.vector_store import InMemoryVectorStore
 from neo4j import GraphDatabase
 
 from tests.test_graph_rag import make_settings
+
+
+def resolvers_for(reader: GraphReader) -> tuple[IdEntityResolver, TermEntityResolver]:
+    ontology = load_ontology()
+    matcher = TermMatcher(build_term_table(ontology, local_name_variants()))
+    return build_resolvers(reader, ontology, matcher)
+
 
 CONNECT_TIMEOUT_SECONDS = 15.0
 
@@ -95,7 +104,7 @@ def pipeline(ingested: Path, graph_config: GraphConfig) -> Iterator[GraphRagPipe
     index_corpus(store, embeddings, sparse, list(corpus.values()))
     with GraphReader(graph_config) as reader:
         ontology = load_ontology()
-        _ids, terms = build_resolvers(reader, ontology)
+        _ids, terms = resolvers_for(reader)
         yield GraphRagPipeline(
             resolver=terms,
             neighbours=reader,
@@ -176,7 +185,7 @@ def test_ontology_edges_absent_in_pipeline_b(ingested: Path, graph_config: Graph
     store = InMemoryVectorStore()
     index_corpus(store, embeddings, sparse, list(corpus.values()))
     with GraphReader(graph_config) as reader:
-        ids, _terms = build_resolvers(reader, load_ontology())
+        ids, _terms = resolvers_for(reader)
         pipeline = GraphRagPipeline(
             resolver=ids,
             neighbours=reader,

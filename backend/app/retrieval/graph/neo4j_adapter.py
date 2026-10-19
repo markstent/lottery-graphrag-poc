@@ -13,7 +13,7 @@ from app.datasets.taxonomies import local_name_variants
 from app.graph import statements
 from app.graph.config import GraphConfig
 from app.ontology.model import Ontology
-from app.ontology.terms import TermMatcher, build_term_table
+from app.ontology.terms import TermMatcher
 from app.retrieval.graph.resolution import IdEntityResolver, TermEntityResolver
 from app.retrieval.graph.traversal import NeighbourEdge
 
@@ -96,20 +96,19 @@ class GraphReader:
 
 
 def build_resolvers(
-    reader: GraphReader, ontology: Ontology
+    reader: GraphReader, ontology: Ontology, matcher: TermMatcher
 ) -> tuple[IdEntityResolver, TermEntityResolver]:
     """Pipeline B's id resolver and pipeline C's term resolver over the live graph.
 
     The term resolver wraps the id resolver, so ids and market names resolve
     identically in both pipelines; C adds the ontology terms and the codes
-    they bind to.
+    they bind to. The matcher is built once by the lab.
     """
-    local_names = local_name_variants()
     ids = IdEntityResolver(lookup_node=reader.lookup_node, market_aliases=reader.markets())
     terms = TermEntityResolver(
         inner=ids,
-        matcher=TermMatcher(build_term_table(ontology, local_names)),
+        matcher=matcher,
         bindings=ontology,
-        local_names=local_names,
+        local_names=local_name_variants(),
     )
     return ids, terms
