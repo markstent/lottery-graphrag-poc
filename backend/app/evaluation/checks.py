@@ -8,18 +8,41 @@ only. Every check scores 0..1 from the text alone: no model is involved.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections import Counter
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Literal, cast
 
 from app.evaluation.claims import Claim
 
-_CITATION_PATTERN = re.compile(r"\[\d+(?:\s*,\s*\d+)*\]")
+_CITATION = r"\[\d+(?:\s*,\s*\d+)*\]"
+_CITATION_PATTERN = re.compile(_CITATION)
+_CITATIONS_ONLY = re.compile(rf"(?:\s*{_CITATION})+\s*")
 _IDENTIFIER_PATTERN = re.compile(r"\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b")
-_DATE_PATTERN = re.compile(r"\d{4}-\d{2}-\d{2}(?:[T ][0-9:.]+)?")
-_NUMBER_PATTERN = re.compile(r"\d+(?:[.,]\d+)?")
-_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+")
+_MONTH = (
+    r"(?:January|February|March|April|May|June|July|August|September|October|November|December"
+    r"|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec)\.?"
+)
+_DAY = r"\d{1,2}(?:st|nd|rd|th)?"
+_DATE_PATTERNS = (
+    re.compile(
+        r"\d{4}-\d{2}-\d{2}"
+        r"(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?"
+    ),
+    re.compile(rf"(?<!\w){_DAY}\s+{_MONTH},?\s+\d{{4}}(?!\w)", re.IGNORECASE),
+    re.compile(rf"(?<!\w){_MONTH}\s+{_DAY},?\s+\d{{4}}(?!\w)", re.IGNORECASE),
+)
+# A number is bounded by non-word characters; a hyphen between word characters
+# joins a word ("REC-1234"); a "-" right before the digits after start, space or
+# "(" is a sign. The atomic group stops "2.50GBP" backtracking into "2".
+_NUMBER_PATTERN = re.compile(
+    r"(?:(?<![^\s(])-|(?<![\w.])(?<!\w-))(?>\d+(?:,\d{3}(?!\d))*(?:[.,]\d+)?)(?!\w)"
+)
+_THOUSANDS_SEPARATOR = re.compile(r",(?=\d{3}(?!\d))")
+_SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+|\s*\n\s*")
 _UNIT_SYMBOLS = {"GBP": "£", "EUR": "€", "CZK": "Kč", "%": "%"}
+_VERDICTS = ("yes", "no")
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,16 +58,23 @@ class NumberCheck:
 
 @dataclass(frozen=True, slots=True)
 class SetCheck:
-    """The answer names exactly `expected` out of `universe` (id to aliases)."""
+    """The answer names exactly `expected` out of `universe` ((id, aliases) by id)."""
 
     expected: frozenset[str]
-    universe: Mapping[str, tuple[str, ...]]
+    universe: tuple[tuple[str, tuple[str, ...]], ...]
+
+    @classmethod
+    def of(cls, expected: Iterable[str], universe: Mapping[str, Sequence[str]]) -> SetCheck:
+        return cls(
+            frozenset(expected),
+            tuple((key, tuple(aliases)) for key, aliases in sorted(universe.items())),
+        )
 
     def to_payload(self) -> dict[str, object]:
         return {
             "kind": "set",
             "expected": sorted(self.expected),
-            "universe": {key: list(aliases) for key, aliases in sorted(self.universe.items())},
+            "universe": {key: list(aliases) for key, aliases in self.universe},
         }
 
 
@@ -87,22 +117,24 @@ def check_from_payload(payload: Mapping[str, object]) -> Check:
         unit = payload["unit"]
         return NumberCheck(str(payload["value"]), None if unit is None else str(unit))
     if kind == "set":
-        universe = cast(dict[str, list[str]], payload["universe"])
-        return SetCheck(
-            frozenset(cast(list[str], payload["expected"])),
-            {key: tuple(aliases) for key, aliases in universe.items()},
+        return SetCheck.of(
+            cast(list[str], payload["expected"]),
+            cast(dict[str, list[str]], payload["universe"]),
         )
     if kind == "token":
         return TokenCheck(str(payload["expected"]), tuple(cast(list[str], payload["aliases"])))
     if kind == "verdict":
-        return VerdictCheck(cast(Literal["yes", "no"], payload["expected"]))
+        expected = payload["expected"]
+        if expected not in _VERDICTS:
+            raise ValueError(f"verdict check expects 'yes' or 'no', got {expected!r}")
+        return VerdictCheck(cast(Literal["yes", "no"], expected))
     raise ValueError(f"unknown check kind: {kind!r}")
 
 
 def check_score(check: Check, verdict: str, answer: str) -> float:
     """Score one check against an answer (0..1)."""
     if isinstance(check, VerdictCheck):
-        pattern = r"\s*" + re.escape(check.expected) + r"\b"
+        pattern = r"\W*" + re.escape(check.expected) + r"(?!\w)"
         return 1.0 if re.match(pattern, verdict.casefold()) else 0.0
     text = verdict + "\n" + answer
     if isinstance(check, NumberCheck):
@@ -148,11 +180,22 @@ def citation_metrics(
             if 1 <= block <= len(block_carriers) and block_carriers[block - 1] & carriers
         )
         accuracy = accurate / len(cited_blocks)
-    numeric = [sentence for sentence in _SENTENCE_BREAK.split(answer) if scored_numbers(sentence)]
+    numeric = [sentence for sentence in _sentences(answer) if scored_numbers(sentence)]
     rate = None
     if numeric:
         rate = sum(1 for s in numeric if _CITATION_PATTERN.search(s)) / len(numeric)
     return CitationMetrics(accuracy=accuracy, numeric_citation_rate=rate)
+
+
+def _sentences(answer: str) -> list[str]:
+    """Sentences and lines; a segment of citation markers only joins the one before."""
+    sentences: list[str] = []
+    for segment in _SENTENCE_BREAK.split(answer):
+        if sentences and _CITATIONS_ONLY.fullmatch(segment):
+            sentences[-1] += " " + segment
+        elif segment:
+            sentences.append(segment)
+    return sentences
 
 
 def _number_score(check: NumberCheck, text: str) -> float:
@@ -168,23 +211,28 @@ def _number_score(check: NumberCheck, text: str) -> float:
 
 
 def _unit_adjacent(text: str, match: re.Match[str], unit: str) -> bool:
-    units = "|".join(re.escape(form) for form in {unit, _UNIT_SYMBOLS.get(unit, unit)})
-    after = re.compile(rf" ?(?:{units})(?![A-Za-z])")
-    before = re.compile(rf"(?<![A-Za-z])(?:{units}) ?$")
+    forms = sorted({unit, _UNIT_SYMBOLS.get(unit, unit)})
+    units = "|".join(re.escape(form) for form in forms)
+    after = re.compile(rf" ?(?:{units})(?!\w)")
+    before = re.compile(rf"(?<!\w)(?:{units}) ?$")
     return bool(after.match(text, match.end()) or before.search(text, 0, match.start()))
 
 
 def _strip_non_numbers(text: str) -> str:
-    for pattern in (_CITATION_PATTERN, _IDENTIFIER_PATTERN, _DATE_PATTERN):
+    for pattern in (_CITATION_PATTERN, _IDENTIFIER_PATTERN, *_DATE_PATTERNS):
         text = pattern.sub(" ", text)
     return text
 
 
 def _set_score(check: SetCheck, text: str) -> float:
+    alias_owners = Counter(
+        alias for _, aliases in check.universe for alias in {a.casefold() for a in aliases}
+    )
     predicted = {
         key
-        for key, aliases in check.universe.items()
-        if any(_mentions(text, name) for name in (key, *aliases))
+        for key, aliases in check.universe
+        if _mentions(text, key)
+        or any(alias_owners[a.casefold()] == 1 and _mentions(text, a) for a in aliases)
     }
     hits = len(predicted & check.expected)
     if not hits:
@@ -195,16 +243,16 @@ def _set_score(check: SetCheck, text: str) -> float:
 
 
 def _mentions(text: str, name: str) -> bool:
-    pattern = r"(?<![A-Za-z0-9_])" + re.escape(name) + r"(?![A-Za-z0-9_])"
+    pattern = r"(?<!\w)" + re.escape(name) + r"(?!\w)"
     return re.search(pattern, text, flags=re.IGNORECASE) is not None
 
 
 def _normalise_number(text: str) -> str:
-    normalised = text.replace(",", ".").rstrip("%")
+    """Canonical form: a comma before exactly three digits groups thousands,
+    any other comma is a decimal point; trailing zeros are dropped."""
+    plain = _THOUSANDS_SEPARATOR.sub("", text).replace(",", ".")
     try:
-        number = float(normalised)
-    except ValueError:
-        return normalised
-    if number == int(number):
-        return str(int(number))
-    return f"{number:g}"
+        number = Decimal(plain)
+    except InvalidOperation:
+        raise ValueError(f"not a number: {text!r}") from None
+    return format(number.normalize(), "f")

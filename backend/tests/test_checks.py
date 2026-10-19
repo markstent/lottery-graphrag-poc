@@ -32,7 +32,7 @@ def test_identifiers_dates_and_citations_are_not_numbers() -> None:
 
 def test_set_check_is_f1_against_the_universe() -> None:
     universe = {"MKT_GR": ("Greece",), "MKT_AT": ("Austria",), "MKT_CZ": ("Czech Republic",)}
-    check = SetCheck(frozenset({"MKT_GR", "MKT_AT"}), universe)
+    check = SetCheck.of({"MKT_GR", "MKT_AT"}, universe)
     assert check_score(check, "", "Greece and the Czech Republic.") == pytest.approx(0.5)
 
 
@@ -57,7 +57,7 @@ def test_citation_metrics() -> None:
 
 
 def test_check_payload_round_trip() -> None:
-    check = SetCheck(frozenset({"MKT_GR"}), {"MKT_GR": ("Greece",)})
+    check = SetCheck.of({"MKT_GR"}, {"MKT_GR": ("Greece",)})
     assert check_from_payload(check.to_payload()) == check
 
 
@@ -67,7 +67,6 @@ def test_check_payload_round_trip() -> None:
 @pytest.mark.parametrize(
     ("unit", "answer"),
     [
-        ("GBP", "It costs 2.50GBP and 4 lines."),
         ("GBP", "It costs GBP 2.50 and 4 lines."),
         ("EUR", "It costs € 2.50 and 4 lines."),
         ("CZK", "It costs 2,50 Kč and 4 lines."),
@@ -76,6 +75,10 @@ def test_check_payload_round_trip() -> None:
 )
 def test_unit_adjacency_ignores_at_most_one_space_on_either_side(unit: str, answer: str) -> None:
     assert check_score(NumberCheck("2.5", unit), "", answer) == 1.0
+
+
+def test_a_number_run_into_a_unit_code_is_not_a_number() -> None:
+    assert scored_numbers("It costs 2.50GBP and 4 lines.") == ["4"]
 
 
 def test_unit_two_spaces_away_is_not_adjacent() -> None:
@@ -107,7 +110,7 @@ def test_verdict_word_must_be_whole() -> None:
 
 def test_set_check_matches_ids_and_whole_words_only() -> None:
     universe = {"MKT_GR": ("Greece",), "MKT_AT": ("Austria",)}
-    check = SetCheck(frozenset({"MKT_GR"}), universe)
+    check = SetCheck.of({"MKT_GR"}, universe)
     assert check_score(check, "", "mkt_gr only.") == 1.0
     assert check_score(check, "", "Greeces and Austrian markets.") == 0.0
 
@@ -156,3 +159,115 @@ def test_every_check_kind_round_trips(
 def test_unknown_check_kind_is_rejected() -> None:
     with pytest.raises(ValueError, match="unknown check kind"):
         check_from_payload({"kind": "judge"})
+
+
+# Fix round 1 rulings.
+
+
+@pytest.mark.parametrize(
+    ("text", "numbers"),
+    [
+        ("12,500 players", ["12500"]),
+        ("1,234.56 GBP", ["1234.56"]),
+        ("2,50 EUR", ["2.5"]),
+        ("1,250,000 tickets", ["1250000"]),
+        ("1,2345 units", ["1.2345"]),
+    ],
+)
+def test_a_comma_before_exactly_three_digits_groups_thousands(
+    text: str, numbers: list[str]
+) -> None:
+    assert scored_numbers(text) == numbers
+
+
+def test_an_iso_date_does_not_swallow_the_next_number() -> None:
+    answer = "On 2025-06-30 3 incidents were logged"
+    assert check_score(NumberCheck("3", None), "", answer) == 1.0
+    assert check_score(NumberCheck("2.5", "GBP"), "", "as of 2025-06-30 2.50 GBP") == 1.0
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "2025-06-30T12:00:00Z",
+        "2025-06-30 12:00",
+        "2025-06-30T12:00:00.5+01:00",
+        "30 June 2025",
+        "30th Jun 2025",
+        "June 30, 2025",
+        "Sept. 3 2025",
+    ],
+)
+def test_dates_and_times_are_not_numbers(text: str) -> None:
+    assert scored_numbers(text) == []
+
+
+def test_an_english_date_is_removed_before_the_count() -> None:
+    assert scored_numbers("As of 30 June 2025 there were 12 incidents") == ["12"]
+
+
+@pytest.mark.parametrize("text", ["Q2", "FY2025", "v2", "H1", "game_uk_01", "REC-1234", "a.5"])
+def test_numbers_inside_words_are_not_numbers(text: str) -> None:
+    assert scored_numbers(text) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "numbers"),
+    [("-5 GBP", ["-5"]), ("fell by -2.50", ["-2.5"]), ("(-3)", ["-3"]), ("- 4 items", ["4"])],
+)
+def test_a_leading_minus_is_a_sign(text: str, numbers: list[str]) -> None:
+    assert scored_numbers(text) == numbers
+
+
+def test_an_expected_value_that_is_not_a_number_is_an_error() -> None:
+    with pytest.raises(ValueError, match="not a number"):
+        check_score(NumberCheck("two", None), "", "2")
+
+
+def test_names_match_on_unicode_word_boundaries() -> None:
+    check = SetCheck.of({"SEG_ACTIVE"}, {"SEG_ACTIVE": ("Ενεργοί",), "SEG_OTHER": ()})
+    assert check_score(check, "", "Ανενεργοί παίκτες") == 0.0
+    assert check_score(check, "", "Ενεργοί παίκτες") == 1.0
+    assert check_score(NumberCheck("250", "CZK"), "", "250 Kčs and 3 Kč") == 0.0
+
+
+def test_an_alias_shared_by_two_ids_identifies_neither() -> None:
+    universe = {"SEG_CZ_VIP": ("VIP",), "SEG_GR_VIP": ("vip",)}
+    check = SetCheck.of({"SEG_CZ_VIP"}, universe)
+    assert check_score(check, "", "The Czech VIP segment") == 0.0
+    assert check_score(check, "", "The SEG_CZ_VIP segment") == 1.0
+
+
+def test_every_check_is_hashable() -> None:
+    checks = [
+        NumberCheck("2.5", "GBP"),
+        SetCheck.of({"MKT_GR"}, {"MKT_GR": ["Greece"]}),
+        TokenCheck("MKT_CZ", ("Czech Republic",)),
+        VerdictCheck("yes"),
+    ]
+    assert len({hash(check) for check in checks}) == len(checks)
+
+
+def test_set_check_universe_is_sorted_by_id() -> None:
+    check = SetCheck.of({"B"}, {"B": ["Bee"], "A": ["Ay"]})
+    assert check.universe == (("A", ("Ay",)), ("B", ("Bee",)))
+
+
+def test_list_lines_are_sentences() -> None:
+    metrics = citation_metrics("- 2.50 GBP\n- 7 items\n- 9 more [1]", [1], [frozenset()], [])
+    assert metrics.numeric_citation_rate == pytest.approx(1 / 3)
+
+
+def test_a_trailing_citation_joins_the_sentence_before() -> None:
+    metrics = citation_metrics("Price 2.50 GBP. [1]", [1], [frozenset()], [])
+    assert metrics.numeric_citation_rate == 1.0
+
+
+def test_verdict_ignores_leading_markdown_and_quotes() -> None:
+    assert check_score(VerdictCheck("yes"), "**Yes** - it is digital.", "") == 1.0
+    assert check_score(VerdictCheck("no"), '"No."', "") == 1.0
+
+
+def test_a_verdict_payload_must_be_yes_or_no() -> None:
+    with pytest.raises(ValueError, match="'yes' or 'no'"):
+        check_from_payload({"kind": "verdict", "expected": "maybe"})
