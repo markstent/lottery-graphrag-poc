@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import dataclasses
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
@@ -169,14 +171,51 @@ def test_reproducibility_record_carries_the_ontology_version(tmp_path: Path) -> 
         Lab,
         SimpleNamespace(
             settings=make_settings(),
-            embeddings=SimpleNamespace(model_name="hashing-256"),
+            embeddings=SimpleNamespace(model_name="hashing-256", dimensions=256),
+            sparse=SimpleNamespace(model_name="hashing-sparse-1048576"),
             generator=SimpleNamespace(model_name="fake-answer-v1"),
-            reranker=SimpleNamespace(model_name="lexical(w=0.3)"),
+            reranker=SimpleNamespace(model_name="lexical-overlap"),
         ),
     )
     runner.world_dir = tmp_path
 
     record = runner._record()
     assert record.ontology_version == "2.0.0"
-    assert record.reranker == "lexical(w=0.3)"
+    assert record.reranker == "lexical-overlap"
     assert record.to_payload()["prompt_version"] == PROMPT_VERSION
+
+
+def test_reproducibility_payload_carries_every_field_and_the_retrieval_constants(
+    tmp_path: Path,
+) -> None:
+    """Every record field reaches the stored payload (docs/05 section 11)."""
+    from app.retrieval.standard.fusion import RRF_K
+    from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+
+    from tests.test_graph_rag import make_settings
+
+    settings = make_settings()
+    runner = object.__new__(BenchmarkRunner)
+    runner.lab = cast(
+        Lab,
+        SimpleNamespace(
+            settings=settings,
+            embeddings=SimpleNamespace(model_name="hashing-256", dimensions=256),
+            sparse=SimpleNamespace(model_name="hashing-sparse-1048576"),
+            generator=SimpleNamespace(model_name="fake-answer-v1"),
+            reranker=SimpleNamespace(model_name="lexical-overlap"),
+        ),
+    )
+    runner.world_dir = tmp_path
+    record = runner._record()
+    payload = record.to_payload()
+    assert set(payload) == {field.name for field in dataclasses.fields(record)}
+    assert payload["sparse_model"] == "hashing-sparse-1048576"
+    assert payload["record_serialiser_version"] == RECORD_SERIALISER_VERSION
+    assert payload["rrf_k"] == RRF_K
+    assert payload["embedding_dimensions"] == 256
+    assert payload["reference_date"] == settings.graph.reference_date.isoformat()
+    assert payload["ranking_weights"] == dataclasses.asdict(settings.graph.ranking)
+    assert payload["excluded_labels"] == ["Document"]
+    assert payload["max_tokens"] == settings.generation.max_tokens
+    json.dumps(payload)  # stored as JSON

@@ -12,6 +12,7 @@ Usage:
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import subprocess
 import time
@@ -35,8 +36,10 @@ from app.graph.config import GraphConfig
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.lab import Lab, build_lab, wired_pipelines
 from app.retrieval.graph.pipeline import GraphRagPipeline
+from app.retrieval.standard.fusion import RRF_K
 from app.retrieval.standard.generation import PROMPT_VERSION, AnswerGenerator, GenerationError
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -66,38 +69,28 @@ class ReproducibilityRecord:
     world_seed: int | None
     scenario_seed: int | None
     embedding_model: str
+    embedding_dimensions: int
+    sparse_model: str
+    rrf_k: int
+    record_serialiser_version: str
     generation_model: str
     generation_temperature: float
+    max_tokens: int
     prompt_version: str
     reranker: str
     top_k: int
     context_budget_tokens: int
     context: dict[str, Any]
     graph_limits: dict[str, Any]
+    ranking_weights: dict[str, float]
+    reference_date: str
+    excluded_labels: list[str]
     ontology_version: str
     started_at: str
 
     def to_payload(self) -> dict[str, Any]:
-        return {
-            "git_sha": self.git_sha,
-            "question_bank_version": self.question_bank_version,
-            "world_dir": self.world_dir,
-            "generator_version": self.generator_version,
-            "profile": self.profile,
-            "world_seed": self.world_seed,
-            "scenario_seed": self.scenario_seed,
-            "embedding_model": self.embedding_model,
-            "generation_model": self.generation_model,
-            "generation_temperature": self.generation_temperature,
-            "prompt_version": self.prompt_version,
-            "reranker": self.reranker,
-            "top_k": self.top_k,
-            "context_budget_tokens": self.context_budget_tokens,
-            "context": self.context,
-            "graph_limits": self.graph_limits,
-            "ontology_version": self.ontology_version,
-            "started_at": self.started_at,
-        }
+        """Every field, JSON-ready."""
+        return dataclasses.asdict(self)
 
 
 @dataclass(slots=True)
@@ -273,8 +266,13 @@ class BenchmarkRunner:
             world_seed=manifest.get("world_seed"),
             scenario_seed=manifest.get("scenario_seed"),
             embedding_model=self.lab.embeddings.model_name,
+            embedding_dimensions=self.lab.embeddings.dimensions,
+            sparse_model=self.lab.sparse.model_name,
+            rrf_k=RRF_K,
+            record_serialiser_version=RECORD_SERIALISER_VERSION,
             generation_model=self.lab.generator.model_name,
             generation_temperature=settings.generation.temperature,
+            max_tokens=settings.generation.max_tokens,
             prompt_version=PROMPT_VERSION,
             reranker=self.lab.reranker.model_name,
             top_k=settings.top_k,
@@ -290,6 +288,9 @@ class BenchmarkRunner:
                 "total_nodes": settings.graph.max_total_nodes,
                 "relationship_types": len(settings.graph.relationship_types),
             },
+            ranking_weights=dataclasses.asdict(settings.graph.ranking),
+            reference_date=settings.graph.reference_date.isoformat(),
+            excluded_labels=list(settings.graph.excluded_labels),
             ontology_version=ONTOLOGY_VERSION,
             started_at=datetime.now(UTC).isoformat(timespec="seconds"),
         )
