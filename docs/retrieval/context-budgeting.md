@@ -23,7 +23,8 @@ One judge decides what fills them: the shared reranker scores every candidate a 
   The judge sees every candidate a pipeline produced within its hard caps.
   Nodes with an excluded label (`GraphRagSettings.excluded_labels`, default `Document`) are never structured candidates: a directly resolved document may seed traversal, but it is discarded with `excluded_label`, and its chunks reach the model through the document channel like A's.
 - Before judging, a record block whose record id is a structured candidate's node id is discarded as `superseded_by_structured_fact` (design 10a.8).
-  This is safe because the node is judged on that record's exact text: if the node loses on score, the record would have lost too.
+  The node is judged on that record's exact text, so with a text-only pointwise judge (the production cross-encoder) a node that loses means the record would have lost too.
+  That safety does not hold for the CI lexical blend, which also uses the incoming rank.
 - `reranker.rerank(question, structured + documents)` runs once per question and scores every candidate it is given.
 - `select_context` then walks the reranked list.
   For each candidate the first failing check is its discard reason: the budget (`context_budget`; a smaller later candidate may still fit), then the slots (`slot_limit`), then near-duplicates (`duplicate`).

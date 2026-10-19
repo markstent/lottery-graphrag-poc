@@ -33,7 +33,14 @@ from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
-from tests.test_graph_rag import RecordingReranker, build_corpus, make_settings, scn007_adjacency
+from tests.test_graph_rag import (
+    RecordingReranker,
+    build_corpus,
+    make_settings,
+    record_corpus_chunk,
+    resolved,
+    scn007_adjacency,
+)
 
 
 def diff_labels(base_settings: object, other: object) -> list[str]:
@@ -173,6 +180,7 @@ def test_build_resolvers_gives_b_the_id_resolver_and_c_the_term_resolver(lab: La
     b, c = (p for _, p in graph_pipelines(lab, scn007_adjacency(), ids, terms))
     assert isinstance(b.resolver, IdEntityResolver)
     assert isinstance(c.resolver, TermEntityResolver)
+    assert b.ontology is None and c.ontology is lab.ontology
     assert b.expansion is None
     assert c.expansion is not None
 
@@ -205,3 +213,34 @@ def test_one_shared_judge_sees_the_same_documents_in_a_b_and_c() -> None:
     ]
     assert judged[0][1], "A must judge document candidates"
     assert judged[0] == judged[1] == judged[2] == (question, judged[0][1])
+
+
+def test_b_judges_a_documents_minus_the_records_its_nodes_supersede() -> None:
+    """With structured candidates, B's document channel is A's minus the
+    record blocks of B's own nodes (design 10a.8), in A's order and ranks."""
+    reranker = RecordingReranker()
+    lab = dataclasses.replace(build_lab_offline(), reranker=reranker)
+    record = record_corpus_chunk(
+        "incidents", "INC_S007_GR", "Incident INC_S007_GR in Greece: checkout failed."
+    )
+    index_corpus(lab.store, lab.embeddings, lab.sparse, [*build_corpus().values(), record])
+    (_, b), _c = graph_pipelines(
+        lab, scn007_adjacency(), StaticEntityResolver(resolved()), StaticEntityResolver([])
+    )
+    question = "Why did checkout fail in Greece?"
+    lab.pipeline_a().run(question)
+    b.run(question)
+    (asked_a, judged_a), (asked_b, judged_b) = reranker.calls
+    assert asked_a == asked_b == question
+    nodes_b = {chunk.chunk_id for chunk in judged_b if chunk.kind == "node"}
+    assert "INC_S007_GR" in nodes_b
+    documents_a = [(chunk.chunk_id, chunk.rank) for chunk in judged_a]
+    assert record.chunk_id in dict(documents_a), "A must retrieve the record block"
+    expected = [
+        (chunk.chunk_id, chunk.rank)
+        for chunk in judged_a
+        if not (chunk.kind == "record" and chunk.document_id in nodes_b)
+    ]
+    documents_b = [(chunk.chunk_id, chunk.rank) for chunk in judged_b if chunk.kind != "node"]
+    assert documents_b == expected
+    assert len(expected) == len(documents_a) - 1

@@ -138,14 +138,14 @@ def test_trace_g_counts_the_selected_context_by_kind() -> None:
         rerank_score=1.5,
         selected=True,
     )
-    capped = node.model_copy(
+    excluded = node.model_copy(
         update={"node_id": "INC_002", "selected": False, "discard_reason": "excluded_label"}
     )
     result = GraphRunResult(
         run_id="r3",
         question="q",
         answer=_answer(),
-        node_evidence=[node, capped],
+        node_evidence=[node, excluded],
         document_evidence=[
             _chunk("rec-1", "record", True),
             _chunk("doc-1", "chunk", True),

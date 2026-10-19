@@ -263,19 +263,21 @@ class GraphRagPipeline:
                 if node.node_label not in graph_settings.excluded_labels
             ]
         )
-        structured = [
-            _structured_chunk(evidence, node_texts[evidence.node_id], rank)
-            for rank, evidence in enumerate(drafts, start=1)
-        ]
-
         # The document channel is identical to pipeline A's (fairness).
         # Record blocks of structured candidates are superseded before
         # judging (design 10a.8); then one judge scores both channels on
         # the raw question and one selection fills the shared budget.
         documents, superseded = supersede_records(
-            {chunk.chunk_id for chunk in structured},
+            {evidence.node_id for evidence in drafts},
             self._document_candidates(search_text, scope),
         )
+        records = {chunk.document_id: chunk for chunk in superseded}
+        structured = [
+            _structured_chunk(
+                evidence, node_texts[evidence.node_id], rank, records.get(evidence.node_id)
+            )
+            for rank, evidence in enumerate(drafts, start=1)
+        ]
         candidates = [*structured, *documents]
         self.emitter.emit(
             GRAPH_RERANK_STARTED, candidates=len(candidates), model=self.reranker.model_name
@@ -603,8 +605,15 @@ class GraphRagPipeline:
         )
 
 
-def _structured_chunk(evidence: GraphEvidence, text: str, rank: int) -> EvidenceChunk:
-    """A graph node as a context candidate, ranked within its channel."""
+def _structured_chunk(
+    evidence: GraphEvidence, text: str, rank: int, record: EvidenceChunk | None
+) -> EvidenceChunk:
+    """A graph node as a context candidate, ranked within its channel.
+
+    A node that supersedes a record block reuses that block's title and
+    language, so the generator sees the same block for the same fact in A,
+    B and C; other nodes get a "<Label>: <id>" title.
+    """
     authoritative = evidence.authoritative or {}
     return EvidenceChunk(
         kind=NODE_KIND,
@@ -612,10 +621,10 @@ def _structured_chunk(evidence: GraphEvidence, text: str, rank: int) -> Evidence
         document_id=evidence.node_id,
         chunk_index=0,
         text=text,
-        title=f"{evidence.node_label}: {evidence.node_id}",
+        title=record.title if record else f"{evidence.node_label}: {evidence.node_id}",
         document_type=evidence.node_label,
         market_id=authoritative.get("market_id", ""),
-        language_code="-",
+        language_code=record.language_code if record else "-",
         source_system=authoritative.get("source_table", "graph"),
         similarity=evidence.score,
         rank=rank,

@@ -64,7 +64,7 @@ from app.retrieval.graph.traversal import (
     expand_ontology,
     load_static_provider_from_rows,
 )
-from app.retrieval.standard.context import SELECTION_EXCLUDED_LABEL
+from app.retrieval.standard.context import SELECTION_EXCLUDED_LABEL, SELECTION_SUPERSEDED
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import (
@@ -946,6 +946,27 @@ class TestNodeText:
         # Formatted exactly like a document block: title line, then the text.
         assert context_block(node) in generator.extra_blocks
         assert all("Graph path" not in block for block in generator.extra_blocks)
+
+    def test_a_node_superseding_a_record_reuses_its_title_and_language(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
+        """Same fact, same block: the generator sees A's record block in B and C."""
+        pipeline = build_pipeline()
+        record = record_corpus_chunk("incidents", "INC_S007_GR", self.RECORD_TEXT)
+        index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+        pipeline.source_lookup = SourceLookup(
+            tmp_path, {("incidents", "INC_S007_GR"): self.RECORD_TEXT}
+        )
+        reranker = RecordingReranker()
+        pipeline.reranker = reranker
+        result = pipeline.run(QUESTION)
+        superseded = [
+            c for c in result.document_evidence if c.discard_reason == SELECTION_SUPERSEDED
+        ]
+        assert [c.chunk_id for c in superseded] == [record.chunk_id]
+        judged = {c.chunk_id: c for c in reranker.calls[0][1] if c.kind == "node"}
+        node = judged["INC_S007_GR"]
+        assert (node.title, node.language_code) == (record.title, record.language_code)
+        # A node without a record block keeps its graph title.
+        assert judged["GAME_GR_01"].title == "Game: GAME_GR_01"
 
     def test_a_node_without_a_record_block_gets_one_humanised_sentence(self, tmp_path) -> None:  # type: ignore[no-untyped-def]
         import duckdb

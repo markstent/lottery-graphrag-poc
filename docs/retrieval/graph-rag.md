@@ -171,7 +171,7 @@ and pipeline A never imports graph modules.
   weight-ordered cuts, replayable paths, ontology expansion, transactional
   edges never traversed, excluded labels, score-component checks against
   `DEFAULT_RANKING_WEIGHTS`, the one-judge call and its events, the
-  candidate cap, the record-anchored fallback seed and node texts.
+  record-anchored fallback seed and node texts.
 - `backend/tests/test_context_budget_v2.py`: mixed selection across kinds,
   supersession before judging, dedupe of chunks only, the shared budget.
 - `backend/tests/test_graph_rag_live.py`: `GRAPH_E2E=1` against a real Neo4j

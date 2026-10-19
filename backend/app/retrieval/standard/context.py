@@ -111,9 +111,11 @@ def supersede_records(
     """Split document candidates into (kept, superseded) before judging.
 
     A record block whose record id is a structured candidate's node id is
-    superseded (design 10a.8): the node is judged on that record's exact
-    text, so if the node loses on score the record would have lost too, and
-    keeping both would spend two slots on one fact.
+    superseded (design 10a.8): keeping both would spend two slots on one
+    fact. The node is judged on that record's exact text, so with a
+    text-only pointwise judge (the production cross-encoder) a node that
+    loses means the record would have lost too. The CI lexical blend also
+    uses the incoming rank, so that safety does not hold there.
     """
     kept: list[EvidenceChunk] = []
     superseded: list[EvidenceChunk] = []

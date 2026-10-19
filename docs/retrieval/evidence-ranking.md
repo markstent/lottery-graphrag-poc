@@ -58,7 +58,7 @@ Default weights (`DEFAULT_RANKING_WEIGHTS`, overridable per experiment):
 
 ## Selection
 
-- The composite score orders the structured channel, drives telemetry and breaks the lexical judge's ties; it does not select context.
+- The composite score orders the structured channel, drives telemetry and supplies the lexical judge's incoming rank; it does not select context.
 - Every traversal node (bounded by `max_total_nodes`) becomes a structured candidate, except nodes with an excluded label (default `Document`), which are discarded with `excluded_label`.
 - Seeds get no special treatment: they usually rank first (distance and relationship components are 1.0) and are judged like every other node.
 - The structured candidates and pipeline A's document channel are judged together by the shared reranker on the raw question, and one selection under the shared budget and slots decides what enters the context (`docs/retrieval/context-budgeting.md`).
