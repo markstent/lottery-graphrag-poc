@@ -22,10 +22,11 @@ Only the project owner may mark a gate `APPROVED`.
 | Checkpoint | Status | Date | Notes |
 |---|---|---|---|
 | CP1 Experiment (part 1: data layer) | APPROVED | 2026-10-19 | World v2, ontology v2, eight scenarios, graph model v2 and the B/C allow-list split delivered on `overhaul/v2` at 50196a4; approved by the project owner in session ("approve") with product names changed to generic terms (20fcb7e); merged to main. Pipelines v2, bank 2.0.0 and the harness follow as Phase 2 and 3 before CP1 closes. |
+| CP1 Experiment (part 2: pipelines v2) | PRESENTED | 2026-10-19 | Pipelines v2 delivered on `overhaul/v2` (code at 5a06ba4): hybrid retrieval with record blocks, one shared reranker as judge, one budget and slot cap, structured answers. Decisions D-021 to D-027 (D-025 to D-027 are controller rulings open to the owner); fairness contract `backend/tests/test_lab_fairness.py`; live traces `docs/retrieval/example-traces.md`. Awaiting the project owner. |
 | CP2 Product | PENDING | | Overview, Live Lab, Data Model, Help on the live API |
 | CP3 Official run | PENDING | | model and cost choice, dry run, then official run and Results |
 
-Phase 1 (world v2, ontology v2, scenarios, graph model v2) implemented on branch `overhaul/v2`, 2026-10-19; CP1 presentation pending.
+Phase 2 (pipelines v2) is built on branch `overhaul/v2` and presented as CP1 part 2, 2026-10-19; Phase 3 (question bank 2.0.0, the answer judge and the statistics) follows, and then CP1 closes.
 
 On 2026-10-07 the project owner issued a blanket approval ("APPROVE EVERYTHING"),
 authorising continuous progression through the remaining gates without
@@ -161,7 +162,7 @@ performance gates (timings recorded, not enforced); frontend unit coverage
 deliberately thin until presentation mode defines the components; visual
 regression is owner-machine only; single-browser E2E.
 
-## HITL-11 — Presentation Readiness (approved 2026-10-09)
+## HITL-11 - Presentation Readiness (approved 2026-10-09)
 
 Delivered at this commit:
 

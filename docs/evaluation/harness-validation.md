@@ -3,6 +3,8 @@
 Status: HITL-09 artefact. Development world (`data/generated/dev-seed2026`),
 captured 2026-10-08, committed at Phase 10.
 
+These records, including the `lexical(w=0.3)` reranker, describe the v1 harness and are superseded by the Phase 3 runs.
+
 ## What this document is
 
 Verbatim reports from two benchmark harness runs over the 30-question bank,
