@@ -308,7 +308,7 @@ bindings:
   - {kind: category, code: CAT_CZ_LOSOVANI, market: MKT_CZ, concept: CONCEPT_DRAW_GAME}
   - {kind: category, code: CAT_CZ_CISLA, market: MKT_CZ, concept: CONCEPT_HIGH_FREQUENCY_GAME}
   - {kind: category, code: CAT_CZ_OKAMZITE, market: MKT_CZ, concept: CONCEPT_INSTANT_PRODUCT}
-  # Game mechanics (CONCEPT_PROGRESSIVE_JACKPOT is intentionally unbound in v2)
+  # Game mechanics (CONCEPT_PROGRESSIVE_JACKPOT is intentionally unbound, D-019)
   - {kind: mechanic, code: MECH_UK_NUMBER_MATCH, market: MKT_UK, concept: CONCEPT_NUMBER_SELECTION}
   - {kind: mechanic, code: MECH_UK_QUICK_PICK, market: MKT_UK, concept: CONCEPT_QUICK_PICK}
   - {kind: mechanic, code: MECH_UK_SCRATCH, market: MKT_UK, concept: CONCEPT_SYMBOL_REVEAL}

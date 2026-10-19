@@ -36,7 +36,24 @@ The remaining volumes (sessions, exposures, retailers, devices, support cases, d
 The catalogue stays at 20 games for every profile.
 
 **Distribution constants.**
-Every distribution constant is named and documented in `app/datasets/distributions.py` (market splits, segment weights, Pareto activity, win and claim shares, severity weights and chunking).
+Shared distribution shapes are named and documented in `app/datasets/distributions.py` (market splits, segment weights, Pareto activity, win and claim shares, severity weights and chunking).
+Shape numbers specific to one table or one scenario may stay in their module when they are named and commented (D-020).
+
+**App sessions.**
+Each market releases four app versions, on days 10, 90, 170 and 250 of the window.
+An APP session only runs an app version its market had released by the session start.
+Among the released versions the second release is the dominant deployed version once it exists, and the first release is dominant before that.
+A session that would be APP before the market's first release falls back to the `WEB` channel with no device.
+Validation reports any session whose app version was released after the session started.
+
+**Documents.**
+Baseline documents take every shape a planted document takes, so no planted document is structurally unique.
+With probability `REVIEW_SUBJECTLESS_SHARE` (0.4) a monthly market review covers the reporting period of its market instead of one game: its title ends in "Reporting Period" and its `source_record_id` is empty.
+Cross-market incidents join every market's incident pool; an incident report or post-incident review about one is a corporate English document with no market.
+An incident summary names its platform version label and id whenever the incident has a platform version.
+
+**KPIs.**
+`conversion_rate` is the share of engaged campaign exposures that converted, computed per market and day.
 
 **Chunking.**
 Documents are split on sentence boundaries into windows of at most 160 words, with the last sentence repeated at the start of the next window.

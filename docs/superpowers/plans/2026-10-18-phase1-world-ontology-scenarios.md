@@ -18,7 +18,7 @@
 - `GENERATOR_VERSION = "0.2.0"`, `ONTOLOGY_VERSION = "2.0.0"`, `LEDGER_VERSION = "2"`.
 - The truth ledger stays evaluator-only: nothing under `app/retrieval`, `app/api`, `app/datasets`, `app/graph`, `app/ontology` imports `app.evaluation` or names the truth path (existing AST test; extend `ISOLATED_NAMESPACES` with `ontology`).
 - The ontology package never imports `app.evaluation`, `app.scenarios` or the bank; its term table is built from `ontology.yaml` and `master_data` only.
-- Every distribution constant lives in `app/datasets/distributions.py` with a one-line comment; no numeric literal that shapes a distribution appears in a generator.
+- Shared distribution shapes live in `app/datasets/distributions.py` with a one-line comment; shape numbers specific to one table or one scenario may stay in their module when they are named and commented (D-020).
 - No positional tuple indexing in `app/datasets`, `app/scenarios` or `app/graph`; rows are `NamedTuple` instances accessed by field name.
 - Planted ids continue the baseline id sequence of their table; no id contains a scenario marker such as `S007`.
 - Markdown written by this plan puts each sentence on its own line and uses plain dashes.

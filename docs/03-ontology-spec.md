@@ -32,6 +32,8 @@ Binding kinds and counts:
 | channel | 3 |
 
 Channel bindings are shared across markets (D-013); every other binding names its market.
+`CONCEPT_PROGRESSIVE_JACKPOT` is intentionally unbound (D-019).
+A progressive jackpot is a game attribute, `jackpot_type_code`, not a market mechanic code; the concept stays for vocabulary.
 In the graph each binding is a `MAPS_TO` edge and each parent link an `IS_A` edge.
 
 **Languages and synonyms.**
@@ -39,6 +41,7 @@ Labels and synonyms exist in four languages: English, Greek, German and Czech.
 
 **Term table.**
 `app/ontology/terms.py` builds one table of lower-cased terms from labels, synonyms and the generator's local display names.
+Local display names come from `local_name_variants()` in `app/datasets/taxonomies.py`: a mechanic contributes both its code and its local-language description, every other local code its one display name.
 Each term records its language, its concept and its source.
 A whole-word matcher over the table resolves question text to concepts.
 
