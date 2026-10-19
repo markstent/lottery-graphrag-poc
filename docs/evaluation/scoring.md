@@ -8,6 +8,7 @@ Every repeat of every pipeline gets four deterministic results: an answer score,
 Beside them, a judge model gives five scores of its own.
 The judge never replaces a deterministic score.
 A repeat whose generation failed (a gateway error) has no score at all, and it is left out of every metric rather than counted as zero.
+Its record in `results.json` keeps the gateway's message as `generation_error`, so a run with failures says why.
 
 ## Claims and carriers
 

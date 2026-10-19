@@ -272,6 +272,9 @@ def test_a_generation_failure_is_recorded_not_fatal(
 ) -> None:
     run = runner_with_failing_generator.run().results[0].runs["A"][0]
     assert run.generation_failed and run.answer == ""
+    # The reason is kept, so a run with failures says why in results.json.
+    assert run.generation_error == "gateway down"
+    assert run.to_payload()["generation_error"] == "gateway down"
 
 
 def test_smoke_runs_are_labelled_and_official_runs_refuse_the_fake_generator(

@@ -174,6 +174,8 @@ class PipelineRun:
     context_tokens: int
     latency_ms: float
     generation_failed: bool
+    # The gateway's message when generation failed, so results.json says why.
+    generation_error: str | None = None
 
     def to_payload(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
@@ -491,10 +493,11 @@ class BenchmarkRunner:
         pipeline.events.clear()
         self._shown.contexts = []
         started = time.perf_counter()
+        error: str | None = None
         try:
             answer = pipeline.run(question).answer
-        except GenerationError:
-            answer = None
+        except GenerationError as failure:
+            answer, error = None, str(failure)
         latency_ms = (time.perf_counter() - started) * 1000
         contexts = self._shown.contexts
         blocks = tuple(
@@ -524,6 +527,7 @@ class BenchmarkRunner:
             ),
             latency_ms=latency_ms,
             generation_failed=answer is None,
+            generation_error=error,
         )
 
 
