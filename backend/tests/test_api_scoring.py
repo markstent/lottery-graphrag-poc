@@ -734,5 +734,5 @@ def test_a_stale_bank_is_a_configuration_error_not_a_server_error(
         error = response.json()["error"]
         assert error["error_code"] == "CONFIGURATION_ERROR"
         assert error["message"] == (
-            "the question bank does not match its world; run make ground-bank again"
+            "the question bank does not match the active world; run make ground-bank"
         )

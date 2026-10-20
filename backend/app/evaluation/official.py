@@ -289,6 +289,28 @@ def _bank_is_current(paths: WorldPaths) -> bool:
     )
 
 
+def bank_matches_active_world(dataset_dir: Path) -> bool:
+    """Whether the presentation bank is the one grounded for ``dataset_dir``,
+    the world the API serves (``DATASET_DIR``), with every check the runner
+    makes before it uses a bank: the bank's world directory is that
+    directory, and its version, world manifest, ledger and record serialiser
+    are current. A bank whose world or ledger is missing does not match."""
+    paths = world_paths(PRESENTATION_SEED)
+    if dataset_dir.resolve() != paths.world_dir.resolve():
+        return False
+    if not ((paths.world_dir / WORLD_MANIFEST).is_file() and paths.ledger_path.is_file()):
+        return False
+    return _bank_is_current(paths)
+
+
+def _presentation_world() -> WorldPaths:
+    """The presentation world as the API serves it: the seed's own ledger,
+    bank and collection, in the directory ``DATASET_DIR`` names."""
+    return dataclasses.replace(
+        world_paths(PRESENTATION_SEED), world_dir=Path(from_env().dataset_dir)
+    )
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -669,12 +691,12 @@ def _run_identity(run_dir: Path, payload: dict[str, Any]) -> dict[str, Any]:
 
 @contextmanager
 def _presentation_graph_restored(steps: PrepareSteps) -> Iterator[None]:
-    """Ingest the presentation world on exit, whether the block failed or not.
+    """Ingest the presentation world (``DATASET_DIR``'s) on exit, whether the block failed or not.
 
     When the block failed, its error is raised; a failed restore is logged
     and attached to it as a note rather than replacing it.
     """
-    presentation = world_paths(PRESENTATION_SEED)
+    presentation = _presentation_world()
     try:
         yield
     except BaseException as error:

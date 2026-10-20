@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import threading
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -27,6 +28,7 @@ from app.evaluation.grounding import (
     BankInstance,
     FrozenBank,
     Unavailable,
+    load_frozen_bank,
     seal_bank,
     write_frozen_bank,
 )
@@ -37,6 +39,7 @@ from app.evaluation.official import (
     InstanceHook,
     PrepareSteps,
     WorldPaths,
+    bank_matches_active_world,
     compare_runs,
     prepare_world,
     run_benchmark,
@@ -64,6 +67,7 @@ class Recorder:
         self.restore_fails = restore_fails
         self.generated: list[int] = []
         self.ingested: list[int] = []
+        self.ingested_dirs: list[Path] = []
         self.indexed: list[int] = []
         self.grounded: list[int] = []
         self.points: dict[str, int] = {}
@@ -93,6 +97,7 @@ class Recorder:
     def ingest(self, paths: WorldPaths) -> None:
         restoring = paths.seed == PRESENTATION_SEED and PRESENTATION_SEED in self.ingested
         self.ingested.append(paths.seed)
+        self.ingested_dirs.append(paths.world_dir)
         if restoring and self.restore_fails:
             raise ConnectionError("Neo4j is down")
 
@@ -238,6 +243,24 @@ def test_worlds_run_in_sequence_and_the_presentation_graph_is_restored(
     assert recorder.ingested == [2026, 2027, 2026]
 
 
+def test_the_restore_ingests_the_world_the_api_serves(
+    recorder: Recorder, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The presentation world is DATASET_DIR's: the graph is restored to it."""
+    served = tmp_path / "served-world"
+    monkeypatch.setenv("DATASET_DIR", str(served))
+    run_benchmark(
+        "smoke",
+        (2027,),
+        repeats=1,
+        out_dir=recorder.tmp,
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    assert recorder.ingested_dirs[-1] == served
+    assert recorder.ingested_dirs[0] == world_paths(2027).world_dir
+
+
 def test_a_failed_world_still_restores_the_presentation_graph(
     recorder_failing_on_2027: Recorder,
 ) -> None:
@@ -348,6 +371,62 @@ def test_world_paths_name_the_world_ledger_bank_and_collection(data_dir: Path) -
     assert other.ledger_path == data_dir / "truth" / "dev-seed2028.json"
     assert other.bank_path.name == "bank-2.0.0-seed2028.json"
     assert other.seed == 2028
+
+
+@pytest.fixture
+def grounded_world(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> WorldPaths:
+    """The presentation world with its ledger and a bank grounded on both."""
+    paths = world_paths(PRESENTATION_SEED)
+    paths.world_dir.mkdir(parents=True)
+    (paths.world_dir / "_manifest.json").write_text('{"world_seed": 2026}')
+    paths.ledger_path.parent.mkdir(parents=True)
+    paths.ledger_path.write_text('{"world_seed": 2026}')
+    bank = FrozenBank(
+        bank_version=BANK_VERSION,
+        world_seed=PRESENTATION_SEED,
+        world_manifest_hash=_sha(paths.world_dir / "_manifest.json"),
+        record_serialiser_version=RECORD_SERIALISER_VERSION,
+        ledger_hash=_sha(paths.ledger_path),
+        instances=(),
+        unavailable=(),
+        bank_hash="",
+    )
+    write_frozen_bank(seal_bank(bank), paths.bank_path)
+    monkeypatch.setenv("DATASET_DIR", str(paths.world_dir))
+    return paths
+
+
+def test_a_bank_is_current_for_the_world_it_was_grounded_on(grounded_world: WorldPaths) -> None:
+    assert bank_matches_active_world(grounded_world.world_dir)
+
+
+def test_a_bank_is_not_current_for_another_world_dir(
+    grounded_world: WorldPaths, tmp_path: Path
+) -> None:
+    other = tmp_path / "other"
+    shutil.copytree(grounded_world.world_dir, other)
+    assert not bank_matches_active_world(other)
+
+
+@pytest.mark.parametrize("stale", ["manifest", "ledger", "serialiser", "version", "no manifest"])
+def test_a_bank_is_not_current_once_what_it_was_grounded_on_changes(
+    grounded_world: WorldPaths, stale: str
+) -> None:
+    bank = load_frozen_bank(grounded_world.bank_path)
+    if stale == "manifest":
+        (grounded_world.world_dir / "_manifest.json").write_text('{"world_seed": 7}')
+    elif stale == "ledger":
+        grounded_world.ledger_path.write_text('{"world_seed": 7}')
+    elif stale == "no manifest":
+        (grounded_world.world_dir / "_manifest.json").unlink()
+    else:
+        changed = (
+            dataclasses.replace(bank, record_serialiser_version="0.0.1")
+            if stale == "serialiser"
+            else dataclasses.replace(bank, bank_version="0.0.1")
+        )
+        write_frozen_bank(seal_bank(changed), grounded_world.bank_path)
+    assert not bank_matches_active_world(grounded_world.world_dir)
 
 
 def test_the_presentation_collection_follows_the_environment(

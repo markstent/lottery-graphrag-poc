@@ -108,13 +108,18 @@ def client(data_dir: Path, runs_dir: Path) -> Iterator[TestClient]:
 
 
 @pytest.fixture
-def presentation_bank(data_dir: Path, tiny_bank: tuple[Path, Path, FrozenBank]) -> FrozenBank:
+def presentation_bank(
+    data_dir: Path, tiny_bank: tuple[Path, Path, FrozenBank], monkeypatch: pytest.MonkeyPatch
+) -> FrozenBank:
     """The tiny bank and its ledger where the API finds the presentation world's."""
     _, ledger_path, bank = tiny_bank
     paths = world_paths(official.PRESENTATION_SEED)
     paths.ledger_path.parent.mkdir(parents=True)
     shutil.copyfile(ledger_path, paths.ledger_path)
+    paths.world_dir.mkdir(parents=True)
+    shutil.copyfile(tiny_bank[0] / "_manifest.json", paths.world_dir / "_manifest.json")
     write_frozen_bank(bank, paths.bank_path)
+    monkeypatch.setenv("DATASET_DIR", str(paths.world_dir))
     return bank
 
 
@@ -727,12 +732,6 @@ def test_questions_of_an_unknown_run_are_not_found(client_with_bank: TestClient)
     assert client_with_bank.get("/api/v1/benchmarks/questions?run_id=nope").status_code == 404
 
 
-def test_questions_without_a_frozen_bank_are_not_found(client: TestClient) -> None:
-    response = client.get("/api/v1/benchmarks/questions")
-    assert response.status_code == 404
-    assert response.json()["error"]["error_code"] == "NOT_FOUND"
-
-
 def test_hidden_truths_are_built_from_ledger_values_only(
     tiny_bank: tuple[Path, Path, FrozenBank],
 ) -> None:
@@ -748,20 +747,6 @@ def test_hidden_truths_are_built_from_ledger_values_only(
     assert truth["SCN-002"]["expected_interpretation"] in devices
     conflict = cards["SCN-015"].hidden_truth or ""
     assert truth["SCN-015"]["conflicting_document"] in conflict
-
-
-def test_questions_over_a_ledger_the_bank_was_not_grounded_on_are_a_conflict(
-    client_with_bank: TestClient,
-) -> None:
-    ledger = world_paths(official.PRESENTATION_SEED).ledger_path
-    ledger.write_text(ledger.read_text() + "\n")
-    response = client_with_bank.get("/api/v1/benchmarks/questions")
-    assert response.status_code == 409
-    assert response.json()["error"] == {
-        "error_code": "CONFLICT",
-        "message": "the truth ledger does not match the frozen bank; ground the bank again",
-        "retryable": False,
-    }
 
 
 @pytest.mark.parametrize(
@@ -788,3 +773,56 @@ def test_a_catalogue_refuses_a_ledger_the_bank_was_not_grounded_on(
     other.write_text(ledger_path.read_text() + "\n")
     with pytest.raises(ValueError, match="ledger"):
         question_catalogue(bank, other)
+
+
+# -- a bank that does not match the active world ---------------------------------
+
+NOT_ACTIVE = "the question bank does not match the active world; run make ground-bank"
+
+
+def _unmatch_manifest(paths: WorldPaths, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    (paths.world_dir / "_manifest.json").write_text('{"world_seed": 7}')
+
+
+def _unmatch_dataset_dir(
+    paths: WorldPaths, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    other = tmp_path / "other-world"
+    shutil.copytree(paths.world_dir, other)
+    monkeypatch.setenv("DATASET_DIR", str(other))
+
+
+def _unmatch_ledger(paths: WorldPaths, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    paths.ledger_path.write_text(paths.ledger_path.read_text() + "\n")
+
+
+@pytest.mark.parametrize("unmatch", [_unmatch_manifest, _unmatch_dataset_dir, _unmatch_ledger])
+def test_a_bank_for_another_world_is_refused_by_every_route_that_reads_it(
+    client_with_bank: TestClient,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    unmatch: Callable[[WorldPaths, Path, pytest.MonkeyPatch], None],
+) -> None:
+    unmatch(world_paths(official.PRESENTATION_SEED), tmp_path, monkeypatch)
+    for response in (
+        client_with_bank.get("/api/v1/demo/questions"),
+        client_with_bank.get("/api/v1/benchmarks/questions"),
+        client_with_bank.post("/api/v1/queries", json={"benchmark_instance_id": "L05-x"}),
+    ):
+        assert response.status_code == 503
+        assert response.json()["error"] == {
+            "error_code": "CONFIGURATION_ERROR",
+            "message": NOT_ACTIVE,
+            "retryable": False,
+        }
+
+
+def test_an_ungrounded_bank_reads_the_same_on_both_question_routes(client: TestClient) -> None:
+    for path in ("/api/v1/demo/questions", "/api/v1/benchmarks/questions"):
+        response = client.get(path)
+        assert response.status_code == 503
+        assert response.json()["error"] == {
+            "error_code": "CONFIGURATION_ERROR",
+            "message": "the question bank has not been grounded; run make ground-bank",
+            "retryable": False,
+        }

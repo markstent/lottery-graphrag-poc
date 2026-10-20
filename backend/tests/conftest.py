@@ -127,6 +127,16 @@ def run_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture(autouse=True)
+def no_ingested_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """The active dataset defaults to an empty directory: the repository's
+    generated world, which exists on a developer machine only, would make
+    the API consult a live Neo4j. A test that needs a world sets DATASET_DIR."""
+    path = tmp_path / "no-world"
+    monkeypatch.setenv("DATASET_DIR", str(path))
+    return path
+
+
+@pytest.fixture(autouse=True)
 def offline_default_lab(monkeypatch: pytest.MonkeyPatch) -> None:
     """The API builds its lab at start-up: an app started without a lab
     factory, the import-time ``app.main.app`` included (the default is

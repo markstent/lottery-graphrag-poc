@@ -44,6 +44,8 @@ from app.api.schemas import (
     PipelineScore,
     QuestionOut,
 )
+from app.api.scoring import require_bank
+from app.config import from_env
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
@@ -51,6 +53,7 @@ from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
     BenchmarkCancelled,
+    bank_matches_active_world,
     load_results,
     preflight,
     run_benchmark,
@@ -64,8 +67,7 @@ logger = logging.getLogger(__name__)
 
 Published = tuple[str, dict[str, Any]]
 
-STALE_BANK_MESSAGE = "the question bank does not match its world; run make ground-bank again"
-LEDGER_MISMATCH_MESSAGE = "the truth ledger does not match the frozen bank; ground the bank again"
+STALE_BANK_MESSAGE = "the question bank does not match the active world; run make ground-bank"
 
 
 def published_runs(runs_dir: Path) -> list[Published]:
@@ -120,34 +122,37 @@ def _summary_out(run: Published) -> BenchmarkSummary:
 
 def presentation_bank() -> FrozenBank | None:
     """The frozen bank of the presentation world, read afresh on every call,
-    or None before it is grounded. A bank that does not match its world, or
-    is stale, is a 503 ``CONFIGURATION_ERROR``; the reason is logged."""
+    or None before it is grounded. The presentation world is ``DATASET_DIR``'s;
+    a bank that does not match it (its world, ledger, manifest, bank version
+    or record serialiser), or that is corrupt, is a 503
+    ``CONFIGURATION_ERROR``."""
     path = world_paths(PRESENTATION_SEED).bank_path
     if not path.is_file():
         return None
     try:
-        return load_frozen_bank(path)
+        bank = load_frozen_bank(path)
     except GroundingError as error:
         logger.warning("question bank refused", extra={"reason": str(error)})
         raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE) from None
+    if not bank_matches_active_world(Path(from_env().dataset_dir)):
+        logger.warning(
+            "question bank refused", extra={"reason": "not current for the active world"}
+        )
+        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE)
+    return bank
 
 
 def _questions(runs_dir: Path, name: str | None) -> list[QuestionOut]:
     """The presentation bank's questions, scored by the named run, else by
     the newest official run of the whole bank; unscored without either."""
-    bank = presentation_bank()
-    if bank is None:
-        raise ApiError(
-            404,
-            ErrorCode.NOT_FOUND,
-            f"no frozen bank for world seed {PRESENTATION_SEED}; run a benchmark to ground it",
-        )
+    bank = require_bank(presentation_bank())
     paths = world_paths(PRESENTATION_SEED)
     try:
         cards = question_catalogue(bank, paths.ledger_path)
     except LedgerMismatch as error:
         logger.warning("question catalogue refused", extra={"reason": str(error)})
-        raise ApiError(409, ErrorCode.CONFLICT, LEDGER_MISMATCH_MESSAGE) from None
+        # The ledger changed after the bank was checked: the bank no longer matches.
+        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE) from None
     run = (
         _published(runs_dir, name)
         if name is not None

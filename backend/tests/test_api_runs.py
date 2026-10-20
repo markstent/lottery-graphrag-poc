@@ -20,11 +20,13 @@ import time
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
 import app.api.runs as runs_module
 import app.lab as lab_module
 import pytest
+from app.api.errors import ApiError
+from app.api.graph_world import GraphWorldCheck
 from app.api.runs import QueryService, start_lab
 from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
@@ -976,3 +978,83 @@ def test_stage_timings_are_logged_from_the_pipeline_events(
         "A": ["embedding", "vector_retrieval", "reranking", "generation"],
         "C": ["graph_traversal", "reranking", "generation"],
     }
+
+
+# -- the world the graph holds ----------------------------------------------------
+
+
+class _CountingGraph:
+    """Stands in for the Neo4j reader the world check reads label counts from."""
+
+    counts: ClassVar[dict[str, int]] = {}
+    reads: ClassVar[int] = 0
+
+    def __init__(self, config: GraphConfig) -> None:
+        del config
+
+    def label_counts(self) -> dict[str, int]:
+        type(self).reads += 1
+        return type(self).counts
+
+    def close(self) -> None:
+        pass
+
+
+@pytest.fixture()
+def world_service(
+    lab: Lab, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[QueryService]:
+    """A service over a world whose ingestion statistics say 3 players."""
+    world = tmp_path / "world"
+    world.mkdir()
+    (world / "_graph_stats.json").write_text(json.dumps({"nodes": {"Player": 3}}))
+    monkeypatch.setenv("DATASET_DIR", str(world))
+    monkeypatch.setattr(runs_module, "GraphReader", _CountingGraph)
+    monkeypatch.setattr(runs_module, "wired_pipelines", offline_wiring(scn007_adjacency()))
+    _CountingGraph.counts, _CountingGraph.reads = {"Player": 3}, 0
+    service = QueryService(
+        RunStore(tmp_path / "runs.db", retention=50),
+        lambda: lab,
+        GRAPH,
+        graph_world=GraphWorldCheck(),
+    )
+    yield service
+    wait_until(lambda: all(r.status in FINISHED for r in service.store.list_runs(100, None, None)))
+    service.store.close()
+
+
+@pytest.mark.parametrize("configurations", [["B"], ["C"], ["A", "B", "C"]])
+def test_a_graph_run_is_refused_while_the_graph_holds_another_world(
+    world_service: QueryService, configurations: list[str]
+) -> None:
+    _CountingGraph.counts = {"Player": 10_000}
+    with pytest.raises(ApiError) as refused:
+        world_service.start(request(configurations=configurations))
+    assert (refused.value.status, refused.value.code) == (503, "CONFIGURATION_ERROR")
+    assert refused.value.message == "the graph holds another world; run make ingest-graph"
+    assert world_service.store.list_runs(10, None, None) == []
+
+
+def test_a_run_of_a_alone_does_not_need_the_graph(world_service: QueryService) -> None:
+    _CountingGraph.counts = {"Player": 10_000}
+    run_id = world_service.start(request(configurations=["A"]))
+    wait_finished(world_service, run_id)
+    assert _CountingGraph.reads == 0
+
+
+def test_a_graph_run_starts_when_the_graph_holds_the_active_world(
+    world_service: QueryService,
+) -> None:
+    run_id = world_service.start(request(configurations=["B"]))
+    assert wait_finished(world_service, run_id).status == "completed"
+
+
+def test_a_world_never_ingested_does_not_refuse_a_graph_run(
+    world_service: QueryService, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    bare = tmp_path / "bare"
+    bare.mkdir()
+    monkeypatch.setenv("DATASET_DIR", str(bare))
+    _CountingGraph.counts = {"Player": 10_000}
+    run_id = world_service.start(request(configurations=["B"]))
+    assert wait_finished(world_service, run_id).status == "completed"

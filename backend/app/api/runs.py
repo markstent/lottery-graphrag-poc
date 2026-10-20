@@ -32,11 +32,19 @@ import threading
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Literal
 
 from app.api.benchmarks import presentation_bank
-from app.api.errors import CANCELLED_BODY, ApiErrorBody, ErrorCode, classify, run_error_body
-from app.api.graph_world import GraphLease, LeaseHold
+from app.api.errors import (
+    CANCELLED_BODY,
+    ApiError,
+    ApiErrorBody,
+    ErrorCode,
+    classify,
+    run_error_body,
+)
+from app.api.graph_world import GraphLease, GraphWorldCheck, LeaseHold
 from app.api.schemas import QueryRequest
 from app.api.scoring import (
     INSTANCE_SCOPE,
@@ -48,7 +56,7 @@ from app.api.scoring import (
     score_run,
     scored_record,
 )
-from app.config import GraphConfig, RetrievalSettings
+from app.config import GraphConfig, RetrievalSettings, from_env
 from app.events import (
     GRAPH_CONTEXT_ASSEMBLED,
     GRAPH_ENTITY_RESOLUTION_STARTED,
@@ -80,11 +88,14 @@ from app.evidence import GraphRunResult, RagRunResult
 from app.lab import Lab, WiredGraphPipelines, build_generator, build_lab, wired_pipelines
 from app.observability.logging import log_stage, run_context, stage_timer
 from app.persistence.store import RunRow, RunStore
+from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.standard.index import index_corpus, persists_index, write_manifest
 
 logger = logging.getLogger(__name__)
 
 LabState = Literal["built", "building", "not started", "failed"]
+
+OTHER_WORLD_MESSAGE = "the graph holds another world; run make ingest-graph"
 
 # Stage timings come from the pipelines' own events: a stage opens at its
 # start event and closes at its end event. Where a pipeline emits no event
@@ -208,6 +219,9 @@ class QueryService:
     no route takes, so a slow cold start never blocks a read. Each run holds
     ``lease`` from its start until its worker ends. ``bank`` reads the
     frozen bank a bank question is asked from; ``scorer`` scores it.
+    ``graph_world`` is the shared check of which world Neo4j holds: a run of
+    B or C is refused while it holds another than the active dataset (A needs
+    no graph, and a dataset never ingested cannot be compared).
     """
 
     def __init__(
@@ -218,8 +232,10 @@ class QueryService:
         lease: GraphLease | None = None,
         bank: BankSource = presentation_bank,
         scorer: Scorer = score_run,
+        graph_world: GraphWorldCheck | None = None,
     ) -> None:
         self.store = store
+        self._graph_world = graph_world
         self._bank = bank
         self._scorer = scorer
         self._lease = lease if lease is not None else GraphLease()
@@ -237,7 +253,9 @@ class QueryService:
 
         Raises an ``ApiError``, storing nothing: a 422 for a bank question
         the bank does not hold or asked with other text, a 503 before the
-        bank is grounded, and a 409 while a benchmark job holds the graph.
+        bank is grounded or matches the active world, a 503 for a graph run
+        while Neo4j holds another world, and a 409 while a benchmark job holds
+        the graph.
         """
         question = (
             bank_question(request, self._bank())
@@ -246,10 +264,34 @@ class QueryService:
         )
         hold = self._lease.take_query()
         try:
+            self._require_active_world(request)
             return self._start(request, question, hold)
         except BaseException:
             hold.release()
             raise
+
+    def _require_active_world(self, request: QueryRequest) -> None:
+        """A 503 when a run of B or C is asked while the graph holds another
+        world than the active dataset; a graph that cannot be read is the
+        graph error the run itself would fail with."""
+        if self._graph_world is None or not {"B", "C"} & set(request.configurations):
+            return
+        try:
+            reader = GraphReader(self._graph_config)
+            try:
+                matches = self._graph_world(reader, Path(from_env().dataset_dir))
+            finally:
+                reader.close()
+        except Exception as error:
+            body = run_error_body(error)
+            if body.error_code != ErrorCode.GRAPH_QUERY_ERROR:
+                raise
+            logger.warning("graph world check failed", exc_info=error)
+            raise ApiError(
+                503, ErrorCode.GRAPH_QUERY_ERROR, body.message, body.retryable
+            ) from error
+        if matches is False:
+            raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, OTHER_WORLD_MESSAGE)
 
     def _start(self, request: QueryRequest, question: BankQuestion | None, hold: LeaseHold) -> str:
         run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"

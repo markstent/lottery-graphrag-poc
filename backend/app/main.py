@@ -79,7 +79,7 @@ def create_app(
         if unscored:
             logger.warning("scoring interrupted by a server stop", extra={"runs": unscored})
         factory = lab_factory if lab_factory is not None else default_lab
-        service = QueryService(store, factory, graph, lease)
+        service = QueryService(store, factory, graph, lease, graph_world=graph_world)
         application.state.query_service = service
         application.state.readiness = ReadinessChecks(service, graph, world=graph_world)
         service.warm_up()
