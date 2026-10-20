@@ -66,7 +66,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 918
-- timings: run 1880 ms, judge 1825 ms over 40 candidates
+- timings: run 1866 ms, judge 1806 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -100,7 +100,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_games_GAME_GR_01` [record games] games: GAME_GR_01 (fused 0.0128, dense rank None, sparse rank 18, rerank -2.999, rank 11)
 - events: graph.candidate.discarded=89, graph.candidate.reranked=93, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=60, graph.relationship.traversed=60, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 959
-- timings: run 7384 ms, judge 5765 ms over 93 candidates
+- timings: run 7068 ms, judge 5580 ms over 93 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -140,7 +140,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_games_GAME_UK_05` [record games] games: GAME_UK_05 (fused 0.0149, dense rank None, sparse rank 7, rerank -2.414, rank 8)
 - events: graph.candidate.discarded=121, graph.candidate.reranked=122, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=92, graph.ontology.expanded=4, graph.query.expanded=1, graph.relationship.traversed=92, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 959
-- timings: run 10082 ms, judge 7912 ms over 122 candidates
+- timings: run 9879 ms, judge 7610 ms over 122 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -172,7 +172,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 1373
-- timings: run 3120 ms, judge 3065 ms over 40 candidates
+- timings: run 2961 ms, judge 2867 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -191,10 +191,10 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - edges traversed: 88
 - selected context (12: 5 node, 5 record, 2 document)
 - selected node evidence (5):
-  - `INC_042` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.795, rerank 3.106, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.724801, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_042, incident_id=INC_042, market_id=MKT_GR, severity=HIGH, incident_type=ITYPE_GR_PLIROMES, started_at=2025-05-21 11:00:00, resolved_at=2025-05-23 11:00:00
-  - `INC_022` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.777, rerank 1.668, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.672106, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_022, incident_id=INC_022, market_id=MKT_GR, severity=LOW, incident_type=ITYPE_GR_PLIROMES, started_at=2025-11-29 01:54:04, resolved_at=2025-11-29 14:58:04
+  - `INC_042` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.795, rerank 3.106, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.7248, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_042, incident_id=INC_042, market_id=MKT_GR, severity=HIGH, incident_type=ITYPE_GR_PLIROMES, started_at=2025-05-21 11:00:00, resolved_at=2025-05-23 11:00:00
+  - `INC_022` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.777, rerank 1.668, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.672105, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_022, incident_id=INC_022, market_id=MKT_GR, severity=LOW, incident_type=ITYPE_GR_PLIROMES, started_at=2025-11-29 01:54:04, resolved_at=2025-11-29 14:58:04
   - `INC_002` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.776, rerank 2.197, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.668258, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_002, incident_id=INC_002, market_id=MKT_GR, severity=LOW, incident_type=ITYPE_GR_PLIROMES, started_at=2025-02-05 08:29:43, resolved_at=2025-02-05 16:24:43
-  - `INC_017` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.762, rerank 0.354, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.628734, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_017, incident_id=INC_017, market_id=MKT_UK, severity=LOW, incident_type=ITYPE_UK_PAYMENT_FAILURE, started_at=2025-03-24 20:50:16, resolved_at=2025-03-25 22:05:16
+  - `INC_017` (Incident, 1 hop(s) via RELATED_TO_VERSION, score 0.762, rerank 0.354, components {'graph_distance': 0.666667, 'relationship_type': 0.9, 'semantic_relevance': 0.628733, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_017, incident_id=INC_017, market_id=MKT_UK, severity=LOW, incident_type=ITYPE_UK_PAYMENT_FAILURE, started_at=2025-03-24 20:50:16, resolved_at=2025-03-25 22:05:16
   - `INC_018` (Incident, 2 hop(s) via RELATED_TO, score 0.630, rerank -0.209, components {'graph_distance': 0.5, 'relationship_type': 0.5, 'semantic_relevance': 0.657356, 'temporal_validity': 1.0}); source_table=incidents, source_record_id=INC_018, incident_id=INC_018, market_id=MKT_GR, severity=LOW, incident_type=ITYPE_GR_PLIROMES, started_at=2025-08-19 23:46:27, resolved_at=2025-08-20 17:07:27
 - discarded nodes: 85 (slot_limit=85)
 - hybrid channel blocks, shared with A (7):
@@ -207,7 +207,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0137, dense rank 13, sparse rank None, rerank -1.176, rank 12)
 - events: graph.candidate.discarded=118, graph.candidate.reranked=120, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=2, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=88, graph.relationship.traversed=88, graph.rerank.started=1, graph.seed.selected=2, graph.traversal.started=1
 - context tokens: 1373
-- timings: run 10689 ms, judge 8826 ms over 120 candidates
+- timings: run 10628 ms, judge 8534 ms over 120 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -250,7 +250,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_incidents_INC_026` [record incidents] incidents: INC_026 (fused 0.0143, dense rank 10, sparse rank None, rerank -1.176, rank 11)
 - events: graph.candidate.discarded=144, graph.candidate.reranked=145, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=4, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=112, graph.ontology.expanded=4, graph.query.expanded=1, graph.relationship.traversed=112, graph.rerank.started=1, graph.seed.selected=4, graph.traversal.started=1
 - context tokens: 1383
-- timings: run 13647 ms, judge 10703 ms over 145 candidates
+- timings: run 13634 ms, judge 10636 ms over 145 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -282,7 +282,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 791
-- timings: run 1932 ms, judge 1870 ms over 40 candidates
+- timings: run 1923 ms, judge 1861 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -316,7 +316,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_payment_methods_PAY_SHARED_036` [record payment_methods] payment_methods: PAY_SHARED_036 (fused 0.0139, dense rank 12, sparse rank None, rerank 0.540, rank 12)
 - events: graph.candidate.discarded=46, graph.candidate.reranked=56, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=17, graph.relationship.traversed=17, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 791
-- timings: run 3137 ms, judge 2517 ms over 56 candidates
+- timings: run 3191 ms, judge 2594 ms over 56 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -354,7 +354,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_payment_methods_PAY_SHARED_036` [record payment_methods] payment_methods: PAY_SHARED_036 (fused 0.0139, dense rank 12, sparse rank None, rerank 0.540, rank 12)
 - events: graph.candidate.discarded=54, graph.candidate.reranked=64, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=25, graph.ontology.expanded=2, graph.query.expanded=1, graph.relationship.traversed=25, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 791
-- timings: run 3788 ms, judge 2969 ms over 64 candidates
+- timings: run 3716 ms, judge 2969 ms over 64 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -386,7 +386,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - discarded: 28 (slot_limit)
 - events: rag.candidate.reranked=40, rag.candidate.retrieved=40, rag.context.assembled=1, rag.embedding.completed=1, rag.embedding.started=1, rag.evidence.discarded=28, rag.evidence.selected=12, rag.generation.completed=1, rag.generation.started=1, rag.query.received=1, rag.rerank.started=1, rag.vector_search.started=1
 - context tokens: 609
-- timings: run 1824 ms, judge 1767 ms over 40 candidates
+- timings: run 1821 ms, judge 1764 ms over 40 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -420,7 +420,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_devices_DEV_AT_000782` [record devices] devices: DEV_AT_000782 (fused 0.0128, dense rank 18, sparse rank None, rerank -3.945, rank 12)
 - events: graph.candidate.discarded=39, graph.candidate.reranked=50, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=10, graph.relationship.traversed=10, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 609
-- timings: run 2665 ms, judge 2222 ms over 50 candidates
+- timings: run 2716 ms, judge 2224 ms over 50 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
@@ -455,7 +455,7 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
   - `REC_devices_DEV_AT_000782` [record devices] devices: DEV_AT_000782 (fused 0.0128, dense rank 18, sparse rank None, rerank -3.945, rank 12)
 - events: graph.candidate.discarded=39, graph.candidate.reranked=50, graph.candidate.selected=12, graph.context.assembled=1, graph.entity.resolved=1, graph.entity_resolution.started=1, graph.evidence_path.completed=1, graph.generation.completed=1, graph.generation.started=1, graph.node.discovered=10, graph.query.expanded=1, graph.relationship.traversed=10, graph.rerank.started=1, graph.seed.selected=1, graph.traversal.started=1
 - context tokens: 609
-- timings: run 2528 ms, judge 2186 ms over 50 candidates
+- timings: run 2713 ms, judge 2258 ms over 50 candidates
 
 **Answer** (fake-answer-v1, 0 ms):
 
