@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Hashable, Mapping
 from concurrent.futures import Future
 from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass
@@ -36,7 +36,13 @@ import httpx
 from app.api.graph_world import GraphWorldCheck
 from app.api.runs import LabState, QueryService
 from app.api.schemas import Check, Readiness
-from app.config import GenerationSettings, GraphConfig, RetrievalSettings, from_env
+from app.config import (
+    EmbeddingSettings,
+    GenerationSettings,
+    GraphConfig,
+    RetrievalSettings,
+    from_env,
+)
 from app.models import gateway
 from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.standard.index import check_manifest, persists_index
@@ -45,7 +51,6 @@ from app.retrieval.standard.vector_store import QdrantVectorStore, VectorStore, 
 logger = logging.getLogger(__name__)
 
 Clock = Callable[[], float]
-_ModelKey = tuple[GenerationSettings, str | None]
 
 # The lab check reads in-process state only.
 LAB_TIMEOUT_S = 1.0
@@ -153,10 +158,13 @@ def graph_check(config: GraphConfig, dataset_dir: Path | None, world: GraphWorld
 
 
 class ModelReachability:
-    """Whether the generation provider is reachable (``gateway.probe``),
-    cached per configuration for ``MODEL_CACHE_TTL_S`` (failures too, so a
-    down provider is not called on every poll). Single-flight: concurrent
-    checks of one configuration share one probe. Safe for concurrent calls."""
+    """Whether a model provider is reachable, cached per configuration for
+    ``MODEL_CACHE_TTL_S`` (failures too, so a down provider is not called on
+    every poll). Single-flight: concurrent checks of one configuration share
+    one probe. Safe for concurrent calls.
+
+    ``check`` is the generation model (``gateway.probe``); ``check_embedding``
+    is the embedding model, listed by its Ollama server."""
 
     def __init__(
         self, clock: Clock = time.monotonic, transport: httpx.BaseTransport | None = None
@@ -164,16 +172,21 @@ class ModelReachability:
         self._clock = clock
         self._transport = transport
         self._lock = threading.Lock()
-        self._cached: tuple[_ModelKey, float, Check] | None = None
-        self._in_flight: dict[_ModelKey, Future[Check]] = {}
+        self._cached: dict[Hashable, tuple[float, Check]] = {}
+        self._in_flight: dict[Hashable, Future[Check]] = {}
 
     def check(self, settings: GenerationSettings, ollama_host: str | None = None) -> Check:
-        key = (settings, ollama_host)
+        return self._shared((settings, ollama_host), lambda: self._probe(settings, ollama_host))
+
+    def check_embedding(self, settings: EmbeddingSettings) -> Check:
+        return self._shared(settings, lambda: self._probe_embedding(settings))
+
+    def _shared(self, key: Hashable, probe: Callable[[], Check]) -> Check:
         with self._lock:
             now = self._clock()
-            cached = self._cached
-            if cached is not None and cached[0] == key and now - cached[1] < MODEL_CACHE_TTL_S:
-                return cached[2]
+            cached = self._cached.get(key)
+            if cached is not None and now - cached[0] < MODEL_CACHE_TTL_S:
+                return cached[1]
             shared = self._in_flight.get(key)
             if shared is None:
                 owned: Future[Check] = Future()
@@ -181,18 +194,21 @@ class ModelReachability:
         if shared is not None:
             return shared.result()
         try:
-            result = self._probe(settings, ollama_host)
-        except Exception as error:
-            # _probe curates every expected failure; anything else is a defect.
-            with self._lock:
-                del self._in_flight[key]
+            result = probe()
+        except BaseException as error:
+            # The probe curates every expected failure; anything else is a
+            # defect. Waiters must never be left blocked on a stale entry,
+            # so it is cleared even for an interrupt.
             owned.set_exception(error)
             raise
-        with self._lock:
-            self._cached = (key, now, result)
-            del self._in_flight[key]
-        owned.set_result(result)
-        return result
+        else:
+            with self._lock:
+                self._cached[key] = (now, result)
+            owned.set_result(result)
+            return result
+        finally:
+            with self._lock:
+                del self._in_flight[key]
 
     def _probe(self, settings: GenerationSettings, ollama_host: str | None) -> Check:
         if settings.provider == "fake":
@@ -200,6 +216,14 @@ class ModelReachability:
         if settings.provider != "litellm":
             return Check(ok=False, detail="unknown generation provider")
         reached = gateway.probe(settings, ollama_host, self._transport)
+        return Check(ok=reached.ok, detail=reached.detail)
+
+    def _probe_embedding(self, settings: EmbeddingSettings) -> Check:
+        if settings.provider == "hashing":
+            return Check(ok=True, detail="hashing embedder (offline)")
+        if settings.provider != "ollama":
+            return Check(ok=False, detail="unknown embedding provider")
+        reached = gateway.probe_ollama(settings.host.rstrip("/"), settings.model, self._transport)
         return Check(ok=reached.ok, detail=reached.detail)
 
 

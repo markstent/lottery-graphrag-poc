@@ -352,3 +352,62 @@ class Neighbours(BaseModel):
     node_id: str
     items: list[NeighbourOut]
     truncated: bool
+
+
+class ConceptOut(BaseModel):
+    """One ontology concept. ``labels`` and ``synonyms`` are keyed by
+    language, ``binding_counts`` by market id; codes shared by every market
+    (channels, incident types) count under ``shared``. ``allowed_relationships``
+    are the ontology edges the graph holds at this concept."""
+
+    concept_id: str
+    parent_id: str | None
+    labels: dict[str, str]
+    synonyms: dict[str, list[str]]
+    allowed_relationships: list[str]
+    binding_counts: dict[str, int]
+
+
+class OntologyOut(BaseModel):
+    version: str
+    concepts: list[ConceptOut]
+
+
+class MemberOut(BaseModel):
+    """A local code bound to a concept; ``name`` is its local display name
+    when the term table has one."""
+
+    kind: str
+    code: str
+    market_id: str | None
+    name: str | None
+
+
+class ScenarioOut(BaseModel):
+    """A catalogue scenario and whether the active dataset planted it. Carries
+    configuration only: never the truth ledger."""
+
+    scenario_id: str
+    scenario_type: str
+    title: str
+    planted: bool
+    planted_rows: dict[str, int]
+    strength: float | None
+    noise_level: str | None
+
+
+class ModelOut(BaseModel):
+    """One configured model. ``reachable`` is null for a model that runs in
+    process and has not been loaded."""
+
+    provider: str
+    model: str
+    reachable: bool | None
+    detail: str
+
+
+class ModelsOut(BaseModel):
+    embedding: ModelOut
+    sparse: ModelOut
+    rerank: ModelOut
+    generation: ModelOut

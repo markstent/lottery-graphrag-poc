@@ -172,7 +172,7 @@ def probe(
     """
     base = _ollama_base(settings, ollama_host)
     if base is not None:
-        return _probe_ollama(base, settings.model, transport)
+        return probe_ollama(base, settings.model, transport)
     request = CompletionRequest(
         model=settings.model,
         system="Reply with one word.",
@@ -193,7 +193,8 @@ def probe(
     return ProbeResult(ok=True, detail="the model answered")
 
 
-def _probe_ollama(base: str, model: str, transport: httpx.BaseTransport | None) -> ProbeResult:
+def probe_ollama(base: str, model: str, transport: httpx.BaseTransport | None) -> ProbeResult:
+    """Whether the Ollama server at ``base`` lists ``model``."""
     name = model.split("/", 1)[1] if "/" in model else model
     try:
         with httpx.Client(transport=transport, timeout=OLLAMA_PROBE_TIMEOUT_S) as client:
