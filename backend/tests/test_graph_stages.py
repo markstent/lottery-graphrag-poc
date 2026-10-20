@@ -1,4 +1,4 @@
-"""The graph pipeline's stages and table-driven seed resolution.
+"""The graph pipeline's stages: their order, and golden event streams.
 
 The golden streams pin the pipelines' observable behaviour over the tiny
 generated world (seed 42): every event's type, pipeline and payload in
@@ -26,6 +26,7 @@ from app.graph.node_rows import build_node_rows
 from app.graph.reader import load_dataset
 from app.graph.relationship_rows import build_relationship_rows
 from app.lab import Lab, graph_pipelines
+from app.retrieval.graph import stages
 from app.retrieval.graph.neo4j_adapter import build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.source_lookup import SourceLookup, record_blocks_of
@@ -33,7 +34,7 @@ from app.retrieval.graph.traversal import NeighbourEdge, StaticNeighbourProvider
 from app.retrieval.standard.index import index_corpus, load_indexed_corpus
 
 from tests.conftest import build_lab_offline
-from tests.test_graph_rag import make_settings
+from tests.test_graph_rag import build_pipeline, make_settings
 
 FIXTURES = Path(__file__).parent / "fixtures"
 GOLDEN_FILES = {"B": FIXTURES / "graph_events_b.json", "C": FIXTURES / "graph_events_c.json"}
@@ -207,6 +208,34 @@ def test_golden_streams_cover_every_path(tiny_world_runs: dict[str, dict[str, An
     assert any(
         e["event_type"] == "graph.candidate.selected" and "node_id" in e["payload"] for e in events
     )
+
+
+STAGE_ORDER = (
+    "resolve",
+    "traverse",
+    "rank_and_scope",
+    "select_and_attach",
+    "document_channel",
+    "assemble_and_generate",
+)
+
+
+def test_run_composes_the_stages_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``run`` is the ordered composition of the typed stages, each called once.
+    The structured candidates are selected and given their facts before the
+    document channel searches, because its record blocks are superseded by
+    exactly those candidates."""
+    calls: list[str] = []
+    for name in STAGE_ORDER:
+        original = getattr(stages, name)
+
+        def recording(*args: Any, _name: str = name, _stage: Any = original, **kwargs: Any) -> Any:
+            calls.append(_name)
+            return _stage(*args, **kwargs)
+
+        monkeypatch.setattr(stages, name, recording)
+    build_pipeline().run("Why did checkout fail in Greece?")
+    assert calls == list(STAGE_ORDER)
 
 
 if __name__ == "__main__":

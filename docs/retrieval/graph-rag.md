@@ -43,6 +43,17 @@ question
   -> answer + node evidence + document evidence + telemetry events
 ```
 
+In code, `GraphRagPipeline.run` (`pipeline.py`) is the ordered composition of six typed stages in `stages.py`, each returning a frozen result for the next:
+
+1. `resolve`: entity resolution, query expansion, the fallback seed and the seed events.
+2. `traverse`: bounded traversal and ontology expansion.
+3. `rank_and_scope`: candidate scoring and the market scope.
+4. `select_and_attach`: excluded labels, authoritative facts and the structured candidates.
+5. `document_channel`: pipeline A's hybrid search, minus the superseded record blocks.
+6. `assemble_and_generate`: the one judge, the one selection and generation.
+
+The structured candidates are selected before the document channel runs, because the channel supersedes exactly their record blocks.
+
 ## Entity resolution and query expansion
 
 Resolution is deterministic and model-free (`app/retrieval/graph/resolution.py`).
@@ -138,6 +149,7 @@ Pipeline A never imports graph modules.
 
 - `backend/tests/test_resolution.py`: B and C resolvers, local-name and market bindings, query expansion, ranked and capped ontology expansion.
 - `backend/tests/test_graph_rag.py`: offline fixture graph: caps, weight-ordered cuts, replayable paths, ontology expansion, transactional edges never traversed, excluded labels, score components, the one-judge call and its events, the record-anchored fallback seed, node texts and titles, market scope in both channels, and determinism over the full event sequence and every outcome.
+- `backend/tests/test_graph_stages.py`: the stage order, and golden B and C event streams and results over the tiny world (ids, market aliases, terms, the fallback seed and the market scope), captured before the stage split.
 - `backend/tests/test_lab_fairness.py`: the A/B/C contract, including the same prompt string and answer when A and B select the same evidence.
 - `backend/tests/test_context_budget_v2.py`: mixed selection across kinds, supersession before judging, dedupe of chunks only, the shared budget.
 - `backend/tests/test_graph_rag_live.py`: `GRAPH_E2E=1` against a real Neo4j (tiny world, seed 42): ingestion, A/B/C behaviour, determinism, B/C fairness.
