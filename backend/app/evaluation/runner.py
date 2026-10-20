@@ -489,7 +489,9 @@ class BenchmarkRunner:
                 stage_timer("evaluation"),
             ):
                 scores[tag] = [
-                    None if r.generation_failed else _score(instance, r, self._judge(instance, r))
+                    None
+                    if r.generation_failed
+                    else score_pipeline_run(instance, r, self._judge(instance, r))
                     for r in repeats
                 ]
             for run, score in zip(repeats, scores[tag], strict=True):
@@ -583,7 +585,15 @@ class BenchmarkRunner:
         )
 
 
-def _score(instance: BankInstance, run: PipelineRun, verdict: JudgeVerdict) -> RunScore:
+def score_pipeline_run(
+    instance: BankInstance, run: PipelineRun, verdict: JudgeVerdict | None = None
+) -> RunScore:
+    """The deterministic scores of one successful run, beside its judgement.
+
+    The benchmark runner passes the judge's verdict; Live Lab scoring
+    (``app.api.scoring``) runs no judge and passes none, so a live score
+    equals the deterministic part of the runner's score for the same run.
+    """
     answer = answer_score(instance.checks, run.verdict, run.answer)
     evidence = evidence_score(
         instance.claims, run.selected, instance.anchor_id, run.resolved_ids, run.context_tokens
