@@ -320,7 +320,7 @@ export function LiveLab() {
           <span className="text-xs text-muted">
             {source === 'story'
               ? 'switch to Live backend to scope a run'
-              : 'retrieval is restricted to the selected markets'}
+              : 'retrieval is restricted to the selected markets; saved questions run with their own scope (all markets)'}
           </span>
         </div>
         {backendStatus === 'error' && (
@@ -408,6 +408,7 @@ export function LiveLab() {
       {source === 'backend' && liveRun && playback.status === 'done' && (
         <LiveScoreNote
           answerKey={liveRun.answerKey ?? 'none'}
+          status={liveRun.scoreStatus ?? 'not_applicable'}
           score={liveRun.liveScore ?? null}
         />
       )}

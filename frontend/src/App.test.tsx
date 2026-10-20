@@ -46,7 +46,11 @@ const LIVE_SCORE = {
   },
 }
 
-function stubLiveBackend(answerKey: 'none' | 'available', score: unknown) {
+function stubLiveBackend(
+  answerKey: 'none' | 'available',
+  scoreStatus: string,
+  score: unknown,
+) {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: RequestInfo | URL) => {
@@ -77,6 +81,7 @@ function stubLiveBackend(answerKey: 'none' | 'available', score: unknown) {
           configurations: ['A', 'C'],
           error: null,
           answer_key: answerKey,
+          score_status: scoreStatus,
           score,
           results: {
             A: {
@@ -210,15 +215,22 @@ describe('App', () => {
     expect(within(group).getByRole('button', { name: 'Greece' })).toBeEnabled()
   })
 
+  it('says in plain words that a bank question could not be scored', async () => {
+    stubLiveBackend('available', 'failed', null)
+    await runLiveQuestion()
+
+    expect(await screen.findByText('Scoring failed.')).toBeVisible()
+  })
+
   it('says an ad hoc live run has no answer key', async () => {
-    stubLiveBackend('none', null)
+    stubLiveBackend('none', 'not_applicable', null)
     await runLiveQuestion()
 
     expect(await screen.findByText('No answer key.')).toBeVisible()
   })
 
   it('shows a bank question scored against the answer key as plain text', async () => {
-    stubLiveBackend('available', LIVE_SCORE)
+    stubLiveBackend('available', 'scored', LIVE_SCORE)
     await runLiveQuestion()
 
     const score = await screen.findByRole('region', { name: 'Live score' })

@@ -196,14 +196,15 @@ The run asks that instance's text: every pipeline receives the instance text and
 `question` may then be left out; when it is sent it must equal the instance text, otherwise the request is a 422 `VALIDATION_ERROR` "a bank question runs with its own text".
 An id the bank does not hold is a 422 `VALIDATION_ERROR`, and before the bank is grounded the request is a 503 `CONFIGURATION_ERROR` "the question bank has not been grounded; run make ground-bank".
 A request with neither `question` nor `benchmark_instance_id` is a 422.
-The bank defines no market scope of its own, so the request's `market_scope` applies to a bank question as to any other.
+A bank question runs with the instance's own market scope, or unscoped when the instance has none (every bank 2.0.0 instance), so a live score always matches the benchmark's; a request `market_scope` that differs is a 422 `VALIDATION_ERROR` "a bank question runs with its own scope".
 
-`GET /queries/{run_id}` adds three fields to the run:
+`GET /queries/{run_id}` adds four fields to the run:
 
 ```json
 {
   "benchmark_instance_id": "L05-2026-INC_S007_GR",
   "answer_key": "available",
+  "score_status": "scored",
   "score": {
     "instance_id": "L05-2026-INC_S007_GR",
     "label": "scored against the answer key",
@@ -219,7 +220,14 @@ A bank question is scored once its run has completed: after the terminal event a
 A live score therefore equals the deterministic part of what the benchmark runner computes for the same pipeline results; the LLM judge runs only in official runs.
 `anchor_resolution` is 1.0 or 0.0, read from the selection alone for pipeline A, which resolves no entities.
 A metric the instance does not define (evidence F1 when no claim survives anchor exclusion) is null.
-The score follows the final status by a few milliseconds, so a client that sees `completed` with `answer_key: "available"` and `score: null` polls briefly; a run that was cancelled or failed is not scored, and a scoring failure is logged and leaves `score: null` without changing the run's status.
+`score_status` says where the score stands:
+
+- `not_applicable`: an ad hoc question, or a run that was cancelled or failed (neither is scored);
+- `pending`: a completed bank question whose score is not stored yet; it follows the final status by a few milliseconds, so a client polls briefly (Live Lab gives up after 2 s);
+- `scored`: `score` is set;
+- `failed`: scoring raised; the error is logged, `score` stays null and the run stays `completed`.
+
+The store keeps the score with its status in one record (`{"status": "scored", "score": ...}` or `{"status": "failed"}`), so no schema change was needed.
 
 `GET /demo/questions` serves the first instance in bank order of each of the strata H1, H2, H3 and H5, as `instance_id`, `question_id`, `text`, `stratum` and `market_scope` (empty: all markets).
 Before the bank is grounded it is the same 503 `CONFIGURATION_ERROR`, never an empty list.

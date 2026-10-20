@@ -38,7 +38,16 @@ from app.api.benchmarks import presentation_bank
 from app.api.errors import CANCELLED_BODY, ApiErrorBody, ErrorCode, classify, run_error_body
 from app.api.graph_world import GraphLease, LeaseHold
 from app.api.schemas import QueryRequest
-from app.api.scoring import BankQuestion, BankSource, Scorer, bank_question, score_run
+from app.api.scoring import (
+    INSTANCE_SCOPE,
+    BankQuestion,
+    BankSource,
+    Scorer,
+    bank_question,
+    failed_record,
+    score_run,
+    scored_record,
+)
 from app.config import GraphConfig, RetrievalSettings
 from app.events import (
     GRAPH_CONTEXT_ASSEMBLED,
@@ -245,14 +254,13 @@ class QueryService:
     def _start(self, request: QueryRequest, question: BankQuestion | None, hold: LeaseHold) -> str:
         run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"
         configurations = tuple(request.configurations)
-        # A bank question's market scope would be the instance's own, but the
-        # bank defines none, so the request's scope applies to every question.
+        # A bank question runs with its own text and scope (``bank_question``).
         row = RunRow(
             run_id=run_id,
             kind="live",
             status="queued",
             question=question.instance.text if question is not None else str(request.question),
-            market_scope=tuple(request.market_scope),
+            market_scope=INSTANCE_SCOPE if question is not None else tuple(request.market_scope),
             configurations=configurations,
             benchmark_instance_id=question.instance.instance_id if question is not None else None,
             created_at=_now(),
@@ -468,7 +476,8 @@ class QueryService:
     def _score(self, run_id: str, question: BankQuestion) -> None:
         """Score the run against the answer key once its final row says
         ``completed``; a cancelled, failed or unrecorded end is not scored.
-        A scoring failure is logged and leaves the run without a score."""
+        A scoring failure is logged and recorded as failed, so the run reads
+        ``score_status: "failed"``; its status stays completed."""
         try:
             row = self.store.get_run(run_id)
             if row is None or row.status != "completed":
@@ -476,13 +485,25 @@ class QueryService:
             score = self._scorer(
                 row, self.store.results(run_id), self.store.events(run_id), question.bank
             )
-            self.store.put_score(run_id, score.model_dump(mode="json"))
+            self.store.put_score(run_id, scored_record(score))
         except Exception as error:
             code, _retryable = classify(error)
             logger.error(
                 "live scoring failed; the run keeps no score",
                 exc_info=error,
                 extra={"instance_id": question.instance.instance_id, "error_code": code},
+            )
+            self._record_failed_score(run_id)
+
+    def _record_failed_score(self, run_id: str) -> None:
+        """Record that scoring failed; if even that write fails the run reads
+        pending, which a client stops waiting for after its cap."""
+        try:
+            self.store.put_score(run_id, failed_record())
+        except Exception as error:
+            code, _retryable = classify(error)
+            logger.error(
+                "the failed score could not be stored", exc_info=error, extra={"error_code": code}
             )
 
 

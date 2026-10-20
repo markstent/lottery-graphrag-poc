@@ -1,10 +1,13 @@
 """Shared fixtures: a stand-in for the lazily imported litellm module, an
-offline retrieval lab, the tiny generated world and a per-test run database."""
+offline retrieval lab, the tiny generated world, a per-test run database and
+the check that no run worker or benchmark job thread outlives its test."""
 
 from __future__ import annotations
 
 import sys
+import threading
 import types
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +28,51 @@ from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
 from tests.test_graph_rag import make_settings
+
+# Thread names of a live run's worker (QueryService) and of a benchmark job
+# (BenchmarkJobs): a test that starts one must wait for it to end.
+WORKER_PREFIXES = ("query-", "benchmark-")
+# A worker that a test waited for exits within microseconds of its last
+# write; one still alive after this grace was left running by its test.
+LEAK_GRACE_S = 1.0
+# How long a leaked worker may keep running, inside its test's teardown (so
+# its output is still captured), before the session gives up on it.
+LEAK_DRAIN_S = 15.0
+_leaks: list[str] = []
+
+
+def _workers() -> list[threading.Thread]:
+    return [t for t in threading.enumerate() if t.name.startswith(WORKER_PREFIXES)]
+
+
+def _drain(test: str) -> None:
+    """Note each worker still running after ``test``, then let it finish."""
+    for thread in _workers():
+        thread.join(LEAK_GRACE_S)
+        if thread.is_alive():
+            _leaks.append(f"{thread.name} (left running by {test})")
+            thread.join(LEAK_DRAIN_S)
+
+
+@pytest.hookimpl(wrapper=True, trylast=True)
+def pytest_runtest_teardown(item: pytest.Item) -> Iterator[None]:
+    """After every test's teardown, still inside its output capture, so a
+    leaked worker never writes to the terminal between tests."""
+    result = yield
+    _drain(item.nodeid)
+    return result
+
+
+@pytest.fixture(scope="session", autouse=True)
+def no_worker_outlives_its_test() -> Iterator[None]:
+    """Fail the session if any test left a run worker or a job thread
+    running. The last test's teardown runs this before the hook above, so
+    it drains that test itself."""
+    yield
+    _drain("the last test of the session")
+    alive = [t.name for t in _workers()]
+    if _leaks or alive:
+        pytest.fail(f"worker threads outlived their tests: {_leaks + alive}")
 
 
 class StubLiteLLM(types.ModuleType):

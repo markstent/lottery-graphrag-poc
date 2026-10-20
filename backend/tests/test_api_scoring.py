@@ -25,7 +25,15 @@ import pytest
 from app.api.errors import ApiError
 from app.api.runs import QueryService
 from app.api.schemas import LIVE_SCORE_LABEL, LivePipelineScore, LiveScore, QueryRequest
-from app.api.scoring import DEMO_STRATA, demo_questions, score_run, stored_pipeline_run
+from app.api.scoring import (
+    DEMO_STRATA,
+    demo_questions,
+    failed_record,
+    score_run,
+    score_state,
+    scored_record,
+    stored_pipeline_run,
+)
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import TokenCheck
@@ -317,8 +325,9 @@ def test_scoring_happens_only_after_the_run_record_is_complete(
     assert spy_score.results_at_call == [{"A", "B"}]
     assert spy_score.last_event_at_call == ["run.completed"]
     stored = service.store.score(run_id)
-    assert stored is not None and stored["label"] == LIVE_SCORE_LABEL
-    assert set(stored["per_pipeline"]) == {"A", "B"}
+    assert stored is not None and stored["status"] == "scored"
+    assert stored["score"]["label"] == LIVE_SCORE_LABEL
+    assert set(stored["score"]["per_pipeline"]) == {"A", "B"}
 
 
 def test_pipelines_receive_no_expected_answer(
@@ -360,6 +369,7 @@ def test_ad_hoc_questions_state_that_no_answer_key_exists(client: TestClient) ->
     _wait_idle(client)
     results = client.get(f"/api/v1/queries/{results['run_id']}").json()
     assert results["score"] is None and results["answer_key"] == "none"
+    assert results["score_status"] == "not_applicable"
     assert results["benchmark_instance_id"] is None
 
 
@@ -372,8 +382,9 @@ def test_a_live_score_equals_the_runner_score_for_the_same_results(
     instance = first(bank, "H1")
     run_id = service.start(request(benchmark_instance_id=instance.instance_id))
     wait_finished(service, run_id)
-    live = service.store.score(run_id)
-    assert live is not None
+    record = service.store.score(run_id)
+    assert record is not None and record["status"] == "scored"
+    live = record["score"]
 
     one = dataclasses.replace(bank, instances=(instance,))
     world = BenchmarkRunner(lab, GRAPH, one, world_dir, kind="smoke", repeats=1).run()
@@ -449,7 +460,7 @@ def test_a_failed_run_is_not_scored(
         assert spy_score.calls == [] and service.store.score(run_id) is None
 
 
-def test_a_scorer_failure_leaves_the_run_completed_without_a_score(
+def test_a_scorer_failure_leaves_the_run_completed_and_records_the_failure(
     offline_graph: None,
     tmp_path: Path,
     lab: Lab,
@@ -462,7 +473,7 @@ def test_a_scorer_failure_leaves_the_run_completed_without_a_score(
             run_id = service.start(request(benchmark_instance_id=instance.instance_id))
             row = wait_finished(service, run_id)
         assert row.status == "completed" and row.error is None
-        assert service.store.score(run_id) is None
+        assert service.store.score(run_id) == {"status": "failed"}
     failure = next(r for r in caplog.records if r.message.startswith("live scoring failed"))
     assert failure.__dict__["instance_id"] == instance.instance_id
     assert SENTINEL not in failure.getMessage()
@@ -482,7 +493,7 @@ def test_a_bank_question_over_http_is_scored_against_the_answer_key(
     assert response.status_code == 202, response.text
     results = scored(client_with_bank, response.json()["run_id"])
     assert results["status"] == "completed" and results["question"] == demo["text"]
-    assert results["answer_key"] == "available"
+    assert results["answer_key"] == "available" and results["score_status"] == "scored"
     assert results["benchmark_instance_id"] == demo["instance_id"]
     assert results["score"]["label"] == "scored against the answer key"
     assert results["score"]["instance_id"] == demo["instance_id"]
@@ -527,3 +538,116 @@ def test_without_a_grounded_bank_demo_questions_and_bank_runs_are_unavailable(
             "the question bank has not been grounded; run make ground-bank"
         )
     assert client_without_bank.get("/api/v1/queries").json()["runs"] == []
+
+
+# -- score status and scope -------------------------------------------------------
+
+
+def _row(status: str, instance_id: str | None) -> RunRow:
+    return RunRow(
+        run_id="RUN-X",
+        kind="live",
+        status=status,
+        question="q",
+        market_scope=(),
+        configurations=("A",),
+        benchmark_instance_id=instance_id,
+        created_at="2026-10-20T00:00:00+00:00",
+        finished_at=None,
+        pipeline_status={"A": "completed"},
+        error=None,
+    )
+
+
+SCORE = LiveScore(instance_id="L05-x", per_pipeline={})
+
+
+@pytest.mark.parametrize(
+    ("status", "instance_id", "record", "expected"),
+    [
+        ("completed", None, None, ("not_applicable", None)),
+        ("cancelled", "L05-x", None, ("not_applicable", None)),
+        ("failed", "L05-x", None, ("not_applicable", None)),
+        ("running", "L05-x", None, ("not_applicable", None)),
+        ("completed", "L05-x", None, ("pending", None)),
+        ("completed", "L05-x", scored_record(SCORE), ("scored", SCORE)),
+        ("completed", "L05-x", failed_record(), ("failed", None)),
+    ],
+)
+def test_score_status_follows_the_run_and_its_score_record(
+    status: str, instance_id: str | None, record: dict[str, Any] | None, expected: Any
+) -> None:
+    assert score_state(_row(status, instance_id), record) == expected
+
+
+class BlockedScorer:
+    """Scores only once released, so the run reads completed and pending."""
+
+    def __init__(self) -> None:
+        self.release = threading.Event()
+
+    def __call__(
+        self, run: RunRow, results: dict[str, Any], events: list[dict[str, Any]], bank: FrozenBank
+    ) -> LiveScore:
+        assert self.release.wait(30), "the test never released the scorer"
+        return score_run(run, results, events, bank)
+
+
+def _bank_run(client: TestClient) -> str:
+    demo = client.get("/api/v1/demo/questions").json()[0]
+    response = client.post("/api/v1/queries", json={"benchmark_instance_id": demo["instance_id"]})
+    assert response.status_code == 202, response.text
+    run_id: str = response.json()["run_id"]
+    return run_id
+
+
+def test_a_completed_bank_question_is_pending_until_it_is_scored(
+    client_with_bank: TestClient,
+) -> None:
+    scorer = BlockedScorer()
+    client_with_bank.app.state.query_service._scorer = scorer  # type: ignore[attr-defined]
+    run_id = _bank_run(client_with_bank)
+    try:
+        wait_until(
+            lambda: (
+                client_with_bank.get(f"/api/v1/queries/{run_id}").json()["status"] == "completed"
+            )
+        )
+        pending = client_with_bank.get(f"/api/v1/queries/{run_id}").json()
+        assert (pending["score_status"], pending["score"]) == ("pending", None)
+    finally:
+        scorer.release.set()
+    assert scored(client_with_bank, run_id)["score_status"] == "scored"
+
+
+def test_a_failed_scoring_reads_failed_over_http(client_with_bank: TestClient) -> None:
+    client_with_bank.app.state.query_service._scorer = failing_scorer  # type: ignore[attr-defined]
+    run_id = _bank_run(client_with_bank)
+    payload: dict[str, Any] = {}
+
+    def settled() -> bool:
+        payload.update(client_with_bank.get(f"/api/v1/queries/{run_id}").json())
+        return payload["score_status"] not in ("pending", "not_applicable")
+
+    wait_until(settled)
+    assert (payload["status"], payload["score_status"], payload["score"]) == (
+        "completed",
+        "failed",
+        None,
+    )
+
+
+def test_a_bank_question_runs_with_its_own_scope(service: QueryService, bank: FrozenBank) -> None:
+    instance = first(bank, "H1")
+    with pytest.raises(ApiError) as refused:
+        service.start(request(benchmark_instance_id=instance.instance_id, market_scope=["GR"]))
+    assert (refused.value.status, refused.value.message) == (
+        422,
+        "a bank question runs with its own scope",
+    )
+    assert service.store.list_runs(10, None, None) == []
+    run_id = service.start(request(benchmark_instance_id=instance.instance_id, market_scope=[]))
+    assert wait_finished(service, run_id).market_scope == ()
+    # An ad hoc question keeps the scope it asks for.
+    ad_hoc = service.start(request(question=AD_HOC, market_scope=["GR"]))
+    assert wait_finished(service, ad_hoc).market_scope == ("MKT_GR",)

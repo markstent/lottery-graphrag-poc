@@ -19,6 +19,10 @@ PipelineStatus = Literal["pending", "running", "completed", "failed", "cancelled
 RunKind = Literal["live", "recorded"]
 # Whether a run's question has an answer key: a bank question has, an ad hoc one has none.
 AnswerKey = Literal["none", "available"]
+# Where a run stands with its answer key: ad hoc, cancelled and failed runs
+# are not scored; a completed bank question is pending until it is scored
+# or its scoring fails.
+ScoreStatus = Literal["not_applicable", "pending", "scored", "failed"]
 LiveScoreLabel = Literal["scored against the answer key"]
 LIVE_SCORE_LABEL: LiveScoreLabel = "scored against the answer key"
 
@@ -150,15 +154,17 @@ class QueryResults(RunSummary):
     stored pipeline result, readable as soon as each pipeline finishes.
 
     ``answer_key`` says whether the question has one: "none" for an ad hoc
-    question, which is never scored. A bank question's ``score`` is written
-    after the run has completed, so it can be null for a moment after the
-    final status; it stays null when the run did not complete or scoring
-    failed.
+    question, which is never scored. ``score_status`` says where the score
+    stands: "not_applicable" for an ad hoc question and for a run that was
+    cancelled or failed, "pending" for a completed bank question until its
+    score is written (just after the final status), then "scored" with
+    ``score`` set, or "failed" when scoring failed.
     """
 
     results: dict[str, RagRunResult | GraphRunResult] = Field(default_factory=dict)
     benchmark_instance_id: str | None = None
     answer_key: AnswerKey = "none"
+    score_status: ScoreStatus = "not_applicable"
     score: LiveScore | None = None
 
 

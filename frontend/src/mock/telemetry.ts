@@ -126,9 +126,14 @@ export interface MockRun {
   evaluation: EvaluationEvent[]
   /** Whether the question has an answer key: a bank question has, ad hoc text has none. */
   answerKey?: 'none' | 'available'
+  /** Where the run stands with its answer key (backend score_status). */
+  scoreStatus?: ScoreStatus
   /** A completed bank question's scores against its answer key; null when not scored. */
   liveScore?: LiveScore | null
 }
+
+/** Ad hoc, cancelled and failed runs are not scored; a completed bank question is pending, then scored or failed. */
+export type ScoreStatus = 'not_applicable' | 'pending' | 'scored' | 'failed'
 
 /** One pipeline's deterministic scores on a live bank question (backend LivePipelineScore). */
 export interface LivePipelineScore {

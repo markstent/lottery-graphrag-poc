@@ -5,7 +5,11 @@
  * redesigns this surface.
  */
 
-import type { LivePipelineScore, LiveScore } from '../mock/telemetry'
+import type {
+  LivePipelineScore,
+  LiveScore,
+  ScoreStatus,
+} from '../mock/telemetry'
 
 const PIPELINE_ORDER = ['A', 'B', 'C'] as const
 
@@ -24,9 +28,11 @@ function pipelineLine(tag: string, score: LivePipelineScore): string {
 
 export function LiveScoreNote({
   answerKey,
+  status,
   score,
 }: {
   answerKey: 'none' | 'available'
+  status: ScoreStatus
   score: LiveScore | null
 }) {
   if (answerKey === 'none') {
@@ -38,11 +44,21 @@ export function LiveScoreNote({
       </p>
     )
   }
-  if (score === null) {
+  if (status === 'pending') {
     return (
       <p className="text-xs text-muted">
-        <span className="font-medium text-warning">Not scored.</span> This bank
-        question has an answer key, but the run was not scored against it.
+        <span className="font-medium text-warning">Score pending.</span> The run
+        completed, but its score against the answer key has not arrived yet. Run
+        the question again to see it.
+      </p>
+    )
+  }
+  if (status === 'failed' || score === null) {
+    return (
+      <p className="text-xs text-muted">
+        <span className="font-medium text-warning">Scoring failed.</span> This
+        bank question has an answer key, but the run could not be scored against
+        it.
       </p>
     )
   }

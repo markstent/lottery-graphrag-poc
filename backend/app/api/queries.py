@@ -33,7 +33,7 @@ from app.api.schemas import (
     RunHistory,
     RunSummary,
 )
-from app.api.scoring import demo_questions, require_bank
+from app.api.scoring import demo_questions, require_bank, score_state
 from app.api.stream import sse_frames
 from app.persistence.store import RunRow, RunStore, cursor
 
@@ -138,13 +138,14 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
             if row is None:
                 raise _unknown_run()
             results = store.results(run_id)
-            score = store.score(run_id)
+            score_status, score = score_state(row, store.score(run_id))
         return QueryResults.model_validate(
             {
                 **_summary(row),
                 "results": results,
                 "benchmark_instance_id": row.benchmark_instance_id,
                 "answer_key": "none" if row.benchmark_instance_id is None else "available",
+                "score_status": score_status,
                 "score": score,
             }
         )

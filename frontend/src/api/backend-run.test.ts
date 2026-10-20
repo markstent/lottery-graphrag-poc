@@ -133,6 +133,7 @@ const RESULTS = {
   pipeline_status: { A: 'completed', C: 'completed' },
   error: null,
   answer_key: 'none',
+  score_status: 'not_applicable',
   score: null,
   results: {
     A: {
@@ -366,6 +367,55 @@ describe('runBackendQuestion', () => {
     })
   })
 
+  it('does not wait for a score that failed', async () => {
+    let polls = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith('/queries'))
+          return Promise.resolve(jsonResponse({ run_id: 'RUN-TEST' }))
+        if (url.endsWith('/events'))
+          return Promise.resolve(jsonResponse(EVENTS))
+        polls += 1
+        return Promise.resolve(
+          jsonResponse({
+            ...RESULTS,
+            answer_key: 'available',
+            score_status: 'failed',
+            score: null,
+          }),
+        )
+      }),
+    )
+    const run = await runBackendQuestion({
+      id: 'L05',
+      question: 'Saved question one',
+      category: 'H1',
+      instanceId: 'L05-2026-INC_S007_GR',
+    })
+    expect(polls).toBe(1)
+    expect(run.scoreStatus).toBe('failed')
+  })
+
+  it('runs a bank question with its own scope, not the selected markets', async () => {
+    await runBackendQuestion(
+      {
+        id: 'L05',
+        question: 'Saved question one',
+        category: 'H1',
+        instanceId: 'L05-2026-INC_S007_GR',
+        marketScope: [],
+      },
+      ['MKT_GR'],
+    )
+    const post = vi
+      .mocked(fetch)
+      .mock.calls.find(([input]) => String(input).endsWith('/queries'))
+    const init = post?.[1] as RequestInit | undefined
+    expect(JSON.parse(String(init?.body)).market_scope).toEqual([])
+  })
+
   it('states that an ad hoc question has no answer key and no score', async () => {
     const run = await runBackendQuestion({
       id: 'X',
@@ -380,6 +430,7 @@ describe('runBackendQuestion', () => {
       'benchmark_instance_id',
     )
     expect(run.answerKey).toBe('none')
+    expect(run.scoreStatus).toBe('not_applicable')
     expect(run.liveScore).toBeNull()
     expect(run.evaluation).toEqual([])
   })
@@ -399,6 +450,7 @@ describe('runBackendQuestion', () => {
           jsonResponse({
             ...RESULTS,
             answer_key: 'available',
+            score_status: polls === 1 ? 'pending' : 'scored',
             score: polls === 1 ? null : LIVE_SCORE,
           }),
         )
@@ -416,13 +468,15 @@ describe('runBackendQuestion', () => {
       const run = await pending
       expect(polls).toBe(2)
       expect(run.answerKey).toBe('available')
+      expect(run.scoreStatus).toBe('scored')
       expect(run.liveScore).toEqual(LIVE_SCORE)
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('stops waiting for a score that never comes', async () => {
+  it('stops waiting for a score still pending after the cap', async () => {
+    let polls = 0
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
@@ -431,8 +485,14 @@ describe('runBackendQuestion', () => {
           return Promise.resolve(jsonResponse({ run_id: 'RUN-TEST' }))
         if (url.endsWith('/events'))
           return Promise.resolve(jsonResponse(EVENTS))
+        polls += 1
         return Promise.resolve(
-          jsonResponse({ ...RESULTS, answer_key: 'available', score: null }),
+          jsonResponse({
+            ...RESULTS,
+            answer_key: 'available',
+            score_status: 'pending',
+            score: null,
+          }),
         )
       }),
     )
@@ -446,7 +506,9 @@ describe('runBackendQuestion', () => {
       })
       await vi.runAllTimersAsync()
       const run = await pending
-      expect(run.answerKey).toBe('available')
+      // The final poll plus eight more, 250 ms apart: a 2 s cap.
+      expect(polls).toBe(9)
+      expect(run.scoreStatus).toBe('pending')
       expect(run.liveScore).toBeNull()
     } finally {
       vi.useRealTimers()
@@ -678,6 +740,7 @@ describe('fetchDemoQuestions', () => {
         question: 'Saved question one',
         category: 'H1',
         instanceId: 'L05-2026-INC_S007_GR',
+        marketScope: [],
       },
     ])
   })

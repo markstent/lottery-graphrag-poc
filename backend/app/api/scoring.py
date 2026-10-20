@@ -20,7 +20,13 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.api.errors import ApiError, ErrorCode
-from app.api.schemas import DemoQuestion, LivePipelineScore, LiveScore, QueryRequest
+from app.api.schemas import (
+    DemoQuestion,
+    LivePipelineScore,
+    LiveScore,
+    QueryRequest,
+    ScoreStatus,
+)
 from app.evaluation.claims import selection_carrier
 from app.evaluation.grounding import BankInstance, FrozenBank
 from app.evaluation.report import METRICS
@@ -31,6 +37,13 @@ from app.persistence.store import RunRow
 DEMO_STRATA = ("H1", "H2", "H3", "H5")
 BANK_NOT_GROUNDED = "the question bank has not been grounded; run make ground-bank"
 OWN_TEXT = "a bank question runs with its own text"
+OWN_SCOPE = "a bank question runs with its own scope"
+# The bank defines no market scope of its own: every instance runs unscoped.
+INSTANCE_SCOPE: tuple[str, ...] = ()
+# The stored score record: the status beside the score, so a failed scoring
+# is recorded too (the store keeps one JSON document per run).
+SCORED = "scored"
+FAILED = "failed"
 # The pipelines that resolve entities before retrieval (the runner's ``seeded``).
 SEEDED_PIPELINES = frozenset({"B", "C"})
 LIVE_METRICS = ("answer", "evidence_f1", "anchor_resolution")
@@ -76,7 +89,9 @@ def require_bank(bank: FrozenBank | None) -> FrozenBank:
 
 def bank_question(request: QueryRequest, bank: FrozenBank | None) -> BankQuestion:
     """The bank instance a request asks for; a 422 for an id the bank does
-    not hold or for question text other than the instance's own."""
+    not hold, for question text other than the instance's own, or for a
+    market scope other than the instance's own, so a live score is always
+    comparable with the benchmark's."""
     instance_id = request.benchmark_instance_id
     frozen = require_bank(bank)
     instance = next((i for i in frozen.instances if i.instance_id == instance_id), None)
@@ -88,7 +103,28 @@ def bank_question(request: QueryRequest, bank: FrozenBank | None) -> BankQuestio
         )
     if request.question is not None and request.question != instance.text:
         raise ApiError(422, ErrorCode.VALIDATION_ERROR, OWN_TEXT)
+    if tuple(request.market_scope) != INSTANCE_SCOPE:
+        raise ApiError(422, ErrorCode.VALIDATION_ERROR, OWN_SCOPE)
     return BankQuestion(bank=frozen, instance=instance)
+
+
+def scored_record(score: LiveScore) -> dict[str, Any]:
+    return {"status": SCORED, "score": score.model_dump(mode="json")}
+
+
+def failed_record() -> dict[str, Any]:
+    return {"status": FAILED}
+
+
+def score_state(row: RunRow, record: dict[str, Any] | None) -> tuple[ScoreStatus, LiveScore | None]:
+    """The run's score status and score, from its row and stored score record."""
+    if row.benchmark_instance_id is None or row.status != "completed":
+        return "not_applicable", None
+    if record is None:
+        return "pending", None
+    if record["status"] == SCORED:
+        return "scored", LiveScore.model_validate(record["score"])
+    return "failed", None
 
 
 def score_run(run: RunRow, results: Results, events: Events, bank: FrozenBank) -> LiveScore:

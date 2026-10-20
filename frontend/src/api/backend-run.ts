@@ -24,6 +24,7 @@ import type {
   MockRun,
   LiveScore,
   RagEvent,
+  ScoreStatus,
 } from '../mock/telemetry'
 
 const API_BASE =
@@ -37,6 +38,8 @@ export interface BackendQuestion {
   configurations?: string[]
   /** The frozen bank instance a demo question asks; absent for ad hoc text. */
   instanceId?: string | null
+  /** A bank question's own market scope, which it always runs with. */
+  marketScope?: string[]
 }
 
 interface RecordedEvent {
@@ -100,6 +103,7 @@ interface ResultsDto {
   >
   error: ErrorDto | null
   answer_key: 'none' | 'available'
+  score_status: ScoreStatus
   score: LiveScore | null
 }
 
@@ -145,9 +149,9 @@ const pause = (): Promise<void> =>
 
 /**
  * Poll until the run is final; its events are all stored by then. A
- * completed bank question is polled a little longer for its score, which
- * the backend writes after the final status; a score still missing then
- * stays null and the Live Lab says the run was not scored.
+ * completed bank question is polled a little longer while its score is
+ * pending (the backend writes it just after the final status); a score
+ * still pending after that stays pending and the Live Lab says so.
  */
 async function awaitResults(runId: string): Promise<ResultsDto> {
   for (let attempt = 0; attempt < RUN_POLLS; attempt += 1) {
@@ -167,10 +171,7 @@ async function awaitScore(
   let body = final
   for (
     let attempt = 0;
-    attempt < SCORE_POLLS &&
-    body.status === 'completed' &&
-    body.answer_key === 'available' &&
-    body.score === null;
+    attempt < SCORE_POLLS && body.score_status === 'pending';
     attempt += 1
   ) {
     await pause()
@@ -603,6 +604,7 @@ export async function fetchDemoQuestions(): Promise<BackendQuestion[]> {
     question: entry.text,
     category: entry.stratum,
     instanceId: entry.instance_id,
+    marketScope: entry.market_scope,
   }))
 }
 
@@ -619,7 +621,11 @@ export async function runBackendQuestion(
   marketScope: readonly string[] = [],
 ): Promise<MockRun> {
   const runId = await Promise.race([
-    postQuery(question, marketScope),
+    // A bank question runs with its own scope, so its score matches the benchmark's.
+    postQuery(
+      question,
+      question.instanceId ? (question.marketScope ?? []) : marketScope,
+    ),
     timeout(10_000),
   ])
   const results = await awaitResults(runId)
@@ -655,6 +661,7 @@ export async function runBackendQuestion(
     graph,
     evaluation: [],
     answerKey: results.answer_key,
+    scoreStatus: results.score_status,
     liveScore: results.score,
   }
 }
