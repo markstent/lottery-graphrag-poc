@@ -8,7 +8,14 @@ import pytest
 from app.config import REPO_ROOT, ApiSettings, api_from_env
 
 BACKEND = Path(__file__).resolve().parents[1]
-API_ENV = ("CORS_ORIGINS", "APP_DB_PATH", "RUN_RETENTION", "SSE_HEARTBEAT_S", "BENCHMARK_DIR")
+API_ENV = (
+    "CORS_ORIGINS",
+    "APP_DB_PATH",
+    "RUN_RETENTION",
+    "SSE_HEARTBEAT_S",
+    "BENCHMARK_DIR",
+    "LOG_LEVEL",
+)
 
 
 @pytest.fixture
@@ -77,4 +84,13 @@ def test_api_settings_refuse_bad_values(
 ) -> None:
     clean_env.setenv(name, value)
     with pytest.raises(ValueError, match=name):
+        api_from_env()
+
+
+def test_log_level_defaults_and_rejects_unknown_values(clean_env: pytest.MonkeyPatch) -> None:
+    assert api_from_env().log_level == "INFO"
+    clean_env.setenv("LOG_LEVEL", "debug")
+    assert api_from_env().log_level == "DEBUG"
+    clean_env.setenv("LOG_LEVEL", "LOUD")
+    with pytest.raises(ValueError, match="LOG_LEVEL"):
         api_from_env()

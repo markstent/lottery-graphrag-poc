@@ -336,6 +336,13 @@ def _positive_float(name: str, default: float) -> float:
     return value
 
 
+def _log_level() -> str:
+    raw = (os.environ.get("LOG_LEVEL") or "INFO").upper()
+    if raw not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+        raise ValueError(f"LOG_LEVEL must be DEBUG, INFO, WARNING, ERROR or CRITICAL, got {raw!r}")
+    return raw
+
+
 def api_from_env() -> ApiSettings:
     """API settings from the environment; invalid values raise ``ValueError``."""
     origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
@@ -347,5 +354,5 @@ def api_from_env() -> ApiSettings:
         benchmark_dir=Path(
             os.environ.get("BENCHMARK_DIR") or REPO_ROOT / "data" / "evaluation" / "runs"
         ),
-        log_level=(os.environ.get("LOG_LEVEL") or "INFO").upper(),
+        log_level=_log_level(),
     )

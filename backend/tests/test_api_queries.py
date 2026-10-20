@@ -514,5 +514,6 @@ def test_worker_logs_one_pipeline_run_record_without_question_text(
         _await_completion(client, run_id)
     timed = [r for r in caplog.records if getattr(r, "stage", None) == "pipeline_run"]
     assert len(timed) == 1
-    assert (timed[0].run_id, timed[0].pipeline, timed[0].outcome) == (run_id, "A", "ok")  # type: ignore[attr-defined]
+    assert timed[0].context == {"run_id": run_id, "pipeline": "A"}  # type: ignore[attr-defined]
+    assert timed[0].outcome == "ok"  # type: ignore[attr-defined]
     assert all(question not in json.dumps(vars(r), default=str) for r in caplog.records)

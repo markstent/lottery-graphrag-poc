@@ -852,6 +852,7 @@ def test_every_repeat_writes_one_structured_log_record(
     assert all(r.levelno == logging.INFO for r in records)
     first, failed = vars(records[0]), vars(records[12])
     assert first | LOG_FIELDS_OF_FIRST == first
+    assert first["context"] == {"question_id": "L05", "pipeline": "A"}
     assert first["latency_ms"] == world.results[0].runs["A"][0].latency_ms
     assert first["judge_failure"] and first["judge_latency_ms"] >= 0
     assert failed["generation_error"] == "gateway down"
@@ -866,8 +867,6 @@ LOG_FIELDS_OF_FIRST = {
     "world_seed": 2026,
     "bank_hash": "bank-hash",
     "instance_id": "L05-2026-INC_S007_GR",
-    "question_id": "L05",
-    "pipeline": "A",
     "repeat": 0,
     "generation_error": None,
 }

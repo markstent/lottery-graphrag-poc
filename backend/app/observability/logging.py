@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import sys
 import time
 from collections.abc import Iterator
@@ -31,7 +32,11 @@ STAGES = (
     "evaluation",
     "pipeline_run",
 )
-_SECRET_MARKERS = ("key", "token", "password", "secret")
+_SECRET_PARTS = frozenset(
+    {"key", "token", "password", "pwd", "secret", "authorization", "credential"}
+)
+_RESERVED = ("ts", "level", "logger", "message")
+_NAME_PARTS = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
 _STANDARD_ATTRIBUTES = frozenset(vars(logging.makeLogRecord({}))) | {
     "message",
     "asctime",
@@ -75,8 +80,17 @@ def stage_timer(stage: str) -> Iterator[None]:
 
 
 def _is_secret(name: str) -> bool:
-    lowered = name.lower()
-    return any(marker in lowered for marker in _SECRET_MARKERS)
+    """True when a whole word of the name (split on punctuation and camelCase) is secret-like."""
+    return any(part.lower() in _SECRET_PARTS for part in _NAME_PARTS.findall(name))
+
+
+def _scrub(value: Any) -> Any:
+    """Drop secret-named keys at every depth and make dict keys JSON-safe strings."""
+    if isinstance(value, dict):
+        return {str(k): _scrub(v) for k, v in value.items() if not _is_secret(str(k))}
+    if isinstance(value, list | tuple):
+        return [_scrub(item) for item in value]
+    return value
 
 
 def _install_record_factory() -> None:
@@ -87,8 +101,7 @@ def _install_record_factory() -> None:
 
     def factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
         record = previous(*args, **kwargs)
-        for name, value in (_context.get() or {}).items():
-            record.__dict__.setdefault(name, value)
+        record.context = dict(_context.get() or {})
         return record
 
     logging.setLogRecordFactory(factory)
@@ -111,21 +124,36 @@ class _StderrHandler(logging.StreamHandler):  # type: ignore[type-arg]
 
 
 class JsonFormatter(logging.Formatter):
-    """One JSON object per line: ts, level, logger, message, then context and extras."""
+    """One JSON object per line: ts, level, logger, message, then context and extras.
+
+    An explicit ``extra`` value wins over the run context; an extra named like a
+    base key is renamed ``extra_<name>``. A record is never lost: an
+    unserialisable payload falls back to a line carrying ``extra_repr``.
+    """
 
     def format(self, record: logging.LogRecord) -> str:
-        payload: dict[str, Any] = {
+        base: dict[str, Any] = {
             "ts": datetime.fromtimestamp(record.created, UTC).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
         }
-        for name, value in record.__dict__.items():
-            if name not in _STANDARD_ATTRIBUTES and not _is_secret(name):
-                payload[name] = value
+        fields: dict[str, Any] = dict(getattr(record, "context", {}))
+        extras = {
+            name: value
+            for name, value in record.__dict__.items()
+            if name not in _STANDARD_ATTRIBUTES and name != "context"
+        }
+        for name, value in extras.items():
+            fields[f"extra_{name}" if name in _RESERVED else name] = value
         if record.exc_info:
-            payload["exception"] = self.formatException(record.exc_info)
-        return json.dumps(payload, default=str)
+            base["exception"] = self.formatException(record.exc_info)
+        try:
+            payload = base | {k: _scrub(v) for k, v in fields.items() if not _is_secret(k)}
+            return json.dumps(payload, default=str)
+        except (TypeError, ValueError, RecursionError):
+            names = [k for k in fields if not _is_secret(k)]
+            return json.dumps(base | {"extra_repr": repr(names)}, default=str)
 
 
 def configure_logging(level: str = "INFO") -> None:

@@ -51,11 +51,13 @@ def test_context_nests_and_restores(caplog: pytest.LogCaptureFixture) -> None:
             log.info("inner")
         log.info("outer")
     inner, outer = caplog.records[-2:]
-    assert inner.pipeline == "A" and inner.run_id == "R"  # type: ignore[attr-defined]
-    assert not hasattr(outer, "pipeline") and outer.run_id == "R"  # type: ignore[attr-defined]
+    assert inner.context == {"run_id": "R", "pipeline": "A"}  # type: ignore[attr-defined]
+    assert outer.context == {"run_id": "R"}  # type: ignore[attr-defined]
 
 
-@pytest.mark.parametrize("name", ["API_KEY", "auth_token", "DbPassword", "client_secret"])
+@pytest.mark.parametrize(
+    "name", ["API_KEY", "auth_token", "DbPassword", "client_secret", "accessToken", "Authorization"]
+)
 def test_secret_named_fields_are_dropped(name: str) -> None:
     record = logging.makeLogRecord({"msg": "m", name: "hidden", "kept": 1})
     payload = json.loads(JsonFormatter().format(record))
@@ -101,4 +103,52 @@ def test_request_id_is_bound_into_log_context(caplog: pytest.LogCaptureFixture) 
     with caplog.at_level(logging.WARNING):
         TestClient(app).get("/probe", headers={"X-Request-ID": "req-9"})
     probe_record = next(r for r in caplog.records if r.name == "probe")
-    assert probe_record.request_id == "req-9"  # type: ignore[attr-defined]
+    assert probe_record.context["request_id"] == "req-9"  # type: ignore[attr-defined]
+
+
+def _line(extra: dict[str, object], **context: str) -> dict[str, object]:
+    record = logging.makeLogRecord({"msg": "m", "context": context, **extra})
+    result: dict[str, object] = json.loads(JsonFormatter().format(record))
+    return result
+
+
+def test_extra_clashing_with_context_wins_and_does_not_crash(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.INFO), run_context(run_id="R", pipeline="A"):
+        logging.getLogger("clash").info("x", extra={"pipeline": "B"})
+    record = caplog.records[-1]
+    assert record.pipeline == "B" and record.context["pipeline"] == "A"  # type: ignore[attr-defined]
+    line = json.loads(JsonFormatter().format(record))
+    assert line["pipeline"] == "B" and line["run_id"] == "R"
+
+
+def test_nested_secrets_are_dropped_but_token_counts_survive() -> None:
+    line = _line(
+        {
+            "d": {"api_key": "LEAK", "ok": 1, "items": [{"accessToken": "LEAK2", "n": 2}]},
+            "max_tokens": 512,
+            "prompt_tokens": 7,
+        }
+    )
+    assert line["d"] == {"ok": 1, "items": [{"n": 2}]}
+    assert line["max_tokens"] == 512 and line["prompt_tokens"] == 7
+    assert "LEAK" not in json.dumps(line)
+
+
+def test_non_string_dict_keys_are_stringified() -> None:
+    assert _line({"d": {(1, 2): 3}})["d"] == {"(1, 2)": 3}
+
+
+def test_unserialisable_payload_falls_back_to_a_line() -> None:
+    cyclic: dict[str, object] = {}
+    cyclic["self"] = cyclic
+    line = _line({"bad": cyclic})
+    assert line["message"] == "m" and "extra_repr" in line and "level" in line
+
+
+def test_reserved_keys_are_renamed() -> None:
+    line = _line({"level": "x", "ts": 1, "logger": "z"})
+    assert line["level"] != "x" and line["message"] == "m" and line["logger"] != "z"
+    assert line["extra_level"] == "x" and line["extra_ts"] == 1
+    assert line["extra_logger"] == "z"
