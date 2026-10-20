@@ -98,7 +98,8 @@ def test_summary_is_schema_v2_and_labelled(smoke_run: Path) -> None:
     assert json.loads(json.dumps(summary, allow_nan=False)) == summary
 
 
-def test_presentation_graph_is_restored(smoke_run: Path) -> None:
+def test_presentation_graph_is_restored(smoke_run: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    live.use_the_real_world(monkeypatch)
     expected = _read(world_paths(PRESENTATION_SEED).world_dir / "_graph_stats.json")["nodes"]
     config = GraphConfig.from_env()
     with GraphDatabase.driver(config.uri, auth=(config.user, config.password)) as driver:

@@ -122,11 +122,11 @@ def live_app_factory(
 ) -> Iterator[Callable[[], TestClient]]:
     """Starts the application on one run store. Calling it again stops the
     previous application first, as a restart does."""
+    live.use_the_real_world(monkeypatch)
     paths = world_paths(PRESENTATION_SEED)
-    live.require_paths(paths.world_dir, paths.bank_path)
+    live.require_paths(paths.world_dir, paths.ledger_path, paths.bank_path)
     live.require_neo4j()
     monkeypatch.setenv("APP_DB_PATH", str(tmp_path / "app.db"))
-    live.use_the_real_world(monkeypatch)
     running: list[ExitStack] = []
 
     def factory() -> TestClient:
