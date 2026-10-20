@@ -31,7 +31,9 @@ The store never reads the environment and never references the truth ledger.
 `status` is checked to be `queued`, `running`, `completed`, `failed` or `cancelled`.
 `pipeline_status` maps each configuration to `pending`, `running`, `completed`, `failed`, `cancelled` or `skipped`.
 Tuples and dicts are stored as JSON written with sorted keys and compact separators, so equal values give identical text.
-`created_at` and `finished_at` are ISO-8601 UTC strings, and callers must write them in one format (`+00:00` offset) so that text order is time order.
+`created_at` and `finished_at` are ISO-8601 UTC strings.
+`create_run` and `update_run` refuse a `created_at` that is not the canonical `datetime.isoformat()` text of a UTC instant with a `+00:00` offset (for example `2026-10-20T00:00:00+00:00` or `2026-10-20T00:00:00.123456+00:00`), raising `ValueError`.
+One canonical form is what makes text order equal time order; `Z`, other offsets, naive times and truncated fractions are all refused.
 An index on `runs (created_at DESC, run_id DESC)` serves history paging.
 `events`, `results` and `scores` reference `runs` with `ON DELETE CASCADE`, so deleting a run removes everything that belongs to it.
 
@@ -44,8 +46,9 @@ An index on `runs (created_at DESC, run_id DESC)` serves history paging.
 ### History paging
 
 `list_runs(limit, before, status)` orders by `created_at DESC, run_id DESC`, so the order is stable when two runs share a timestamp.
-`before` is an exclusive `created_at` cursor: pass the last row's `created_at` to get the next page.
-Runs that share a `created_at` across a page boundary would be skipped by this cursor; run identifiers and timestamps are generated per run, so this is not expected in practice.
+`before` is an opaque cursor `"<created_at>|<run_id>"`, built from the last row of a page with `cursor(row)`.
+The query returns only rows where `(created_at, run_id) < (cursor created_at, cursor run_id)`, so runs that share a `created_at` are each returned exactly once across pages.
+A malformed cursor (no separator, an empty run id, or a `created_at` that is not canonical UTC) raises `ValueError`.
 
 ### Retention
 
@@ -74,4 +77,6 @@ A later schema change adds one step to `_MIGRATIONS` and bumps `SCHEMA_VERSION`.
 Each thread gets its own connection through `threading.local`, so no connection is ever shared across threads.
 Connections open with `isolation_level=None`, so transactions are explicit: every write uses `BEGIN IMMEDIATE` and commits or rolls back as a whole, while reads run in autocommit.
 Every connection sets `PRAGMA foreign_keys = ON` (needed for the cascades), `journal_mode = WAL` (readers do not block the writer) and `busy_timeout = 5000` (a writer waits up to five seconds for the lock rather than failing).
-`close()` closes the calling thread's connection; a thread that is about to end should call it.
+`close()` closes the calling thread's connection.
+Every thread that uses the store must call `close()` before it ends; otherwise its connection is left to garbage collection, which emits a `ResourceWarning`.
+The API (Task 5) follows this rule for every thread it runs store calls on.

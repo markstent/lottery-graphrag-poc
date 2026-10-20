@@ -7,11 +7,12 @@ import sqlite3
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
-from app.persistence.store import SCHEMA_VERSION, RunRow, RunStore
+from app.persistence.store import SCHEMA_VERSION, RunRow, RunStore, cursor
 
 
 def row(
@@ -20,6 +21,7 @@ def row(
     kind: str = "live",
     status: str = "queued",
     created_at: str = "2026-10-20T00:00:00+00:00",
+    pipeline_status: dict[str, str] | None = None,
 ) -> RunRow:
     return RunRow(
         run_id=run_id,
@@ -31,7 +33,7 @@ def row(
         benchmark_instance_id=None,
         created_at=created_at,
         finished_at=None,
-        pipeline_status={"A": "pending", "C": "pending"},
+        pipeline_status=pipeline_status or {"A": "pending", "C": "pending"},
         error=None,
     )
 
@@ -72,6 +74,8 @@ def test_update_run_refuses_unknown_fields_and_runs(store: RunStore) -> None:
         store.update_run("RUN-1", nonsense=1)
     with pytest.raises(ValueError, match="run_id"):
         store.update_run("RUN-1", run_id="RUN-2")
+    with pytest.raises(ValueError, match="created_at"):
+        store.update_run("RUN-1", created_at="2026-10-20T00:00:00Z")
     with pytest.raises(KeyError, match="RUN-MISSING"):
         store.update_run("RUN-MISSING", status="running")
 
@@ -154,15 +158,69 @@ def test_history_pages_with_before_and_status(store: RunStore) -> None:
         store.create_run(row(f"RUN-{n}", status=status, created_at=f"2026-10-20T00:00:0{n}+00:00"))
     first = store.list_runs(2, None, None)
     assert [r.run_id for r in first] == ["RUN-4", "RUN-3"]
-    second = store.list_runs(2, first[-1].created_at, None)
+    second = store.list_runs(2, cursor(first[-1]), None)
     assert [r.run_id for r in second] == ["RUN-2", "RUN-1"]
-    third = store.list_runs(2, second[-1].created_at, None)
+    third = store.list_runs(2, cursor(second[-1]), None)
     assert [r.run_id for r in third] == ["RUN-0"]
+    assert store.list_runs(2, cursor(third[-1]), None) == []
     assert [r.run_id for r in store.list_runs(10, None, "completed")] == ["RUN-4", "RUN-2", "RUN-0"]
-    assert [r.run_id for r in store.list_runs(10, "2026-10-20T00:00:04+00:00", "failed")] == [
-        "RUN-3",
+    assert [r.run_id for r in store.list_runs(10, cursor(first[0]), "failed")] == ["RUN-3", "RUN-1"]
+
+
+def test_paging_returns_runs_sharing_a_created_at_exactly_once(store: RunStore) -> None:
+    for n in range(5):
+        store.create_run(row(f"RUN-{n}"))
+    seen: list[str] = []
+    before: str | None = None
+    while page := store.list_runs(2, before, None):
+        assert len(page) <= 2
+        seen.extend(r.run_id for r in page)
+        before = cursor(page[-1])
+    assert seen == ["RUN-4", "RUN-3", "RUN-2", "RUN-1", "RUN-0"]
+
+
+def test_cursor_joins_created_at_and_run_id() -> None:
+    assert cursor(row("RUN-1")) == "2026-10-20T00:00:00+00:00|RUN-1"
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    [
+        "",
         "RUN-1",
-    ]
+        "|RUN-1",
+        "2026-10-20T00:00:00+00:00|",
+        "yesterday|RUN-1",
+        "2026-10-20T00:00:00Z|RUN-1",
+    ],
+)
+def test_a_malformed_cursor_is_refused(store: RunStore, malformed: str) -> None:
+    with pytest.raises(ValueError, match="cursor"):
+        store.list_runs(10, malformed, None)
+
+
+@pytest.mark.parametrize(
+    "created_at",
+    [
+        "yesterday",
+        "2026-10-20T00:00:00",
+        "2026-10-20T00:00:00Z",
+        "2026-10-20T01:00:00+01:00",
+        "2026-10-20T00:00:00.5+00:00",
+        "2026-10-20 00:00:00+00:00",
+    ],
+)
+def test_create_run_refuses_a_created_at_that_is_not_utc_iso(
+    store: RunStore, created_at: str
+) -> None:
+    with pytest.raises(ValueError, match="created_at"):
+        store.create_run(row("RUN-1", created_at=created_at))
+    assert store.get_run("RUN-1") is None
+
+
+def test_create_run_accepts_microsecond_utc_timestamps(store: RunStore) -> None:
+    store.create_run(row("RUN-1", created_at="2026-10-20T00:00:00.123456+00:00"))
+    assert store.get_run("RUN-1") is not None
 
 
 def test_equal_created_at_orders_by_run_id_descending(store: RunStore) -> None:
@@ -187,7 +245,13 @@ def test_results_and_score_round_trip(store: RunStore) -> None:
 
 def test_runs_left_running_at_start_are_marked_interrupted(tmp_path: Path) -> None:
     first = RunStore(tmp_path / "app.db", 10)
-    first.create_run(row("RUN-1", status="running"))
+    first.create_run(
+        row(
+            "RUN-1",
+            status="running",
+            pipeline_status={"A": "completed", "B": "running", "C": "pending"},
+        )
+    )
     first.create_run(row("RUN-2", status="queued"))
     first.create_run(row("RUN-3", status="completed"))
     first.close()
@@ -203,7 +267,11 @@ def test_runs_left_running_at_start_are_marked_interrupted(tmp_path: Path) -> No
             "retryable": True,
         }
         assert interrupted.finished_at is not None
-        assert interrupted.pipeline_status == {"A": "failed", "C": "failed"}
+        assert datetime.fromisoformat(interrupted.finished_at).utcoffset() == timedelta(0)
+        assert interrupted.pipeline_status == {"A": "completed", "B": "failed", "C": "failed"}
+        queued = reopened.get_run("RUN-2")
+        assert queued is not None and queued.status == "failed" and queued.finished_at is not None
+        assert queued.pipeline_status == {"A": "failed", "C": "failed"}
         untouched = reopened.get_run("RUN-3")
         assert untouched is not None and untouched.status == "completed" and untouched.error is None
         assert reopened.mark_interrupted() == 0

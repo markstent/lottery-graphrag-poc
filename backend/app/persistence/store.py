@@ -14,7 +14,7 @@ import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -117,6 +117,35 @@ def _column_value(name: str, value: Any) -> Any:
     return value
 
 
+_CURSOR_SEPARATOR = "|"
+
+
+def _require_utc_timestamp(value: str, what: str) -> None:
+    """Refuse anything but the canonical ``datetime.isoformat()`` text of a
+    UTC instant (``+00:00`` offset), so that text order is time order."""
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        parsed = None
+    if parsed is None or parsed.utcoffset() != timedelta(0) or parsed.isoformat() != value:
+        raise ValueError(
+            f"{what} must be an ISO-8601 UTC timestamp with a +00:00 offset, got {value!r}"
+        )
+
+
+def cursor(row: RunRow) -> str:
+    """The ``before`` value that continues history paging after ``row``."""
+    return f"{row.created_at}{_CURSOR_SEPARATOR}{row.run_id}"
+
+
+def _parse_cursor(before: str) -> tuple[str, str]:
+    created_at, separator, run_id = before.partition(_CURSOR_SEPARATOR)
+    if not separator or not run_id:
+        raise ValueError(f"malformed history cursor {before!r}")
+    _require_utc_timestamp(created_at, "the history cursor's created_at")
+    return created_at, run_id
+
+
 def _row_from_record(record: sqlite3.Row) -> RunRow:
     error_json = record["error_json"]
     return RunRow(
@@ -135,7 +164,11 @@ def _row_from_record(record: sqlite3.Row) -> RunRow:
 
 
 class RunStore:
-    """Run persistence over one SQLite file in WAL mode."""
+    """Run persistence over one SQLite file in WAL mode.
+
+    Each thread gets its own connection on first use. Every thread that uses
+    the store must call ``close()`` before it ends, or its connection is left
+    to garbage collection, which emits a ``ResourceWarning``."""
 
     def __init__(self, path: Path, retention: int) -> None:
         self._path = path
@@ -192,7 +225,9 @@ class RunStore:
                 connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def create_run(self, row: RunRow) -> None:
-        """Insert a run, then prune live runs beyond the newest ``retention``."""
+        """Insert a run, then prune live runs beyond the newest ``retention``.
+        ``created_at`` must be ISO-8601 UTC with a ``+00:00`` offset."""
+        _require_utc_timestamp(row.created_at, "created_at")
         values = [_column_value(name, getattr(row, name)) for name in _RUN_FIELDS]
         placeholders = ", ".join("?" for _ in _RUN_FIELDS)
         with self._write() as connection:
@@ -213,6 +248,8 @@ class RunStore:
             raise ValueError(f"cannot update run fields: {', '.join(unknown)}")
         if not changes:
             return
+        if "created_at" in changes:
+            _require_utc_timestamp(changes["created_at"], "created_at")
         assignments = ", ".join(f"{_JSON_COLUMNS.get(name, name)} = ?" for name in changes)
         values = [_column_value(name, value) for name, value in changes.items()]
         with self._write() as connection:
@@ -231,18 +268,20 @@ class RunStore:
         return None if record is None else _row_from_record(record)
 
     def list_runs(self, limit: int, before: str | None, status: str | None) -> list[RunRow]:
-        """Newest first; ``before`` is an exclusive ``created_at`` cursor."""
+        """Newest first by ``(created_at, run_id)``. ``before`` is an opaque
+        cursor from ``cursor(row)``; only rows strictly after it are returned."""
+        created_at, run_id = (None, None) if before is None else _parse_cursor(before)
         records = (
             self._connection()
             .execute(
                 f"""
                 SELECT {_RUN_COLUMNS} FROM runs
-                WHERE (:before IS NULL OR created_at < :before)
+                WHERE (:created_at IS NULL OR (created_at, run_id) < (:created_at, :run_id))
                   AND (:status IS NULL OR status = :status)
                 ORDER BY created_at DESC, run_id DESC
                 LIMIT :limit
                 """,
-                {"before": before, "status": status, "limit": limit},
+                {"created_at": created_at, "run_id": run_id, "status": status, "limit": limit},
             )
             .fetchall()
         )
