@@ -29,6 +29,11 @@ class GatewayError(RuntimeError):
     """Raised when the provider call fails or returns no content."""
 
 
+class EmptyCompletionError(GatewayError):
+    """The provider answered, but with no text (a thinking model can spend a
+    small token budget on hidden reasoning)."""
+
+
 @dataclass(frozen=True, slots=True)
 class CompletionRequest:
     model: str
@@ -74,7 +79,7 @@ def complete(request: CompletionRequest) -> Completion:
     except Exception as error:
         raise GatewayError(f"Model gateway call failed: {error}") from error
     if not isinstance(content, str) or not content.strip():
-        raise GatewayError("Model gateway returned an empty answer")
+        raise EmptyCompletionError("Model gateway returned an empty answer")
     latency_ms = (time.perf_counter() - started) * 1000
     return Completion(content.strip(), latency_ms, _usage(response))
 

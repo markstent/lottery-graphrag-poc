@@ -222,6 +222,9 @@ ORDER BY entity_id
 LIMIT $limit
 """
 
+# Readiness: the database answers a trivial query.
+PING = "RETURN 1 AS ok"
+
 RETRIEVAL_NODE = """
 MATCH (n {id: $id})
 RETURN labels(n)[0] AS node_label, properties(n) AS props

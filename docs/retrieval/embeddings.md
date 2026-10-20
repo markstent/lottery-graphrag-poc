@@ -15,6 +15,9 @@ The chosen models are recorded in experiment metadata, and domain logic makes no
 
 - **Dense**: `bge-m3` via Ollama (1024 dimensions).
   Chosen because it is local-capable, versioned by model name and retrieves the planted scenarios across languages in the development world.
+  `OllamaEmbedder` L2-normalises every vector, as the embedding contract requires, and refuses a vector whose length differs from `EMBEDDING_DIMENSIONS` with an `EmbeddingError` naming both sizes.
+  Qdrant ranks by cosine, which ignores vector length, so an index built before normalisation ranks the same and needs no rebuild (`tests/test_embeddings.py` pins this to within 1e-12).
+  At lab build the existing collection's dense size is compared with the embedder's, and a mismatch raises a `VectorStoreError` naming both sizes, even for an empty collection.
 - **Sparse**: `Qdrant/bm25` via fastembed (`SPARSE_MODEL`), downloaded once into `FASTEMBED_CACHE`.
   `SPARSE_PROVIDER` unset follows `EMBEDDING_PROVIDER`: `hashing` gives `hashing`, anything else gives `fastembed`.
 - **CI and tests**: `HashingEmbedder` and `HashingSparseEmbedder`, deterministic token hashing, so retrieval mechanics are testable without model downloads.

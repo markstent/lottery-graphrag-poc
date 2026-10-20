@@ -91,7 +91,9 @@ class VectorStore(Protocol):
         ...
 
     def collection_info(self) -> dict[str, Any]:
-        """``{"vectors": [names], "sparse_vectors": [names], "points": n}``."""
+        """``{"vectors": [names], "sparse_vectors": [names], "points": n,
+        "dimensions": size}``; ``dimensions`` is the dense vector size, or
+        ``None`` when the store has not fixed one yet."""
         ...
 
 
@@ -175,11 +177,18 @@ class InMemoryVectorStore:
     def count(self) -> int:
         return len(self._dense)
 
+    @property
+    def dimensions(self) -> int | None:
+        """The size of the stored dense vectors; ``None`` while empty."""
+        first = next(iter(self._dense.values()), None)
+        return None if first is None else len(first)
+
     def collection_info(self) -> dict[str, Any]:
         return {
             "vectors": [DENSE_VECTOR],
             "sparse_vectors": [SPARSE_VECTOR],
             "points": self.count(),
+            "dimensions": self.dimensions,
         }
 
 
@@ -340,18 +349,20 @@ class QdrantVectorStore:
             raise VectorStoreError(f"Qdrant count failed: {error}") from error
 
     def collection_info(self) -> dict[str, Any]:
-        """Vector names of the live collection; an unnamed (legacy) dense
-        vector is reported as ``""``."""
+        """Vector names and dense size of the live collection; an unnamed
+        (legacy) dense vector is reported as ``""``."""
         try:
             info = self._client.get_collection(collection_name=self._collection)
         except Exception as error:
             raise VectorStoreError(f"Qdrant collection info failed: {error}") from error
         vectors = info.config.params.vectors
         sparse_vectors = info.config.params.sparse_vectors or {}
+        dense = vectors.get(DENSE_VECTOR) if isinstance(vectors, dict) else vectors
         return {
             "vectors": sorted(vectors) if isinstance(vectors, dict) else [""],
             "sparse_vectors": sorted(sparse_vectors),
             "points": int(info.points_count or 0),
+            "dimensions": int(dense.size) if dense is not None else None,
         }
 
     def ensure_collection(self) -> None:

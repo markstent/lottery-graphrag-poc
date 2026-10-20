@@ -8,6 +8,7 @@ divergent configuration. These tests pin that contract offline.
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
@@ -24,7 +25,10 @@ from app.retrieval.graph.resolution import (
 )
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import load_static_provider_from_rows
+from app.retrieval.standard.corpus import hit_to_evidence
 from app.retrieval.standard.index import index_corpus
+from app.retrieval.standard.sparse import SparseVector
+from app.retrieval.standard.vector_store import InMemoryVectorStore, SearchHit
 
 from tests.conftest import build_lab_offline
 from tests.test_graph_rag import (
@@ -276,3 +280,57 @@ def test_a_and_b_hand_the_generator_the_same_prompt_for_the_same_evidence() -> N
         (c.document_id, c.title, c.source_system, c.source_record_id, c.record_table)
         for c in result_b.answer.citations
     ]
+
+
+class RecordingStore(InMemoryVectorStore):
+    """The in-memory store, keeping the hits of every document-channel search
+    (the graph pipelines' record-only fallback-seed search is left out)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.searches: list[list[SearchHit]] = []
+
+    def search(
+        self,
+        dense: list[float],
+        sparse: SparseVector,
+        limit: int,
+        markets: Sequence[str] | None = None,
+        kinds: Sequence[str] | None = None,
+    ) -> list[SearchHit]:
+        hits = super().search(dense, sparse, limit, markets=markets, kinds=kinds)
+        if not kinds:
+            self.searches.append(hits)
+        return hits
+
+
+def test_vector_hits_are_built_from_the_payload_in_every_pipeline() -> None:
+    """Spec 6.3: A, B and C turn each vector hit into evidence the same way,
+    from the stored payload alone. The lab's corpus holds other text for the
+    same chunk ids and misses one of them, so a corpus lookup would show up
+    as changed text or a silently dropped hit."""
+    reranker = RecordingReranker()
+    store = RecordingStore()
+    indexed = list(build_corpus().values())
+    stale = {
+        chunk.chunk_id: dataclasses.replace(chunk, text="stale corpus text")
+        for chunk in indexed[1:]
+    }
+    lab = dataclasses.replace(build_lab_offline(), reranker=reranker, store=store, corpus=stale)
+    index_corpus(lab.store, lab.embeddings, lab.sparse, indexed)
+    b, c = (
+        pipeline
+        for _, pipeline in graph_pipelines(
+            lab, scn007_adjacency(), StaticEntityResolver([]), StaticEntityResolver([])
+        )
+    )
+    question = "Why did checkout fail in Greece?"
+    for pipeline in (lab.pipeline_a(), b, c):
+        pipeline.run(question)
+    assert len(store.searches) == len(reranker.calls) == 3
+    for hits, (_asked, judged) in zip(store.searches, reranker.calls, strict=True):
+        assert hits, "every pipeline must retrieve documents"
+        documents = [chunk for chunk in judged if chunk.kind != "node"]
+        expected = [hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
+        assert documents == expected
+        assert all(chunk.text != "stale corpus text" for chunk in documents)

@@ -33,6 +33,21 @@ class HealthResponse(BaseModel):
     version: str
 
 
+class Check(BaseModel):
+    """One readiness check: whether it passed and a curated detail, never a
+    service address or raw driver or provider text."""
+
+    ok: bool
+    detail: str
+
+
+class Readiness(BaseModel):
+    """Response for GET /api/v1/health/ready: 200 when ready, else 503."""
+
+    ready: bool
+    checks: dict[str, Check]
+
+
 class QueryRequest(BaseModel):
     """Request for POST /api/v1/queries (docs/07 section 4).
 

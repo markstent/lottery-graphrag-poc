@@ -39,6 +39,14 @@ class GraphReader:
         )
         return list(result.records)
 
+    def ping(self) -> None:
+        """Run the trivial statement once, without the driver's retries, so
+        an unreachable database fails within the configured timeout."""
+        from neo4j import Query
+
+        with self._driver.session(database=self._database) as session:
+            session.run(Query(statements.PING, timeout=self._timeout_s)).consume()
+
     def close(self) -> None:
         self._driver.close()
 

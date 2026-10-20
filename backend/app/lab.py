@@ -109,14 +109,23 @@ class WiredGraphPipelines:
 
 
 def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
-    """Build the shared components; refuse a populated index this code must
-    not use (dense-only, or built by another record serialiser), so the API,
-    the benchmark runner and the trace CLI are guarded alike."""
+    """Build the shared components; refuse an index this code must not use
+    (dense vectors of another size, dense-only, or built by another record
+    serialiser), so the API, the benchmark runner and the trace CLI are
+    guarded alike."""
     embeddings = build_embedder(settings.embedding)
     store = build_store(settings.vector, embeddings.dimensions, settings.embedding.provider)
+    info = store.collection_info()
+    size = info["dimensions"]
+    if size is not None and size != embeddings.dimensions:
+        # Checked even when empty: a cold start would index into it and fail.
+        raise VectorStoreError(
+            f"collection holds {size}-dimension vectors but {embeddings.model_name} "
+            f"embeds {embeddings.dimensions}; rebuild the index (make index-vector)"
+        )
     manifest: dict[str, object] | None = None
     if store.count() > 0:
-        if SPARSE_VECTOR not in store.collection_info()["sparse_vectors"]:
+        if SPARSE_VECTOR not in info["sparse_vectors"]:
             # A pre-hybrid (dense-only) collection would fail every search.
             raise VectorStoreError("collection lacks a sparse vector; rebuild the index")
         manifest = check_manifest(Path(settings.dataset_dir))

@@ -1,14 +1,15 @@
-"""Typed API contracts.
+"""Liveness and readiness routes (spec 6.1).
 
-Phase 0 scaffold: only the health check endpoint exists. Experiment, query,
-scenario, benchmark and model endpoints are added in later approved phases
-(see docs/07-api-event-spec.md).
+``/health`` says the process is up. ``/health/ready`` runs the checks of
+``app.api.readiness`` and answers 200 when every check passes, else 503 with
+the same body.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request, Response
 
 from app import __version__
-from app.api.schemas import HealthResponse
+from app.api.readiness import ReadinessChecks
+from app.api.schemas import HealthResponse, Readiness
 
 router = APIRouter()
 
@@ -17,3 +18,17 @@ router = APIRouter()
 def read_health() -> HealthResponse:
     """Liveness probe used by CI, Docker and the frontend."""
     return HealthResponse(status="ok", version=__version__)
+
+
+@router.get(
+    "/health/ready",
+    response_model=Readiness,
+    responses={503: {"model": Readiness, "description": "A check failed"}},
+)
+def read_readiness(request: Request, response: Response) -> Readiness:
+    """Readiness: the lab, the index, Neo4j and the model provider."""
+    checks: ReadinessChecks = request.app.state.readiness
+    readiness = checks.run()
+    if not readiness.ready:
+        response.status_code = 503
+    return readiness

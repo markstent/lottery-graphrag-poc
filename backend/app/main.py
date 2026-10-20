@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.api import health, queries
 from app.api.errors import install_handlers
+from app.api.readiness import ReadinessChecks
 from app.api.runs import QueryService, start_lab
 from app.config import GraphConfig, api_from_env, from_env
 from app.lab import Lab
@@ -59,7 +60,9 @@ def create_app(
             store.close()
         if interrupted:
             logger.warning("runs interrupted by a server stop", extra={"runs": interrupted})
-        application.state.query_service = QueryService(store, lab_factory, graph)
+        service = QueryService(store, lab_factory, graph)
+        application.state.query_service = service
+        application.state.readiness = ReadinessChecks(service, graph)
         yield
 
     application = FastAPI(title="Semantic Context Lab", version=__version__, lifespan=lifespan)

@@ -584,6 +584,17 @@ GET  /api/v1/benchmarks/latest   published harness output only
 Superseded in Phase 4: runs, events and results are persisted in the SQLite run store (ADR-007), keeping the newest `RUN_RETENTION` live runs, rather than held in memory for the last 50 runs.
 Phase 4 also adds `GET /api/v1/queries` (history) and `POST /api/v1/queries/{run_id}/cancel` (section 5), tested in `tests/test_api_runs.py`.
 
+Phase 4 adds `GET /api/v1/health/ready`, tested in `tests/test_health.py`; `GET /api/v1/health` stays the liveness probe.
+It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `lab`, `index`, `graph` and `model`, with status 200 when every check passes and 503 otherwise.
+
+- `lab`: the retrieval lab is built; otherwise the detail is `building`, `not started` or that the last build failed. Readiness never builds the lab or waits for a build.
+- `index`: the collection exists and holds points, and a persistent index's manifest names this code's record serialiser (5 s timeout).
+- `graph`: Neo4j answers `RETURN 1` within `NEO4J_TIMEOUT_S`.
+- `model`: the fake generator is always reachable; a LiteLLM provider must answer one gateway call with `max_tokens=1` within `min(5 s, GENERATION_TIMEOUT_S)`. An empty one-token answer counts as reachable. The result is cached for 30 s.
+
+The checks run concurrently, each under its own timeout; a check that times out reports `timed out after N s`.
+Details are curated sentences: raw driver and provider text, which can name service addresses, is logged only.
+
 Reserved for later phases (not implemented): experiments, dataset and
 scenario management, `GET /queries/{run_id}/evidence` (evidence is embedded
 in the results DTO), and benchmark submission/cancel (the harness runs via

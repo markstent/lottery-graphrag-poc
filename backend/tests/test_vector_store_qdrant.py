@@ -38,6 +38,7 @@ def test_qdrant_hybrid_upsert_search_reset_roundtrip() -> None:
         info = store.collection_info()
         assert info["vectors"] == ["dense"]
         assert info["sparse_vectors"] == ["sparse"]
+        assert info["dimensions"] == 64
 
         store.upsert(
             ids=["CHNK_PAY", "CHNK_MKT", "REC_games_G1"],

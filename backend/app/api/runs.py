@@ -24,6 +24,7 @@ import threading
 import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
+from typing import Literal
 
 from app.api.errors import CANCELLED_BODY, ApiErrorBody, ErrorCode, classify, run_error_body
 from app.api.schemas import QueryRequest
@@ -62,6 +63,8 @@ from app.persistence.store import RunRow, RunStore
 from app.retrieval.standard.index import index_corpus, persists_index, write_manifest
 
 logger = logging.getLogger(__name__)
+
+LabState = Literal["built", "building", "not started", "failed"]
 
 # Stage timings come from the pipelines' own events: a stage opens at its
 # start event and closes at its end event. Where a pipeline emits no event
@@ -192,6 +195,7 @@ class QueryService:
         self._lab_factory = lab_factory
         self._graph_config = graph_config
         self._lab: Lab | None = None
+        self._lab_failed = False
         self._lab_lock = threading.Lock()
         self._lock = threading.Lock()
         self._active: dict[str, RecordingSink] = {}
@@ -248,12 +252,26 @@ class QueryService:
             return True
         return sink.wait(after, timeout)
 
+    def lab_status(self) -> tuple[Lab | None, LabState]:
+        """The built lab, or None, and its state; never builds or waits."""
+        lab = self._lab
+        if lab is not None:
+            return lab, "built"
+        if self._lab_lock.locked():
+            return None, "building"
+        return None, "failed" if self._lab_failed else "not started"
+
     # -- execution --------------------------------------------------------
 
     def _lab_once(self) -> Lab:
         with self._lab_lock:
             if self._lab is None:
-                self._lab = self._lab_factory()
+                try:
+                    self._lab = self._lab_factory()
+                except Exception:
+                    self._lab_failed = True
+                    raise
+                self._lab_failed = False
             return self._lab
 
     def _execute(self, row: RunRow, sink: RecordingSink) -> None:

@@ -689,7 +689,7 @@ class TestFailures:
                 return 1
 
             def collection_info(self) -> dict[str, object]:
-                return {"vectors": [""], "sparse_vectors": [], "points": 1}
+                return {"vectors": [""], "sparse_vectors": [], "points": 1, "dimensions": None}
 
         monkeypatch.setattr(lab_module, "build_store", lambda *_args: DenseOnlyStore())
         with (

@@ -73,7 +73,13 @@ def _normalise(vector: list[float]) -> list[float]:
 
 
 class OllamaEmbedder:
-    """Multilingual embeddings from a local Ollama server."""
+    """Multilingual embeddings from a local Ollama server.
+
+    Vectors are L2-normalised here, as the Protocol requires: Ollama's raw
+    vectors are not guaranteed to be unit length. Qdrant ranks by cosine,
+    which ignores length, so an index built from raw vectors ranks the same.
+    Every vector must have the configured ``dimensions``.
+    """
 
     def __init__(
         self,
@@ -116,4 +122,10 @@ class OllamaEmbedder:
             raise EmbeddingError(
                 f"Ollama returned {type(embeddings).__name__} for {len(texts)} inputs"
             )
-        return embeddings
+        for vector in embeddings:
+            if len(vector) != self.dimensions:
+                raise EmbeddingError(
+                    f"Ollama model {self.model_name} returned a {len(vector)}-dimension vector; "
+                    f"{self.dimensions} are configured (EMBEDDING_DIMENSIONS)"
+                )
+        return [_normalise(vector) for vector in embeddings]
