@@ -90,6 +90,56 @@ RELATIONSHIP_TYPES: tuple[str, ...] = (
 # (graph relationships) excludes them; configuration C adds them.
 ONTOLOGY_RELATIONSHIP_TYPES: tuple[str, ...] = ("MAPS_TO", "SIMILAR_TO", "IS_A")
 
+# Every (relationship type, from label, to label) ingestion builds
+# (app.graph.relationship_rows); tests/test_api_graph_model.py keeps the two
+# in step. The graph schema route serves it.
+RELATIONSHIP_ENDPOINTS: tuple[tuple[str, str, str], ...] = (
+    ("AFFECTS", "Incident", "Game"),
+    ("AFFECTS_MARKET", "Incident", "Market"),
+    ("AVAILABLE_IN", "Game", "Market"),
+    ("AVAILABLE_VIA", "Game", "Channel"),
+    ("BELONGS_TO", "Game", "GameFamily"),
+    ("BELONGS_TO", "Player", "PlayerSegment"),
+    ("CATEGORISED_AS", "SupportCase", "SupportCategory"),
+    ("CONCERNS", "SupportCase", "Game"),
+    ("DEPLOYED_TO", "AppVersion", "Market"),
+    ("EXPOSED_TO", "Player", "Campaign"),
+    ("FROM_MARKET", "Document", "Market"),
+    ("FROM_MARKET", "SupportCase", "Market"),
+    ("HAS_CHUNK", "Document", "DocumentChunk"),
+    ("HAS_DRAW", "Game", "Draw"),
+    ("HAS_MECHANIC", "Game", "GameMechanic"),
+    ("INSTANCE_OF", "Game", "GameCategory"),
+    ("IS_A", "BusinessConcept", "BusinessConcept"),
+    ("MAPS_TO", "Channel", "BusinessConcept"),
+    ("MAPS_TO", "GameCategory", "BusinessConcept"),
+    ("MAPS_TO", "GameFamily", "BusinessConcept"),
+    ("MAPS_TO", "GameMechanic", "BusinessConcept"),
+    ("MAPS_TO", "IncidentType", "BusinessConcept"),
+    ("MAPS_TO", "PlayerSegment", "BusinessConcept"),
+    ("MAPS_TO", "SupportCategory", "BusinessConcept"),
+    ("OF_TYPE", "Incident", "IncidentType"),
+    ("PLAYS", "Player", "Game"),
+    ("PROMOTES", "Campaign", "Game"),
+    ("PROVIDED_BY", "PaymentMethod", "PaymentProvider"),
+    ("REFERENCES", "Document", "AppVersion"),
+    ("REFERENCES", "Document", "Campaign"),
+    ("REFERENCES", "Document", "Experiment"),
+    ("REFERENCES", "Document", "Game"),
+    ("REFERENCES", "Document", "Incident"),
+    ("RELATED_TO", "Incident", "Platform"),
+    ("RELATED_TO", "SupportCase", "Incident"),
+    ("RELATED_TO_APP_VERSION", "Incident", "AppVersion"),
+    ("RELATED_TO_VERSION", "Incident", "PlatformVersion"),
+    ("RUNS_ON", "Game", "Platform"),
+    ("SIMILAR_TO", "Game", "Game"),
+    ("TARGETS", "Campaign", "PlayerSegment"),
+    ("TARGETS", "Experiment", "PlayerSegment"),
+    ("USES", "Player", "Device"),
+    ("USES_PAYMENT", "Player", "PaymentMethod"),
+    ("VERSION_OF", "PlatformVersion", "Platform"),
+)
+
 
 _SCHEMA_STATEMENTS: tuple[str, ...] = (
     *(
@@ -258,6 +308,38 @@ def record_edge_summary_statement(label: str) -> str:
     """Per-type, per-direction relationship counts of one node of a registered label."""
     _require_label(label)
     return _RECORD_EDGE_SUMMARY.format(label=label)
+
+
+# ------------------------------------------------------------ graph explorer reads
+
+# Live node count of every registered label in one statement: each branch is
+# a count-store lookup, so it costs the same on any world size. Compared with
+# a dataset's _graph_stats.json to tell which world the graph holds.
+LABEL_COUNTS = "\nUNION ALL\n".join(
+    f"MATCH (n:{label}) RETURN '{label}' AS label, count(n) AS count" for label in NODE_LABELS
+)
+
+# One node by id. Ingestion gives every node an id unique across labels; the
+# LIMIT of 2 lets the caller refuse an id that is not.
+GRAPH_NODE = """
+MATCH (n {id: $id})
+RETURN labels(n) AS labels, properties(n) AS props
+LIMIT 2
+"""
+
+# The relationships meeting one node, optionally of one type ($rel_type null
+# for every type), in a stable order and cut at $limit. The caller asks for
+# one more than it shows to learn whether the list was cut.
+GRAPH_NEIGHBOURS = """
+MATCH (n {id: $id})-[r]-(m)
+WHERE $rel_type IS NULL OR type(r) = $rel_type
+WITH type(r) AS rel_type,
+     CASE WHEN startNode(r) = n THEN 'out' ELSE 'in' END AS direction,
+     m
+RETURN rel_type, direction, labels(m) AS labels, properties(m) AS props
+ORDER BY rel_type, direction, m.id
+LIMIT $limit
+"""
 
 
 # ------------------------------------------------------------ ontology reads

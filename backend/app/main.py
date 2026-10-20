@@ -3,7 +3,8 @@
 Wires the presentation surface: health, persisted query runs over pipelines
 A/B/C with recorded replayable events and run history (docs/07 sections 3-6,
 ADR-007), the fixed demo question set, the latest published benchmark
-summary, and the Data Model reads (worlds, dictionary, rows and records).
+summary, the Data Model reads (worlds, dictionary, rows and records) and
+the graph reads (schema, ingestion statistics, nodes and neighbours).
 The query service reads its world and models from configuration only; it
 never reads the truth ledger (ADR-008).
 """
@@ -18,8 +19,9 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import data_model, health, queries
+from app.api import data_model, graph_model, health, queries
 from app.api.errors import install_handlers
+from app.api.graph_world import GraphWorldCheck
 from app.api.readiness import ReadinessChecks
 from app.api.runs import QueryService, start_lab
 from app.config import GraphConfig, api_from_env, from_env
@@ -53,6 +55,8 @@ def create_app(
     settings = api_from_env()
     configure_logging(settings.log_level)
     graph = graph_config if graph_config is not None else GraphConfig.from_env()
+    # One cache of which world the graph holds, for every route and readiness.
+    graph_world = GraphWorldCheck()
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -66,7 +70,7 @@ def create_app(
         factory = lab_factory if lab_factory is not None else default_lab
         service = QueryService(store, factory, graph)
         application.state.query_service = service
-        application.state.readiness = ReadinessChecks(service, graph)
+        application.state.readiness = ReadinessChecks(service, graph, world=graph_world)
         service.warm_up()
         yield
 
@@ -102,7 +106,12 @@ def create_app(
     application.include_router(
         queries.build_benchmarks_router(settings.benchmark_dir), prefix=API_PREFIX
     )
-    application.include_router(data_model.build_data_model_router(graph), prefix=API_PREFIX)
+    application.include_router(
+        data_model.build_data_model_router(graph, graph_world), prefix=API_PREFIX
+    )
+    application.include_router(
+        graph_model.build_graph_router(graph, graph_world), prefix=API_PREFIX
+    )
     return application
 
 

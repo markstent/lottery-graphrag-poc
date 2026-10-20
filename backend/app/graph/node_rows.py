@@ -91,6 +91,16 @@ def node_identity(table: str) -> tuple[str, str] | None:
     return NODE_TABLES.get(table)
 
 
+_LABEL_TABLES: dict[str, str] = {label: table for table, (label, _id) in NODE_TABLES.items()}
+
+
+def node_table(label: str) -> str | None:
+    """The source table whose rows become nodes of ``label``, or None for a
+    label no source table maps to (PrizeType from master data, BusinessConcept
+    from the ontology)."""
+    return _LABEL_TABLES.get(label)
+
+
 def _add(nodes: NodeRows, table: str, row: dict[str, Any], props: dict[str, Any]) -> None:
     """One node of ``table``'s label, its id and provenance from ``NODE_TABLES``."""
     label, id_column = NODE_TABLES[table]

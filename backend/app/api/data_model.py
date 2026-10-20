@@ -23,13 +23,14 @@ from contextlib import contextmanager
 from datetime import date, datetime, time
 from decimal import Decimal
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import duckdb
 from fastapi import APIRouter, Query
 from pydantic import JsonValue
 
 from app.api.errors import ApiError, ErrorCode, classify
+from app.api.graph_world import GraphWorldCheck
 from app.api.schemas import (
     ROWS_LIMIT_DEFAULT,
     ROWS_LIMIT_MAX,
@@ -65,14 +66,17 @@ def active_dataset_dir() -> Path:
 
 
 def _worlds(active: Path) -> dict[str, Path]:
-    """Every directory beside the active world that holds a world manifest."""
+    """Every directory beside the active world that holds a world manifest.
+    An entry that resolves outside that directory (a symlink) is refused."""
     root = active.parent
     if not root.is_dir():
         return {}
     return {
         path.name: path
         for path in sorted(root.iterdir())
-        if path.is_dir() and (path / WORLD_MANIFEST_NAME).is_file()
+        if path.resolve().parent == root
+        and path.is_dir()
+        and (path / WORLD_MANIFEST_NAME).is_file()
     }
 
 
@@ -269,11 +273,19 @@ def _select(columns: list[str], where: str) -> str:
     return f"SELECT {quoted} FROM read_parquet(?) {where} ORDER BY {quoted}"
 
 
-def _edges(graph: GraphConfig, label: str, node_id: str) -> list[EdgeSummary] | None:
-    """The node's edge summary, or None when the graph cannot be read."""
+GraphError = Literal["GRAPH_QUERY_ERROR", "OTHER_WORLD"]
+
+
+def _edges(
+    graph: GraphConfig, graph_world: GraphWorldCheck, active: Path, label: str, node_id: str
+) -> tuple[list[EdgeSummary] | None, GraphError | None]:
+    """The node's edge summary, or None with why: the graph holds another
+    world than ``active``, or it cannot be read."""
     try:
         reader = GraphReader(graph)
         try:
+            if graph_world(reader, active) is False:
+                return None, "OTHER_WORLD"
             summary = reader.edge_summary(label, node_id)
         finally:
             reader.close()
@@ -282,15 +294,17 @@ def _edges(graph: GraphConfig, label: str, node_id: str) -> list[EdgeSummary] | 
         if code != ErrorCode.GRAPH_QUERY_ERROR:
             raise
         logger.warning("record edge summary failed", exc_info=error, extra={"node_id": node_id})
-        return None
-    return [
+        return None, "GRAPH_QUERY_ERROR"
+    edges = [
         EdgeSummary.model_validate({"type": kind, "direction": way, "count": count})
         for kind, way, count in summary
     ]
+    return edges, None
 
 
-def build_data_model_router(graph: GraphConfig) -> APIRouter:
-    """The Data Model routes; record edge summaries read the graph at ``graph``."""
+def build_data_model_router(graph: GraphConfig, graph_world: GraphWorldCheck) -> APIRouter:
+    """The Data Model routes; record edge summaries read the graph at
+    ``graph`` unless ``graph_world`` finds it holding another world."""
     router = APIRouter()
 
     @router.get("/datasets", response_model=list[DatasetSummary])
@@ -391,13 +405,13 @@ def build_data_model_router(graph: GraphConfig) -> APIRouter:
             )
         label, id_column = identity
         node_id = str(row[id_column])
-        edges = _edges(graph, label, node_id)
+        edges, graph_error = _edges(graph, graph_world, active, label, node_id)
         return RecordOut(
             table=table,
             row=row,
-            graph_node_id=node_id,
+            graph_node_id=None if graph_error == "OTHER_WORLD" else node_id,
             edges=edges,
-            graph_error="GRAPH_QUERY_ERROR" if edges is None else None,
+            graph_error=graph_error,
         )
 
     return router

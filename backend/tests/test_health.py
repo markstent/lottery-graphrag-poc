@@ -16,17 +16,20 @@ from typing import Any
 import app.api.readiness as readiness_module
 import httpx
 import pytest
+from app.api.graph_world import GraphWorldCheck
 from app.api.readiness import (
     MODEL_CACHE_TTL_S,
     ModelReachability,
     Probe,
     ReadinessChecks,
+    graph_check,
     index_check,
     run_checks,
 )
 from app.api.runs import QueryService
 from app.api.schemas import Check
 from app.config import GenerationSettings, GraphConfig, RetrievalSettings
+from app.graph.ingest import GRAPH_STATS_FILE
 from app.lab import Lab
 from app.main import app, create_app
 from app.persistence.store import RunStore
@@ -123,6 +126,31 @@ def test_ready_is_200_when_every_check_passes(
     assert response.status_code == 200
     assert response.json()["ready"] is True
     assert all(check["ok"] for check in response.json()["checks"].values())
+
+
+@pytest.mark.parametrize(
+    ("players", "stats", "expected"),
+    [
+        (200, True, Check(ok=True, detail="Neo4j answered")),
+        (10_000, True, Check(ok=False, detail="the graph holds another world")),
+        (10_000, False, Check(ok=True, detail="Neo4j answered")),
+    ],
+)
+def test_graph_check_reports_a_graph_holding_another_world(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, players: int, stats: bool, expected: Check
+) -> None:
+    """The world check compares live label counts with the active dataset's
+    ingestion statistics; without statistics the world is unknown and the
+    check rests on the ping."""
+
+    class Counting(_AnsweringReader):
+        def label_counts(self) -> dict[str, int]:
+            return {"Player": players}
+
+    if stats:
+        (tmp_path / GRAPH_STATS_FILE).write_text(json.dumps({"nodes": {"Player": 200}}))
+    monkeypatch.setattr(readiness_module, "GraphReader", Counting)
+    assert graph_check(GRAPH_DOWN, tmp_path, GraphWorldCheck()) == expected
 
 
 def test_readiness_never_builds_the_lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

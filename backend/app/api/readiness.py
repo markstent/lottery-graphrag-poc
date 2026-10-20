@@ -6,7 +6,9 @@ Four checks, reported separately from liveness:
   for a build; it reads the query service's state.
 - ``index``: the vector collection exists, holds points and, for a
   persistent index, its manifest names this code's record serialiser.
-- ``graph``: Neo4j answers ``RETURN 1`` within ``NEO4J_TIMEOUT_S``.
+- ``graph``: Neo4j answers ``RETURN 1`` within ``NEO4J_TIMEOUT_S`` and does
+  not hold another world than the configured dataset
+  (``app.api.graph_world``, cached for 30 s).
 - ``model``: the generation model is reachable (``gateway.probe``: an
   Ollama model must be listed by its server, any other provider must answer
   a 1-token completion); the fake generator is always reachable. Results
@@ -31,6 +33,7 @@ from pathlib import Path
 
 import httpx
 
+from app.api.graph_world import GraphWorldCheck
 from app.api.runs import LabState, QueryService
 from app.api.schemas import Check, Readiness
 from app.config import GenerationSettings, GraphConfig, RetrievalSettings, from_env
@@ -136,10 +139,14 @@ def _index_state(settings: RetrievalSettings, store: VectorStore) -> Check:
     return Check(ok=True, detail=f"{points} points")
 
 
-def graph_check(config: GraphConfig) -> Check:
+def graph_check(config: GraphConfig, dataset_dir: Path | None, world: GraphWorldCheck) -> Check:
+    """Neo4j answers and, when ``dataset_dir`` is given, does not hold
+    another world than it (a dataset never ingested cannot be compared)."""
     reader = GraphReader(config)
     try:
         reader.ping()
+        if dataset_dir is not None and world(reader, dataset_dir) is False:
+            return Check(ok=False, detail="the graph holds another world")
     finally:
         reader.close()
     return Check(ok=True, detail="Neo4j answered")
@@ -206,14 +213,17 @@ class ReadinessChecks:
         graph: GraphConfig,
         settings: Callable[[], RetrievalSettings] = from_env,
         clock: Clock = time.monotonic,
+        world: GraphWorldCheck | None = None,
     ) -> None:
         self._service = service
         self._graph = graph
         self._settings = settings
         self.model = ModelReachability(clock)
+        self._world = world if world is not None else GraphWorldCheck(clock)
 
     def run(self) -> Readiness:
         lab, state = self._service.lab_status()
+        dataset_dir: Path | None = None
         try:
             settings = lab.settings if lab is not None else self._settings()
         except ValueError as error:
@@ -221,6 +231,7 @@ class ReadinessChecks:
             invalid = Check(ok=False, detail="the configuration is invalid")
             index = model = Probe(lambda: invalid, timeout_s=LAB_TIMEOUT_S)
         else:
+            dataset_dir = Path(settings.dataset_dir)
             store = lab.store if lab is not None else None
             index = Probe(
                 lambda: index_check(settings, store),
@@ -237,7 +248,7 @@ class ReadinessChecks:
                 "lab": Probe(lambda: lab_check(state), timeout_s=LAB_TIMEOUT_S),
                 "index": index,
                 "graph": Probe(
-                    lambda: graph_check(self._graph),
+                    lambda: graph_check(self._graph, dataset_dir, self._world),
                     timeout_s=self._graph.timeout_s,
                     failure="Neo4j did not answer.",
                 ),

@@ -277,3 +277,78 @@ class RecordOut(BaseModel):
     graph_node_id: str | None
     edges: list[EdgeSummary] | None
     graph_error: Literal["GRAPH_QUERY_ERROR", "OTHER_WORLD"] | None = None
+
+
+# -- Graph: schema, ingestion statistics, nodes and neighbours -----------------
+
+# Neighbour page size: a larger limit is a 422, never a clamp.
+NEIGHBOURS_LIMIT_DEFAULT = 25
+NEIGHBOURS_LIMIT_MAX = 100
+
+
+class RelTypeOut(BaseModel):
+    """One relationship type between the labels it joins."""
+
+    type: str
+    from_label: str
+    to_label: str
+
+
+class GraphSchema(BaseModel):
+    """Response for GET /graph/schema: the graph model and the traversal
+    settings pipelines B and C run with."""
+
+    labels: list[str]
+    relationship_types: list[RelTypeOut]
+    # Relationship types each graph pipeline may traverse, keyed B and C.
+    allow_list: dict[str, list[str]]
+    # Evidence-ranking weights, the same for B and C.
+    weights: dict[str, float]
+    # Traversal caps, the same for B and C.
+    caps: dict[str, int]
+    label_version: str
+
+
+class GraphStats(BaseModel):
+    """Response for GET /graph/stats, read from the active dataset's
+    ``_graph_stats.json``: what its ingestion pushed, not a live count."""
+
+    nodes_by_label: dict[str, int]
+    relationships_by_type: dict[str, int]
+    ingestion_version: str
+    source: Literal["ingestion"]
+
+
+class ProvenanceOut(BaseModel):
+    """The warehouse row a graph node was built from."""
+
+    table: str
+    row_id: str
+    dataset_id: str
+
+
+class NodeOut(BaseModel):
+    """One graph node; ``provenance`` is None for a node no source table
+    maps to (PrizeType, BusinessConcept)."""
+
+    node_id: str
+    labels: list[str]
+    properties: dict[str, JsonValue]
+    provenance: ProvenanceOut | None
+
+
+class NeighbourOut(BaseModel):
+    """One relationship from the node and the node at its other end."""
+
+    rel_type: str
+    direction: Literal["out", "in"]
+    node: NodeOut
+
+
+class Neighbours(BaseModel):
+    """Response for GET /graph/nodes/{node_id}/neighbours; ``truncated``
+    says the node has more neighbours than ``limit``."""
+
+    node_id: str
+    items: list[NeighbourOut]
+    truncated: bool

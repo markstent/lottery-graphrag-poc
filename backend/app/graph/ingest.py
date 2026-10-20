@@ -25,6 +25,8 @@ from app.graph.relationship_rows import RelationshipKey, RelationshipRows, build
 from app.ontology.loader import load_ontology
 
 BATCH_SIZE = 2_000
+# Written beside the dataset by the ingestion CLI; the API reads it.
+GRAPH_STATS_FILE = "_graph_stats.json"
 
 
 @dataclass(slots=True)

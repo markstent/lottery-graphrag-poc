@@ -25,6 +25,7 @@ from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_data_dictionary, build_world
+from app.graph.ingest import GRAPH_STATS_FILE
 from app.main import create_app
 from fastapi.testclient import TestClient
 
@@ -358,6 +359,52 @@ def test_record_of_a_dataset_the_graph_does_not_hold_says_so(
     assert record["graph_node_id"] is None and record["edges"] is None
     assert record["graph_error"] == "OTHER_WORLD"
     assert fake_reader.calls == []
+
+
+@pytest.mark.parametrize(("players", "edges"), [(200, True), (10_000, False)])
+def test_record_reads_edges_only_when_the_graph_holds_the_active_world(
+    dataset_root: Path,
+    client: TestClient,
+    fake_reader: type[FakeReader],
+    monkeypatch: pytest.MonkeyPatch,
+    players: int,
+    edges: bool,
+) -> None:
+    """The active world's ingestion statistics say 200 players; a graph
+    holding another number holds another world, so its edges are not shown."""
+    monkeypatch.setattr(
+        FakeReader, "label_counts", lambda _self: {"Player": players}, raising=False
+    )
+    stats = dataset_root / "tiny" / GRAPH_STATS_FILE
+    stats.write_text(json.dumps({"ingestion_version": "ing-test", "nodes": {"Player": 200}}))
+    try:
+        record = client.get("/api/v1/datasets/tiny/tables/players/rows/PLAYER_UK_000001").json()
+    finally:
+        stats.unlink()
+    assert record["row"]["player_id"] == "PLAYER_UK_000001"
+    if edges:
+        assert record["graph_node_id"] == "PLAYER_UK_000001" and record["edges"]
+        assert record["graph_error"] is None
+    else:
+        assert record["graph_node_id"] is None and record["edges"] is None
+        assert record["graph_error"] == "OTHER_WORLD"
+        assert fake_reader.calls == []
+
+
+def test_a_symlinked_world_outside_the_data_directory_is_never_listed(
+    dataset_root: Path, client: TestClient, tmp_path: Path
+) -> None:
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    (outside / "_manifest.json").write_text((dataset_root / "tiny" / "_manifest.json").read_text())
+    link = dataset_root / "escape"
+    link.symlink_to(outside, target_is_directory=True)
+    try:
+        listed = {d["dataset_id"] for d in client.get("/api/v1/datasets").json()}
+        response = client.get("/api/v1/datasets/escape")
+    finally:
+        link.unlink()
+    assert "escape" not in listed and response.status_code == 404
 
 
 def test_unknown_record_is_not_found(client: TestClient) -> None:

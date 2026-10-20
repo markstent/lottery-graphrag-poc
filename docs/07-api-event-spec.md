@@ -591,7 +591,7 @@ It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `l
   Start-up begins the build in a background thread; no route waits on it, a run started meanwhile waits for it, and a failed build is retried by the next run.
   Readiness never builds the lab or waits for a build.
 - `index`: the collection exists and holds points, and a persistent index's manifest names this code's record serialiser (5 s timeout).
-- `graph`: Neo4j answers `RETURN 1` within `NEO4J_TIMEOUT_S`.
+- `graph`: Neo4j answers `RETURN 1` within `NEO4J_TIMEOUT_S`, and does not hold another world than the configured dataset; otherwise the detail is `the graph holds another world` (see "Which world the graph holds" below).
 - `model`: reachable, not warm, through `gateway.probe`.
   The fake generator is always reachable.
   An Ollama-routed model (an `ollama/` or `ollama_chat/` model, or `GENERATION_API_BASE` equal to `OLLAMA_HOST`) is `available` when `GET {base}/api/tags` lists it within 5 s, where `base` is the one generation uses (`gateway.generation_api_base`: `GENERATION_API_BASE`, else LiteLLM's Ollama default `http://localhost:11434`), and `not pulled` otherwise; no generation is asked for, so a cold model is not loaded.
@@ -613,6 +613,7 @@ GET /api/v1/datasets/{dataset_id}/tables/{table}/rows/{row_id} RecordOut
 
 - A dataset is a directory with a `_manifest.json` beside the active world (`DATASET_DIR`, the world the lab is built from); `active` marks that world.
   Only those directories are listed or served, so the evaluator-only ledger, which lives outside that directory, is never reachable.
+  An entry that resolves outside that directory, such as a symlink to another place, is refused.
   Any other `dataset_id` is a 404 `NOT_FOUND`.
 - The routes read configuration and files only; they never wait for the lab build.
 - `DatasetDetail` carries the summary, the manifest's per-table provenance and `index_status` from the world's `vector-index.json` (`points` is its chunk count plus its record count), or null when no persistent index was built over the world.
@@ -627,10 +628,39 @@ GET /api/v1/datasets/{dataset_id}/tables/{table}/rows/{row_id} RecordOut
 - `rows/{row_id}` reads the row whose primary key is `row_id` (cast the same way): a 404 when none matches, a 409 when the row id is not unique in the table (link tables such as `incident_game_map`, whose first column repeats).
   `graph_node_id` follows the ingestion mapping (`app.graph.node_rows.NODE_TABLES`, the table-to-label-and-id rule ingestion builds every table node by): for a table that creates no nodes it is null and `edges` is empty.
   The graph holds the active world only and ids repeat across worlds, so a record of another world has `graph_node_id` and `edges` null and `graph_error` `OTHER_WORLD`.
+  The same holds for a record of the active world when the graph holds another world (see "Which world the graph holds" below).
   `edges` counts the node's relationships per type and direction in one bounded statement (`statements.record_edge_summary_statement`).
   When Neo4j cannot be read, the row is still returned, with `edges` null and `graph_error` `GRAPH_QUERY_ERROR`.
 
-Reserved for later phases (not implemented): experiments, dataset
-generation and scenario management, `GET /queries/{run_id}/evidence` (evidence is embedded
-in the results DTO), and benchmark submission/cancel (the harness runs via
-`make run-benchmark`; the API only publishes results).
+Phase 4 adds the graph reads, tested in `tests/test_api_graph_model.py`:
+
+```text
+GET /api/v1/graph/schema                          GraphSchema
+GET /api/v1/graph/stats                           GraphStats
+GET /api/v1/graph/nodes/{node_id}                 NodeOut
+GET /api/v1/graph/nodes/{node_id}/neighbours      Neighbours
+```
+
+- `schema` reads code and configuration only: the 29 node labels, every relationship type with the labels it joins (`statements.RELATIONSHIP_ENDPOINTS`, 44 triples kept in step with ingestion by a test), `allow_list` keyed `B` and `C` (`app.lab.bc_graph_settings`: C is the 22-type allow-list, B the same minus the three ontology types), the evidence-ranking `weights` and the traversal `caps` (`max_depth`, `max_nodes_per_hop`, `max_edges_per_node_type`, `max_total_nodes`), which are the same for B and C, and `label_version`.
+- `stats` reads the active dataset's `_graph_stats.json`, written by `python -m app.graph`, and works without Neo4j.
+  `nodes_by_label` is the file's node counts; `relationships_by_type` sums its per-triple counts per type; `ingestion_version` is `LABEL_VERSION` and the file's own `ingestion_version` joined by `/` (for example `v2/ing-20261020T141842Z`); `source` is always `ingestion`, because these are the counts the ingestion pushed, not a live count.
+  A dataset without the file is a 404 `NOT_FOUND`.
+- `nodes/{node_id}` returns the node's labels, its properties (Neo4j dates and times as ISO strings) and its `provenance`: the source `table` from the ingestion mapping (`NODE_TABLES`, read from label to table), the node's `source_record_id` as `row_id`, and the active dataset's directory name as `dataset_id`.
+  A node no source table maps to (`PrizeType` from master data, `BusinessConcept` from the ontology) has `provenance` null.
+  An unknown id is a 404 `NOT_FOUND`.
+- `neighbours` takes `limit` (default 25, maximum 100; a larger or smaller limit is a 422, never a clamp) and an optional `type`, which must be a registered relationship type, otherwise a 422 before any graph read.
+  Neighbours are ordered by relationship type, direction (`out` or `in`) and neighbour id; the statement fetches `limit + 1`, so `truncated` says the node has more.
+  Each neighbour is a `NodeOut` with its own provenance.
+- All Cypher is in `app/graph/statements.py` (`LABEL_COUNTS`, `GRAPH_NODE`, `GRAPH_NEIGHBOURS`), with every limit a parameter.
+  Each request opens one reader, closed in a finally, and each statement runs once under `NEO4J_TIMEOUT_S`, without the driver's retries.
+  A Neo4j failure is a `GRAPH_QUERY_ERROR`: 503 and retryable when the database is unreachable or busy, 500 otherwise, with the driver's text logged only.
+
+Which world the graph holds.
+Neo4j holds one ingested world at a time, and node ids repeat across worlds.
+`app.api.graph_world.graph_world_matches` compares the live node count of every label (one statement) with the active dataset's `_graph_stats.json`.
+It returns null when the dataset has no statistics file, so the world cannot be compared.
+The result is cached for 30 s, for the last dataset and statistics file checked, so a re-ingestion that rewrites the file is seen at once.
+When the counts differ, the node routes return 409 `VALIDATION_ERROR` with the message `the graph holds a different world than the active dataset`, a record's `graph_error` is `OTHER_WORLD`, and the readiness graph check fails.
+Equal counts are a fingerprint, not a proof: another world with the same count for every label would pass.
+
+Reserved for later phases (not implemented): experiments, dataset generation and scenario management, `GET /queries/{run_id}/evidence` (evidence is embedded in the results DTO), and benchmark submission/cancel (the harness runs via `make run-benchmark`; the API only publishes results).

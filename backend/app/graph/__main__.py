@@ -16,9 +16,7 @@ from neo4j.exceptions import Neo4jError, ServiceUnavailable
 
 from app.config import DEFAULT_DATASET_DIR, GraphConfig
 from app.graph import mapping
-from app.graph.ingest import ingest
-
-GRAPH_STATS_FILE = "_graph_stats.json"
+from app.graph.ingest import GRAPH_STATS_FILE, ingest
 
 
 def main(argv: list[str] | None = None) -> int:

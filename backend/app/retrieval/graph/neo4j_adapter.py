@@ -39,26 +39,55 @@ class GraphReader:
         )
         return list(result.records)
 
-    def ping(self) -> None:
-        """Run the trivial statement once, without the driver's retries, so
-        an unreachable database fails within the configured timeout."""
+    def _records_once(self, statement: str, params: dict[str, Any]) -> list[Any]:
+        """Run one statement once under the configured timeout, without the
+        driver's retries, so an unreachable database fails within it."""
         from neo4j import Query
 
         with self._driver.session(database=self._database) as session:
-            session.run(Query(statements.PING, timeout=self._timeout_s)).consume()
+            return list(session.run(Query(statement, timeout=self._timeout_s), params))
+
+    def ping(self) -> None:
+        """Run the trivial statement once."""
+        self._records_once(statements.PING, {})
 
     def edge_summary(self, label: str, node_id: str) -> list[tuple[str, str, int]]:
-        """(relationship type, direction, count) of every relationship
-        meeting one node. Like ``ping`` it runs once, without the driver's
-        retries, so an unreachable database fails within the timeout."""
-        from neo4j import Query
-
-        query = Query(statements.record_edge_summary_statement(label), timeout=self._timeout_s)
-        params = {"id": node_id, "limit": statements.RECORD_EDGE_SUMMARY_LIMIT}
-        with self._driver.session(database=self._database) as session:
-            records = list(session.run(query, params))
+        """(relationship type, direction, count) of every relationship meeting one node."""
+        records = self._records_once(
+            statements.record_edge_summary_statement(label),
+            {"id": node_id, "limit": statements.RECORD_EDGE_SUMMARY_LIMIT},
+        )
         return [
             (str(record["rel_type"]), str(record["direction"]), int(record["count"]))
+            for record in records
+        ]
+
+    def label_counts(self) -> dict[str, int]:
+        """Live node count of every registered label."""
+        records = self._records_once(statements.LABEL_COUNTS, {})
+        return {str(record["label"]): int(record["count"]) for record in records}
+
+    def node(self, node_id: str) -> list[tuple[list[str], dict[str, Any]]]:
+        """(labels, properties) of the nodes with this id: none, one, or two
+        when the id is not unique."""
+        records = self._records_once(statements.GRAPH_NODE, {"id": node_id})
+        return [(list(record["labels"]), dict(record["props"])) for record in records]
+
+    def node_neighbours(
+        self, node_id: str, rel_type: str | None, limit: int
+    ) -> list[tuple[str, str, list[str], dict[str, Any]]]:
+        """(relationship type, direction, labels, properties) of up to
+        ``limit`` neighbours, ordered by type, direction and neighbour id."""
+        records = self._records_once(
+            statements.GRAPH_NEIGHBOURS, {"id": node_id, "rel_type": rel_type, "limit": limit}
+        )
+        return [
+            (
+                str(record["rel_type"]),
+                str(record["direction"]),
+                list(record["labels"]),
+                dict(record["props"]),
+            )
             for record in records
         ]
 

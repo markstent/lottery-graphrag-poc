@@ -63,11 +63,12 @@ class ApiErrorBody(BaseModel):
 class ApiError(Exception):
     """An HTTP failure with its own status and code, rendered as the envelope."""
 
-    def __init__(self, status: int, code: ErrorCode, message: str) -> None:
+    def __init__(self, status: int, code: ErrorCode, message: str, retryable: bool = False) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
+        self.retryable = retryable
 
 
 # The one sentence each run failure shows; the exception text goes to the log.
@@ -147,7 +148,7 @@ def install_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ApiError)
     async def api_error(_request: Request, exc: ApiError) -> JSONResponse:
-        return _respond(exc.status, exc.code, exc.message)
+        return _respond(exc.status, exc.code, exc.message, exc.retryable)
 
     @app.exception_handler(RequestValidationError)
     async def validation(_request: Request, exc: RequestValidationError) -> JSONResponse:
