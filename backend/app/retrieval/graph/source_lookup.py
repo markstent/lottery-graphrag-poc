@@ -134,6 +134,30 @@ RECORD_LABELS: dict[str, str] = {
 }
 _RECORD_TABLES: dict[str, str] = {label: table for table, label in RECORD_LABELS.items()}
 
+# Record tables whose ids are seed candidates when a question names them,
+# with each table's id prefix (the id resolver's only allow-list). Seeds are
+# structural record nodes. The other record tables are deliberately not
+# seeds, and adding one changes which question tokens resolve in B and C (a
+# retrieval-methodology change, not configuration):
+# - payment_providers, incident_types, support_categories, player_segments,
+#   game_mechanics, channels: reference and taxonomy data, reached through
+#   traversal (and, in pipeline C, through concept bindings), not question
+#   anchors;
+# - experiments, support_cases, devices: outside the approved seed policy;
+#   support cases would also share their ``SUP_`` prefix with Supplier ids.
+SEED_ID_PREFIXES: dict[str, str] = {
+    "incidents": "INC_",
+    "markets": "MKT_",
+    "platform_versions": "PLV_",
+    "platforms": "PLT_",
+    "games": "GAME_",
+    "app_versions": "APPV_",
+    "campaigns": "CMP_",
+    "game_families": "FAM_",
+    "players": "PLAYER_",
+    "payment_methods": "PAY_",
+}
+
 # The market column of tables whose market is not called ``market_id``; the
 # record serialiser exposes the same column as the block's market.
 MARKET_COLUMNS: dict[str, str] = {"payment_providers": "home_market_id"}

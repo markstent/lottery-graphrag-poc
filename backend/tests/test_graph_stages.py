@@ -17,6 +17,7 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import pyarrow.parquet as pq
 import pytest
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
@@ -26,10 +27,16 @@ from app.graph.node_rows import build_node_rows
 from app.graph.reader import load_dataset
 from app.graph.relationship_rows import build_relationship_rows
 from app.lab import Lab, graph_pipelines
-from app.retrieval.graph import stages
+from app.retrieval.graph import resolution, stages
 from app.retrieval.graph.neo4j_adapter import build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
-from app.retrieval.graph.source_lookup import SourceLookup, record_blocks_of
+from app.retrieval.graph.resolution import _SEED_PREFIXES, IdEntityResolver
+from app.retrieval.graph.source_lookup import (
+    RECORD_LABELS,
+    SEED_ID_PREFIXES,
+    SourceLookup,
+    record_blocks_of,
+)
 from app.retrieval.graph.traversal import NeighbourEdge, StaticNeighbourProvider
 from app.retrieval.standard.index import index_corpus, load_indexed_corpus
 
@@ -88,18 +95,16 @@ class _TinyWorldReader:
 def _provider(
     relationships: dict[tuple[str, str, str], list[dict[str, Any]]],
 ) -> StaticNeighbourProvider:
-    """Every relationship row in both directions with both end labels, as the
-    undirected Neo4j match sees it (the row-based constructor can only infer
-    a source label from edges pointing at it)."""
+    """Every relationship row, indexed both ways by the provider with both
+    end labels, as the undirected Neo4j match sees it."""
     adjacency: dict[str, list[NeighbourEdge]] = {}
+    labels: dict[str, str] = {}
     for (rel_type, label_a, label_b), rows in relationships.items():
         for row in rows:
             a_id, b_id = str(row["a_id"]), str(row["b_id"])
             adjacency.setdefault(a_id, []).append(NeighbourEdge(a_id, rel_type, b_id, label_b))
-            adjacency.setdefault(b_id, []).append(NeighbourEdge(b_id, rel_type, a_id, label_a))
-    provider = StaticNeighbourProvider({})
-    provider._adjacency = adjacency
-    return provider
+            labels[a_id], labels[b_id] = label_a, label_b
+    return StaticNeighbourProvider(adjacency, labels)
 
 
 def tiny_world_pipelines(dataset_dir: Path) -> dict[str, GraphRagPipeline]:
@@ -236,6 +241,64 @@ def test_run_composes_the_stages_in_order(monkeypatch: pytest.MonkeyPatch) -> No
         monkeypatch.setattr(stages, name, recording)
     build_pipeline().run("Why did checkout fail in Greece?")
     assert calls == list(STAGE_ORDER)
+
+
+def test_reverse_edge_labels_come_from_labels_then_pointing_edges() -> None:
+    """A reverse edge is labelled from ``labels`` when given, else from the
+    first edge pointing at its target, else ""."""
+    adjacency = {
+        "INC_1": [NeighbourEdge("INC_1", "AFFECTS", "GAME_1", "Game")],
+        "GAME_1": [NeighbourEdge("GAME_1", "AVAILABLE_IN", "MKT_1", "Market")],
+        "DOC_1": [NeighbourEdge("DOC_1", "REFERENCES", "INC_1", "Incident")],
+    }
+
+    def reverse_labels(provider: StaticNeighbourProvider) -> dict[str, str]:
+        edges = provider.neighbours(
+            ["GAME_1", "MKT_1", "INC_1"], ("AFFECTS", "AVAILABLE_IN", "REFERENCES"), 9, ()
+        )
+        return {f"{e.from_id}>{e.to_id}": e.to_label for e in edges}
+
+    assert reverse_labels(StaticNeighbourProvider(adjacency)) == {
+        "GAME_1>INC_1": "Incident",
+        "GAME_1>MKT_1": "Market",
+        "MKT_1>GAME_1": "Game",
+        "INC_1>GAME_1": "Game",
+        "INC_1>DOC_1": "",
+    }
+    labelled = StaticNeighbourProvider(adjacency, {"DOC_1": "Document"})
+    assert reverse_labels(labelled)["INC_1>DOC_1"] == "Document"
+
+
+TODAYS_SEED_PREFIXES = frozenset(
+    {"INC_", "MKT_", "PLV_", "PLT_", "GAME_", "APPV_", "CMP_", "FAM_", "PLAYER_", "PAY_"}
+)
+
+
+def test_seed_prefixes_come_from_the_schema_registry(tiny_dataset: Path) -> None:
+    """The seedable-table registry is the id resolver's allow-list. It holds
+    exactly the approved seed prefixes, over record tables only, and each
+    prefix is the one every id of its table carries."""
+    assert set(_SEED_PREFIXES) == set(SEED_ID_PREFIXES.values()) == TODAYS_SEED_PREFIXES
+    assert set(SEED_ID_PREFIXES) <= set(RECORD_LABELS)
+    for table, prefix in SEED_ID_PREFIXES.items():
+        ids = pq.read_table(tiny_dataset / f"{table}.parquet").column(0).to_pylist()
+        assert ids and all(str(value).startswith(prefix) for value in ids), table
+
+
+def test_the_registry_drives_id_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A token resolves when its prefix is a registry prefix and only then:
+    record ids of tables outside the registry never seed."""
+    seedable = {f"{prefix}X1": RECORD_LABELS[table] for table, prefix in SEED_ID_PREFIXES.items()}
+    others = {"ITYPE_X1": "IncidentType", "SUP_X1": "SupportCase", "DEV_X1": "Device"}
+    known = {**seedable, **others}
+    resolver = IdEntityResolver(
+        lookup_node=lambda node_id: (known[node_id], True) if node_id in known else None,
+        market_aliases={},
+    )
+    question = " ".join(known)
+    assert [entity.entity_id for entity in resolver.resolve(question)] == list(seedable)
+    monkeypatch.setattr(resolution, "_SEED_PREFIXES", ("ITYPE_",))
+    assert [entity.entity_id for entity in resolver.resolve(question)] == ["ITYPE_X1"]
 
 
 if __name__ == "__main__":

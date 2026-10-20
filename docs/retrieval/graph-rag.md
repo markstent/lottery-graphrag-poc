@@ -60,6 +60,8 @@ Resolution is deterministic and model-free (`app/retrieval/graph/resolution.py`)
 
 - Pipeline B uses `IdEntityResolver`: graph ids found in the question by id pattern and safe prefix (checked against the graph), then market names and codes as whole words (`origin` `id` or `market_alias`).
   The safe prefixes are those of structural record nodes; document, chunk and concept ids are never seeds, so B never starts from the ontology or from a document.
+  They are declared once, per record table, in `SEED_ID_PREFIXES` (`app/retrieval/graph/source_lookup.py`), which also records why each other record table is not seedable; the resolver derives its allow-list from it.
+  The registry holds exactly `INC_`, `MKT_`, `PLV_`, `PLT_`, `GAME_`, `APPV_`, `CMP_`, `FAM_`, `PLAYER_` and `PAY_`; adding a table changes which question tokens resolve, which is a methodology change.
   It matches no ontology terms.
 - Pipeline C uses `TermEntityResolver`, which runs the same id resolver first and then the ontology term matcher (`app/ontology/terms.py`) over every concept label, synonym and local display name in the four market languages.
   Each matched term yields its concept (`origin="term"`, confidence 0.8).
@@ -149,7 +151,7 @@ Pipeline A never imports graph modules.
 
 - `backend/tests/test_resolution.py`: B and C resolvers, local-name and market bindings, query expansion, ranked and capped ontology expansion.
 - `backend/tests/test_graph_rag.py`: offline fixture graph: caps, weight-ordered cuts, replayable paths, ontology expansion, transactional edges never traversed, excluded labels, score components, the one-judge call and its events, the record-anchored fallback seed, node texts and titles, market scope in both channels, and determinism over the full event sequence and every outcome.
-- `backend/tests/test_graph_stages.py`: the stage order, and golden B and C event streams and results over the tiny world (ids, market aliases, terms, the fallback seed and the market scope), captured before the stage split.
+- `backend/tests/test_graph_stages.py`: the stage order, and golden B and C event streams and results over the tiny world (ids, market aliases, terms, the fallback seed and the market scope), captured before the stage split; the seed-prefix registry and the id resolver's use of it.
 - `backend/tests/test_lab_fairness.py`: the A/B/C contract, including the same prompt string and answer when A and B select the same evidence.
 - `backend/tests/test_context_budget_v2.py`: mixed selection across kinds, supersession before judging, dedupe of chunks only, the shared budget.
 - `backend/tests/test_graph_rag_live.py`: `GRAPH_E2E=1` against a real Neo4j (tiny world, seed 42): ingestion, A/B/C behaviour, determinism, B/C fairness.

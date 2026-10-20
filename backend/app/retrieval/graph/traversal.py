@@ -12,7 +12,7 @@ app.graph.statements), while tests use a static adjacency map.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -115,10 +115,20 @@ class StaticNeighbourProvider:
     """Adjacency-map provider for tests and offline runs.
 
     Edges are indexed in both directions, matching the undirected
-    ``(a)-[r]-(b)`` match the Neo4j adapter performs.
+    ``(a)-[r]-(b)`` match the Neo4j adapter performs. A reverse edge's
+    target label is the node's entry in ``labels`` when given, else the
+    label on the first edge that points at the node ("" when none does).
     """
 
-    def __init__(self, adjacency: dict[str, list[NeighbourEdge]]) -> None:
+    def __init__(
+        self,
+        adjacency: dict[str, list[NeighbourEdge]],
+        labels: Mapping[str, str] | None = None,
+    ) -> None:
+        known: dict[str, str] = dict(labels or {})
+        for edges in adjacency.values():
+            for edge in edges:
+                known.setdefault(edge.to_id, edge.to_label)
         self._adjacency: dict[str, list[NeighbourEdge]] = {}
         for node_id, edges in adjacency.items():
             for edge in edges:
@@ -128,7 +138,7 @@ class StaticNeighbourProvider:
                         from_id=edge.to_id,
                         rel_type=edge.rel_type,
                         to_id=edge.from_id,
-                        to_label=_label_of(adjacency, edge.from_id),
+                        to_label=known.get(edge.from_id, ""),
                     )
                 )
 
@@ -163,15 +173,6 @@ class StaticNeighbourProvider:
             if edge.rel_type == "MAPS_TO" and edge.to_label not in excluded_labels
         ]
         return bound[:limit]
-
-
-def _label_of(adjacency: dict[str, list[NeighbourEdge]], node_id: str) -> str:
-    """Label recorded for a node on any edge that points at it."""
-    for edges in adjacency.values():
-        for edge in edges:
-            if edge.to_id == node_id:
-                return edge.to_label
-    return ""
 
 
 def bounded_traversal(

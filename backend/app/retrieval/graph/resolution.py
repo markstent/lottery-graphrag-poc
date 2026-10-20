@@ -20,27 +20,18 @@ from typing import Protocol
 
 from app.ontology.model import LANGUAGES, Concept, Ontology
 from app.ontology.terms import TermMatcher
+from app.retrieval.graph.source_lookup import SEED_ID_PREFIXES
 
 _ID_TOKEN = re.compile(r"\b[A-Z]{2,12}(?:_[A-Z0-9]+)+\b")
 
-# Graph id prefixes that are safe seed candidates: structural record nodes
-# only. Player-transaction ids are never seeds: traversal limits plus the
-# relationship allow-list already keep retrieval away from transactional
-# neighbours. Documents and chunks are not seeds (their text reaches every
-# pipeline through the document channel, D-026), and concept ids are not
-# seeds for the id resolver, so pipeline B never starts from the ontology.
-_SEED_PREFIXES = (
-    "INC_",
-    "MKT_",
-    "PLV_",
-    "PLT_",
-    "GAME_",
-    "APPV_",
-    "CMP_",
-    "FAM_",
-    "PLAYER_",
-    "PAY_",
-)
+# Id prefixes that are safe seed candidates, one per seedable record table
+# (``source_lookup.SEED_ID_PREFIXES``). Player-transaction ids are never
+# seeds: traversal limits plus the relationship allow-list already keep
+# retrieval away from transactional neighbours. Documents and chunks are not seeds
+# (their text reaches every pipeline through the document channel, D-026),
+# and concept ids are not seeds for the id resolver, so pipeline B never
+# starts from the ontology.
+_SEED_PREFIXES = tuple(SEED_ID_PREFIXES.values())
 
 TERM_CONFIDENCE = 0.8
 BINDING_CONFIDENCE = 0.7
