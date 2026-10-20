@@ -24,7 +24,7 @@ from pydantic import JsonValue
 
 from app.api.data_model import active_dataset_dir
 from app.api.errors import RUN_ERROR_MESSAGES, ApiError, ErrorCode, classify
-from app.api.graph_world import GraphWorldCheck, read_graph_stats
+from app.api.graph_world import GRAPH_BUSY_MESSAGE, GraphWorldCheck, read_graph_stats
 from app.api.schemas import (
     NEIGHBOURS_LIMIT_DEFAULT,
     NEIGHBOURS_LIMIT_MAX,
@@ -51,10 +51,12 @@ OTHER_WORLD_MESSAGE = "the graph holds a different world than the active dataset
 def _reader(graph: GraphConfig, world: GraphWorldCheck, active: Path) -> Iterator[GraphReader]:
     """A reader on a graph holding the active world ``active``, closed afterwards.
 
-    A graph holding another world is a 409; a Neo4j failure is a
-    ``GRAPH_QUERY_ERROR`` (503 when retrying may help, else 500), with the
-    driver's text logged only.
+    A graph holding another world, or held by a benchmark job, is a 409; a
+    Neo4j failure is a ``GRAPH_QUERY_ERROR`` (503 when retrying may help,
+    else 500), with the driver's text logged only.
     """
+    if world.benchmark_running:
+        raise ApiError(409, ErrorCode.VALIDATION_ERROR, GRAPH_BUSY_MESSAGE, retryable=True)
     try:
         reader = GraphReader(graph)
         try:

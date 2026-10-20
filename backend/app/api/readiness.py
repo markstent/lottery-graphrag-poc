@@ -146,7 +146,10 @@ def _index_state(settings: RetrievalSettings, store: VectorStore) -> Check:
 
 def graph_check(config: GraphConfig, dataset_dir: Path | None, world: GraphWorldCheck) -> Check:
     """Neo4j answers and, when ``dataset_dir`` is given, does not hold
-    another world than it (a dataset never ingested cannot be compared)."""
+    another world than it (a dataset never ingested cannot be compared).
+    While a benchmark job holds the graph it is not ready, whatever it holds."""
+    if world.benchmark_running:
+        return Check(ok=False, detail="a benchmark run is using the graph")
     reader = GraphReader(config)
     try:
         reader.ping()

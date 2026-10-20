@@ -24,9 +24,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.api import benchmarks, data_model, graph_model, health, queries, reference
 from app.api.errors import install_handlers
-from app.api.graph_world import GraphWorldCheck
+from app.api.graph_world import GraphLease, GraphWorldCheck
 from app.api.readiness import ReadinessChecks
-from app.api.runs import GraphLease, QueryService, start_lab
+from app.api.runs import QueryService, start_lab
 from app.config import GraphConfig, api_from_env, from_env
 from app.lab import Lab
 from app.observability.logging import configure_logging, run_context
@@ -58,10 +58,11 @@ def create_app(
     settings = api_from_env()
     configure_logging(settings.log_level)
     graph = graph_config if graph_config is not None else GraphConfig.from_env()
-    # One cache of which world the graph holds, for every route and readiness.
-    graph_world = GraphWorldCheck()
     # One lease on the shared graph: live runs and benchmark jobs exclude each other.
     lease = GraphLease()
+    # One cache of which world the graph holds, for every route and readiness;
+    # bypassed while a benchmark job holds the lease.
+    graph_world = GraphWorldCheck(lease=lease)
     jobs = benchmarks.BenchmarkJobs(settings.benchmark_dir, lease)
 
     @asynccontextmanager
@@ -82,6 +83,7 @@ def create_app(
 
     application = FastAPI(title="Semantic Context Lab", version=__version__, lifespan=lifespan)
     application.state.benchmark_jobs = jobs
+    application.state.graph_lease = lease
     # Before CORS: the unhandled-error middleware must sit inside it.
     install_handlers(application)
 

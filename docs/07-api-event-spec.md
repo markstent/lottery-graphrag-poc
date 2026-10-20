@@ -581,6 +581,24 @@ GET  /api/v1/benchmarks/latest   published harness output only
 
 `GET /api/v1/benchmarks/latest` returns the newest official run of the whole bank, else the newest run of any kind with its label; the rule and the `summary.json` it serves are in `docs/evaluation/reproducibility.md`.
 
+### Benchmark jobs and the shared graph (Phase 4)
+
+`POST /api/v1/benchmarks` starts a benchmark job on a background thread of the API process, one at a time; it is tested in `tests/test_api_benchmarks.py`.
+A job ingests seeds 2027 and 2028 into the same Neo4j that Live Lab reads, then ingests seed 2026 again, so one graph lease keeps jobs and live runs apart:
+
+- `POST /api/v1/queries` answers 409 `VALIDATION_ERROR` "a benchmark run is using the graph; try again when it finishes" while a job runs, and `POST /api/v1/benchmarks` answers 409 while a live query or another job runs.
+- `GET /api/v1/graph/nodes/{node_id}` and `/neighbours` answer the same 409; a record read answers with `edges: null` and `graph_error: "OTHER_WORLD"`; the readiness `graph` check reads "a benchmark run is using the graph".
+  None of these consult the 30 s world cache while a job runs, and the cache does not survive a job.
+- `GET /api/v1/graph/stats` and `/graph/schema` read files only and are unaffected.
+
+Cancelling a job (`POST /api/v1/benchmarks/jobs/{job_id}/cancel`) is cooperative: the job stops before its next instance, or before preparing its next world.
+The instance in progress finishes first, with every repeat of every pipeline and its judging, so on an official run a cancel can take minutes; preparing a world (generation, ingestion, indexing) has no cancellation point inside it.
+A cancelled or failed job writes no `summary.json` and ingests seed 2026 again before it ends.
+
+Recovery after a server stop during a job: jobs live in memory, so the job is lost, its run directory has no `summary.json` and is never published, and Neo4j may still hold a benchmark world.
+Readiness then reports `the graph holds another world`; the server does not re-ingest at start-up.
+Run `make ingest-graph`, then check that `GET /api/v1/health/ready` reports every check green.
+
 Superseded in Phase 4: runs, events and results are persisted in the SQLite run store (ADR-007), keeping the newest `RUN_RETENTION` live runs, rather than held in memory for the last 50 runs.
 Phase 4 also adds `GET /api/v1/queries` (history) and `POST /api/v1/queries/{run_id}/cancel` (section 5), tested in `tests/test_api_runs.py`.
 

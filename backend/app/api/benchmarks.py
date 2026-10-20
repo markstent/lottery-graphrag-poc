@@ -33,7 +33,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from app.api.errors import ApiError, ApiErrorBody, ErrorCode, classify, run_error_body
-from app.api.runs import GraphLease
+from app.api.graph_world import GraphLease
 from app.api.schemas import (
     BenchmarkJob,
     BenchmarkRunOut,
@@ -208,7 +208,13 @@ class BenchmarkJobs:
             )
 
     def cancel(self, job_id: str) -> BenchmarkJob:
-        """Ask a running job to stop at its next instance; a 409 once it finished."""
+        """Ask a running job to stop; a 409 once it finished.
+
+        Cancellation is cooperative: the job stops before its next instance
+        or world, so the instance in progress (every repeat of every pipeline,
+        and its judging) finishes first, which can take minutes on an
+        official run. The job then ingests the presentation world again.
+        """
         with self._lock:
             job = self._jobs.get(job_id)
             if job is not None and job.status != "running":
@@ -318,6 +324,8 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
 
     @router.post("/benchmarks/jobs/{job_id}/cancel", status_code=202, response_model=BenchmarkJob)
     def cancel_job(job_id: str) -> BenchmarkJob:
+        """Request the job to stop before its next instance; the instance in
+        progress finishes first, so the job stays running until then."""
         return jobs.cancel(job_id)
 
     # Last: the run id is a free path segment.

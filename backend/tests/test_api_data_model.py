@@ -391,6 +391,35 @@ def test_record_reads_edges_only_when_the_graph_holds_the_active_world(
         assert fake_reader.calls == []
 
 
+def test_record_shows_no_edges_while_a_benchmark_holds_the_graph(
+    dataset_root: Path,
+    client: TestClient,
+    fake_reader: type[FakeReader],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cached match is never served while a benchmark job has another world loaded."""
+    monkeypatch.setattr(FakeReader, "label_counts", lambda _self: {"Player": 200}, raising=False)
+    stats = dataset_root / "tiny" / GRAPH_STATS_FILE
+    stats.write_text(json.dumps({"ingestion_version": "ing-test", "nodes": {"Player": 200}}))
+    url = "/api/v1/datasets/tiny/tables/players/rows/PLAYER_UK_000001"
+    lease = client.app.state.graph_lease  # type: ignore[attr-defined]
+    try:
+        assert client.get(url).json()["edges"]  # the match is now cached
+        lease.take_benchmark()
+        try:
+            record = client.get(url).json()
+        finally:
+            lease.release_benchmark()
+        after = client.get(url).json()
+    finally:
+        stats.unlink()
+    assert record["row"]["player_id"] == "PLAYER_UK_000001"
+    assert record["graph_node_id"] is None and record["edges"] is None
+    assert record["graph_error"] == "OTHER_WORLD"
+    assert fake_reader.calls == [("Player", "PLAYER_UK_000001")] * 2
+    assert after["edges"] and after["graph_error"] is None
+
+
 def test_a_symlinked_world_outside_the_data_directory_is_never_listed(
     dataset_root: Path, client: TestClient, tmp_path: Path
 ) -> None:

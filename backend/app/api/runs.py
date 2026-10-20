@@ -30,14 +30,8 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Literal
 
-from app.api.errors import (
-    CANCELLED_BODY,
-    ApiError,
-    ApiErrorBody,
-    ErrorCode,
-    classify,
-    run_error_body,
-)
+from app.api.errors import CANCELLED_BODY, ApiErrorBody, ErrorCode, classify, run_error_body
+from app.api.graph_world import GraphLease
 from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
 from app.events import (
@@ -188,50 +182,6 @@ def start_lab(settings: RetrievalSettings) -> Lab:
 
 def _now() -> str:
     return datetime.now(UTC).isoformat()
-
-
-GRAPH_BUSY_MESSAGE = "a benchmark run is using the graph; try again when it finishes"
-QUERY_RUNNING_MESSAGE = "a live query is using the graph; try again when it finishes"
-JOB_RUNNING_MESSAGE = "a benchmark job is already running; one runs at a time"
-
-
-class GraphLease:
-    """Who holds the shared graph: any number of live runs, or one benchmark job.
-
-    A benchmark job re-ingests other worlds into the Neo4j that live runs
-    read, so neither starts while the other holds the graph; each refusal is
-    a 409 a client may retry. ``app.main`` owns the one lease and hands it to
-    the query service and the benchmark jobs. Safe for concurrent calls.
-    """
-
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._queries = 0
-        self._benchmark = False
-
-    def take_query(self) -> None:
-        with self._lock:
-            if self._benchmark:
-                raise ApiError(409, ErrorCode.VALIDATION_ERROR, GRAPH_BUSY_MESSAGE, retryable=True)
-            self._queries += 1
-
-    def release_query(self) -> None:
-        with self._lock:
-            self._queries -= 1
-
-    def take_benchmark(self) -> None:
-        with self._lock:
-            if self._benchmark:
-                raise ApiError(409, ErrorCode.VALIDATION_ERROR, JOB_RUNNING_MESSAGE, retryable=True)
-            if self._queries:
-                raise ApiError(
-                    409, ErrorCode.VALIDATION_ERROR, QUERY_RUNNING_MESSAGE, retryable=True
-                )
-            self._benchmark = True
-
-    def release_benchmark(self) -> None:
-        with self._lock:
-            self._benchmark = False
 
 
 class QueryService:

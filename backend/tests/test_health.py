@@ -16,7 +16,7 @@ from typing import Any
 import app.api.readiness as readiness_module
 import httpx
 import pytest
-from app.api.graph_world import GraphWorldCheck
+from app.api.graph_world import GraphLease, GraphWorldCheck
 from app.api.readiness import (
     MODEL_CACHE_TTL_S,
     ModelReachability,
@@ -151,6 +151,31 @@ def test_graph_check_reports_a_graph_holding_another_world(
         (tmp_path / GRAPH_STATS_FILE).write_text(json.dumps({"nodes": {"Player": 200}}))
     monkeypatch.setattr(readiness_module, "GraphReader", Counting)
     assert graph_check(GRAPH_DOWN, tmp_path, GraphWorldCheck()) == expected
+
+
+def test_graph_check_is_not_ready_while_a_benchmark_holds_the_graph(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A match cached before the job is not served while it runs, nor after it."""
+    calls: list[int] = []
+
+    class Counting(_AnsweringReader):
+        def label_counts(self) -> dict[str, int]:
+            calls.append(1)
+            return {"Player": 200}
+
+    (tmp_path / GRAPH_STATS_FILE).write_text(json.dumps({"nodes": {"Player": 200}}))
+    monkeypatch.setattr(readiness_module, "GraphReader", Counting)
+    lease = GraphLease()
+    world = GraphWorldCheck(lease=lease)
+    assert graph_check(GRAPH_DOWN, tmp_path, world).ok
+    lease.take_benchmark()
+    busy = graph_check(GRAPH_DOWN, tmp_path, world)
+    lease.release_benchmark()
+    assert busy == Check(ok=False, detail="a benchmark run is using the graph")
+    assert graph_check(GRAPH_DOWN, tmp_path, world).ok
+    # Checked once before the job and once after: the cache did not survive it.
+    assert len(calls) == 2
 
 
 def test_readiness_never_builds_the_lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

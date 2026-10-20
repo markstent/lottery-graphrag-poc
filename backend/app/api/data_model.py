@@ -280,7 +280,10 @@ def _edges(
     graph: GraphConfig, graph_world: GraphWorldCheck, active: Path, label: str, node_id: str
 ) -> tuple[list[EdgeSummary] | None, GraphError | None]:
     """The node's edge summary, or None with why: the graph holds another
-    world than ``active``, or it cannot be read."""
+    world than ``active`` (always so while a benchmark job holds it), or it
+    cannot be read."""
+    if graph_world.benchmark_running:
+        return None, "OTHER_WORLD"
     try:
         reader = GraphReader(graph)
         try:
