@@ -33,7 +33,7 @@ from typing import Any
 from fastapi import APIRouter
 
 from app.api.errors import ApiError, ApiErrorBody, ErrorCode, classify, run_error_body
-from app.api.graph_world import GraphLease
+from app.api.graph_world import GraphLease, LeaseHold
 from app.api.schemas import (
     BenchmarkJob,
     BenchmarkRunOut,
@@ -45,7 +45,7 @@ from app.api.schemas import (
     QuestionOut,
 )
 from app.evaluation.bank import STRATA
-from app.evaluation.catalogue import instance_scores, question_catalogue
+from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import load_frozen_bank
 from app.evaluation.official import (
     OFFICIAL_SEEDS,
@@ -63,6 +63,8 @@ from app.observability.logging import run_context
 logger = logging.getLogger(__name__)
 
 Published = tuple[str, dict[str, Any]]
+
+LEDGER_MISMATCH_MESSAGE = "the truth ledger does not match the frozen bank; ground the bank again"
 
 
 def published_runs(runs_dir: Path) -> list[Published]:
@@ -126,7 +128,11 @@ def _questions(runs_dir: Path, name: str | None) -> list[QuestionOut]:
             f"no frozen bank for world seed {PRESENTATION_SEED}; run a benchmark to ground it",
         )
     bank = load_frozen_bank(paths.bank_path)
-    cards = question_catalogue(bank, paths.ledger_path)
+    try:
+        cards = question_catalogue(bank, paths.ledger_path)
+    except LedgerMismatch as error:
+        logger.warning("question catalogue refused", extra={"reason": str(error)})
+        raise ApiError(409, ErrorCode.VALIDATION_ERROR, LEDGER_MISMATCH_MESSAGE) from None
     run = (
         _published(runs_dir, name)
         if name is not None
@@ -177,7 +183,7 @@ class BenchmarkJobs:
             preflight(request.kind, request.repeats)
         except ValueError as error:
             raise ApiError(422, ErrorCode.VALIDATION_ERROR, str(error)) from None
-        self._lease.take_benchmark()
+        hold = self._lease.take_benchmark()
         try:
             job = _Job(job_id=f"JOB-{uuid.uuid4().hex[:12].upper()}", cancelled=threading.Event())
             with self._lock:
@@ -185,12 +191,12 @@ class BenchmarkJobs:
             out_dir = self._runs_dir / run_id(request.kind)
             threading.Thread(
                 target=self._execute,
-                args=(job, request, out_dir),
+                args=(job, request, out_dir, hold),
                 name=f"benchmark-{job.job_id}",
                 daemon=True,
             ).start()
         except BaseException:
-            self._lease.release_benchmark()
+            hold.release()
             raise
         return self.get(job.job_id)
 
@@ -229,7 +235,10 @@ class BenchmarkJobs:
         with self._lock:
             return list(self._jobs)
 
-    def _execute(self, job: _Job, request: BenchmarkStart, out_dir: Path) -> None:
+    def _execute(self, job: _Job, request: BenchmarkStart, out_dir: Path, hold: LeaseHold) -> None:
+        """Run the job; whatever ends it, the job ends with a terminal status,
+        published only after the graph is free (``run_benchmark`` has already
+        restored the presentation graph)."""
         with run_context(run_id=job.job_id):
             try:
                 run_benchmark(
@@ -242,15 +251,17 @@ class BenchmarkJobs:
                     cancelled=job.cancelled,
                     on_progress=lambda seed, done, total: self._progress(job, seed, done, total),
                 )
-                self._finish(job, "completed", run_id=out_dir.name)
+                self._finish(job, hold, "completed", run_id=out_dir.name)
             except BenchmarkCancelled:
-                self._finish(job, "cancelled")
-            except Exception as error:  # surfaced as a typed error, never a trace
+                self._finish(job, hold, "cancelled")
+            except BaseException as error:  # surfaced as a typed error, never a trace
                 code, _retryable = classify(error)
                 logger.error("benchmark job failed", exc_info=error, extra={"error_code": code})
-                self._finish(job, "failed", error=run_error_body(error))
+                self._finish(job, hold, "failed", error=run_error_body(error))
+                if isinstance(error, (KeyboardInterrupt, SystemExit)):
+                    raise  # recorded; shutdown still sees it
             finally:
-                self._lease.release_benchmark()
+                hold.release()
 
     def _progress(self, job: _Job, seed: int, done: int, total: int) -> None:
         with self._lock:
@@ -259,9 +270,17 @@ class BenchmarkJobs:
     def _finish(
         self,
         job: _Job,
+        hold: LeaseHold,
         status: JobStatus,
         run_id: str | None = None,
         error: ApiErrorBody | None = None,
+    ) -> None:
+        """Free the graph, then publish the job's terminal status."""
+        hold.release()
+        self._publish(job, status, run_id, error)
+
+    def _publish(
+        self, job: _Job, status: JobStatus, run_id: str | None, error: ApiErrorBody | None
     ) -> None:
         with self._lock:
             job.status, job.run_id, job.error = status, run_id, error

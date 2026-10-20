@@ -19,7 +19,7 @@ reaches it only through its benchmark routes.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -30,6 +30,10 @@ from app.evaluation.grounding import FrozenBank
 from app.evaluation.official import instance_means
 from app.evaluation.runner import PIPELINES
 from app.evaluation.truth_ledger import TruthScenario, load_ledger
+
+
+class LedgerMismatch(ValueError):
+    """The ledger is not the one the frozen bank was grounded on."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,7 +64,7 @@ def question_catalogue(bank: FrozenBank, ledger_path: Path) -> list[QuestionCard
     """Every instance of ``bank`` in bank order, with hidden truths read from
     the ledger the bank was grounded on; any other ledger is refused."""
     if hashlib.sha256(ledger_path.read_bytes()).hexdigest() != bank.ledger_hash:
-        raise ValueError(
+        raise LedgerMismatch(
             f"the ledger {ledger_path} is not the one the bank of world seed "
             f"{bank.world_seed} was grounded on; ground the bank again"
         )
@@ -115,6 +119,10 @@ def _ids(truth: Mapping[str, Any], key: str) -> str:
     return render_list([str(value) for value in truth[key]])
 
 
+def _was(items: Sequence[object]) -> str:
+    return "was" if len(items) == 1 else "were"
+
+
 def _note(facts: str, note: str) -> str:
     """The facts, then the ledger's own interpretation or note."""
     return f"{facts}; {note.rstrip('.')}"
@@ -151,7 +159,7 @@ def _platform_incident(truth: Mapping[str, Any]) -> str:
     return _note(
         f"Platform version {truth['root_cause_entity']} links incidents in primary market "
         f"{truth['primary_market']} and in {_ids(truth, 'related_markets')}, while "
-        f"{_ids(truth, 'unaffected_markets')} was unaffected",
+        f"{_ids(truth, 'unaffected_markets')} {_was(truth['unaffected_markets'])} unaffected",
         truth["unaffected_explanation"],
     )
 

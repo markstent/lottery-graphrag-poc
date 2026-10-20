@@ -266,11 +266,11 @@ def test_node_reads_are_refused_while_a_benchmark_holds_the_graph(
     """A cached match is never served while a benchmark job has another world loaded."""
     assert client.get(path).status_code == 200  # the match is now cached
     lease = client.app.state.graph_lease  # type: ignore[attr-defined]
-    lease.take_benchmark()
+    hold = lease.take_benchmark()
     try:
         response = client.get(path)
     finally:
-        lease.release_benchmark()
+        hold.release()
     assert response.status_code == 409
     assert error_of(response) == {
         "error_code": "VALIDATION_ERROR",
@@ -284,12 +284,12 @@ def test_stats_and_schema_read_files_while_a_benchmark_holds_the_graph(
     client: TestClient,
 ) -> None:
     lease = client.app.state.graph_lease  # type: ignore[attr-defined]
-    lease.take_benchmark()
+    hold = lease.take_benchmark()
     try:
         assert client.get("/api/v1/graph/stats").status_code == 200
         assert client.get("/api/v1/graph/schema").status_code == 200
     finally:
-        lease.release_benchmark()
+        hold.release()
 
 
 def test_node_read_fails_as_a_graph_query_error_when_neo4j_is_down(client: TestClient) -> None:

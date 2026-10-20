@@ -11,8 +11,9 @@ defined; a failed generation (a None score) is excluded from every metric.
 A pair exists when both compared pipelines have a value, and pairs cluster
 by logical question and world.
 
-Evaluator-only (ADR-008): the API reads the written ``summary.json`` from
-disk and never imports this module.
+Evaluator-only (ADR-008): retrieval code never imports this module. The API
+publishes the written ``summary.json`` from disk; only its benchmark routes
+import this module, for ``SUMMARY_SCHEMA_VERSION``.
 """
 
 from __future__ import annotations

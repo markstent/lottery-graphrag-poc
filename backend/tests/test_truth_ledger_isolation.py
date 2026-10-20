@@ -46,7 +46,7 @@ ISOLATED_MODULES = ("lab.py", "traces.py")
 FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "app.evaluation")
 # The only API modules that may import app.evaluation (Phase 4).
 EVALUATION_API_MODULES = frozenset({"benchmarks.py", "scoring.py"})
-LEDGER_STRINGS = ("data/truth", "truth_ledger")
+LEDGER_STRINGS = ("data/truth", "truth_ledger", "load_ledger")
 API_DIR = APP_DIR / "api"
 
 

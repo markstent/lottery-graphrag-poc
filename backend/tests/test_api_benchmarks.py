@@ -23,10 +23,12 @@ from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation import official
-from app.evaluation.catalogue import question_catalogue
+from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
 from app.evaluation.official import InstanceHook, WorldPaths, world_paths
 from app.evaluation.runner import WorldRun
+from app.evaluation.truth_ledger import load_ledger
+from app.events import TERMINAL_EVENT_TYPES
 from app.lab import Lab
 from app.main import create_app
 from app.scenarios.engine import apply_scenarios
@@ -335,6 +337,101 @@ def test_readiness_reports_the_benchmark_while_a_job_runs(
     client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke())
     graph = client_with_blocking_benchmark.get("/api/v1/health/ready").json()["checks"]["graph"]
     assert graph == {"ok": False, "detail": "a benchmark run is using the graph"}
+
+
+class Hold:
+    """Holds a status write until released, recording that it was reached."""
+
+    def __init__(self) -> None:
+        self.reached = threading.Event()
+        self.release = threading.Event()
+
+    def __call__(self) -> None:
+        self.reached.set()
+        assert self.release.wait(DEADLINE_S), "the test never released the status write"
+
+
+def test_the_graph_is_free_before_a_job_publishes_its_status(
+    client_with_blocking_benchmark: TestClient,
+    gate: threading.Event,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jobs = client_with_blocking_benchmark.app.state.benchmark_jobs  # type: ignore[attr-defined]
+    lease = client_with_blocking_benchmark.app.state.graph_lease  # type: ignore[attr-defined]
+    hold, running_at_publish = Hold(), []
+    publish = jobs._publish
+
+    def held_publish(*args: Any) -> None:
+        running_at_publish.append(lease.benchmark_running)
+        hold()
+        publish(*args)
+
+    monkeypatch.setattr(jobs, "_publish", held_publish)
+    job = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke()).json()
+    gate.set()
+    assert hold.reached.wait(DEADLINE_S)
+    status = client_with_blocking_benchmark.get(f"/api/v1/benchmarks/jobs/{job['job_id']}")
+    assert status.json()["status"] == "running"
+    query = client_with_blocking_benchmark.post("/api/v1/queries", json=QUERY)
+    hold.release.set()
+    assert running_at_publish == [False]
+    assert query.status_code == 202
+    assert wait_job(client_with_blocking_benchmark, job["job_id"])["status"] == "completed"
+    wait_query(client_with_blocking_benchmark, query.json()["run_id"])
+
+
+def test_the_graph_is_free_before_a_query_publishes_its_terminal_event(
+    client_with_blocking_benchmark: TestClient,
+    gate: threading.Event,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = client_with_blocking_benchmark.app.state.query_service.store  # type: ignore[attr-defined]
+    hold = Hold()
+    append = store.append_event
+
+    def held_append(run_id: str, event: dict[str, Any]) -> int:
+        if event["event_type"] in TERMINAL_EVENT_TYPES:
+            hold()
+        sequence: int = append(run_id, event)
+        return sequence
+
+    monkeypatch.setattr(store, "append_event", held_append)
+    query = client_with_blocking_benchmark.post("/api/v1/queries", json=QUERY).json()
+    assert hold.reached.wait(DEADLINE_S)
+    assert (
+        client_with_blocking_benchmark.get(f"/api/v1/queries/{query['run_id']}").json()["status"]
+        not in FINISHED
+    )
+    gate.set()
+    job = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke())
+    hold.release.set()
+    assert job.status_code == 202
+    assert wait_query(client_with_blocking_benchmark, query["run_id"])["status"] == "completed"
+    wait_job(client_with_blocking_benchmark, job.json()["job_id"])
+
+
+def test_a_job_ending_on_any_base_exception_is_failed_not_running(
+    client: TestClient, tmp_path: Path, runs_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class Abort(BaseException):
+        pass
+
+    class AbortingRunner(FakeRunner):
+        def run(self, on_instance: InstanceHook | None = None) -> WorldRun:
+            raise Abort
+
+    recorder = Recorder(tmp_path)
+
+    def factory(paths: WorldPaths, bank: FrozenBank, **options: Any) -> AbortingRunner:
+        fake = recorder.runner(paths, bank, **options)
+        return AbortingRunner(fake.seed, fake.bank, fake.kind, fake.depth, fake.pipelines, False)
+
+    monkeypatch.setattr(official, "default_steps", lambda: recorder.steps)
+    monkeypatch.setattr(official, "build_runner", factory)
+    job = client.post("/api/v1/benchmarks", json=smoke()).json()
+    finished = wait_job(client, job["job_id"])
+    assert finished["status"] == "failed" and finished["error"]["error_code"] == "RUN_ERROR"
+    assert client.post("/api/v1/queries", json=QUERY).status_code == 202
 
 
 @pytest.fixture
@@ -648,6 +745,36 @@ def test_hidden_truths_are_built_from_ledger_values_only(
     assert truth["SCN-002"]["expected_interpretation"] in devices
     conflict = cards["SCN-015"].hidden_truth or ""
     assert truth["SCN-015"]["conflicting_document"] in conflict
+
+
+def test_questions_over_a_ledger_the_bank_was_not_grounded_on_are_a_conflict(
+    client_with_bank: TestClient,
+) -> None:
+    ledger = world_paths(official.PRESENTATION_SEED).ledger_path
+    ledger.write_text(ledger.read_text() + "\n")
+    response = client_with_bank.get("/api/v1/benchmarks/questions")
+    assert response.status_code == 409
+    assert response.json()["error"] == {
+        "error_code": "VALIDATION_ERROR",
+        "message": "the truth ledger does not match the frozen bank; ground the bank again",
+        "retryable": False,
+    }
+
+
+@pytest.mark.parametrize(
+    ("unaffected", "verb"), [(["MKT_UK"], "was"), (["MKT_UK", "MKT_CZ"], "were")]
+)
+def test_unaffected_markets_take_the_right_verb(
+    tiny_bank: tuple[Path, Path, FrozenBank], unaffected: list[str], verb: str
+) -> None:
+    scenario = next(
+        s
+        for s in load_ledger(tiny_bank[1]).scenarios
+        if s.scenario_type == "cross_market_platform_incident"
+    )
+    truth = {**scenario.truth, "unaffected_markets": unaffected}
+    sentence = hidden_truth(scenario.model_copy(update={"truth": truth}))
+    assert f"while {' and '.join(unaffected)} {verb} unaffected;" in sentence
 
 
 def test_a_catalogue_refuses_a_ledger_the_bank_was_not_grounded_on(

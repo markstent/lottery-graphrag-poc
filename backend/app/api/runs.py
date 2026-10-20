@@ -31,7 +31,7 @@ from datetime import UTC, datetime
 from typing import Literal
 
 from app.api.errors import CANCELLED_BODY, ApiErrorBody, ErrorCode, classify, run_error_body
-from app.api.graph_world import GraphLease
+from app.api.graph_world import GraphLease, LeaseHold
 from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
 from app.events import (
@@ -216,14 +216,14 @@ class QueryService:
         """Store a queued run and start its worker; returns the run id.
         Raises a 409 ``ApiError``, storing nothing, while a benchmark job
         holds the graph."""
-        self._lease.take_query()
+        hold = self._lease.take_query()
         try:
-            return self._start(request)
+            return self._start(request, hold)
         except BaseException:
-            self._lease.release_query()
+            hold.release()
             raise
 
-    def _start(self, request: QueryRequest) -> str:
+    def _start(self, request: QueryRequest, hold: LeaseHold) -> str:
         run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"
         configurations = tuple(request.configurations)
         row = RunRow(
@@ -244,7 +244,7 @@ class QueryService:
         with self._lock:
             self._active[run_id] = sink
         worker = threading.Thread(
-            target=self._execute, args=(row, sink), name=f"query-{run_id}", daemon=True
+            target=self._execute, args=(row, sink, hold), name=f"query-{run_id}", daemon=True
         )
         worker.start()
         return run_id
@@ -319,17 +319,18 @@ class QueryService:
                 self._lab_failed = False
             return self._lab
 
-    def _execute(self, row: RunRow, sink: RecordingSink) -> None:
+    def _execute(self, row: RunRow, sink: RecordingSink, hold: LeaseHold) -> None:
         # Identifiers only in the log context: never the question or any answer text.
         with run_context(run_id=row.run_id):
             try:
                 outcome, status, current = self._run_pipelines(row, sink)
-                self._finish(sink, outcome, status, current)
+                self._finish(sink, outcome, status, current, hold)
             finally:
-                # Whatever happened, the run is no longer active and its waiters wake.
+                # Whatever happened, the run is no longer active and its waiters
+                # wake; the graph is free (already, unless the finish failed early).
+                hold.release()
                 with self._lock:
                     self._active.pop(row.run_id, None)
-                self._lease.release_query()
                 sink.close()
                 self.store.close()
 
@@ -391,8 +392,11 @@ class QueryService:
         body: ApiErrorBody | None,
         status: dict[str, str],
         current: str | None,
+        hold: LeaseHold,
     ) -> None:
-        """Decide the outcome, then write the one terminal event and the final row.
+        """Decide the outcome, free the graph, then write the one terminal
+        event and the final row, so a client that sees the final status can
+        start a benchmark job at once (the pipelines are done with the graph).
 
         Claiming the run as finishing under the lock settles a race with
         ``cancel``: a cancel accepted before the claim ends the run
@@ -409,6 +413,7 @@ class QueryService:
                 body = CANCELLED_BODY
         outcome = "completed" if body is None else _outcome_of(body.error_code)
         envelope = body.model_dump() if body is not None else None
+        hold.release()
         try:
             if current is not None and envelope is not None:
                 status[current] = outcome

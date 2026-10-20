@@ -169,9 +169,9 @@ def test_graph_check_is_not_ready_while_a_benchmark_holds_the_graph(
     lease = GraphLease()
     world = GraphWorldCheck(lease=lease)
     assert graph_check(GRAPH_DOWN, tmp_path, world).ok
-    lease.take_benchmark()
+    hold = lease.take_benchmark()
     busy = graph_check(GRAPH_DOWN, tmp_path, world)
-    lease.release_benchmark()
+    hold.release()
     assert busy == Check(ok=False, detail="a benchmark run is using the graph")
     assert graph_check(GRAPH_DOWN, tmp_path, world).ok
     # Checked once before the job and once after: the cache did not survive it.

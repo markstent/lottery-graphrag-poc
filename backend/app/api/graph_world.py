@@ -82,17 +82,16 @@ class GraphLease:
     def benchmark_running(self) -> bool:
         return self._benchmark
 
-    def take_query(self) -> None:
+    def take_query(self) -> LeaseHold:
+        """Hold the graph for one live run; a 409 while a benchmark job holds it."""
         with self._lock:
             if self._benchmark:
                 raise ApiError(409, ErrorCode.VALIDATION_ERROR, GRAPH_BUSY_MESSAGE, retryable=True)
             self._queries += 1
+        return LeaseHold(self._release_query)
 
-    def release_query(self) -> None:
-        with self._lock:
-            self._queries -= 1
-
-    def take_benchmark(self) -> None:
+    def take_benchmark(self) -> LeaseHold:
+        """Hold the graph for one benchmark job; a 409 while a job or a live run holds it."""
         with self._lock:
             if self._benchmark:
                 raise ApiError(409, ErrorCode.VALIDATION_ERROR, JOB_RUNNING_MESSAGE, retryable=True)
@@ -102,11 +101,38 @@ class GraphLease:
                 )
             self._benchmark = True
             self.generation += 1
+        return LeaseHold(self._release_benchmark)
 
-    def release_benchmark(self) -> None:
+    def _release_query(self) -> None:
+        with self._lock:
+            self._queries -= 1
+
+    def _release_benchmark(self) -> None:
         with self._lock:
             self._benchmark = False
             self.generation += 1
+
+
+class LeaseHold:
+    """One holder's claim on the graph. ``release`` is idempotent, so a
+    holder releases as soon as it is done with the graph (before it
+    publishes its final status) and again in a ``finally`` as a backstop."""
+
+    def __init__(self, release: Callable[[], None]) -> None:
+        self._release = release
+        self._lock = threading.Lock()
+        self._released = False
+
+    @property
+    def released(self) -> bool:
+        return self._released
+
+    def release(self) -> None:
+        with self._lock:
+            if self._released:
+                return
+            self._released = True
+        self._release()
 
 
 class GraphWorldCheck:

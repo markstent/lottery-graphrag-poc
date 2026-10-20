@@ -405,11 +405,11 @@ def test_record_shows_no_edges_while_a_benchmark_holds_the_graph(
     lease = client.app.state.graph_lease  # type: ignore[attr-defined]
     try:
         assert client.get(url).json()["edges"]  # the match is now cached
-        lease.take_benchmark()
+        hold = lease.take_benchmark()
         try:
             record = client.get(url).json()
         finally:
-            lease.release_benchmark()
+            hold.release()
         after = client.get(url).json()
     finally:
         stats.unlink()
