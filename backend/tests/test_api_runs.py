@@ -49,7 +49,8 @@ GRAPH = GraphConfig(uri="bolt://unused", user="unused", password="unused", datab
 FINISHED = frozenset({"completed", "failed", "cancelled"})
 ENVELOPE = {"event_id", "timestamp", "run_id", "pipeline", "event_type", "t_ms", "payload"}
 QUESTION = "Which incidents affected the Greek digital checkout on PLV_PAYMENTS_3?"
-SLOW_HOP_S = 0.3
+# The only timeout of a blocked test double: a deadline, never a pacing delay.
+DEADLINE_S = 15.0
 
 
 # -- doubles ------------------------------------------------------------------
@@ -69,9 +70,14 @@ class _Reader:
         pass
 
 
+class _FailingReader:
+    def close(self) -> None:
+        raise ConnectionError("bolt://internal-host:7687 reset during close")
+
+
 class SlowNeighbours:
-    """Delays every neighbour lookup until released, so a graph pipeline is
-    observably running."""
+    """Blocks every neighbour lookup until released, so a graph pipeline is
+    observably running for as long as the test needs."""
 
     def __init__(self, inner: NeighbourProvider, release: threading.Event) -> None:
         self._inner = inner
@@ -84,20 +90,21 @@ class SlowNeighbours:
         per_type: int,
         excluded_labels: tuple[str, ...],
     ) -> list[NeighbourEdge]:
-        self._release.wait(SLOW_HOP_S)
+        assert self._release.wait(DEADLINE_S), "the test never released the graph"
         return self._inner.neighbours(ids, rel_types, per_type, excluded_labels)
 
     def concept_bound(
         self, concept_id: str, limit: int, excluded_labels: tuple[str, ...]
     ) -> list[tuple[str, str]]:
-        self._release.wait(SLOW_HOP_S)
+        assert self._release.wait(DEADLINE_S), "the test never released the graph"
         return self._inner.concept_bound(concept_id, limit, excluded_labels)
 
 
 def offline_wiring(
-    neighbours: NeighbourProvider,
+    neighbours: NeighbourProvider, reader: object | None = None
 ) -> Callable[[Lab, GraphConfig, EventSink | None], WiredGraphPipelines]:
-    """B and C over the given neighbourhood: no Neo4j."""
+    """B and C over the given neighbourhood: no Neo4j. ``reader`` stands in
+    for the Neo4j reader the worker closes."""
 
     def wire(
         lab: Lab, graph_config: GraphConfig, sink: EventSink | None = None
@@ -105,7 +112,8 @@ def offline_wiring(
         del graph_config
         resolver = StaticEntityResolver(resolved())
         pipelines = graph_pipelines(lab, neighbours, resolver, resolver, sink=sink)
-        return WiredGraphPipelines(reader=cast(GraphReader, _Reader()), pipelines=pipelines)
+        stand_in = reader if reader is not None else _Reader()
+        return WiredGraphPipelines(reader=cast(GraphReader, stand_in), pipelines=pipelines)
 
     return wire
 
@@ -113,7 +121,7 @@ def offline_wiring(
 # -- helpers ------------------------------------------------------------------
 
 
-def wait_until(predicate: Callable[[], bool], timeout: float = 15.0) -> None:
+def wait_until(predicate: Callable[[], bool], timeout: float = 2 * DEADLINE_S) -> None:
     deadline = time.monotonic() + timeout
     while not predicate():
         if time.monotonic() > deadline:
@@ -227,14 +235,24 @@ def lab_gate() -> threading.Event:
 
 
 @pytest.fixture()
+def lab_built() -> threading.Event:
+    return threading.Event()
+
+
+@pytest.fixture()
 def client_with_slow_lab(
-    lab: Lab, monkeypatch: pytest.MonkeyPatch, lab_gate: threading.Event
+    lab: Lab,
+    monkeypatch: pytest.MonkeyPatch,
+    lab_gate: threading.Event,
+    lab_built: threading.Event,
 ) -> Iterator[TestClient]:
-    """The lab takes until ``lab_gate`` is set to build, like a cold start."""
+    """The lab builds only once ``lab_gate`` is set, like a cold start, and
+    sets ``lab_built`` when it returns."""
     monkeypatch.setattr(runs_module, "wired_pipelines", offline_wiring(scn007_adjacency()))
 
     def slow_lab() -> Lab:
-        lab_gate.wait(15)
+        assert lab_gate.wait(DEADLINE_S), "the test never released the lab"
+        lab_built.set()
         return lab
 
     with TestClient(create_app(lab_factory=slow_lab, graph_config=GRAPH)) as test_client:
@@ -285,11 +303,12 @@ def test_two_runs_at_once_each_complete_with_their_own_events(client: TestClient
 
 
 def test_cancel_stops_at_the_next_stage_and_keeps_finished_pipelines(
-    service_with_slow_b: QueryService,
+    service_with_slow_b: QueryService, release: threading.Event
 ) -> None:
     run_id = service_with_slow_b.start(request(configurations=["A", "B", "C"]))
     wait_until(lambda: pipeline_running(service_with_slow_b, run_id, "B"))
     assert service_with_slow_b.cancel(run_id)
+    release.set()  # B resumes, and its next event is the cancellation point
     run = wait_finished(service_with_slow_b, run_id)
     assert run.status == "cancelled" and run.pipeline_status == {
         "A": "completed",
@@ -315,7 +334,7 @@ def test_cancel_before_any_pipeline_starts_skips_them_all(
     lab: Lab, tmp_path: Path, lab_gate: threading.Event
 ) -> None:
     def slow_lab() -> Lab:
-        lab_gate.wait(15)
+        assert lab_gate.wait(DEADLINE_S), "the test never released the lab"
         return lab
 
     service = QueryService(RunStore(tmp_path / "runs.db", retention=50), slow_lab, GRAPH)
@@ -405,7 +424,7 @@ def test_wait_for_wakes_on_a_new_event_and_times_out_otherwise(
     lab: Lab, tmp_path: Path, lab_gate: threading.Event
 ) -> None:
     def slow_lab() -> Lab:
-        lab_gate.wait(15)
+        assert lab_gate.wait(DEADLINE_S), "the test never released the lab"
         return lab
 
     service = QueryService(RunStore(tmp_path / "runs.db", retention=50), slow_lab, GRAPH)
@@ -461,13 +480,19 @@ def test_a_malformed_history_cursor_is_a_validation_error(client: TestClient, be
     assert response.json()["error"]["error_code"] == "VALIDATION_ERROR"
 
 
-def test_a_slow_cold_start_does_not_block_history(client_with_slow_lab: TestClient) -> None:
+def test_a_slow_cold_start_does_not_block_history(
+    client_with_slow_lab: TestClient, lab_built: threading.Event
+) -> None:
     run_id = start(client_with_slow_lab)
-    began = time.monotonic()
-    # TestClient ignores timeouts, so the bound is measured: the lab is still building.
     assert client_with_slow_lab.get("/api/v1/queries").status_code == 200
-    assert client_with_slow_lab.get(f"/api/v1/queries/{run_id}").json()["status"] == "running"
-    assert time.monotonic() - began < 1
+    # The lab is still building: the worker may not yet have marked the run running.
+    assert client_with_slow_lab.get(f"/api/v1/queries/{run_id}").json()["status"] in {
+        "queued",
+        "running",
+    }
+    # Both reads returned while the lab factory was still blocked on its gate,
+    # so neither waited for the cold start. No wall-clock bound is needed.
+    assert not lab_built.is_set()
 
 
 # -- start-up -----------------------------------------------------------------
@@ -801,6 +826,17 @@ def test_a_store_failure_at_the_finish_retires_the_run_and_wakes_waiters(
     hooked_store.fail_final_update_once = True
     run_id = service.start(request(configurations=["A"]))
     pause.wait_reached()
+    blocked = threading.Event()
+
+    class SignallingCondition(threading.Condition):
+        """Signals once the waiter is inside ``wait``: the worker can only
+        notify after the waiter has released the lock there."""
+
+        def wait(self, timeout: float | None = None) -> bool:
+            blocked.set()
+            return super().wait(timeout)
+
+    service._active[run_id]._condition = SignallingCondition()
     woke: list[tuple[bool, float]] = []
 
     def waiter() -> None:
@@ -810,7 +846,7 @@ def test_a_store_failure_at_the_finish_retires_the_run_and_wakes_waiters(
     thread = threading.Thread(target=waiter)
     with caplog.at_level(logging.ERROR):
         thread.start()
-        time.sleep(0.05)  # the waiter is blocked on the run's condition
+        assert blocked.wait(DEADLINE_S)
         pause.release.set()
         thread.join(10)
         wait_until(lambda: not service._active)
@@ -875,6 +911,26 @@ def test_a_cancel_between_two_pipelines_skips_the_rest(
     assert run.status == "cancelled"
     assert run.pipeline_status == {"A": "completed", "B": "skipped", "C": "skipped"}
     assert terminal_events(service, run_id) == ["run.cancelled"]
+
+
+def test_a_failing_reader_close_never_costs_the_run_its_end(
+    lab: Lab, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(
+        runs_module, "wired_pipelines", offline_wiring(scn007_adjacency(), _FailingReader())
+    )
+    service = QueryService(RunStore(tmp_path / "runs.db", retention=50), lambda: lab, GRAPH)
+    try:
+        with caplog.at_level(logging.ERROR):
+            run_id = service.start(request(configurations=["B"]))
+            run = wait_finished(service, run_id)
+            wait_until(lambda: not service._active)
+        assert run.status == "completed" and run.pipeline_status == {"B": "completed"}
+        assert terminal_events(service, run_id) == ["run.completed"]
+        (logged,) = [r for r in caplog.records if "reader" in r.getMessage()]
+        assert "internal-host" in str(logged.exc_info)
+    finally:
+        service.store.close()
 
 
 # -- logging ------------------------------------------------------------------

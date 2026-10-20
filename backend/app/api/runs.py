@@ -225,7 +225,9 @@ class QueryService:
 
     def cancel(self, run_id: str) -> bool:
         """Ask a queued or running run to stop; False when it is unknown or
-        already finishing. True means the run will end ``cancelled``."""
+        already finishing. True means the run ends ``cancelled``, unless a
+        pipeline fails before its next cancellation point: then it ends
+        ``failed`` with the real error."""
         with self._lock:
             sink = self._active.get(run_id)
             if sink is None or sink.finishing:
@@ -317,7 +319,7 @@ class QueryService:
             return body, status, current
         finally:
             if wiring is not None:
-                wiring.reader.close()
+                _close_reader(wiring)
 
     def _finish(
         self,
@@ -365,6 +367,16 @@ class QueryService:
                 exc_info=error,
                 extra={"outcome": outcome, "error_code": code},
             )
+
+
+def _close_reader(wiring: WiredGraphPipelines) -> None:
+    """Close the run's graph reader; a close failure is logged and never
+    costs the run its terminal event."""
+    try:
+        wiring.reader.close()
+    except Exception as error:
+        code, _retryable = classify(error)
+        logger.error("graph reader close failed", exc_info=error, extra={"error_code": code})
 
 
 def _outcome_of(code: str) -> str:

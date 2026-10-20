@@ -180,6 +180,8 @@ A malformed cursor is a 422 `VALIDATION_ERROR`.
 
 Cancellation is cooperative.
 `POST /queries/{run_id}/cancel` sets the run's cancel flag and returns 202 with the run summary; the running pipeline stops at its next event, finished pipelines keep their results, and the run ends `cancelled`.
+The one exception is a pipeline that fails before its next event: the run then ends `failed` with the real error.
+A 202 is decided before the run's final row is written, so a run whose end is already being written refuses the cancel with 409.
 Cancelling a finished run is a 409 `VALIDATION_ERROR`; an unknown run is a 404 `NOT_FOUND`.
 
 ---
