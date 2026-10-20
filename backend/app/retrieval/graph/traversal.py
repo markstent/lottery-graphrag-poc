@@ -356,11 +356,4 @@ def load_static_provider_from_rows(
     return StaticNeighbourProvider(adjacency)
 
 
-def clock_ms() -> float:
-    """Indirection for tests that want deterministic timings."""
-    import time
-
-    return time.monotonic() * 1000.0
-
-
 TraversalEmit = Callable[[str, dict[str, object]], None]

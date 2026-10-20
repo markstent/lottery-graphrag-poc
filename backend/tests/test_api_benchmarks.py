@@ -169,21 +169,39 @@ def blocking_benchmark(
     return recorder
 
 
-def _drain(client: TestClient, gate: threading.Event) -> None:
+def _drain(client: TestClient, gate: threading.Event, started: list[str]) -> None:
     """Open the gate and wait for every job the test started, so no job
     thread outlives the test's data directory."""
     gate.set()
-    jobs = client.app.state.benchmark_jobs  # type: ignore[attr-defined]
-    for job_id in jobs.job_ids():
+    for job_id in started:
         wait_job(client, job_id)
+
+
+def record_started_jobs(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    """The ids of the benchmark jobs this application starts, as they start."""
+    started: list[str] = []
+    jobs = client.app.state.benchmark_jobs  # type: ignore[attr-defined]
+    start = jobs.start
+
+    def recording(request: Any) -> Any:
+        job = start(request)
+        started.append(job.job_id)
+        return job
+
+    monkeypatch.setattr(jobs, "start", recording)
+    return started
 
 
 @pytest.fixture
 def client_with_blocking_benchmark(
-    blocking_benchmark: Recorder, gate: threading.Event, client: TestClient
+    blocking_benchmark: Recorder,
+    gate: threading.Event,
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[TestClient]:
+    started = record_started_jobs(client, monkeypatch)
     yield client
-    _drain(client, gate)
+    _drain(client, gate, started)
 
 
 # -- the brief's tests ------------------------------------------------------------
@@ -454,6 +472,7 @@ def client_with_slow_lab(
     lab_gate: threading.Event,
     blocking_benchmark: Recorder,
     gate: threading.Event,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[TestClient]:
     """The lab build blocks until ``lab_gate`` opens, so a query stays running."""
 
@@ -462,9 +481,10 @@ def client_with_slow_lab(
         return build_lab_offline()
 
     with TestClient(create_app(lab_factory=slow_lab)) as test_client:
+        started = record_started_jobs(test_client, monkeypatch)
         yield test_client
         lab_gate.set()
-        _drain(test_client, gate)
+        _drain(test_client, gate, started)
 
 
 def test_a_benchmark_does_not_start_while_a_query_runs(

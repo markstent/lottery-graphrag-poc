@@ -251,10 +251,6 @@ class BenchmarkJobs:
                 job.cancelled.set()
         return self.get(job_id)
 
-    def job_ids(self) -> list[str]:
-        with self._lock:
-            return list(self._jobs)
-
     def _execute(self, job: _Job, request: BenchmarkStart, out_dir: Path, hold: LeaseHold) -> None:
         """Run the job; whatever ends it, the job ends with a terminal status,
         published only after the graph is free (``run_benchmark`` has already

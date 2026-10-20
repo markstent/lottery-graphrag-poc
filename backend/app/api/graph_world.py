@@ -121,10 +121,6 @@ class LeaseHold:
         self._lock = threading.Lock()
         self._released = False
 
-    @property
-    def released(self) -> bool:
-        return self._released
-
     def release(self) -> None:
         with self._lock:
             if self._released:
