@@ -313,6 +313,29 @@ def test_results_and_score_round_trip(store: RunStore) -> None:
     assert store.score("RUN-1") == {"total": 0.75, "per_pipeline": {"A": 0.5, "C": 1.0}}
 
 
+STOPPED: dict[str, Any] = {
+    "error_code": "INTERRUPTED",
+    "message": "the server stopped during this run",
+    "retryable": True,
+}
+
+
+def interruption(
+    run_id: str, running: list[str], stored: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """The caller's events: one per running pipeline, then the run's, unless
+    the run already has its terminal event."""
+    if any(event["event_type"] == "run.completed" for event in stored):
+        return []
+    return [
+        *(
+            {"event_type": "pipeline.failed", "pipeline": tag, "run_id": run_id, "payload": STOPPED}
+            for tag in running
+        ),
+        {"event_type": "run.failed", "pipeline": "run", "run_id": run_id, "payload": STOPPED},
+    ]
+
+
 def test_runs_left_running_at_start_are_marked_interrupted(tmp_path: Path) -> None:
     first = RunStore(tmp_path / "app.db", 10)
     first.create_run(
@@ -324,18 +347,15 @@ def test_runs_left_running_at_start_are_marked_interrupted(tmp_path: Path) -> No
     )
     first.create_run(row("RUN-2", status="queued"))
     first.create_run(row("RUN-3", status="completed"))
+    first.append_event("RUN-1", {"event_type": "run.started", "pipeline": "run"})
     first.close()
     reopened = RunStore(tmp_path / "app.db", 10)
     try:
-        assert reopened.mark_interrupted() == 2
+        assert reopened.mark_interrupted(STOPPED, interruption) == 2
         interrupted = reopened.get_run("RUN-1")
         assert interrupted is not None and interrupted.error is not None
         assert interrupted.status == "failed"
-        assert interrupted.error == {
-            "error_code": "INTERRUPTED",
-            "message": "the server stopped during this run",
-            "retryable": True,
-        }
+        assert interrupted.error == STOPPED
         assert interrupted.finished_at is not None
         assert datetime.fromisoformat(interrupted.finished_at).utcoffset() == timedelta(0)
         assert interrupted.pipeline_status == {"A": "completed", "B": "failed", "C": "failed"}
@@ -344,7 +364,69 @@ def test_runs_left_running_at_start_are_marked_interrupted(tmp_path: Path) -> No
         assert queued.pipeline_status == {"A": "failed", "C": "failed"}
         untouched = reopened.get_run("RUN-3")
         assert untouched is not None and untouched.status == "completed" and untouched.error is None
-        assert reopened.mark_interrupted() == 0
+        assert reopened.mark_interrupted(STOPPED, interruption) == 0
+    finally:
+        reopened.close()
+
+
+def test_an_interrupted_run_gets_its_terminal_events_in_sequence(tmp_path: Path) -> None:
+    first = RunStore(tmp_path / "app.db", 10)
+    first.create_run(
+        row("RUN-1", status="running", pipeline_status={"A": "completed", "C": "running"})
+    )
+    first.create_run(row("RUN-2", status="queued"))
+    first.append_event("RUN-1", {"event_type": "run.started", "pipeline": "run"})
+    first.append_event("RUN-1", {"event_type": "pipeline.completed", "pipeline": "A"})
+    first.close()
+    reopened = RunStore(tmp_path / "app.db", 10)
+    try:
+        reopened.mark_interrupted(STOPPED, interruption)
+        stored = reopened.events("RUN-1")
+        assert [(e["sequence"], e["event_type"], e["pipeline"]) for e in stored] == [
+            (1, "run.started", "run"),
+            (2, "pipeline.completed", "A"),
+            (3, "pipeline.failed", "C"),
+            (4, "run.failed", "run"),
+        ]
+        assert stored[2]["payload"] == stored[3]["payload"] == STOPPED
+        assert [e["event_type"] for e in reopened.events("RUN-2")] == ["run.failed"]
+    finally:
+        reopened.close()
+
+
+def test_a_run_whose_terminal_event_is_stored_gets_no_second_one(tmp_path: Path) -> None:
+    """The final row write failed after the terminal event was stored: the
+    run is repaired as interrupted without a second terminal event."""
+    first = RunStore(tmp_path / "app.db", 10)
+    first.create_run(row("RUN-1", status="running", pipeline_status={"A": "completed"}))
+    first.append_event("RUN-1", {"event_type": "run.completed", "pipeline": "run"})
+    first.close()
+    reopened = RunStore(tmp_path / "app.db", 10)
+    try:
+        assert reopened.mark_interrupted(STOPPED, interruption) == 1
+        assert [e["event_type"] for e in reopened.events("RUN-1")] == ["run.completed"]
+        repaired = reopened.get_run("RUN-1")
+        assert repaired is not None and repaired.status == "failed"
+    finally:
+        reopened.close()
+
+
+def test_a_failing_event_builder_leaves_every_run_as_it_was(tmp_path: Path) -> None:
+    first = RunStore(tmp_path / "app.db", 10)
+    first.create_run(row("RUN-1", status="running", pipeline_status={"A": "running"}))
+    first.close()
+    reopened = RunStore(tmp_path / "app.db", 10)
+
+    def broken(
+        run_id: str, running: list[str], stored: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        raise RuntimeError("cannot build")
+
+    try:
+        with pytest.raises(RuntimeError):
+            reopened.mark_interrupted(STOPPED, broken)
+        unchanged = reopened.get_run("RUN-1")
+        assert unchanged is not None and unchanged.status == "running"
     finally:
         reopened.close()
 

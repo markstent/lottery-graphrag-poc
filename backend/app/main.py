@@ -23,10 +23,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api import benchmarks, data_model, graph_model, health, queries, reference
-from app.api.errors import install_handlers
+from app.api.errors import INTERRUPTED_BODY, install_handlers
 from app.api.graph_world import GraphLease, GraphWorldCheck
 from app.api.readiness import ReadinessChecks
-from app.api.runs import QueryService, start_lab
+from app.api.runs import QueryService, interruption_events, start_lab
 from app.api.scoring import interrupted_record
 from app.config import GraphConfig, api_from_env, from_env
 from app.lab import Lab
@@ -70,7 +70,7 @@ def create_app(
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
         store = RunStore(settings.db_path, settings.run_retention)
         try:
-            interrupted = store.mark_interrupted()
+            interrupted = store.mark_interrupted(INTERRUPTED_BODY.model_dump(), interruption_events)
             unscored = store.mark_unscored(interrupted_record())
         finally:
             store.close()

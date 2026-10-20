@@ -535,6 +535,58 @@ def test_runs_left_running_are_marked_interrupted_at_start_up(lab: Lab, run_data
     assert run["pipeline_status"] == {"A": "failed"}
 
 
+def test_an_interrupted_run_streams_to_a_terminal_event_and_closes(
+    lab: Lab, run_database: Path
+) -> None:
+    left = RunStore(run_database, retention=50)
+    left.create_run(
+        RunRow(
+            run_id="RUN-LEFT",
+            kind="live",
+            status="running",
+            question=QUESTION,
+            market_scope=(),
+            configurations=("A", "B"),
+            benchmark_instance_id=None,
+            created_at=datetime.now(UTC).isoformat(),
+            finished_at=None,
+            pipeline_status={"A": "completed", "B": "running"},
+            error=None,
+        )
+    )
+    left.append_event(
+        "RUN-LEFT",
+        {
+            "event_id": "EV-1",
+            "timestamp": datetime.now(UTC).isoformat(),
+            "run_id": "RUN-LEFT",
+            "event_type": "run.started",
+            "pipeline": "run",
+            "t_ms": 1.0,
+            "payload": {},
+        },
+    )
+    left.close()
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as test_client:
+        # The stream returns only because the server closes it after the terminal event.
+        stream = test_client.get("/api/v1/queries/RUN-LEFT/events/stream")
+        events = test_client.get("/api/v1/queries/RUN-LEFT/events").json()["events"]
+    interrupted = {
+        "error_code": "INTERRUPTED",
+        "message": "The server stopped during this run.",
+        "retryable": True,
+    }
+    assert [(e["event_type"], e["pipeline"]) for e in events] == [
+        ("run.started", "run"),
+        ("pipeline.failed", "B"),
+        ("run.failed", "run"),
+    ]
+    assert events[1]["payload"] == events[2]["payload"] == interrupted
+    assert set(events[2]) >= ENVELOPE and events[2]["run_id"] == "RUN-LEFT"
+    frames = [f for f in stream.text.split("\n\n") if f.startswith("id:")]
+    assert len(frames) == 3 and "event: run.failed" in frames[-1]
+
+
 # -- request validation (moved from test_api_queries) -------------------------
 
 

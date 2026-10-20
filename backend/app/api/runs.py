@@ -33,11 +33,12 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from app.api.benchmarks import presentation_bank
 from app.api.errors import (
     CANCELLED_BODY,
+    INTERRUPTED_BODY,
     ApiError,
     ApiErrorBody,
     ErrorCode,
@@ -79,9 +80,11 @@ from app.events import (
     RUN_FAILED,
     RUN_PIPELINE,
     RUN_STARTED,
+    TERMINAL_EVENT_TYPES,
     EventEmitter,
     EventSink,
     EventValue,
+    ListEventSink,
     RetrievalEvent,
 )
 from app.evidence import GraphRunResult, RagRunResult
@@ -562,6 +565,24 @@ def _close_reader(wiring: WiredGraphPipelines) -> None:
     except Exception as error:
         code, _retryable = classify(error)
         logger.error("graph reader close failed", exc_info=error, extra={"error_code": code})
+
+
+def interruption_events(
+    run_id: str, running: list[str], stored: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """The events that end a run a server stop left unfinished (the store's
+    ``InterruptionEvents``): ``pipeline.failed`` for each running pipeline,
+    then ``run.failed``, each with the INTERRUPTED envelope. A run whose
+    terminal event is already stored (its final row write failed) gets none,
+    since a stream has already ended there."""
+    if any(event["event_type"] in TERMINAL_EVENT_TYPES for event in stored):
+        return []
+    sink = ListEventSink()
+    payload = INTERRUPTED_BODY.model_dump()
+    for tag in running:
+        EventEmitter(tag, sink).emit(PIPELINE_FAILED, **payload)
+    EventEmitter(RUN_PIPELINE, sink).emit(RUN_FAILED, **payload)
+    return [{**event.as_dict(), "run_id": run_id} for event in sink.events]
 
 
 def _outcome_of(code: str) -> str:

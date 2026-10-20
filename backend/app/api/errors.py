@@ -85,11 +85,19 @@ RUN_ERROR_MESSAGES: dict[str, str] = {
     ErrorCode.GRAPH_QUERY_ERROR: "The graph database could not answer the query.",
     ErrorCode.CONTEXT_BUILD_ERROR: "The evidence could not be ranked for the answer.",
     ErrorCode.CANCELLED: "The run was cancelled.",
+    ErrorCode.INTERRUPTED: "The server stopped during this run.",
     ErrorCode.RUN_ERROR: UNEXPECTED_MESSAGE,
 }
 CANCELLED_BODY = ApiErrorBody(
     error_code=ErrorCode.CANCELLED,
     message=RUN_ERROR_MESSAGES[ErrorCode.CANCELLED],
+    retryable=True,
+)
+
+
+INTERRUPTED_BODY = ApiErrorBody(
+    error_code=ErrorCode.INTERRUPTED,
+    message=RUN_ERROR_MESSAGES[ErrorCode.INTERRUPTED],
     retryable=True,
 )
 
