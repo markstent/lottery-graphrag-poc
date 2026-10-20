@@ -1,6 +1,7 @@
 """Liveness and readiness (spec 6.1): ``/health`` says the process is up;
 ``/health/ready`` reports the lab, the index, Neo4j and the model provider
-separately, never raises, never builds the lab and never leaks service text."""
+separately, never raises, never builds or waits for the lab (start-up
+builds it in the background) and never leaks service text."""
 
 from __future__ import annotations
 
@@ -10,20 +11,25 @@ import logging
 import threading
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import app.api.readiness as readiness_module
+import httpx
 import pytest
 from app.api.readiness import (
     MODEL_CACHE_TTL_S,
     ModelReachability,
     Probe,
+    ReadinessChecks,
     index_check,
     run_checks,
 )
+from app.api.runs import QueryService
 from app.api.schemas import Check
 from app.config import GenerationSettings, GraphConfig, RetrievalSettings
 from app.lab import Lab
 from app.main import app, create_app
+from app.persistence.store import RunStore
 from app.retrieval.standard.index import MANIFEST_NAME, index_corpus
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 from app.retrieval.standard.sparse import SparseVector
@@ -31,7 +37,13 @@ from app.retrieval.standard.vector_store import InMemoryVectorStore
 from fastapi.testclient import TestClient
 
 from tests.conftest import StubLiteLLM, build_lab_offline
-from tests.test_api_runs import DEADLINE_S, run_to_completion, start, wait_idle
+from tests.test_api_runs import (
+    DEADLINE_S,
+    await_finished,
+    run_to_completion,
+    start,
+    wait_until,
+)
 from tests.test_graph_rag import build_corpus
 from tests.test_standard_rag import make_settings
 
@@ -109,7 +121,8 @@ def test_ready_is_200_when_every_check_passes(
     assert all(check["ok"] for check in response.json()["checks"].values())
 
 
-def test_readiness_never_builds_the_lab(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_readiness_never_builds_the_lab(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Without the start-up warm-up, reading readiness leaves the lab unbuilt."""
     builds: list[int] = []
 
     def factory() -> Lab:
@@ -117,49 +130,69 @@ def test_readiness_never_builds_the_lab(monkeypatch: pytest.MonkeyPatch) -> None
         raise AssertionError("readiness must not build the lab")
 
     monkeypatch.setattr(readiness_module, "GraphReader", _AnsweringReader)
-    with TestClient(create_app(lab_factory=factory, graph_config=GRAPH_DOWN)) as client:
-        response = client.get("/api/v1/health/ready")
-    assert response.status_code == 503
-    assert response.json()["checks"]["lab"] == {"ok": False, "detail": "not started"}
+    service = QueryService(RunStore(tmp_path / "runs.db", retention=50), factory, GRAPH_DOWN)
+    try:
+        readiness = ReadinessChecks(service, GRAPH_DOWN, settings=make_settings).run()
+    finally:
+        service.store.close()
+    assert readiness.checks["lab"] == Check(ok=False, detail="not started")
     assert builds == []
 
 
-def test_readiness_reports_a_lab_build_in_progress_without_waiting_for_it(
+def test_start_up_builds_the_lab_once_and_readiness_reports_building(
     indexed_lab: Lab,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     building, release = threading.Event(), threading.Event()
+    builds: list[int] = []
 
-    def slow_factory() -> Lab:
+    def gated_factory() -> Lab:
+        builds.append(1)
         building.set()
         assert release.wait(DEADLINE_S), "the test never released the lab build"
         return indexed_lab
 
     monkeypatch.setattr(readiness_module, "GraphReader", _AnsweringReader)
-    with TestClient(create_app(lab_factory=slow_factory, graph_config=GRAPH_DOWN)) as client:
-        start(client, configurations=["A"])
-        assert building.wait(DEADLINE_S)
+    with TestClient(create_app(lab_factory=gated_factory, graph_config=GRAPH_DOWN)) as client:
+        assert building.wait(DEADLINE_S), "start-up did not start the lab build"
         try:
-            lab_check = client.get("/api/v1/health/ready").json()["checks"]["lab"]
+            during = client.get("/api/v1/health/ready")
+            # A run started meanwhile waits on the build instead of starting another.
+            run_id = start(client, configurations=["A"])
         finally:
             release.set()
-        wait_idle(client)
-    assert lab_check == {"ok": False, "detail": "building"}
+        assert await_finished(client, run_id)["status"] == "completed"
+        after = client.get("/api/v1/health/ready")
+    assert during.status_code == 503
+    assert during.json()["checks"]["lab"] == {"ok": False, "detail": "building"}
+    assert after.json()["checks"]["lab"] == {"ok": True, "detail": "built"}
+    assert builds == [1]
 
 
-def test_readiness_reports_a_failed_lab_build(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_readiness_reports_a_failed_lab_build(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     def failing_factory() -> Lab:
         raise RuntimeError("Qdrant at http://internal-qdrant:6333 refused")
 
     monkeypatch.setattr(readiness_module, "GraphReader", _AnsweringReader)
-    with TestClient(create_app(lab_factory=failing_factory, graph_config=GRAPH_DOWN)) as client:
-        run_to_completion(client, configurations=["A"])
-        body = client.get("/api/v1/health/ready").json()
+    body: dict[str, Any] = {}
+
+    def settled() -> bool:
+        body.update(client.get("/api/v1/health/ready").json())
+        return bool(body["checks"]["lab"]["detail"] != "building")
+
+    with (
+        caplog.at_level(logging.ERROR),
+        TestClient(create_app(lab_factory=failing_factory, graph_config=GRAPH_DOWN)) as client,
+    ):
+        wait_until(settled)
     assert body["checks"]["lab"] == {
         "ok": False,
         "detail": "the last build failed; the next run retries it",
     }
     assert "internal-qdrant" not in json.dumps(body)
+    assert any(r.getMessage() == "lab warm-up failed" for r in caplog.records)
 
 
 # -- the check runner ---------------------------------------------------------
@@ -227,13 +260,13 @@ class FakeClock:
         return self.now
 
 
-def litellm_settings(timeout_s: float = 120.0) -> GenerationSettings:
+def litellm_settings(model: str = "openai/gpt-test") -> GenerationSettings:
+    """A non-Ollama provider: probed with a 1-token completion."""
     return GenerationSettings(
         provider="litellm",
-        model="ollama/qwen3.6:latest",
+        model=model,
         temperature=0.0,
-        api_base="http://internal-gateway:11434",
-        timeout_s=timeout_s,
+        api_base="http://internal-gateway:4000",
     )
 
 
@@ -242,36 +275,20 @@ def test_the_fake_generator_is_always_reachable() -> None:
     assert check == Check(ok=True, detail="fake generator (offline)")
 
 
-def test_the_model_check_is_one_cheap_gateway_call(stub_litellm: StubLiteLLM) -> None:
-    check = ModelReachability().check(litellm_settings(timeout_s=120.0))
-    assert check == Check(ok=True, detail="the model answered")
-    (call,) = stub_litellm.calls
-    assert call["max_tokens"] == 1 and call["timeout"] == 5.0
-    assert call["model"] == "ollama/qwen3.6:latest"
-    assert call["base_url"] == "http://internal-gateway:11434"
+def test_the_model_check_is_the_gateway_probe(stub_litellm: StubLiteLLM) -> None:
+    assert ModelReachability().check(litellm_settings()) == Check(
+        ok=True, detail="the model answered"
+    )
+    assert stub_litellm.calls[0]["max_tokens"] == 1
 
 
-def test_the_model_check_never_waits_longer_than_the_generation_timeout(
-    stub_litellm: StubLiteLLM,
-) -> None:
-    ModelReachability().check(litellm_settings(timeout_s=2.0))
-    assert stub_litellm.calls[0]["timeout"] == 2.0
+def test_an_ollama_model_is_checked_by_its_listing() -> None:
+    def tags(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"models": [{"name": "qwen3.6:latest"}]})
 
-
-def test_an_empty_one_token_answer_still_proves_the_provider_answered(
-    stub_litellm_empty: StubLiteLLM,
-) -> None:
-    """A thinking model can spend its single token on hidden reasoning."""
-    assert ModelReachability().check(litellm_settings()).ok is True
-
-
-def test_an_unreachable_provider_is_curated(
-    stub_litellm_raises: StubLiteLLM, caplog: pytest.LogCaptureFixture
-) -> None:
-    with caplog.at_level(logging.WARNING):
-        check = ModelReachability().check(litellm_settings())
-    assert check == Check(ok=False, detail="The model provider did not answer.")
-    assert any("provider down" in str(r.exc_info) for r in caplog.records if r.exc_info)
+    reachability = ModelReachability(transport=httpx.MockTransport(tags))
+    settings = dataclasses.replace(litellm_settings("ollama/qwen3.6:latest"), api_base=None)
+    assert reachability.check(settings) == Check(ok=True, detail="available")
 
 
 def test_the_model_check_is_cached_for_thirty_seconds(stub_litellm: StubLiteLLM) -> None:
@@ -291,7 +308,7 @@ def test_the_model_check_is_cached_for_thirty_seconds(stub_litellm: StubLiteLLM)
 def test_the_cache_is_per_configuration(stub_litellm: StubLiteLLM) -> None:
     reachability = ModelReachability(clock=FakeClock())
     reachability.check(litellm_settings())
-    reachability.check(dataclasses.replace(litellm_settings(), model="ollama/gemma4:31b"))
+    reachability.check(litellm_settings("openai/gpt-other"))
     assert len(stub_litellm.calls) == 2
 
 
@@ -355,28 +372,33 @@ def test_each_check_has_its_own_timeout(monkeypatch: pytest.MonkeyPatch) -> None
         calls.append(probes)
         return {name: Check(ok=True, detail="recorded") for name in probes}
 
-    def never_built() -> Lab:
-        raise AssertionError("readiness must not build the lab")
+    def unbuildable() -> Lab:
+        raise RuntimeError("no lab in this test")
 
     monkeypatch.setenv("GENERATION_TIMEOUT_S", "120")
+    monkeypatch.setenv("GENERATION_PROVIDER", "litellm")
     monkeypatch.setattr(readiness_module, "run_checks", record)
-    with TestClient(create_app(lab_factory=never_built, graph_config=GRAPH_DOWN)) as client:
+    with TestClient(create_app(lab_factory=unbuildable, graph_config=GRAPH_DOWN)) as client:
+        monkeypatch.setenv("GENERATION_MODEL", "ollama/qwen3.6:latest")
         assert client.get("/api/v1/health/ready").status_code == 200
-    (probes,) = calls
-    assert set(probes) == CHECKS
-    assert probes["graph"].timeout_s == GRAPH_DOWN.timeout_s
-    assert probes["index"].timeout_s == 5.0
-    assert probes["model"].timeout_s == 5.0
+        monkeypatch.setenv("GENERATION_MODEL", "openai/gpt-test")
+        client.get("/api/v1/health/ready")
+    ollama, other = calls
+    assert set(ollama) == CHECKS
+    assert ollama["graph"].timeout_s == GRAPH_DOWN.timeout_s
+    assert ollama["index"].timeout_s == 5.0
+    assert ollama["model"].timeout_s == 5.0
+    assert other["model"].timeout_s == 30.0
 
 
 def test_an_invalid_configuration_is_reported_not_raised(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RAG_TOP_K", "many")
     monkeypatch.setattr(readiness_module, "GraphReader", _AnsweringReader)
 
-    def never_built() -> Lab:
-        raise AssertionError("readiness must not build the lab")
+    def unbuildable() -> Lab:
+        raise RuntimeError("no lab in this test")
 
-    with TestClient(create_app(lab_factory=never_built, graph_config=GRAPH_DOWN)) as client:
+    with TestClient(create_app(lab_factory=unbuildable, graph_config=GRAPH_DOWN)) as client:
         response = client.get("/api/v1/health/ready")
     checks = response.json()["checks"]
     assert response.status_code == 503

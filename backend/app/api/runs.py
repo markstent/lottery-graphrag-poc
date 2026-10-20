@@ -184,8 +184,8 @@ class QueryService:
 
     ``_lock`` guards only the map of active runs (each holding its cancel
     flag); the store is safe to share across threads. The lab is built once,
-    on the first run, behind its own lock that no route takes, so a slow
-    cold start never blocks a read.
+    by ``warm_up`` at start-up (or by the first run), behind its own lock that
+    no route takes, so a slow cold start never blocks a read.
     """
 
     def __init__(
@@ -196,6 +196,7 @@ class QueryService:
         self._graph_config = graph_config
         self._lab: Lab | None = None
         self._lab_failed = False
+        self._warming = False
         self._lab_lock = threading.Lock()
         self._lock = threading.Lock()
         self._active: dict[str, RecordingSink] = {}
@@ -257,9 +258,25 @@ class QueryService:
         lab = self._lab
         if lab is not None:
             return lab, "built"
-        if self._lab_lock.locked():
+        if self._warming or self._lab_lock.locked():
             return None, "building"
         return None, "failed" if self._lab_failed else "not started"
+
+    def warm_up(self) -> None:
+        """Start building the lab in the background (API start-up). Routes
+        never wait on it; a run that starts meanwhile waits on the lab lock.
+        A failure is logged and the next run retries the build."""
+        self._warming = True
+        threading.Thread(target=self._warm, name="lab-warm-up", daemon=True).start()
+
+    def _warm(self) -> None:
+        try:
+            self._lab_once()
+        except Exception as error:
+            code, _retryable = classify(error)
+            logger.error("lab warm-up failed", exc_info=error, extra={"error_code": code})
+        finally:
+            self._warming = False
 
     # -- execution --------------------------------------------------------
 

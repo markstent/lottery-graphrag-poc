@@ -1,13 +1,25 @@
-"""The one model gateway: a single LiteLLM completion call.
+"""The one model gateway: a single LiteLLM completion call, plus the
+reachability probe.
 
 Answer generation and the benchmark judge both call `complete`, so every
-model request carries the same parameters and fails the same way.
+model request carries the same parameters and fails the same way. `probe`
+answers whether the configured model is reachable (not whether it is warm)
+for readiness and the models endpoint.
 """
 
 from __future__ import annotations
 
+import logging
 import time
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import httpx
+
+if TYPE_CHECKING:  # app.config imports this module
+    from app.config import GenerationSettings
+
+logger = logging.getLogger(__name__)
 
 _USAGE_KEYS = ("prompt_tokens", "completion_tokens", "total_tokens")
 # "default" leaves the provider's behaviour unchanged; "off" asks a thinking
@@ -92,3 +104,92 @@ def _usage(response: object) -> dict[str, int] | None:
     counts = {key: getattr(usage, key, None) for key in _USAGE_KEYS}
     reported = {key: value for key, value in counts.items() if isinstance(value, int)}
     return reported or None
+
+
+# An Ollama model is reachable when the server lists it: asking it to
+# generate would load a cold model, which can take longer than any probe.
+OLLAMA_PROBE_TIMEOUT_S = 5.0
+# Any other provider answers one 1-token completion within this, or within
+# GENERATION_TIMEOUT_S when that is shorter.
+COMPLETION_PROBE_CAP_S = 30.0
+# Where LiteLLM sends an ``ollama/`` model when no api_base is configured.
+OLLAMA_DEFAULT_BASE = "http://localhost:11434"
+_OLLAMA_PREFIXES = ("ollama/", "ollama_chat/")
+
+
+@dataclass(frozen=True, slots=True)
+class ProbeResult:
+    """Reachability with a curated detail (never a URL or provider text)."""
+
+    ok: bool
+    detail: str
+
+
+def _ollama_base(settings: GenerationSettings, ollama_host: str | None) -> str | None:
+    """The Ollama server the model is routed to, or None for another provider."""
+    base = settings.api_base.rstrip("/") if settings.api_base else None
+    if settings.model.startswith(_OLLAMA_PREFIXES):
+        return base or (ollama_host.rstrip("/") if ollama_host else OLLAMA_DEFAULT_BASE)
+    if base is not None and ollama_host is not None and base == ollama_host.rstrip("/"):
+        return base
+    return None
+
+
+def probe_timeout_s(settings: GenerationSettings, ollama_host: str | None = None) -> float:
+    if _ollama_base(settings, ollama_host) is not None:
+        return OLLAMA_PROBE_TIMEOUT_S
+    return min(COMPLETION_PROBE_CAP_S, settings.timeout_s)
+
+
+def probe(
+    settings: GenerationSettings,
+    ollama_host: str | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> ProbeResult:
+    """Whether the configured LiteLLM model is reachable.
+
+    An Ollama-routed model (an ``ollama/`` model, or ``api_base`` equal to
+    ``ollama_host``) is checked against the server's model list; any other
+    provider must answer a 1-token completion. Raw failures are logged.
+    """
+    base = _ollama_base(settings, ollama_host)
+    if base is not None:
+        return _probe_ollama(base, settings.model, transport)
+    request = CompletionRequest(
+        model=settings.model,
+        system="Reply with one word.",
+        user="ping",
+        temperature=0.0,
+        max_tokens=1,
+        api_base=settings.api_base,
+        timeout_s=probe_timeout_s(settings, ollama_host),
+        reasoning=settings.reasoning,
+    )
+    try:
+        complete(request)
+    except EmptyCompletionError:
+        pass  # the provider answered; one token may go to hidden reasoning
+    except GatewayError as error:
+        logger.warning("model probe failed", exc_info=error)
+        return ProbeResult(ok=False, detail="The model provider did not answer.")
+    return ProbeResult(ok=True, detail="the model answered")
+
+
+def _probe_ollama(base: str, model: str, transport: httpx.BaseTransport | None) -> ProbeResult:
+    name = model.split("/", 1)[1] if "/" in model else model
+    try:
+        with httpx.Client(transport=transport, timeout=OLLAMA_PROBE_TIMEOUT_S) as client:
+            response = client.get(f"{base}/api/tags")
+            response.raise_for_status()
+            listed = response.json()["models"]
+            names = {str(entry.get("name")) for entry in listed} | {
+                str(entry.get("model")) for entry in listed
+            }
+    except (httpx.HTTPError, ValueError, KeyError, TypeError, AttributeError) as error:
+        logger.warning("model probe failed", exc_info=error)
+        return ProbeResult(ok=False, detail="The model provider did not answer.")
+    # Ollama lists an untagged model under its ":latest" tag.
+    wanted = {name} if ":" in name else {name, f"{name}:latest"}
+    if names & wanted:
+        return ProbeResult(ok=True, detail="available")
+    return ProbeResult(ok=False, detail="not pulled")

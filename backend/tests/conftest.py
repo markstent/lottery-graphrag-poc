@@ -57,6 +57,15 @@ def run_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return path
 
 
+@pytest.fixture(autouse=True)
+def offline_default_lab(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The API builds its lab at start-up: an app created without a lab
+    factory gets the offline lab, never one over the live services."""
+    import app.main
+
+    monkeypatch.setattr(app.main, "default_lab", build_lab_offline)
+
+
 @pytest.fixture(scope="session")
 def tiny_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
     """The tiny generated world (seed 42) as Parquet, built once per session."""

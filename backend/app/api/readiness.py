@@ -7,8 +7,10 @@ Four checks, reported separately from liveness:
 - ``index``: the vector collection exists, holds points and, for a
   persistent index, its manifest names this code's record serialiser.
 - ``graph``: Neo4j answers ``RETURN 1`` within ``NEO4J_TIMEOUT_S``.
-- ``model``: the generation provider answers one 1-token gateway call;
-  the fake generator is always reachable. Results are cached for 30 s.
+- ``model``: the generation model is reachable (``gateway.probe``: an
+  Ollama model must be listed by its server, any other provider must answer
+  a 1-token completion); the fake generator is always reachable. Results
+  are cached for 30 s.
 
 Each check runs in its own thread under its own timeout, so one slow
 service never hides the others and readiness never raises. Details are
@@ -27,10 +29,12 @@ from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass
 from pathlib import Path
 
+import httpx
+
 from app.api.runs import LabState, QueryService
 from app.api.schemas import Check, Readiness
 from app.config import GenerationSettings, GraphConfig, RetrievalSettings, from_env
-from app.models.gateway import CompletionRequest, EmptyCompletionError, complete
+from app.models import gateway
 from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.standard.index import check_manifest, persists_index
 from app.retrieval.standard.vector_store import QdrantVectorStore, VectorStore, VectorStoreError
@@ -42,8 +46,6 @@ Clock = Callable[[], float]
 # The lab check reads in-process state only.
 LAB_TIMEOUT_S = 1.0
 INDEX_TIMEOUT_S = 5.0
-# The model check never waits longer than this, nor than GENERATION_TIMEOUT_S.
-MODEL_TIMEOUT_CAP_S = 5.0
 MODEL_CACHE_TTL_S = 30.0
 
 UNEXPECTED_DETAIL = "The check failed unexpectedly; the details are in the server log."
@@ -135,56 +137,40 @@ def graph_check(config: GraphConfig) -> Check:
     return Check(ok=True, detail="Neo4j answered")
 
 
-def model_timeout_s(settings: GenerationSettings) -> float:
-    return min(MODEL_TIMEOUT_CAP_S, settings.timeout_s)
-
-
 class ModelReachability:
-    """Whether the generation provider answers, cached per configuration
-    for ``MODEL_CACHE_TTL_S`` (failures too, so a down provider is not
-    called on every poll). Safe for concurrent calls."""
+    """Whether the generation provider is reachable (``gateway.probe``),
+    cached per configuration for ``MODEL_CACHE_TTL_S`` (failures too, so a
+    down provider is not called on every poll). Safe for concurrent calls."""
 
-    def __init__(self, clock: Clock = time.monotonic) -> None:
+    def __init__(
+        self, clock: Clock = time.monotonic, transport: httpx.BaseTransport | None = None
+    ) -> None:
         self._clock = clock
+        self._transport = transport
         self._lock = threading.Lock()
-        self._cached: tuple[GenerationSettings, float, Check] | None = None
+        self._cached: tuple[tuple[GenerationSettings, str | None], float, Check] | None = None
 
-    def check(self, settings: GenerationSettings) -> Check:
+    def check(self, settings: GenerationSettings, ollama_host: str | None = None) -> Check:
+        key = (settings, ollama_host)
         now = self._clock()
         with self._lock:
             cached = self._cached
         if cached is not None:
-            cached_settings, checked_at, result = cached
-            if cached_settings == settings and now - checked_at < MODEL_CACHE_TTL_S:
+            cached_key, checked_at, result = cached
+            if cached_key == key and now - checked_at < MODEL_CACHE_TTL_S:
                 return result
-        result = self._probe(settings)
+        result = self._probe(settings, ollama_host)
         with self._lock:
-            self._cached = (settings, now, result)
+            self._cached = (key, now, result)
         return result
 
-    def _probe(self, settings: GenerationSettings) -> Check:
+    def _probe(self, settings: GenerationSettings, ollama_host: str | None) -> Check:
         if settings.provider == "fake":
             return Check(ok=True, detail="fake generator (offline)")
         if settings.provider != "litellm":
             return Check(ok=False, detail="unknown generation provider")
-        request = CompletionRequest(
-            model=settings.model,
-            system="Reply with one word.",
-            user="ping",
-            temperature=0.0,
-            max_tokens=1,
-            api_base=settings.api_base,
-            timeout_s=model_timeout_s(settings),
-            reasoning=settings.reasoning,
-        )
-        try:
-            complete(request)
-        except EmptyCompletionError:
-            pass  # the provider answered; one token may go to hidden reasoning
-        except Exception as error:
-            logger.warning("readiness check failed", exc_info=error, extra={"check": "model"})
-            return Check(ok=False, detail="The model provider did not answer.")
-        return Check(ok=True, detail="the model answered")
+        reached = gateway.probe(settings, ollama_host, self._transport)
+        return Check(ok=reached.ok, detail=reached.detail)
 
 
 class ReadinessChecks:
@@ -218,9 +204,10 @@ class ReadinessChecks:
                 timeout_s=INDEX_TIMEOUT_S,
                 failure="The vector index could not be read.",
             )
+            host = settings.embedding.host or None
             model = Probe(
-                lambda: self.model.check(settings.generation),
-                timeout_s=model_timeout_s(settings.generation),
+                lambda: self.model.check(settings.generation, host),
+                timeout_s=gateway.probe_timeout_s(settings.generation, host),
             )
         checks = run_checks(
             {
