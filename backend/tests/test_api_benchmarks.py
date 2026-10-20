@@ -431,7 +431,9 @@ def test_a_job_ending_on_any_base_exception_is_failed_not_running(
     job = client.post("/api/v1/benchmarks", json=smoke()).json()
     finished = wait_job(client, job["job_id"])
     assert finished["status"] == "failed" and finished["error"]["error_code"] == "RUN_ERROR"
-    assert client.post("/api/v1/queries", json=QUERY).status_code == 202
+    query = client.post("/api/v1/queries", json=QUERY)
+    assert query.status_code == 202
+    wait_query(client, query.json()["run_id"])  # no worker outlives the test
 
 
 @pytest.fixture
