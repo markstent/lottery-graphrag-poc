@@ -278,6 +278,7 @@ def test_live_events_stream_as_the_worker_records_them(run_store: RunStore) -> N
         frames.append(frame)
     assert received.get(timeout=DEADLINE_S) is None  # the stream closed itself
     consumer.join(DEADLINE_S)
+    assert not consumer.is_alive(), "the stream consumer did not end"
     assert ids(frames) == [1, 2, 3]
     assert [frame.split("\n")[1] for frame in frames] == [f"event: {t}" for t in types]
 

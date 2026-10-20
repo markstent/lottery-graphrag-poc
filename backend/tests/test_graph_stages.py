@@ -21,7 +21,7 @@ import pyarrow.parquet as pq
 import pytest
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
-from app.datasets.schema import TABLE_SCHEMAS
+from app.datasets.schema import TABLE_SCHEMAS, primary_key
 from app.datasets.world import build_world
 from app.graph.node_rows import build_node_rows
 from app.graph.reader import load_dataset
@@ -274,14 +274,16 @@ TODAYS_SEED_PREFIXES = frozenset(
 )
 
 
-def test_seed_prefixes_come_from_the_schema_registry(tiny_dataset: Path) -> None:
+def test_each_seed_prefix_is_the_prefix_of_its_tables_primary_keys(tiny_dataset: Path) -> None:
     """The seedable-table registry is the id resolver's allow-list. It holds
     exactly the approved seed prefixes, over record tables only, and each
-    prefix is the one every id of its table carries."""
+    prefix is the one every primary key of its table carries."""
     assert set(_SEED_PREFIXES) == set(SEED_ID_PREFIXES.values()) == TODAYS_SEED_PREFIXES
     assert set(SEED_ID_PREFIXES) <= set(RECORD_LABELS)
     for table, prefix in SEED_ID_PREFIXES.items():
-        ids = pq.read_table(tiny_dataset / f"{table}.parquet").column(0).to_pylist()
+        ids = (
+            pq.read_table(tiny_dataset / f"{table}.parquet").column(primary_key(table)).to_pylist()
+        )
         assert ids and all(str(value).startswith(prefix) for value in ids), table
 
 
