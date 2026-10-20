@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.config import GraphConfig
 from app.datasets.taxonomies import local_name_variants
 from app.graph import statements
-from app.graph.config import GraphConfig
 from app.ontology.model import Ontology
 from app.ontology.terms import TermMatcher
 from app.retrieval.graph.resolution import IdEntityResolver, TermEntityResolver

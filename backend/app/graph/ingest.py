@@ -17,8 +17,8 @@ from typing import Any
 from neo4j import Driver, GraphDatabase
 from neo4j import Session as Neo4jSession
 
+from app.config import LABEL_VERSION, GraphConfig
 from app.graph import mapping, statements
-from app.graph.config import LABEL_VERSION, GraphConfig
 from app.graph.node_rows import NodeRows, build_node_rows
 from app.graph.reader import load_dataset
 from app.graph.relationship_rows import RelationshipKey, RelationshipRows, build_relationship_rows

@@ -214,7 +214,7 @@ def test_generation_reasoning_comes_from_the_environment(
     monkeypatch: pytest.MonkeyPatch, stub_litellm: StubLiteLLM
 ) -> None:
     from app.config import from_env
-    from app.retrieval.graph.lab import build_generator
+    from app.lab import build_generator
 
     monkeypatch.delenv("GENERATION_REASONING", raising=False)
     assert from_env().generation.reasoning == "default"

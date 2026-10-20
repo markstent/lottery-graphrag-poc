@@ -114,7 +114,7 @@ def test_schema_statements_index_new_labels() -> None:
 
 def test_graph_schema_yaml_matches_registries() -> None:
     import yaml
-    from app.datasets.config import REPO_ROOT
+    from app.config import REPO_ROOT
 
     schema = yaml.safe_load((REPO_ROOT / "schemas/graph/graph-schema.yaml").read_text("utf-8"))
     assert schema["schema_version"] == "2.0.0"

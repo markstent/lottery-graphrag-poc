@@ -2,8 +2,8 @@
 
 The boundary is structural, not conventional:
 
-1. No module under ``app/retrieval``, ``app/api``, ``app/datasets``,
-   ``app/graph``, ``app/ontology`` or ``app/scenarios`` may import
+1. No module in an isolated namespace (``ISOLATED_NAMESPACES``) or among the
+   isolated top-level modules (the lab and the trace CLI) may import
    ``app.evaluation`` or reference the truth path by name; the scenario
    package reaches its output path only through ``DEFAULT_TRUTH_PATH``.
 2. The scenario package may write the ledger but must never import the
@@ -25,7 +25,20 @@ from app.scenarios.catalogue import ENABLED
 from app.scenarios.engine import apply_scenarios
 
 APP_DIR = Path(__file__).resolve().parents[1] / "app"
-ISOLATED_NAMESPACES = ("retrieval", "api", "datasets", "graph", "ontology", "scenarios")
+ISOLATED_NAMESPACES = (
+    "retrieval",
+    "api",
+    "datasets",
+    "graph",
+    "ontology",
+    "scenarios",
+    "config",
+    "events",
+    "observability",
+    "persistence",
+    "models",
+)
+ISOLATED_MODULES = ("lab.py", "traces.py")
 FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "app.evaluation")
 
 
@@ -55,28 +68,44 @@ def _imported_modules(tree: ast.Module, module_path: Path) -> set[str]:
     return modules
 
 
+def _isolated_paths() -> list[Path]:
+    paths = [path for ns in ISOLATED_NAMESPACES for path in sorted((APP_DIR / ns).rglob("*.py"))]
+    return [*paths, *(APP_DIR / name for name in ISOLATED_MODULES)]
+
+
+def test_isolated_modules_exist() -> None:
+    for name in (*ISOLATED_NAMESPACES, *ISOLATED_MODULES):
+        assert (APP_DIR / name).exists(), f"isolated module app/{name} is missing"
+
+
 def test_isolated_namespaces_never_reference_evaluator_truth() -> None:
-    for namespace in ISOLATED_NAMESPACES:
-        for path in sorted((APP_DIR / namespace).rglob("*.py")):
-            source = path.read_text(encoding="utf-8")
-            assert not any(marker in source for marker in FORBIDDEN_STRINGS), (
-                f"{namespace}/{path.name} references evaluator truth machinery"
-            )
-            imports = _imported_modules(_tree(path), path)
-            assert not any(name.startswith("app.evaluation") for name in imports), (
-                f"{namespace}/{path.name} imports app.evaluation"
-            )
+    for path in _isolated_paths():
+        where = path.relative_to(APP_DIR)
+        source = path.read_text(encoding="utf-8")
+        assert not any(marker in source for marker in FORBIDDEN_STRINGS), (
+            f"{where} references evaluator truth machinery"
+        )
+        imports = _imported_modules(_tree(path), path)
+        assert not any(name.startswith("app.evaluation") for name in imports), (
+            f"{where} imports app.evaluation"
+        )
+
+
+def test_retrieval_imports_nothing_from_api() -> None:
+    for path in sorted((APP_DIR / "retrieval").rglob("*.py")):
+        imports = _imported_modules(_tree(path), path)
+        assert not any(name == "app.api" or name.startswith("app.api.") for name in imports), (
+            f"{path.relative_to(APP_DIR)} imports app.api"
+        )
 
 
 def test_ontology_package_is_independent_of_bank_and_scenarios() -> None:
-    allowed = {"app.datasets.config"}
     for path in sorted((APP_DIR / "ontology").rglob("*.py")):
         imports = _imported_modules(_tree(path), path)
         offenders = {
             name
             for name in imports
             if name.startswith(("app.scenarios", "app.evaluation", "app.datasets"))
-            and not any(name == ok or name.startswith(f"{ok}.") for ok in allowed)
         }
         assert not offenders, (path.name, offenders)
 

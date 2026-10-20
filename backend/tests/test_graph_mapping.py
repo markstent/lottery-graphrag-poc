@@ -7,11 +7,11 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
+from app.config import LABEL_VERSION
 from app.datasets.config import GenerationConfig
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import World, build_world
 from app.graph import mapping, statements
-from app.graph.config import LABEL_VERSION
 from app.graph.ingest import IngestStats, expected_relationship_counts
 from app.graph.node_rows import build_node_rows
 from app.graph.relationship_rows import BINDING_LABELS, RelationshipKey, build_relationship_rows

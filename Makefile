@@ -7,7 +7,7 @@ UV := uv --directory $(BACKEND)
 PNPM := pnpm -C $(FRONTEND)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank run-smoke run-benchmark run-sweep
+.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank run-smoke run-benchmark run-sweep traces
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -67,6 +67,10 @@ ingest-graph: ## Ingest the development dataset into Neo4j (Phase 4)
 
 index-vector: ## Build the document vector index in Qdrant (Phase 8)
 	$(UV) run python -m app.retrieval.standard
+
+traces: ## Write side-by-side A/B/C example traces (fake generator; needs the dev graph and index)
+	$(UV) run python -m app.traces --generator fake > docs/retrieval/example-traces.md.tmp
+	mv docs/retrieval/example-traces.md.tmp docs/retrieval/example-traces.md
 
 pull-models: ## Pull the local embedding model
 	ollama pull bge-m3

@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.datasets.config import REPO_ROOT
+from app.config import REPO_ROOT
 from app.datasets.world import World
 from app.scenarios.engine import ScenarioOutcome
 

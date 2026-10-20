@@ -32,9 +32,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, cast
 
-from app.config import RetrievalSettings, from_env
+from app.config import REPO_ROOT, GraphConfig, RetrievalSettings, from_env
 from app.datasets import __main__ as datasets_cli
-from app.datasets.config import GENERATOR_VERSION, REPO_ROOT
+from app.datasets.config import GENERATOR_VERSION
 from app.evaluation.bank import BANK_VERSION, STRATA, question_by_id
 from app.evaluation.grounding import (
     FrozenBank,
@@ -68,8 +68,7 @@ from app.evaluation.runner import (
 )
 from app.evaluation.statistics import cluster_bootstrap, points
 from app.graph import __main__ as graph_cli
-from app.graph.config import from_env as graph_from_env
-from app.retrieval.graph.lab import build_generator, build_lab
+from app.lab import build_generator, build_lab
 from app.retrieval.standard.index import MANIFEST_NAME, build_index, build_store
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
@@ -319,7 +318,7 @@ def build_runner(
     provider = "fake" if kind == "smoke" else settings.generation.provider
     lab = build_lab(settings, build_generator(provider, settings))
     return BenchmarkRunner(
-        lab, graph_from_env(), bank, paths.world_dir, kind, repeats, pipelines=pipelines
+        lab, GraphConfig.from_env(), bank, paths.world_dir, kind, repeats, pipelines=pipelines
     )
 
 

@@ -16,16 +16,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app import config as app_config
 from app.api import queries
 from app.api.runs import QueryService
-from app.config import RetrievalSettings
+from app.config import GraphConfig, RetrievalSettings
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation import report
-from app.graph.config import REPO_ROOT
-from app.graph.config import from_env as from_graph_env
 from app.main import create_app
 from app.retrieval.standard.generation import GenerationError, GenerationOutput
 from app.retrieval.standard.vector_store import InMemoryVectorStore
@@ -58,7 +57,9 @@ def tiny_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
 @pytest.fixture()
 def client(tiny_dataset: Path) -> Iterator[TestClient]:
     settings: RetrievalSettings = make_settings(dataset_dir=str(tiny_dataset))
-    service = QueryService(settings=settings, graph_config=from_graph_env(), generator_name="fake")
+    service = QueryService(
+        settings=settings, graph_config=GraphConfig.from_env(), generator_name="fake"
+    )
     app = create_app(service_factory=lambda: service)
     with TestClient(app) as test_client:
         yield test_client
@@ -70,7 +71,9 @@ def failing_client(tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch) -> Itera
 
     settings: RetrievalSettings = make_settings(dataset_dir=str(tiny_dataset))
     monkeypatch.setattr(runs_module, "build_generator", lambda _name, _settings: FailingGenerator())
-    service = QueryService(settings=settings, graph_config=from_graph_env(), generator_name="fake")
+    service = QueryService(
+        settings=settings, graph_config=GraphConfig.from_env(), generator_name="fake"
+    )
     app = create_app(service_factory=lambda: service)
     with TestClient(app) as test_client:
         yield test_client
@@ -218,7 +221,7 @@ class TestErrorMapping:
     def test_dense_only_collection_maps_to_vector_error(
         self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        import app.retrieval.graph.lab as lab_module
+        import app.lab as lab_module
 
         class DenseOnlyStore(InMemoryVectorStore):
             def count(self) -> int:
@@ -230,7 +233,7 @@ class TestErrorMapping:
         monkeypatch.setattr(lab_module, "build_store", lambda *_args: DenseOnlyStore())
         settings: RetrievalSettings = make_settings(dataset_dir=str(tiny_dataset))
         service = QueryService(
-            settings=settings, graph_config=from_graph_env(), generator_name="fake"
+            settings=settings, graph_config=GraphConfig.from_env(), generator_name="fake"
         )
         with TestClient(create_app(service_factory=lambda: service)) as client:
             run_id = client.post(
@@ -252,7 +255,7 @@ class TestErrorMapping:
     ) -> None:
         import shutil
 
-        import app.retrieval.graph.lab as lab_module
+        import app.lab as lab_module
 
         class PopulatedStore(InMemoryVectorStore):
             def count(self) -> int:
@@ -266,7 +269,7 @@ class TestErrorMapping:
         monkeypatch.setattr(lab_module, "build_store", lambda *_args: PopulatedStore())
         settings: RetrievalSettings = make_settings(dataset_dir=str(dataset_dir))
         service = QueryService(
-            settings=settings, graph_config=from_graph_env(), generator_name="fake"
+            settings=settings, graph_config=GraphConfig.from_env(), generator_name="fake"
         )
         with TestClient(create_app(service_factory=lambda: service)) as client:
             run_id = client.post(
@@ -281,7 +284,7 @@ class TestErrorMapping:
     @staticmethod
     def _cold_start(settings: RetrievalSettings) -> None:
         service = QueryService(
-            settings=settings, graph_config=from_graph_env(), generator_name="fake"
+            settings=settings, graph_config=GraphConfig.from_env(), generator_name="fake"
         )
         with TestClient(create_app(service_factory=lambda: service)) as client:
             run_id = client.post(
@@ -313,7 +316,7 @@ class TestErrorMapping:
         import dataclasses
         import shutil
 
-        import app.retrieval.graph.lab as lab_module
+        import app.lab as lab_module
         from app.retrieval.standard.embeddings import HashingEmbedder
         from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
@@ -363,7 +366,7 @@ class TestDemoAndBenchmarks:
         app = create_app(
             service_factory=lambda: QueryService(
                 settings=make_settings(dataset_dir=str(tiny_dataset)),
-                graph_config=from_graph_env(),
+                graph_config=GraphConfig.from_env(),
             )
         )
         with TestClient(app) as client:
@@ -399,7 +402,7 @@ class TestDemoAndBenchmarks:
         app = create_app(
             service_factory=lambda: QueryService(
                 settings=make_settings(dataset_dir=str(tiny_dataset)),
-                graph_config=from_graph_env(),
+                graph_config=GraphConfig.from_env(),
             )
         )
         with TestClient(app, raise_server_exceptions=False) as client:
@@ -409,15 +412,17 @@ class TestDemoAndBenchmarks:
     def test_unset_benchmark_dir_reads_the_repository_runs(
         self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
-        # The default must not depend on the server's working directory.
-        assert queries.DEFAULT_BENCHMARK_DIR == REPO_ROOT / "data" / "evaluation" / "runs"
-        self._publish(tmp_path, "run", "smoke", "2026-10-01T09:00:00+00:00")
-        monkeypatch.setattr(queries, "DEFAULT_BENCHMARK_DIR", tmp_path)
+        # The default is anchored at the repository root, not the server's
+        # working directory: re-anchor the root and the API follows it.
+        self._publish(
+            tmp_path / "data" / "evaluation" / "runs", "run", "smoke", "2026-10-01T09:00:00+00:00"
+        )
+        monkeypatch.setattr(app_config, "REPO_ROOT", tmp_path)
         monkeypatch.delenv("BENCHMARK_DIR", raising=False)
         app = create_app(
             service_factory=lambda: QueryService(
                 settings=make_settings(dataset_dir=str(tiny_dataset)),
-                graph_config=from_graph_env(),
+                graph_config=GraphConfig.from_env(),
             )
         )
         with TestClient(app) as client:

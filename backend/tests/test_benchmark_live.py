@@ -18,10 +18,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app.config import GraphConfig
 from app.evaluation.official import PRESENTATION_SEED, run_benchmark, world_paths
 from app.evaluation.report import OVERALL, SMOKE_HEADLINE, STRATUM_KEYS, SUMMARY_SCHEMA_VERSION
 from app.evaluation.runner import PIPELINES, SMOKE_LABEL
-from app.graph.config import from_env as graph_from_env
 from app.graph.statements import label_count_statement
 from neo4j import GraphDatabase
 
@@ -100,7 +100,7 @@ def test_summary_is_schema_v2_and_labelled(smoke_run: Path) -> None:
 
 def test_presentation_graph_is_restored(smoke_run: Path) -> None:
     expected = _read(world_paths(PRESENTATION_SEED).world_dir / "_graph_stats.json")["nodes"]
-    config = graph_from_env()
+    config = GraphConfig.from_env()
     with GraphDatabase.driver(config.uri, auth=(config.user, config.password)) as driver:
         found = {
             label: driver.execute_query(

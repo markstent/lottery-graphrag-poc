@@ -12,12 +12,12 @@ import os
 from pathlib import Path
 
 import pytest
+from app.config import LABEL_VERSION, GraphConfig
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.graph import statements
-from app.graph.config import LABEL_VERSION, GraphConfig
 from app.graph.ingest import expected_relationship_counts, ingest
 from app.graph.node_rows import build_node_rows
 from app.graph.reader import load_dataset

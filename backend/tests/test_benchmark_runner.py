@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from app.config import from_env
+from app.config import LABEL_VERSION, GraphConfig, from_env
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import TokenCheck, answer_score, citation_metrics
@@ -50,10 +50,9 @@ from app.evaluation.runner import (
 )
 from app.evaluation.scoring import classify_failure, evidence_score
 from app.evidence import EvidenceChunk
-from app.graph.config import LABEL_VERSION, GraphConfig
+from app.lab import Lab, WiredGraphPipelines, bc_graph_settings, graph_pipelines
 from app.models.gateway import CompletionRequest
 from app.ontology import ONTOLOGY_VERSION
-from app.retrieval.graph.lab import Lab, WiredGraphPipelines, bc_graph_settings, graph_pipelines
 from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.graph.resolution import StaticEntityResolver
 from app.retrieval.standard.fusion import RRF_K

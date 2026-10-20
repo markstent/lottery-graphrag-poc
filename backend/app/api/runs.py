@@ -20,10 +20,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.api.schemas import QueryRequest
-from app.config import RetrievalSettings
+from app.config import GraphConfig, RetrievalSettings
 from app.events import EventEmitter, ListEventSink, RetrievalEvent
-from app.graph.config import GraphConfig
-from app.retrieval.graph.lab import Lab, build_generator, build_lab, wired_pipelines
+from app.lab import Lab, build_generator, build_lab, wired_pipelines
 from app.retrieval.standard.embeddings import EmbeddingError
 from app.retrieval.standard.generation import GenerationError
 from app.retrieval.standard.index import index_corpus, persists_index, write_manifest

@@ -8,7 +8,7 @@ markdown document so the output can be committed verbatim as
 docs/retrieval/example-traces.md.
 
 Usage:
-    uv run python -m app.retrieval.graph.traces [--generator fake|litellm]
+    uv run python -m app.traces [--generator fake|litellm]
         [--question DEMO-01] [--pipeline A]
 
 The litellm generator reads its model from GENERATION_MODEL and
@@ -27,7 +27,7 @@ import time
 
 from app.api.queries import DEMO_QUESTIONS
 from app.api.schemas import DemoQuestion
-from app.config import RetrievalSettings, from_env
+from app.config import GraphConfig, RetrievalSettings, from_env
 from app.events import (
     GRAPH_CANDIDATE_RERANKED,
     GRAPH_ENTITY_RESOLVED,
@@ -43,9 +43,7 @@ from app.events import (
     RetrievalEvent,
 )
 from app.evidence import EvidenceChunk, GraphRunResult, RagAnswer, RagRunResult
-from app.graph.config import GraphConfig
-from app.graph.config import from_env as from_graph_env
-from app.retrieval.graph.lab import PipelineId, build_generator, build_lab, wired_pipelines
+from app.lab import PipelineId, build_generator, build_lab, wired_pipelines
 
 PIPELINE_IDS: tuple[PipelineId, ...] = ("A", "B", "C")
 # Node ids listed per ontology concept before the remainder is summarised.
@@ -100,7 +98,7 @@ HEADER_LINES: tuple[str, ...] = (
     "make index-vector   # hybrid dense + sparse index in Qdrant",
     "make ingest-graph   # development world graph in Neo4j",
     "cd backend",
-    "uv run python -m app.retrieval.graph.traces --generator fake",
+    "uv run python -m app.traces --generator fake",
     "```",
     "",
     (
@@ -416,7 +414,7 @@ def main() -> None:
     pipelines: tuple[PipelineId, ...] = tuple(args.pipeline) if args.pipeline else PIPELINE_IDS
     output = run_all(
         from_env(),
-        from_graph_env(),
+        GraphConfig.from_env(),
         args.generator,
         select_questions(args.question),
         pipelines,

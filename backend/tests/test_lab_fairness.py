@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 from app.config import RetrievalSettings
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
-from app.retrieval.graph.lab import Lab, bc_graph_settings, graph_pipelines
+from app.lab import Lab, bc_graph_settings, graph_pipelines
 from app.retrieval.graph.neo4j_adapter import build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import (

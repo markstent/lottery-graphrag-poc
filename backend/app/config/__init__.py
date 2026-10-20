@@ -1,20 +1,31 @@
-"""Retrieval and model-gateway settings.
+"""The one settings module: repository anchors, retrieval, graph and API settings.
 
 Values come from the environment (see .env.example). Defaults match
-docker-compose.yml for local development. CI never reads these: tests build
-explicit configs with the deterministic fake adapters.
+docker-compose.yml for local development. CI never reads the retrieval
+settings: tests build explicit configs with the deterministic fake adapters.
 """
 
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass, field
 from datetime import date, timedelta
+from pathlib import Path
 
 from app.datasets.config import WINDOW_DAYS, WINDOW_START
-from app.graph.config import DEFAULT_DATASET_DIR
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
 from app.models.gateway import parse_reasoning
+
+# Repository layout anchors data at the repository root (ADR-006), independent
+# of the process working directory.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_OUTPUT_DIR = REPO_ROOT / "data" / "generated"
+DEFAULT_DATASET_DIR = DEFAULT_OUTPUT_DIR / "dev-seed2026"
+
+# Version of the graph's node labels and relationship types, recorded on
+# ingestion and with every benchmark run as `graph_label_version`.
+LABEL_VERSION = "v2"
 
 # End of the synthetic dataset window: the default "today" for record validity.
 DEFAULT_REFERENCE_DATE = WINDOW_START + timedelta(days=WINDOW_DAYS)
@@ -267,5 +278,72 @@ def from_env() -> RetrievalSettings:
             reference_date=date.fromisoformat(
                 os.environ.get("GRAPH_REFERENCE_DATE") or DEFAULT_REFERENCE_DATE.isoformat()
             ),
+        ),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class GraphConfig:
+    """Connection settings for one Neo4j instance."""
+
+    uri: str
+    user: str
+    password: str
+    database: str
+
+    @classmethod
+    def from_env(cls) -> GraphConfig:
+        """Neo4j settings from the environment with local-development defaults."""
+        return cls(
+            uri=os.environ.get("NEO4J_URI", "bolt://localhost:7687"),
+            user=os.environ.get("NEO4J_USER", "neo4j"),
+            password=os.environ.get("NEO4J_PASSWORD", "devpassword"),
+            database=os.environ.get("NEO4J_DATABASE", "neo4j"),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ApiSettings:
+    """Presentation API settings (docs/07-api-event-spec.md)."""
+
+    cors_origins: tuple[str, ...]
+    db_path: Path
+    run_retention: int  # runs kept in the run store
+    sse_heartbeat_s: float
+    benchmark_dir: Path  # where the benchmark CLI writes runs
+
+
+def _positive_int(name: str, default: int) -> int:
+    raw = os.environ.get(name) or str(default)
+    try:
+        value = int(raw)
+    except ValueError:
+        raise ValueError(f"{name} must be a positive integer, got {raw!r}") from None
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer, got {raw!r}")
+    return value
+
+
+def _positive_float(name: str, default: float) -> float:
+    raw = os.environ.get(name) or str(default)
+    try:
+        value = float(raw)
+    except ValueError:
+        raise ValueError(f"{name} must be a positive number, got {raw!r}") from None
+    if not (math.isfinite(value) and value > 0):
+        raise ValueError(f"{name} must be a positive number, got {raw!r}")
+    return value
+
+
+def api_from_env() -> ApiSettings:
+    """API settings from the environment; invalid values raise ``ValueError``."""
+    origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+    return ApiSettings(
+        cors_origins=tuple(origin.strip() for origin in origins.split(",") if origin.strip()),
+        db_path=Path(os.environ.get("APP_DB_PATH") or REPO_ROOT / "data" / "app.db"),
+        run_retention=_positive_int("RUN_RETENTION", 500),
+        sse_heartbeat_s=_positive_float("SSE_HEARTBEAT_S", 15.0),
+        benchmark_dir=Path(
+            os.environ.get("BENCHMARK_DIR") or REPO_ROOT / "data" / "evaluation" / "runs"
         ),
     )

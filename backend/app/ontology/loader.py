@@ -8,7 +8,7 @@ from typing import Any
 
 import yaml
 
-from app.datasets.config import REPO_ROOT
+from app.config import REPO_ROOT
 from app.ontology.model import BINDING_KINDS, LANGUAGES, Binding, Concept, Ontology
 
 DEFAULT_ONTOLOGY_PATH = REPO_ROOT / "schemas" / "ontology" / "ontology.yaml"

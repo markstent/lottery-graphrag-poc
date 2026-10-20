@@ -12,10 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from app.config import RetrievalSettings
+from app.config import GraphConfig, RetrievalSettings
 from app.datasets.taxonomies import local_name_variants
 from app.events import ListEventSink
-from app.graph.config import GraphConfig
 from app.ontology.loader import load_ontology
 from app.ontology.model import Ontology
 from app.ontology.terms import TermMatcher, build_term_table

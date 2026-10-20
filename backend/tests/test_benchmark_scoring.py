@@ -104,8 +104,8 @@ def test_failure_classes(
 def test_lab_reports_the_serialiser_of_the_index_it_loaded(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import app.retrieval.graph.lab as lab_module
-    from app.retrieval.graph.lab import build_lab
+    import app.lab as lab_module
+    from app.lab import build_lab
     from app.retrieval.standard.generation import FakeAnswerGenerator
     from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
     from app.retrieval.standard.vector_store import InMemoryVectorStore

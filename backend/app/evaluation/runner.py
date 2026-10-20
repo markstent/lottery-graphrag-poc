@@ -33,7 +33,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.datasets.config import REPO_ROOT
+from app.config import LABEL_VERSION, REPO_ROOT, GraphConfig
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import CitationMetrics, answer_score, citation_metrics
 from app.evaluation.claims import selection_carrier
@@ -52,9 +52,8 @@ from app.evaluation.judge import (
 from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_score
 from app.events import GRAPH_ENTITY_RESOLVED
 from app.evidence import EvidenceChunk
-from app.graph.config import LABEL_VERSION, GraphConfig
+from app.lab import Lab, bc_graph_settings, wired_pipelines
 from app.ontology import ONTOLOGY_VERSION
-from app.retrieval.graph.lab import Lab, bc_graph_settings, wired_pipelines
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.standard.context import estimate_tokens
 from app.retrieval.standard.fusion import RRF_K

@@ -14,7 +14,8 @@ import json
 import sys
 from pathlib import Path
 
-from app.datasets.config import DEFAULT_OUTPUT_DIR, PROFILES, GenerationConfig
+from app.config import DEFAULT_OUTPUT_DIR
+from app.datasets.config import PROFILES, GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.validation import validate_world

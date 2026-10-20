@@ -14,8 +14,8 @@ from pathlib import Path
 
 from neo4j.exceptions import Neo4jError, ServiceUnavailable
 
+from app.config import DEFAULT_DATASET_DIR, GraphConfig
 from app.graph import mapping
-from app.graph.config import DEFAULT_DATASET_DIR, from_env
 from app.graph.ingest import ingest
 
 GRAPH_STATS_FILE = "_graph_stats.json"
@@ -37,7 +37,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    config = from_env()
+    config = GraphConfig.from_env()
     version = mapping.ingestion_version_now()
     try:
         stats = ingest(args.dataset, config, ingestion_version=version, wipe=args.wipe)

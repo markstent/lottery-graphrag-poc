@@ -16,13 +16,12 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from app.config import RetrievalSettings
+from app.config import GraphConfig, RetrievalSettings
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.taxonomies import local_name_variants
 from app.datasets.world import build_world
-from app.graph.config import GraphConfig
 from app.graph.ingest import ingest
 from app.ontology.loader import load_ontology
 from app.ontology.terms import TermMatcher, build_term_table

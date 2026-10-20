@@ -10,9 +10,9 @@ from typing import Any
 
 import pytest
 from app.datasets.taxonomies import local_name_variants
+from app.lab import Lab
 from app.ontology.loader import load_ontology
 from app.ontology.terms import TermMatcher, build_term_table
-from app.retrieval.graph.lab import Lab
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator

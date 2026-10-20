@@ -22,7 +22,7 @@ Only the retrieval layers differ.
 make index-vector   # hybrid dense + sparse index in Qdrant
 make ingest-graph   # development world graph in Neo4j
 cd backend
-uv run python -m app.retrieval.graph.traces --generator fake
+uv run python -m app.traces --generator fake
 ```
 
 The answers come from the deterministic fake generator, which returns the structured JSON answer (verdict plus prose with [n] citations) built from the context titles only.

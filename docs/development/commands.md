@@ -15,6 +15,7 @@ services-down
 generate-dev-data
 ingest-graph
 index-vector
+traces
 test-graph
 ground-bank
 run-smoke

@@ -6,7 +6,7 @@ import pytest
 from app.api.queries import DEMO_QUESTIONS
 from app.events import RetrievalEvent
 from app.evidence import EvidenceChunk, GraphEvidence, GraphRunResult, RagAnswer, RagRunResult
-from app.retrieval.graph.traces import HEADER, select_questions, trace_a, trace_g
+from app.traces import HEADER, select_questions, trace_a, trace_g
 
 
 def _chunk(chunk_id: str, kind: str, selected: bool) -> EvidenceChunk:

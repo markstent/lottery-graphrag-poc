@@ -120,7 +120,7 @@ World:
 - `generator_version`, `profile`, `world_seed`, `scenario_seed`: from the world's `_manifest.json`.
 - `reference_date`: records whose validity ended before this date rank as superseded in graph evidence ranking.
 - `ontology_version`: the ontology the graph and C use.
-- `graph_label_version`: the version of the graph's node labels and relationship types (`LABEL_VERSION` in `app/graph/config.py`).
+- `graph_label_version`: the version of the graph's node labels and relationship types (`LABEL_VERSION` in `app/config/__init__.py`).
 
 Retrieval:
 

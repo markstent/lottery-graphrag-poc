@@ -10,14 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from pathlib import Path
 
 GENERATOR_VERSION = "0.2.0"
-
-# Repository layout anchors data at the repository root (ADR-006), independent
-# of the process working directory.
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "data" / "generated"
 
 # Fixed generation window. All business timestamps fall inside it, which makes
 # generated worlds comparable and keeps regeneration deterministic.

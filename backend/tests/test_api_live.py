@@ -15,16 +15,15 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app import lab as lab_module
 from app.api.runs import QueryService
-from app.config import RetrievalSettings
+from app.config import GraphConfig, RetrievalSettings
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
-from app.graph.config import GraphConfig
 from app.graph.ingest import ingest
 from app.main import create_app
-from app.retrieval.graph import lab as lab_module
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.index import (
     index_corpus,

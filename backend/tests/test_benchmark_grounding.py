@@ -17,7 +17,8 @@ from typing import Any
 
 import duckdb
 import pytest
-from app.datasets.config import REPO_ROOT, GenerationConfig
+from app.config import REPO_ROOT
+from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world

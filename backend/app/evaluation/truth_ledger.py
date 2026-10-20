@@ -13,9 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.datasets.config import REPO_ROOT
-
-DEFAULT_TRUTH_PATH = REPO_ROOT / "data" / "truth" / "ledger.json"
+from app.scenarios.ledger import DEFAULT_TRUTH_PATH
 
 
 class WorldRef(BaseModel):
