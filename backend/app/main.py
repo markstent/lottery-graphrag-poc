@@ -84,11 +84,13 @@ def create_app(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
         allow_methods=["GET", "POST"],
-        allow_headers=["content-type", "x-request-id"],
+        allow_headers=["content-type", "x-request-id", "last-event-id"],
         expose_headers=["x-request-id"],
     )
     application.include_router(health.router, prefix=API_PREFIX)
-    application.include_router(queries.build_queries_router(), prefix=API_PREFIX)
+    application.include_router(
+        queries.build_queries_router(settings.sse_heartbeat_s), prefix=API_PREFIX
+    )
     application.include_router(
         queries.build_benchmarks_router(settings.benchmark_dir), prefix=API_PREFIX
     )

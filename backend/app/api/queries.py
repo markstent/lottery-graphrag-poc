@@ -17,7 +17,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 
 from app.api.errors import ApiError, ErrorCode
 from app.api.runs import QueryService
@@ -34,6 +35,7 @@ from app.api.schemas import (
     RunHistory,
     RunSummary,
 )
+from app.api.stream import sse_frames
 from app.persistence.store import RunRow, RunStore, cursor
 
 # Saved presentation questions (fixed demo configuration). These are
@@ -119,7 +121,32 @@ def _summary(row: RunRow) -> dict[str, Any]:
     }
 
 
-def build_queries_router() -> APIRouter:
+# A resume point is a stored sequence: a non-negative integer that fits
+# SQLite's 64-bit INTEGER, written in ASCII digits only.
+_MAX_SEQUENCE = 2**63 - 1
+_STREAM_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+
+
+def _resume_point(last_event_id: str | None, after: str | None) -> int:
+    """The sequence to stream after: ``Last-Event-ID`` (a reconnecting
+    EventSource sends it) wins over ``?after=``; neither means from the start."""
+    name, value = (
+        ("Last-Event-ID", last_event_id) if last_event_id is not None else ("after", after)
+    )
+    if value is None:
+        return 0
+    # The length bound comes first: int() refuses very long digit strings.
+    digits = value.isascii() and value.isdigit() and len(value) <= len(str(_MAX_SEQUENCE))
+    if not digits or int(value) > _MAX_SEQUENCE:
+        raise ApiError(
+            422, ErrorCode.VALIDATION_ERROR, f"{name} must be a non-negative integer sequence"
+        )
+    return int(value)
+
+
+def build_queries_router(heartbeat_s: float) -> APIRouter:
+    """The run routes; the event stream sends a heartbeat after ``heartbeat_s``
+    seconds without an event (ApiSettings.sse_heartbeat_s)."""
     router = APIRouter()
 
     @router.post("/queries", status_code=202, response_model=QueryAccepted)
@@ -180,6 +207,26 @@ def build_queries_router() -> APIRouter:
         return EventStream.model_validate(
             {"run_id": run_id, "status": row.status, "events": events}
         )
+
+    @router.get(
+        "/queries/{run_id}/events/stream",
+        response_class=StreamingResponse,
+        responses={200: {"content": {"text/event-stream": {}}}},
+    )
+    def stream_events(
+        run_id: str,
+        service: Service,
+        after: str | None = None,
+        last_event_id: Annotated[str | None, Header()] = None,
+    ) -> StreamingResponse:
+        """The run's events as server-sent events: every stored event after
+        the resume point, then each new one, closing after the terminal event."""
+        start = _resume_point(last_event_id, after)
+        with _reading(service.store) as store:
+            if store.get_run(run_id) is None:
+                raise _unknown_run()
+        frames = sse_frames(run_id, start, service.store, service.wait_for, heartbeat_s)
+        return StreamingResponse(frames, media_type="text/event-stream", headers=_STREAM_HEADERS)
 
     @router.get("/demo/questions", response_model=list[DemoQuestion])
     def read_demo_questions() -> list[DemoQuestion]:

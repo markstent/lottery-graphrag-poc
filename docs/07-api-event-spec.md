@@ -66,6 +66,7 @@ POST   /queries
 GET    /queries/{run_id}
 GET    /queries/{run_id}/evidence
 GET    /queries/{run_id}/events
+GET    /queries/{run_id}/events/stream
 ```
 
 ### Benchmarks
@@ -210,6 +211,14 @@ Every event is written to the run store the moment it is emitted (ADR-007).
 
 `event_id` is a unique opaque identifier (a UUID4 hex string) assigned when the event is emitted.
 `timestamp` is the wall-clock emission time in ISO 8601 UTC (for example `2026-01-01T10:00:00.123456+00:00`); `t_ms` remains the monotonic offset used for replay timing.
+
+`GET /queries/{run_id}/events/stream` serves the same stored events as server-sent events (`text/event-stream`, with `Cache-Control: no-cache` and `X-Accel-Buffering: no`).
+Each event is one frame: `id: <sequence>`, `event: <event_type>`, then `data:` holding the envelope above as JSON.
+The stream resumes after the sequence in the `Last-Event-ID` header, or else the `?after=` query parameter; the header wins when both are sent, and neither means from the first event.
+A resume point that is not a non-negative integer is a 422 `VALIDATION_ERROR`, and an unknown run is a 404 `NOT_FOUND`, both before the stream opens.
+While no new event arrives, a `: keep-alive` comment is sent every `SSE_HEARTBEAT_S` seconds (default 15).
+The stream closes after the run's terminal event.
+It also closes, with no further frame, when the run is no longer active and has no terminal event (its final write failed), and when the run store fails mid-stream; that failure is logged with the run id.
 
 ### Run lifecycle events
 
