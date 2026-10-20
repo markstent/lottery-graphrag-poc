@@ -46,7 +46,7 @@ from app.api.schemas import (
 )
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
-from app.evaluation.grounding import load_frozen_bank
+from app.evaluation.grounding import FrozenBank, load_frozen_bank
 from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
@@ -117,17 +117,25 @@ def _summary_out(run: Published) -> BenchmarkSummary:
     )
 
 
+def presentation_bank() -> FrozenBank | None:
+    """The frozen bank of the presentation world, read afresh on every call,
+    or None before it is grounded. A bank whose hash does not match raises
+    ``GroundingError``."""
+    path = world_paths(PRESENTATION_SEED).bank_path
+    return load_frozen_bank(path) if path.is_file() else None
+
+
 def _questions(runs_dir: Path, name: str | None) -> list[QuestionOut]:
     """The presentation bank's questions, scored by the named run, else by
     the newest official run of the whole bank; unscored without either."""
-    paths = world_paths(PRESENTATION_SEED)
-    if not paths.bank_path.is_file():
+    bank = presentation_bank()
+    if bank is None:
         raise ApiError(
             404,
             ErrorCode.NOT_FOUND,
             f"no frozen bank for world seed {PRESENTATION_SEED}; run a benchmark to ground it",
         )
-    bank = load_frozen_bank(paths.bank_path)
+    paths = world_paths(PRESENTATION_SEED)
     try:
         cards = question_catalogue(bank, paths.ledger_path)
     except LedgerMismatch as error:

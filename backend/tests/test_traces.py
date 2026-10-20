@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from app.api.queries import DEMO_QUESTIONS
+from app.api.schemas import DemoQuestion
 from app.events import RetrievalEvent
 from app.evidence import EvidenceChunk, GraphEvidence, GraphRunResult, RagAnswer, RagRunResult
 from app.traces import HEADER, select_questions, trace_a, trace_g
@@ -32,14 +32,22 @@ def _chunk(chunk_id: str, kind: str, selected: bool) -> EvidenceChunk:
     )
 
 
+DEMOS = [
+    DemoQuestion(
+        instance_id=f"{qid}-2026-X", question_id=qid, text=f"q {qid}", stratum=s, market_scope=[]
+    )
+    for qid, s in (("L05", "H1"), ("L09", "H2"), ("L01", "H3"))
+]
+
+
 def test_select_questions_defaults_to_every_demo_question_in_order() -> None:
-    assert [q.id for q in select_questions(None)] == [q.id for q in DEMO_QUESTIONS]
+    assert select_questions(DEMOS, None) == DEMOS
 
 
 def test_select_questions_filters_and_rejects_unknown_ids() -> None:
-    assert [q.id for q in select_questions(["DEMO-03", "DEMO-01"])] == ["DEMO-01", "DEMO-03"]
-    with pytest.raises(ValueError, match="DEMO-99"):
-        select_questions(["DEMO-99"])
+    assert [q.question_id for q in select_questions(DEMOS, ["L01", "L05"])] == ["L05", "L01"]
+    with pytest.raises(ValueError, match="L99"):
+        select_questions(DEMOS, ["L99"])
 
 
 def _answer() -> RagAnswer:

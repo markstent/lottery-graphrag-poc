@@ -46,11 +46,12 @@ pane event still streams from real recorded telemetry.
    SCN-007 story: embedding, candidate ranking, context assembly on the
    left; seed resolution, bounded traversal, ontology expansion on the
    right. Rewind the timeline to replay any moment.
-2. **Switch to Live backend.** The composer loads the fixed demo questions
-   from `GET /api/v1/demo/questions`. Run DEMO-02 (SCN-007 cross-market
-   incident): both panes animate from the recorded event stream of a real
-   A/B/C execution; the graph pane shows ~100+ traversed nodes against the
-   demo world, the ontology concept binding fires in pipeline C.
+2. **Switch to Live backend.** The composer loads the demo questions from
+   `GET /api/v1/demo/questions`: the first instance of strata H1, H2, H3
+   and H5 in the frozen bank (`make ground-bank` first). Each one is scored
+   against the answer key once its run completes. Run the H1 question:
+   both panes animate from the recorded event stream of a real A/B/C
+   execution, and the scores per pipeline appear under the panes.
 3. **Evidence explorer.** Open a citation from the answer: chunk text,
    source system, market, validity window. Graph citations resolve to the
    node evidence with its ranking components.

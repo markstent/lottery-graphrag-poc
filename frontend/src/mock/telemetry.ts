@@ -124,8 +124,25 @@ export interface MockRun {
   rag: RagEvent[]
   graph: GraphEvent[]
   evaluation: EvaluationEvent[]
-  /** The published benchmark is v2, which has no per-question scores yet. */
-  benchmarkV2Published?: boolean
+  /** Whether the question has an answer key: a bank question has, ad hoc text has none. */
+  answerKey?: 'none' | 'available'
+  /** A completed bank question's scores against its answer key; null when not scored. */
+  liveScore?: LiveScore | null
+}
+
+/** One pipeline's deterministic scores on a live bank question (backend LivePipelineScore). */
+export interface LivePipelineScore {
+  answer: number | null
+  evidence_f1: number | null
+  anchor_resolution: number | null
+  failure_class: string | null
+}
+
+/** A live bank question scored against its answer key (backend LiveScore). */
+export interface LiveScore {
+  instance_id: string
+  label: 'scored against the answer key'
+  per_pipeline: Record<string, LivePipelineScore>
 }
 
 const node = (

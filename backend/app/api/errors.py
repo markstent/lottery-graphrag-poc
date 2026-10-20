@@ -50,6 +50,8 @@ class ErrorCode(StrEnum):
     INTERRUPTED = "INTERRUPTED"
     CANCELLED = "CANCELLED"
     RUN_ERROR = "RUN_ERROR"
+    # The server is missing a prepared artefact (such as the grounded bank).
+    CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
 
 
 class ApiErrorBody(BaseModel):

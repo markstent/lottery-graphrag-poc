@@ -1,5 +1,5 @@
-"""API contract tests for CORS and the demo configuration (docs/07 section
-18), without external services.
+"""API contract tests for CORS and the demo questions (docs/07 section 18),
+without external services.
 
 The run routes are tested in tests/test_api_runs.py and the benchmark routes
 in tests/test_api_benchmarks.py. Truth-ledger non-exposure is enforced
@@ -9,8 +9,10 @@ structurally by tests/test_truth_ledger_isolation.py.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
+from app.evaluation import official
 from app.main import create_app
 from fastapi.testclient import TestClient
 
@@ -30,13 +32,12 @@ class TestCorsAndDemo:
         response = client.get("/api/v1/health", headers={"Origin": "http://evil.example"})
         assert "access-control-allow-origin" not in response.headers
 
-    def test_demo_questions_are_the_fixed_configuration(self, client: TestClient) -> None:
-        payload = client.get("/api/v1/demo/questions").json()
-        assert [question["id"] for question in payload] == [
-            "DEMO-01",
-            "DEMO-02",
-            "DEMO-03",
-            "DEMO-04",
-        ]
-        assert all(question["question"] for question in payload)
-        assert all("profile" not in question for question in payload)
+    def test_demo_questions_need_the_grounded_bank(
+        self, client: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The v1 fixed list is gone: without a bank there are no demo questions.
+        tests/test_api_scoring.py covers the questions drawn from a bank."""
+        monkeypatch.setattr(official, "DATA_DIR", tmp_path / "data")
+        response = client.get("/api/v1/demo/questions")
+        assert response.status_code == 503
+        assert response.json()["error"]["error_code"] == "CONFIGURATION_ERROR"

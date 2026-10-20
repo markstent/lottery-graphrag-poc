@@ -5,9 +5,9 @@ domain models in app.evidence directly: they are the retrieval layer's own
 public record (provenance included) and are already Pydantic.
 """
 
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 from app.api.errors import ApiErrorBody
 from app.datasets.master_data import MARKETS
@@ -17,6 +17,10 @@ PipelineId = Literal["A", "B", "C"]
 QueryStatus = Literal["queued", "running", "completed", "failed", "cancelled"]
 PipelineStatus = Literal["pending", "running", "completed", "failed", "cancelled", "skipped"]
 RunKind = Literal["live", "recorded"]
+# Whether a run's question has an answer key: a bank question has, an ad hoc one has none.
+AnswerKey = Literal["none", "available"]
+LiveScoreLabel = Literal["scored against the answer key"]
+LIVE_SCORE_LABEL: LiveScoreLabel = "scored against the answer key"
 
 # Run history page size (docs/07): a larger limit is a 422, never a clamp.
 HISTORY_LIMIT_DEFAULT = 20
@@ -57,12 +61,18 @@ class QueryRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    question: str = Field(min_length=1, max_length=2000)
+    # Required for an ad hoc question. A bank question runs with its own
+    # text, so with ``benchmark_instance_id`` it may be left out; when it is
+    # sent it must equal the instance's text (checked against the bank).
+    question: str | None = Field(default=None, min_length=1, max_length=2000)
     configurations: list[PipelineId] = Field(default=["A", "B", "C"], min_length=1, max_length=3)
     # Optional retrieval scope: market codes ("UK") or full ids ("MKT_UK"),
     # normalised to full ids. Empty means all markets. The scope applies
     # identically to every requested pipeline (retrieval fairness).
     market_scope: list[str] = Field(default_factory=list, max_length=4)
+    # An instance of the presentation world's frozen bank: the run asks its
+    # text and is scored against its answer key once the run has completed.
+    benchmark_instance_id: str | None = Field(default=None, min_length=1, max_length=200)
 
     @field_validator("market_scope")
     @classmethod
@@ -76,6 +86,12 @@ class QueryRequest(BaseModel):
             if market_id not in normalised:
                 normalised.append(market_id)
         return normalised
+
+    @model_validator(mode="after")
+    def _question_or_instance(self) -> Self:
+        if self.question is None and self.benchmark_instance_id is None:
+            raise ValueError("question is required unless benchmark_instance_id is given")
+        return self
 
 
 class QueryAccepted(BaseModel):
@@ -110,11 +126,40 @@ class RunHistory(BaseModel):
     next_before: str | None
 
 
+class LivePipelineScore(BaseModel):
+    """One pipeline's deterministic scores on a live bank question; None
+    where the instance does not define the metric."""
+
+    answer: float | None
+    evidence_f1: float | None
+    anchor_resolution: float | None
+    failure_class: str | None
+
+
+class LiveScore(BaseModel):
+    """A completed bank question's live answers scored against its answer
+    key by the deterministic scorers (never the judge, spec 10a.1)."""
+
+    instance_id: str
+    label: LiveScoreLabel = LIVE_SCORE_LABEL
+    per_pipeline: dict[str, LivePipelineScore]
+
+
 class QueryResults(RunSummary):
     """Response for GET /api/v1/queries/{run_id}: the summary plus every
-    stored pipeline result, readable as soon as each pipeline finishes."""
+    stored pipeline result, readable as soon as each pipeline finishes.
+
+    ``answer_key`` says whether the question has one: "none" for an ad hoc
+    question, which is never scored. A bank question's ``score`` is written
+    after the run has completed, so it can be null for a moment after the
+    final status; it stays null when the run did not complete or scoring
+    failed.
+    """
 
     results: dict[str, RagRunResult | GraphRunResult] = Field(default_factory=dict)
+    benchmark_instance_id: str | None = None
+    answer_key: AnswerKey = "none"
+    score: LiveScore | None = None
 
 
 class RecordedEvent(BaseModel):
@@ -140,16 +185,18 @@ class EventStream(BaseModel):
 
 
 class DemoQuestion(BaseModel):
-    """A saved presentation question (fixed demo configuration)."""
+    """A demo question: one instance of the presentation world's frozen bank.
 
-    id: str
-    question: str
-    category: str
-    configurations: list[PipelineId] = ["A", "B", "C"]
-    # Published benchmark question whose evaluator scores the Results
-    # surface may show alongside a live run; None when no published result
-    # corresponds to this question.
-    benchmark_question_id: str | None = None
+    Pipeline-visible fields only: the text every pipeline receives, never
+    the expected answer, checks or claims. ``market_scope`` is empty (all
+    markets): the bank defines no scope of its own.
+    """
+
+    instance_id: str
+    question_id: str
+    text: str
+    stratum: str
+    market_scope: list[str]
 
 
 class BenchmarkSummary(BaseModel):

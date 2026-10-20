@@ -4,9 +4,10 @@
  * the MockRun shape the playback state and projectors already consume.
  *
  * Honesty rules: only recorded backend events drive the streams; timing
- * offsets come from the recorded t_ms; evaluation metrics come from the
- * published benchmark summary for the matched question (or null), never
- * from per-run guesses. The ledger is never read anywhere in this path.
+ * offsets come from the recorded t_ms; a bank question's scores are the
+ * backend's own, scored against the answer key after the run completed,
+ * never per-run guesses; an ad hoc question has no answer key and no score.
+ * The ledger and the answer key are never read anywhere in this path.
  */
 
 import type {
@@ -21,8 +22,8 @@ import type {
   MockAnswer,
   MockChunk,
   MockRun,
+  LiveScore,
   RagEvent,
-  ScoreStrip,
 } from '../mock/telemetry'
 
 const API_BASE =
@@ -34,7 +35,8 @@ export interface BackendQuestion {
   question: string
   category: string
   configurations?: string[]
-  benchmarkQuestionId?: string | null
+  /** The frozen bank instance a demo question asks; absent for ad hoc text. */
+  instanceId?: string | null
 }
 
 interface RecordedEvent {
@@ -97,11 +99,8 @@ interface ResultsDto {
     }
   >
   error: ErrorDto | null
-}
-
-interface BenchmarkQuestionResult {
-  question_id: string
-  scores: Record<string, Record<string, number | string | null>>
+  answer_key: 'none' | 'available'
+  score: LiveScore | null
 }
 
 const timeout = (ms: number): Promise<never> =>
@@ -120,6 +119,9 @@ async function postQuery(
       question: question.question,
       configurations: question.configurations ?? ['A', 'B', 'C'],
       market_scope: marketScope,
+      ...(question.instanceId
+        ? { benchmark_instance_id: question.instanceId }
+        : {}),
     }),
   })
   if (!response.ok) throw new Error(`query rejected (${response.status})`)
@@ -127,17 +129,54 @@ async function postQuery(
   return body.run_id
 }
 
-/** Poll until the run is final; its events are all stored by then. */
+const POLL_MS = 250
+const RUN_POLLS = 600
+/** A bank question's score is stored just after the final status; scoring takes milliseconds. */
+const SCORE_POLLS = 8
+
+async function fetchResults(runId: string): Promise<ResultsDto> {
+  const response = await fetch(`${API_BASE}/api/v1/queries/${runId}`)
+  if (!response.ok) throw new Error(`results unavailable (${response.status})`)
+  return (await response.json()) as ResultsDto
+}
+
+const pause = (): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, POLL_MS))
+
+/**
+ * Poll until the run is final; its events are all stored by then. A
+ * completed bank question is polled a little longer for its score, which
+ * the backend writes after the final status; a score still missing then
+ * stays null and the Live Lab says the run was not scored.
+ */
 async function awaitResults(runId: string): Promise<ResultsDto> {
-  for (let attempt = 0; attempt < 600; attempt += 1) {
-    const response = await fetch(`${API_BASE}/api/v1/queries/${runId}`)
-    if (!response.ok)
-      throw new Error(`results unavailable (${response.status})`)
-    const body = (await response.json()) as ResultsDto
-    if (body.status !== 'queued' && body.status !== 'running') return body
-    await new Promise((resolve) => setTimeout(resolve, 250))
+  for (let attempt = 0; attempt < RUN_POLLS; attempt += 1) {
+    const body = await fetchResults(runId)
+    if (body.status !== 'queued' && body.status !== 'running') {
+      return awaitScore(runId, body)
+    }
+    await pause()
   }
   throw new Error('run did not finish')
+}
+
+async function awaitScore(
+  runId: string,
+  final: ResultsDto,
+): Promise<ResultsDto> {
+  let body = final
+  for (
+    let attempt = 0;
+    attempt < SCORE_POLLS &&
+    body.status === 'completed' &&
+    body.answer_key === 'available' &&
+    body.score === null;
+    attempt += 1
+  ) {
+    await pause()
+    body = await fetchResults(runId)
+  }
+  return body
 }
 
 async function fetchEvents(runId: string): Promise<RecordedEvent[]> {
@@ -145,38 +184,6 @@ async function fetchEvents(runId: string): Promise<RecordedEvent[]> {
   if (!response.ok) throw new Error(`events unavailable (${response.status})`)
   const body = (await response.json()) as { events: RecordedEvent[] }
   return body.events
-}
-
-/** Per-question scores of the published run, and whether that run is v2. */
-interface QuestionBenchmark {
-  questions: Map<string, BenchmarkQuestionResult>
-  v2Published: boolean
-}
-
-async function fetchBenchmark(
-  questionId: string | null | undefined,
-): Promise<QuestionBenchmark> {
-  const none = { questions: new Map(), v2Published: false }
-  if (!questionId) return none
-  try {
-    const response = await fetch(`${API_BASE}/api/v1/benchmarks/latest`)
-    if (!response.ok) return none
-    const body = (await response.json()) as {
-      questions?: BenchmarkQuestionResult[]
-      summary?: { schema_version?: string } | null
-    }
-    // A v2 summary has no per-question scores; the Live Lab says so.
-    if (isV2Summary(body.summary)) return { ...none, v2Published: true }
-    return {
-      questions: new Map(
-        (body.questions ?? []).map((entry) => [entry.question_id, entry]),
-      ),
-      v2Published: false,
-    }
-  } catch {
-    // API offline: the run still plays, without published scores.
-    return none
-  }
 }
 
 function isV2Summary(summary: object | null | undefined): boolean {
@@ -429,63 +436,6 @@ function kindForLabel(label: string): GraphNode['kind'] {
   return 'document'
 }
 
-/**
- * Quality metrics come only from the published benchmark for the matched
- * question; grounding and the extended discovery metrics have no per-run
- * measurement and stay at the published values (zero when absent). There
- * is no per-run fabrication: if no benchmark result matches, the caller
- * omits the evaluation event and the strip keeps its waiting state.
- */
-function scoreStrip(
-  results: ResultsDto,
-  benchmark: Map<string, BenchmarkQuestionResult>,
-  benchmarkQuestionId: string | null | undefined,
-): ScoreStrip {
-  const baseline = results.results.A
-  const graph = results.results.C ?? results.results.B
-  const published = benchmarkQuestionId
-    ? benchmark.get(benchmarkQuestionId)
-    : undefined
-  const scoreFor = (pipeline: string, metric: string): number => {
-    const value = published?.scores?.[pipeline]?.[metric]
-    return typeof value === 'number' ? value : 0
-  }
-  return {
-    latencyMs: {
-      baseline: Math.round(baseline?.answer.latency_ms ?? 0),
-      graph: Math.round(graph?.answer.latency_ms ?? 0),
-    },
-    contextTokens: {
-      baseline: baseline?.answer.context_tokens ?? 0,
-      graph: graph?.answer.context_tokens ?? 0,
-    },
-    correctness: {
-      baseline: scoreFor('A', 'answer_score'),
-      graph: scoreFor('C', 'answer_score') || scoreFor('B', 'answer_score'),
-    },
-    evidenceRecall: {
-      baseline: scoreFor('A', 'evidence_recall'),
-      graph:
-        scoreFor('C', 'evidence_recall') || scoreFor('B', 'evidence_recall'),
-    },
-    grounding: {
-      baseline: scoreFor('A', 'evidence_precision'),
-      graph:
-        scoreFor('C', 'evidence_precision') ||
-        scoreFor('B', 'evidence_precision'),
-    },
-    extended: {
-      relationshipDiscovery: {
-        baseline: 0,
-        graph:
-          graph?.node_evidence?.filter((node) => node.selected).length ?? 0,
-      },
-      crossMarketDiscovery: { baseline: 0, graph: 0 },
-      ontologyContribution: { baseline: 0, graph: 0 },
-    },
-  }
-}
-
 /** Published harness aggregate (summary.json written by the runner CLI). */
 interface PipelineStats {
   n: number
@@ -636,24 +586,23 @@ export async function fetchBenchmarkResults(): Promise<PublishedBenchmark | null
   }
 }
 
-/** Saved presentation questions from the fixed demo configuration. */
+/** The demo questions: one instance of the frozen bank per demo stratum. */
 export async function fetchDemoQuestions(): Promise<BackendQuestion[]> {
   const response = await fetch(`${API_BASE}/api/v1/demo/questions`)
   if (!response.ok)
     throw new Error(`demo questions unavailable (${response.status})`)
   const body = (await response.json()) as {
-    id: string
-    question: string
-    category: string
-    configurations?: string[]
-    benchmark_question_id?: string | null
+    instance_id: string
+    question_id: string
+    text: string
+    stratum: string
+    market_scope: string[]
   }[]
   return body.map((entry) => ({
-    id: entry.id,
-    question: entry.question,
-    category: entry.category,
-    configurations: entry.configurations,
-    benchmarkQuestionId: entry.benchmark_question_id ?? null,
+    id: entry.question_id,
+    question: entry.text,
+    category: entry.stratum,
+    instanceId: entry.instance_id,
   }))
 }
 
@@ -674,10 +623,7 @@ export async function runBackendQuestion(
     timeout(10_000),
   ])
   const results = await awaitResults(runId)
-  const [events, benchmark] = await Promise.all([
-    fetchEvents(runId),
-    fetchBenchmark(question.benchmarkQuestionId),
-  ])
+  const events = await fetchEvents(runId)
   if (results.status === 'failed') {
     throw new Error(
       failureMessage(events) ?? results.error?.message ?? 'backend run failed',
@@ -702,27 +648,13 @@ export async function runBackendQuestion(
     results.results[graphTag]?.node_evidence,
   )
   graph.push({ kind: 'answer_completed', t: answer.latencyMs, answer })
-  const matched = question.benchmarkQuestionId
-    ? benchmark.questions.get(question.benchmarkQuestionId)
-    : undefined
   return {
     runId,
     question: question.question,
     rag,
     graph,
-    benchmarkV2Published: benchmark.v2Published,
-    evaluation: matched
-      ? [
-          {
-            kind: 'evaluation_completed',
-            t: answer.latencyMs + 200,
-            scores: scoreStrip(
-              results,
-              benchmark.questions,
-              question.benchmarkQuestionId,
-            ),
-          },
-        ]
-      : [],
+    evaluation: [],
+    answerKey: results.answer_key,
+    liveScore: results.score,
   }
 }

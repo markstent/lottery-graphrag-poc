@@ -27,10 +27,26 @@ const V2_BENCHMARK = {
   summary: { schema_version: '2', headlines: [SMOKE_LINE] },
 }
 
-function stubLiveBackend(
-  benchmark: unknown,
-  benchmarkQuestionId: string | null = null,
-) {
+const LIVE_SCORE = {
+  instance_id: 'L05-2026-INC_S007_GR',
+  label: 'scored against the answer key',
+  per_pipeline: {
+    A: {
+      answer: 0,
+      evidence_f1: 0.5,
+      anchor_resolution: 1,
+      failure_class: 'generation_failure',
+    },
+    C: {
+      answer: 1,
+      evidence_f1: null,
+      anchor_resolution: 1,
+      failure_class: null,
+    },
+  },
+}
+
+function stubLiveBackend(answerKey: 'none' | 'available', score: unknown) {
   vi.stubGlobal(
     'fetch',
     vi.fn((input: RequestInfo | URL) => {
@@ -39,10 +55,11 @@ function stubLiveBackend(
         return Promise.resolve(
           jsonResponse([
             {
-              id: 'dq-1',
-              question: 'Why did digital conversion fall in Greece?',
-              category: 'x',
-              benchmark_question_id: benchmarkQuestionId,
+              instance_id: 'L05-2026-INC_S007_GR',
+              question_id: 'L05',
+              text: 'Why did digital conversion fall in Greece?',
+              stratum: 'H1',
+              market_scope: [],
             },
           ]),
         )
@@ -52,8 +69,6 @@ function stubLiveBackend(
         return Promise.resolve(
           jsonResponse({ run_id: 'RUN-T', status: 'completed', events: [] }),
         )
-      if (url.endsWith('/benchmarks/latest'))
-        return Promise.resolve(jsonResponse(benchmark))
       return Promise.resolve(
         jsonResponse({
           run_id: 'RUN-T',
@@ -61,6 +76,8 @@ function stubLiveBackend(
           status: 'completed',
           configurations: ['A', 'C'],
           error: null,
+          answer_key: answerKey,
+          score,
           results: {
             A: {
               answer: {
@@ -193,27 +210,28 @@ describe('App', () => {
     expect(within(group).getByRole('button', { name: 'Greece' })).toBeEnabled()
   })
 
-  it('explains why a live backend run has no evaluation scores', async () => {
-    stubLiveBackend({ questions: [] })
+  it('says an ad hoc live run has no answer key', async () => {
+    stubLiveBackend('none', null)
     await runLiveQuestion()
 
-    expect(
-      await screen.findByText('No evaluation scores for this run.'),
-    ).toBeVisible()
+    expect(await screen.findByText('No answer key.')).toBeVisible()
   })
 
-  it('says per-question scores are not shown for a v2 benchmark run', async () => {
-    stubLiveBackend(V2_BENCHMARK, 'Q30')
+  it('shows a bank question scored against the answer key as plain text', async () => {
+    stubLiveBackend('available', LIVE_SCORE)
     await runLiveQuestion()
 
-    expect(
-      await screen.findByText(
-        'Per-question benchmark scores are not shown for benchmark v2 runs yet.',
-      ),
-    ).toBeVisible()
-    expect(
-      screen.queryByText('No evaluation scores for this run.'),
-    ).not.toBeInTheDocument()
+    const score = await screen.findByRole('region', { name: 'Live score' })
+    expect(score).toHaveTextContent(
+      'Question L05-2026-INC_S007_GR: scored against the answer key.',
+    )
+    expect(score).toHaveTextContent(
+      'A: answer 0.00 · evidence F1 0.50 · anchor resolution 1.00 · failure class generation_failure',
+    )
+    expect(score).toHaveTextContent(
+      'C: answer 1.00 · evidence F1 not defined · anchor resolution 1.00 · failure class none',
+    )
+    expect(screen.queryByText('No answer key.')).not.toBeInTheDocument()
   })
 
   it('shows a v2 benchmark run as a notice, not the committed v1 run', async () => {

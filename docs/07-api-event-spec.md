@@ -185,6 +185,45 @@ The one exception is a pipeline that fails before its next event: the run then e
 A 202 is decided before the run's final row is written, so a run whose end is already being written refuses the cancel with 409.
 Cancelling a finished run is a 409 `VALIDATION_ERROR`; an unknown run is a 404 `NOT_FOUND`.
 
+### Bank questions and live scoring (Phase 4)
+
+```json
+{"benchmark_instance_id": "L05-2026-INC_S007_GR", "configurations": ["A", "B", "C"]}
+```
+
+`benchmark_instance_id` names an instance of the presentation world's frozen bank (seed 2026, `make ground-bank`).
+The run asks that instance's text: every pipeline receives the instance text and nothing else, never its expected answer, checks or claims.
+`question` may then be left out; when it is sent it must equal the instance text, otherwise the request is a 422 `VALIDATION_ERROR` "a bank question runs with its own text".
+An id the bank does not hold is a 422 `VALIDATION_ERROR`, and before the bank is grounded the request is a 503 `CONFIGURATION_ERROR` "the question bank has not been grounded; run make ground-bank".
+A request with neither `question` nor `benchmark_instance_id` is a 422.
+The bank defines no market scope of its own, so the request's `market_scope` applies to a bank question as to any other.
+
+`GET /queries/{run_id}` adds three fields to the run:
+
+```json
+{
+  "benchmark_instance_id": "L05-2026-INC_S007_GR",
+  "answer_key": "available",
+  "score": {
+    "instance_id": "L05-2026-INC_S007_GR",
+    "label": "scored against the answer key",
+    "per_pipeline": {
+      "A": {"answer": 1.0, "evidence_f1": 0.5, "anchor_resolution": 1.0, "failure_class": null}
+    }
+  }
+}
+```
+
+`answer_key` is `"none"` for an ad hoc question, which is never scored and always has `score: null`, and `"available"` for a bank question.
+A bank question is scored once its run has completed: after the terminal event and the final row are stored, the worker scores the stored results with the benchmark runner's deterministic scorer (`app.evaluation.runner.score_pipeline_run`) and stores the score before the run is retired (spec 10a.1).
+A live score therefore equals the deterministic part of what the benchmark runner computes for the same pipeline results; the LLM judge runs only in official runs.
+`anchor_resolution` is 1.0 or 0.0, read from the selection alone for pipeline A, which resolves no entities.
+A metric the instance does not define (evidence F1 when no claim survives anchor exclusion) is null.
+The score follows the final status by a few milliseconds, so a client that sees `completed` with `answer_key: "available"` and `score: null` polls briefly; a run that was cancelled or failed is not scored, and a scoring failure is logged and leaves `score: null` without changing the run's status.
+
+`GET /demo/questions` serves the first instance in bank order of each of the strata H1, H2, H3 and H5, as `instance_id`, `question_id`, `text`, `stratum` and `market_scope` (empty: all markets).
+Before the bank is grounded it is the same 503 `CONFIGURATION_ERROR`, never an empty list.
+
 ---
 
 ## 6. Event Transport
@@ -575,7 +614,7 @@ GET  /api/v1/health
 POST /api/v1/queries          202; background execution; typed request
 GET  /api/v1/queries/{run_id}        status + RagRunResult/GraphRunResult
 GET  /api/v1/queries/{run_id}/events recorded sequence (replay source)
-GET  /api/v1/demo/questions      fixed demo configuration
+GET  /api/v1/demo/questions      one frozen-bank instance per demo stratum
 GET  /api/v1/benchmarks/latest   published harness output only
 ```
 

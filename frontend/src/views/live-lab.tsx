@@ -2,12 +2,14 @@
  * Live Lab (docs/06 section 3): the primary screen. Both panes render only
  * received telemetry; the timeline rewinds; the score strip waits for the
  * evaluator. Two sources: the committed demo story (offline-safe) and the
- * live backend (real pipelines, recorded events, docs/07).
+ * live backend (real pipelines, recorded events, docs/07), whose saved
+ * questions come from the frozen bank and are scored against the answer key.
  */
 
 import { useEffect, useState } from 'react'
 
 import { GraphPane } from '../components/graph-pane'
+import { LiveScoreNote } from '../components/live-score'
 import { RagPane } from '../components/rag-pane'
 import { ScoreStrip } from '../components/score-strip'
 import { Timeline } from '../components/timeline'
@@ -403,35 +405,12 @@ export function LiveLab() {
 
       {playback.scores && <ScoreStrip scores={playback.scores} />}
 
-      {source === 'backend' &&
-        liveRun?.benchmarkV2Published &&
-        playback.status === 'done' &&
-        !playback.scores && (
-          <p className="text-xs text-muted">
-            <span className="font-medium text-warning">
-              Per-question benchmark scores are not shown for benchmark v2 runs
-              yet.
-            </span>{' '}
-            Latency and context tokens above are always measured.
-          </p>
-        )}
-
-      {source === 'backend' &&
-        liveRun &&
-        !liveRun.benchmarkV2Published &&
-        playback.status === 'done' &&
-        !playback.scores && (
-          <p className="text-xs text-muted">
-            <span className="font-medium text-warning">
-              No evaluation scores for this run.
-            </span>{' '}
-            Quality metrics are computed only for questions with a published
-            benchmark result (the honesty rule); latency and context tokens
-            above are always measured. Run a saved chip with a benchmark match,
-            such as <span className="font-mono">dq-1</span> to{' '}
-            <span className="font-mono">dq-3</span>, to see scored evaluation.
-          </p>
-        )}
+      {source === 'backend' && liveRun && playback.status === 'done' && (
+        <LiveScoreNote
+          answerKey={liveRun.answerKey ?? 'none'}
+          score={liveRun.liveScore ?? null}
+        />
+      )}
 
       {!started && (
         <p className="text-xs text-muted">

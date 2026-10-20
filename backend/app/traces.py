@@ -1,6 +1,7 @@
 """Side-by-side A/B/C execution traces (docs/08 HITL-08).
 
-Runs the saved demo questions (``app.api.queries.DEMO_QUESTIONS``) through
+Runs the demo questions (``app.api.scoring.demo_questions``: the first
+instance of each demo stratum in the presentation world's frozen bank) through
 pipeline A (conventional RAG), B (graph, no ontology) and C (graph plus
 ontology) against the live development world: Qdrant (shared hybrid index),
 Neo4j (dev graph), Ollama embeddings and the configured generator. Prints a
@@ -9,15 +10,15 @@ docs/retrieval/example-traces.md.
 
 Usage:
     uv run python -m app.traces [--generator fake|litellm]
-        [--question DEMO-01] [--pipeline A]
+        [--question L05] [--pipeline A]
 
 The litellm generator reads its model from GENERATION_MODEL and
 GENERATION_API_BASE (app.config.from_env).
 
 Requires: services up (make services-up), the dev graph ingested
-(make ingest-graph) and the vector index built (make index-vector).
-The truth ledger is never read here; the questions are the public demo
-question texts and never encode expected answers.
+(make ingest-graph), the vector index built (make index-vector) and the
+bank grounded (make ground-bank). The truth ledger is never read here, and
+only each demo question's text reaches the pipelines, never its answer key.
 """
 
 from __future__ import annotations
@@ -25,8 +26,9 @@ from __future__ import annotations
 import argparse
 import time
 
-from app.api.queries import DEMO_QUESTIONS
+from app.api.benchmarks import presentation_bank
 from app.api.schemas import DemoQuestion
+from app.api.scoring import BANK_NOT_GROUNDED, demo_questions
 from app.config import GraphConfig, RetrievalSettings, from_env
 from app.events import (
     GRAPH_CANDIDATE_RERANKED,
@@ -57,7 +59,7 @@ HEADER_LINES: tuple[str, ...] = (
     "",
     "## What this document is",
     "",
-    "Verbatim output of the side-by-side trace CLI over the saved demo questions.",
+    "Verbatim output of the side-by-side trace CLI over the demo questions of the frozen bank.",
     "Each question runs through three retrieval pipelines:",
     "",
     (
@@ -159,15 +161,15 @@ def run_all(
     lab = build_lab(settings, build_generator(generator_name, settings))
 
     for demo in questions:
-        lines.append(f"## {demo.id}: {demo.category}")
+        lines.append(f"## {demo.question_id}: stratum {demo.stratum}")
         lines.append("")
-        lines.append(f"**Question:** {demo.question}")
+        lines.append(f"**Question:** {demo.text}")
         lines.append("")
 
         if "A" in pipelines:
             sink_a = ListEventSink()
             started = time.perf_counter()
-            result_a = lab.pipeline_a(sink=sink_a).run(demo.question)
+            result_a = lab.pipeline_a(sink=sink_a).run(demo.text)
             wall_ms = (time.perf_counter() - started) * 1000.0
             lines.extend(trace_a(result_a, sink_a.events, wall_ms))
 
@@ -178,7 +180,7 @@ def run_all(
                     if tag not in pipelines:
                         continue
                     started = time.perf_counter()
-                    result_g = pipeline.run(demo.question)
+                    result_g = pipeline.run(demo.text)
                     wall_ms = (time.perf_counter() - started) * 1000.0
                     lines.extend(trace_g(tag, result_g, pipeline.events, wall_ms))
             finally:
@@ -378,18 +380,22 @@ def tag_label(tag: PipelineId) -> str:
     }[tag]
 
 
-def select_questions(ids: list[str] | None) -> list[DemoQuestion]:
-    """The demo questions to run, in saved order; all of them by default."""
+def select_questions(questions: list[DemoQuestion], ids: list[str] | None) -> list[DemoQuestion]:
+    """The demo questions with the given question ids, in demo order; all of them by default."""
     if not ids:
-        return list(DEMO_QUESTIONS)
-    known = {demo.id for demo in DEMO_QUESTIONS}
+        return list(questions)
+    known = {demo.question_id for demo in questions}
     unknown = sorted(set(ids) - known)
     if unknown:
         raise ValueError(f"Unknown demo question id(s): {', '.join(unknown)}")
-    return [demo for demo in DEMO_QUESTIONS if demo.id in ids]
+    return [demo for demo in questions if demo.question_id in ids]
 
 
 def main() -> None:
+    bank = presentation_bank()
+    if bank is None:
+        raise SystemExit(BANK_NOT_GROUNDED)
+    questions = demo_questions(bank)
     parser = argparse.ArgumentParser(description="Run side-by-side A/B/C traces")
     parser.add_argument(
         "--generator",
@@ -400,8 +406,8 @@ def main() -> None:
     parser.add_argument(
         "--question",
         action="append",
-        choices=[demo.id for demo in DEMO_QUESTIONS],
-        help="demo question id to run (repeatable; default: all)",
+        choices=[demo.question_id for demo in questions],
+        help="demo question id to run, such as L05 (repeatable; default: all)",
     )
     parser.add_argument(
         "--pipeline",
@@ -416,7 +422,7 @@ def main() -> None:
         from_env(),
         GraphConfig.from_env(),
         args.generator,
-        select_questions(args.question),
+        select_questions(questions, args.question),
         pipelines,
     )
     print(output)

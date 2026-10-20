@@ -16,8 +16,12 @@ Live runs share Neo4j with benchmark jobs, which ingest other worlds into
 it while they run; ``GraphLease`` keeps the two apart, so a run starts only
 while no benchmark job holds the graph.
 
-The truth ledger is never read here: the service grounds nothing and scores
-nothing. It runs retrieval and records observable events plus answers.
+A bank question (``benchmark_instance_id``) sends only the instance's text
+to the pipelines. Once its run has completed and the final row is stored,
+the worker scores the stored results against the answer key through
+``app.api.scoring`` and stores the score before the run is retired; a
+scoring failure is logged and leaves the run completed without a score.
+This module never reads the truth ledger or an expected answer itself.
 """
 
 from __future__ import annotations
@@ -30,9 +34,11 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Literal
 
+from app.api.benchmarks import presentation_bank
 from app.api.errors import CANCELLED_BODY, ApiErrorBody, ErrorCode, classify, run_error_body
 from app.api.graph_world import GraphLease, LeaseHold
 from app.api.schemas import QueryRequest
+from app.api.scoring import BankQuestion, BankSource, Scorer, bank_question, score_run
 from app.config import GraphConfig, RetrievalSettings
 from app.events import (
     GRAPH_CONTEXT_ASSEMBLED,
@@ -191,7 +197,8 @@ class QueryService:
     flag); the store is safe to share across threads. The lab is built once,
     by ``warm_up`` at start-up (or by the first run), behind its own lock that
     no route takes, so a slow cold start never blocks a read. Each run holds
-    ``lease`` from its start until its worker ends.
+    ``lease`` from its start until its worker ends. ``bank`` reads the
+    frozen bank a bank question is asked from; ``scorer`` scores it.
     """
 
     def __init__(
@@ -200,8 +207,12 @@ class QueryService:
         lab_factory: Callable[[], Lab],
         graph_config: GraphConfig,
         lease: GraphLease | None = None,
+        bank: BankSource = presentation_bank,
+        scorer: Scorer = score_run,
     ) -> None:
         self.store = store
+        self._bank = bank
+        self._scorer = scorer
         self._lease = lease if lease is not None else GraphLease()
         self._lab_factory = lab_factory
         self._graph_config = graph_config
@@ -214,26 +225,36 @@ class QueryService:
 
     def start(self, request: QueryRequest) -> str:
         """Store a queued run and start its worker; returns the run id.
-        Raises a 409 ``ApiError``, storing nothing, while a benchmark job
-        holds the graph."""
+
+        Raises an ``ApiError``, storing nothing: a 422 for a bank question
+        the bank does not hold or asked with other text, a 503 before the
+        bank is grounded, and a 409 while a benchmark job holds the graph.
+        """
+        question = (
+            bank_question(request, self._bank())
+            if request.benchmark_instance_id is not None
+            else None
+        )
         hold = self._lease.take_query()
         try:
-            return self._start(request, hold)
+            return self._start(request, question, hold)
         except BaseException:
             hold.release()
             raise
 
-    def _start(self, request: QueryRequest, hold: LeaseHold) -> str:
+    def _start(self, request: QueryRequest, question: BankQuestion | None, hold: LeaseHold) -> str:
         run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"
         configurations = tuple(request.configurations)
+        # A bank question's market scope would be the instance's own, but the
+        # bank defines none, so the request's scope applies to every question.
         row = RunRow(
             run_id=run_id,
             kind="live",
             status="queued",
-            question=request.question,
+            question=question.instance.text if question is not None else str(request.question),
             market_scope=tuple(request.market_scope),
             configurations=configurations,
-            benchmark_instance_id=None,
+            benchmark_instance_id=question.instance.instance_id if question is not None else None,
             created_at=_now(),
             finished_at=None,
             pipeline_status=dict.fromkeys(configurations, "pending"),
@@ -244,7 +265,10 @@ class QueryService:
         with self._lock:
             self._active[run_id] = sink
         worker = threading.Thread(
-            target=self._execute, args=(row, sink, hold), name=f"query-{run_id}", daemon=True
+            target=self._execute,
+            args=(row, sink, hold, question),
+            name=f"query-{run_id}",
+            daemon=True,
         )
         worker.start()
         return run_id
@@ -319,12 +343,16 @@ class QueryService:
                 self._lab_failed = False
             return self._lab
 
-    def _execute(self, row: RunRow, sink: RecordingSink, hold: LeaseHold) -> None:
+    def _execute(
+        self, row: RunRow, sink: RecordingSink, hold: LeaseHold, question: BankQuestion | None
+    ) -> None:
         # Identifiers only in the log context: never the question or any answer text.
         with run_context(run_id=row.run_id):
             try:
                 outcome, status, current = self._run_pipelines(row, sink)
                 self._finish(sink, outcome, status, current, hold)
+                if question is not None:
+                    self._score(row.run_id, question)
             finally:
                 # Whatever happened, the run is no longer active and its waiters
                 # wake; the graph is free (already, unless the finish failed early).
@@ -435,6 +463,26 @@ class QueryService:
                 "run end could not be stored; the next start-up marks it interrupted",
                 exc_info=error,
                 extra={"outcome": outcome, "error_code": code},
+            )
+
+    def _score(self, run_id: str, question: BankQuestion) -> None:
+        """Score the run against the answer key once its final row says
+        ``completed``; a cancelled, failed or unrecorded end is not scored.
+        A scoring failure is logged and leaves the run without a score."""
+        try:
+            row = self.store.get_run(run_id)
+            if row is None or row.status != "completed":
+                return
+            score = self._scorer(
+                row, self.store.results(run_id), self.store.events(run_id), question.bank
+            )
+            self.store.put_score(run_id, score.model_dump(mode="json"))
+        except Exception as error:
+            code, _retryable = classify(error)
+            logger.error(
+                "live scoring failed; the run keeps no score",
+                exc_info=error,
+                extra={"instance_id": question.instance.instance_id, "error_code": code},
             )
 
 

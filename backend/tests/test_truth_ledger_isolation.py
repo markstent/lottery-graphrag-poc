@@ -114,7 +114,7 @@ def test_only_two_api_modules_import_evaluation() -> None:
     assert all(
         path.parent == API_DIR for path in API_DIR.rglob("*.py") if _imports_evaluation(path)
     )
-    assert "benchmarks.py" in importing
+    assert importing == {"benchmarks.py", "scoring.py"}
 
 
 def test_api_reads_the_ledger_only_through_evaluation() -> None:

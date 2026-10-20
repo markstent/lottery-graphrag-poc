@@ -100,6 +100,25 @@ const EVENTS = {
   ],
 }
 
+const LIVE_SCORE = {
+  instance_id: 'L05-2026-INC_S007_GR',
+  label: 'scored against the answer key',
+  per_pipeline: {
+    A: {
+      answer: 0,
+      evidence_f1: 0.5,
+      anchor_resolution: 1,
+      failure_class: 'generation_failure',
+    },
+    C: {
+      answer: 1,
+      evidence_f1: null,
+      anchor_resolution: 1,
+      failure_class: null,
+    },
+  },
+}
+
 const FAILURE = {
   error_code: 'MODEL_ERROR',
   message: 'The language model could not produce an answer.',
@@ -113,6 +132,8 @@ const RESULTS = {
   configurations: ['A', 'C'],
   pipeline_status: { A: 'completed', C: 'completed' },
   error: null,
+  answer_key: 'none',
+  score: null,
   results: {
     A: {
       answer: {
@@ -193,10 +214,11 @@ beforeEach(() => {
         return Promise.resolve(
           jsonResponse([
             {
-              id: 'DEMO-01',
-              question: 'Saved question one',
-              category: 'x',
-              benchmark_question_id: 'Q30',
+              instance_id: 'L05-2026-INC_S007_GR',
+              question_id: 'L05',
+              text: 'Saved question one',
+              stratum: 'H1',
+              market_scope: [],
             },
           ]),
         )
@@ -327,7 +349,43 @@ describe('runBackendQuestion', () => {
     ).toBe('Game Rules')
   })
 
-  it('flags a v2 benchmark run, which has no per-question scores', async () => {
+  it('asks a bank question by its instance id', async () => {
+    await runBackendQuestion({
+      id: 'L05',
+      question: 'Saved question one',
+      category: 'H1',
+      instanceId: 'L05-2026-INC_S007_GR',
+    })
+    const post = vi
+      .mocked(fetch)
+      .mock.calls.find(([input]) => String(input).endsWith('/queries'))
+    const init = post?.[1] as RequestInit | undefined
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      question: 'Saved question one',
+      benchmark_instance_id: 'L05-2026-INC_S007_GR',
+    })
+  })
+
+  it('states that an ad hoc question has no answer key and no score', async () => {
+    const run = await runBackendQuestion({
+      id: 'X',
+      question: 'test question',
+      category: 'x',
+    })
+    const post = vi
+      .mocked(fetch)
+      .mock.calls.find(([input]) => String(input).endsWith('/queries'))
+    const init = post?.[1] as RequestInit | undefined
+    expect(JSON.parse(String(init?.body))).not.toHaveProperty(
+      'benchmark_instance_id',
+    )
+    expect(run.answerKey).toBe('none')
+    expect(run.liveScore).toBeNull()
+    expect(run.evaluation).toEqual([])
+  })
+
+  it('waits for the score a bank question gets after it completes', async () => {
+    let polls = 0
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
@@ -336,38 +394,35 @@ describe('runBackendQuestion', () => {
           return Promise.resolve(jsonResponse({ run_id: 'RUN-TEST' }))
         if (url.endsWith('/events'))
           return Promise.resolve(jsonResponse(EVENTS))
-        if (url.endsWith('/benchmarks/latest'))
-          return Promise.resolve(
-            jsonResponse({
-              run_id: 'smoke-1',
-              run_kind: 'smoke',
-              label: 'scorer smoke test',
-              summary: { schema_version: '2', headlines: [] },
-            }),
-          )
-        return Promise.resolve(jsonResponse(RESULTS))
+        polls += 1
+        return Promise.resolve(
+          jsonResponse({
+            ...RESULTS,
+            answer_key: 'available',
+            score: polls === 1 ? null : LIVE_SCORE,
+          }),
+        )
       }),
     )
-    const run = await runBackendQuestion({
-      id: 'X',
-      question: 'test question',
-      category: 'x',
-      benchmarkQuestionId: 'Q30',
-    })
-    expect(run.benchmarkV2Published).toBe(true)
-    expect(run.evaluation).toEqual([])
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    try {
+      const pending = runBackendQuestion({
+        id: 'L05',
+        question: 'Saved question one',
+        category: 'H1',
+        instanceId: 'L05-2026-INC_S007_GR',
+      })
+      await vi.runAllTimersAsync()
+      const run = await pending
+      expect(polls).toBe(2)
+      expect(run.answerKey).toBe('available')
+      expect(run.liveScore).toEqual(LIVE_SCORE)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
-  it('omits the evaluation event without a published benchmark match', async () => {
-    const run = await runBackendQuestion({
-      id: 'X',
-      question: 'test question',
-      category: 'x',
-    })
-    expect(run.evaluation).toEqual([])
-  })
-
-  it('carries published benchmark scores when the question matches', async () => {
+  it('stops waiting for a score that never comes', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
@@ -376,44 +431,26 @@ describe('runBackendQuestion', () => {
           return Promise.resolve(jsonResponse({ run_id: 'RUN-TEST' }))
         if (url.endsWith('/events'))
           return Promise.resolve(jsonResponse(EVENTS))
-        if (url.endsWith('/benchmarks/latest'))
-          return Promise.resolve(
-            jsonResponse({
-              questions: [
-                {
-                  question_id: 'Q25',
-                  scores: {
-                    A: {
-                      answer_score: 0.0,
-                      evidence_recall: 0.17,
-                      evidence_precision: 0.06,
-                    },
-                    C: {
-                      answer_score: 1.0,
-                      evidence_recall: 0.83,
-                      evidence_precision: 0.14,
-                    },
-                  },
-                },
-              ],
-            }),
-          )
-        return Promise.resolve(jsonResponse(RESULTS))
+        return Promise.resolve(
+          jsonResponse({ ...RESULTS, answer_key: 'available', score: null }),
+        )
       }),
     )
-    const run = await runBackendQuestion({
-      id: 'X',
-      question: 'test question',
-      category: 'x',
-      benchmarkQuestionId: 'Q25',
-    })
-    expect(run.evaluation).toHaveLength(1)
-    const scores =
-      run.evaluation[0].kind === 'evaluation_completed'
-        ? run.evaluation[0].scores
-        : null
-    expect(scores?.correctness).toEqual({ baseline: 0, graph: 1 })
-    expect(scores?.evidenceRecall).toEqual({ baseline: 0.17, graph: 0.83 })
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    try {
+      const pending = runBackendQuestion({
+        id: 'L05',
+        question: 'Saved question one',
+        category: 'H1',
+        instanceId: 'L05-2026-INC_S007_GR',
+      })
+      await vi.runAllTimersAsync()
+      const run = await pending
+      expect(run.answerKey).toBe('available')
+      expect(run.liveScore).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('surfaces backend failures as errors', async () => {
@@ -633,12 +670,15 @@ describe('fetchBenchmarkResults', () => {
 })
 
 describe('fetchDemoQuestions', () => {
-  it('maps the fixed demo configuration', async () => {
+  it('maps the bank instances the backend serves', async () => {
     const questions = await fetchDemoQuestions()
-    expect(questions[0]).toMatchObject({
-      id: 'DEMO-01',
-      question: 'Saved question one',
-      benchmarkQuestionId: 'Q30',
-    })
+    expect(questions).toEqual([
+      {
+        id: 'L05',
+        question: 'Saved question one',
+        category: 'H1',
+        instanceId: 'L05-2026-INC_S007_GR',
+      },
+    ])
   })
 })

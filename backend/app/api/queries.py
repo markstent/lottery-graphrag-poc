@@ -1,5 +1,6 @@
-"""Query execution endpoints (docs/07 sections 3-6, 15) plus the fixed demo
-configuration. The benchmark routes are in app.api.benchmarks.
+"""Query execution endpoints (docs/07 sections 3-6, 15) plus the demo
+questions, drawn from the presentation world's frozen bank. The benchmark
+routes are in app.api.benchmarks.
 
 Every run route reads the run store. Replay contract: GET
 /queries/{run_id}/events returns the recorded event sequence; it never
@@ -17,6 +18,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import StreamingResponse
 
+from app.api.benchmarks import presentation_bank
 from app.api.errors import ApiError, ErrorCode
 from app.api.runs import QueryService
 from app.api.schemas import (
@@ -31,53 +33,9 @@ from app.api.schemas import (
     RunHistory,
     RunSummary,
 )
+from app.api.scoring import demo_questions, require_bank
 from app.api.stream import sse_frames
 from app.persistence.store import RunRow, RunStore, cursor
-
-# Saved presentation questions (fixed demo configuration). These are
-# pipeline-visible question texts only; they mirror the public phrasing used
-# by the trace CLI and never encode expected answers.
-# Phase 4 (spec 10a.1) replaces these with bank 2.0.0 questions generated
-# from the ledger per world, so no scenario-planted id is hard-coded here.
-DEMO_QUESTIONS: list[DemoQuestion] = [
-    DemoQuestion(
-        id="DEMO-01",
-        question=(
-            "What is the current ticket price for GAME_UK_01, and why does the "
-            "rules document disagree with the source record?"
-        ),
-        category="document_structured_conflict",
-        benchmark_question_id="Q30",
-    ),
-    DemoQuestion(
-        id="DEMO-02",
-        question=(
-            "Have we seen this digital checkout problem in other markets? Which "
-            "platform version connects the Greek payment checkout incident on "
-            "platform version PLV_PAYMENTS_3 to the other markets, and why was "
-            "the UK unaffected?"
-        ),
-        category="cross_market_platform_incident",
-        benchmark_question_id="Q25",
-    ),
-    DemoQuestion(
-        id="DEMO-03",
-        question=(
-            "Which accounts share payment instruments with PLAYER_GR_001283, "
-            "and how many accounts are involved?"
-        ),
-        category="shared_payment_cluster",
-        benchmark_question_id="Q28",
-    ),
-    DemoQuestion(
-        id="DEMO-04",
-        question=(
-            "Are there player accounts that look like the same person operating "
-            "multiple identities across devices?"
-        ),
-        category="shared_identity_cluster",
-    ),
-]
 
 
 def query_service(request: Request) -> QueryService:
@@ -180,7 +138,16 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
             if row is None:
                 raise _unknown_run()
             results = store.results(run_id)
-        return QueryResults.model_validate({**_summary(row), "results": results})
+            score = store.score(run_id)
+        return QueryResults.model_validate(
+            {
+                **_summary(row),
+                "results": results,
+                "benchmark_instance_id": row.benchmark_instance_id,
+                "answer_key": "none" if row.benchmark_instance_id is None else "available",
+                "score": score,
+            }
+        )
 
     @router.post("/queries/{run_id}/cancel", status_code=202, response_model=RunSummary)
     def cancel_run(run_id: str, service: Service) -> RunSummary:
@@ -226,6 +193,7 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
 
     @router.get("/demo/questions", response_model=list[DemoQuestion])
     def read_demo_questions() -> list[DemoQuestion]:
-        return DEMO_QUESTIONS
+        """One bank instance per demo stratum; a 503 before the bank is grounded."""
+        return demo_questions(require_bank(presentation_bank()))
 
     return router
