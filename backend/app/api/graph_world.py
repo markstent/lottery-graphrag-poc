@@ -86,7 +86,7 @@ class GraphLease:
         """Hold the graph for one live run; a 409 while a benchmark job holds it."""
         with self._lock:
             if self._benchmark:
-                raise ApiError(409, ErrorCode.VALIDATION_ERROR, GRAPH_BUSY_MESSAGE, retryable=True)
+                raise ApiError(409, ErrorCode.CONFLICT, GRAPH_BUSY_MESSAGE, retryable=True)
             self._queries += 1
         return LeaseHold(self._release_query)
 
@@ -94,11 +94,9 @@ class GraphLease:
         """Hold the graph for one benchmark job; a 409 while a job or a live run holds it."""
         with self._lock:
             if self._benchmark:
-                raise ApiError(409, ErrorCode.VALIDATION_ERROR, JOB_RUNNING_MESSAGE, retryable=True)
+                raise ApiError(409, ErrorCode.CONFLICT, JOB_RUNNING_MESSAGE, retryable=True)
             if self._queries:
-                raise ApiError(
-                    409, ErrorCode.VALIDATION_ERROR, QUERY_RUNNING_MESSAGE, retryable=True
-                )
+                raise ApiError(409, ErrorCode.CONFLICT, QUERY_RUNNING_MESSAGE, retryable=True)
             self._benchmark = True
             self.generation += 1
         return LeaseHold(self._release_benchmark)

@@ -76,6 +76,12 @@ def test_an_unknown_route_uses_the_envelope(client: TestClient) -> None:
     assert _error(response)["error_code"] == "NOT_FOUND"
 
 
+def test_a_wrong_method_is_method_not_allowed_never_a_run_error(client: TestClient) -> None:
+    response = client.put("/api/v1/queries")
+    assert response.status_code == 405
+    assert _error(response)["error_code"] == "METHOD_NOT_ALLOWED"
+
+
 def test_validation_errors_use_the_envelope(client: TestClient) -> None:
     response = client.post("/api/v1/queries", json={"question": ""})
     assert response.status_code == 422

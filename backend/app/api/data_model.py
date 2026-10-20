@@ -394,7 +394,7 @@ def build_data_model_router(graph: GraphConfig, graph_world: GraphWorldCheck) ->
         if len(fetched) > 1:
             raise ApiError(
                 409,
-                ErrorCode.VALIDATION_ERROR,
+                ErrorCode.CONFLICT,
                 f"row id {row_id} is not unique in {table}; filter its rows page instead",
             )
         row = {name: _json(cell) for name, cell in zip(columns, fetched[0], strict=True)}

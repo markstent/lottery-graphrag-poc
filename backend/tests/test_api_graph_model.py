@@ -273,7 +273,7 @@ def test_node_reads_are_refused_while_a_benchmark_holds_the_graph(
         hold.release()
     assert response.status_code == 409
     assert error_of(response) == {
-        "error_code": "VALIDATION_ERROR",
+        "error_code": "CONFLICT",
         "message": "a benchmark run is using the graph; try again when it finishes",
         "retryable": True,
     }
@@ -365,7 +365,7 @@ def test_node_routes_refuse_a_graph_holding_another_world(
         response = client.get(path)
         assert response.status_code == 409
         assert error_of(response) == {
-            "error_code": "VALIDATION_ERROR",
+            "error_code": "CONFLICT",
             "message": "the graph holds a different world than the active dataset",
             "retryable": False,
         }

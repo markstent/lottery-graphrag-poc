@@ -445,6 +445,7 @@ def test_record_of_a_table_whose_key_is_not_unique_is_a_conflict(client: TestCli
     # INC_005 affects three games in the tiny world: three incident_game_map rows.
     response = client.get("/api/v1/datasets/tiny/tables/incident_game_map/rows/INC_005")
     assert response.status_code == 409
+    assert response.json()["error"]["error_code"] == "CONFLICT"
     message = response.json()["error"]["message"]
     assert "incident_game_map" in message and "not unique" in message
 

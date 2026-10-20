@@ -159,7 +159,7 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
         if row is None:
             raise _unknown_run()
         if not cancelled:
-            raise ApiError(409, ErrorCode.VALIDATION_ERROR, f"run {run_id} has already finished")
+            raise ApiError(409, ErrorCode.CONFLICT, f"run {run_id} has already finished")
         return RunSummary.model_validate(_summary(row))
 
     @router.get("/queries/{run_id}/events", response_model=EventStream)

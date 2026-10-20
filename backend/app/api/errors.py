@@ -42,6 +42,10 @@ UNEXPECTED_MESSAGE = "The request failed unexpectedly. The details are in the se
 class ErrorCode(StrEnum):
     VALIDATION_ERROR = "VALIDATION_ERROR"
     NOT_FOUND = "NOT_FOUND"
+    # The request is valid but the state it needs is not there: a busy graph,
+    # another world, a run that already finished, an id that is not unique.
+    CONFLICT = "CONFLICT"
+    METHOD_NOT_ALLOWED = "METHOD_NOT_ALLOWED"
     MODEL_ERROR = "MODEL_ERROR"
     EMBEDDING_ERROR = "EMBEDDING_ERROR"
     VECTOR_RETRIEVAL_ERROR = "VECTOR_RETRIEVAL_ERROR"
@@ -139,6 +143,16 @@ def _validation_message(exc: RequestValidationError) -> str:
     return "; ".join(issues) or "invalid request"
 
 
+def _http_code(status: int) -> ErrorCode:
+    """The code of a framework-raised HTTP error: the client's own mistake
+    (any other 4xx) is a validation error, never a run error."""
+    if status == 404:
+        return ErrorCode.NOT_FOUND
+    if status == 405:
+        return ErrorCode.METHOD_NOT_ALLOWED
+    return ErrorCode.VALIDATION_ERROR if 400 <= status < 500 else ErrorCode.RUN_ERROR
+
+
 def install_handlers(app: FastAPI) -> None:
     """Make every HTTP error use the envelope.
 
@@ -158,8 +172,7 @@ def install_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(_request: Request, exc: StarletteHTTPException) -> JSONResponse:
-        code = ErrorCode.NOT_FOUND if exc.status_code == 404 else ErrorCode.RUN_ERROR
-        return _respond(exc.status_code, code, str(exc.detail))
+        return _respond(exc.status_code, _http_code(exc.status_code), str(exc.detail))
 
     @app.middleware("http")
     async def unhandled(

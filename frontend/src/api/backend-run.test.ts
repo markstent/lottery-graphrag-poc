@@ -556,6 +556,44 @@ describe('runBackendQuestion', () => {
     ).rejects.toThrow('The language model could not produce an answer.')
   })
 
+  it('surfaces the envelope message of a rejected query', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              error: {
+                error_code: 'CONFLICT',
+                message:
+                  'a benchmark run is using the graph; try again when it finishes',
+                retryable: true,
+              },
+            }),
+            { status: 409, headers: { 'content-type': 'application/json' } },
+          ),
+        ),
+      ),
+    )
+    await expect(
+      runBackendQuestion({ id: 'X', question: 'test question', category: 'x' }),
+    ).rejects.toThrow(
+      'a benchmark run is using the graph; try again when it finishes',
+    )
+  })
+
+  it('falls back to the status when a rejection has no envelope', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(new Response('gateway down', { status: 502 })),
+      ),
+    )
+    await expect(
+      runBackendQuestion({ id: 'X', question: 'test question', category: 'x' }),
+    ).rejects.toThrow('query rejected (502)')
+  })
+
   it('surfaces a cancelled run as an error', async () => {
     vi.stubGlobal(
       'fetch',

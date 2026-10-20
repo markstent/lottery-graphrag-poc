@@ -84,8 +84,24 @@ interface NodeEvidenceDto {
 
 type RunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
 
+/** Every code the API's error envelope carries (docs/07 section 11). */
+type ApiErrorCode =
+  | 'VALIDATION_ERROR'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'METHOD_NOT_ALLOWED'
+  | 'MODEL_ERROR'
+  | 'EMBEDDING_ERROR'
+  | 'VECTOR_RETRIEVAL_ERROR'
+  | 'GRAPH_QUERY_ERROR'
+  | 'CONTEXT_BUILD_ERROR'
+  | 'INTERRUPTED'
+  | 'CANCELLED'
+  | 'RUN_ERROR'
+  | 'CONFIGURATION_ERROR'
+
 interface ErrorDto {
-  error_code: string
+  error_code: ApiErrorCode
   message: string
   retryable: boolean
 }
@@ -109,6 +125,17 @@ interface ResultsDto {
   score: LiveScore | null
 }
 
+/** The envelope's message of a failed request, else the status alone. */
+async function rejection(response: Response, what: string): Promise<Error> {
+  try {
+    const body = (await response.json()) as { error?: ErrorDto }
+    if (body.error?.message) return new Error(body.error.message)
+  } catch {
+    // Not an envelope (a proxy's page, say): the status is all there is.
+  }
+  return new Error(`${what} (${response.status})`)
+}
+
 const timeout = (ms: number): Promise<never> =>
   new Promise((_, reject) =>
     setTimeout(() => reject(new Error('run timed out')), ms),
@@ -130,7 +157,7 @@ async function postQuery(
         : {}),
     }),
   })
-  if (!response.ok) throw new Error(`query rejected (${response.status})`)
+  if (!response.ok) throw await rejection(response, 'query rejected')
   const body = (await response.json()) as { run_id: string }
   return body.run_id
 }

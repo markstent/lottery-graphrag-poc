@@ -56,12 +56,12 @@ def _reader(graph: GraphConfig, world: GraphWorldCheck, active: Path) -> Iterato
     else 500), with the driver's text logged only.
     """
     if world.benchmark_running:
-        raise ApiError(409, ErrorCode.VALIDATION_ERROR, GRAPH_BUSY_MESSAGE, retryable=True)
+        raise ApiError(409, ErrorCode.CONFLICT, GRAPH_BUSY_MESSAGE, retryable=True)
     try:
         reader = GraphReader(graph)
         try:
             if world(reader, active) is False:
-                raise ApiError(409, ErrorCode.VALIDATION_ERROR, OTHER_WORLD_MESSAGE)
+                raise ApiError(409, ErrorCode.CONFLICT, OTHER_WORLD_MESSAGE)
             yield reader
         finally:
             reader.close()
@@ -103,7 +103,7 @@ def _one_node(reader: GraphReader, node_id: str) -> tuple[list[str], dict[str, A
     if not found:
         raise ApiError(404, ErrorCode.NOT_FOUND, f"no graph node with id {node_id}")
     if len(found) > 1:
-        raise ApiError(409, ErrorCode.VALIDATION_ERROR, f"graph node id {node_id} is not unique")
+        raise ApiError(409, ErrorCode.CONFLICT, f"graph node id {node_id} is not unique")
     return found[0]
 
 

@@ -200,7 +200,7 @@ def test_one_benchmark_job_at_a_time(client_with_blocking_benchmark: TestClient)
     )
     second = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke())
     assert second.status_code == 409
-    assert second.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    assert second.json()["error"]["error_code"] == "CONFLICT"
 
 
 def test_cancelled_job_publishes_nothing(
@@ -282,6 +282,7 @@ def test_cancelling_a_finished_job_is_refused(
         f"/api/v1/benchmarks/jobs/{job['job_id']}/cancel"
     )
     assert response.status_code == 409
+    assert response.json()["error"]["error_code"] == "CONFLICT"
 
 
 def test_an_unknown_job_is_not_found(client: TestClient) -> None:
@@ -320,7 +321,7 @@ def test_a_query_is_refused_while_a_benchmark_runs_and_accepted_after(
     refused = client_with_blocking_benchmark.post("/api/v1/queries", json=QUERY)
     assert refused.status_code == 409
     assert refused.json()["error"] == {
-        "error_code": "VALIDATION_ERROR",
+        "error_code": "CONFLICT",
         "message": GRAPH_BUSY,
         "retryable": True,
     }
@@ -468,7 +469,7 @@ def test_a_benchmark_does_not_start_while_a_query_runs(
     assert query.status_code == 202
     refused = client_with_slow_lab.post("/api/v1/benchmarks", json=smoke())
     assert refused.status_code == 409
-    assert refused.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    assert refused.json()["error"]["error_code"] == "CONFLICT"
     lab_gate.set()
     wait_query(client_with_slow_lab, query.json()["run_id"])
     gate.set()
@@ -757,7 +758,7 @@ def test_questions_over_a_ledger_the_bank_was_not_grounded_on_are_a_conflict(
     response = client_with_bank.get("/api/v1/benchmarks/questions")
     assert response.status_code == 409
     assert response.json()["error"] == {
-        "error_code": "VALIDATION_ERROR",
+        "error_code": "CONFLICT",
         "message": "the truth ledger does not match the frozen bank; ground the bank again",
         "retryable": False,
     }

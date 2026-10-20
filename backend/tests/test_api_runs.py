@@ -363,7 +363,7 @@ def test_cancel_of_an_unknown_or_finished_run_is_refused(client: TestClient) -> 
     run_id = run_to_completion(client, configurations=["A"])["run_id"]
     response = client.post(f"/api/v1/queries/{run_id}/cancel")
     assert response.status_code == 409
-    assert response.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    assert response.json()["error"]["error_code"] == "CONFLICT"
     missing = client.post("/api/v1/queries/RUN-UNKNOWN/cancel")
     assert missing.status_code == 404
     assert missing.json()["error"]["error_code"] == "NOT_FOUND"

@@ -147,7 +147,7 @@ def _questions(runs_dir: Path, name: str | None) -> list[QuestionOut]:
         cards = question_catalogue(bank, paths.ledger_path)
     except LedgerMismatch as error:
         logger.warning("question catalogue refused", extra={"reason": str(error)})
-        raise ApiError(409, ErrorCode.VALIDATION_ERROR, LEDGER_MISMATCH_MESSAGE) from None
+        raise ApiError(409, ErrorCode.CONFLICT, LEDGER_MISMATCH_MESSAGE) from None
     run = (
         _published(runs_dir, name)
         if name is not None
@@ -240,7 +240,7 @@ class BenchmarkJobs:
             job = self._jobs.get(job_id)
             if job is not None and job.status != "running":
                 raise ApiError(
-                    409, ErrorCode.VALIDATION_ERROR, f"benchmark job {job_id} has already finished"
+                    409, ErrorCode.CONFLICT, f"benchmark job {job_id} has already finished"
                 )
             if job is not None:
                 job.cancelled.set()
