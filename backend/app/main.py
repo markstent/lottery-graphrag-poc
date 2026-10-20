@@ -2,9 +2,10 @@
 
 Wires the presentation surface: health, persisted query runs over pipelines
 A/B/C with recorded replayable events and run history (docs/07 sections 3-6,
-ADR-007), the fixed demo question set, and the latest published benchmark
-summary. The query service reads its world and models from configuration
-only; it never reads the truth ledger (ADR-008).
+ADR-007), the fixed demo question set, the latest published benchmark
+summary, and the Data Model reads (worlds, dictionary, rows and records).
+The query service reads its world and models from configuration only; it
+never reads the truth ledger (ADR-008).
 """
 
 import logging
@@ -17,7 +18,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import health, queries
+from app.api import data_model, health, queries
 from app.api.errors import install_handlers
 from app.api.readiness import ReadinessChecks
 from app.api.runs import QueryService, start_lab
@@ -101,6 +102,7 @@ def create_app(
     application.include_router(
         queries.build_benchmarks_router(settings.benchmark_dir), prefix=API_PREFIX
     )
+    application.include_router(data_model.build_data_model_router(graph), prefix=API_PREFIX)
     return application
 
 

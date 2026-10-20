@@ -47,6 +47,21 @@ class GraphReader:
         with self._driver.session(database=self._database) as session:
             session.run(Query(statements.PING, timeout=self._timeout_s)).consume()
 
+    def edge_summary(self, label: str, node_id: str) -> list[tuple[str, str, int]]:
+        """(relationship type, direction, count) of every relationship
+        meeting one node. Like ``ping`` it runs once, without the driver's
+        retries, so an unreachable database fails within the timeout."""
+        from neo4j import Query
+
+        query = Query(statements.record_edge_summary_statement(label), timeout=self._timeout_s)
+        params = {"id": node_id, "limit": statements.RECORD_EDGE_SUMMARY_LIMIT}
+        with self._driver.session(database=self._database) as session:
+            records = list(session.run(query, params))
+        return [
+            (str(record["rel_type"]), str(record["direction"]), int(record["count"]))
+            for record in records
+        ]
+
     def close(self) -> None:
         self._driver.close()
 

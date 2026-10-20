@@ -601,7 +601,34 @@ It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `l
 The checks run concurrently, each under its own timeout; a check that times out reports `timed out after N s`.
 Details are curated sentences: raw driver and provider text, which can name service addresses, is logged only.
 
-Reserved for later phases (not implemented): experiments, dataset and
-scenario management, `GET /queries/{run_id}/evidence` (evidence is embedded
+Phase 4 adds the Data Model reads, tested in `tests/test_api_data_model.py`:
+
+```text
+GET /api/v1/datasets                                          list[DatasetSummary]
+GET /api/v1/datasets/{dataset_id}                             DatasetDetail
+GET /api/v1/datasets/{dataset_id}/dictionary                  list[TableSchemaOut]
+GET /api/v1/datasets/{dataset_id}/tables/{table}/rows         RowPage
+GET /api/v1/datasets/{dataset_id}/tables/{table}/rows/{row_id} RecordOut
+```
+
+- A dataset is a directory with a `_manifest.json` beside the active world (`DATASET_DIR`, the world the lab is built from); `active` marks that world.
+  Only those directories are listed or served, so the evaluator-only ledger, which lives outside that directory, is never reachable.
+  Any other `dataset_id` is a 404 `NOT_FOUND`.
+- The routes read configuration and files only; they never wait for the lab build.
+- `DatasetDetail` carries the summary, the manifest's per-table provenance and `index_status` from the world's `vector-index.json` (`points` is its chunk count plus its record count), or null when no persistent index was built over the world.
+- The dictionary comes from the schema registry (`app.datasets.schema`): columns and types, the primary key (the first column), the source system and the declared foreign keys, with `provenance` from the manifest.
+  The registry holds no column descriptions, so every `description` is null.
+- `rows` takes `offset` (default 0), `limit` (default 50, maximum 200; a larger limit is a 422, never a clamp) and an optional `column` and `value` filter, which must come together.
+  `table` and `column` must be names in the registry, otherwise a 422 before any query runs.
+  Rows are ordered by the primary key, then the other columns, so pages are stable; `total` counts every row matching the same filter.
+  The filter compares the column's text form (`CAST(column AS VARCHAR)`) with the bound value.
+  Dates and timestamps are ISO strings and decimals their exact text, never floats.
+- `rows/{row_id}` reads the row whose primary key is `row_id`: a 404 when none matches, a 409 when the key repeats (link tables such as `incident_game_map`, whose first column is not unique).
+  `graph_node_id` is the row's id when its table has a graph label (`source_lookup.RECORD_LABELS`) and the world is the active one, since the graph holds the active world only; otherwise it is null and `edges` is empty.
+  `edges` counts the node's relationships per type and direction in one bounded statement (`statements.record_edge_summary_statement`).
+  When Neo4j cannot be read, the row is still returned, with `edges` null and `graph_error` `GRAPH_QUERY_ERROR`.
+
+Reserved for later phases (not implemented): experiments, dataset
+generation and scenario management, `GET /queries/{run_id}/evidence` (evidence is embedded
 in the results DTO), and benchmark submission/cancel (the harness runs via
 `make run-benchmark`; the API only publishes results).

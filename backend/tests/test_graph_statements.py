@@ -95,6 +95,14 @@ def test_relationship_count_statement_is_registry_bound() -> None:
         statements.relationship_count_statement("OF_TYPE", "NotALabel", "IncidentType")
 
 
+def test_record_edge_summary_is_registry_bound_and_limited() -> None:
+    query = statements.record_edge_summary_statement("Player")
+    assert "MATCH (n:Player {id: $id})" in query
+    assert "LIMIT $limit" in query
+    with pytest.raises(KeyError):
+        statements.record_edge_summary_statement("Player) DETACH DELETE (n")
+
+
 def test_retrieval_markets_are_ordered() -> None:
     assert "ORDER BY id" in statements.RETRIEVAL_MARKETS
 

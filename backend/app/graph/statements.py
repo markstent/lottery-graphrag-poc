@@ -236,6 +236,30 @@ RETURN m.id AS id, m.name AS name, m.market_code AS market_code
 ORDER BY id
 """
 
+# ------------------------------------------------------------ record reads
+
+# Relationships meeting one record node, counted per type and direction
+# (Data Model record view). The label comes from the fixed registry, so the
+# lookup uses the label's id constraint; the LIMIT bounds the result to every
+# registered type in both directions.
+_RECORD_EDGE_SUMMARY = """
+MATCH (n:{label} {{id: $id}})-[r]-()
+WITH type(r) AS rel_type,
+     CASE WHEN startNode(r) = n THEN 'out' ELSE 'in' END AS direction,
+     count(r) AS count
+RETURN rel_type, direction, count
+ORDER BY rel_type, direction
+LIMIT $limit
+"""
+RECORD_EDGE_SUMMARY_LIMIT = 2 * len(RELATIONSHIP_TYPES)
+
+
+def record_edge_summary_statement(label: str) -> str:
+    """Per-type, per-direction relationship counts of one node of a registered label."""
+    _require_label(label)
+    return _RECORD_EDGE_SUMMARY.format(label=label)
+
+
 # ------------------------------------------------------------ ontology reads
 
 ONTOLOGY_TREE = """

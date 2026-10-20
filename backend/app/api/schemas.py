@@ -7,7 +7,7 @@ public record (provenance included) and are already Pydantic.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator
 
 from app.api.errors import ApiErrorBody
 from app.datasets.master_data import MARKETS
@@ -165,3 +165,109 @@ class BenchmarkSummary(BaseModel):
     run_kind: str
     label: str | None
     summary: dict[str, Any]
+
+
+# -- Data Model: datasets, dictionary, rows and records -----------------------
+
+# Sample-row page size: a larger limit is a 422, never a clamp.
+ROWS_LIMIT_DEFAULT = 50
+ROWS_LIMIT_MAX = 200
+
+
+class DatasetSummary(BaseModel):
+    """One generated world as GET /datasets lists it; ``active`` marks the
+    world the lab serves (``DATASET_DIR``)."""
+
+    dataset_id: str
+    generator_version: str
+    world_seed: int
+    scenario_seed: int
+    profile: str
+    row_counts: dict[str, int]
+    active: bool
+
+
+class TableProvenance(BaseModel):
+    """Where a table's rows come from, as the world's manifest records it."""
+
+    source_system: str
+    source_table: str
+
+
+class IndexStatus(BaseModel):
+    """The vector index built over a world, from its index manifest."""
+
+    collection: str
+    points: int
+    serialiser_version: str
+    built_at: str
+
+
+class DatasetDetail(BaseModel):
+    """Response for GET /datasets/{dataset_id}; ``index_status`` is None
+    when no persistent index was built over the world."""
+
+    summary: DatasetSummary
+    provenance: dict[str, TableProvenance]
+    index_status: IndexStatus | None
+
+
+class ColumnOut(BaseModel):
+    """One column; ``description`` is None where the schema registry has none."""
+
+    name: str
+    type: str
+    description: str | None
+
+
+class ForeignKeyOut(BaseModel):
+    """``column`` references ``table.ref_column`` (the parent's primary key)."""
+
+    column: str
+    table: str
+    ref_column: str
+
+
+class TableSchemaOut(BaseModel):
+    """One table of the data dictionary (GET /datasets/{dataset_id}/dictionary)."""
+
+    table: str
+    source_system: str
+    primary_key: str
+    columns: list[ColumnOut]
+    foreign_keys: list[ForeignKeyOut]
+    provenance: TableProvenance | None
+
+
+class RowPage(BaseModel):
+    """One page of sample rows, ordered by the primary key; ``total`` counts
+    every row matching the same filter."""
+
+    table: str
+    offset: int
+    limit: int
+    total: int
+    rows: list[dict[str, JsonValue]]
+
+
+class EdgeSummary(BaseModel):
+    """How many relationships of one type meet a node in one direction."""
+
+    type: str
+    direction: Literal["out", "in"]
+    count: int
+
+
+class RecordOut(BaseModel):
+    """One warehouse row and the graph node it maps to.
+
+    ``graph_node_id`` is None when the table has no graph label or the world
+    is not the one the graph holds. When the graph cannot be read, the row
+    is still returned with ``edges`` None and ``graph_error`` set.
+    """
+
+    table: str
+    row: dict[str, JsonValue]
+    graph_node_id: str | None
+    edges: list[EdgeSummary] | None
+    graph_error: Literal["GRAPH_QUERY_ERROR"] | None = None
