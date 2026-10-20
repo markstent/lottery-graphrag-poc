@@ -13,7 +13,7 @@ from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import World, build_world
 from app.graph import mapping, statements
 from app.graph.ingest import IngestStats, expected_relationship_counts
-from app.graph.node_rows import build_node_rows
+from app.graph.node_rows import NODE_TABLES, build_node_rows, node_identity
 from app.graph.relationship_rows import BINDING_LABELS, RelationshipKey, build_relationship_rows
 from app.ontology.loader import load_ontology
 from app.ontology.model import BINDING_KINDS, Ontology
@@ -214,6 +214,22 @@ def tiny_nodes(
     tiny_tables: dict[str, list[dict[str, Any]]], onto: Ontology
 ) -> dict[str, list[dict[str, Any]]]:
     return build_node_rows(tiny_tables, onto)
+
+
+def test_every_table_node_follows_the_node_table_registry(
+    tiny_tables: dict[str, list[dict[str, Any]]], tiny_nodes: dict[str, list[dict[str, Any]]]
+) -> None:
+    """One rule for table nodes: label, id column and source table all come
+    from NODE_TABLES, so a row can be followed to its node by it."""
+    table_labels = {label for label, _ in NODE_TABLES.values()}
+    assert set(tiny_nodes) - table_labels == {"PrizeType", "BusinessConcept"}
+    for table, (label, id_column) in NODE_TABLES.items():
+        assert label in statements.NODE_LABELS
+        assert id_column in TABLE_SCHEMAS[table]
+        ids = {row["id"] for row in tiny_nodes[label] if row["source_table"] == table}
+        assert ids == {row[id_column] for row in tiny_tables[table]}
+    assert node_identity("regions") == ("Region", "region_id")
+    assert node_identity("accounts") is None
 
 
 @pytest.fixture(scope="module")

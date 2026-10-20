@@ -32,6 +32,40 @@ SOURCE_TIMESTAMP_COLUMNS: tuple[str, ...] = (
 )
 
 
+# Source table -> (node label, id column): the one rule for which rows become
+# nodes and what id they carry. Ingestion builds every table node through it,
+# and the Data Model record view follows a row into the graph by it.
+NODE_TABLES: dict[str, tuple[str, str]] = {
+    "markets": ("Market", "market_id"),
+    "regions": ("Region", "region_id"),
+    "languages": ("Language", "language_code"),
+    "currencies": ("Currency", "currency_code"),
+    "channels": ("Channel", "channel_code"),
+    "suppliers": ("Supplier", "supplier_id"),
+    "platforms": ("Platform", "platform_id"),
+    "platform_versions": ("PlatformVersion", "platform_version_id"),
+    "app_versions": ("AppVersion", "app_version_id"),
+    "game_families": ("GameFamily", "family_id"),
+    "game_categories": ("GameCategory", "category_code"),
+    "incident_types": ("IncidentType", "incident_type_id"),
+    "support_categories": ("SupportCategory", "support_category_id"),
+    "game_mechanics": ("GameMechanic", "mechanic_id"),
+    "player_segments": ("PlayerSegment", "segment_id"),
+    "payment_providers": ("PaymentProvider", "provider_id"),
+    "games": ("Game", "game_id"),
+    "draws": ("Draw", "draw_id"),
+    "players": ("Player", "player_id"),
+    "devices": ("Device", "device_id"),
+    "payment_methods": ("PaymentMethod", "payment_method_id"),
+    "campaigns": ("Campaign", "campaign_id"),
+    "experiments": ("Experiment", "experiment_id"),
+    "incidents": ("Incident", "incident_id"),
+    "support_cases": ("SupportCase", "support_case_id"),
+    "documents": ("Document", "document_id"),
+    "document_chunks": ("DocumentChunk", "chunk_id"),
+}
+
+
 def _f(value: Any) -> Any:
     """Decimals are not a Neo4j property type; amounts become floats here.
 
@@ -51,18 +85,26 @@ def _source_timestamp(row: dict[str, Any]) -> Any:
     return None
 
 
-def _add(
-    nodes: NodeRows, label: str, table: str, row: dict[str, Any], props: dict[str, Any]
-) -> None:
+def node_identity(table: str) -> tuple[str, str] | None:
+    """(node label, id column) of a source table that becomes graph nodes,
+    or None for a table that does not (link tables, facts, events)."""
+    return NODE_TABLES.get(table)
+
+
+def _add(nodes: NodeRows, table: str, row: dict[str, Any], props: dict[str, Any]) -> None:
+    """One node of ``table``'s label, its id and provenance from ``NODE_TABLES``."""
+    label, id_column = NODE_TABLES[table]
+    node_id = row[id_column]
     source_system, source_table = TABLE_PROVENANCE[table]
     nodes.setdefault(label, []).append(
         _clean(
             {
+                "id": node_id,
                 **props,
                 "source_timestamp": _source_timestamp(row),
                 "source_system": source_system,
                 "source_table": source_table,
-                "source_record_id": props["id"],
+                "source_record_id": node_id,
             }
         )
     )
@@ -72,11 +114,9 @@ def _reference_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -
     for row in tables["markets"]:
         _add(
             nodes,
-            "Market",
             "markets",
             row,
             {
-                "id": row["market_id"],
                 "market_code": row["market_code"],
                 "name": row["market_name"],
                 "currency_code": row["currency_code"],
@@ -89,35 +129,29 @@ def _reference_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -
     for row in tables["regions"]:
         _add(
             nodes,
-            "Region",
             "regions",
             row,
-            {"id": row["region_id"], "name": row["name"], "market_id": row["market_id"]},
+            {"name": row["name"], "market_id": row["market_id"]},
         )
     for row in tables["languages"]:
-        _add(nodes, "Language", "languages", row, {"id": row["language_code"], "name": row["name"]})
+        _add(nodes, "languages", row, {"name": row["name"]})
     for row in tables["currencies"]:
-        _add(
-            nodes, "Currency", "currencies", row, {"id": row["currency_code"], "name": row["name"]}
-        )
+        _add(nodes, "currencies", row, {"name": row["name"]})
     for row in tables["channels"]:
         _add(
             nodes,
-            "Channel",
             "channels",
             row,
-            {"id": row["channel_code"], "description": row["description"]},
+            {"description": row["description"]},
         )
     for row in tables["suppliers"]:
-        _add(nodes, "Supplier", "suppliers", row, {"id": row["supplier_id"], "name": row["name"]})
+        _add(nodes, "suppliers", row, {"name": row["name"]})
     for row in tables["platforms"]:
         _add(
             nodes,
-            "Platform",
             "platforms",
             row,
             {
-                "id": row["platform_id"],
                 "name": row["platform_name"],
                 "platform_type": row["platform_type"],
                 "supplier_id": row["supplier_id"],
@@ -126,11 +160,9 @@ def _reference_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -
     for row in tables["platform_versions"]:
         _add(
             nodes,
-            "PlatformVersion",
             "platform_versions",
             row,
             {
-                "id": row["platform_version_id"],
                 "platform_id": row["platform_id"],
                 "version_label": row["version_label"],
                 "released_at": row["released_at"],
@@ -142,11 +174,9 @@ def _reference_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -
     for row in tables["app_versions"]:
         _add(
             nodes,
-            "AppVersion",
             "app_versions",
             row,
             {
-                "id": row["app_version_id"],
                 "market_id": row["market_id"],
                 "version_label": row["version_label"],
                 "released_at": row["released_at"],
@@ -158,21 +188,13 @@ def _reference_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -
 
 def _taxonomy_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -> None:
     """Market-local taxonomy codes: the source side of every MAPS_TO binding."""
-    localised = (
-        ("GameFamily", "game_families", "family_id"),
-        ("GameCategory", "game_categories", "category_code"),
-        ("IncidentType", "incident_types", "incident_type_id"),
-        ("SupportCategory", "support_categories", "support_category_id"),
-    )
-    for label, table, id_column in localised:
+    for table in ("game_families", "game_categories", "incident_types", "support_categories"):
         for row in tables[table]:
             _add(
                 nodes,
-                label,
                 table,
                 row,
                 {
-                    "id": row[id_column],
                     "market_id": row["market_id"],
                     "name": row["name"],
                     "language_code": row["language_code"],
@@ -181,11 +203,9 @@ def _taxonomy_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) ->
     for row in tables["game_mechanics"]:
         _add(
             nodes,
-            "GameMechanic",
             "game_mechanics",
             row,
             {
-                "id": row["mechanic_id"],
                 "mechanic_code": row["mechanic_code"],
                 "name": row["description"],
                 "description": row["description"],
@@ -196,11 +216,9 @@ def _taxonomy_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) ->
     for row in tables["player_segments"]:
         _add(
             nodes,
-            "PlayerSegment",
             "player_segments",
             row,
             {
-                "id": row["segment_id"],
                 "market_id": row["market_id"],
                 "segment_kind": row["segment_kind"],
                 "name": row["name"],
@@ -210,11 +228,9 @@ def _taxonomy_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) ->
     for row in tables["payment_providers"]:
         _add(
             nodes,
-            "PaymentProvider",
             "payment_providers",
             row,
             {
-                "id": row["provider_id"],
                 "name": row["name"],
                 "home_market_id": row["home_market_id"],
                 "platform_id": row["platform_id"],
@@ -226,11 +242,9 @@ def _product_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -> 
     for row in tables["games"]:
         _add(
             nodes,
-            "Game",
             "games",
             row,
             {
-                "id": row["game_id"],
                 "name": row["game_name"],
                 "market_id": row["market_id"],
                 "family_id": row["game_family_id"],
@@ -252,11 +266,9 @@ def _product_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -> 
     for row in tables["draws"]:
         _add(
             nodes,
-            "Draw",
             "draws",
             row,
             {
-                "id": row["draw_id"],
                 "game_id": row["game_id"],
                 "draw_timestamp": row["draw_timestamp"],
                 "jackpot_amount": row["jackpot_amount"],
@@ -282,11 +294,9 @@ def _player_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -> N
     for row in tables["players"]:
         _add(
             nodes,
-            "Player",
             "players",
             row,
             {
-                "id": row["player_id"],
                 "market_id": row["market_id"],
                 "age_band": row["synthetic_age_band"],
                 "region_id": row["synthetic_region_id"],
@@ -300,11 +310,9 @@ def _player_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -> N
     for row in tables["devices"]:
         _add(
             nodes,
-            "Device",
             "devices",
             row,
             {
-                "id": row["device_id"],
                 "device_fingerprint": row["device_fingerprint"],
                 "device_family": row["device_family"],
                 "os_version_bucket": row["os_version_bucket"],
@@ -315,11 +323,9 @@ def _player_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -> N
     for row in tables["payment_methods"]:
         _add(
             nodes,
-            "PaymentMethod",
             "payment_methods",
             row,
             {
-                "id": row["payment_method_id"],
                 "provider_id": row["provider_id"],
                 "payment_type": row["payment_type"],
                 "created_at": row["created_at"],
@@ -331,11 +337,9 @@ def _operational_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]])
     for row in tables["campaigns"]:
         _add(
             nodes,
-            "Campaign",
             "campaigns",
             row,
             {
-                "id": row["campaign_id"],
                 "name": row["campaign_name"],
                 "market_id": row["market_id"],
                 "objective_code": row["objective_code"],
@@ -348,11 +352,9 @@ def _operational_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]])
     for row in tables["experiments"]:
         _add(
             nodes,
-            "Experiment",
             "experiments",
             row,
             {
-                "id": row["experiment_id"],
                 "name": row["experiment_name"],
                 "market_id": row["market_id"],
                 "hypothesis": row["hypothesis"],
@@ -367,11 +369,9 @@ def _operational_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]])
     for row in tables["incidents"]:
         _add(
             nodes,
-            "Incident",
             "incidents",
             row,
             {
-                "id": row["incident_id"],
                 "market_id": row["market_id"],
                 "platform_id": row["platform_id"],
                 "platform_version_id": row["platform_version_id"],
@@ -389,11 +389,9 @@ def _operational_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]])
     for row in tables["support_cases"]:
         _add(
             nodes,
-            "SupportCase",
             "support_cases",
             row,
             {
-                "id": row["support_case_id"],
                 "market_id": row["market_id"],
                 "opened_at": row["opened_at"],
                 "closed_at": row["closed_at"],
@@ -408,11 +406,9 @@ def _knowledge_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -
     for row in tables["documents"]:
         _add(
             nodes,
-            "Document",
             "documents",
             row,
             {
-                "id": row["document_id"],
                 "document_type": row["document_type"],
                 "market_id": row["market_id"],
                 "language_code": row["language_code"],
@@ -425,11 +421,9 @@ def _knowledge_nodes(nodes: NodeRows, tables: dict[str, list[dict[str, Any]]]) -
     for row in tables["document_chunks"]:
         _add(
             nodes,
-            "DocumentChunk",
             "document_chunks",
             row,
             {
-                "id": row["chunk_id"],
                 "document_id": row["document_id"],
                 "chunk_index": row["chunk_index"],
                 "text": row["text"],

@@ -616,15 +616,17 @@ GET /api/v1/datasets/{dataset_id}/tables/{table}/rows/{row_id} RecordOut
   Any other `dataset_id` is a 404 `NOT_FOUND`.
 - The routes read configuration and files only; they never wait for the lab build.
 - `DatasetDetail` carries the summary, the manifest's per-table provenance and `index_status` from the world's `vector-index.json` (`points` is its chunk count plus its record count), or null when no persistent index was built over the world.
-- The dictionary comes from the schema registry (`app.datasets.schema`): columns and types, the primary key (the first column), the source system and the declared foreign keys, with `provenance` from the manifest.
-  The registry holds no column descriptions, so every `description` is null.
+- The dictionary is the world's own `_data_dictionary.json`, written by its generator: columns and types in position order, the primary key, the source system and the foreign keys, with `ref_column` the parent table's primary key and `provenance` from the manifest.
+  A field the file lacks (a table's source system or primary key, or the whole foreign-key list) comes from the code's schema registry (`app.datasets.schema`); a missing column description stays null.
+  A world without the file gets the registry's dictionary, and every entry says which it is in `dictionary_source` (`world` or `registry`).
 - `rows` takes `offset` (default 0), `limit` (default 50, maximum 200; a larger limit is a 422, never a clamp) and an optional `column` and `value` filter, which must come together.
   `table` and `column` must be names in the registry, otherwise a 422 before any query runs.
   Rows are ordered by the primary key, then the other columns, so pages are stable; `total` counts every row matching the same filter.
-  The filter compares the column's text form (`CAST(column AS VARCHAR)`) with the bound value.
+  The filter casts the bound value to the column's declared type (`column = TRY_CAST(? AS <type>)`, the type taken from a fixed mapping of the registry's types), so an ISO timestamp copied from a row matches that row; a value that does not cast is a 422 before any row is read.
   Dates and timestamps are ISO strings and decimals their exact text, never floats.
-- `rows/{row_id}` reads the row whose primary key is `row_id`: a 404 when none matches, a 409 when the key repeats (link tables such as `incident_game_map`, whose first column is not unique).
-  `graph_node_id` is the row's id when its table has a graph label (`source_lookup.RECORD_LABELS`) and the world is the active one, since the graph holds the active world only; otherwise it is null and `edges` is empty.
+- `rows/{row_id}` reads the row whose primary key is `row_id` (cast the same way): a 404 when none matches, a 409 when the row id is not unique in the table (link tables such as `incident_game_map`, whose first column repeats).
+  `graph_node_id` follows the ingestion mapping (`app.graph.node_rows.NODE_TABLES`, the table-to-label-and-id rule ingestion builds every table node by): for a table that creates no nodes it is null and `edges` is empty.
+  The graph holds the active world only and ids repeat across worlds, so a record of another world has `graph_node_id` and `edges` null and `graph_error` `OTHER_WORLD`.
   `edges` counts the node's relationships per type and direction in one bounded statement (`statements.record_edge_summary_statement`).
   When Neo4j cannot be read, the row is still returned, with `edges` null and `graph_error` `GRAPH_QUERY_ERROR`.
 

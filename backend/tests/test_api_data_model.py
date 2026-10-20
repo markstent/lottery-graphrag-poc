@@ -24,7 +24,7 @@ from app.config import GraphConfig
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
-from app.datasets.world import build_world
+from app.datasets.world import build_data_dictionary, build_world
 from app.main import create_app
 from fastapi.testclient import TestClient
 
@@ -43,13 +43,15 @@ INDEX_MANIFEST = {
 
 @pytest.fixture(scope="module")
 def dataset_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    """tiny (active, indexed), other (a second world, not indexed), a
-    directory without a manifest and a truth directory holding a ledger."""
+    """tiny (active, indexed, with its dictionary file), other (a second
+    world, not indexed, no dictionary file), a directory without a manifest
+    and a truth directory holding a ledger."""
     root = tmp_path_factory.mktemp("datasets")
     for name, seed in (("tiny", 42), ("other", 7)):
         world = build_world(GenerationConfig(profile="tiny", world_seed=seed))
         write_world(root / name, TABLE_SCHEMAS, world.tables)
         (root / name / "_manifest.json").write_text(json.dumps(world.manifest))
+    (root / "tiny" / "_data_dictionary.json").write_text(json.dumps(build_data_dictionary()))
     (root / "tiny" / "vector-index.json").write_text(json.dumps(INDEX_MANIFEST))
     (root / "scratch").mkdir()
     (root / "truth").mkdir()
@@ -178,6 +180,38 @@ def test_dictionary_names_keys_sources_and_provenance(client: TestClient) -> Non
     assert players["columns"][0] == {"name": "player_id", "type": "VARCHAR", "description": None}
     assert players["provenance"] == {"source_system": "warehouse", "source_table": "players"}
     assert table(dictionary, "sessions")["source_system"] == "telemetry_platform"
+    assert {entry["dictionary_source"] for entry in dictionary} == {"world"}
+
+
+def test_dictionary_reads_the_world_file_first(
+    dataset_root: Path, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The world's own file wins; a field it lacks comes from the registry."""
+    recorded = build_data_dictionary()
+    for entry in recorded["tables"]:
+        if entry["table"] == "players":
+            entry["description"] = f"synthetic {entry['field']}"
+            del entry["source_system"]
+    del recorded["foreign_keys"]
+    path = dataset_root / "tiny" / "_data_dictionary.json"
+    original = path.read_text()
+    path.write_text(json.dumps(recorded))
+    try:
+        players = table(client.get("/api/v1/datasets/tiny/dictionary").json(), "players")
+    finally:
+        path.write_text(original)
+    assert players["columns"][0]["description"] == "synthetic player_id"
+    assert players["source_system"] == "warehouse"  # from the registry
+    assert {"column": "value_segment", "table": "player_segments", "ref_column": "segment_id"} in (
+        players["foreign_keys"]
+    )
+
+
+def test_dictionary_falls_back_to_the_registry_without_a_world_file(client: TestClient) -> None:
+    dictionary = client.get("/api/v1/datasets/other/dictionary").json()
+    assert [entry["table"] for entry in dictionary] == list(TABLE_SCHEMAS)
+    assert {entry["dictionary_source"] for entry in dictionary} == {"registry"}
+    assert table(dictionary, "players")["primary_key"] == "player_id"
 
 
 # -- rows ---------------------------------------------------------------------
@@ -220,7 +254,7 @@ def test_rows_page_and_filter_with_a_bound_value(client: TestClient, spy_duckdb:
     assert all(r["market_id"] == "MKT_GR" for r in page["rows"])
     assert page["total"] >= len(page["rows"])
     assert page["total"] == 56  # the tiny world's Greek players
-    assert len(spy_duckdb.statements) == 2  # the count and the page
+    assert len(spy_duckdb.statements) == 3  # the value's cast check, the count and the page
     assert all("MKT_GR" not in statement for statement in spy_duckdb.statements)
 
 
@@ -242,6 +276,28 @@ def test_rows_render_dates_and_exact_decimals_as_strings(client: TestClient) -> 
     assert game["digital_enabled"] is True
     session = client.get("/api/v1/datasets/tiny/tables/sessions/rows?limit=1").json()["rows"][0]
     assert "T" in session["started_at"]
+
+
+def test_filter_casts_the_value_to_the_column_type(client: TestClient) -> None:
+    rows = "/api/v1/datasets/tiny/tables/sessions/rows"
+    session = client.get(f"{rows}?limit=1").json()["rows"][0]
+    page = client.get(rows, params={"column": "started_at", "value": session["started_at"]}).json()
+    assert session["session_id"] in [r["session_id"] for r in page["rows"]]
+    assert all(r["started_at"] == session["started_at"] for r in page["rows"])
+    games = "/api/v1/datasets/tiny/tables/games/rows"
+    assert client.get(f"{games}?column=ticket_price&value=2.50").json()["total"] >= 1
+    assert client.get(f"{games}?column=digital_enabled&value=true").json()["total"] >= 1
+
+
+def test_a_value_that_does_not_cast_is_refused_before_any_row_is_read(
+    client: TestClient, spy_duckdb: DuckDbSpy
+) -> None:
+    response = client.get(
+        "/api/v1/datasets/tiny/tables/games/rows?column=launch_date&value=not-a-date"
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    assert not any("read_parquet" in statement for statement in spy_duckdb.statements)
 
 
 def test_rows_of_an_unknown_dataset_are_not_found(client: TestClient) -> None:
@@ -275,20 +331,32 @@ def test_record_keeps_its_row_when_the_graph_is_unreachable(client: TestClient) 
     assert record["edges"] is None and record["graph_error"] == "GRAPH_QUERY_ERROR"
 
 
-def test_record_of_a_table_without_a_graph_label_reads_no_graph(
+def test_record_follows_the_ingestion_mapping_beyond_the_record_labels(
     client: TestClient, fake_reader: type[FakeReader]
 ) -> None:
+    """Regions become Region nodes at ingestion but have no record block."""
     record = client.get("/api/v1/datasets/tiny/tables/regions/rows/REG_UK_NORTH").json()
-    assert record["graph_node_id"] is None and record["edges"] == []
+    assert record["graph_node_id"] == "REG_UK_NORTH" and record["edges"]
+    assert fake_reader.calls == [("Region", "REG_UK_NORTH")]
+
+
+def test_record_of_a_table_without_nodes_reads_no_graph(
+    client: TestClient, fake_reader: type[FakeReader]
+) -> None:
+    account = client.get("/api/v1/datasets/tiny/tables/accounts/rows?limit=1").json()["rows"][0]
+    record = client.get(f"/api/v1/datasets/tiny/tables/accounts/rows/{account['account_id']}")
+    assert record.json()["graph_node_id"] is None and record.json()["edges"] == []
+    assert record.json()["graph_error"] is None
     assert fake_reader.calls == []
 
 
-def test_record_of_a_dataset_the_graph_does_not_hold_reads_no_graph(
+def test_record_of_a_dataset_the_graph_does_not_hold_says_so(
     client: TestClient, fake_reader: type[FakeReader]
 ) -> None:
     record = client.get("/api/v1/datasets/other/tables/players/rows/PLAYER_UK_000001").json()
     assert record["row"]["player_id"] == "PLAYER_UK_000001"
-    assert record["graph_node_id"] is None and record["edges"] == []
+    assert record["graph_node_id"] is None and record["edges"] is None
+    assert record["graph_error"] == "OTHER_WORLD"
     assert fake_reader.calls == []
 
 
@@ -301,6 +369,8 @@ def test_record_of_a_table_whose_key_is_not_unique_is_a_conflict(client: TestCli
     # INC_005 affects three games in the tiny world: three incident_game_map rows.
     response = client.get("/api/v1/datasets/tiny/tables/incident_game_map/rows/INC_005")
     assert response.status_code == 409
+    message = response.json()["error"]["message"]
+    assert "incident_game_map" in message and "not unique" in message
 
 
 def test_record_carries_its_graph_node_and_edge_summary(

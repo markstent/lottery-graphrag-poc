@@ -237,6 +237,9 @@ class TableSchemaOut(BaseModel):
     columns: list[ColumnOut]
     foreign_keys: list[ForeignKeyOut]
     provenance: TableProvenance | None
+    # "world": the world's own _data_dictionary.json, written by its
+    # generator; "registry": the code's schema registry (no file).
+    dictionary_source: Literal["world", "registry"]
 
 
 class RowPage(BaseModel):
@@ -261,13 +264,16 @@ class EdgeSummary(BaseModel):
 class RecordOut(BaseModel):
     """One warehouse row and the graph node it maps to.
 
-    ``graph_node_id`` is None when the table has no graph label or the world
-    is not the one the graph holds. When the graph cannot be read, the row
-    is still returned with ``edges`` None and ``graph_error`` set.
+    ``graph_node_id`` is the id ingestion gives the row's node
+    (``app.graph.node_rows.NODE_TABLES``); None with ``edges`` empty when the
+    table creates no nodes. For a world the graph does not hold, ``edges``
+    is None and ``graph_error`` is ``OTHER_WORLD``; when the graph cannot be
+    read, the node id is kept, ``edges`` is None and ``graph_error`` is
+    ``GRAPH_QUERY_ERROR``.
     """
 
     table: str
     row: dict[str, JsonValue]
     graph_node_id: str | None
     edges: list[EdgeSummary] | None
-    graph_error: Literal["GRAPH_QUERY_ERROR"] | None = None
+    graph_error: Literal["GRAPH_QUERY_ERROR", "OTHER_WORLD"] | None = None

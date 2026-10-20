@@ -47,13 +47,14 @@ from app.api.schemas import (
 from app.config import GraphConfig, from_env
 from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE, TABLE_SCHEMAS, primary_key
 from app.datasets.util import split_columns
+from app.graph.node_rows import node_identity
 from app.retrieval.graph.neo4j_adapter import GraphReader
-from app.retrieval.graph.source_lookup import label_for_table
 from app.retrieval.standard.index import MANIFEST_NAME as INDEX_MANIFEST_NAME
 
 logger = logging.getLogger(__name__)
 
 WORLD_MANIFEST_NAME = "_manifest.json"
+WORLD_DICTIONARY_NAME = "_data_dictionary.json"
 # DuckDB's OFFSET is a signed 64-bit integer.
 _MAX_OFFSET = 2**63 - 1
 
@@ -122,27 +123,86 @@ def _columns(table: str) -> list[tuple[str, str]]:
     return split_columns(ddl)
 
 
-def _dictionary_entry(table: str, provenance: dict[str, Any]) -> TableSchemaOut:
+def _table_provenance(provenance: dict[str, Any], table: str) -> TableProvenance | None:
     recorded = provenance.get(table)
-    return TableSchemaOut(
-        table=table,
-        source_system=TABLE_PROVENANCE[table][0],
-        primary_key=primary_key(table),
-        # The registry holds no column descriptions; none is invented.
-        columns=[
-            ColumnOut(name=name, type=kind, description=None) for name, kind in _columns(table)
-        ],
-        foreign_keys=[
-            ForeignKeyOut(
-                column=key.child_column,
-                table=key.parent_table,
-                ref_column=primary_key(key.parent_table),
-            )
-            for key in FOREIGN_KEYS
-            if key.child_table == table
-        ],
-        provenance=TableProvenance.model_validate(recorded) if recorded is not None else None,
-    )
+    return TableProvenance.model_validate(recorded) if recorded is not None else None
+
+
+def _registry_foreign_keys(table: str) -> list[ForeignKeyOut]:
+    return [
+        ForeignKeyOut(
+            column=key.child_column,
+            table=key.parent_table,
+            ref_column=primary_key(key.parent_table),
+        )
+        for key in FOREIGN_KEYS
+        if key.child_table == table
+    ]
+
+
+def _registry_dictionary(provenance: dict[str, Any]) -> list[TableSchemaOut]:
+    """The dictionary from the code's schema registry, for a world without
+    its own dictionary file. The registry holds no column descriptions."""
+    return [
+        TableSchemaOut(
+            table=table,
+            source_system=TABLE_PROVENANCE[table][0],
+            primary_key=primary_key(table),
+            columns=[
+                ColumnOut(name=name, type=kind, description=None) for name, kind in _columns(table)
+            ],
+            foreign_keys=_registry_foreign_keys(table),
+            provenance=_table_provenance(provenance, table),
+            dictionary_source="registry",
+        )
+        for table in TABLE_SCHEMAS
+    ]
+
+
+def _world_dictionary(recorded: dict[str, Any], provenance: dict[str, Any]) -> list[TableSchemaOut]:
+    """The dictionary the world's generator wrote, in its own table order.
+
+    A field the file lacks is taken from the code's registry: a table's
+    source system, its primary key, or (when the file has no foreign-key
+    list) its foreign keys. A missing column description stays null.
+    """
+    fields: dict[str, list[dict[str, Any]]] = {}
+    for entry in recorded["tables"]:
+        fields.setdefault(entry["table"], []).append(entry)
+    keys = {
+        table: next((f["field"] for f in entries if f.get("primary_key")), None)
+        for table, entries in fields.items()
+    }
+
+    def key_of(table: str) -> str:
+        return keys.get(table) or primary_key(table)
+
+    recorded_keys = recorded.get("foreign_keys")
+    return [
+        TableSchemaOut(
+            table=table,
+            source_system=entries[0].get("source_system") or TABLE_PROVENANCE[table][0],
+            primary_key=key_of(table),
+            columns=[
+                ColumnOut(name=f["field"], type=f["type"], description=f.get("description"))
+                for f in sorted(entries, key=lambda f: int(f["position"]))
+            ],
+            foreign_keys=_registry_foreign_keys(table)
+            if recorded_keys is None
+            else [
+                ForeignKeyOut(
+                    column=key["child_column"],
+                    table=key["parent_table"],
+                    ref_column=key_of(key["parent_table"]),
+                )
+                for key in recorded_keys
+                if key["child_table"] == table
+            ],
+            provenance=_table_provenance(provenance, table),
+            dictionary_source="world",
+        )
+        for table, entries in fields.items()
+    ]
 
 
 def _parquet(world: Path, table: str) -> str:
@@ -157,10 +217,30 @@ def _quoted(column: str) -> str:
     return f'"{column}"'
 
 
-def _matches(column: str) -> str:
-    """A bound equality on a column's text form, so a value of any column
-    type compares without a cast error."""
-    return f"CAST({_quoted(column)} AS VARCHAR) = ?"
+# Declared registry type -> the DuckDB type a bound filter value is cast to.
+# Only these fixed names reach a statement, never a registry string itself.
+_DUCKDB_TYPES: dict[str, str] = {
+    "VARCHAR": "VARCHAR",
+    "INTEGER": "INTEGER",
+    "DOUBLE": "DOUBLE",
+    "BOOLEAN": "BOOLEAN",
+    "DATE": "DATE",
+    "TIMESTAMP": "TIMESTAMP",
+    "DECIMAL(12,2)": "DECIMAL(12,2)",
+}
+
+
+def _matches(connection: duckdb.DuckDBPyConnection, column: str, kind: str, value: str) -> str:
+    """A bound equality on ``column`` with ``value`` cast to the column's
+    declared type, so an ISO timestamp from a row's JSON matches its row.
+    A value that does not cast is a 422 before any row is read."""
+    cast = f"TRY_CAST(? AS {_DUCKDB_TYPES[kind]})"
+    casts = connection.execute(f"SELECT {cast} IS NOT NULL", [value]).fetchone()
+    if casts is None or not casts[0]:
+        raise ApiError(
+            422, ErrorCode.VALIDATION_ERROR, f"{value!r} is not a {kind} value for {column}"
+        )
+    return f"{_quoted(column)} = {cast}"
 
 
 def _json(value: Any) -> JsonValue:
@@ -235,7 +315,10 @@ def build_data_model_router(graph: GraphConfig) -> APIRouter:
     def read_dictionary(dataset_id: str) -> list[TableSchemaOut]:
         world = _world(dataset_id, active_dataset_dir())
         provenance = _manifest(world).get("provenance", {})
-        return [_dictionary_entry(table, provenance) for table in TABLE_SCHEMAS]
+        path = world / WORLD_DICTIONARY_NAME
+        if not path.is_file():
+            return _registry_dictionary(provenance)
+        return _world_dictionary(json.loads(path.read_text("utf-8")), provenance)
 
     @router.get("/datasets/{dataset_id}/tables/{table}/rows", response_model=RowPage)
     def read_rows(
@@ -246,14 +329,18 @@ def build_data_model_router(graph: GraphConfig) -> APIRouter:
         column: str | None = None,
         value: str | None = None,
     ) -> RowPage:
-        columns = [name for name, _kind in _columns(table)]
+        kinds = dict(_columns(table))
+        columns = list(kinds)
         if (column is None) != (value is None):
             raise ApiError(422, ErrorCode.VALIDATION_ERROR, "a filter needs both column and value")
-        if column is not None and column not in columns:
+        if column is not None and column not in kinds:
             raise ApiError(422, ErrorCode.VALIDATION_ERROR, f"unknown column: {column}")
         path = _parquet(_world(dataset_id, active_dataset_dir()), table)
-        where, bound = (f"WHERE {_matches(column)}", [value]) if column is not None else ("", [])
         with _duckdb() as connection:
+            where, bound = ("", [])
+            if column is not None and value is not None:
+                where = f"WHERE {_matches(connection, column, kinds[column], value)}"
+                bound = [value]
             counted = connection.execute(
                 f"SELECT count(*) FROM read_parquet(?) {where}", [path, *bound]
             ).fetchone()
@@ -274,15 +361,16 @@ def build_data_model_router(graph: GraphConfig) -> APIRouter:
 
     @router.get("/datasets/{dataset_id}/tables/{table}/rows/{row_id}", response_model=RecordOut)
     def read_record(dataset_id: str, table: str, row_id: str) -> RecordOut:
-        columns = [name for name, _kind in _columns(table)]
+        kinds = dict(_columns(table))
+        columns = list(kinds)
         active = active_dataset_dir()
         world = _world(dataset_id, active)
         path = _parquet(world, table)
         key = primary_key(table)
         with _duckdb() as connection:
+            where = f"WHERE {_matches(connection, key, kinds[key], row_id)}"
             fetched = connection.execute(
-                _select(columns, f"WHERE {_matches(key)}") + " LIMIT 2",
-                [path, row_id],
+                _select(columns, where) + " LIMIT 2", [path, row_id]
             ).fetchall()
         if not fetched:
             raise ApiError(404, ErrorCode.NOT_FOUND, f"no {table} row with {key} {row_id}")
@@ -290,15 +378,19 @@ def build_data_model_router(graph: GraphConfig) -> APIRouter:
             raise ApiError(
                 409,
                 ErrorCode.VALIDATION_ERROR,
-                f"{table} rows are not unique by {key}; filter the rows page instead",
+                f"row id {row_id} is not unique in {table}; filter its rows page instead",
             )
         row = {name: _json(cell) for name, cell in zip(columns, fetched[0], strict=True)}
-        # The graph holds the active world only: a record of another world
-        # has no node in it.
-        label = label_for_table(table)
-        if label is None or world.resolve() != active:
+        identity = node_identity(table)
+        if identity is None:
             return RecordOut(table=table, row=row, graph_node_id=None, edges=[])
-        node_id = str(row[key])
+        # The graph holds the active world only, and ids repeat across worlds.
+        if world.resolve() != active:
+            return RecordOut(
+                table=table, row=row, graph_node_id=None, edges=None, graph_error="OTHER_WORLD"
+            )
+        label, id_column = identity
+        node_id = str(row[id_column])
         edges = _edges(graph, label, node_id)
         return RecordOut(
             table=table,

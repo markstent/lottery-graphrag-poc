@@ -19,3 +19,6 @@ data/evaluation/
 backend/data/
 .ai-project
 .superpowers/
+
+# The API run store (its default path)
+data/app.db*
