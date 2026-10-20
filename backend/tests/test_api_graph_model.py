@@ -9,7 +9,6 @@ already-ingested dev-seed2026 graph under GRAPH_E2E=1 and never writes it.
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, ClassVar
@@ -31,6 +30,8 @@ from app.ontology.loader import load_ontology
 from fastapi.testclient import TestClient
 from neo4j.exceptions import ServiceUnavailable
 from neo4j.time import Date
+
+from tests import live as gate
 
 # Nothing listens on the discard port, so the driver fails fast.
 UNREACHABLE_GRAPH = GraphConfig(
@@ -201,6 +202,11 @@ def test_relationship_endpoints_are_every_triple_ingestion_builds(tiny_dataset: 
     built = build_relationship_rows(load_dataset(tiny_dataset), load_ontology())
     assert set(statements.RELATIONSHIP_ENDPOINTS) == set(built)
     assert len(set(statements.RELATIONSHIP_ENDPOINTS)) == len(statements.RELATIONSHIP_ENDPOINTS)
+    # Every endpoint's type is a registered relationship type, and every
+    # registered type has an endpoint.
+    endpoint_types = {kind for kind, _start, _end in statements.RELATIONSHIP_ENDPOINTS}
+    assert endpoint_types <= set(statements.RELATIONSHIP_TYPES)
+    assert set(statements.RELATIONSHIP_TYPES) <= endpoint_types
 
 
 # -- stats --------------------------------------------------------------------
@@ -429,17 +435,14 @@ def test_graph_world_check_does_not_cache_a_failed_read(dataset_root: Path) -> N
 
 def test_live_graph_schema_node_and_neighbours(monkeypatch: pytest.MonkeyPatch) -> None:
     """Live, read-only: the ingested dev-seed2026 graph, never wiped or written."""
-    if os.environ.get("GRAPH_E2E") != "1":
-        pytest.skip("set GRAPH_E2E=1 to run live-graph tests")
-    if not (DEFAULT_DATASET_DIR / GRAPH_STATS_FILE).is_file():
-        pytest.skip("dev-seed2026 has not been ingested (make ingest-graph)")
-    graph = GraphConfig.from_env()
+    gate.skip_without(gate.GRAPH, gate.WORLD)
+    gate.require_paths(DEFAULT_DATASET_DIR / GRAPH_STATS_FILE)
+    graph = gate.require_neo4j()
     monkeypatch.setenv("DATASET_DIR", str(DEFAULT_DATASET_DIR))
     with TestClient(create_app(graph_config=graph)) as live:
         stats = live.get("/api/v1/graph/stats").json()
         node = live.get(f"/api/v1/graph/nodes/{SEED}")
-        if node.status_code == 409:
-            pytest.skip("Neo4j holds another world than dev-seed2026 (make ingest-graph)")
+        assert node.status_code != 409, "Neo4j holds another world than dev-seed2026"
         body = live.get(f"/api/v1/graph/nodes/{SEED}/neighbours?limit=3").json()
         segments = live.get(f"/api/v1/graph/nodes/{SEED}/neighbours?type=BELONGS_TO").json()
     assert stats["nodes_by_label"]["Player"] > 0
