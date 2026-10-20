@@ -14,6 +14,7 @@ import dataclasses
 import json
 import logging
 import shutil
+import sqlite3
 import threading
 import time
 from collections.abc import Callable, Iterator
@@ -27,7 +28,7 @@ import pytest
 from app.api.runs import QueryService, start_lab
 from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
-from app.events import EventSink
+from app.events import TERMINAL_EVENT_TYPES, EventSink
 from app.evidence import EvidenceChunk
 from app.lab import Lab, WiredGraphPipelines, graph_pipelines
 from app.main import create_app
@@ -296,6 +297,7 @@ def test_cancel_stops_at_the_next_stage_and_keeps_finished_pipelines(
         "C": "skipped",
     }
     assert set(store(service_with_slow_b).results(run_id)) == {"A"}
+    wait_until(lambda: not service_with_slow_b._active)
     events = store(service_with_slow_b).events(run_id)
     assert [(e["event_type"], e["pipeline"]) for e in events[-2:]] == [
         ("pipeline.cancelled", "B"),
@@ -319,7 +321,7 @@ def test_cancel_before_any_pipeline_starts_skips_them_all(
     service = QueryService(RunStore(tmp_path / "runs.db", retention=50), slow_lab, GRAPH)
     try:
         run_id = service.start(request(configurations=["A", "B"]))
-        wait_until(lambda: len(service.store.events(run_id)) == 1)  # run.started
+        # At once: run.started is recorded even when the flag is already set.
         assert service.cancel(run_id)
         lab_gate.set()
         run = wait_finished(service, run_id)
@@ -415,6 +417,8 @@ def test_wait_for_wakes_on_a_new_event_and_times_out_otherwise(
         assert service.wait_for(run_id, 1, 10) is True
         assert len(service.store.events(run_id)) > 1
         wait_finished(service, run_id)
+        # The final row is written just before the run is retired.
+        wait_until(lambda: not service._active)
         assert service.wait_for(run_id, 10_000, 0.01) is True
     finally:
         lab_gate.set()
@@ -718,10 +722,159 @@ class TestFailures:
         try:
             first = service.start(request(configurations=["A"]))
             assert wait_finished(service, first).status == "failed"
+            wait_until(lambda: not service._active)
             second = service.start(request(configurations=["A"]))
             assert wait_finished(service, second).status == "completed"
+            wait_until(lambda: not service._active)
         finally:
             service.store.close()
+
+
+# -- the end of a run: races with cancel and store failures ------------------
+
+
+class HookedStore(RunStore):
+    """A run store whose writes call test hooks, to force an ordering or a failure."""
+
+    def __init__(self, path: Path) -> None:
+        super().__init__(path, retention=50)
+        self.before_put_result: Callable[[str], None] = lambda _pipeline: None
+        self.on_append: Callable[[dict[str, Any]], None] = lambda _event: None
+        self.before_final_update: Callable[[], None] = lambda: None
+        self.fail_final_update_once = False
+
+    def put_result(self, run_id: str, pipeline: str, result: dict[str, Any]) -> None:
+        self.before_put_result(pipeline)
+        super().put_result(run_id, pipeline, result)
+
+    def append_event(self, run_id: str, event: dict[str, Any]) -> int:
+        self.on_append(event)
+        return super().append_event(run_id, event)
+
+    def update_run(self, run_id: str, /, **changes: Any) -> None:
+        if changes.get("status") in FINISHED:
+            self.before_final_update()
+            if self.fail_final_update_once:
+                self.fail_final_update_once = False
+                raise sqlite3.OperationalError("disk I/O error")
+        super().update_run(run_id, **changes)
+
+
+class Pause:
+    """Blocks the worker at one point until the test releases it."""
+
+    def __init__(self) -> None:
+        self.reached = threading.Event()
+        self.release = threading.Event()
+
+    def __call__(self) -> None:
+        self.reached.set()
+        assert self.release.wait(15), "the test never released the worker"
+
+    def wait_reached(self) -> None:
+        assert self.reached.wait(15), "the worker never reached the pause"
+
+
+@pytest.fixture()
+def hooked(
+    lab: Lab, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[QueryService, HookedStore]]:
+    monkeypatch.setattr(runs_module, "wired_pipelines", offline_wiring(scn007_adjacency()))
+    hooked_store = HookedStore(tmp_path / "runs.db")
+    service = QueryService(hooked_store, lambda: lab, GRAPH)
+    yield service, hooked_store
+    wait_until(lambda: not service._active)
+    hooked_store.close()
+
+
+def terminal_events(service: QueryService, run_id: str) -> list[str]:
+    types = [e["event_type"] for e in service.store.events(run_id)]
+    return [t for t in types if t in TERMINAL_EVENT_TYPES]
+
+
+def test_a_store_failure_at_the_finish_retires_the_run_and_wakes_waiters(
+    hooked: tuple[QueryService, HookedStore], caplog: pytest.LogCaptureFixture
+) -> None:
+    service, hooked_store = hooked
+    pause = Pause()
+    hooked_store.before_final_update = pause
+    hooked_store.fail_final_update_once = True
+    run_id = service.start(request(configurations=["A"]))
+    pause.wait_reached()
+    woke: list[tuple[bool, float]] = []
+
+    def waiter() -> None:
+        began = time.monotonic()
+        woke.append((service.wait_for(run_id, 10_000, 30), time.monotonic() - began))
+
+    thread = threading.Thread(target=waiter)
+    with caplog.at_level(logging.ERROR):
+        thread.start()
+        time.sleep(0.05)  # the waiter is blocked on the run's condition
+        pause.release.set()
+        thread.join(10)
+        wait_until(lambda: not service._active)
+    assert woke and woke[0][0] is True and woke[0][1] < 5
+    assert terminal_events(service, run_id) == ["run.completed"]
+    # The row is left for mark_interrupted at the next start-up.
+    assert row(service, run_id).status == "running"
+    assert service.cancel(run_id) is False
+    (logged,) = [r for r in caplog.records if "could not be stored" in r.getMessage()]
+    assert logged.context["run_id"] == run_id  # type: ignore[attr-defined]
+    assert logged.error_code == "RUN_ERROR"  # type: ignore[attr-defined]
+
+
+def test_a_cancel_after_the_finish_is_claimed_is_refused(
+    hooked: tuple[QueryService, HookedStore],
+) -> None:
+    service, hooked_store = hooked
+    pause = Pause()
+    hooked_store.before_final_update = pause
+    run_id = service.start(request(configurations=["A"]))
+    pause.wait_reached()
+    assert service.cancel(run_id) is False
+    pause.release.set()
+    assert wait_finished(service, run_id).status == "completed"
+    assert terminal_events(service, run_id) == ["run.completed"]
+
+
+def test_a_cancel_accepted_before_the_claim_ends_the_run_cancelled(
+    hooked: tuple[QueryService, HookedStore],
+) -> None:
+    service, hooked_store = hooked
+    pause = Pause()
+    hooked_store.before_put_result = lambda _pipeline: pause()
+    run_id = service.start(request(configurations=["A"]))
+    pause.wait_reached()
+    assert service.cancel(run_id) is True
+    pause.release.set()
+    run = wait_finished(service, run_id)
+    assert run.status == "cancelled" and run.pipeline_status == {"A": "completed"}
+    assert set(service.store.results(run_id)) == {"A"}
+    types = [e["event_type"] for e in service.store.events(run_id)]
+    assert types[-2:] == ["pipeline.completed", "run.cancelled"]
+    assert "pipeline.cancelled" not in types
+
+
+def test_a_cancel_between_two_pipelines_skips_the_rest(
+    hooked: tuple[QueryService, HookedStore],
+) -> None:
+    service, hooked_store = hooked
+    pause = Pause()
+
+    def after_a(event: dict[str, Any]) -> None:
+        if (event["event_type"], event["pipeline"]) == ("pipeline.completed", "A"):
+            pause()
+
+    hooked_store.on_append = after_a
+    run_id = service.start(request(configurations=["A", "B", "C"]))
+    pause.wait_reached()
+    assert service.cancel(run_id) is True
+    pause.release.set()
+    run = wait_finished(service, run_id)
+    assert run.status == "cancelled"
+    assert run.pipeline_status == {"A": "completed", "B": "skipped", "C": "skipped"}
+    assert terminal_events(service, run_id) == ["run.cancelled"]
 
 
 # -- logging ------------------------------------------------------------------

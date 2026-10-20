@@ -25,7 +25,7 @@ import uuid
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from app.api.errors import CANCELLED_BODY, ApiErrorBody, run_error_body
+from app.api.errors import CANCELLED_BODY, ApiErrorBody, ErrorCode, classify, run_error_body
 from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
 from app.events import (
@@ -101,6 +101,8 @@ class RecordingSink(EventSink):
     raises ``RunCancelled`` instead of recording once ``cancelled`` is set.
     ``record`` stores an event regardless, for the lifecycle events that
     report what already happened (including the cancellation itself).
+    ``finishing`` is set, under the service lock, once the worker has
+    claimed the run's outcome; ``close`` wakes every waiter for good.
     """
 
     def __init__(self, store: RunStore, run_id: str, cancelled: threading.Event) -> None:
@@ -108,6 +110,8 @@ class RecordingSink(EventSink):
         self.run_id = run_id
         self.cancelled = cancelled
         self._condition = threading.Condition()
+        self.finishing = False
+        self._closed = False
         self._last_sequence = 0
         self._open_stages: dict[tuple[str, str], float] = {}
 
@@ -124,9 +128,18 @@ class RecordingSink(EventSink):
         self._time_stage(event)
 
     def wait(self, after: int, timeout: float) -> bool:
-        """Whether an event with a sequence above ``after`` is stored within ``timeout``."""
+        """Whether, within ``timeout``, an event with a sequence above
+        ``after`` is stored or the run ends (nothing more will arrive)."""
         with self._condition:
-            return self._condition.wait_for(lambda: self._last_sequence > after, timeout)
+            return self._condition.wait_for(
+                lambda: self._closed or self._last_sequence > after, timeout
+            )
+
+    def close(self) -> None:
+        """The run has ended: wake every waiter now and on any later wait."""
+        with self._condition:
+            self._closed = True
+            self._condition.notify_all()
 
     def _time_stage(self, event: RetrievalEvent) -> None:
         ended = _STAGE_ENDS.get(event.event_type)
@@ -211,12 +224,13 @@ class QueryService:
         return run_id
 
     def cancel(self, run_id: str) -> bool:
-        """Ask a queued or running run to stop; False when it is unknown or finished."""
+        """Ask a queued or running run to stop; False when it is unknown or
+        already finishing. True means the run will end ``cancelled``."""
         with self._lock:
             sink = self._active.get(run_id)
-        if sink is None:
-            return False
-        sink.cancelled.set()
+            if sink is None or sink.finishing:
+                return False
+            sink.cancelled.set()
         return True
 
     def wait_for(self, run_id: str, after: int, timeout: float) -> bool:
@@ -241,92 +255,120 @@ class QueryService:
             return self._lab
 
     def _execute(self, row: RunRow, sink: RecordingSink) -> None:
-        status = dict(row.pipeline_status)
-        current: str | None = None
-        wiring: WiredGraphPipelines | None = None
         # Identifiers only in the log context: never the question or any answer text.
         with run_context(run_id=row.run_id):
             try:
-                self.store.update_run(row.run_id, status="running")
-                EventEmitter(RUN_PIPELINE, sink).emit(RUN_STARTED)
-                lab = self._lab_once()
-                scope = list(row.market_scope) or None
-                for tag in row.configurations:
-                    EventEmitter(tag, sink).emit(PIPELINE_STARTED)
-                    current = tag
-                    status[tag] = "running"
-                    self.store.update_run(row.run_id, pipeline_status=status)
-                    result: RagRunResult | GraphRunResult
-                    with run_context(pipeline=tag), stage_timer("pipeline_run"):
-                        if tag == "A":
-                            result = lab.pipeline_a(sink=sink).run(row.question, markets=scope)
-                        else:
-                            if wiring is None:
-                                wiring = wired_pipelines(lab, self._graph_config, sink=sink)
-                            graph = next(p for t, p in wiring.pipelines if t == tag)
-                            result = graph.run(row.question, markets=scope)
-                    self.store.put_result(row.run_id, tag, result.model_dump(mode="json"))
-                    status[tag] = "completed"
-                    current = None
-                    self.store.update_run(row.run_id, pipeline_status=status)
-                    _record(sink, tag, PIPELINE_COMPLETED)
-                self._finish(sink, status, "completed", None)
-            except RunCancelled:
-                self._stop(sink, status, current, "cancelled", CANCELLED_BODY)
-            except Exception as error:  # surfaced as a typed error, never a trace
-                body = run_error_body(error)
-                logger.error(
-                    "run failed",
-                    exc_info=error,
-                    extra={
-                        "failed_pipeline": current or RUN_PIPELINE,
-                        "error_code": body.error_code,
-                        "retryable": body.retryable,
-                    },
-                )
-                self._stop(sink, status, current, "failed", body)
+                outcome, status, current = self._run_pipelines(row, sink)
+                self._finish(sink, outcome, status, current)
             finally:
-                if wiring is not None:
-                    wiring.reader.close()
+                # Whatever happened, the run is no longer active and its waiters wake.
+                with self._lock:
+                    self._active.pop(row.run_id, None)
+                sink.close()
                 self.store.close()
 
-    def _stop(
-        self,
-        sink: RecordingSink,
-        status: dict[str, str],
-        current: str | None,
-        outcome: str,
-        body: ApiErrorBody,
-    ) -> None:
-        """End a run that did not complete: the running pipeline takes the
-        outcome, and the pipelines that never started are skipped."""
-        if current is not None:
-            status[current] = outcome
-            _record(sink, current, _PIPELINE_END_EVENTS[outcome], **body.model_dump())
-        for tag, state in status.items():
-            if state == "pending":
-                status[tag] = "skipped"
-        self._finish(sink, status, outcome, body)
+    def _run_pipelines(
+        self, row: RunRow, sink: RecordingSink
+    ) -> tuple[ApiErrorBody | None, dict[str, str], str | None]:
+        """Run the requested pipelines in order; return the failure or
+        cancellation envelope (None when every pipeline completed), the
+        pipeline states and the pipeline that was running when it stopped."""
+        status = dict(row.pipeline_status)
+        current: str | None = None
+        wiring: WiredGraphPipelines | None = None
+        try:
+            self.store.update_run(row.run_id, status="running")
+            _record(sink, RUN_PIPELINE, RUN_STARTED)
+            lab = self._lab_once()
+            scope = list(row.market_scope) or None
+            for tag in row.configurations:
+                EventEmitter(tag, sink).emit(PIPELINE_STARTED)
+                current = tag
+                status[tag] = "running"
+                self.store.update_run(row.run_id, pipeline_status=status)
+                result: RagRunResult | GraphRunResult
+                with run_context(pipeline=tag), stage_timer("pipeline_run"):
+                    if tag == "A":
+                        result = lab.pipeline_a(sink=sink).run(row.question, markets=scope)
+                    else:
+                        if wiring is None:
+                            wiring = wired_pipelines(lab, self._graph_config, sink=sink)
+                        graph = next(p for t, p in wiring.pipelines if t == tag)
+                        result = graph.run(row.question, markets=scope)
+                self.store.put_result(row.run_id, tag, result.model_dump(mode="json"))
+                status[tag] = "completed"
+                current = None
+                self.store.update_run(row.run_id, pipeline_status=status)
+                _record(sink, tag, PIPELINE_COMPLETED)
+            return None, status, None
+        except RunCancelled:
+            return CANCELLED_BODY, status, current
+        except Exception as error:  # surfaced as a typed error, never a trace
+            body = run_error_body(error)
+            logger.error(
+                "run failed",
+                exc_info=error,
+                extra={
+                    "failed_pipeline": current or RUN_PIPELINE,
+                    "error_code": body.error_code,
+                    "retryable": body.retryable,
+                },
+            )
+            return body, status, current
+        finally:
+            if wiring is not None:
+                wiring.reader.close()
 
     def _finish(
-        self, sink: RecordingSink, status: dict[str, str], outcome: str, body: ApiErrorBody | None
+        self,
+        sink: RecordingSink,
+        body: ApiErrorBody | None,
+        status: dict[str, str],
+        current: str | None,
     ) -> None:
-        """Record the terminal event, then the final row, then retire the run.
+        """Decide the outcome, then write the one terminal event and the final row.
 
-        In that order, a client that sees the final status finds every event
-        stored, and a stream woken by the terminal event finds it at once.
+        Claiming the run as finishing under the lock settles a race with
+        ``cancel``: a cancel accepted before the claim ends the run
+        ``cancelled`` even when its last pipeline completed (the stored
+        results stay); one arriving after the claim is refused. The running
+        pipeline takes the outcome and pipelines that never started are
+        skipped. The terminal event goes first, so a client that sees the
+        final status finds every event stored. If the store fails here the
+        run is left for ``mark_interrupted`` to repair at the next start.
         """
-        envelope = body.model_dump() if body is not None else None
-        _record(sink, RUN_PIPELINE, _TERMINAL_EVENTS[outcome], **(envelope or {}))
-        self.store.update_run(
-            sink.run_id,
-            status=outcome,
-            finished_at=_now(),
-            pipeline_status=status,
-            error=envelope,
-        )
         with self._lock:
-            self._active.pop(sink.run_id, None)
+            sink.finishing = True
+            if body is None and sink.cancelled.is_set():
+                body = CANCELLED_BODY
+        outcome = "completed" if body is None else _outcome_of(body.error_code)
+        envelope = body.model_dump() if body is not None else None
+        try:
+            if current is not None and envelope is not None:
+                status[current] = outcome
+                _record(sink, current, _PIPELINE_END_EVENTS[outcome], **envelope)
+            for tag, state in status.items():
+                if state == "pending":
+                    status[tag] = "skipped"
+            _record(sink, RUN_PIPELINE, _TERMINAL_EVENTS[outcome], **(envelope or {}))
+            self.store.update_run(
+                sink.run_id,
+                status=outcome,
+                finished_at=_now(),
+                pipeline_status=status,
+                error=envelope,
+            )
+        except Exception as error:
+            code, _retryable = classify(error)
+            logger.error(
+                "run end could not be stored; the next start-up marks it interrupted",
+                exc_info=error,
+                extra={"outcome": outcome, "error_code": code},
+            )
+
+
+def _outcome_of(code: str) -> str:
+    return "cancelled" if code == ErrorCode.CANCELLED else "failed"
 
 
 _PIPELINE_END_EVENTS = {"failed": PIPELINE_FAILED, "cancelled": PIPELINE_CANCELLED}

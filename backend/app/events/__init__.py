@@ -48,8 +48,9 @@ GRAPH_GENERATION_COMPLETED = "graph.generation.completed"
 
 # Run lifecycle event types (Phase 4). The API worker emits them around the
 # pipelines' own events: ``run.*`` under the pipeline id ``run``, and
-# ``pipeline.*`` under the id of the pipeline they describe. ``run.failed``,
-# ``pipeline.failed`` and ``run.cancelled`` carry the error envelope.
+# ``pipeline.*`` under the id of the pipeline they describe. ``pipeline.failed``,
+# ``pipeline.cancelled``, ``run.failed`` and ``run.cancelled`` carry the error
+# envelope.
 RUN_PIPELINE = "run"
 RUN_STARTED = "run.started"
 PIPELINE_STARTED = "pipeline.started"

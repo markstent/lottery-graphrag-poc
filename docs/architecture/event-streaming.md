@@ -6,16 +6,16 @@ Use WebSocket only if interactive runtime control cannot be cleanly supported th
 
 ## Event structure
 
-Every event must include:
+Every event carries exactly these eight fields, in replay and in the stream:
 
 - event_id
-- sequence
 - timestamp
-- experiment_id
 - run_id
 - pipeline
 - event_type
+- t_ms
 - payload
+- sequence
 
 Event types are the typed catalogue in `docs/07-api-event-spec.md` (run.* and pipeline.* lifecycle events, rag.*, graph.*, ontology.*, evaluation.*).
 

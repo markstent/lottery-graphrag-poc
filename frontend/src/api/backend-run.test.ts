@@ -442,7 +442,12 @@ describe('runBackendQuestion', () => {
             }),
           )
         return Promise.resolve(
-          jsonResponse({ ...RESULTS, status: 'failed', error: FAILURE }),
+          jsonResponse({
+            ...RESULTS,
+            status: 'failed',
+            // A different message: the thrown one must come from run.failed.
+            error: { ...FAILURE, message: 'results envelope message' },
+          }),
         )
       }),
     )
