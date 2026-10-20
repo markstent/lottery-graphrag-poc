@@ -2,15 +2,19 @@
 
 Every failure the API reports, whether an HTTP error or a failed run, carries
 ``{error_code, message, retryable}``. ``classify`` is the single mapping from
-an exception to a code. Technical detail is logged, never put in a body.
+an exception to a code, and ``RUN_ERROR_MESSAGES`` the single mapping from a
+code to the sentence a body carries. Technical detail (wrapped library errors
+can name service URLs or quote provider responses) is logged, never put in a
+body.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Awaitable, Callable
 from enum import StrEnum
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from neo4j.exceptions import (
@@ -56,6 +60,33 @@ class ApiErrorBody(BaseModel):
     retryable: bool
 
 
+class ApiError(Exception):
+    """An HTTP failure with its own status and code, rendered as the envelope."""
+
+    def __init__(self, status: int, code: ErrorCode, message: str) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
+        self.message = message
+
+
+# The one sentence each run failure shows; the exception text goes to the log.
+RUN_ERROR_MESSAGES: dict[str, str] = {
+    ErrorCode.MODEL_ERROR: "The language model could not produce an answer.",
+    ErrorCode.EMBEDDING_ERROR: "The embedding model could not encode the question.",
+    ErrorCode.VECTOR_RETRIEVAL_ERROR: "The vector index could not be searched.",
+    ErrorCode.GRAPH_QUERY_ERROR: "The graph database could not answer the query.",
+    ErrorCode.CONTEXT_BUILD_ERROR: "The evidence could not be ranked for the answer.",
+    ErrorCode.CANCELLED: "The run was cancelled.",
+    ErrorCode.RUN_ERROR: UNEXPECTED_MESSAGE,
+}
+CANCELLED_BODY = ApiErrorBody(
+    error_code=ErrorCode.CANCELLED,
+    message=RUN_ERROR_MESSAGES[ErrorCode.CANCELLED],
+    retryable=True,
+)
+
+
 # Retryable failures are the transient ones: the database is unreachable or
 # busy, the connection pool timed out, or the transaction hit its timeout
 # (the server reports that as a TransientError). Other Neo4j errors are
@@ -86,6 +117,12 @@ def classify(exc: BaseException) -> tuple[ErrorCode, bool]:
     return ErrorCode.RUN_ERROR, False
 
 
+def run_error_body(exc: BaseException) -> ApiErrorBody:
+    """The envelope of a failed run: the exception's code, retryability and curated message."""
+    code, retryable = classify(exc)
+    return ApiErrorBody(error_code=code, message=RUN_ERROR_MESSAGES[code], retryable=retryable)
+
+
 def _respond(status: int, code: ErrorCode, message: str, retryable: bool = False) -> JSONResponse:
     body = ApiErrorBody(error_code=code, message=message, retryable=retryable)
     return JSONResponse(status_code=status, content={"error": body.model_dump()})
@@ -100,7 +137,17 @@ def _validation_message(exc: RequestValidationError) -> str:
 
 
 def install_handlers(app: FastAPI) -> None:
-    """Make every HTTP error use the envelope."""
+    """Make every HTTP error use the envelope.
+
+    Call it before adding the CORS middleware: unhandled errors are caught by
+    an HTTP middleware rather than an ``Exception`` handler, because Starlette
+    runs that handler outside every middleware, so a 500 would lose its CORS
+    headers and the browser could not read the envelope.
+    """
+
+    @app.exception_handler(ApiError)
+    async def api_error(_request: Request, exc: ApiError) -> JSONResponse:
+        return _respond(exc.status, exc.code, exc.message)
 
     @app.exception_handler(RequestValidationError)
     async def validation(_request: Request, exc: RequestValidationError) -> JSONResponse:
@@ -111,11 +158,16 @@ def install_handlers(app: FastAPI) -> None:
         code = ErrorCode.NOT_FOUND if exc.status_code == 404 else ErrorCode.RUN_ERROR
         return _respond(exc.status_code, code, str(exc.detail))
 
-    @app.exception_handler(Exception)
-    async def unhandled(request: Request, exc: Exception) -> JSONResponse:
-        logger.error(
-            "unhandled error",
-            exc_info=exc,
-            extra={"method": request.method, "path": request.url.path},
-        )
-        return _respond(500, ErrorCode.RUN_ERROR, UNEXPECTED_MESSAGE)
+    @app.middleware("http")
+    async def unhandled(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        try:
+            return await call_next(request)
+        except Exception as exc:
+            logger.error(
+                "unhandled error",
+                exc_info=exc,
+                extra={"method": request.method, "path": request.url.path},
+            )
+            return _respond(500, ErrorCode.RUN_ERROR, UNEXPECTED_MESSAGE)

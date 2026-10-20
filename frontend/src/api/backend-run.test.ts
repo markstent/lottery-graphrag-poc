@@ -100,11 +100,18 @@ const EVENTS = {
   ],
 }
 
+const FAILURE = {
+  error_code: 'MODEL_ERROR',
+  message: 'The language model could not produce an answer.',
+  retryable: true,
+}
+
 const RESULTS = {
   run_id: 'RUN-TEST',
   question: 'test question',
   status: 'completed',
   configurations: ['A', 'C'],
+  pipeline_status: { A: 'completed', C: 'completed' },
   error: null,
   results: {
     A: {
@@ -217,6 +224,60 @@ describe('runBackendQuestion', () => {
       'MKT_GR',
       'MKT_AT',
     ])
+  })
+
+  it('never sends the retired profile field', async () => {
+    await runBackendQuestion({
+      id: 'X',
+      question: 'test question',
+      category: 'x',
+    })
+    const post = vi
+      .mocked(fetch)
+      .mock.calls.find(([input]) => String(input).endsWith('/queries'))
+    const init = post?.[1] as RequestInit | undefined
+    expect(JSON.parse(String(init?.body))).not.toHaveProperty('profile')
+  })
+
+  it('reads the events only once the run is final', async () => {
+    let polls = 0
+    const order: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith('/queries'))
+          return Promise.resolve(jsonResponse({ run_id: 'RUN-TEST' }))
+        if (url.endsWith('/events')) {
+          order.push('events')
+          return Promise.resolve(jsonResponse(EVENTS))
+        }
+        if (url.endsWith('/benchmarks/latest'))
+          return Promise.resolve(jsonResponse({ questions: [] }))
+        polls += 1
+        order.push(polls === 1 ? 'running' : 'completed')
+        return Promise.resolve(
+          jsonResponse(
+            polls === 1
+              ? { ...RESULTS, status: 'running', results: {} }
+              : RESULTS,
+          ),
+        )
+      }),
+    )
+    vi.useFakeTimers({ toFake: ['setTimeout'] })
+    try {
+      const pending = runBackendQuestion({
+        id: 'X',
+        question: 'test question',
+        category: 'x',
+      })
+      await vi.runAllTimersAsync()
+      await pending
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(order).toEqual(['running', 'completed', 'events'])
   })
 
   it('maps a recorded run into the playback shape', async () => {
@@ -363,23 +424,50 @@ describe('runBackendQuestion', () => {
         if (url.endsWith('/queries'))
           return Promise.resolve(jsonResponse({ run_id: 'RUN-TEST' }))
         if (url.endsWith('/events'))
-          return Promise.resolve(jsonResponse(EVENTS))
+          return Promise.resolve(
+            jsonResponse({
+              ...EVENTS,
+              status: 'failed',
+              events: [
+                ...EVENTS.events,
+                {
+                  sequence: 10,
+                  run_id: 'RUN-TEST',
+                  event_type: 'run.failed',
+                  pipeline: 'run',
+                  t_ms: 160,
+                  payload: FAILURE,
+                },
+              ],
+            }),
+          )
         return Promise.resolve(
-          jsonResponse({
-            ...RESULTS,
-            status: 'failed',
-            error: {
-              error_code: 'MODEL_ERROR',
-              message: 'provider unreachable',
-              retryable: true,
-            },
-          }),
+          jsonResponse({ ...RESULTS, status: 'failed', error: FAILURE }),
         )
       }),
     )
     await expect(
       runBackendQuestion({ id: 'X', question: 'test question', category: 'x' }),
-    ).rejects.toThrow('provider unreachable')
+    ).rejects.toThrow('The language model could not produce an answer.')
+  })
+
+  it('surfaces a cancelled run as an error', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((input: RequestInfo | URL) => {
+        const url = String(input)
+        if (url.endsWith('/queries'))
+          return Promise.resolve(jsonResponse({ run_id: 'RUN-TEST' }))
+        if (url.endsWith('/events'))
+          return Promise.resolve(jsonResponse(EVENTS))
+        return Promise.resolve(
+          jsonResponse({ ...RESULTS, status: 'cancelled' }),
+        )
+      }),
+    )
+    await expect(
+      runBackendQuestion({ id: 'X', question: 'test question', category: 'x' }),
+    ).rejects.toThrow('backend run was cancelled')
   })
 })
 

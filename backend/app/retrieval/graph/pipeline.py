@@ -46,6 +46,7 @@ from app.events import (
     GRAPH_SEED_SELECTED,
     GRAPH_TRAVERSAL_STARTED,
     EventEmitter,
+    EventSink,
     ListEventSink,
     RetrievalEvent,
     new_run_id,
@@ -108,7 +109,7 @@ class GraphRagPipeline:
         reranker: Reranker,
         source_lookup: SourceLookup | None = None,
         pipeline: str = "C",
-        sink: ListEventSink | None = None,
+        sink: EventSink | None = None,
         expansion: QueryExpansion | None = None,
         ontology: Ontology | None = None,
     ) -> None:
@@ -124,13 +125,16 @@ class GraphRagPipeline:
         self.settings = settings
         self.source_lookup = source_lookup
         self.pipeline = pipeline
-        self.sink = sink if sink is not None else ListEventSink()
+        self.sink: EventSink = sink if sink is not None else ListEventSink()
         self.emitter = EventEmitter(pipeline, self.sink)
         # The same reranker instance as pipeline A (retrieval fairness).
         self.reranker = reranker
 
     @property
     def events(self) -> list[RetrievalEvent]:
+        """The recorded events, when the sink keeps them in memory (the default)."""
+        if not isinstance(self.sink, ListEventSink):
+            raise TypeError(f"{type(self.sink).__name__} does not keep events in memory")
         return self.sink.events
 
     def run(self, question: str, markets: Sequence[str] | None = None) -> GraphRunResult:

@@ -99,10 +99,12 @@ GET    /graph/evidence-paths/{run_id}
 {
   "question": "Why did digital conversion fall in Greece?",
   "configurations": ["A", "B", "C"],
-  "profile": null,
   "market_scope": ["GR"]
 }
 ```
+
+Unknown fields are refused with 422 `VALIDATION_ERROR`.
+That includes the retired `profile` field (removed in Phase 4), so a client still sending it learns at once rather than having it silently ignored.
 
 `market_scope` (optional; 2026-10-18) restricts retrieval to one or more
 markets. Entries are two-letter codes (`UK`, `GR`, `AT`, `CZ`) or full ids
@@ -127,29 +129,58 @@ and recorded on the first event of every pipeline (`markets` payload field).
 
 ## 5. Query Response
 
-Initial request should return quickly:
+`POST /queries` stores the run as `queued`, starts its worker and returns 202 at once:
 
 ```json
 {
-  "run_id": "RUN-001",
-  "status": "RUNNING",
-  "event_stream_url": "/api/v1/queries/RUN-001/events"
+  "run_id": "RUN-0A1B2C3D4E5F",
+  "status": "queued",
+  "results_url": "/api/v1/queries/RUN-0A1B2C3D4E5F",
+  "events_url": "/api/v1/queries/RUN-0A1B2C3D4E5F/events"
 }
 ```
 
-Final state:
+`GET /queries/{run_id}` reads the run store.
+Each pipeline's result appears in `results` as soon as that pipeline finishes, so A is readable while C is still traversing:
 
 ```json
 {
-  "run_id": "RUN-001",
-  "status": "COMPLETED",
-  "results": {
-    "A": {},
-    "B": {},
-    "C": {}
-  }
+  "run_id": "RUN-0A1B2C3D4E5F",
+  "kind": "live",
+  "question": "Why did digital conversion fall in Greece?",
+  "status": "running",
+  "configurations": ["A", "B", "C"],
+  "market_scope": ["MKT_GR"],
+  "pipeline_status": {"A": "completed", "B": "running", "C": "pending"},
+  "created_at": "2026-10-20T10:00:00.000000+00:00",
+  "finished_at": null,
+  "error": null,
+  "results": {"A": {}}
 }
 ```
+
+Run `status` is `queued`, `running`, `completed`, `failed` or `cancelled`.
+Each `pipeline_status` value is `pending`, `running`, `completed`, `failed`, `cancelled` or `skipped`.
+Pipelines run in order A, B, C inside one worker thread per run; several runs may execute at once.
+When a run fails or is cancelled, the pipeline that was running takes that outcome and the pipelines that never started are `skipped`.
+`error` is the section 11 envelope for a failed or cancelled run (`CANCELLED`, retryable), and null otherwise.
+A run the server was executing when it stopped is marked `failed` with `INTERRUPTED` at the next start-up.
+
+### Run history and cancellation
+
+```text
+GET  /queries?limit=20&before=<cursor>&status=<status>
+POST /queries/{run_id}/cancel
+```
+
+History lists runs newest first, as `{"runs": [...], "next_before": ...}` where each run is the summary above without `results`.
+`limit` defaults to 20; a value above 100 is a 422, never a silent clamp.
+`next_before` is the opaque cursor of the next page, or null on the last page; pass it back unchanged as `before`.
+A malformed cursor is a 422 `VALIDATION_ERROR`.
+
+Cancellation is cooperative.
+`POST /queries/{run_id}/cancel` sets the run's cancel flag and returns 202 with the run summary; the running pipeline stops at its next event, finished pipelines keep their results, and the run ends `cancelled`.
+Cancelling a finished run is a 409 `VALIDATION_ERROR`; an unknown run is a 404 `NOT_FOUND`.
 
 ---
 
@@ -157,25 +188,46 @@ Final state:
 
 Prefer Server-Sent Events unless bidirectional runtime control requires WebSocket.
 
-Event structure:
+Event envelope, identical in replay and in the stream:
 
 ```json
 {
-  "event_id": "EVT-00001",
-  "event_type": "graph.relationship.traversed",
-  "timestamp": "2026-01-01T10:00:00Z",
-  "experiment_id": "EXP-001",
-  "run_id": "RUN-001",
+  "event_id": "5f0c1d2e3a4b4c5d9e8f7a6b5c4d3e2f",
+  "timestamp": "2026-01-01T10:00:00.123456+00:00",
+  "run_id": "RUN-0A1B2C3D4E5F",
   "pipeline": "C",
-  "sequence": 12,
-  "payload": {}
+  "event_type": "graph.relationship.traversed",
+  "t_ms": 1234.5,
+  "payload": {},
+  "sequence": 12
 }
 ```
 
-Events must be ordered by `sequence`.
+Events must be ordered by `sequence`, which starts at 1 and has no gaps within a run.
+Every event is written to the run store the moment it is emitted (ADR-007).
 
 `event_id` is a unique opaque identifier (a UUID4 hex string) assigned when the event is emitted.
 `timestamp` is the wall-clock emission time in ISO 8601 UTC (for example `2026-01-01T10:00:00.123456+00:00`); `t_ms` remains the monotonic offset used for replay timing.
+
+### Run lifecycle events
+
+The worker brackets the pipelines' own events with lifecycle events:
+
+```text
+run.started
+pipeline.started
+pipeline.completed
+pipeline.failed
+pipeline.cancelled
+run.completed
+run.failed
+run.cancelled
+```
+
+`run.*` events use the pipeline id `run`; `pipeline.*` events use the id of the pipeline they describe.
+A run's first event is `run.started` and its last is exactly one terminal event: `run.completed`, `run.failed` or `run.cancelled`.
+`pipeline.failed`, `pipeline.cancelled`, `run.failed` and `run.cancelled` carry the section 11 error envelope as their payload.
+`pipeline.cancelled` appears only when a pipeline was running at the cancellation; a run cancelled between pipelines (or before the first) ends with `run.cancelled` alone.
 
 ---
 
@@ -347,16 +399,20 @@ Example:
 
 ```json
 {
-  "event_type": "run.error",
+  "event_type": "run.failed",
+  "pipeline": "run",
   "payload": {
     "error_code": "GRAPH_QUERY_ERROR",
-    "message": "Graph traversal failed.",
+    "message": "The graph database could not answer the query.",
     "retryable": true
   }
 }
 ```
 
+`run.failed` replaced the earlier `run.error` in Phase 4.
 Do not expose secrets or stack traces to normal UI responses.
+Each code has one curated message (`RUN_ERROR_MESSAGES` in `backend/app/api/errors.py`).
+The exception's own text goes to the server log only, because wrapped library errors can name service URLs or quote provider responses.
 
 ---
 
@@ -514,13 +570,8 @@ GET  /api/v1/benchmarks/latest   published harness output only
 
 `GET /api/v1/benchmarks/latest` returns the newest official run of the whole bank, else the newest run of any kind with its label; the rule and the `summary.json` it serves are in `docs/evaluation/reproducibility.md`.
 
-Deliberate differences from the sketch: replay is served from the recorded
-event sequence (in-memory, bounded to the last 50 runs of the API process)
-rather than a durable event log, and `POST /queries` returns 202 with
-`results_url`/`events_url` instead of SSE streaming. SSE remains the
-transport for progressive delivery if per-event push is needed later; the
-frontend paces playback from recorded `t_ms`, so polling satisfies the
-replay contract.
+Superseded in Phase 4: runs, events and results are persisted in the SQLite run store (ADR-007), keeping the newest `RUN_RETENTION` live runs, rather than held in memory for the last 50 runs.
+Phase 4 also adds `GET /api/v1/queries` (history) and `POST /api/v1/queries/{run_id}/cancel` (section 5), tested in `tests/test_api_runs.py`.
 
 Reserved for later phases (not implemented): experiments, dataset and
 scenario management, `GET /queries/{run_id}/evidence` (evidence is embedded

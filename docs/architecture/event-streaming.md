@@ -17,7 +17,7 @@ Every event must include:
 - event_type
 - payload
 
-Event types are the typed catalogue in `docs/07-api-event-spec.md` (rag.*, graph.*, ontology.*, evaluation.*, run.error).
+Event types are the typed catalogue in `docs/07-api-event-spec.md` (run.* and pipeline.* lifecycle events, rag.*, graph.*, ontology.*, evaluation.*).
 
 ## Lifecycle
 
@@ -31,7 +31,7 @@ Event types are the typed catalogue in `docs/07-api-event-spec.md` (rag.*, graph
 
 - `sequence` is monotonic per run; clients render in sequence order.
 - A heartbeat event keeps connections alive through proxies during long pipeline stages.
-- On pipeline failure a terminal `run.error` event (typed error class per `docs/07`) is persisted and streamed; the run row records the failure state. Fake success is never presented.
+- On pipeline failure a `pipeline.failed` event and then the terminal `run.failed` event (both carrying the typed error envelope of `docs/07`) are persisted and streamed; the run row records the failure state. Fake success is never presented.
 
 ## Consumers
 

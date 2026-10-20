@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 from app import lab as lab_module
-from app.api.runs import QueryService
+from app.api.runs import start_lab
 from app.config import GraphConfig, RetrievalSettings
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
@@ -90,12 +90,8 @@ def client(
     write_manifest(settings, embeddings, sparse, list(corpus.values()))
     monkeypatch.setattr(lab_module, "build_embedder", lambda _settings: embeddings)
     monkeypatch.setattr(lab_module, "build_store", lambda _vs, _dim, _prov: store)
-    service = QueryService(
-        settings=settings,
-        graph_config=graph_config,
-        generator_name="fake",
-    )
-    with TestClient(create_app(service_factory=lambda: service)) as test_client:
+    app = create_app(lab_factory=lambda: start_lab(settings), graph_config=graph_config)
+    with TestClient(app) as test_client:
         yield test_client
 
 
@@ -113,10 +109,10 @@ def test_full_abc_run_over_http(client: TestClient) -> None:
     assert response.status_code == 202
     run_id = response.json()["run_id"]
 
-    payload: dict[str, Any] = {"status": "running"}
+    payload: dict[str, Any] = {"status": "queued"}
     for _ in range(600):
         payload = client.get(f"/api/v1/queries/{run_id}").json()
-        if payload["status"] != "running":
+        if payload["status"] not in ("queued", "running"):
             break
         time.sleep(0.1)
     assert payload["status"] == "completed", payload
@@ -128,5 +124,6 @@ def test_full_abc_run_over_http(client: TestClient) -> None:
     sequences = [event["sequence"] for event in stream["events"]]
     assert sequences == list(range(1, len(sequences) + 1))
     pipelines = {event["pipeline"] for event in stream["events"]}
-    assert pipelines == {"A", "B", "C"}
+    assert pipelines == {"run", "A", "B", "C"}
+    assert payload["pipeline_status"] == {"A": "completed", "B": "completed", "C": "completed"}
     assert any(event["event_type"] == "graph.relationship.traversed" for event in stream["events"])

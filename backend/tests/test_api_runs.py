@@ -1,0 +1,760 @@
+"""Persisted runs: the worker, per-pipeline status, cancellation, history and
+the run routes (docs/07 sections 3-6, ADR-007).
+
+Two labs are used, both offline. The offline lab (hashing embedders, an
+in-memory store holding the SCN-007 corpus, the fake generator) runs A, B and
+C, with B and C wired over the static SCN-007 neighbourhood instead of Neo4j.
+The tiny generated world drives the cold-start and index-guard tests through
+``start_lab``, as the real API does.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+import json
+import logging
+import shutil
+import threading
+import time
+from collections.abc import Callable, Iterator
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, cast
+
+import app.api.runs as runs_module
+import app.lab as lab_module
+import pytest
+from app.api.runs import QueryService, start_lab
+from app.api.schemas import QueryRequest
+from app.config import GraphConfig, RetrievalSettings
+from app.events import EventSink
+from app.evidence import EvidenceChunk
+from app.lab import Lab, WiredGraphPipelines, graph_pipelines
+from app.main import create_app
+from app.persistence.store import RunRow, RunStore
+from app.retrieval.graph.neo4j_adapter import GraphReader
+from app.retrieval.graph.resolution import StaticEntityResolver
+from app.retrieval.graph.traversal import NeighbourEdge, NeighbourProvider
+from app.retrieval.standard.generation import GenerationError, GenerationOutput
+from app.retrieval.standard.index import index_corpus
+from app.retrieval.standard.vector_store import InMemoryVectorStore
+from fastapi.testclient import TestClient
+
+from tests.conftest import build_lab_offline
+from tests.test_graph_rag import build_corpus, resolved, scn007_adjacency
+from tests.test_standard_rag import make_settings
+
+GRAPH = GraphConfig(uri="bolt://unused", user="unused", password="unused", database="unused")
+FINISHED = frozenset({"completed", "failed", "cancelled"})
+ENVELOPE = {"event_id", "timestamp", "run_id", "pipeline", "event_type", "t_ms", "payload"}
+QUESTION = "Which incidents affected the Greek digital checkout on PLV_PAYMENTS_3?"
+SLOW_HOP_S = 0.3
+
+
+# -- doubles ------------------------------------------------------------------
+
+
+class FailingGenerator:
+    """Gateway stub whose every call fails, like a downed provider."""
+
+    model_name = "failing-gateway-v1"
+
+    def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
+        raise GenerationError("Model gateway call failed: http://internal-gateway:4000 refused")
+
+
+class _Reader:
+    def close(self) -> None:
+        pass
+
+
+class SlowNeighbours:
+    """Delays every neighbour lookup until released, so a graph pipeline is
+    observably running."""
+
+    def __init__(self, inner: NeighbourProvider, release: threading.Event) -> None:
+        self._inner = inner
+        self._release = release
+
+    def neighbours(
+        self,
+        ids: list[str],
+        rel_types: tuple[str, ...],
+        per_type: int,
+        excluded_labels: tuple[str, ...],
+    ) -> list[NeighbourEdge]:
+        self._release.wait(SLOW_HOP_S)
+        return self._inner.neighbours(ids, rel_types, per_type, excluded_labels)
+
+    def concept_bound(
+        self, concept_id: str, limit: int, excluded_labels: tuple[str, ...]
+    ) -> list[tuple[str, str]]:
+        self._release.wait(SLOW_HOP_S)
+        return self._inner.concept_bound(concept_id, limit, excluded_labels)
+
+
+def offline_wiring(
+    neighbours: NeighbourProvider,
+) -> Callable[[Lab, GraphConfig, EventSink | None], WiredGraphPipelines]:
+    """B and C over the given neighbourhood: no Neo4j."""
+
+    def wire(
+        lab: Lab, graph_config: GraphConfig, sink: EventSink | None = None
+    ) -> WiredGraphPipelines:
+        del graph_config
+        resolver = StaticEntityResolver(resolved())
+        pipelines = graph_pipelines(lab, neighbours, resolver, resolver, sink=sink)
+        return WiredGraphPipelines(reader=cast(GraphReader, _Reader()), pipelines=pipelines)
+
+    return wire
+
+
+# -- helpers ------------------------------------------------------------------
+
+
+def wait_until(predicate: Callable[[], bool], timeout: float = 15.0) -> None:
+    deadline = time.monotonic() + timeout
+    while not predicate():
+        if time.monotonic() > deadline:
+            pytest.fail("condition not reached in time")
+        time.sleep(0.01)
+
+
+def request(**fields: Any) -> QueryRequest:
+    return QueryRequest(question=QUESTION, **fields)
+
+
+def store(service: QueryService) -> RunStore:
+    return service.store
+
+
+def row(service: QueryService, run_id: str) -> RunRow:
+    found = service.store.get_run(run_id)
+    assert found is not None
+    return found
+
+
+def pipeline_running(service: QueryService, run_id: str, tag: str) -> bool:
+    return row(service, run_id).pipeline_status[tag] == "running"
+
+
+def wait_finished(service: QueryService, run_id: str) -> RunRow:
+    wait_until(lambda: row(service, run_id).status in FINISHED)
+    return row(service, run_id)
+
+
+def start(client: TestClient, **body: Any) -> str:
+    response = client.post("/api/v1/queries", json={"question": QUESTION, **body})
+    assert response.status_code == 202, response.text
+    run_id: str = response.json()["run_id"]
+    return run_id
+
+
+def await_finished(client: TestClient, run_id: str) -> dict[str, Any]:
+    payload: dict[str, Any] = {}
+
+    def finished() -> bool:
+        payload.update(client.get(f"/api/v1/queries/{run_id}").json())
+        return payload["status"] in FINISHED
+
+    wait_until(finished)
+    return payload
+
+
+def run_to_completion(client: TestClient, **body: Any) -> dict[str, Any]:
+    run_id = start(client, **body)
+    results = await_finished(client, run_id)
+    events = client.get(f"/api/v1/queries/{run_id}/events").json()["events"]
+    return {"run_id": run_id, "results": results, "events": events}
+
+
+def wait_idle(client: TestClient) -> None:
+    """Every run of this test has finished, so no worker outlives it."""
+
+    def idle() -> bool:
+        runs = client.get("/api/v1/queries?limit=100").json()["runs"]
+        return all(run["status"] in FINISHED for run in runs)
+
+    wait_until(idle)
+
+
+# -- fixtures -----------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def lab() -> Lab:
+    built = build_lab_offline()
+    index_corpus(built.store, built.embeddings, built.sparse, list(build_corpus().values()))
+    return built
+
+
+@pytest.fixture()
+def release() -> threading.Event:
+    return threading.Event()
+
+
+@pytest.fixture()
+def slow_service(
+    lab: Lab, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, release: threading.Event
+) -> Iterator[QueryService]:
+    """A service whose graph pipelines wait on every hop until released."""
+    monkeypatch.setattr(
+        runs_module, "wired_pipelines", offline_wiring(SlowNeighbours(scn007_adjacency(), release))
+    )
+    service = QueryService(RunStore(tmp_path / "runs.db", retention=50), lambda: lab, GRAPH)
+    yield service
+    release.set()
+    wait_until(lambda: all(r.status in FINISHED for r in service.store.list_runs(100, None, None)))
+    service.store.close()
+
+
+service_with_slow_b = slow_service
+service_with_slow_c = slow_service
+
+
+@pytest.fixture()
+def client(lab: Lab, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    monkeypatch.setattr(runs_module, "wired_pipelines", offline_wiring(scn007_adjacency()))
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as test_client:
+        yield test_client
+        wait_idle(test_client)
+
+
+@pytest.fixture()
+def lab_gate() -> threading.Event:
+    return threading.Event()
+
+
+@pytest.fixture()
+def client_with_slow_lab(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, lab_gate: threading.Event
+) -> Iterator[TestClient]:
+    """The lab takes until ``lab_gate`` is set to build, like a cold start."""
+    monkeypatch.setattr(runs_module, "wired_pipelines", offline_wiring(scn007_adjacency()))
+
+    def slow_lab() -> Lab:
+        lab_gate.wait(15)
+        return lab
+
+    with TestClient(create_app(lab_factory=slow_lab, graph_config=GRAPH)) as test_client:
+        yield test_client
+        lab_gate.set()
+        wait_idle(test_client)
+
+
+def tiny_client(settings: RetrievalSettings) -> TestClient:
+    """A client over ``start_lab``, the API's own lab start-up with cold-start indexing."""
+    return TestClient(create_app(lab_factory=lambda: start_lab(settings), graph_config=GRAPH))
+
+
+# -- live per-pipeline results ------------------------------------------------
+
+
+def test_results_of_a_finished_pipeline_are_readable_while_the_next_runs(
+    service_with_slow_c: QueryService,
+) -> None:
+    run_id = service_with_slow_c.start(request(configurations=["A", "C"]))
+    wait_until(
+        lambda: (
+            row(service_with_slow_c, run_id).pipeline_status == {"A": "completed", "C": "running"}
+        )
+    )
+    assert "A" in store(service_with_slow_c).results(run_id)
+    assert row(service_with_slow_c, run_id).pipeline_status["C"] == "running"
+
+
+def test_a_completed_run_stores_every_result_and_status(client: TestClient) -> None:
+    run = run_to_completion(client, configurations=["A", "B", "C"])["results"]
+    assert run["status"] == "completed" and run["error"] is None
+    assert run["pipeline_status"] == {"A": "completed", "B": "completed", "C": "completed"}
+    assert set(run["results"]) == {"A", "B", "C"}
+    assert run["results"]["A"]["evidence"] and run["results"]["C"]["node_evidence"]
+    assert run["created_at"].endswith("+00:00") and run["finished_at"].endswith("+00:00")
+
+
+def test_two_runs_at_once_each_complete_with_their_own_events(client: TestClient) -> None:
+    first, second = start(client), start(client)
+    for run_id in (first, second):
+        assert await_finished(client, run_id)["status"] == "completed"
+        events = client.get(f"/api/v1/queries/{run_id}/events").json()["events"]
+        assert {event["run_id"] for event in events} == {run_id}
+
+
+# -- cancellation -------------------------------------------------------------
+
+
+def test_cancel_stops_at_the_next_stage_and_keeps_finished_pipelines(
+    service_with_slow_b: QueryService,
+) -> None:
+    run_id = service_with_slow_b.start(request(configurations=["A", "B", "C"]))
+    wait_until(lambda: pipeline_running(service_with_slow_b, run_id, "B"))
+    assert service_with_slow_b.cancel(run_id)
+    run = wait_finished(service_with_slow_b, run_id)
+    assert run.status == "cancelled" and run.pipeline_status == {
+        "A": "completed",
+        "B": "cancelled",
+        "C": "skipped",
+    }
+    assert set(store(service_with_slow_b).results(run_id)) == {"A"}
+    events = store(service_with_slow_b).events(run_id)
+    assert [(e["event_type"], e["pipeline"]) for e in events[-2:]] == [
+        ("pipeline.cancelled", "B"),
+        ("run.cancelled", "run"),
+    ]
+    assert not any(e["pipeline"] == "C" for e in events)
+    assert run.error == {
+        "error_code": "CANCELLED",
+        "message": "The run was cancelled.",
+        "retryable": True,
+    }
+
+
+def test_cancel_before_any_pipeline_starts_skips_them_all(
+    lab: Lab, tmp_path: Path, lab_gate: threading.Event
+) -> None:
+    def slow_lab() -> Lab:
+        lab_gate.wait(15)
+        return lab
+
+    service = QueryService(RunStore(tmp_path / "runs.db", retention=50), slow_lab, GRAPH)
+    try:
+        run_id = service.start(request(configurations=["A", "B"]))
+        wait_until(lambda: len(service.store.events(run_id)) == 1)  # run.started
+        assert service.cancel(run_id)
+        lab_gate.set()
+        run = wait_finished(service, run_id)
+        assert run.status == "cancelled"
+        assert run.pipeline_status == {"A": "skipped", "B": "skipped"}
+        types = [e["event_type"] for e in service.store.events(run_id)]
+        assert types == ["run.started", "run.cancelled"]
+    finally:
+        lab_gate.set()
+        service.store.close()
+
+
+def test_cancel_of_an_unknown_or_finished_run_is_refused(client: TestClient) -> None:
+    run_id = run_to_completion(client, configurations=["A"])["run_id"]
+    response = client.post(f"/api/v1/queries/{run_id}/cancel")
+    assert response.status_code == 409
+    assert response.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    missing = client.post("/api/v1/queries/RUN-UNKNOWN/cancel")
+    assert missing.status_code == 404
+    assert missing.json()["error"]["error_code"] == "NOT_FOUND"
+
+
+def test_cancel_route_accepts_an_active_run(
+    client_with_slow_lab: TestClient, lab_gate: threading.Event
+) -> None:
+    run_id = start(client_with_slow_lab, configurations=["A"])
+    response = client_with_slow_lab.post(f"/api/v1/queries/{run_id}/cancel")
+    assert response.status_code == 202
+    assert response.json()["run_id"] == run_id
+    # The summary is read after the flag is set, so the worker may already have stopped.
+    assert response.json()["status"] in {"queued", "running", "cancelled"}
+    lab_gate.set()
+    assert await_finished(client_with_slow_lab, run_id)["status"] == "cancelled"
+
+
+# -- events -------------------------------------------------------------------
+
+
+def test_events_carry_run_id_and_gap_free_sequences(client: TestClient) -> None:
+    events = run_to_completion(client)["events"]
+    assert {e["run_id"] for e in events} == {events[0]["run_id"]} and [
+        e["sequence"] for e in events
+    ] == list(range(1, len(events) + 1))
+    assert events[0]["event_type"] == "run.started" and events[-1]["event_type"] == "run.completed"
+
+
+def test_events_use_exactly_the_envelope(client: TestClient) -> None:
+    events = run_to_completion(client, configurations=["A"])["events"]
+    assert all(set(event) == ENVELOPE | {"sequence"} for event in events)
+    assert all(e["event_id"] and e["timestamp"].endswith("+00:00") for e in events)
+    assert len({e["event_id"] for e in events}) == len(events)
+
+
+def test_pipeline_lifecycle_events_bracket_each_pipeline(client: TestClient) -> None:
+    events = run_to_completion(client, configurations=["A", "C"])["events"]
+    lifecycle = [
+        (e["event_type"], e["pipeline"])
+        for e in events
+        if e["event_type"].startswith(("run.", "pipeline."))
+    ]
+    assert lifecycle == [
+        ("run.started", "run"),
+        ("pipeline.started", "A"),
+        ("pipeline.completed", "A"),
+        ("pipeline.started", "C"),
+        ("pipeline.completed", "C"),
+        ("run.completed", "run"),
+    ]
+    a_events = [e["event_type"] for e in events if e["pipeline"] == "A"]
+    assert a_events[1] == "rag.query.received"
+
+
+def test_replay_returns_the_identical_recorded_stream(client: TestClient) -> None:
+    run_id = run_to_completion(client, configurations=["A"])["run_id"]
+    first = client.get(f"/api/v1/queries/{run_id}/events").json()
+    assert first["status"] == "completed"
+    assert client.get(f"/api/v1/queries/{run_id}/events").json() == first
+
+
+def test_wait_for_wakes_on_a_new_event_and_times_out_otherwise(
+    lab: Lab, tmp_path: Path, lab_gate: threading.Event
+) -> None:
+    def slow_lab() -> Lab:
+        lab_gate.wait(15)
+        return lab
+
+    service = QueryService(RunStore(tmp_path / "runs.db", retention=50), slow_lab, GRAPH)
+    try:
+        run_id = service.start(request(configurations=["A"]))
+        wait_until(lambda: len(service.store.events(run_id)) == 1)
+        assert service.wait_for(run_id, 1, 0.05) is False
+        lab_gate.set()
+        assert service.wait_for(run_id, 1, 10) is True
+        assert len(service.store.events(run_id)) > 1
+        wait_finished(service, run_id)
+        assert service.wait_for(run_id, 10_000, 0.01) is True
+    finally:
+        lab_gate.set()
+        service.store.close()
+
+
+# -- history ------------------------------------------------------------------
+
+
+def test_history_lists_newest_first_and_pages(client: TestClient) -> None:
+    ids = [start(client) for _ in range(3)]
+    page = client.get("/api/v1/queries?limit=2").json()
+    assert [r["run_id"] for r in page["runs"]] == ids[::-1][:2] and page["next_before"]
+    rest = client.get("/api/v1/queries", params={"limit": 2, "before": page["next_before"]}).json()
+    assert [r["run_id"] for r in rest["runs"]] == [ids[0]] and rest["next_before"] is None
+
+
+def test_history_filters_by_status(client: TestClient) -> None:
+    run_id = run_to_completion(client, configurations=["A"])["run_id"]
+    completed = client.get("/api/v1/queries?status=completed").json()["runs"]
+    assert [r["run_id"] for r in completed] == [run_id]
+    assert client.get("/api/v1/queries?status=failed").json() == {"runs": [], "next_before": None}
+
+
+def test_history_summaries_carry_status_but_no_results(client: TestClient) -> None:
+    run_to_completion(client, configurations=["A"])
+    (summary,) = client.get("/api/v1/queries").json()["runs"]
+    assert summary["pipeline_status"] == {"A": "completed"} and summary["kind"] == "live"
+    assert "results" not in summary and summary["question"] == QUESTION
+
+
+def test_history_limit_above_the_maximum_is_refused(client: TestClient) -> None:
+    assert client.get("/api/v1/queries?limit=101").status_code == 422
+
+
+@pytest.mark.parametrize("before", ["garbage", "2026-10-20T00:00:00Z|RUN-1", "|RUN-1"])
+def test_a_malformed_history_cursor_is_a_validation_error(client: TestClient, before: str) -> None:
+    response = client.get("/api/v1/queries", params={"before": before})
+    assert response.status_code == 422
+    assert response.json()["error"]["error_code"] == "VALIDATION_ERROR"
+
+
+def test_a_slow_cold_start_does_not_block_history(client_with_slow_lab: TestClient) -> None:
+    run_id = start(client_with_slow_lab)
+    began = time.monotonic()
+    # TestClient ignores timeouts, so the bound is measured: the lab is still building.
+    assert client_with_slow_lab.get("/api/v1/queries").status_code == 200
+    assert client_with_slow_lab.get(f"/api/v1/queries/{run_id}").json()["status"] == "running"
+    assert time.monotonic() - began < 1
+
+
+# -- start-up -----------------------------------------------------------------
+
+
+def test_runs_left_running_are_marked_interrupted_at_start_up(lab: Lab, run_database: Path) -> None:
+    left = RunStore(run_database, retention=50)
+    left.create_run(
+        RunRow(
+            run_id="RUN-LEFT",
+            kind="live",
+            status="running",
+            question=QUESTION,
+            market_scope=(),
+            configurations=("A",),
+            benchmark_instance_id=None,
+            created_at=datetime.now(UTC).isoformat(),
+            finished_at=None,
+            pipeline_status={"A": "running"},
+            error=None,
+        )
+    )
+    app = create_app(lab_factory=lambda: lab, graph_config=GRAPH)
+    assert left.get_run("RUN-LEFT").status == "running"  # type: ignore[union-attr]
+    left.close()
+    with TestClient(app) as test_client:
+        run = test_client.get("/api/v1/queries/RUN-LEFT").json()
+    assert run["status"] == "failed" and run["error"]["error_code"] == "INTERRUPTED"
+    assert run["pipeline_status"] == {"A": "failed"}
+
+
+# -- request validation (moved from test_api_queries) -------------------------
+
+
+class TestRequestValidation:
+    def test_empty_question_rejected(self, client: TestClient) -> None:
+        assert client.post("/api/v1/queries", json={"question": ""}).status_code == 422
+
+    def test_unknown_configuration_rejected(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/queries", json={"question": "What happened?", "configurations": ["D"]}
+        )
+        assert response.status_code == 422
+
+    @pytest.mark.parametrize("profile", ["fraud", None])
+    def test_the_retired_profile_field_is_refused(
+        self, client: TestClient, profile: str | None
+    ) -> None:
+        response = client.post(
+            "/api/v1/queries", json={"question": "What happened?", "profile": profile}
+        )
+        assert response.status_code == 422
+        assert "profile" in response.json()["error"]["message"]
+
+    def test_unknown_market_rejected(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/queries", json={"question": "What happened?", "market_scope": ["XX"]}
+        )
+        assert response.status_code == 422
+
+    def test_markets_normalised_to_full_ids(self, client: TestClient) -> None:
+        run_id = start(client, configurations=["A"], market_scope=["uk", "MKT_GR"])
+        assert await_finished(client, run_id)["market_scope"] == ["MKT_UK", "MKT_GR"]
+
+    def test_unknown_run_returns_404(self, client: TestClient) -> None:
+        assert client.get("/api/v1/queries/RUN-UNKNOWN").status_code == 404
+        assert client.get("/api/v1/queries/RUN-UNKNOWN/events").status_code == 404
+
+
+# -- lifecycle over the tiny world (moved from test_api_queries) --------------
+
+
+class TestTinyWorldRuns:
+    def test_submission_returns_run_pointer_immediately(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/v1/queries", json={"question": "Which game costs 3.50?", "configurations": ["A"]}
+        )
+        assert response.status_code == 202
+        payload = response.json()
+        assert payload["status"] == "queued"
+        assert payload["events_url"].startswith("/api/v1/queries/")
+        assert payload["results_url"] == payload["events_url"].removesuffix("/events")
+
+    def test_pipeline_a_completes_with_answer_and_evidence(self, tiny_dataset: Path) -> None:
+        with tiny_client(make_settings(dataset_dir=str(tiny_dataset))) as client:
+            run_id = start(
+                client,
+                question="What do the game rules say about prize tiers?",
+                configurations=["A"],
+            )
+            payload = await_finished(client, run_id)
+        assert payload["status"] == "completed" and payload["error"] is None
+        result = payload["results"]["A"]
+        assert result["answer"]["text"] and result["answer"]["verdict"]
+        assert result["answer"]["cited_blocks"] == [1]
+        assert result["evidence"], "pipeline A must retrieve document chunks"
+
+    def test_scoped_run_filters_pipeline_a_evidence(self, tiny_dataset: Path) -> None:
+        with tiny_client(make_settings(dataset_dir=str(tiny_dataset))) as client:
+            run_id = start(
+                client,
+                question="What do the game rules say about prize tiers?",
+                configurations=["A"],
+                market_scope=["MKT_GR"],
+            )
+            payload = await_finished(client, run_id)
+        assert payload["status"] == "completed"
+        evidence = payload["results"]["A"]["evidence"]
+        # The scoped market, plus shared (market-less) evidence.
+        assert {chunk["market_id"] for chunk in evidence} <= {"MKT_GR", ""}
+        assert any(chunk["market_id"] == "MKT_GR" for chunk in evidence)
+
+    @staticmethod
+    def _cold_start(settings: RetrievalSettings) -> None:
+        with tiny_client(settings) as client:
+            run_id = start(client, question="Anything at all.", configurations=["A"])
+            assert await_finished(client, run_id)["status"] == "completed"
+
+    def test_in_memory_cold_start_never_writes_a_manifest(
+        self, tiny_dataset: Path, tmp_path: Path
+    ) -> None:
+        """An in-memory index dies with the process: it must not overwrite the
+        manifest of the persistent index built for the same world."""
+        dataset_dir = tmp_path / "world"
+        shutil.copytree(tiny_dataset, dataset_dir)
+        manifest = dataset_dir / "vector-index.json"
+        manifest.write_text('{"record_serialiser_version": "built-elsewhere"}')
+        self._cold_start(make_settings(dataset_dir=str(dataset_dir)))
+        assert manifest.read_text() == '{"record_serialiser_version": "built-elsewhere"}'
+        manifest.unlink()
+        self._cold_start(make_settings(dataset_dir=str(dataset_dir)))
+        assert not manifest.exists()
+
+    def test_persistent_cold_start_indexing_stamps_the_serialiser_version(
+        self, tiny_dataset: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from app.retrieval.standard.embeddings import HashingEmbedder
+        from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+
+        dataset_dir = tmp_path / "world"
+        shutil.copytree(tiny_dataset, dataset_dir)
+        (dataset_dir / "vector-index.json").unlink(missing_ok=True)
+        base = make_settings(dataset_dir=str(dataset_dir))
+        # A persistent provider (the empty store stands in for a fresh Qdrant collection).
+        settings = dataclasses.replace(
+            base,
+            embedding=dataclasses.replace(
+                base.embedding, provider="ollama", sparse_provider="hashing"
+            ),
+            rerank=dataclasses.replace(base.rerank, provider="lexical"),
+        )
+        embedder = HashingEmbedder(dimensions=settings.embedding.dimensions)
+        monkeypatch.setattr(lab_module, "build_embedder", lambda _settings: embedder)
+        monkeypatch.setattr(lab_module, "build_store", lambda *_args: InMemoryVectorStore())
+        self._cold_start(settings)
+        written = json.loads((dataset_dir / "vector-index.json").read_text())
+        assert written["record_serialiser_version"] == RECORD_SERIALISER_VERSION
+
+
+# -- failures -----------------------------------------------------------------
+
+
+class TestFailures:
+    def test_a_failed_pipeline_fails_the_run_and_skips_the_rest(
+        self, lab: Lab, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        monkeypatch.setattr(runs_module, "wired_pipelines", offline_wiring(scn007_adjacency()))
+        failing = dataclasses.replace(lab, generator=FailingGenerator())
+        app = create_app(lab_factory=lambda: failing, graph_config=GRAPH)
+        with TestClient(app) as client, caplog.at_level(logging.ERROR):
+            run = run_to_completion(client, configurations=["A", "B", "C"])
+        results, events = run["results"], run["events"]
+        assert results["status"] == "failed"
+        assert results["pipeline_status"] == {"A": "failed", "B": "skipped", "C": "skipped"}
+        envelope = {
+            "error_code": "MODEL_ERROR",
+            "message": "The language model could not produce an answer.",
+            "retryable": True,
+        }
+        assert results["error"] == envelope
+        assert [(e["event_type"], e["pipeline"]) for e in events[-2:]] == [
+            ("pipeline.failed", "A"),
+            ("run.failed", "run"),
+        ]
+        assert events[-1]["payload"] == envelope and events[-2]["payload"] == envelope
+        assert "internal-gateway" not in json.dumps(run)
+        assert any("internal-gateway" in str(r.exc_info) for r in caplog.records if r.exc_info)
+
+    def test_dense_only_collection_maps_to_vector_error(
+        self, tiny_dataset: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        class DenseOnlyStore(InMemoryVectorStore):
+            def count(self) -> int:
+                return 1
+
+            def collection_info(self) -> dict[str, object]:
+                return {"vectors": [""], "sparse_vectors": [], "points": 1}
+
+        monkeypatch.setattr(lab_module, "build_store", lambda *_args: DenseOnlyStore())
+        with (
+            tiny_client(make_settings(dataset_dir=str(tiny_dataset))) as client,
+            caplog.at_level(logging.ERROR),
+        ):
+            payload = await_finished(client, start(client, configurations=["A"]))
+        assert payload["status"] == "failed"
+        assert payload["pipeline_status"] == {"A": "skipped"}
+        assert payload["error"] == {
+            "error_code": "VECTOR_RETRIEVAL_ERROR",
+            "message": "The vector index could not be searched.",
+            "retryable": True,
+        }
+        assert any("lacks a sparse vector" in str(r.exc_info) for r in caplog.records)
+
+    @pytest.mark.parametrize("manifest", [None, {"record_serialiser_version": "2.0.0"}])
+    def test_index_built_by_another_serialiser_maps_to_vector_error(
+        self,
+        tiny_dataset: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        caplog: pytest.LogCaptureFixture,
+        manifest: dict[str, str] | None,
+    ) -> None:
+        class PopulatedStore(InMemoryVectorStore):
+            def count(self) -> int:
+                return 1
+
+        dataset_dir = tmp_path / "world"
+        shutil.copytree(tiny_dataset, dataset_dir)
+        (dataset_dir / "vector-index.json").unlink(missing_ok=True)
+        if manifest is not None:
+            (dataset_dir / "vector-index.json").write_text(json.dumps(manifest))
+        monkeypatch.setattr(lab_module, "build_store", lambda *_args: PopulatedStore())
+        with (
+            tiny_client(make_settings(dataset_dir=str(dataset_dir))) as client,
+            caplog.at_level(logging.ERROR),
+        ):
+            payload = await_finished(client, start(client, configurations=["A"]))
+        assert payload["status"] == "failed"
+        assert payload["error"]["error_code"] == "VECTOR_RETRIEVAL_ERROR"
+        assert any("record serialiser" in str(r.exc_info) for r in caplog.records)
+
+    def test_a_failed_lab_build_is_retried_by_the_next_run(self, lab: Lab, tmp_path: Path) -> None:
+        attempts: list[int] = []
+
+        def flaky_lab() -> Lab:
+            attempts.append(1)
+            if len(attempts) == 1:
+                raise RuntimeError("index not ready")
+            return lab
+
+        service = QueryService(RunStore(tmp_path / "runs.db", retention=50), flaky_lab, GRAPH)
+        try:
+            first = service.start(request(configurations=["A"]))
+            assert wait_finished(service, first).status == "failed"
+            second = service.start(request(configurations=["A"]))
+            assert wait_finished(service, second).status == "completed"
+        finally:
+            service.store.close()
+
+
+# -- logging ------------------------------------------------------------------
+
+
+def test_worker_logs_one_pipeline_run_record_without_question_text(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    question = "Which game rules mention prize tiers?"
+    with caplog.at_level(logging.INFO):
+        run_id = start(client, question=question, configurations=["A"])
+        await_finished(client, run_id)
+    timed = [r for r in caplog.records if getattr(r, "stage", None) == "pipeline_run"]
+    assert len(timed) == 1
+    assert timed[0].context == {"run_id": run_id, "pipeline": "A"}  # type: ignore[attr-defined]
+    assert timed[0].outcome == "ok"  # type: ignore[attr-defined]
+    assert all(question not in json.dumps(vars(r), default=str) for r in caplog.records)
+
+
+def test_stage_timings_are_logged_from_the_pipeline_events(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.INFO):
+        run_id = run_to_completion(client, configurations=["A", "C"])["run_id"]
+    stages: dict[str, list[str]] = {}
+    for record in caplog.records:
+        stage = getattr(record, "stage", None)
+        if stage is not None and stage != "pipeline_run":
+            context: dict[str, str] = record.context  # type: ignore[attr-defined]
+            assert context["run_id"] == run_id
+            assert record.duration_ms >= 0 and record.outcome == "ok"  # type: ignore[attr-defined]
+            stages.setdefault(context["pipeline"], []).append(stage)
+    assert stages == {
+        "A": ["embedding", "vector_retrieval", "reranking", "generation"],
+        "C": ["graph_traversal", "reranking", "generation"],
+    }

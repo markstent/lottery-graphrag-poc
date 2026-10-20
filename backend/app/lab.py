@@ -14,7 +14,7 @@ from typing import Literal
 
 from app.config import GraphConfig, RetrievalSettings
 from app.datasets.taxonomies import local_name_variants
-from app.events import ListEventSink
+from app.events import EventSink
 from app.ontology.loader import load_ontology
 from app.ontology.model import Ontology
 from app.ontology.terms import TermMatcher, build_term_table
@@ -71,7 +71,7 @@ class Lab:
             return None
         return str(self.index_manifest["record_serialiser_version"])
 
-    def pipeline_a(self, sink: ListEventSink | None = None) -> StandardRagPipeline:
+    def pipeline_a(self, sink: EventSink | None = None) -> StandardRagPipeline:
         return StandardRagPipeline(
             embeddings=self.embeddings,
             sparse=self.sparse,
@@ -80,7 +80,7 @@ class Lab:
             settings=self.settings,
             reranker=self.reranker,
             pipeline="A",
-            sink=sink if sink is not None else ListEventSink(),
+            sink=sink,
         )
 
 
@@ -141,8 +141,10 @@ def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
 def wired_pipelines(
     lab: Lab,
     graph_config: GraphConfig,
+    sink: EventSink | None = None,
 ) -> WiredGraphPipelines:
-    """Wire B and C for one question against the live graph.
+    """Wire B and C for one question against the live graph; ``sink``, when
+    given, receives both pipelines' events (otherwise each keeps its own).
 
     Fair B/C split: identical limits and relationship allow-list; B is
     exactly C minus the ontology layer: the ontology relationships and
@@ -155,7 +157,7 @@ def wired_pipelines(
         id_resolver, term_resolver = build_resolvers(reader, lab.ontology, lab.term_matcher)
         return WiredGraphPipelines(
             reader=reader,
-            pipelines=graph_pipelines(lab, reader, id_resolver, term_resolver),
+            pipelines=graph_pipelines(lab, reader, id_resolver, term_resolver, sink=sink),
         )
     except Exception:
         reader.close()
@@ -167,8 +169,10 @@ def graph_pipelines(
     neighbours: NeighbourProvider,
     id_resolver: EntityResolver,
     term_resolver: EntityResolver,
+    sink: EventSink | None = None,
 ) -> list[tuple[PipelineId, GraphRagPipeline]]:
-    """Construct B and C from the lab's shared components (no I/O)."""
+    """Construct B and C from the lab's shared components (no I/O); ``sink``
+    as for :func:`wired_pipelines`."""
     settings_b, settings_c = bc_graph_settings(lab.settings)
     variants: tuple[
         tuple[
@@ -193,7 +197,7 @@ def graph_pipelines(
                 reranker=lab.reranker,
                 source_lookup=lab.source_lookup,
                 pipeline=tag,
-                sink=ListEventSink(),
+                sink=sink,
                 expansion=expansion,
                 ontology=ontology,
             ),

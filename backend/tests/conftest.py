@@ -1,5 +1,5 @@
-"""Shared fixtures: a stand-in for the lazily imported litellm module and
-an offline retrieval lab."""
+"""Shared fixtures: a stand-in for the lazily imported litellm module, an
+offline retrieval lab, the tiny generated world and a per-test run database."""
 
 from __future__ import annotations
 
@@ -9,7 +9,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app.datasets.config import GenerationConfig
+from app.datasets.parquet import write_world
+from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.taxonomies import local_name_variants
+from app.datasets.world import build_world
 from app.lab import Lab
 from app.ontology.loader import load_ontology
 from app.ontology.terms import TermMatcher, build_term_table
@@ -43,6 +47,23 @@ class _Response(dict[str, Any]):
     """Subscriptable choices and an attribute usage, like a litellm ModelResponse."""
 
     usage = types.SimpleNamespace(prompt_tokens=3, completion_tokens=1, total_tokens=4)
+
+
+@pytest.fixture(autouse=True)
+def run_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Every test's API writes its runs to its own database, never data/app.db."""
+    path = tmp_path / "app.db"
+    monkeypatch.setenv("APP_DB_PATH", str(path))
+    return path
+
+
+@pytest.fixture(scope="session")
+def tiny_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """The tiny generated world (seed 42) as Parquet, built once per session."""
+    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
+    dataset_dir = tmp_path_factory.mktemp("tiny-world-api")
+    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
+    return dataset_dir
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, stub: StubLiteLLM) -> StubLiteLLM:

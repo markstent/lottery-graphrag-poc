@@ -46,6 +46,21 @@ GRAPH_CONTEXT_ASSEMBLED = "graph.context.assembled"
 GRAPH_GENERATION_STARTED = "graph.generation.started"
 GRAPH_GENERATION_COMPLETED = "graph.generation.completed"
 
+# Run lifecycle event types (Phase 4). The API worker emits them around the
+# pipelines' own events: ``run.*`` under the pipeline id ``run``, and
+# ``pipeline.*`` under the id of the pipeline they describe. ``run.failed``,
+# ``pipeline.failed`` and ``run.cancelled`` carry the error envelope.
+RUN_PIPELINE = "run"
+RUN_STARTED = "run.started"
+PIPELINE_STARTED = "pipeline.started"
+PIPELINE_COMPLETED = "pipeline.completed"
+PIPELINE_FAILED = "pipeline.failed"
+PIPELINE_CANCELLED = "pipeline.cancelled"
+RUN_COMPLETED = "run.completed"
+RUN_FAILED = "run.failed"
+RUN_CANCELLED = "run.cancelled"
+TERMINAL_EVENT_TYPES = frozenset({RUN_COMPLETED, RUN_FAILED, RUN_CANCELLED})
+
 EventValue = str | int | float | bool | None
 
 
@@ -80,7 +95,7 @@ class EventSink:
 
 
 class ListEventSink(EventSink):
-    """Collects events in memory (per-run recorder; API layer streams later)."""
+    """Collects events in memory (the CLIs, the benchmark runner and tests)."""
 
     def __init__(self) -> None:
         self.events: list[RetrievalEvent] = []

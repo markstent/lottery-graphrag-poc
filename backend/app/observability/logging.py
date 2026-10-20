@@ -70,11 +70,25 @@ def run_context(**fields: str) -> Iterator[None]:
         _context.reset(token)
 
 
+def _require_stage(stage: str) -> None:
+    if stage not in STAGES:
+        raise ValueError(f"unknown stage {stage!r}; expected one of {STAGES}")
+
+
+def log_stage(stage: str, duration_ms: float, outcome: str = "ok") -> None:
+    """Log one timed stage: the record ``stage_timer`` writes, for a duration
+    measured elsewhere (such as between two pipeline events)."""
+    _require_stage(stage)
+    logging.getLogger(__name__).info(
+        "stage timed",
+        extra={"stage": stage, "duration_ms": round(duration_ms, 3), "outcome": outcome},
+    )
+
+
 @contextmanager
 def stage_timer(stage: str) -> Iterator[None]:
     """Log the stage, its duration and its outcome (``ok`` or the exception class name)."""
-    if stage not in STAGES:
-        raise ValueError(f"unknown stage {stage!r}; expected one of {STAGES}")
+    _require_stage(stage)
     started = time.perf_counter()
     outcome = "ok"
     try:
@@ -83,14 +97,7 @@ def stage_timer(stage: str) -> Iterator[None]:
         outcome = type(error).__name__
         raise
     finally:
-        logging.getLogger(__name__).info(
-            "stage timed",
-            extra={
-                "stage": stage,
-                "duration_ms": round((time.perf_counter() - started) * 1000, 3),
-                "outcome": outcome,
-            },
-        )
+        log_stage(stage, (time.perf_counter() - started) * 1000, outcome)
 
 
 def _is_secret(name: str) -> bool:

@@ -29,6 +29,7 @@ from app.events import (
     RAG_RERANK_STARTED,
     RAG_VECTOR_SEARCH_STARTED,
     EventEmitter,
+    EventSink,
     ListEventSink,
     RetrievalEvent,
     new_run_id,
@@ -56,7 +57,7 @@ class StandardRagPipeline:
         settings: RetrievalSettings,
         reranker: Reranker,
         pipeline: str = "A",
-        sink: ListEventSink | None = None,
+        sink: EventSink | None = None,
     ) -> None:
         self.embeddings = embeddings
         self.sparse = sparse
@@ -65,11 +66,14 @@ class StandardRagPipeline:
         self.settings = settings
         self.reranker = reranker
         self.pipeline = pipeline
-        self.sink = sink if sink is not None else ListEventSink()
+        self.sink: EventSink = sink if sink is not None else ListEventSink()
         self.emitter = EventEmitter(pipeline, self.sink)
 
     @property
     def events(self) -> list[RetrievalEvent]:
+        """The recorded events, when the sink keeps them in memory (the default)."""
+        if not isinstance(self.sink, ListEventSink):
+            raise TypeError(f"{type(self.sink).__name__} does not keep events in memory")
         return self.sink.events
 
     def run(self, question: str, markets: Sequence[str] | None = None) -> RagRunResult:

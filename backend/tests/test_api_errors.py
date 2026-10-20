@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Iterator
-from pathlib import Path
 from typing import Any, cast
 
 import neo4j.exceptions
 import pytest
-from app.api.errors import UNEXPECTED_MESSAGE, classify
-from app.api.runs import QueryService
-from app.config import GraphConfig, RetrievalSettings, from_env
+from app.api.errors import RUN_ERROR_MESSAGES, UNEXPECTED_MESSAGE, classify, run_error_body
+from app.config import GraphConfig, from_env
+from app.lab import Lab
 from app.main import create_app
 from app.models.gateway import GatewayError
 from app.retrieval.graph.neo4j_adapter import GraphReader
@@ -23,7 +22,7 @@ from app.retrieval.standard.vector_store import VectorStoreError
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from tests.test_api_queries import _await_completion, tiny_dataset  # noqa: F401
+from tests.test_api_runs import GRAPH, await_finished, lab, start  # noqa: F401
 from tests.test_standard_rag import make_settings
 
 
@@ -50,12 +49,8 @@ def test_classify(exc: BaseException, code: str, retryable: bool) -> None:
 
 
 @pytest.fixture()
-def client(tiny_dataset: Path) -> Iterator[TestClient]:  # noqa: F811
-    settings: RetrievalSettings = make_settings(dataset_dir=str(tiny_dataset))
-    service = QueryService(
-        settings=settings, graph_config=GraphConfig.from_env(), generator_name="fake"
-    )
-    with TestClient(create_app(service_factory=lambda: service)) as test_client:
+def client() -> Iterator[TestClient]:
+    with TestClient(create_app()) as test_client:
         yield test_client
 
 
@@ -99,7 +94,9 @@ def test_an_unhandled_error_is_generic_in_the_body_and_detailed_in_the_log(
 
     app.add_api_route("/boom", boom)
     with caplog.at_level(logging.ERROR):
-        response = TestClient(app, raise_server_exceptions=False).get("/boom")
+        response = TestClient(app, raise_server_exceptions=False).get(
+            "/boom", headers={"Origin": "http://localhost:5173"}
+        )
     assert response.status_code == 500
     assert _error(response) == {
         "error_code": "RUN_ERROR",
@@ -107,41 +104,61 @@ def test_an_unhandled_error_is_generic_in_the_body_and_detailed_in_the_log(
         "retryable": False,
     }
     assert "secret detail" not in response.text
+    # The browser can read the envelope: the 500 carries the CORS headers too.
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+    assert response.headers["x-request-id"]
     logged = caplog.records[-1]
     assert logged.exc_info is not None and "secret detail" in str(logged.exc_info[1])
+    assert logged.context["request_id"] == response.headers["x-request-id"]  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    ("exc", "message"),
+    [
+        (GenerationError("http://gw:4000 said: {body}"), RUN_ERROR_MESSAGES["MODEL_ERROR"]),
+        (EmbeddingError("ollama at http://host:11434 down"), RUN_ERROR_MESSAGES["EMBEDDING_ERROR"]),
+        (
+            VectorStoreError("qdrant http://q:6333 404"),
+            RUN_ERROR_MESSAGES["VECTOR_RETRIEVAL_ERROR"],
+        ),
+        (RerankError("Cross-encoder failed: /models/x"), RUN_ERROR_MESSAGES["CONTEXT_BUILD_ERROR"]),
+        (neo4j.exceptions.ServiceUnavailable("bolt://h"), RUN_ERROR_MESSAGES["GRAPH_QUERY_ERROR"]),
+        (ValueError("/srv/internal"), UNEXPECTED_MESSAGE),
+    ],
+)
+def test_run_error_bodies_use_the_curated_message_of_their_code(
+    exc: Exception, message: str
+) -> None:
+    body = run_error_body(exc)
+    assert body.message == message and str(exc) not in body.message
+    assert (body.error_code, body.retryable) == classify(exc)
 
 
 def test_a_neo4j_outage_surfaces_as_graph_query_error(
-    tiny_dataset: Path,  # noqa: F811
+    lab: Lab,  # noqa: F811
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     import app.api.runs as runs_module
 
-    def unreachable(*_args: object) -> None:
+    def unreachable(*_args: object, **_kwargs: object) -> None:
         raise neo4j.exceptions.ServiceUnavailable("bolt://internal-host:7687 refused")
 
     monkeypatch.setattr(runs_module, "wired_pipelines", unreachable)
-    service = QueryService(
-        settings=make_settings(dataset_dir=str(tiny_dataset)),
-        graph_config=GraphConfig.from_env(),
-        generator_name="fake",
-    )
     with (
-        TestClient(create_app(service_factory=lambda: service)) as client,
+        TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as client,
         caplog.at_level(logging.ERROR),
     ):
-        run_id = client.post(
-            "/api/v1/queries", json={"question": "Anything.", "configurations": ["B"]}
-        ).json()["run_id"]
-        run = _await_completion(client, run_id)
+        run_id = start(client, configurations=["B"])
+        run = await_finished(client, run_id)
         events = client.get(f"/api/v1/queries/{run_id}/events").json()["events"]
-    assert run["status"] == "failed"
+    assert run["status"] == "failed" and run["pipeline_status"] == {"B": "failed"}
     assert run["error"]["error_code"] == "GRAPH_QUERY_ERROR" and run["error"]["retryable"] is True
     assert "internal-host" not in run["error"]["message"]
-    failed = [event for event in events if event["event_type"] == "run.error"]
+    failed = [event for event in events if event["event_type"] == "run.failed"]
     assert failed[0]["payload"]["error_code"] == "GRAPH_QUERY_ERROR"
     assert failed[0]["payload"]["retryable"] is True
+    assert not any(event["event_type"] == "run.error" for event in events)
     assert any("internal-host" in str(r.exc_info) for r in caplog.records if r.exc_info)
 
 

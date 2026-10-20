@@ -1,13 +1,19 @@
-"""Query run store and background execution (docs/07 sections 3-6, 15).
+"""Persisted query runs: the worker, the recording sink, cancellation and the
+lab start-up (docs/07 sections 3-6, ADR-007).
 
-POST /queries accepts a question, returns a run id immediately and executes
-the selected pipelines in a worker thread. Recorded events and results are
-kept in memory: replay uses the recorded sequence, never a re-execution, and
-the store keeps the most recent runs of the demo process (bounded; this is a
-presentation service, not a persistence layer).
+POST /queries stores a queued run and starts one worker thread for it. The
+worker runs the requested pipelines in order A, B, C. Every event goes
+through a ``RecordingSink`` into the run store the moment it is emitted, and
+each pipeline's result is stored as soon as that pipeline finishes, so a
+client reads A while C is still traversing. Replay and the live stream read
+the same stored events; nothing is re-executed.
+
+Cancellation is cooperative: once a run's cancel flag is set, the next
+event any pipeline emits raises ``RunCancelled``, so every event is a
+cancellation point between stages.
 
 The truth ledger is never read here: the service grounds nothing and scores
-nothing. It runs retrieval and returns observable events plus answers.
+nothing. It runs retrieval and records observable events plus answers.
 """
 
 from __future__ import annotations
@@ -16,183 +22,327 @@ import dataclasses
 import logging
 import threading
 import uuid
-from collections import OrderedDict
-from dataclasses import dataclass, field
-from typing import Any
+from collections.abc import Callable
+from datetime import UTC, datetime
 
-from app.api.errors import UNEXPECTED_MESSAGE, ErrorCode, classify
+from app.api.errors import CANCELLED_BODY, ApiErrorBody, run_error_body
 from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
-from app.events import EventEmitter, ListEventSink, RetrievalEvent
-from app.lab import Lab, build_generator, build_lab, wired_pipelines
-from app.observability.logging import run_context, stage_timer
+from app.events import (
+    GRAPH_CONTEXT_ASSEMBLED,
+    GRAPH_ENTITY_RESOLUTION_STARTED,
+    GRAPH_GENERATION_COMPLETED,
+    GRAPH_GENERATION_STARTED,
+    GRAPH_RERANK_STARTED,
+    PIPELINE_CANCELLED,
+    PIPELINE_COMPLETED,
+    PIPELINE_FAILED,
+    PIPELINE_STARTED,
+    RAG_CONTEXT_ASSEMBLED,
+    RAG_EMBEDDING_COMPLETED,
+    RAG_EMBEDDING_STARTED,
+    RAG_GENERATION_COMPLETED,
+    RAG_GENERATION_STARTED,
+    RAG_RERANK_STARTED,
+    RAG_VECTOR_SEARCH_STARTED,
+    RUN_CANCELLED,
+    RUN_COMPLETED,
+    RUN_FAILED,
+    RUN_PIPELINE,
+    RUN_STARTED,
+    EventEmitter,
+    EventSink,
+    EventValue,
+    RetrievalEvent,
+)
+from app.evidence import GraphRunResult, RagRunResult
+from app.lab import Lab, WiredGraphPipelines, build_generator, build_lab, wired_pipelines
+from app.observability.logging import log_stage, run_context, stage_timer
+from app.persistence.store import RunRow, RunStore
 from app.retrieval.standard.index import index_corpus, persists_index, write_manifest
 
-MAX_RUNS = 50
-
-# Driver and unexpected errors carry hosts, queries or traces: the log has
-# them, the response gets a plain sentence.
-GENERIC_MESSAGES = {
-    ErrorCode.GRAPH_QUERY_ERROR: "The graph database could not answer the query.",
-    ErrorCode.RUN_ERROR: UNEXPECTED_MESSAGE,
-}
 logger = logging.getLogger(__name__)
 
+# Stage timings come from the pipelines' own events: a stage opens at its
+# start event and closes at its end event. Where a pipeline emits no event
+# between two stages, the boundary is the next stage's start: vector
+# retrieval in A ends when reranking starts; graph retrieval in B and C
+# (entity resolution, traversal, ontology expansion and candidate building)
+# ends when reranking starts. Reranking ends when the context is assembled,
+# so it includes context selection, which no event separates from it.
+_STAGE_STARTS: dict[str, str] = {
+    RAG_EMBEDDING_STARTED: "embedding",
+    RAG_VECTOR_SEARCH_STARTED: "vector_retrieval",
+    RAG_RERANK_STARTED: "reranking",
+    RAG_GENERATION_STARTED: "generation",
+    GRAPH_ENTITY_RESOLUTION_STARTED: "graph_traversal",
+    GRAPH_RERANK_STARTED: "reranking",
+    GRAPH_GENERATION_STARTED: "generation",
+}
+_STAGE_ENDS: dict[str, str] = {
+    RAG_EMBEDDING_COMPLETED: "embedding",
+    RAG_RERANK_STARTED: "vector_retrieval",
+    RAG_CONTEXT_ASSEMBLED: "reranking",
+    RAG_GENERATION_COMPLETED: "generation",
+    GRAPH_RERANK_STARTED: "graph_traversal",
+    GRAPH_CONTEXT_ASSEMBLED: "reranking",
+    GRAPH_GENERATION_COMPLETED: "generation",
+}
 
-@dataclass
-class RunRecord:
-    """One query run: request, recorded events, results, error surface."""
 
-    run_id: str
-    question: str
-    configurations: list[str]
-    market_scope: list[str] = field(default_factory=list)
-    status: str = "running"
-    events: list[dict[str, Any]] = field(default_factory=list)
-    results: dict[str, Any] = field(default_factory=dict)
-    error_code: str | None = None
-    error_message: str | None = None
-    error_retryable: bool = False
+class RunCancelled(Exception):
+    """Raised by ``RecordingSink.emit`` once the run's cancel flag is set."""
 
 
-def _message(code: ErrorCode, error: Exception) -> str:
-    """The user-facing message: the error's own text, except where it is technical detail."""
-    if code in (ErrorCode.RUN_ERROR, ErrorCode.GRAPH_QUERY_ERROR):
-        return GENERIC_MESSAGES[code]
-    return str(error)
+class RecordingSink(EventSink):
+    """Stores each event of one run as it is emitted and wakes its waiters.
+
+    ``emit`` is the pipelines' entry point and a cancellation point: it
+    raises ``RunCancelled`` instead of recording once ``cancelled`` is set.
+    ``record`` stores an event regardless, for the lifecycle events that
+    report what already happened (including the cancellation itself).
+    """
+
+    def __init__(self, store: RunStore, run_id: str, cancelled: threading.Event) -> None:
+        self.store = store
+        self.run_id = run_id
+        self.cancelled = cancelled
+        self._condition = threading.Condition()
+        self._last_sequence = 0
+        self._open_stages: dict[tuple[str, str], float] = {}
+
+    def emit(self, event: RetrievalEvent) -> None:
+        if self.cancelled.is_set():
+            raise RunCancelled(self.run_id)
+        self.record(event)
+
+    def record(self, event: RetrievalEvent) -> None:
+        sequence = self.store.append_event(self.run_id, {**event.as_dict(), "run_id": self.run_id})
+        with self._condition:
+            self._last_sequence = sequence
+            self._condition.notify_all()
+        self._time_stage(event)
+
+    def wait(self, after: int, timeout: float) -> bool:
+        """Whether an event with a sequence above ``after`` is stored within ``timeout``."""
+        with self._condition:
+            return self._condition.wait_for(lambda: self._last_sequence > after, timeout)
+
+    def _time_stage(self, event: RetrievalEvent) -> None:
+        ended = _STAGE_ENDS.get(event.event_type)
+        if ended is not None:
+            started = self._open_stages.pop((event.pipeline, ended), None)
+            if started is not None:
+                log_stage(ended, event.t_ms - started)
+        opened = _STAGE_STARTS.get(event.event_type)
+        if opened is not None:
+            self._open_stages[(event.pipeline, opened)] = event.t_ms
+
+
+def start_lab(settings: RetrievalSettings) -> Lab:
+    """Build the lab the API serves, indexing the corpus on a cold start.
+
+    The CLI flows rely on a pre-built index (make index-vector), but a
+    service must be usable after a fresh start. ``build_lab`` has already
+    refused a populated index this code must not use; a valid one is left
+    untouched. Only a persistent (Qdrant) index gets a manifest: an in-memory
+    index dies with the process and must not overwrite the manifest of the
+    real one.
+    """
+    lab = build_lab(settings, build_generator(settings.generation.provider, settings))
+    if lab.store.count() == 0 and lab.corpus:
+        corpus = list(lab.corpus.values())
+        index_corpus(lab.store, lab.embeddings, lab.sparse, corpus)
+        if persists_index(settings.embedding.provider):
+            manifest = write_manifest(settings, lab.embeddings, lab.sparse, corpus)
+            lab = dataclasses.replace(lab, index_manifest=manifest)
+    return lab
+
+
+def _now() -> str:
+    return datetime.now(UTC).isoformat()
 
 
 class QueryService:
-    """Owns the shared lab and every run's record; safe for concurrent calls."""
+    """Starts, runs and cancels persisted runs; safe for concurrent calls.
+
+    ``_lock`` guards only the map of active runs (each holding its cancel
+    flag); the store is safe to share across threads. The lab is built once,
+    on the first run, behind its own lock that no route takes, so a slow
+    cold start never blocks a read.
+    """
 
     def __init__(
-        self,
-        settings: RetrievalSettings,
-        graph_config: GraphConfig,
-        generator_name: str = "fake",
+        self, store: RunStore, lab_factory: Callable[[], Lab], graph_config: GraphConfig
     ) -> None:
-        self._settings = settings
+        self.store = store
+        self._lab_factory = lab_factory
         self._graph_config = graph_config
-        self._generator_name = generator_name
         self._lab: Lab | None = None
+        self._lab_lock = threading.Lock()
         self._lock = threading.Lock()
-        self._runs: OrderedDict[str, RunRecord] = OrderedDict()
-
-    def _lab_once(self) -> Lab:
-        with self._lock:
-            if self._lab is None:
-                lab = build_lab(
-                    self._settings,
-                    build_generator(self._generator_name, self._settings),
-                )
-                # Cold-start indexing: the CLI flows rely on a pre-built
-                # index (make index-vector), but a service must be usable
-                # after a fresh start. build_lab has already refused a
-                # populated index this code must not use; a valid one is
-                # left untouched. Only a persistent (Qdrant) index gets a
-                # manifest: an in-memory index dies with the process and
-                # must not overwrite the manifest of the real one.
-                if lab.store.count() == 0 and lab.corpus:
-                    corpus = list(lab.corpus.values())
-                    index_corpus(lab.store, lab.embeddings, lab.sparse, corpus)
-                    if persists_index(self._settings.embedding.provider):
-                        manifest = write_manifest(
-                            self._settings, lab.embeddings, lab.sparse, corpus
-                        )
-                        lab = dataclasses.replace(lab, index_manifest=manifest)
-                self._lab = lab
-            return self._lab
-
-    # -- API surface ------------------------------------------------------
+        self._active: dict[str, RecordingSink] = {}
 
     def start(self, request: QueryRequest) -> str:
+        """Store a queued run and start its worker; returns the run id."""
         run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"
-        record = RunRecord(
+        configurations = tuple(request.configurations)
+        row = RunRow(
             run_id=run_id,
+            kind="live",
+            status="queued",
             question=request.question,
-            configurations=list(request.configurations),
-            market_scope=list(request.market_scope),
+            market_scope=tuple(request.market_scope),
+            configurations=configurations,
+            benchmark_instance_id=None,
+            created_at=_now(),
+            finished_at=None,
+            pipeline_status=dict.fromkeys(configurations, "pending"),
+            error=None,
         )
+        self.store.create_run(row)
+        sink = RecordingSink(self.store, run_id, threading.Event())
         with self._lock:
-            self._runs[run_id] = record
-            while len(self._runs) > MAX_RUNS:
-                self._runs.popitem(last=False)
+            self._active[run_id] = sink
         worker = threading.Thread(
-            target=self._execute, args=(record,), name=f"query-{run_id}", daemon=True
+            target=self._execute, args=(row, sink), name=f"query-{run_id}", daemon=True
         )
         worker.start()
         return run_id
 
-    def snapshot(self, run_id: str) -> RunRecord | None:
+    def cancel(self, run_id: str) -> bool:
+        """Ask a queued or running run to stop; False when it is unknown or finished."""
         with self._lock:
-            record = self._runs.get(run_id)
-            if record is None:
-                return None
-            # Copy under the lock so the worker cannot mutate mid-serialise.
-            return RunRecord(
-                run_id=record.run_id,
-                question=record.question,
-                configurations=list(record.configurations),
-                market_scope=list(record.market_scope),
-                status=record.status,
-                events=[dict(event) for event in record.events],
-                results=dict(record.results),
-                error_code=record.error_code,
-                error_message=record.error_message,
-                error_retryable=record.error_retryable,
-            )
+            sink = self._active.get(run_id)
+        if sink is None:
+            return False
+        sink.cancelled.set()
+        return True
+
+    def wait_for(self, run_id: str, after: int, timeout: float) -> bool:
+        """Block until the run stores an event after sequence ``after``.
+
+        Returns False only when ``timeout`` passes with nothing new. A run
+        that is not active (finished, or unknown) returns True at once: it
+        will store nothing more, so the caller reads what the store holds.
+        """
+        with self._lock:
+            sink = self._active.get(run_id)
+        if sink is None:
+            return True
+        return sink.wait(after, timeout)
 
     # -- execution --------------------------------------------------------
 
-    def _execute(self, record: RunRecord) -> None:
-        try:
-            lab = self._lab_once()
-            scope = record.market_scope or None
-            for tag in record.configurations:
-                # Identifiers only: never the question or any answer text.
-                with run_context(run_id=record.run_id, pipeline=tag), stage_timer("pipeline_run"):
-                    if tag == "A":
-                        sink = ListEventSink()
-                        result = lab.pipeline_a(sink=sink).run(record.question, markets=scope)
-                        record.results["A"] = result
-                        self._attach(record, sink.events)
-                    else:
-                        self._run_graph(lab, record, tag)
-            record.status = "completed"
-        except Exception as error:  # surfaced as a typed error, never a trace
-            code, retryable = classify(error)
-            logger.error(
-                "run failed",
-                exc_info=error,
-                extra={"run_id": record.run_id, "error_code": code, "retryable": retryable},
-            )
-            record.status = "failed"
-            record.error_code = code
-            record.error_retryable = retryable
-            record.error_message = _message(code, error)
-            self._attach_error(record, code, record.error_message, retryable)
+    def _lab_once(self) -> Lab:
+        with self._lab_lock:
+            if self._lab is None:
+                self._lab = self._lab_factory()
+            return self._lab
 
-    def _run_graph(self, lab: Lab, record: RunRecord, tag: str) -> None:
-        wired = wired_pipelines(lab, self._graph_config)
-        try:
-            for pipeline_tag, pipeline in wired.pipelines:
-                if pipeline_tag != tag:
-                    continue
-                result = pipeline.run(record.question, markets=record.market_scope or None)
-                record.results[pipeline_tag] = result
-                self._attach(record, pipeline.events)
-        finally:
-            wired.reader.close()
+    def _execute(self, row: RunRow, sink: RecordingSink) -> None:
+        status = dict(row.pipeline_status)
+        current: str | None = None
+        wiring: WiredGraphPipelines | None = None
+        # Identifiers only in the log context: never the question or any answer text.
+        with run_context(run_id=row.run_id):
+            try:
+                self.store.update_run(row.run_id, status="running")
+                EventEmitter(RUN_PIPELINE, sink).emit(RUN_STARTED)
+                lab = self._lab_once()
+                scope = list(row.market_scope) or None
+                for tag in row.configurations:
+                    EventEmitter(tag, sink).emit(PIPELINE_STARTED)
+                    current = tag
+                    status[tag] = "running"
+                    self.store.update_run(row.run_id, pipeline_status=status)
+                    result: RagRunResult | GraphRunResult
+                    with run_context(pipeline=tag), stage_timer("pipeline_run"):
+                        if tag == "A":
+                            result = lab.pipeline_a(sink=sink).run(row.question, markets=scope)
+                        else:
+                            if wiring is None:
+                                wiring = wired_pipelines(lab, self._graph_config, sink=sink)
+                            graph = next(p for t, p in wiring.pipelines if t == tag)
+                            result = graph.run(row.question, markets=scope)
+                    self.store.put_result(row.run_id, tag, result.model_dump(mode="json"))
+                    status[tag] = "completed"
+                    current = None
+                    self.store.update_run(row.run_id, pipeline_status=status)
+                    _record(sink, tag, PIPELINE_COMPLETED)
+                self._finish(sink, status, "completed", None)
+            except RunCancelled:
+                self._stop(sink, status, current, "cancelled", CANCELLED_BODY)
+            except Exception as error:  # surfaced as a typed error, never a trace
+                body = run_error_body(error)
+                logger.error(
+                    "run failed",
+                    exc_info=error,
+                    extra={
+                        "failed_pipeline": current or RUN_PIPELINE,
+                        "error_code": body.error_code,
+                        "retryable": body.retryable,
+                    },
+                )
+                self._stop(sink, status, current, "failed", body)
+            finally:
+                if wiring is not None:
+                    wiring.reader.close()
+                self.store.close()
 
-    def _attach(self, record: RunRecord, events: list[RetrievalEvent]) -> None:
-        with self._lock:
-            for event in events:
-                record.events.append({"sequence": len(record.events) + 1, **event.as_dict()})
+    def _stop(
+        self,
+        sink: RecordingSink,
+        status: dict[str, str],
+        current: str | None,
+        outcome: str,
+        body: ApiErrorBody,
+    ) -> None:
+        """End a run that did not complete: the running pipeline takes the
+        outcome, and the pipelines that never started are skipped."""
+        if current is not None:
+            status[current] = outcome
+            _record(sink, current, _PIPELINE_END_EVENTS[outcome], **body.model_dump())
+        for tag, state in status.items():
+            if state == "pending":
+                status[tag] = "skipped"
+        self._finish(sink, status, outcome, body)
 
-    def _attach_error(self, record: RunRecord, code: str, message: str, retryable: bool) -> None:
-        """Record the docs/07 section 11 error event on the failed run."""
-        sink = ListEventSink()
-        EventEmitter("+".join(record.configurations), sink, clock=lambda: 0.0).emit(
-            "run.error", error_code=code, message=message, retryable=retryable
+    def _finish(
+        self, sink: RecordingSink, status: dict[str, str], outcome: str, body: ApiErrorBody | None
+    ) -> None:
+        """Record the terminal event, then the final row, then retire the run.
+
+        In that order, a client that sees the final status finds every event
+        stored, and a stream woken by the terminal event finds it at once.
+        """
+        envelope = body.model_dump() if body is not None else None
+        _record(sink, RUN_PIPELINE, _TERMINAL_EVENTS[outcome], **(envelope or {}))
+        self.store.update_run(
+            sink.run_id,
+            status=outcome,
+            finished_at=_now(),
+            pipeline_status=status,
+            error=envelope,
         )
-        self._attach(record, sink.events)
+        with self._lock:
+            self._active.pop(sink.run_id, None)
+
+
+_PIPELINE_END_EVENTS = {"failed": PIPELINE_FAILED, "cancelled": PIPELINE_CANCELLED}
+_TERMINAL_EVENTS = {"completed": RUN_COMPLETED, "failed": RUN_FAILED, "cancelled": RUN_CANCELLED}
+
+
+def _record(sink: RecordingSink, pipeline: str, event_type: str, **payload: EventValue) -> None:
+    """Store a lifecycle event even after cancellation: it reports a fact."""
+    EventEmitter(pipeline, _Recorder(sink)).emit(event_type, **payload)
+
+
+class _Recorder(EventSink):
+    """Forwards to ``RecordingSink.record``, bypassing the cancellation check."""
+
+    def __init__(self, sink: RecordingSink) -> None:
+        self._sink = sink
+
+    def emit(self, event: RetrievalEvent) -> None:
+        self._sink.record(event)

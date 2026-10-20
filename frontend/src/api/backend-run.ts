@@ -33,13 +33,13 @@ export interface BackendQuestion {
   id: string
   question: string
   category: string
-  profile?: 'fraud' | null
   configurations?: string[]
   benchmarkQuestionId?: string | null
 }
 
 interface RecordedEvent {
   sequence: number
+  run_id: string
   event_type: string
   pipeline: string
   t_ms: number
@@ -76,9 +76,18 @@ interface NodeEvidenceDto {
   selected: boolean
 }
 
+type RunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled'
+
+interface ErrorDto {
+  error_code: string
+  message: string
+  retryable: boolean
+}
+
 interface ResultsDto {
   run_id: string
-  status: 'running' | 'completed' | 'failed'
+  status: RunStatus
+  pipeline_status: Record<string, string>
   results: Record<
     string,
     {
@@ -87,7 +96,7 @@ interface ResultsDto {
       node_evidence?: NodeEvidenceDto[]
     }
   >
-  error: { error_code: string; message: string; retryable: boolean } | null
+  error: ErrorDto | null
 }
 
 interface BenchmarkQuestionResult {
@@ -110,7 +119,6 @@ async function postQuery(
     body: JSON.stringify({
       question: question.question,
       configurations: question.configurations ?? ['A', 'B', 'C'],
-      profile: question.profile ?? null,
       market_scope: marketScope,
     }),
   })
@@ -119,13 +127,14 @@ async function postQuery(
   return body.run_id
 }
 
+/** Poll until the run is final; its events are all stored by then. */
 async function awaitResults(runId: string): Promise<ResultsDto> {
   for (let attempt = 0; attempt < 600; attempt += 1) {
     const response = await fetch(`${API_BASE}/api/v1/queries/${runId}`)
     if (!response.ok)
       throw new Error(`results unavailable (${response.status})`)
     const body = (await response.json()) as ResultsDto
-    if (body.status !== 'running') return body
+    if (body.status !== 'queued' && body.status !== 'running') return body
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
   throw new Error('run did not finish')
@@ -636,7 +645,6 @@ export async function fetchDemoQuestions(): Promise<BackendQuestion[]> {
     id: string
     question: string
     category: string
-    profile?: 'fraud' | null
     configurations?: string[]
     benchmark_question_id?: string | null
   }[]
@@ -644,10 +652,16 @@ export async function fetchDemoQuestions(): Promise<BackendQuestion[]> {
     id: entry.id,
     question: entry.question,
     category: entry.category,
-    profile: entry.profile ?? null,
     configurations: entry.configurations,
     benchmarkQuestionId: entry.benchmark_question_id ?? null,
   }))
+}
+
+/** The message of the run's terminal `run.failed` event, which carries the error envelope. */
+function failureMessage(events: RecordedEvent[]): string | undefined {
+  const failed = events.findLast((event) => event.event_type === 'run.failed')
+  const message = failed?.payload.message
+  return typeof message === 'string' ? message : undefined
 }
 
 /** Execute one question through the backend and map it to a MockRun. */
@@ -659,13 +673,18 @@ export async function runBackendQuestion(
     postQuery(question, marketScope),
     timeout(10_000),
   ])
-  const [results, events, benchmark] = await Promise.all([
-    awaitResults(runId),
+  const results = await awaitResults(runId)
+  const [events, benchmark] = await Promise.all([
     fetchEvents(runId),
     fetchBenchmark(question.benchmarkQuestionId),
   ])
   if (results.status === 'failed') {
-    throw new Error(results.error?.message ?? 'backend run failed')
+    throw new Error(
+      failureMessage(events) ?? results.error?.message ?? 'backend run failed',
+    )
+  }
+  if (results.status === 'cancelled') {
+    throw new Error('backend run was cancelled')
   }
   const pipelineA = events.filter((event) => event.pipeline === 'A')
   const graphTag = events.some((event) => event.pipeline === 'C') ? 'C' : 'B'

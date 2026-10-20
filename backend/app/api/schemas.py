@@ -7,14 +7,20 @@ public record (provenance included) and are already Pydantic.
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.api.errors import ApiErrorBody
 from app.datasets.master_data import MARKETS
 from app.evidence import GraphRunResult, RagRunResult
 
 PipelineId = Literal["A", "B", "C"]
-QueryStatus = Literal["running", "completed", "failed"]
+QueryStatus = Literal["queued", "running", "completed", "failed", "cancelled"]
+PipelineStatus = Literal["pending", "running", "completed", "failed", "cancelled", "skipped"]
+RunKind = Literal["live", "recorded"]
+
+# Run history page size (docs/07): a larger limit is a 422, never a clamp.
+HISTORY_LIMIT_DEFAULT = 20
+HISTORY_LIMIT_MAX = 100
 
 # Canonical market codes from the synthetic world's master data (UK, GR, AT, CZ).
 MARKET_CODES = frozenset(code for _market_id, code, *_rest in MARKETS)
@@ -28,13 +34,16 @@ class HealthResponse(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    """Request for POST /api/v1/queries (docs/07 section 4)."""
+    """Request for POST /api/v1/queries (docs/07 section 4).
+
+    Unknown fields are refused, so a client still sending the retired
+    ``profile`` gets a 422 rather than a silently ignored field.
+    """
+
+    model_config = ConfigDict(extra="forbid")
 
     question: str = Field(min_length=1, max_length=2000)
     configurations: list[PipelineId] = Field(default=["A", "B", "C"], min_length=1, max_length=3)
-    # Accepted for compatibility but ignored: the B/C allow-list no longer
-    # varies per question. Phase 3 removes this field.
-    profile: Literal["fraud"] | None = None
     # Optional retrieval scope: market codes ("UK") or full ids ("MKT_UK"),
     # normalised to full ids. Empty means all markets. The scope applies
     # identically to every requested pipeline (retrieval fairness).
@@ -55,36 +64,56 @@ class QueryRequest(BaseModel):
 
 
 class QueryAccepted(BaseModel):
-    """Response for POST /api/v1/queries: the run starts in the background."""
+    """Response for POST /api/v1/queries: the run is queued for its worker."""
 
     run_id: str
-    status: QueryStatus = "running"
+    status: QueryStatus = "queued"
     results_url: str
     events_url: str
 
 
-class QueryResults(BaseModel):
-    """Response for GET /api/v1/queries/{run_id}."""
+class RunSummary(BaseModel):
+    """One run as history lists it, and the response of POST .../cancel."""
 
     run_id: str
+    kind: RunKind
     question: str
     status: QueryStatus
     configurations: list[PipelineId]
-    market_scope: list[str] = Field(default_factory=list)
+    market_scope: list[str]
+    pipeline_status: dict[str, PipelineStatus]
+    created_at: str
+    finished_at: str | None
+    error: ApiErrorBody | None
+
+
+class RunHistory(BaseModel):
+    """Response for GET /api/v1/queries: newest first; ``next_before`` is the
+    ``before`` value of the next page, or None on the last page."""
+
+    runs: list[RunSummary]
+    next_before: str | None
+
+
+class QueryResults(RunSummary):
+    """Response for GET /api/v1/queries/{run_id}: the summary plus every
+    stored pipeline result, readable as soon as each pipeline finishes."""
+
     results: dict[str, RagRunResult | GraphRunResult] = Field(default_factory=dict)
-    error: ApiErrorBody | None = None
 
 
 class RecordedEvent(BaseModel):
-    """One replayable execution event (docs/07 section 6)."""
+    """One execution event: the envelope shared by replay and the stream
+    (docs/07 section 6). ``pipeline`` is ``run`` for run lifecycle events."""
 
-    sequence: int
     event_id: str
     timestamp: str
-    event_type: str
+    run_id: str
     pipeline: str
+    event_type: str
     t_ms: float
     payload: dict[str, Any]
+    sequence: int
 
 
 class EventStream(BaseModel):
@@ -101,8 +130,6 @@ class DemoQuestion(BaseModel):
     id: str
     question: str
     category: str
-    # No longer read (see QueryRequest.profile); Phase 3 removes this field.
-    profile: Literal["fraud"] | None = None
     configurations: list[PipelineId] = ["A", "B", "C"]
     # Published benchmark question whose evaluator scores the Results
     # surface may show alongside a live run; None when no published result

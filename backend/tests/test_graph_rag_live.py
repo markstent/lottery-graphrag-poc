@@ -172,7 +172,7 @@ def test_pipeline_deterministic_on_live_graph(pipeline: GraphRagPipeline) -> Non
     question = "What happened around digital checkout recently?"
     runs = []
     for _ in range(2):
-        pipeline.sink.events.clear()
+        pipeline.events.clear()
         result = pipeline.run(question)
         runs.append(
             (

@@ -92,3 +92,6 @@ Every connection sets, in this order, `PRAGMA foreign_keys = ON` (needed for the
 `close()` closes the calling thread's connection.
 Every thread that uses the store must call `close()` before it ends; otherwise its connection is left to garbage collection, which emits a `ResourceWarning`.
 The API (Task 5) follows this rule for every thread it runs store calls on.
+Each run's worker thread closes its connection in a `finally` when the run ends.
+The synchronous routes run on the server's thread pool, so each route closes its thread's connection before it returns.
+The start-up lifespan opens the store, calls `mark_interrupted()` and closes its own connection before the server accepts requests.
