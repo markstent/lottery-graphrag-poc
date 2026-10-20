@@ -11,7 +11,6 @@ tests/test_graph_rag_live.py does).
 from __future__ import annotations
 
 import json
-import os
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +27,8 @@ from app.datasets.world import build_data_dictionary, build_world
 from app.graph.ingest import GRAPH_STATS_FILE
 from app.main import create_app
 from fastapi.testclient import TestClient
+
+from tests import live as gate
 
 # Nothing listens on the discard port, so the driver fails fast.
 UNREACHABLE_GRAPH = GraphConfig(
@@ -454,11 +455,10 @@ def test_record_carries_its_graph_node_and_edge_summary(
     dataset_root: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Live: the real statement over the tiny world ingested into Neo4j."""
-    if os.environ.get("GRAPH_E2E") != "1":
-        pytest.skip("set GRAPH_E2E=1 to run live-graph tests (they wipe the database)")
+    gate.skip_without(gate.GRAPH)
     from app.graph.ingest import ingest
 
-    graph = GraphConfig.from_env()
+    graph = gate.require_neo4j()
     ingest(dataset_root / "tiny", graph, ingestion_version="ing-test", wipe=True)
     monkeypatch.setenv("DATASET_DIR", str(dataset_root / "tiny"))
     with TestClient(create_app(graph_config=graph)) as live:

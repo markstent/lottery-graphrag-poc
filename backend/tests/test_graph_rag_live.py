@@ -37,6 +37,7 @@ from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 from neo4j import GraphDatabase
 
+from tests import live
 from tests.test_graph_rag import event_trace, make_settings
 
 
@@ -47,16 +48,6 @@ def resolvers_for(reader: GraphReader) -> tuple[IdEntityResolver, TermEntityReso
 
 
 CONNECT_TIMEOUT_SECONDS = 15.0
-
-
-def _neo4j_available(config: GraphConfig) -> bool:
-    try:
-        driver = GraphDatabase.driver(config.uri, auth=(config.user, config.password))
-        driver.verify_connectivity()
-        driver.close()
-        return True
-    except Exception:
-        return False
 
 
 @pytest.fixture(scope="module")
@@ -79,10 +70,8 @@ def tiny_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def ingested(graph_config: GraphConfig, tiny_dataset: Path) -> Path:
-    if os.environ.get("GRAPH_E2E") != "1":
-        pytest.skip("set GRAPH_E2E=1 to run live-graph tests (they wipe the database)")
-    if not _neo4j_available(graph_config):
-        pytest.skip("Neo4j is not reachable; start it with `make services-up`")
+    live.skip_without(live.GRAPH)
+    live.require_neo4j(graph_config)
     driver = GraphDatabase.driver(graph_config.uri, auth=(graph_config.user, graph_config.password))
     try:
         with driver.session(database=graph_config.database) as session:

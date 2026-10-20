@@ -1,4 +1,6 @@
-"""Benchmark v2 smoke run against the live services (opt-in: VECTOR_E2E=1 and GRAPH_E2E=1).
+"""Benchmark v2 smoke run against the live services.
+
+Opt-in: GRAPH_E2E=1, VECTOR_E2E=1 and LIVE_WORLD_E2E=1.
 
 Runs :func:`run_benchmark` as ``make run-smoke`` does, on the presentation
 world (seed 2026) only and one instance per logical question, so every
@@ -13,7 +15,6 @@ exist (``make generate-dev-data ingest-graph index-vector ground-bank``).
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -25,10 +26,10 @@ from app.evaluation.runner import PIPELINES, SMOKE_LABEL
 from app.graph.statements import label_count_statement
 from neo4j import GraphDatabase
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get("VECTOR_E2E") != "1" or os.environ.get("GRAPH_E2E") != "1",
-    reason="set VECTOR_E2E=1 and GRAPH_E2E=1 to run the live benchmark (it re-ingests Neo4j)",
-)
+from tests import live
+
+# It re-ingests Neo4j and needs the presentation world, its bank and Ollama.
+pytestmark = live.only_with(live.GRAPH, live.VECTOR, live.WORLD)
 
 LIMIT = 1
 
@@ -36,9 +37,8 @@ LIMIT = 1
 @pytest.fixture(scope="module")
 def smoke_run(tmp_path_factory: pytest.TempPathFactory) -> Path:
     paths = world_paths(PRESENTATION_SEED)
-    for required in (paths.world_dir, paths.ledger_path, paths.bank_path):
-        if not required.exists():
-            pytest.fail(f"{required} is missing; prepare the presentation world first")
+    live.require_paths(paths.world_dir, paths.ledger_path, paths.bank_path)
+    live.require_neo4j()
     out = tmp_path_factory.mktemp("smoke-live") / "run"
     run_benchmark("smoke", (PRESENTATION_SEED,), repeats=1, out_dir=out, limit=LIMIT)
     return out

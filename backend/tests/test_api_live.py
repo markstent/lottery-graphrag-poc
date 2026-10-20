@@ -1,4 +1,4 @@
-"""Live API tests (opt-in: GRAPH_E2E=1, and VECTOR_E2E=1 for the first).
+"""Live API tests (opt-in: GRAPH_E2E=1, and VECTOR_E2E=1 and LIVE_WORLD_E2E=1 for the first).
 
 ``test_live_run_streams_persists_scores_and_survives_a_restart`` runs the
 product API as an operator would, on the presentation world (seed 2026):
@@ -14,13 +14,14 @@ The second test runs the real QueryService behind TestClient against Neo4j
 holding the tiny world, with deterministic embeddings and the fake
 generator, asserting the accepted -> completed lifecycle and that all three
 pipelines return typed results with recorded events. It wipes the database,
-so it runs after the first and the presentation graph needs
-``make ingest-graph`` afterwards.
+so the module-end fixture in conftest.py (``presentation_graph_restored``)
+ingests the presentation world again afterwards.
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from collections.abc import Callable, Iterator
@@ -52,13 +53,10 @@ from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import build_ledger, write_ledger
 from fastapi.testclient import TestClient
 
+from tests import live
 from tests.test_graph_rag import make_settings
-from tests.test_graph_rag_live import _neo4j_available
 
-live = pytest.mark.skipif(
-    os.environ.get("VECTOR_E2E") != "1" or os.environ.get("GRAPH_E2E") != "1",
-    reason="set VECTOR_E2E=1 and GRAPH_E2E=1 to run the live API test",
-)
+presentation_live = live.only_with(live.GRAPH, live.VECTOR, live.WORLD)
 READY_DEADLINE_S = 300.0
 SCORE_DEADLINE_S = 30.0
 
@@ -71,16 +69,17 @@ def wait_until(condition: Callable[[], bool], deadline_s: float, what: str) -> N
 
 
 def wait_ready(client: TestClient) -> dict[str, Any]:
-    """Readiness depends on the lab warm-up finishing, so wait for it."""
-    last: dict[str, Any] = {}
-
-    def ready() -> bool:
-        nonlocal last
-        last = client.get("/api/v1/health/ready").json()
-        return bool(last["ready"])
-
-    wait_until(ready, READY_DEADLINE_S, f"readiness ({last})")
-    return last
+    """Readiness depends on the lab warm-up finishing, so wait for it; a
+    timeout names the checks as the last poll saw them."""
+    end = time.monotonic() + READY_DEADLINE_S
+    while True:
+        last: dict[str, Any] = client.get("/api/v1/health/ready").json()
+        if last["ready"]:
+            return last
+        assert time.monotonic() < end, (
+            f"readiness did not happen within {READY_DEADLINE_S:.0f} s: {last}"
+        )
+        time.sleep(0.25)
 
 
 def stream_all(client: TestClient, run_id: str) -> list[dict[str, Any]]:
@@ -123,10 +122,10 @@ def live_app_factory(
     """Starts the application on one run store. Calling it again stops the
     previous application first, as a restart does."""
     paths = world_paths(PRESENTATION_SEED)
-    for required in (paths.world_dir, paths.bank_path):
-        if not required.exists():
-            pytest.skip(f"{required} is missing; prepare the presentation world first")
+    live.require_paths(paths.world_dir, paths.bank_path)
+    live.require_neo4j()
     monkeypatch.setenv("APP_DB_PATH", str(tmp_path / "app.db"))
+    monkeypatch.setenv("DATASET_DIR", live.PRESENTATION_DATASET_DIR)
     running: list[ExitStack] = []
 
     def factory() -> TestClient:
@@ -141,22 +140,32 @@ def live_app_factory(
         running.pop().close()
 
 
-@live
+@presentation_live
 def test_live_run_streams_persists_scores_and_survives_a_restart(
-    live_app_factory: Callable[[], TestClient],
+    live_app_factory: Callable[[], TestClient], caplog: pytest.LogCaptureFixture
 ) -> None:
     client = live_app_factory()
     wait_ready(client)
-    run_id = start_bank_question(client, first_h1(client))
-    events = stream_all(client, run_id)
+    demo = first_h1(client)
+    with caplog.at_level(logging.DEBUG):
+        run_id = start_bank_question(client, demo)
+        events = stream_all(client, run_id)
+        wait_until(
+            lambda: client.get(f"/api/v1/queries/{run_id}").json()["score_status"] == "scored",
+            SCORE_DEADLINE_S,
+            "the score",
+        )
+    logged = "\n".join(f"{record.getMessage()} {record.__dict__}" for record in caplog.records)
+    expected = next(
+        q["expected_answer"]
+        for q in client.get("/api/v1/benchmarks/questions").json()
+        if q["instance_id"] == demo["instance_id"]
+    )
+    assert expected and expected not in logged, "the expected answer reached a log record"
     assert events[-1]["event_type"] == "run.completed"
     assert [event["sequence"] for event in events] == list(range(1, len(events) + 1))
     assert {event["pipeline"] for event in events} == {"run", "A", "B", "C"}
 
-    def scored() -> bool:
-        return bool(client.get(f"/api/v1/queries/{run_id}").json()["score_status"] == "scored")
-
-    wait_until(scored, SCORE_DEADLINE_S, "the score")
     results = client.get(f"/api/v1/queries/{run_id}").json()
     assert results["status"] == "completed"
     assert results["score"]["label"] == "scored against the answer key"
@@ -196,10 +205,8 @@ def tiny_ledger(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture(scope="module")
 def ingested(tiny_dataset: Path, graph_config: GraphConfig) -> Path:
-    if os.environ.get("GRAPH_E2E") != "1":
-        pytest.skip("set GRAPH_E2E=1 to run live-graph tests (they wipe the database)")
-    if not _neo4j_available(graph_config):
-        pytest.skip("Neo4j is not reachable; start it with `make services-up`")
+    live.skip_without(live.GRAPH)
+    live.require_neo4j(graph_config)
     ingest(tiny_dataset, graph_config, ingestion_version="ing-test-api-live", wipe=True)
     return tiny_dataset
 

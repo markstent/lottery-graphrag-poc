@@ -27,6 +27,7 @@ from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
+from tests import live
 from tests.test_graph_rag import make_settings
 
 # Thread names of a live run's worker (QueryService) and of a benchmark job
@@ -94,6 +95,14 @@ def no_worker_outlives_its_test() -> Iterator[None]:
     alive = [t.name for t in _workers()]
     if _leaks or alive:
         pytest.fail(f"worker threads outlived their tests: {_leaks + alive}")
+
+
+@pytest.fixture(scope="module", autouse=True)
+def presentation_graph_restored() -> Iterator[None]:
+    """After each module, Neo4j holds the presentation world again: a live
+    test module that wipes the graph must not leave the next one, or the
+    developer's presentation, on another world."""
+    yield from live.graph_restored_after()
 
 
 class StubLiteLLM(types.ModuleType):

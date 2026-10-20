@@ -2,7 +2,8 @@
 
 The planted tiny world and its ledger are generated into the test temporary
 directory, so these tests run in CI with no machine-local data. The
-dev-world tests run only where ``data/generated/dev-seed2026`` exists.
+dev-world tests run only with ``LIVE_WORLD_E2E=1``, and fail when
+``data/generated/dev-seed2026`` or its ledger is missing.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from collections import Counter
 from collections.abc import Callable, Iterator
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import duckdb
 import pytest
@@ -43,13 +44,25 @@ from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import build_ledger, write_ledger
 
+from tests import live
+
 STRUCTURAL = tuple(q for q in BANK if q.stratum != "H5")
 PLANTED = tuple(q for q in BANK if q.stratum == "H5")
 DEV_WORLD = REPO_ROOT / "data" / "generated" / "dev-seed2026"
 DEV_LEDGER = REPO_ROOT / "data" / "truth" / "ledger.json"
-dev_world = pytest.mark.skipif(
-    not (DEV_WORLD.is_dir() and DEV_LEDGER.is_file()), reason="dev world not generated"
-)
+
+
+def dev_world[Test: Callable[..., Any]](test: Test) -> Test:
+    """Run a test on the presentation world only with LIVE_WORLD_E2E=1, and
+    then fail, never skip, when that world or its ledger is missing."""
+    needing = pytest.mark.usefixtures("dev_world_present")(test)
+    gated = pytest.mark.skipif(not live.enabled(live.WORLD), reason="set LIVE_WORLD_E2E=1")(needing)
+    return cast(Test, gated)
+
+
+@pytest.fixture
+def dev_world_present() -> None:
+    live.require_paths(DEV_WORLD, DEV_LEDGER)
 
 
 @pytest.fixture(scope="module")

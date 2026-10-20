@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import contextlib
 import os
+import urllib.request
 import uuid
 
 import pytest
@@ -15,12 +16,20 @@ from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.sparse import HashingSparseEmbedder, SparseVector
 from app.retrieval.standard.vector_store import InMemoryVectorStore, QdrantVectorStore
 
+from tests import live
+
 QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get("VECTOR_E2E") != "1",
-    reason="Qdrant integration tests run only with VECTOR_E2E=1",
-)
+pytestmark = live.only_with(live.VECTOR)
+
+
+@pytest.fixture(autouse=True, scope="module")
+def qdrant_answers() -> None:
+    """With VECTOR_E2E=1 set, an unreachable Qdrant fails the tests, never skips them."""
+    try:
+        urllib.request.urlopen(f"{QDRANT_URL}/readyz", timeout=5).close()
+    except OSError as error:
+        pytest.fail(f"VECTOR_E2E=1 is set but Qdrant at {QDRANT_URL} does not answer: {error}")
 
 
 def test_qdrant_hybrid_upsert_search_reset_roundtrip() -> None:
