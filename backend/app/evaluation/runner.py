@@ -53,6 +53,7 @@ from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_sco
 from app.events import GRAPH_ENTITY_RESOLVED
 from app.evidence import EvidenceChunk
 from app.lab import Lab, bc_graph_settings, wired_pipelines
+from app.observability.logging import run_context, stage_timer
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.standard.context import estimate_tokens
@@ -473,10 +474,14 @@ class BenchmarkRunner:
                     )
                 repeats.append(run)
             runs[tag] = repeats
-            scores[tag] = [
-                None if r.generation_failed else _score(instance, r, self._judge(instance, r))
-                for r in repeats
-            ]
+            with (
+                run_context(question_id=instance.question_id, pipeline=tag),
+                stage_timer("evaluation"),
+            ):
+                scores[tag] = [
+                    None if r.generation_failed else _score(instance, r, self._judge(instance, r))
+                    for r in repeats
+                ]
             for run, score in zip(repeats, scores[tag], strict=True):
                 self._log_repeat(instance, run, score)
         return InstanceResult(instance=instance, runs=runs, scores=scores)
@@ -485,21 +490,20 @@ class BenchmarkRunner:
         """One structured INFO record per repeat: identifiers, timings and
         failures only, never an answer or an expected answer."""
         verdict = None if score is None else score.judge
-        logger.info(
-            "benchmark repeat scored",
-            extra={
-                "world_seed": self.bank.world_seed,
-                "bank_hash": self.bank.bank_hash,
-                "instance_id": instance.instance_id,
-                "question_id": instance.question_id,
-                "pipeline": run.pipeline,
-                "repeat": run.repeat,
-                "latency_ms": run.latency_ms,
-                "generation_error": run.generation_error,
-                "judge_failure": None if verdict is None else verdict.failure,
-                "judge_latency_ms": None if verdict is None else verdict.latency_ms,
-            },
-        )
+        with run_context(question_id=instance.question_id, pipeline=run.pipeline):
+            logger.info(
+                "benchmark repeat scored",
+                extra={
+                    "world_seed": self.bank.world_seed,
+                    "bank_hash": self.bank.bank_hash,
+                    "instance_id": instance.instance_id,
+                    "repeat": run.repeat,
+                    "latency_ms": run.latency_ms,
+                    "generation_error": run.generation_error,
+                    "judge_failure": None if verdict is None else verdict.failure,
+                    "judge_latency_ms": None if verdict is None else verdict.latency_ms,
+                },
+            )
 
     def _judge(self, instance: BankInstance, run: PipelineRun) -> JudgeVerdict:
         """Judge one successful repeat; the seed blinds the block order."""

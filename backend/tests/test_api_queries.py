@@ -499,3 +499,20 @@ def test_the_api_reads_the_summary_schema_the_report_writes() -> None:
     """The API publishes only summaries of its schema version; a bump on
     one side alone would silently hide every run."""
     assert queries.SUMMARY_SCHEMA_VERSION == report.SUMMARY_SCHEMA_VERSION
+
+
+def test_worker_logs_one_pipeline_run_record_without_question_text(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    import logging
+
+    question = "Which game rules mention prize tiers?"
+    with caplog.at_level(logging.INFO):
+        run_id = client.post(
+            "/api/v1/queries", json={"question": question, "configurations": ["A"]}
+        ).json()["run_id"]
+        _await_completion(client, run_id)
+    timed = [r for r in caplog.records if getattr(r, "stage", None) == "pipeline_run"]
+    assert len(timed) == 1
+    assert (timed[0].run_id, timed[0].pipeline, timed[0].outcome) == (run_id, "A", "ok")  # type: ignore[attr-defined]
+    assert all(question not in json.dumps(vars(r), default=str) for r in caplog.records)

@@ -311,6 +311,7 @@ class ApiSettings:
     run_retention: int  # runs kept in the run store
     sse_heartbeat_s: float
     benchmark_dir: Path  # where the benchmark CLI writes runs
+    log_level: str = "INFO"
 
 
 def _positive_int(name: str, default: int) -> int:
@@ -346,4 +347,5 @@ def api_from_env() -> ApiSettings:
         benchmark_dir=Path(
             os.environ.get("BENCHMARK_DIR") or REPO_ROOT / "data" / "evaluation" / "runs"
         ),
+        log_level=(os.environ.get("LOG_LEVEL") or "INFO").upper(),
     )

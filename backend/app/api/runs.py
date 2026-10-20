@@ -23,6 +23,7 @@ from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
 from app.events import EventEmitter, ListEventSink, RetrievalEvent
 from app.lab import Lab, build_generator, build_lab, wired_pipelines
+from app.observability.logging import run_context, stage_timer
 from app.retrieval.standard.embeddings import EmbeddingError
 from app.retrieval.standard.generation import GenerationError
 from app.retrieval.standard.index import index_corpus, persists_index, write_manifest
@@ -151,13 +152,15 @@ class QueryService:
             lab = self._lab_once()
             scope = record.market_scope or None
             for tag in record.configurations:
-                if tag == "A":
-                    sink = ListEventSink()
-                    result = lab.pipeline_a(sink=sink).run(record.question, markets=scope)
-                    record.results["A"] = result
-                    self._attach(record, sink.events)
-                else:
-                    self._run_graph(lab, record, tag)
+                # Identifiers only: never the question or any answer text.
+                with run_context(run_id=record.run_id, pipeline=tag), stage_timer("pipeline_run"):
+                    if tag == "A":
+                        sink = ListEventSink()
+                        result = lab.pipeline_a(sink=sink).run(record.question, markets=scope)
+                        record.results["A"] = result
+                        self._attach(record, sink.events)
+                    else:
+                        self._run_graph(lab, record, tag)
             record.status = "completed"
         except tuple(_ERROR_CODES) as error:
             record.status = "failed"

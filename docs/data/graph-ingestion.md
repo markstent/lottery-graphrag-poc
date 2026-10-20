@@ -99,7 +99,7 @@ the entity is still current):
 | Document | `valid_from` | `valid_to` |
 
 `HAS_MECHANIC` edges carry the mapping's own `valid_from` / `valid_to`.
-The label version is `v2` (`app/graph/config.py`).
+The label version is `v2` (`app/config/__init__.py`).
 
 Every derived relationship names its method, for example
 `SIMILAR_TO {score, method: "ontology_similarity_v2", ontology_version}`,
