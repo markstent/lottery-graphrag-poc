@@ -156,7 +156,7 @@ Each repeat in `results.json` carries its own repeat index.
 
 ## Logs
 
-The runner writes one structured INFO record per scored repeat to the `app.evaluation.runner` logger, with these fields as record attributes: `world_seed`, `bank_hash`, `instance_id`, `question_id`, `pipeline`, `repeat`, `latency_ms`, `generation_error`, `judge_failure` and `judge_latency_ms`.
+The runner writes one structured INFO record per repeat, including repeats whose generation failed, to the `app.evaluation.runner` logger, with these fields as record attributes: `world_seed`, `bank_hash`, `instance_id`, `question_id`, `pipeline`, `repeat`, `latency_ms`, `generation_error`, `judge_failure` and `judge_latency_ms`.
 No run id reaches the runner, so the world seed and the bank hash identify the run.
 The records never carry a question's expected answer, the generated answer or any secret.
 
