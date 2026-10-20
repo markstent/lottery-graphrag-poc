@@ -28,7 +28,7 @@ from app.api.readiness import (
 )
 from app.api.runs import QueryService
 from app.api.schemas import Check
-from app.config import GenerationSettings, GraphConfig, RetrievalSettings
+from app.config import EmbeddingSettings, GenerationSettings, GraphConfig, RetrievalSettings
 from app.graph.ingest import GRAPH_STATS_FILE
 from app.lab import Lab
 from app.main import app, create_app
@@ -55,7 +55,7 @@ from tests.test_standard_rag import make_settings
 GRAPH_DOWN = GraphConfig(
     uri="bolt://127.0.0.1:1", user="neo4j", password="unused", database="neo4j", timeout_s=30.0
 )
-CHECKS = {"lab", "index", "graph", "model"}
+CHECKS = {"lab", "index", "graph", "model", "embedding"}
 
 
 class _AnsweringReader:
@@ -110,6 +110,7 @@ def test_ready_reports_each_check_and_503_when_the_graph_is_down(
     assert body["checks"]["lab"] == {"ok": True, "detail": "built"}
     assert body["checks"]["index"]["ok"] is True
     assert body["checks"]["model"] == {"ok": True, "detail": "fake generator (offline)"}
+    assert body["checks"]["embedding"] == {"ok": True, "detail": "hashing embedder (offline)"}
     # The driver's own text, which names the address, is logged and never served.
     assert "127.0.0.1" not in json.dumps(body)
     assert any(r.exc_info for r in caplog.records if r.getMessage() == "readiness check failed")
@@ -422,6 +423,27 @@ def test_an_in_memory_index_is_built_with_the_lab() -> None:
     assert index_check(make_settings(), populated_store()) == Check(ok=True, detail="2 points")
 
 
+def test_the_embedding_check_is_the_model_reachability_check(
+    indexed_lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Readiness reports the embedding model through ModelReachability, so
+    a down embedding server makes the API not ready."""
+    asked: list[EmbeddingSettings] = []
+
+    def check_embedding(self: ModelReachability, settings: EmbeddingSettings) -> Check:
+        asked.append(settings)
+        return Check(ok=False, detail="not pulled")
+
+    monkeypatch.setattr(ModelReachability, "check_embedding", check_embedding)
+    monkeypatch.setattr(readiness_module, "GraphReader", _AnsweringReader)
+    with TestClient(create_app(lab_factory=lambda: indexed_lab, graph_config=GRAPH_DOWN)) as client:
+        run_to_completion(client, configurations=["A"])
+        response = client.get("/api/v1/health/ready")
+    assert response.status_code == 503
+    assert response.json()["checks"]["embedding"] == {"ok": False, "detail": "not pulled"}
+    assert asked == [indexed_lab.settings.embedding]
+
+
 def test_each_check_has_its_own_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[dict[str, Probe]] = []
 
@@ -445,6 +467,7 @@ def test_each_check_has_its_own_timeout(monkeypatch: pytest.MonkeyPatch) -> None
     assert ollama["graph"].timeout_s == GRAPH_DOWN.timeout_s
     assert ollama["index"].timeout_s == 5.0
     assert ollama["model"].timeout_s == 5.0
+    assert ollama["embedding"].timeout_s == 5.0
     assert other["model"].timeout_s == 30.0
 
 
@@ -460,7 +483,7 @@ def test_an_invalid_configuration_is_reported_not_raised(monkeypatch: pytest.Mon
     checks = response.json()["checks"]
     assert response.status_code == 503
     invalid = {"ok": False, "detail": "the configuration is invalid"}
-    assert checks["index"] == checks["model"] == invalid
+    assert checks["index"] == checks["model"] == checks["embedding"] == invalid
     assert checks["graph"]["ok"] is True
 
 

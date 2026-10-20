@@ -1,6 +1,6 @@
 """Readiness checks behind GET /api/v1/health/ready (spec 6.1).
 
-Four checks, reported separately from liveness:
+Five checks, reported separately from liveness:
 
 - ``lab``: the retrieval lab is built. Readiness never builds it or waits
   for a build; it reads the query service's state.
@@ -13,6 +13,9 @@ Four checks, reported separately from liveness:
   Ollama model must be listed by its server, any other provider must answer
   a 1-token completion); the fake generator is always reachable. Results
   are cached for 30 s.
+- ``embedding``: the embedding model is reachable (an Ollama model must be
+  listed by its server; the hashing embedder is always reachable), through
+  the same cached ``ModelReachability`` as ``model``.
 
 Each check runs in its own thread under its own timeout, so one slow
 service never hides the others and readiness never raises. Details are
@@ -231,7 +234,7 @@ class ModelReachability:
 
 
 class ReadinessChecks:
-    """Runs the four checks for the API. Settings come from the built lab,
+    """Runs the five checks for the API. Settings come from the built lab,
     or from the environment while it is not built."""
 
     def __init__(
@@ -256,7 +259,7 @@ class ReadinessChecks:
         except ValueError as error:
             logger.warning("readiness settings invalid", exc_info=error)
             invalid = Check(ok=False, detail="the configuration is invalid")
-            index = model = Probe(lambda: invalid, timeout_s=LAB_TIMEOUT_S)
+            index = model = embedding = Probe(lambda: invalid, timeout_s=LAB_TIMEOUT_S)
         else:
             dataset_dir = Path(settings.dataset_dir)
             store = lab.store if lab is not None else None
@@ -270,6 +273,10 @@ class ReadinessChecks:
                 lambda: self.model.check(settings.generation, host),
                 timeout_s=gateway.probe_timeout_s(settings.generation, host),
             )
+            embedding = Probe(
+                lambda: self.model.check_embedding(settings.embedding),
+                timeout_s=gateway.OLLAMA_PROBE_TIMEOUT_S,
+            )
         checks = run_checks(
             {
                 "lab": Probe(lambda: lab_check(state), timeout_s=LAB_TIMEOUT_S),
@@ -280,6 +287,7 @@ class ReadinessChecks:
                     failure="Neo4j did not answer.",
                 ),
                 "model": model,
+                "embedding": embedding,
             }
         )
         return Readiness(ready=all(check.ok for check in checks.values()), checks=checks)
