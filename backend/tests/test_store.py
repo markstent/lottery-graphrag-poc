@@ -74,8 +74,17 @@ def test_update_run_refuses_unknown_fields_and_runs(store: RunStore) -> None:
         store.update_run("RUN-1", nonsense=1)
     with pytest.raises(ValueError, match="run_id"):
         store.update_run("RUN-1", run_id="RUN-2")
-    with pytest.raises(ValueError, match="created_at"):
-        store.update_run("RUN-1", created_at="2026-10-20T00:00:00Z")
+    for field, value in [
+        ("kind", "recorded"),
+        ("created_at", "2026-10-20T00:00:01+00:00"),
+        ("question", "Another question"),
+        ("market_scope", ("AT",)),
+        ("configurations", ("B",)),
+        ("benchmark_instance_id", "BI-1"),
+    ]:
+        with pytest.raises(ValueError, match=field):
+            store.update_run("RUN-1", **{field: value})
+    assert store.get_run("RUN-1") == row("RUN-1")
     with pytest.raises(KeyError, match="RUN-MISSING"):
         store.update_run("RUN-MISSING", status="running")
 
@@ -127,8 +136,54 @@ def test_retention_prunes_old_live_runs_and_keeps_recorded(tmp_path: Path) -> No
     store = RunStore(tmp_path / "app.db", retention=2)
     try:
         for n, kind in enumerate(["recorded", "live", "live", "live"]):
-            store.create_run(row(f"RUN-{n}", kind=kind, created_at=f"2026-10-20T00:00:0{n}+00:00"))
+            store.create_run(
+                row(
+                    f"RUN-{n}",
+                    kind=kind,
+                    status="completed",
+                    created_at=f"2026-10-20T00:00:0{n}+00:00",
+                )
+            )
         assert {r.run_id for r in store.list_runs(100, None, None)} == {"RUN-0", "RUN-2", "RUN-3"}
+    finally:
+        store.close()
+
+
+def test_retention_never_prunes_queued_or_running_runs(tmp_path: Path) -> None:
+    store = RunStore(tmp_path / "app.db", retention=1)
+    try:
+        store.create_run(
+            row("RUN-ACTIVE", status="running", created_at="2026-10-20T00:00:00+00:00")
+        )
+        store.create_run(row("RUN-QUEUED", status="queued", created_at="2026-10-20T00:00:01+00:00"))
+        store.append_event("RUN-ACTIVE", {"type": "stage"})
+        store.create_run(
+            row("RUN-NEWER", status="completed", created_at="2026-10-20T00:00:02+00:00")
+        )
+        assert {r.run_id for r in store.list_runs(10, None, None)} == {
+            "RUN-ACTIVE",
+            "RUN-QUEUED",
+            "RUN-NEWER",
+        }
+        assert store.append_event("RUN-ACTIVE", {"type": "stage"}) == 2
+        store.update_run("RUN-ACTIVE", status="completed")
+        store.update_run("RUN-QUEUED", status="cancelled")
+        store.create_run(
+            row("RUN-NEWEST", status="completed", created_at="2026-10-20T00:00:03+00:00")
+        )
+        assert [r.run_id for r in store.list_runs(10, None, None)] == ["RUN-NEWEST"]
+    finally:
+        store.close()
+
+
+def test_a_live_run_backdated_outside_the_window_is_pruned_on_its_own_insert(
+    tmp_path: Path,
+) -> None:
+    store = RunStore(tmp_path / "app.db", retention=1)
+    try:
+        store.create_run(row("RUN-NEW", status="completed", created_at="2026-10-20T00:00:01+00:00"))
+        store.create_run(row("RUN-OLD", status="completed", created_at="2026-10-20T00:00:00+00:00"))
+        assert [r.run_id for r in store.list_runs(10, None, None)] == ["RUN-NEW"]
     finally:
         store.close()
 
@@ -136,11 +191,11 @@ def test_retention_prunes_old_live_runs_and_keeps_recorded(tmp_path: Path) -> No
 def test_pruning_a_run_cascades_to_its_events_results_and_score(tmp_path: Path) -> None:
     store = RunStore(tmp_path / "app.db", retention=1)
     try:
-        store.create_run(row("RUN-OLD", created_at="2026-10-20T00:00:00+00:00"))
+        store.create_run(row("RUN-OLD", status="completed", created_at="2026-10-20T00:00:00+00:00"))
         store.append_event("RUN-OLD", {"type": "stage"})
         store.put_result("RUN-OLD", "A", {"answer": "x"})
         store.put_score("RUN-OLD", {"total": 1})
-        store.create_run(row("RUN-NEW", created_at="2026-10-20T00:00:01+00:00"))
+        store.create_run(row("RUN-NEW", status="completed", created_at="2026-10-20T00:00:01+00:00"))
         assert store.get_run("RUN-OLD") is None
         with closing(sqlite3.connect(tmp_path / "app.db")) as raw:
             for table in ("events", "results", "scores"):
@@ -181,6 +236,20 @@ def test_paging_returns_runs_sharing_a_created_at_exactly_once(store: RunStore) 
 
 def test_cursor_joins_created_at_and_run_id() -> None:
     assert cursor(row("RUN-1")) == "2026-10-20T00:00:00+00:00|RUN-1"
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_a_non_positive_limit_is_refused(store: RunStore, limit: int) -> None:
+    with pytest.raises(ValueError, match="limit"):
+        store.list_runs(limit, None, None)
+
+
+def test_a_failed_write_rolls_back_and_leaves_the_connection_usable(store: RunStore) -> None:
+    store.create_run(row("RUN-1"))
+    with pytest.raises(sqlite3.IntegrityError):
+        store.create_run(row("RUN-1"))
+    store.create_run(row("RUN-2"))
+    assert {r.run_id for r in store.list_runs(10, None, None)} == {"RUN-1", "RUN-2"}
 
 
 @pytest.mark.parametrize(

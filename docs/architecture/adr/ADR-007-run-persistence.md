@@ -32,7 +32,7 @@ The store never reads the environment and never references the truth ledger.
 `pipeline_status` maps each configuration to `pending`, `running`, `completed`, `failed`, `cancelled` or `skipped`.
 Tuples and dicts are stored as JSON written with sorted keys and compact separators, so equal values give identical text.
 `created_at` and `finished_at` are ISO-8601 UTC strings.
-`create_run` and `update_run` refuse a `created_at` that is not the canonical `datetime.isoformat()` text of a UTC instant with a `+00:00` offset (for example `2026-10-20T00:00:00+00:00` or `2026-10-20T00:00:00.123456+00:00`), raising `ValueError`.
+`create_run` refuses a `created_at` that is not the canonical `datetime.isoformat()` text of a UTC instant with a `+00:00` offset (for example `2026-10-20T00:00:00+00:00` or `2026-10-20T00:00:00.123456+00:00`), raising `ValueError`.
 One canonical form is what makes text order equal time order; `Z`, other offsets, naive times and truncated fractions are all refused.
 An index on `runs (created_at DESC, run_id DESC)` serves history paging.
 `events`, `results` and `scores` reference `runs` with `ON DELETE CASCADE`, so deleting a run removes everything that belongs to it.
@@ -45,22 +45,32 @@ An index on `runs (created_at DESC, run_id DESC)` serves history paging.
 
 ### History paging
 
-`list_runs(limit, before, status)` orders by `created_at DESC, run_id DESC`, so the order is stable when two runs share a timestamp.
+`list_runs(limit, before, status)` raises `ValueError` when `limit < 1`, and orders by `created_at DESC, run_id DESC`, so the order is stable when two runs share a timestamp.
 `before` is an opaque cursor `"<created_at>|<run_id>"`, built from the last row of a page with `cursor(row)`.
 The query returns only rows where `(created_at, run_id) < (cursor created_at, cursor run_id)`, so runs that share a `created_at` are each returned exactly once across pages.
 A malformed cursor (no separator, an empty run id, or a `created_at` that is not canonical UTC) raises `ValueError`.
 
 ### Retention
 
-`create_run` inserts the run and then, in the same transaction, deletes every `live` run outside the newest `retention` live runs (by `created_at DESC, run_id DESC`).
+`create_run` inserts the run and then, in the same transaction, deletes every finished `live` run outside the newest `retention` finished live runs (by `created_at DESC, run_id DESC`).
+A run is finished when its status is `completed`, `failed` or `cancelled`.
+Queued and running runs are excluded from both the delete and the window, so an active run is never deleted under its writer; the number of stored live runs may briefly exceed `retention` while runs are active, which is intended.
 Recorded runs are never pruned.
+A live run inserted already finished with a `created_at` older than the window is pruned by its own insert; callers stamp `created_at` with the current time, so this only affects backdated rows.
 Pruning cascades to the pruned runs' events, results and scores.
+
+### Updates
+
+`update_run` changes only a run's progress: `status`, `finished_at`, `pipeline_status` and `error`.
+Any other field, including `run_id`, `kind`, `created_at` and the request fields, raises `ValueError`, because a run's identity and request are fixed at creation.
 
 ### Interrupted runs
 
 `mark_interrupted()` is called once at start-up.
 It sets every `queued` or `running` run to `failed`, stamps `finished_at`, marks its `pending` or `running` pipelines `failed`, and records the error `{"error_code": "INTERRUPTED", "message": "the server stopped during this run", "retryable": true}`.
 It returns how many runs it marked.
+This assumes a single API process owns the database: any queued or running run found at start-up must have belonged to a process that has stopped.
+Running two API processes against one database would let one process fail the other's live runs, so that deployment is not supported.
 
 ### Migrations by `user_version`
 
@@ -76,7 +86,9 @@ A later schema change adds one step to `_MIGRATIONS` and bumps `SCHEMA_VERSION`.
 
 Each thread gets its own connection through `threading.local`, so no connection is ever shared across threads.
 Connections open with `isolation_level=None`, so transactions are explicit: every write uses `BEGIN IMMEDIATE` and commits or rolls back as a whole, while reads run in autocommit.
-Every connection sets `PRAGMA foreign_keys = ON` (needed for the cascades), `journal_mode = WAL` (readers do not block the writer) and `busy_timeout = 5000` (a writer waits up to five seconds for the lock rather than failing).
+`COMMIT` runs inside the guarded block, and on any error the store issues `ROLLBACK` only if the connection is still in a transaction, so a failed commit never masks the original error.
+Every connection sets, in this order, `PRAGMA foreign_keys = ON` (needed for the cascades), `busy_timeout = 5000` (a writer waits up to five seconds for a lock rather than failing) and `journal_mode = WAL` (readers do not block the writer).
+`busy_timeout` comes first so that switching to WAL also waits for locks rather than failing.
 `close()` closes the calling thread's connection.
 Every thread that uses the store must call `close()` before it ends; otherwise its connection is left to garbage collection, which emits a `ResourceWarning`.
 The API (Task 5) follows this rule for every thread it runs store calls on.

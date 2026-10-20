@@ -103,7 +103,8 @@ class RunRow:
 
 
 _RUN_FIELDS = tuple(f.name for f in fields(RunRow))
-_UPDATABLE_FIELDS = frozenset(_RUN_FIELDS) - {"run_id"}
+# A run's identity and request are fixed at creation; only its progress changes.
+_UPDATABLE_FIELDS = frozenset({"status", "finished_at", "pipeline_status", "error"})
 _RUN_COLUMNS = ", ".join(_JSON_COLUMNS.get(name, name) for name in _RUN_FIELDS)
 
 
@@ -194,8 +195,8 @@ class RunStore:
             connection = sqlite3.connect(self._path, isolation_level=None)
             connection.row_factory = sqlite3.Row
             connection.execute("PRAGMA foreign_keys = ON")
-            connection.execute("PRAGMA journal_mode = WAL")
             connection.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
+            connection.execute("PRAGMA journal_mode = WAL")
             self._local.connection = connection
         return connection
 
@@ -205,10 +206,11 @@ class RunStore:
         connection.execute("BEGIN IMMEDIATE")
         try:
             yield connection
+            connection.execute("COMMIT")
         except BaseException:
-            connection.execute("ROLLBACK")
+            if connection.in_transaction:
+                connection.execute("ROLLBACK")
             raise
-        connection.execute("COMMIT")
 
     def _migrate(self) -> None:
         with self._write() as connection:
@@ -225,7 +227,9 @@ class RunStore:
                 connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
     def create_run(self, row: RunRow) -> None:
-        """Insert a run, then prune live runs beyond the newest ``retention``.
+        """Insert a run, then prune finished live runs beyond the newest
+        ``retention``. Queued and running runs are never pruned, so the count
+        may briefly exceed ``retention`` while runs are active.
         ``created_at`` must be ISO-8601 UTC with a ``+00:00`` offset."""
         _require_utc_timestamp(row.created_at, "created_at")
         values = [_column_value(name, getattr(row, name)) for name in _RUN_FIELDS]
@@ -234,22 +238,25 @@ class RunStore:
             connection.execute(f"INSERT INTO runs ({_RUN_COLUMNS}) VALUES ({placeholders})", values)
             connection.execute(
                 """
-                DELETE FROM runs WHERE kind = 'live' AND run_id NOT IN (
-                    SELECT run_id FROM runs WHERE kind = 'live'
+                DELETE FROM runs
+                WHERE kind = 'live' AND status NOT IN ('queued', 'running')
+                  AND run_id NOT IN (
+                    SELECT run_id FROM runs
+                    WHERE kind = 'live' AND status NOT IN ('queued', 'running')
                     ORDER BY created_at DESC, run_id DESC LIMIT ?
-                )
+                  )
                 """,
                 (self._retention,),
             )
 
     def update_run(self, run_id: str, /, **changes: Any) -> None:
+        """Change a run's progress: ``status``, ``finished_at``,
+        ``pipeline_status`` or ``error``. Anything else raises ValueError."""
         unknown = sorted(set(changes) - _UPDATABLE_FIELDS)
         if unknown:
             raise ValueError(f"cannot update run fields: {', '.join(unknown)}")
         if not changes:
             return
-        if "created_at" in changes:
-            _require_utc_timestamp(changes["created_at"], "created_at")
         assignments = ", ".join(f"{_JSON_COLUMNS.get(name, name)} = ?" for name in changes)
         values = [_column_value(name, value) for name, value in changes.items()]
         with self._write() as connection:
@@ -270,6 +277,8 @@ class RunStore:
     def list_runs(self, limit: int, before: str | None, status: str | None) -> list[RunRow]:
         """Newest first by ``(created_at, run_id)``. ``before`` is an opaque
         cursor from ``cursor(row)``; only rows strictly after it are returned."""
+        if limit < 1:
+            raise ValueError(f"limit must be at least 1, got {limit}")
         created_at, run_id = (None, None) if before is None else _parse_cursor(before)
         records = (
             self._connection()
