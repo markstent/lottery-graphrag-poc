@@ -29,13 +29,13 @@ from app.api.schemas import (
 )
 from app.evaluation.claims import selection_carrier
 from app.evaluation.grounding import BankInstance, FrozenBank
+from app.evaluation.official import ground_command
 from app.evaluation.report import METRICS
 from app.evaluation.runner import PipelineRun, ShownBlock, score_pipeline_run
 from app.events import GRAPH_ENTITY_RESOLVED
 from app.persistence.store import RunRow
 
 DEMO_STRATA = ("H1", "H2", "H3", "H5")
-BANK_NOT_GROUNDED = "the question bank has not been grounded; run make ground-bank"
 OWN_TEXT = "a bank question runs with its own text"
 OWN_SCOPE = "a bank question runs with its own scope"
 # The bank defines no market scope of its own: every instance runs unscoped.
@@ -81,10 +81,15 @@ def demo_questions(bank: FrozenBank) -> list[DemoQuestion]:
     ]
 
 
+def bank_not_grounded() -> str:
+    """The 503 message of a bank that does not exist, naming the command that grounds it."""
+    return f"the question bank has not been grounded; run {ground_command()}"
+
+
 def require_bank(bank: FrozenBank | None) -> FrozenBank:
     """The bank, or a 503 that says how to ground it."""
     if bank is None:
-        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, BANK_NOT_GROUNDED)
+        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, bank_not_grounded())
     return bank
 
 

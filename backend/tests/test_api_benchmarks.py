@@ -10,6 +10,7 @@ temporary data directory, so nothing is generated, ingested or indexed.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import threading
 import time
@@ -851,7 +852,7 @@ def test_a_bank_grounded_for_another_dataset_dir_is_not_grounded_for_this_one(
     ):
         assert response.status_code == 503
         assert response.json()["error"]["message"] == (
-            "the question bank has not been grounded; run make ground-bank"
+            "the question bank has not been grounded; run make ground-demo-bank"
         )
 
 
@@ -908,13 +909,48 @@ def test_the_bank_is_loaded_and_hashed_once_until_a_file_changes(
         return load_frozen_bank(path)
 
     monkeypatch.setattr("app.api.benchmarks.load_frozen_bank", counting)
+    paths = world_paths(official.PRESENTATION_SEED)
     for _ in range(3):
         assert client_with_bank.get("/api/v1/demo/questions").status_code == 200
-    first = len(loads)
-    assert first <= 1
-    ledger = world_paths(official.PRESENTATION_SEED).ledger_path
-    ledger.write_text(ledger.read_text() + "\n")
+        assert client_with_bank.get("/api/v1/benchmarks/questions").status_code == 200
+    assert loads == [paths.bank_path]
+    # The bank file is written again: its modification time changes, so it is
+    # loaded and checked once more, then served from the cache again.
+    bank = load_frozen_bank(paths.bank_path)
+    write_frozen_bank(bank, paths.bank_path)
+    os.utime(paths.bank_path, ns=(1, 2_000_000_000))
+    for _ in range(3):
+        assert client_with_bank.get("/api/v1/demo/questions").status_code == 200
+    assert loads == [paths.bank_path, paths.bank_path]
+    # A changed ledger no longer matches the bank.
+    paths.ledger_path.write_text(paths.ledger_path.read_text() + "\n")
     assert client_with_bank.get("/api/v1/demo/questions").status_code == 503
+
+
+def test_a_benchmark_is_refused_in_the_demo_environment_before_a_thread_starts(
+    client: TestClient, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("DATASET_DIR", str(data_dir / "generated" / "demo-seed2026"))
+    monkeypatch.setenv("TRUTH_LEDGER_PATH", str(data_dir / "truth" / "ledger-demo.json"))
+    response = client.post("/api/v1/benchmarks", json=smoke())
+    assert response.status_code == 503
+    assert response.json()["error"] == {
+        "error_code": "CONFIGURATION_ERROR",
+        "message": official.DEV_ONLY_MESSAGE,
+        "retryable": False,
+    }
+    assert not [t for t in threading.enumerate() if t.name.startswith("benchmark-")]
+
+
+def test_the_bank_hint_names_the_command_of_the_environment(
+    client: TestClient, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    dev = client.get("/api/v1/demo/questions").json()["error"]["message"]
+    assert dev == "the question bank has not been grounded; run make ground-bank"
+    monkeypatch.setenv("DATASET_DIR", str(data_dir / "generated" / "demo-seed2026"))
+    monkeypatch.setenv("TRUTH_LEDGER_PATH", str(data_dir / "truth" / "ledger-demo.json"))
+    demo = client.get("/api/v1/demo/questions").json()["error"]["message"]
+    assert demo == "the question bank has not been grounded; run make ground-demo-bank"
 
 
 def test_an_ungrounded_bank_reads_the_same_on_both_question_routes(client: TestClient) -> None:

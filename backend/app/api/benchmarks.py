@@ -52,7 +52,9 @@ from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
     BenchmarkCancelled,
+    NotDevWorld,
     bank_matches_active_world,
+    ground_command,
     load_results,
     preflight,
     run_benchmark,
@@ -67,7 +69,10 @@ logger = logging.getLogger(__name__)
 
 Published = tuple[str, dict[str, Any]]
 
-STALE_BANK_MESSAGE = "the question bank does not match the active world; run make ground-bank"
+
+def stale_bank_message() -> str:
+    """The 503 message of a bank that is not current, naming the command that grounds it."""
+    return f"the question bank does not match the active world; run {ground_command()}"
 
 
 def published_runs(runs_dir: Path) -> list[Published]:
@@ -122,7 +127,7 @@ def _summary_out(run: Published) -> BenchmarkSummary:
 
 def presentation_bank() -> FrozenBank | None:
     """The frozen bank of the presentation world (``DATASET_DIR`` and
-    ``TRUTH_LEDGER_PATH``), or None before it is grounded.
+    the world's ledger), or None before it is grounded.
 
     A bank that does not match the world (its manifest, ledger, bank version
     or record serialiser), or that is corrupt, is a 503
@@ -147,12 +152,12 @@ def presentation_bank() -> FrozenBank | None:
         bank = load_frozen_bank(paths.bank_path)
     except GroundingError as error:
         logger.warning("question bank refused", extra={"reason": str(error)})
-        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE) from None
+        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, stale_bank_message()) from None
     if not bank_matches_active_world():
         logger.warning(
             "question bank refused", extra={"reason": "not current for the active world"}
         )
-        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE)
+        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, stale_bank_message())
     _remember((files, stamp), bank)
     return bank
 
@@ -189,7 +194,7 @@ def _questions(runs_dir: Path, name: str | None) -> list[QuestionOut]:
     except LedgerMismatch as error:
         logger.warning("question catalogue refused", extra={"reason": str(error)})
         # The ledger changed after the bank was checked: the bank no longer matches.
-        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE) from None
+        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, stale_bank_message()) from None
     run = (
         _published(runs_dir, name)
         if name is not None
@@ -238,6 +243,8 @@ class BenchmarkJobs:
         _check(request)
         try:
             preflight(request.kind, request.repeats)
+        except NotDevWorld as error:
+            raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, str(error)) from None
         except ValueError as error:
             raise ApiError(422, ErrorCode.VALIDATION_ERROR, str(error)) from None
         hold = self._lease.take_benchmark()

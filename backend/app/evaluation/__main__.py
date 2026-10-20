@@ -77,6 +77,14 @@ def main(argv: list[str] | None = None) -> int:
     compare.add_argument("--out", type=Path, default=None, help="Directory for comparison.json.")
     args = parser.parse_args(argv)
 
+    try:
+        return _dispatch(args)
+    except official.NotDevWorld as error:
+        raise SystemExit(str(error)) from None
+
+
+def _dispatch(args: argparse.Namespace) -> int:
+    """Run the chosen command; ``main`` turns a refused world into a plain exit."""
     if args.command == "run":
         repeats = args.repeats
         if repeats is None:

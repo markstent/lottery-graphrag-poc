@@ -661,6 +661,8 @@ The rule for which run `latest` serves, and the `summary.json` it carries, are i
 
 `POST /api/v1/benchmarks` starts a benchmark job on a background thread of the API process, one at a time; it is tested in `tests/test_api_benchmarks.py`.
 The body is `{"kind": "smoke" | "official", "seeds": [...], "repeats": n, "strata": [...] | null, "limit": n | null}`; unknown fields are a 422.
+A benchmark runs only on the dev-profile worlds, so `POST /benchmarks` answers 503 `CONFIGURATION_ERROR` "benchmarks run on the dev-profile worlds only; unset DATASET_DIR and TRUTH_LEDGER_PATH (the demo environment cannot run one)" before any thread starts when the presentation world is not the dev world with its own ledger; the CLI exits with the same message.
+The 503 for a missing or stale bank names `make ground-bank` in the dev environment and `make ground-demo-bank` otherwise.
 The harness checks the request before anything starts: a seed the harness does not run, a repeated seed, an unknown stratum, or a kind and repeat count the harness refuses (`preflight`) is a 422 `VALIDATION_ERROR`.
 The response is 202 with a job: `{job_id, status, run_id, error, progress}`.
 `status` is `running`, `completed`, `failed` or `cancelled`.
@@ -688,7 +690,7 @@ Run `make ingest-graph`, then check that `GET /api/v1/health/ready` reports ever
 Runs, events, results and scores are persisted in the SQLite run store (ADR-007, D-033), not held in memory.
 It keeps the newest `RUN_RETENTION` finished live runs (default 500); queued and running runs are never pruned, so the count can briefly exceed it.
 Pruning happens when a run is created and removes the run's events, results and score with it.
-At start-up, every run left `queued` or `running` is marked `failed` with `INTERRUPTED`, and every completed bank run with no score is given the interrupted score record (section 5).
+At start-up, every run left `queued` or `running` is ended: one that was cut off is marked `failed` with `INTERRUPTED`, and one whose terminal event is already stored takes its outcome from that event (see below); then every completed bank run with no score, a repaired one included, is given the interrupted score record (section 5).
 The same transaction appends the events that end the run: `pipeline.failed` for each pipeline that was running, then `run.failed`, each with the INTERRUPTED envelope and the last stored event's `t_ms`, so a stream of that run ends at a terminal event.
 A run whose terminal event is already stored, because the write of its final row failed, gets no event and takes its outcome from that event: `run.completed` gives `completed`, `run.failed` gives `failed` with its payload as the error, `run.cancelled` gives `cancelled`; its pipelines take their `pipeline.*` end events and `finished_at` is the event's timestamp.
 `tests/test_store.py` and `tests/test_api_runs.py` cover it.

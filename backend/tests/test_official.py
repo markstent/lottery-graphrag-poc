@@ -35,12 +35,15 @@ from app.evaluation.grounding import (
 from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
+    PROFILE,
     BenchmarkCancelled,
     InstanceHook,
+    NotDevWorld,
     PrepareSteps,
     WorldPaths,
     bank_matches_active_world,
     compare_runs,
+    preflight,
     prepare_world,
     run_benchmark,
     run_id,
@@ -85,6 +88,7 @@ class Recorder:
         paths.world_dir.mkdir(parents=True, exist_ok=True)
         manifest = {
             "generator_version": GENERATOR_VERSION,
+            "profile": PROFILE,
             "world_seed": paths.seed,
             "scenario_seed": paths.seed,
             # As in a real world, every generation writes a new manifest.
@@ -251,16 +255,9 @@ def test_the_restore_ingests_the_world_the_api_serves(
     """The presentation world is DATASET_DIR's: the graph is restored to it."""
     served = tmp_path / "served-world"
     monkeypatch.setenv("DATASET_DIR", str(served))
-    run_benchmark(
-        "smoke",
-        (2027,),
-        repeats=1,
-        out_dir=recorder.tmp,
-        steps=recorder.steps,
-        runner_factory=recorder.runner,
-    )
-    assert recorder.ingested_dirs[-1] == served
-    assert recorder.ingested_dirs[0] == world_paths(2027).world_dir
+    with official._presentation_graph_restored(recorder.steps):
+        recorder.steps.ingest(world_paths(2027))
+    assert recorder.ingested_dirs == [world_paths(2027).world_dir, served]
 
 
 def test_a_failed_world_still_restores_the_presentation_graph(
@@ -404,6 +401,57 @@ def test_a_bank_is_current_for_the_world_it_was_grounded_on(grounded_world: Worl
     assert bank_matches_active_world()
 
 
+DEV_ONLY = (
+    "benchmarks run on the dev-profile worlds only; unset DATASET_DIR and TRUTH_LEDGER_PATH "
+    "(the demo environment cannot run one)"
+)
+
+
+def _demo_environment(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATASET_DIR", str(data_dir / "generated" / "demo-seed2026"))
+    monkeypatch.setenv("TRUTH_LEDGER_PATH", str(data_dir / "truth" / "ledger-demo.json"))
+
+
+def _demo_ledger_on_the_dev_world(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TRUTH_LEDGER_PATH", str(data_dir / "truth" / "ledger-demo.json"))
+
+
+def _dev_world_with_the_demo_directory(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("DATASET_DIR", str(data_dir / "generated" / "demo-seed2026"))
+
+
+@pytest.mark.parametrize(
+    "setup",
+    [_demo_environment, _demo_ledger_on_the_dev_world, _dev_world_with_the_demo_directory],
+)
+@pytest.mark.parametrize("kind", ["smoke", "official"])
+def test_a_benchmark_is_refused_outside_the_dev_world(
+    data_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    setup: Callable[[Path, pytest.MonkeyPatch], None],
+    kind: str,
+) -> None:
+    setup(data_dir, monkeypatch)
+    with pytest.raises(NotDevWorld, match="dev-profile worlds only") as refused:
+        preflight(kind, 1)
+    assert str(refused.value) == DEV_ONLY
+
+
+def test_the_cli_refuses_a_benchmark_in_the_demo_environment_before_preparing_anything(
+    recorder: Recorder, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _demo_environment(data_dir, monkeypatch)
+    monkeypatch.setattr(official, "default_steps", lambda: recorder.steps)
+    with pytest.raises(SystemExit) as stopped:
+        cli.main(["run", "--kind", "smoke", "--seeds", "2026"])
+    assert stopped.value.code == DEV_ONLY
+    assert recorder.generated == recorder.ingested == []
+
+
+def test_the_dev_world_is_accepted_for_a_benchmark(data_dir: Path) -> None:
+    preflight("smoke", 1)
+
+
 def test_the_presentation_world_is_dataset_dir_and_the_truth_ledger_path(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -499,7 +547,12 @@ def test_a_current_world_is_only_ingested(recorder: Recorder) -> None:
 
 @pytest.mark.parametrize(
     ("field", "value"),
-    [("generator_version", "0.0.1"), ("world_seed", 1), ("scenario_seed", 1)],
+    [
+        ("generator_version", "0.0.1"),
+        ("world_seed", 1),
+        ("scenario_seed", 1),
+        ("profile", "demo"),
+    ],
 )
 def test_a_world_of_another_generator_or_seed_is_generated_again(
     recorder: Recorder, field: str, value: object

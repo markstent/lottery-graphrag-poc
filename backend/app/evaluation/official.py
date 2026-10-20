@@ -75,8 +75,13 @@ from app.graph import __main__ as graph_cli
 from app.lab import build_generator, build_lab
 from app.retrieval.standard.index import MANIFEST_NAME, build_index, build_store
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+from app.scenarios.ledger import DEFAULT_TRUTH_PATH
 
 PRESENTATION_SEED = 2026
+DEV_ONLY_MESSAGE = (
+    "benchmarks run on the dev-profile worlds only; unset DATASET_DIR and TRUTH_LEDGER_PATH "
+    "(the demo environment cannot run one)"
+)
 # The presentation world's truth ledger; read only here, inside the evaluator.
 TRUTH_LEDGER_ENV = "TRUTH_LEDGER_PATH"
 OFFICIAL_SEEDS = (2026, 2027, 2028)
@@ -149,6 +154,32 @@ class RunnerFactory(Protocol):
     ) -> WorldRunner: ...
 
 
+class NotDevWorld(ValueError):
+    """A benchmark was asked of a presentation world that is not the dev world."""
+
+
+def _dev_presentation_world() -> tuple[Path, Path]:
+    """The dev-profile presentation world's directory and truth ledger."""
+    ledger = DATA_DIR / DEFAULT_TRUTH_PATH.relative_to(REPO_ROOT / "data")
+    return DATA_DIR / "generated" / f"{PROFILE}-seed{PRESENTATION_SEED}", ledger
+
+
+def on_dev_world() -> bool:
+    """Whether the presentation world is the dev-profile world with its own
+    ledger (neither ``DATASET_DIR`` nor ``TRUTH_LEDGER_PATH`` names another)."""
+    paths = world_paths(PRESENTATION_SEED)
+    world_dir, ledger = _dev_presentation_world()
+    return (
+        paths.world_dir.resolve() == world_dir.resolve()
+        and paths.ledger_path.resolve() == ledger.resolve()
+    )
+
+
+def ground_command() -> str:
+    """The command that grounds the active world's bank."""
+    return "make ground-bank" if on_dev_world() else "make ground-demo-bank"
+
+
 def bank_path_for(world_dir: Path) -> Path:
     """The frozen bank of a world, named after the world's directory."""
     return DATA_DIR / "evaluation" / "bank" / f"bank-{BANK_VERSION}-{world_dir.name}.json"
@@ -168,7 +199,7 @@ def world_paths(seed: int) -> WorldPaths:
     if seed == PRESENTATION_SEED:
         world_dir = Path(from_env().dataset_dir)
         configured = os.environ.get(TRUTH_LEDGER_ENV)
-        ledger_path = Path(configured) if configured else DATA_DIR / "truth" / "ledger.json"
+        ledger_path = Path(configured) if configured else _dev_presentation_world()[1]
         collection_name = collection
     else:
         world_dir = DATA_DIR / "generated" / f"{PROFILE}-seed{seed}"
@@ -280,6 +311,7 @@ def _world_is_current(paths: WorldPaths) -> bool:
         manifest is not None
         and paths.ledger_path.exists()
         and manifest.get("generator_version") == GENERATOR_VERSION
+        and manifest.get("profile") == PROFILE
         and manifest.get("world_seed") == paths.seed
         and manifest.get("scenario_seed") == paths.seed
     )
@@ -371,12 +403,18 @@ def build_runner(
 
 
 def preflight(kind: str, repeats: int) -> None:
-    """Check the run kind, repeats, generator and judge settings from the
-    environment before any world is prepared, as the runner will after.
+    """Check the world, run kind, repeats, generator and judge settings from
+    the environment before any world is prepared, as the runner will after.
+
+    A benchmark generates, ingests and grounds the dev-profile worlds, so it
+    is refused (:class:`NotDevWorld`) unless the presentation world is the
+    dev world: the demo environment would write dev truth to the demo ledger.
 
     A smoke run always gets the fake generator and the fake judge
     (:func:`build_runner`); other kinds need the gateway for both.
     """
+    if not on_dev_world():
+        raise NotDevWorld(DEV_ONLY_MESSAGE)
     generation = from_env().generation
     fake = kind == "smoke" or generation.provider == "fake"
     check_run_config(kind, repeats, fake, generation.model_family)

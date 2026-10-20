@@ -29,7 +29,7 @@ import time
 from app.api.benchmarks import presentation_bank
 from app.api.errors import ApiError
 from app.api.schemas import DemoQuestion
-from app.api.scoring import BANK_NOT_GROUNDED, demo_questions
+from app.api.scoring import bank_not_grounded, demo_questions
 from app.config import GraphConfig, RetrievalSettings, from_env
 from app.events import (
     GRAPH_CANDIDATE_RERANKED,
@@ -398,7 +398,7 @@ def main() -> None:
     except ApiError as error:
         raise SystemExit(error.message) from None
     if bank is None:
-        raise SystemExit(BANK_NOT_GROUNDED)
+        raise SystemExit(bank_not_grounded())
     questions = demo_questions(bank)
     parser = argparse.ArgumentParser(description="Run side-by-side A/B/C traces")
     parser.add_argument(

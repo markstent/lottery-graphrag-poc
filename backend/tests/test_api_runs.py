@@ -1216,3 +1216,64 @@ def test_interruption_events_carry_the_last_stored_t_ms(lab: Lab, run_database: 
     with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as test_client:
         events = test_client.get("/api/v1/queries/RUN-T/events").json()["events"]
     assert [e["t_ms"] for e in events] == [100.0, 200.0, 200.0, 200.0]
+
+
+def test_a_repaired_completed_bank_run_gets_the_interrupted_score_record(
+    lab: Lab, run_database: Path
+) -> None:
+    """A bank run whose final row write failed after its terminal event is
+    repaired as completed; start-up then finds it unscored (the server
+    stopped before the score) and records that scoring was interrupted."""
+    left = RunStore(run_database, retention=50)
+    left.create_run(
+        RunRow(
+            run_id="RUN-BANK",
+            kind="live",
+            status="running",
+            question=QUESTION,
+            market_scope=(),
+            configurations=("A",),
+            benchmark_instance_id="L05-2026-INC_037",
+            created_at=datetime.now(UTC).isoformat(),
+            finished_at=None,
+            pipeline_status={"A": "running"},
+            error=None,
+        )
+    )
+    for number, (event_type, pipeline) in enumerate(
+        [("run.started", "run"), ("pipeline.completed", "A"), ("run.completed", "run")], start=1
+    ):
+        left.append_event("RUN-BANK", _event("RUN-BANK", number, event_type, pipeline))
+    left.close()
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as test_client:
+        run = test_client.get("/api/v1/queries/RUN-BANK").json()
+    assert run["status"] == "completed" and run["pipeline_status"] == {"A": "completed"}
+    assert run["score_status"] == "failed" and run["score_failure"] == "interrupted"
+    assert run["score"] is None
+
+
+def test_a_graph_that_cannot_be_read_does_not_refuse_the_run(
+    world_service: QueryService, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The world cannot be compared, so the run is accepted and stored; B
+    then fails with a recorded graph error while A keeps its result."""
+    from neo4j.exceptions import ServiceUnavailable
+
+    def down(self: _CountingGraph) -> dict[str, int]:
+        raise ServiceUnavailable("bolt://internal:7687")
+
+    monkeypatch.setattr(_CountingGraph, "label_counts", down)
+
+    def unreachable(lab: Lab, graph_config: GraphConfig, sink: EventSink | None = None) -> Any:
+        raise ServiceUnavailable("bolt://internal:7687")
+
+    monkeypatch.setattr(runs_module, "wired_pipelines", unreachable)
+    run_id = world_service.start(request(configurations=["A", "B"]))
+    finished = wait_finished(world_service, run_id)
+    assert finished.status == "failed"
+    assert finished.pipeline_status == {"A": "completed", "B": "failed"}
+    assert finished.error is not None and finished.error["error_code"] == "GRAPH_QUERY_ERROR"
+    assert "A" in world_service.store.results(run_id)
+    failed = [e for e in world_service.store.events(run_id) if e["event_type"] == "pipeline.failed"]
+    assert [e["pipeline"] for e in failed] == ["B"]
+    assert failed[0]["payload"]["error_code"] == "GRAPH_QUERY_ERROR"
