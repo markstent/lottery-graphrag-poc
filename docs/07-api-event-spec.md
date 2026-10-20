@@ -36,61 +36,43 @@ Base path:
 
 ## 3. Core Endpoints
 
-### Experiments
+Every route is under `/api/v1`.
+This table is the route list as built; it matches the application's OpenAPI schema (`create_app().openapi()`), and each route is described in the section named in the last column.
 
-```text
-POST   /experiments
-GET    /experiments/{experiment_id}
-POST   /experiments/{experiment_id}/reset
-```
+| Method | Path | Response | Described in |
+|---|---|---|---|
+| GET | `/health` | `HealthResponse {status, version}` | section 20, "Health and readiness" |
+| GET | `/health/ready` | `Readiness {ready, checks}` (503 when a check fails) | section 20, "Health and readiness" |
+| POST | `/queries` | `QueryAccepted` (202) | sections 4 and 5 |
+| GET | `/queries` | `RunHistory` | section 5, "Run history and cancellation" |
+| GET | `/queries/{run_id}` | `QueryResults` | section 5 |
+| POST | `/queries/{run_id}/cancel` | `RunSummary` (202) | section 5, "Run history and cancellation" |
+| GET | `/queries/{run_id}/events` | `EventStream` | section 15 |
+| GET | `/queries/{run_id}/events/stream` | server-sent events | section 6 |
+| GET | `/demo/questions` | `list[DemoQuestion]` | section 5, "Bank questions and live scoring" |
+| GET | `/benchmarks` | `list[BenchmarkRunOut]` | section 20, "Benchmark reads" |
+| GET | `/benchmarks/latest` | `BenchmarkSummary` | section 20, "Benchmark reads" |
+| GET | `/benchmarks/questions` | `list[QuestionOut]` | section 20, "Benchmark reads" |
+| GET | `/benchmarks/{run_id}` | `BenchmarkSummary` | section 20, "Benchmark reads" |
+| POST | `/benchmarks` | `BenchmarkJob` (202) | section 20, "Benchmark jobs and the shared graph" |
+| GET | `/benchmarks/jobs/{job_id}` | `BenchmarkJob` | section 20, "Benchmark jobs and the shared graph" |
+| POST | `/benchmarks/jobs/{job_id}/cancel` | `BenchmarkJob` (202) | section 20, "Benchmark jobs and the shared graph" |
+| GET | `/datasets` | `list[DatasetSummary]` | section 20, "Data Model reads" |
+| GET | `/datasets/{dataset_id}` | `DatasetDetail` | section 20, "Data Model reads" |
+| GET | `/datasets/{dataset_id}/dictionary` | `list[TableSchemaOut]` | section 20, "Data Model reads" |
+| GET | `/datasets/{dataset_id}/tables/{table}/rows` | `RowPage` | section 20, "Data Model reads" |
+| GET | `/datasets/{dataset_id}/tables/{table}/rows/{row_id}` | `RecordOut` | section 20, "Data Model reads" |
+| GET | `/graph/schema` | `GraphSchema` | section 20, "Graph reads" |
+| GET | `/graph/stats` | `GraphStats` | section 20, "Graph reads" |
+| GET | `/graph/nodes/{node_id}` | `NodeOut` | section 20, "Graph reads" |
+| GET | `/graph/nodes/{node_id}/neighbours` | `Neighbours` | section 20, "Graph reads" |
+| GET | `/ontology` | `OntologyOut` | section 20, "Reference reads" |
+| GET | `/ontology/concepts/{concept_id}/members` | `list[MemberOut]` | section 20, "Reference reads" |
+| GET | `/scenarios` | `list[ScenarioOut]` | section 20, "Reference reads" |
+| GET | `/models` | `ModelsOut` | section 20, "Reference reads" |
 
-### Datasets
-
-```text
-POST   /datasets/generate
-GET    /datasets/{dataset_id}
-GET    /datasets
-```
-
-### Scenarios
-
-```text
-GET    /scenarios
-POST   /scenarios/validate
-```
-
-### Query execution
-
-```text
-POST   /queries
-GET    /queries/{run_id}
-GET    /queries/{run_id}/evidence
-GET    /queries/{run_id}/events
-GET    /queries/{run_id}/events/stream
-```
-
-### Benchmarks
-
-```text
-POST   /benchmarks
-GET    /benchmarks/{benchmark_run_id}
-POST   /benchmarks/{benchmark_run_id}/cancel
-GET    /benchmarks/{benchmark_run_id}/results
-```
-
-### Models
-
-```text
-GET    /models
-GET    /models/status
-```
-
-### Graph inspection
-
-```text
-GET    /graph/nodes/{node_id}
-GET    /graph/evidence-paths/{run_id}
-```
+Errors, statuses and bounds common to all routes are in section 11 and section 21.
+The routes the first design listed and the build does not have are named at the end of section 20.
 
 ---
 
@@ -418,6 +400,10 @@ Example:
 
 ## 10. Evaluation Events
 
+> Implementation status: these events are not emitted.
+> A live bank question is scored after its run has completed, and the score is stored beside the run (section 5), so the stream carries no `evaluation.*` events.
+> The family is reserved for a later phase.
+
 ```text
 evaluation.started
 evaluation.metric.scored
@@ -441,17 +427,30 @@ Example:
 ## 11. Error Events
 
 Use explicit error classes.
+These are the codes the API emits (`ErrorCode` in `backend/app/api/errors.py`):
 
 ```text
+VALIDATION_ERROR
+NOT_FOUND
 MODEL_ERROR
 EMBEDDING_ERROR
 VECTOR_RETRIEVAL_ERROR
 GRAPH_QUERY_ERROR
-ONTOLOGY_ERROR
 CONTEXT_BUILD_ERROR
-EVALUATION_ERROR
+INTERRUPTED
+CANCELLED
+RUN_ERROR
 CONFIGURATION_ERROR
-TIMEOUT_ERROR
+```
+
+`ONTOLOGY_ERROR`, `EVALUATION_ERROR` and `TIMEOUT_ERROR` from the first design are not used.
+A timeout surfaces as the error of the stage that timed out (for example `GRAPH_QUERY_ERROR`, retryable, for a Neo4j timeout).
+
+A failed run carries its code in the `run.failed` payload and in the run's `error` field.
+Any other failure is an HTTP error with the same fields in an `error` object:
+
+```json
+{"error": {"error_code": "NOT_FOUND", "message": "unknown run_id", "retryable": false}}
 ```
 
 Example:
@@ -613,25 +612,81 @@ Do not freeze event contracts before reviewing real prototype traces.
 
 ---
 
-## 20. Implementation status (HITL-11, 2026-10-09)
+## 20. Implementation status (Phase 4, 2026-10-20)
 
-Implemented and covered by tests (`tests/test_api_queries.py` offline,
-`tests/test_api_live.py` full A/B/C over HTTP):
+The API is built as section 3 lists it.
+It is tested offline in `tests/test_api_queries.py`, `tests/test_api_runs.py`, `tests/test_api_stream.py`, `tests/test_api_scoring.py`, `tests/test_api_benchmarks.py`, `tests/test_api_data_model.py`, `tests/test_api_graph_model.py`, `tests/test_api_reference.py`, `tests/test_api_errors.py`, `tests/test_store.py` and `tests/test_health.py`.
+`tests/test_api_live.py` is the live check (`VECTOR_E2E=1 GRAPH_E2E=1`).
+It starts the application on the presentation world, asks the first H1 demo question, reads the run over server-sent events, waits for the score against the answer key, restarts the application on the same run store, and checks that the run, its events and readiness survive.
+It reads Neo4j and never writes to it.
+Its tiny-world companion in the same file does wipe Neo4j, so it runs second.
+
+### Benchmark reads
 
 ```text
-GET  /api/v1/health
-POST /api/v1/queries          202; background execution; typed request
-GET  /api/v1/queries/{run_id}        status + RagRunResult/GraphRunResult
-GET  /api/v1/queries/{run_id}/events recorded sequence (replay source)
-GET  /api/v1/demo/questions      one frozen-bank instance per demo stratum
-GET  /api/v1/benchmarks/latest   published harness output only
+GET /api/v1/benchmarks                 list[BenchmarkRunOut]
+GET /api/v1/benchmarks/latest          BenchmarkSummary
+GET /api/v1/benchmarks/questions       list[QuestionOut]
+GET /api/v1/benchmarks/{run_id}        BenchmarkSummary
 ```
 
-`GET /api/v1/benchmarks/latest` returns the newest official run of the whole bank, else the newest run of any kind with its label; the rule and the `summary.json` it serves are in `docs/evaluation/reproducibility.md`.
+A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of the schema the report writes (`SUMMARY_SCHEMA_VERSION`, now 2); the harness writes that file last.
+Directories with another schema version are not listed.
+A malformed `summary.json` is a server error, never silently skipped.
+
+- `GET /benchmarks` lists published runs newest first, by `reproducibility.run.started_at` and then by directory name.
+  Each entry is `run_id`, `run_kind`, `label`, `started_at`, `selection` (the strata and per-question limit it scored) and `worlds` (its seeds).
+- `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, summary}`, where `summary` is the run's `summary.json` unchanged.
+  `latest` is the newest official run of the whole bank, else the newest run of any kind, and is a 404 `NOT_FOUND` when nothing is published.
+  `{run_id}` is looked up among the published runs, never as a path, so a name that is not one is a 404 `NOT_FOUND`.
+- `GET /benchmarks/questions` lists the questions of the presentation world's frozen bank for the Help screen.
+  Each entry has `question_id`, `instance_id`, `text`, `tests`, `stratum`, `scenario_id`, `ontology_dependent`, `expected_answer`, `hidden_truth` (the planted scenario's truth for an H5 question, else null) and `scores`.
+  `scores` are per pipeline (`answer` and `evidence_f1`, null where undefined) from the run named by the optional `run_id` query parameter, else from the newest official run of the whole bank; they are null when that run did not score the question or no such run exists.
+  A 404 `NOT_FOUND` says no frozen bank exists for the presentation world, or no published run has the given `run_id`.
+  A 409 `VALIDATION_ERROR` says the truth ledger does not match the frozen bank.
+  A bank that does not match its world is a 503 `CONFIGURATION_ERROR`.
+  This is the one route that serves expected answers and hidden truth, both read from evaluator output; the live query routes never do.
+
+### Reference reads
+
+```text
+GET /api/v1/ontology                                       OntologyOut
+GET /api/v1/ontology/concepts/{concept_id}/members         list[MemberOut]
+GET /api/v1/scenarios                                      list[ScenarioOut]
+GET /api/v1/models                                         ModelsOut
+```
+
+None of these queries Neo4j.
+
+- `ontology` reads the repository's ontology YAML: `version` and every concept with its `parent_id`, `labels` and `synonyms` by language, `binding_counts` by market id (codes shared by every market count under `shared`) and `relationships`.
+  `relationships` is derived, not declared: `IS_A` for a concept with a parent or child, `MAPS_TO` for one with a bound code.
+- `members` lists the local codes bound to a concept (`kind`, `code`, `market_id`, and `name` when the term table has a local display name).
+  The optional `market` query parameter is a market id such as `MKT_UK`.
+  An unknown concept is a 404 `NOT_FOUND` and an unknown market a 422 `VALIDATION_ERROR`.
+- `scenarios` lists each enabled scenario of the catalogue with `scenario_id`, `scenario_type`, `title`, `planted`, `planted_rows`, `strength` and `noise_level`.
+  What was planted comes from the active dataset's manifest (`scenarios.applied`).
+  Where or why it was planted is the truth ledger, which is evaluator-only and is never read here.
+  A dataset without a manifest has every scenario unplanted.
+- `models` reports the embedding, sparse, rerank and generation models, each as `provider`, `model`, `reachable` and `detail`.
+  The embedding model is checked by listing the models of its Ollama server.
+  The generation model is probed as readiness probes it (section 20, "Health and readiness").
+  Each result is cached per configuration for 30 s, failures included, and concurrent calls share one probe.
+  Sparse and rerank run in the API process, so `reachable` is null with the detail `runs in process` until the lab has loaded them, then true with `loaded`.
+  The settings come from the built lab, or from the environment while no lab is built.
+
+The rule for which run `latest` serves, and the `summary.json` it carries, are in `docs/evaluation/reproducibility.md`.
 
 ### Benchmark jobs and the shared graph (Phase 4)
 
 `POST /api/v1/benchmarks` starts a benchmark job on a background thread of the API process, one at a time; it is tested in `tests/test_api_benchmarks.py`.
+The body is `{"kind": "smoke" | "official", "seeds": [...], "repeats": n, "strata": [...] | null, "limit": n | null}`; unknown fields are a 422.
+The harness checks the request before anything starts: a seed the harness does not run, a repeated seed, an unknown stratum, or a kind and repeat count the harness refuses (`preflight`) is a 422 `VALIDATION_ERROR`.
+The response is 202 with a job: `{job_id, status, run_id, error, progress}`.
+`status` is `running`, `completed`, `failed` or `cancelled`.
+`run_id` names the published run once the job has completed, and is null before that and for a job that did not complete.
+`progress` is `{world_seed, instances_done, instances_total}` for the world being run, and null until the first world reaches its first instance.
+`error` is the section 11 envelope of a failed job, with a curated message; the exception text is logged only.
+`GET /api/v1/benchmarks/jobs/{job_id}` reads the job and `POST /api/v1/benchmarks/jobs/{job_id}/cancel` asks it to stop (202); an unknown job is a 404 `NOT_FOUND`, and cancelling a finished job is a 409 `VALIDATION_ERROR`.
 A job ingests seeds 2027 and 2028 into the same Neo4j that Live Lab reads, then ingests seed 2026 again, so one graph lease keeps jobs and live runs apart:
 
 - `POST /api/v1/queries` answers 409 `VALIDATION_ERROR` "a benchmark run is using the graph; try again when it finishes" while a job runs, and `POST /api/v1/benchmarks` answers 409 while a live query or another job runs.
@@ -647,10 +702,18 @@ Recovery after a server stop during a job: jobs live in memory, so the job is lo
 Readiness then reports `the graph holds another world`; the server does not re-ingest at start-up.
 Run `make ingest-graph`, then check that `GET /api/v1/health/ready` reports every check green.
 
-Superseded in Phase 4: runs, events and results are persisted in the SQLite run store (ADR-007), keeping the newest `RUN_RETENTION` live runs, rather than held in memory for the last 50 runs.
-Phase 4 also adds `GET /api/v1/queries` (history) and `POST /api/v1/queries/{run_id}/cancel` (section 5), tested in `tests/test_api_runs.py`.
+### Run store
 
-Phase 4 adds `GET /api/v1/health/ready`, tested in `tests/test_health.py`; `GET /api/v1/health` stays the liveness probe.
+Runs, events, results and scores are persisted in the SQLite run store (ADR-007, D-033), not held in memory.
+It keeps the newest `RUN_RETENTION` finished live runs (default 500); queued and running runs are never pruned, so the count can briefly exceed it.
+Pruning happens when a run is created and removes the run's events, results and score with it.
+At start-up, every run left `queued` or `running` is marked `failed` with `INTERRUPTED`, and every completed bank run with no score is given the interrupted score record (section 5).
+`tests/test_store.py` and `tests/test_api_runs.py` cover it.
+
+### Health and readiness
+
+`GET /api/v1/health` is the liveness probe and returns `{status: "ok", version}`.
+`GET /api/v1/health/ready` is tested in `tests/test_health.py`.
 It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `lab`, `index`, `graph` and `model`, with status 200 when every check passes and 503 otherwise.
 
 - `lab`: the retrieval lab is built; otherwise the detail is `building`, `not started` or that the last build failed.
@@ -667,7 +730,9 @@ It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `l
 The checks run concurrently, each under its own timeout; a check that times out reports `timed out after N s`.
 Details are curated sentences: raw driver and provider text, which can name service addresses, is logged only.
 
-Phase 4 adds the Data Model reads, tested in `tests/test_api_data_model.py`:
+### Data Model reads
+
+Tested in `tests/test_api_data_model.py`:
 
 ```text
 GET /api/v1/datasets                                          list[DatasetSummary]
@@ -698,7 +763,9 @@ GET /api/v1/datasets/{dataset_id}/tables/{table}/rows/{row_id} RecordOut
   `edges` counts the node's relationships per type and direction in one bounded statement (`statements.record_edge_summary_statement`).
   When Neo4j cannot be read, the row is still returned, with `edges` null and `graph_error` `GRAPH_QUERY_ERROR`.
 
-Phase 4 adds the graph reads, tested in `tests/test_api_graph_model.py`:
+### Graph reads
+
+Tested in `tests/test_api_graph_model.py`:
 
 ```text
 GET /api/v1/graph/schema                          GraphSchema
@@ -721,7 +788,8 @@ GET /api/v1/graph/nodes/{node_id}/neighbours      Neighbours
   Each request opens one reader, closed in a finally, and each statement runs once under `NEO4J_TIMEOUT_S`, without the driver's retries.
   A Neo4j failure is a `GRAPH_QUERY_ERROR`: 503 and retryable when the database is unreachable or busy, 500 otherwise, with the driver's text logged only.
 
-Which world the graph holds.
+### Which world the graph holds
+
 Neo4j holds one ingested world at a time, and node ids repeat across worlds.
 `app.api.graph_world.graph_world_matches` compares the live node count of every label (one statement) with the active dataset's `_graph_stats.json`.
 It returns null when the dataset has no statistics file, so the world cannot be compared.
@@ -729,4 +797,69 @@ The result is cached for 30 s, for the last dataset and statistics file checked,
 When the counts differ, the node routes return 409 `VALIDATION_ERROR` with the message `the graph holds a different world than the active dataset`, a record's `graph_error` is `OTHER_WORLD`, and the readiness graph check fails.
 Equal counts are a fingerprint, not a proof: another world with the same count for every label would pass.
 
-Reserved for later phases (not implemented): experiments, dataset generation and scenario management, `GET /queries/{run_id}/evidence` (evidence is embedded in the results DTO), and benchmark submission/cancel (the harness runs via `make run-benchmark`; the API only publishes results).
+### Not built
+
+The first design listed these routes; the application does not have them:
+
+- experiments (`POST /experiments`, `GET /experiments/{experiment_id}`, `POST /experiments/{experiment_id}/reset`);
+- dataset generation and listing by generation (`POST /datasets/generate`; `GET /datasets` exists and lists the datasets on disk);
+- scenario validation (`POST /scenarios/validate`);
+- `GET /queries/{run_id}/evidence`, because evidence is embedded in each pipeline's result in `GET /queries/{run_id}`;
+- `GET /models/status`, because `GET /models` carries each model's reachability;
+- `GET /graph/evidence-paths/{run_id}`, because the evidence paths are the recorded graph events of the run;
+- `GET /benchmarks/{benchmark_run_id}/results` and `POST /benchmarks/{benchmark_run_id}/cancel`, which are `GET /benchmarks/{run_id}` and `POST /benchmarks/jobs/{job_id}/cancel`.
+
+---
+
+## 21. Errors, bounds and configuration
+
+### HTTP errors
+
+Every error body is `{"error": {error_code, message, retryable}}` (section 11).
+Messages are curated sentences; library text, service addresses and stack traces go to the server log only.
+
+| Status | Code | When |
+|---|---|---|
+| 404 | `NOT_FOUND` | an unknown run, job, dataset, table row, node, concept, published benchmark run or statistics file |
+| 409 | `VALIDATION_ERROR` | cancelling a run or job that has finished; the graph is held by a benchmark job or a live run (the graph lease); the graph holds a different world than the active dataset; a record id that is not unique; a truth ledger that does not match the frozen bank |
+| 422 | `VALIDATION_ERROR` | a body or parameter that fails validation, including unknown fields, a limit above its maximum, an unknown market, table, column or relationship type, a malformed cursor or resume point, and a bank question sent with other text or scope |
+| 500 | `RUN_ERROR` | an unexpected failure; the body is the generic sentence and the cause is in the log |
+| 503 | `CONFIGURATION_ERROR` | the question bank has not been grounded, or it does not match its world (`make ground-bank`) |
+| 503 | `GRAPH_QUERY_ERROR` | Neo4j is unreachable or busy (retryable); other Neo4j failures are 500 |
+| 503 | readiness body | `GET /health/ready` with a failed check; the body is `Readiness`, not an error object |
+
+`GRAPH_QUERY_ERROR` and the model, embedding and vector codes are also the codes a failed run carries (sections 6 and 11).
+Every response carries `X-Request-ID`: the client's value when it is 1 to 64 letters, digits or hyphens, else a generated one; the same id is on that request's log lines.
+Cross-origin calls are allowed for `CORS_ORIGINS` with the methods GET and POST and the headers `content-type`, `x-request-id` and `last-event-id`.
+
+### Bounds
+
+| Where | Bound |
+|---|---|
+| `POST /queries` | `question` 1 to 2000 characters; `configurations` from A, B and C; `market_scope` entries are known markets |
+| `GET /queries` | `limit` 1 to 100, default 20; a larger value is a 422 |
+| `GET /queries/{run_id}/events/stream` | resume point a non-negative integer of at most 2^63 - 1; heartbeat every `SSE_HEARTBEAT_S` |
+| `GET .../tables/{table}/rows` | `limit` at most 200, default 50; `column` and `value` together |
+| `GET /graph/nodes/{node_id}/neighbours` | `limit` 1 to 100, default 25 |
+| Graph traversal | depth, nodes per hop, edges per node type and total nodes are the `GRAPH_*` settings, shown by `GET /graph/schema` |
+| Neo4j reads | one statement each, under `NEO4J_TIMEOUT_S` |
+| Model calls | `GENERATION_TIMEOUT_S` per gateway call |
+| Run store | `RUN_RETENTION` finished live runs |
+| Graph lease | one benchmark job, or any number of live runs, at a time; never both |
+
+No limit is clamped silently: a value outside its bound is a 422.
+
+### The graph lease
+
+Live runs and benchmark jobs share one Neo4j.
+A live run takes the lease when it starts and gives it back once its pipelines are done.
+A benchmark job takes it for its whole run, because it ingests other worlds.
+Each side is refused with a retryable 409 while the other holds it (section 20, "Benchmark jobs and the shared graph").
+
+### Configuration
+
+The API settings are read once, when `create_app` runs: `CORS_ORIGINS`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `BENCHMARK_DIR` and `LOG_LEVEL`, and the Neo4j connection settings.
+A change to any of them needs a restart.
+The retrieval, model and traversal settings (`from_env`) are read when the lab is built: at start-up, or by the next run after a failed build.
+While no lab is built, `GET /models` reads them afresh on each request.
+`.env.example` lists every variable with its default.

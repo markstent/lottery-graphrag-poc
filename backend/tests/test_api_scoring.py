@@ -28,6 +28,7 @@ from app.api.runs import QueryService
 from app.api.schemas import LIVE_SCORE_LABEL, LivePipelineScore, LiveScore, QueryRequest
 from app.api.scoring import (
     DEMO_STRATA,
+    INSTANCE_SCOPE,
     ScoreState,
     demo_questions,
     failed_record,
@@ -37,11 +38,13 @@ from app.api.scoring import (
     scored_record,
     stored_pipeline_run,
 )
+from app.evaluation import official
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import TokenCheck
 from app.evaluation.claims import Claim
 from app.evaluation.grounding import BankInstance, FrozenBank
+from app.evaluation.official import world_paths
 from app.evaluation.runner import BenchmarkRunner, score_pipeline_run
 from app.lab import Lab
 from app.main import create_app
@@ -485,6 +488,33 @@ def test_a_scorer_failure_leaves_the_run_completed_and_records_the_failure(
     assert SENTINEL not in failure.getMessage()
 
 
+def test_a_scorer_failure_logs_no_message_and_no_traceback(
+    offline_graph: None,
+    tmp_path: Path,
+    lab: Lab,
+    bank: FrozenBank,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A scorer's message can quote an expected value, so only its type and
+    error code reach the log."""
+
+    def leaking_scorer(
+        run: RunRow, results: dict[str, Any], events: list[dict[str, Any]], bank: FrozenBank
+    ) -> LiveScore:
+        raise ValueError(f"expected {SENTINEL!r}")
+
+    for service in _service(tmp_path, lab, bank, leaking_scorer):
+        with caplog.at_level(logging.DEBUG):
+            run_id = service.start(request(benchmark_instance_id=first(bank, "H1").instance_id))
+            wait_finished(service, run_id)
+    failure = next(r for r in caplog.records if r.message.startswith("live scoring failed"))
+    assert failure.exc_info is None
+    assert failure.__dict__["error_type"] == "ValueError"
+    assert failure.__dict__["error_code"] == "RUN_ERROR"
+    assert SENTINEL not in caplog.text
+    assert all(SENTINEL not in str(value) for value in failure.__dict__.values())
+
+
 # -- the routes -------------------------------------------------------------------
 
 
@@ -529,7 +559,7 @@ def test_demo_questions_take_the_first_instance_of_each_stratum(bank: FrozenBank
     demos = demo_questions(bank)
     assert [d.question_id for d in demos] == ["L05", "L09", "L01", "L20"]
     assert [d.stratum for d in demos] == list(DEMO_STRATA)
-    assert all(d.market_scope == [] for d in demos)
+    assert all(d.market_scope == list(INSTANCE_SCOPE) for d in demos)
 
 
 def test_without_a_grounded_bank_demo_questions_and_bank_runs_are_unavailable(
@@ -685,3 +715,24 @@ def test_a_bank_run_whose_scoring_a_stop_cut_off_reads_interrupted_at_start_up(
         "interrupted",
         None,
     )
+
+
+def test_a_stale_bank_is_a_configuration_error_not_a_server_error(
+    client_with_bank: TestClient,
+    data_dir: Path,  # noqa: F811
+) -> None:
+    """A bank that no longer matches its world or ledger reads as a plain 503."""
+    bank_path = world_paths(official.PRESENTATION_SEED).bank_path
+    document = json.loads(bank_path.read_text(encoding="utf-8"))
+    document["bank_version"] = "0.0.1"
+    bank_path.write_text(json.dumps(document), encoding="utf-8")
+    for response in (
+        client_with_bank.get("/api/v1/demo/questions"),
+        client_with_bank.post("/api/v1/queries", json={"benchmark_instance_id": "L05-x"}),
+    ):
+        assert response.status_code == 503
+        error = response.json()["error"]
+        assert error["error_code"] == "CONFIGURATION_ERROR"
+        assert error["message"] == (
+            "the question bank does not match its world; run make ground-bank again"
+        )

@@ -24,6 +24,7 @@ Only the project owner may mark a gate `APPROVED`.
 | CP1 Experiment (part 1: data layer) | APPROVED | 2026-10-19 | World v2, ontology v2, eight scenarios, graph model v2 and the B/C allow-list split delivered on `overhaul/v2` at 50196a4; approved by the project owner in session ("approve") with product names changed to generic terms (20fcb7e); merged to main. Pipelines v2, bank 2.0.0 and the harness follow as Phase 2 and 3 before CP1 closes. |
 | CP1 Experiment (part 2: pipelines v2) | APPROVED | 2026-10-19 | Pipelines v2 delivered on `overhaul/v2` (branch head 42ce69e after the final review fix wave): hybrid retrieval with record blocks, one shared reranker as judge, one budget and slot cap, one prompt list in judge order, judge and model text limited to what A could index, structured answers. Decisions D-021 to D-028 (D-025 to D-028 are controller rulings open to the owner); fairness contract `backend/tests/test_lab_fairness.py`; live traces `docs/retrieval/example-traces.md`. Approved by the project owner in session ("approve"); merged to main. Bank 2.0.0, judge and statistics follow as Phase 3 before CP1 closes. |
 | CP1 Experiment (part 3: benchmark v2) | APPROVED | 2026-10-20 | Bank 2.0.0 (22 logical questions, hashed anchors frozen per world), deterministic answer, evidence and citation scoring, the blinded LLM judge, clustered paired statistics with Holm, `summary.json` v2, and the three-seed harness with the depth sweep and model comparison, on `overhaul/v2`. Docs: `docs/evaluation/scoring.md`, `statistics.md`, `reproducibility.md`, `docs/05-benchmark-spec.md` (as built). Decisions D-029 to D-032 are controller rulings, approved by the project owner with this checkpoint. Approved by the project owner in session ("approve") at branch head 3b6e0c0, after the final review fix wave; merged to main; the open owner questions below stand as built until the owner revisits them. Open owner questions: L16 and L17 expected sets include baseline players; L22 scores 0.5 when an answer also quotes the stale price; the cluster-level test (D-032). Known: the saved demo questions in `backend/app/api/queries.py` are stale v1 questions, replaced in the product phase; Results and Live Lab show a plain v2 notice until then. Owner items: `docs/08-implementation-phases.md:226` and `docs/product/product-requirements.md:24` still say "30-question" (original plan and requirements, left for the owner). Scorer smoke test `20261019T164733Z-smoke` (fake generator and judge, seeds 2026 to 2028): 150 instances (50 per world), none unavailable, presentation graph restored at 36,888 nodes. Local pilot `pilot-2026-nothink` (seed 2026, 2 instances per question, 3 repeats, 324 cells; qwen3.6 generator, gemma4:31b judge, `GENERATION_REASONING=off`, `JUDGE_REASONING=off`) is a subset and not a result: 0 generation and 0 judge failures, strict JSON contract 324 of 324, judge agreement 0.59 with kappa 0.18, 25.1 s per cell, so a full three-seed official run projects to about 9.5 hours. Finding for CP3 from the first pilot `pilot-2026` (reasoning on): thinking models spend the token caps on hidden reasoning and return empty answers (159 of 198 generations, every judge call). |
+| Phase 4 Product API | BUILT | 2026-10-20 | The backend as a product API on `overhaul/v2`: run store, event stream with resume, cancellation, readiness, Data Model, graph, ontology, scenario, model and benchmark routes, live scoring of bank questions, benchmark jobs, and the live end-to-end test (`tests/test_api_live.py`); described in `docs/07-api-event-spec.md`, decisions D-033 to D-038 (proposed). No checkpoint: CP2 follows Phases 5 and 6. Owner items for CP2: (1) `ConceptOut.relationships` is derived from ingestion; should the ontology declare its allowed relationships, as `docs/03` asks? (2) The Help screen's DEMO-01..04 table and story chips in `docs/ux` are stale until Phase 6, because the demo questions are now the first bank instance of H1, H2, H3 and H5 (D-036). |
 | CP2 Product | PENDING | | Overview, Live Lab, Data Model, Help on the live API |
 | CP3 Official run | PENDING | | model and cost choice, dry run, then official run and Results |
 
@@ -39,7 +40,7 @@ artefacts exist and all checks pass, under this standing approval.
 Artefacts: pipelines A/B/C (`app/retrieval/standard`, `app/retrieval/graph`),
 evidence tracking with per-candidate components and discard reasons,
 traversal telemetry on the docs/07 section 8 event names, shared context
-assembly, side-by-side trace CLI (`app/retrieval/graph/traces.py`), three
+assembly, side-by-side trace CLI (`app/retrieval/graph/traces.py`; note: moved to `app/traces.py` in Phase 4), three
 captured traces with real retrieval telemetry and local-model generation
 (`docs/retrieval/example-traces.md`).
 
@@ -68,7 +69,8 @@ Residual risks and known limitations:
 Artefacts: benchmark bank with version constant (`app/evaluation/bank.py`),
 deterministic grounding (`app/evaluation/grounding.py`), deterministic
 scoring + failure taxonomy (`app/evaluation/scoring.py`), shared A/B/C lab
-construction (`app/retrieval/graph/lab.py`, also used by the trace CLI),
+construction (`app/retrieval/graph/lab.py`, also used by the trace CLI;
+note: moved to `app/lab.py` in Phase 4, and the trace CLI to `app/traces.py`),
 benchmark harness + CLI with reproducibility record
 (`app/evaluation/runner.py`, `app/evaluation/__main__.py`), report renderer
 (`app/evaluation/report.py`). Evaluation docs updated: scoring.md
@@ -139,7 +141,7 @@ resilience (a gateway error inside an official benchmark run is recorded per
 question as generation_failure instead of aborting the run; infrastructure
 errors still fail loudly); B/C fairness contract pinned offline
 (backend/tests/test_lab_fairness.py via the extracted bc_graph_settings seam
-in app/retrieval/graph/lab.py).
+in app/retrieval/graph/lab.py; note: moved to app/lab.py in Phase 4).
 
 CI defects found and fixed (first green run: 2026-10-09, run 37889425239):
 (1) the Neo4j service health check probed HTTP port 7474 while only Bolt

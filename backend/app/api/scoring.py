@@ -74,7 +74,7 @@ def demo_questions(bank: FrozenBank) -> list[DemoQuestion]:
             question_id=first.question_id,
             text=first.text,
             stratum=first.stratum,
-            market_scope=[],
+            market_scope=list(INSTANCE_SCOPE),
         )
         for stratum in DEMO_STRATA
         if (first := firsts.get(stratum)) is not None

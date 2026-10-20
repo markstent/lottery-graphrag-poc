@@ -51,8 +51,8 @@ export function LiveScoreNote({
     return (
       <p className="text-xs text-muted">
         <span className="font-medium text-warning">Score pending.</span> The run
-        completed, but its score against the answer key has not arrived yet. Run
-        the question again to see it.
+        completed, but its score against the answer key has not arrived yet.
+        Reload this run's results later to see it.
       </p>
     )
   }

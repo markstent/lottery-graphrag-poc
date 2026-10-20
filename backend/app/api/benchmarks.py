@@ -46,7 +46,7 @@ from app.api.schemas import (
 )
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
-from app.evaluation.grounding import FrozenBank, load_frozen_bank
+from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
 from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
@@ -64,6 +64,7 @@ logger = logging.getLogger(__name__)
 
 Published = tuple[str, dict[str, Any]]
 
+STALE_BANK_MESSAGE = "the question bank does not match its world; run make ground-bank again"
 LEDGER_MISMATCH_MESSAGE = "the truth ledger does not match the frozen bank; ground the bank again"
 
 
@@ -119,10 +120,16 @@ def _summary_out(run: Published) -> BenchmarkSummary:
 
 def presentation_bank() -> FrozenBank | None:
     """The frozen bank of the presentation world, read afresh on every call,
-    or None before it is grounded. A bank whose hash does not match raises
-    ``GroundingError``."""
+    or None before it is grounded. A bank that does not match its world, or
+    is stale, is a 503 ``CONFIGURATION_ERROR``; the reason is logged."""
     path = world_paths(PRESENTATION_SEED).bank_path
-    return load_frozen_bank(path) if path.is_file() else None
+    if not path.is_file():
+        return None
+    try:
+        return load_frozen_bank(path)
+    except GroundingError as error:
+        logger.warning("question bank refused", extra={"reason": str(error)})
+        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE) from None
 
 
 def _questions(runs_dir: Path, name: str | None) -> list[QuestionOut]:

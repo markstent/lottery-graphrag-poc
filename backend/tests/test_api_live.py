@@ -1,28 +1,44 @@
-"""Live API test (opt-in: GRAPH_E2E=1): full A/B/C execution over HTTP.
+"""Live API tests (opt-in: GRAPH_E2E=1, and VECTOR_E2E=1 for the first).
 
-Runs the real QueryService behind TestClient against Neo4j holding the tiny
-world, with deterministic embeddings and the fake generator, asserting the
-accepted -> completed lifecycle and that all three pipelines return typed
-results with recorded events.
+``test_live_run_streams_persists_scores_and_survives_a_restart`` runs the
+product API as an operator would, on the presentation world (seed 2026):
+Ollama embeds, Qdrant serves the collection, Neo4j holds the graph and the
+fake generator answers. It asks a bank question, reads the run over SSE,
+waits for the score against the answer key, then restarts the application on
+the same run store and checks that the run, its events and readiness
+survive. It never writes to Neo4j, so the graph stays at seed 2026. The
+world, its collection and its frozen bank must exist
+(``make generate-dev-data ingest-graph index-vector ground-bank``).
+
+The second test runs the real QueryService behind TestClient against Neo4j
+holding the tiny world, with deterministic embeddings and the fake
+generator, asserting the accepted -> completed lifecycle and that all three
+pipelines return typed results with recorded events. It wipes the database,
+so it runs after the first and the presentation graph needs
+``make ingest-graph`` afterwards.
 """
 
 from __future__ import annotations
 
+import json
 import os
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 
 import pytest
 from app import lab as lab_module
 from app.api.runs import start_lab
-from app.config import GraphConfig, RetrievalSettings
+from app.config import GraphConfig, RetrievalSettings, from_env
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
+from app.evaluation.official import PRESENTATION_SEED, world_paths
 from app.graph.ingest import ingest
+from app.lab import Lab
 from app.main import create_app
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.index import (
@@ -38,6 +54,118 @@ from fastapi.testclient import TestClient
 
 from tests.test_graph_rag import make_settings
 from tests.test_graph_rag_live import _neo4j_available
+
+live = pytest.mark.skipif(
+    os.environ.get("VECTOR_E2E") != "1" or os.environ.get("GRAPH_E2E") != "1",
+    reason="set VECTOR_E2E=1 and GRAPH_E2E=1 to run the live API test",
+)
+READY_DEADLINE_S = 300.0
+SCORE_DEADLINE_S = 30.0
+
+
+def wait_until(condition: Callable[[], bool], deadline_s: float, what: str) -> None:
+    end = time.monotonic() + deadline_s
+    while not condition():
+        assert time.monotonic() < end, f"{what} did not happen within {deadline_s:.0f} s"
+        time.sleep(0.25)
+
+
+def wait_ready(client: TestClient) -> dict[str, Any]:
+    """Readiness depends on the lab warm-up finishing, so wait for it."""
+    last: dict[str, Any] = {}
+
+    def ready() -> bool:
+        nonlocal last
+        last = client.get("/api/v1/health/ready").json()
+        return bool(last["ready"])
+
+    wait_until(ready, READY_DEADLINE_S, f"readiness ({last})")
+    return last
+
+
+def stream_all(client: TestClient, run_id: str) -> list[dict[str, Any]]:
+    """Every event of the run read from its SSE stream, until the stream closes."""
+    events: list[dict[str, Any]] = []
+    with client.stream("GET", f"/api/v1/queries/{run_id}/events/stream") as response:
+        assert response.headers["content-type"].startswith("text/event-stream")
+        for line in response.iter_lines():
+            if line.startswith("data:"):
+                events.append(json.loads(line.removeprefix("data:").strip()))
+    return events
+
+
+def first_h1(client: TestClient) -> dict[str, Any]:
+    """The first demo question of stratum H1, which is a bank instance."""
+    demos: list[dict[str, Any]] = client.get("/api/v1/demo/questions").json()
+    return next(demo for demo in demos if demo["stratum"] == "H1")
+
+
+def start_bank_question(client: TestClient, demo: dict[str, Any]) -> str:
+    response = client.post(
+        "/api/v1/queries",
+        json={"benchmark_instance_id": demo["instance_id"], "configurations": ["A", "B", "C"]},
+    )
+    assert response.status_code == 202, response.text
+    run_id: str = response.json()["run_id"]
+    return run_id
+
+
+def live_lab() -> Lab:
+    """The lab ``create_app`` builds by default, from the environment; the
+    suite replaces that default with an offline lab."""
+    return start_lab(from_env())
+
+
+@pytest.fixture
+def live_app_factory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[Callable[[], TestClient]]:
+    """Starts the application on one run store. Calling it again stops the
+    previous application first, as a restart does."""
+    paths = world_paths(PRESENTATION_SEED)
+    for required in (paths.world_dir, paths.bank_path):
+        if not required.exists():
+            pytest.skip(f"{required} is missing; prepare the presentation world first")
+    monkeypatch.setenv("APP_DB_PATH", str(tmp_path / "app.db"))
+    running: list[ExitStack] = []
+
+    def factory() -> TestClient:
+        while running:
+            running.pop().close()
+        stack = ExitStack()
+        running.append(stack)
+        return stack.enter_context(TestClient(create_app(lab_factory=live_lab)))
+
+    yield factory
+    while running:
+        running.pop().close()
+
+
+@live
+def test_live_run_streams_persists_scores_and_survives_a_restart(
+    live_app_factory: Callable[[], TestClient],
+) -> None:
+    client = live_app_factory()
+    wait_ready(client)
+    run_id = start_bank_question(client, first_h1(client))
+    events = stream_all(client, run_id)
+    assert events[-1]["event_type"] == "run.completed"
+    assert [event["sequence"] for event in events] == list(range(1, len(events) + 1))
+    assert {event["pipeline"] for event in events} == {"run", "A", "B", "C"}
+
+    def scored() -> bool:
+        return bool(client.get(f"/api/v1/queries/{run_id}").json()["score_status"] == "scored")
+
+    wait_until(scored, SCORE_DEADLINE_S, "the score")
+    results = client.get(f"/api/v1/queries/{run_id}").json()
+    assert results["status"] == "completed"
+    assert results["score"]["label"] == "scored against the answer key"
+    assert set(results["score"]["per_pipeline"]) == {"A", "B", "C"}
+
+    restarted = live_app_factory()
+    assert restarted.get(f"/api/v1/queries/{run_id}/events").json()["events"] == events
+    assert restarted.get(f"/api/v1/queries/{run_id}").json() == results
+    assert wait_ready(restarted)["ready"] is True
 
 
 @pytest.fixture(scope="module")

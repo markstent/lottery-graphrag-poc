@@ -477,7 +477,8 @@ class QueryService:
         """Score the run against the answer key once its final row says
         ``completed``; a cancelled, failed or unrecorded end is not scored.
         A scoring failure is logged and recorded as failed, so the run reads
-        ``score_status: "failed"``; its status stays completed."""
+        ``score_status: "failed"``; its status stays completed. Only the
+        error's type and code are logged, never its message or traceback."""
         try:
             row = self.store.get_run(run_id)
             if row is None or row.status != "completed":
@@ -487,11 +488,15 @@ class QueryService:
             )
             self.store.put_score(run_id, scored_record(score))
         except Exception as error:
+            # The type and code only: a scorer's message can quote the expected answer.
             code, _retryable = classify(error)
             logger.error(
                 "live scoring failed; the run keeps no score",
-                exc_info=error,
-                extra={"instance_id": question.instance.instance_id, "error_code": code},
+                extra={
+                    "instance_id": question.instance.instance_id,
+                    "error_type": type(error).__name__,
+                    "error_code": code,
+                },
             )
             self._record_failed_score(run_id)
 

@@ -9,6 +9,8 @@ describe('LiveScoreNote', () => {
       <LiveScoreNote answerKey="available" status="pending" score={null} />,
     )
     expect(screen.getByText('Score pending.')).toBeVisible()
+    expect(screen.getByText(/Reload this run's results later/)).toBeVisible()
+    expect(screen.queryByText(/question again/)).toBeNull()
   })
 
   it('says a failed scoring in plain words', () => {
