@@ -112,7 +112,7 @@ OLLAMA_PROBE_TIMEOUT_S = 5.0
 # Any other provider answers one 1-token completion within this, or within
 # GENERATION_TIMEOUT_S when that is shorter.
 COMPLETION_PROBE_CAP_S = 30.0
-# Where LiteLLM sends an ``ollama/`` model when no api_base is configured.
+# LiteLLM's base for an ``ollama/`` model when no api_base is configured.
 OLLAMA_DEFAULT_BASE = "http://localhost:11434"
 _OLLAMA_PREFIXES = ("ollama/", "ollama_chat/")
 
@@ -125,12 +125,29 @@ class ProbeResult:
     detail: str
 
 
+def generation_api_base(settings: GenerationSettings) -> str | None:
+    """The base URL every gateway call for ``settings`` goes to.
+
+    The generator and the probe both use it, so readiness checks exactly
+    the server generation will call. An Ollama model without a configured
+    base goes to LiteLLM's Ollama default, made explicit here.
+    """
+    if settings.api_base:
+        return settings.api_base
+    if settings.model.startswith(_OLLAMA_PREFIXES):
+        return OLLAMA_DEFAULT_BASE
+    return None
+
+
 def _ollama_base(settings: GenerationSettings, ollama_host: str | None) -> str | None:
     """The Ollama server the model is routed to, or None for another provider."""
-    base = settings.api_base.rstrip("/") if settings.api_base else None
+    base = generation_api_base(settings)
+    if base is None:
+        return None
+    base = base.rstrip("/")
     if settings.model.startswith(_OLLAMA_PREFIXES):
-        return base or (ollama_host.rstrip("/") if ollama_host else OLLAMA_DEFAULT_BASE)
-    if base is not None and ollama_host is not None and base == ollama_host.rstrip("/"):
+        return base
+    if ollama_host is not None and base == ollama_host.rstrip("/"):
         return base
     return None
 
@@ -149,8 +166,9 @@ def probe(
     """Whether the configured LiteLLM model is reachable.
 
     An Ollama-routed model (an ``ollama/`` model, or ``api_base`` equal to
-    ``ollama_host``) is checked against the server's model list; any other
-    provider must answer a 1-token completion. Raw failures are logged.
+    ``ollama_host``) is checked against the model list of the server
+    ``generation_api_base`` names; any other provider must answer a 1-token
+    completion. Raw failures are logged.
     """
     base = _ollama_base(settings, ollama_host)
     if base is not None:
@@ -161,7 +179,7 @@ def probe(
         user="ping",
         temperature=0.0,
         max_tokens=1,
-        api_base=settings.api_base,
+        api_base=generation_api_base(settings),
         timeout_s=probe_timeout_s(settings, ollama_host),
         reasoning=settings.reasoning,
     )

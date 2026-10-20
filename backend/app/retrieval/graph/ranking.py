@@ -116,7 +116,12 @@ def semantic_scores(
     embed: EmbeddingFunction,
 ) -> dict[str, float]:
     """Cosine similarity between question and node texts via the shared
-    embedding model (pipeline A uses the same model: fairness)."""
+    embedding model (pipeline A uses the same model: fairness).
+
+    Computed as the plain dot product, which is the cosine only because
+    every ``EmbeddingFunction`` returns unit vectors (its contract;
+    ``OllamaEmbedder`` normalises, docs/retrieval/embeddings.md).
+    """
     if not node_texts:
         return {}
     ids = list(node_texts)
@@ -124,6 +129,6 @@ def semantic_scores(
     query = vectors[0]
     scores: dict[str, float] = {}
     for node_id, vector in zip(ids, vectors[1:], strict=True):
-        norm = sum(a * b for a, b in zip(query, vector, strict=True))
-        scores[node_id] = round(max(0.0, norm), 6)
+        cosine = sum(a * b for a, b in zip(query, vector, strict=True))  # unit vectors
+        scores[node_id] = round(max(0.0, cosine), 6)
     return scores

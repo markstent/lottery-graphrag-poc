@@ -46,10 +46,9 @@ def create_app(
     The run store opens at start-up (the lifespan), not at import: start-up
     fails every run a stopped server left queued or running, then the query
     service starts on that store and begins building the lab in the
-    background. ``lab_factory`` defaults to ``default_lab``, looked up when
-    the app is created.
+    background. ``lab_factory`` defaults to ``default_lab``, looked up at
+    start-up, so tests can replace it even for the import-time ``app``.
     """
-    factory = lab_factory if lab_factory is not None else default_lab
     settings = api_from_env()
     configure_logging(settings.log_level)
     graph = graph_config if graph_config is not None else GraphConfig.from_env()
@@ -63,6 +62,7 @@ def create_app(
             store.close()
         if interrupted:
             logger.warning("runs interrupted by a server stop", extra={"runs": interrupted})
+        factory = lab_factory if lab_factory is not None else default_lab
         service = QueryService(store, factory, graph)
         application.state.query_service = service
         application.state.readiness = ReadinessChecks(service, graph)

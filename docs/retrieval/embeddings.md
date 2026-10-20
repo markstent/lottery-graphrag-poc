@@ -17,6 +17,10 @@ The chosen models are recorded in experiment metadata, and domain logic makes no
   Chosen because it is local-capable, versioned by model name and retrieves the planted scenarios across languages in the development world.
   `OllamaEmbedder` L2-normalises every vector, as the embedding contract requires, and refuses a vector whose length differs from `EMBEDDING_DIMENSIONS` with an `EmbeddingError` naming both sizes.
   Qdrant ranks by cosine, which ignores vector length, so an index built before normalisation ranks the same and needs no rebuild (`tests/test_embeddings.py` pins this to within 1e-12).
+  B and C score node relevance with a plain dot product (`ranking.semantic_scores`), which equals the cosine only for unit vectors.
+  Raw bge-m3 vectors from Ollama were measured on 2026-10-20, before normalisation, over five representative texts (an English question, an English incident report, a record block, a German rules sentence and a Greek question).
+  Their norms were 0.99999993, 0.99999964, 1.00000014, 1.00000033 and 1.00000032, all equal to 1 within 1e-6 (largest deviation 3.6e-7).
+  Normalisation therefore moves a B or C node score by less than 1e-6 (at most a last-digit change in the six-decimal score), so runs made before it, the Phase 3 pilots included, stand.
   At lab build the existing collection's dense size is compared with the embedder's, and a mismatch raises a `VectorStoreError` naming both sizes, even for an empty collection.
 - **Sparse**: `Qdrant/bm25` via fastembed (`SPARSE_MODEL`), downloaded once into `FASTEMBED_CACHE`.
   `SPARSE_PROVIDER` unset follows `EMBEDDING_PROVIDER`: `hashing` gives `hashing`, anything else gives `fastembed`.

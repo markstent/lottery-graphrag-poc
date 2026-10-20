@@ -588,13 +588,15 @@ Phase 4 adds `GET /api/v1/health/ready`, tested in `tests/test_health.py`; `GET 
 It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `lab`, `index`, `graph` and `model`, with status 200 when every check passes and 503 otherwise.
 
 - `lab`: the retrieval lab is built; otherwise the detail is `building`, `not started` or that the last build failed.
-  Start-up begins the build in a background thread; no route waits on it, a run started meanwhile waits for it, and a failed build is retried by the next run. Readiness never builds the lab or waits for a build.
+  Start-up begins the build in a background thread; no route waits on it, a run started meanwhile waits for it, and a failed build is retried by the next run.
+  Readiness never builds the lab or waits for a build.
 - `index`: the collection exists and holds points, and a persistent index's manifest names this code's record serialiser (5 s timeout).
 - `graph`: Neo4j answers `RETURN 1` within `NEO4J_TIMEOUT_S`.
-- `model`: reachable, not warm, through `gateway.probe`. The fake generator is always reachable.
-  An Ollama-routed model (an `ollama/` or `ollama_chat/` model, or `GENERATION_API_BASE` equal to `OLLAMA_HOST`) is `available` when `GET {api_base}/api/tags` lists it within 5 s, and `not pulled` otherwise; no generation is asked for, so a cold model is not loaded.
+- `model`: reachable, not warm, through `gateway.probe`.
+  The fake generator is always reachable.
+  An Ollama-routed model (an `ollama/` or `ollama_chat/` model, or `GENERATION_API_BASE` equal to `OLLAMA_HOST`) is `available` when `GET {base}/api/tags` lists it within 5 s, where `base` is the one generation uses (`gateway.generation_api_base`: `GENERATION_API_BASE`, else LiteLLM's Ollama default `http://localhost:11434`), and `not pulled` otherwise; no generation is asked for, so a cold model is not loaded.
   Any other provider must answer one gateway call with `max_tokens=1` within `min(30 s, GENERATION_TIMEOUT_S)`; an empty one-token answer counts as reachable.
-  The result is cached for 30 s.
+  The result is cached for 30 s, and concurrent polls share one in-flight probe.
 
 The checks run concurrently, each under its own timeout; a check that times out reports `timed out after N s`.
 Details are curated sentences: raw driver and provider text, which can name service addresses, is logged only.

@@ -42,6 +42,7 @@ from app.retrieval.standard.vector_store import QdrantVectorStore, VectorStore, 
 logger = logging.getLogger(__name__)
 
 Clock = Callable[[], float]
+_ModelKey = tuple[GenerationSettings, str | None]
 
 # The lab check reads in-process state only.
 LAB_TIMEOUT_S = 1.0
@@ -104,20 +105,27 @@ def lab_check(state: LabState) -> Check:
 
 def index_check(settings: RetrievalSettings, store: VectorStore | None) -> Check:
     """The built lab's store when given, else a read-only view of the
-    configured collection (never created here)."""
-    persistent = persists_index(settings.embedding.provider)
-    if store is None:
-        if not persistent:
-            return Check(ok=False, detail="not built: the in-memory index is built with the lab")
-        store = QdrantVectorStore(
-            url=settings.vector.url,
-            collection=settings.vector.collection,
-            dimensions=settings.embedding.dimensions,
-        )
+    configured collection (never created here, closed after the check)."""
+    if store is not None:
+        return _index_state(settings, store)
+    if not persists_index(settings.embedding.provider):
+        return Check(ok=False, detail="not built: the in-memory index is built with the lab")
+    view = QdrantVectorStore(
+        url=settings.vector.url,
+        collection=settings.vector.collection,
+        dimensions=settings.embedding.dimensions,
+    )
+    try:
+        return _index_state(settings, view)
+    finally:
+        view.close()
+
+
+def _index_state(settings: RetrievalSettings, store: VectorStore) -> Check:
     points = int(store.collection_info()["points"])
     if points == 0:
         return Check(ok=False, detail="the collection holds no points")
-    if persistent:
+    if persists_index(settings.embedding.provider):
         try:
             check_manifest(Path(settings.dataset_dir))
         except VectorStoreError as error:
@@ -140,7 +148,8 @@ def graph_check(config: GraphConfig) -> Check:
 class ModelReachability:
     """Whether the generation provider is reachable (``gateway.probe``),
     cached per configuration for ``MODEL_CACHE_TTL_S`` (failures too, so a
-    down provider is not called on every poll). Safe for concurrent calls."""
+    down provider is not called on every poll). Single-flight: concurrent
+    checks of one configuration share one probe. Safe for concurrent calls."""
 
     def __init__(
         self, clock: Clock = time.monotonic, transport: httpx.BaseTransport | None = None
@@ -148,20 +157,34 @@ class ModelReachability:
         self._clock = clock
         self._transport = transport
         self._lock = threading.Lock()
-        self._cached: tuple[tuple[GenerationSettings, str | None], float, Check] | None = None
+        self._cached: tuple[_ModelKey, float, Check] | None = None
+        self._in_flight: dict[_ModelKey, Future[Check]] = {}
 
     def check(self, settings: GenerationSettings, ollama_host: str | None = None) -> Check:
         key = (settings, ollama_host)
-        now = self._clock()
         with self._lock:
+            now = self._clock()
             cached = self._cached
-        if cached is not None:
-            cached_key, checked_at, result = cached
-            if cached_key == key and now - checked_at < MODEL_CACHE_TTL_S:
-                return result
-        result = self._probe(settings, ollama_host)
+            if cached is not None and cached[0] == key and now - cached[1] < MODEL_CACHE_TTL_S:
+                return cached[2]
+            shared = self._in_flight.get(key)
+            if shared is None:
+                owned: Future[Check] = Future()
+                self._in_flight[key] = owned
+        if shared is not None:
+            return shared.result()
+        try:
+            result = self._probe(settings, ollama_host)
+        except Exception as error:
+            # _probe curates every expected failure; anything else is a defect.
+            with self._lock:
+                del self._in_flight[key]
+            owned.set_exception(error)
+            raise
         with self._lock:
             self._cached = (key, now, result)
+            del self._in_flight[key]
+        owned.set_result(result)
         return result
 
     def _probe(self, settings: GenerationSettings, ollama_host: str | None) -> Check:

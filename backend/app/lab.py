@@ -15,6 +15,7 @@ from typing import Literal
 from app.config import GraphConfig, RetrievalSettings
 from app.datasets.taxonomies import local_name_variants
 from app.events import EventSink
+from app.models.gateway import generation_api_base
 from app.ontology.loader import load_ontology
 from app.ontology.model import Ontology
 from app.ontology.terms import TermMatcher, build_term_table
@@ -92,7 +93,7 @@ def build_generator(name: str, settings: RetrievalSettings) -> AnswerGenerator:
         return LiteLLMAnswerGenerator(
             model=settings.generation.model,
             temperature=settings.generation.temperature,
-            api_base=settings.generation.api_base,
+            api_base=generation_api_base(settings.generation),
             max_tokens=settings.generation.max_tokens,
             reasoning=settings.generation.reasoning,
             timeout_s=settings.generation.timeout_s,

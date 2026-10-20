@@ -33,7 +33,7 @@ from app.persistence.store import RunStore
 from app.retrieval.standard.index import MANIFEST_NAME, index_corpus
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 from app.retrieval.standard.sparse import SparseVector
-from app.retrieval.standard.vector_store import InMemoryVectorStore
+from app.retrieval.standard.vector_store import InMemoryVectorStore, VectorStoreError
 from fastapi.testclient import TestClient
 
 from tests.conftest import StubLiteLLM, build_lab_offline
@@ -47,9 +47,10 @@ from tests.test_api_runs import (
 from tests.test_graph_rag import build_corpus
 from tests.test_standard_rag import make_settings
 
-# Nothing listens on port 1: the driver is refused at once.
+# Nothing listens on port 1: the driver is refused at once, so the generous
+# timeout only bounds a broken environment and never paces the test.
 GRAPH_DOWN = GraphConfig(
-    uri="bolt://127.0.0.1:1", user="neo4j", password="unused", database="neo4j", timeout_s=2.0
+    uri="bolt://127.0.0.1:1", user="neo4j", password="unused", database="neo4j", timeout_s=30.0
 )
 CHECKS = {"lab", "index", "graph", "model"}
 
@@ -85,7 +86,10 @@ def indexed_lab() -> Lab:
 
 @pytest.fixture
 def client_with_graph_down(indexed_lab: Lab) -> Iterator[TestClient]:
-    """The offline lab, already built by one completed run; Neo4j unreachable."""
+    """The offline lab, already built by one completed run; Neo4j unreachable.
+    The driver is imported here, so its first import is not timed by the check."""
+    import neo4j  # noqa: F401
+
     with TestClient(create_app(lab_factory=lambda: indexed_lab, graph_config=GRAPH_DOWN)) as client:
         assert run_to_completion(client, configurations=["A"])["results"]["status"] == "completed"
         yield client
@@ -405,3 +409,61 @@ def test_an_invalid_configuration_is_reported_not_raised(monkeypatch: pytest.Mon
     invalid = {"ok": False, "detail": "the configuration is invalid"}
     assert checks["index"] == checks["model"] == invalid
     assert checks["graph"]["ok"] is True
+
+
+def test_concurrent_model_checks_share_one_probe() -> None:
+    """The second check reads the clock under the lock while the first probe
+    is blocked, so it can only wait for that probe or start its own."""
+    entered, release = threading.Event(), threading.Event()
+    calls: list[str] = []
+
+    def tags(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        entered.set()
+        assert release.wait(DEADLINE_S), "the test never released the probe"
+        return httpx.Response(200, json={"models": [{"name": "qwen3.6:latest"}]})
+
+    reads: list[float] = []
+    second_inside = threading.Event()
+
+    def clock() -> float:
+        reads.append(1000.0)
+        if len(reads) == 2:
+            second_inside.set()
+        return 1000.0
+
+    reachability = ModelReachability(clock=clock, transport=httpx.MockTransport(tags))
+    settings = dataclasses.replace(litellm_settings("ollama/qwen3.6:latest"), api_base=None)
+    results: list[Check] = []
+    first = threading.Thread(target=lambda: results.append(reachability.check(settings)))
+    second = threading.Thread(target=lambda: results.append(reachability.check(settings)))
+    first.start()
+    assert entered.wait(DEADLINE_S)
+    second.start()
+    assert second_inside.wait(DEADLINE_S)
+    release.set()
+    first.join(DEADLINE_S)
+    second.join(DEADLINE_S)
+    assert calls == ["http://localhost:11434/api/tags"]
+    assert results == [Check(ok=True, detail="available")] * 2
+
+
+def test_the_index_check_closes_the_collection_view_it_opens(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    closed: list[bool] = []
+
+    class View(InMemoryVectorStore):
+        def __init__(self, url: str, collection: str, dimensions: int) -> None:
+            super().__init__()
+
+        def collection_info(self) -> dict[str, Any]:
+            raise VectorStoreError("Qdrant collection info failed: http://internal-qdrant refused")
+
+        def close(self) -> None:
+            closed.append(True)
+
+    monkeypatch.setattr(readiness_module, "QdrantVectorStore", View)
+    with pytest.raises(VectorStoreError):
+        index_check(persistent_settings(tmp_path), None)
+    assert closed == [True]

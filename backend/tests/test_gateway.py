@@ -10,11 +10,13 @@ import pytest
 from app.config import GenerationSettings
 from app.models.gateway import (
     COMPLETION_PROBE_CAP_S,
+    OLLAMA_DEFAULT_BASE,
     OLLAMA_PROBE_TIMEOUT_S,
     CompletionRequest,
     GatewayError,
     ProbeResult,
     complete,
+    generation_api_base,
     parse_reasoning,
     probe,
     probe_timeout_s,
@@ -173,3 +175,28 @@ def test_a_failing_provider_is_curated_and_logged(
         result = probe(generation("openai/gpt-test"))
     assert result == ProbeResult(ok=False, detail="The model provider did not answer.")
     assert any("provider down" in str(r.exc_info) for r in caplog.records if r.exc_info)
+
+
+def test_the_probe_asks_the_server_generation_calls_not_ollama_host(
+    stub_litellm: StubLiteLLM,
+) -> None:
+    """With GENERATION_API_BASE unset, generation goes to LiteLLM's Ollama
+    default even when OLLAMA_HOST (the embedding server) is elsewhere; the
+    probe must ask that same server, or readiness reports a false green."""
+    from app.lab import build_generator
+
+    from tests.test_standard_rag import make_settings
+
+    settings = make_settings(generation=generation("ollama/qwen3.6:latest"))
+    server = TagsServer(["qwen3.6:latest"])
+    probe(settings.generation, ollama_host="http://ollama:11434", transport=server.transport())
+    build_generator("litellm", settings).generate("q", [])
+    (call,) = stub_litellm.calls
+    assert server.urls == [f"{call['base_url']}/api/tags"]
+    assert call["base_url"] == generation_api_base(settings.generation) == OLLAMA_DEFAULT_BASE
+
+
+def test_a_configured_api_base_is_used_unchanged() -> None:
+    settings = generation("openai/gpt-test", api_base="http://gateway.internal:4000")
+    assert generation_api_base(settings) == "http://gateway.internal:4000"
+    assert generation_api_base(generation("openai/gpt-test")) is None

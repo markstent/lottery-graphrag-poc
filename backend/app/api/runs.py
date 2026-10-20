@@ -254,13 +254,20 @@ class QueryService:
         return sink.wait(after, timeout)
 
     def lab_status(self) -> tuple[Lab | None, LabState]:
-        """The built lab, or None, and its state; never builds or waits."""
+        """The built lab, or None, and its state; never builds or waits.
+
+        The build flags are read before the lab: a build that finishes
+        between the two reads then shows as building or built, never as
+        not started.
+        """
+        building = self._warming or self._lab_lock.locked()
+        failed = self._lab_failed
         lab = self._lab
         if lab is not None:
             return lab, "built"
-        if self._warming or self._lab_lock.locked():
+        if building:
             return None, "building"
-        return None, "failed" if self._lab_failed else "not started"
+        return None, "failed" if failed else "not started"
 
     def warm_up(self) -> None:
         """Start building the lab in the background (API start-up). Routes

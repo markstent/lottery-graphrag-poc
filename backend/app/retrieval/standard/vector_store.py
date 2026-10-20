@@ -365,6 +365,10 @@ class QdrantVectorStore:
             "dimensions": int(dense.size) if dense is not None else None,
         }
 
+    def close(self) -> None:
+        """Release the client's connections."""
+        self._client.close()
+
     def ensure_collection(self) -> None:
         from qdrant_client import models
 
