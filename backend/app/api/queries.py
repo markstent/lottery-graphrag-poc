@@ -1,5 +1,5 @@
 """Query execution endpoints (docs/07 sections 3-6, 15) plus the fixed demo
-configuration and the published benchmark summary.
+configuration. The benchmark routes are in app.api.benchmarks.
 
 Every run route reads the run store. Replay contract: GET
 /queries/{run_id}/events returns the recorded event sequence; it never
@@ -10,14 +10,11 @@ before it returns (ADR-007's per-thread rule).
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime
-from pathlib import Path
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import StreamingResponse
 
 from app.api.errors import ApiError, ErrorCode
@@ -25,7 +22,6 @@ from app.api.runs import QueryService
 from app.api.schemas import (
     HISTORY_LIMIT_DEFAULT,
     HISTORY_LIMIT_MAX,
-    BenchmarkSummary,
     DemoQuestion,
     EventStream,
     QueryAccepted,
@@ -231,59 +227,5 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
     @router.get("/demo/questions", response_model=list[DemoQuestion])
     def read_demo_questions() -> list[DemoQuestion]:
         return DEMO_QUESTIONS
-
-    return router
-
-
-# The summary.json schema this API publishes; the benchmark harness writes it,
-# and the API reads it from disk only.
-SUMMARY_SCHEMA_VERSION = "2"
-
-
-def latest_benchmark(runs_dir: Path) -> tuple[str, dict[str, Any]] | None:
-    """The newest official run of the whole bank under ``runs_dir``, else the
-    newest run of any kind (a subset official run, such as a pilot, counts as
-    any kind and is published with its label).
-
-    A run is a directory holding a schema-2 ``summary.json``; newest means the
-    latest ``reproducibility.run.started_at`` as a point in time, then the
-    directory name. A malformed summary raises rather than being skipped.
-    """
-    runs: list[tuple[str, dict[str, Any]]] = []
-    for path in runs_dir.glob("*/summary.json"):
-        summary = json.loads(path.read_text(encoding="utf-8"))
-        if summary.get("schema_version") == SUMMARY_SCHEMA_VERSION:
-            runs.append((path.parent.name, summary))
-    official = [run for run in runs if run[1]["run_kind"] == "official" and _full(run[1])]
-    pool = official or runs
-    if not pool:
-        return None
-    return max(
-        pool,
-        key=lambda run: (
-            datetime.fromisoformat(run[1]["reproducibility"]["run"]["started_at"]),
-            run[0],
-        ),
-    )
-
-
-def _full(summary: dict[str, Any]) -> bool:
-    """Whether the run scored the whole bank (no strata, no per-question limit)."""
-    return bool(summary["selection"] == {"strata": None, "limit": None})
-
-
-def build_benchmarks_router(runs_dir: Path) -> APIRouter:
-    """Publish the latest benchmark summary under ``runs_dir`` (ApiSettings.benchmark_dir)."""
-    router = APIRouter()
-
-    @router.get("/benchmarks/latest", response_model=BenchmarkSummary)
-    def read_latest_benchmark() -> BenchmarkSummary:
-        latest = latest_benchmark(runs_dir)
-        if latest is None:
-            raise HTTPException(status_code=404, detail="no published benchmark run")
-        run_id, summary = latest
-        return BenchmarkSummary(
-            run_id=run_id, run_kind=summary["run_kind"], label=summary["label"], summary=summary
-        )
 
     return router

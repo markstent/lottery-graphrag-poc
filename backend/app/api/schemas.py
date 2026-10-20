@@ -153,7 +153,7 @@ class DemoQuestion(BaseModel):
 
 
 class BenchmarkSummary(BaseModel):
-    """Response for GET /api/v1/benchmarks/latest.
+    """Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
 
     ``summary`` is the run's ``summary.json`` (schema 2), passed through
     unchanged: the only benchmark source the API publishes. ``run_kind``
@@ -165,6 +165,85 @@ class BenchmarkSummary(BaseModel):
     run_kind: str
     label: str | None
     summary: dict[str, Any]
+
+
+class BenchmarkRunOut(BaseModel):
+    """One published run in GET /api/v1/benchmarks, from its ``summary.json``:
+    ``selection`` is the part of the bank it scored, ``worlds`` its seeds."""
+
+    run_id: str
+    run_kind: str
+    label: str | None
+    started_at: str
+    selection: dict[str, Any]
+    worlds: list[int]
+
+
+class PipelineScore(BaseModel):
+    """One pipeline's means over the scored repeats of one question; None
+    where no scored repeat defines the metric."""
+
+    answer: float | None
+    evidence_f1: float | None
+
+
+class QuestionOut(BaseModel):
+    """One bank question for the Help screen (GET /api/v1/benchmarks/questions).
+
+    ``hidden_truth`` is the planted scenario's truth for H5 questions, else
+    None. ``scores`` are per pipeline from the chosen run, None when that run
+    did not score this question or no run exists.
+    """
+
+    question_id: str
+    instance_id: str
+    text: str
+    tests: str
+    stratum: str
+    scenario_id: str | None
+    ontology_dependent: bool
+    expected_answer: str
+    hidden_truth: str | None
+    scores: dict[str, PipelineScore] | None
+
+
+class BenchmarkStart(BaseModel):
+    """Request for POST /api/v1/benchmarks; the seeds, strata and kind are
+    checked against the harness's own before a job starts."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["smoke", "official"]
+    seeds: list[int] = Field(min_length=1)
+    repeats: int = Field(ge=1)
+    strata: list[str] | None = Field(default=None, min_length=1)
+    limit: int | None = Field(default=None, ge=1)
+
+
+JobStatus = Literal["running", "completed", "failed", "cancelled"]
+
+
+class JobProgress(BaseModel):
+    """The world a job is running and how far through its instances it is."""
+
+    world_seed: int
+    instances_done: int
+    instances_total: int
+
+
+class BenchmarkJob(BaseModel):
+    """A benchmark job (POST /api/v1/benchmarks, GET /benchmarks/jobs/{job_id}).
+
+    ``run_id`` names the published run once the job completed; ``progress``
+    is None until the first world reaches its first instance; ``error`` is
+    the curated envelope of a failed job.
+    """
+
+    job_id: str
+    status: JobStatus
+    run_id: str | None = None
+    error: ApiErrorBody | None = None
+    progress: JobProgress | None = None
 
 
 # -- Data Model: datasets, dictionary, rows and records -----------------------
@@ -357,14 +436,15 @@ class Neighbours(BaseModel):
 class ConceptOut(BaseModel):
     """One ontology concept. ``labels`` and ``synonyms`` are keyed by
     language, ``binding_counts`` by market id; codes shared by every market
-    (channels, incident types) count under ``shared``. ``allowed_relationships``
-    are the ontology edges the graph holds at this concept."""
+    (channels, incident types) count under ``shared``. ``relationships`` are
+    the relationship types the concept takes part in, derived from ingestion
+    (``IS_A`` with a parent or child, ``MAPS_TO`` with a bound code)."""
 
     concept_id: str
     parent_id: str | None
     labels: dict[str, str]
     synonyms: dict[str, list[str]]
-    allowed_relationships: list[str]
+    relationships: list[str]
     binding_counts: dict[str, int]
 
 

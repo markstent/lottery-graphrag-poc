@@ -2,12 +2,14 @@
 
 Wires the presentation surface: health, persisted query runs over pipelines
 A/B/C with recorded replayable events and run history (docs/07 sections 3-6,
-ADR-007), the fixed demo question set, the latest published benchmark
-summary, the Data Model reads (worlds, dictionary, rows and records) and
-the graph reads (schema, ingestion statistics, nodes and neighbours) and
-the reference reads (ontology, scenarios and configured models).
+ADR-007), the fixed demo question set, the benchmark routes (published
+runs, the question catalogue and benchmark jobs), the Data Model reads
+(worlds, dictionary, rows and records), the graph reads (schema, ingestion
+statistics, nodes and neighbours) and the reference reads (ontology,
+scenarios and configured models).
 The query service reads its world and models from configuration only; it
-never reads the truth ledger (ADR-008).
+never reads the truth ledger (ADR-008). Live runs and benchmark jobs share
+one graph lease, so a benchmark never re-ingests the graph under a live run.
 """
 
 import logging
@@ -20,11 +22,11 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import data_model, graph_model, health, queries, reference
+from app.api import benchmarks, data_model, graph_model, health, queries, reference
 from app.api.errors import install_handlers
 from app.api.graph_world import GraphWorldCheck
 from app.api.readiness import ReadinessChecks
-from app.api.runs import QueryService, start_lab
+from app.api.runs import GraphLease, QueryService, start_lab
 from app.config import GraphConfig, api_from_env, from_env
 from app.lab import Lab
 from app.observability.logging import configure_logging, run_context
@@ -58,6 +60,9 @@ def create_app(
     graph = graph_config if graph_config is not None else GraphConfig.from_env()
     # One cache of which world the graph holds, for every route and readiness.
     graph_world = GraphWorldCheck()
+    # One lease on the shared graph: live runs and benchmark jobs exclude each other.
+    lease = GraphLease()
+    jobs = benchmarks.BenchmarkJobs(settings.benchmark_dir, lease)
 
     @asynccontextmanager
     async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -69,13 +74,14 @@ def create_app(
         if interrupted:
             logger.warning("runs interrupted by a server stop", extra={"runs": interrupted})
         factory = lab_factory if lab_factory is not None else default_lab
-        service = QueryService(store, factory, graph)
+        service = QueryService(store, factory, graph, lease)
         application.state.query_service = service
         application.state.readiness = ReadinessChecks(service, graph, world=graph_world)
         service.warm_up()
         yield
 
     application = FastAPI(title="Semantic Context Lab", version=__version__, lifespan=lifespan)
+    application.state.benchmark_jobs = jobs
     # Before CORS: the unhandled-error middleware must sit inside it.
     install_handlers(application)
 
@@ -105,7 +111,7 @@ def create_app(
         queries.build_queries_router(settings.sse_heartbeat_s), prefix=API_PREFIX
     )
     application.include_router(
-        queries.build_benchmarks_router(settings.benchmark_dir), prefix=API_PREFIX
+        benchmarks.build_benchmarks_router(settings.benchmark_dir, jobs), prefix=API_PREFIX
     )
     application.include_router(
         data_model.build_data_model_router(graph, graph_world), prefix=API_PREFIX

@@ -27,7 +27,7 @@ import json
 import logging
 import subprocess
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -369,11 +369,14 @@ class BenchmarkRunner:
         # Every pipeline shares the one recording generator, as they share the lab's.
         self._run_lab = dataclasses.replace(lab, generator=self._shown)
 
-    def run(self) -> WorldRun:
+    def run(self, on_instance: Callable[[int, int], None] | None = None) -> WorldRun:
         """Run the bank's instances in bank order.
 
         A run over part of the bank selects it before the runner is built
         (``official.select_instances``), so the selection is recorded.
+        ``on_instance(done, total)`` is called before each instance and once
+        after the last; an exception it raises stops the world there, which
+        is how a benchmark job is cancelled between instances.
         """
         wired = None
         if set(self.pipelines) & {"B", "C"}:
@@ -385,7 +388,14 @@ class BenchmarkRunner:
             if wired is not None:
                 available.update(wired.pipelines)
             pipelines = {tag: available[tag] for tag in self.pipelines}
-            results = [self._run_instance(instance, pipelines) for instance in self.bank.instances]
+            instances = self.bank.instances
+            results: list[InstanceResult] = []
+            for done, instance in enumerate(instances):
+                if on_instance is not None:
+                    on_instance(done, len(instances))
+                results.append(self._run_instance(instance, pipelines))
+            if on_instance is not None:
+                on_instance(len(instances), len(instances))
         finally:
             if wired is not None:
                 wired.reader.close()

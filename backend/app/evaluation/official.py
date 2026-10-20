@@ -8,7 +8,10 @@ last world (or a failure) the presentation world's graph is ingested again.
 
 :func:`run_benchmark` writes ``results.json``, ``report.md`` and
 ``summary.json`` into the run directory, each through a temporary file and
-``os.replace`` so the API never reads a half-written summary.
+``os.replace`` so the API never reads a half-written summary. A run is
+cancelled cooperatively: between instances and before each world it checks
+its ``cancelled`` flag, and a cancelled run raises :class:`BenchmarkCancelled`
+after restoring the presentation graph, writing nothing.
 :func:`run_sweep` runs the multi-hop questions with B and C at each graph
 depth and reports descriptive means only. :func:`compare_runs` pairs two
 official runs of different generation models over the same banks.
@@ -24,6 +27,7 @@ import json
 import logging
 import os
 import tempfile
+import threading
 from collections import Counter, defaultdict
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
@@ -111,10 +115,21 @@ class PrepareSteps:
     indexed_points: Callable[[WorldPaths], int]
 
 
-class WorldRunner(Protocol):
-    """What a run needs of a runner: one world's results."""
+# Called before each instance and once after the last: (instances done, instances total).
+InstanceHook = Callable[[int, int], None]
+# The progress of a run: (world seed, instances done, instances total).
+ProgressHook = Callable[[int, int, int], None]
 
-    def run(self) -> WorldRun: ...
+
+class BenchmarkCancelled(Exception):
+    """A run's ``cancelled`` flag was set; the run stopped and wrote nothing."""
+
+
+class WorldRunner(Protocol):
+    """What a run needs of a runner: one world's results, calling
+    ``on_instance`` between instances (it may raise to stop the world)."""
+
+    def run(self, on_instance: InstanceHook | None = None) -> WorldRun: ...
 
 
 class RunnerFactory(Protocol):
@@ -363,9 +378,16 @@ def run_benchmark(
     depth: int = OFFICIAL_DEPTH,
     steps: PrepareSteps | None = None,
     runner_factory: RunnerFactory | None = None,
+    cancelled: threading.Event | None = None,
+    on_progress: ProgressHook | None = None,
 ) -> BenchmarkRun:
     """Prepare and run each world in turn, restore the presentation graph,
-    then write the run's three files into ``out_dir``."""
+    then write the run's three files into ``out_dir``.
+
+    ``cancelled`` is checked before each world and between instances; once
+    it is set the run raises :class:`BenchmarkCancelled`. ``on_progress``
+    hears each world's instances done and total as the runner reaches them.
+    """
     _refuse_used_dir(out_dir)
     preflight(kind, repeats)
     selection = Selection(None if strata is None else tuple(strata), limit)
@@ -374,12 +396,14 @@ def run_benchmark(
     worlds: list[WorldRun] = []
     with _presentation_graph_restored(steps):
         for seed in seeds:
+            _stop_if_cancelled(cancelled)
             paths = prepare_world(seed, steps)
             bank = select_instances(load_frozen_bank(paths.bank_path), strata, limit)
             runner = factory(
                 paths, bank, kind=kind, repeats=repeats, pipelines=PIPELINES, depth=depth
             )
-            worlds.append(runner.run())
+            worlds.append(runner.run(_instance_hook(seed, cancelled, on_progress)))
+    _stop_if_cancelled(cancelled)
     run = BenchmarkRun(kind, run_label(kind, selection), _first_record(worlds), worlds, selection)
     out_dir.mkdir(parents=True, exist_ok=True)
     _write_atomic(out_dir / "results.json", _json(run.to_payload()))
@@ -387,6 +411,24 @@ def run_benchmark(
     # Last: the API publishes summary.json, so the other files exist once it does.
     _write_atomic(out_dir / "summary.json", _json(summarize(run)))
     return run
+
+
+def _stop_if_cancelled(cancelled: threading.Event | None) -> None:
+    if cancelled is not None and cancelled.is_set():
+        raise BenchmarkCancelled("the benchmark run was cancelled")
+
+
+def _instance_hook(
+    seed: int, cancelled: threading.Event | None, on_progress: ProgressHook | None
+) -> InstanceHook:
+    """The runner's hook for one world: stop when cancelled, else report progress."""
+
+    def hook(done: int, total: int) -> None:
+        _stop_if_cancelled(cancelled)
+        if on_progress is not None:
+            on_progress(seed, done, total)
+
+    return hook
 
 
 def run_sweep(
@@ -491,7 +533,7 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
     repeats; pairs cluster by logical question and world. Each cell reports
     the clustered bootstrap interval only, with no test.
     """
-    runs = {name: _load_results(path) for name, path in (("small", small), ("large", large))}
+    runs = {name: load_results(path) for name, path in (("small", small), ("large", large))}
     for name, payload in runs.items():
         if payload["kind"] != "official":
             raise ValueError(f"the {name} run is a {payload['kind']} run, not an official run")
@@ -509,7 +551,7 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
         raise ValueError(
             f"the runs were scored on different banks: {banks['small']} and {banks['large']}"
         )
-    values = {name: _instance_values(p) for name, p in runs.items()}
+    values = {name: instance_means(p) for name, p in runs.items()}
     cells = []
     for tag in PIPELINES:
         for stratum in (*STRATUM_KEYS, OVERALL):
@@ -579,7 +621,7 @@ _COMPARED_VALUES: dict[str, Callable[[dict[str, Any]], float | None]] = {
 }
 
 
-def _instance_values(
+def instance_means(
     payload: dict[str, Any],
 ) -> dict[str, tuple[str, str, dict[tuple[str, str], float]]]:
     """Per instance id: its stratum key, its cluster and, per pipeline and
@@ -604,7 +646,7 @@ def _instance_values(
     return values
 
 
-def _load_results(run_dir: Path) -> dict[str, Any]:
+def load_results(run_dir: Path) -> dict[str, Any]:
     path = run_dir / "results.json"
     if not path.exists():
         raise ValueError(f"{run_dir} holds no results.json")

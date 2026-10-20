@@ -263,6 +263,29 @@ def test_each_repeat_is_recorded_and_scored(runner_smoke: BenchmarkRunner) -> No
     assert all(len(result.scores[tag]) == 2 for tag in ("A", "B", "C"))
 
 
+def test_the_instance_hook_runs_between_instances(runner_smoke: BenchmarkRunner) -> None:
+    calls: list[tuple[int, int]] = []
+    world = runner_smoke.run(lambda done, total: calls.append((done, total)))
+    total = len(runner_smoke.bank.instances)
+    assert calls == [(done, total) for done in range(total + 1)]
+    assert len(world.results) == total
+
+
+def test_a_raising_hook_stops_the_world_before_the_next_instance(
+    runner_smoke: BenchmarkRunner,
+) -> None:
+    calls: list[int] = []
+
+    def stop_at_second(done: int, total: int) -> None:
+        calls.append(done)
+        if done == 1:
+            raise KeyboardInterrupt
+
+    with pytest.raises(KeyboardInterrupt):
+        runner_smoke.run(stop_at_second)
+    assert calls == [0, 1]
+
+
 def test_retrieval_must_not_change_between_repeats(
     runner_with_flaky_store: BenchmarkRunner,
 ) -> None:
@@ -485,7 +508,8 @@ def test_the_runner_runs_the_bank_it_is_given_with_its_pipelines(
     world = runner.run()
     assert [r.instance.question_id for r in world.results] == ["L06"]
     assert set(world.results[0].runs) == {"A"}
-    assert list(inspect.signature(BenchmarkRunner.run).parameters) == ["self"]
+    # Its one parameter is the between-instances hook, not a selection.
+    assert list(inspect.signature(BenchmarkRunner.run).parameters) == ["self", "on_instance"]
 
 
 def test_world_run_carries_the_bank_identity(

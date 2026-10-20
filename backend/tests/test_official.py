@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import re
+import threading
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -32,6 +33,8 @@ from app.evaluation.grounding import (
 from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
+    BenchmarkCancelled,
+    InstanceHook,
     PrepareSteps,
     WorldPaths,
     compare_runs,
@@ -158,9 +161,13 @@ class FakeRunner:
         self.seed, self.bank, self.kind, self.depth = seed, bank, kind, depth
         self.pipelines, self.fail = pipelines, fail
 
-    def run(self) -> WorldRun:
+    def run(self, on_instance: InstanceHook | None = None) -> WorldRun:
         if self.fail:
             raise RuntimeError(f"world {self.seed} failed")
+        total = len(self.bank.instances)
+        for done in (*range(total), total):
+            if on_instance is not None:
+                on_instance(done, total)
         record = dataclasses.replace(
             _record(self.kind),
             world_seed=self.seed,
@@ -244,6 +251,58 @@ def test_a_failed_world_still_restores_the_presentation_graph(
             runner_factory=recorder_failing_on_2027.runner,
         )
     assert recorder_failing_on_2027.ingested[-1] == 2026
+
+
+def test_progress_is_reported_per_world_and_instance(recorder: Recorder) -> None:
+    progress: list[tuple[int, int, int]] = []
+    run_benchmark(
+        "smoke",
+        (2026, 2027),
+        repeats=1,
+        out_dir=recorder.tmp,
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+        on_progress=lambda seed, done, total: progress.append((seed, done, total)),
+    )
+    assert progress == [(seed, done, 9) for seed in (2026, 2027) for done in range(10)]
+
+
+def test_a_cancelled_run_restores_the_graph_and_writes_nothing(recorder: Recorder) -> None:
+    cancelled = threading.Event()
+
+    def cancel_at_third(seed: int, done: int, total: int) -> None:
+        if done == 2:
+            cancelled.set()
+
+    with pytest.raises(BenchmarkCancelled):
+        run_benchmark(
+            "smoke",
+            (2026, 2027),
+            repeats=1,
+            out_dir=recorder.tmp,
+            steps=recorder.steps,
+            runner_factory=recorder.runner,
+            cancelled=cancelled,
+            on_progress=cancel_at_third,
+        )
+    assert recorder.ingested == [2026, 2026]
+    assert not recorder.tmp.exists()
+
+
+def test_a_run_cancelled_before_it_starts_prepares_no_world(recorder: Recorder) -> None:
+    cancelled = threading.Event()
+    cancelled.set()
+    with pytest.raises(BenchmarkCancelled):
+        run_benchmark(
+            "smoke",
+            (2026,),
+            repeats=1,
+            out_dir=recorder.tmp,
+            steps=recorder.steps,
+            runner_factory=recorder.runner,
+            cancelled=cancelled,
+        )
+    assert recorder.generated == [] and recorder.ingested == [2026]
 
 
 def _write_run(directory: Path, run: BenchmarkRun) -> Path:

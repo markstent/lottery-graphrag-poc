@@ -8,7 +8,11 @@ The boundary is structural, not conventional:
    package reaches its output path only through ``DEFAULT_TRUTH_PATH``.
 2. The scenario package may write the ledger but must never import the
    loader; producer and consumer share only the JSON contract.
-3. ``app.evaluation`` is imported by nothing under ``app/`` except itself.
+3. ``app.evaluation`` is imported by nothing under ``app/`` except itself and
+   the two API modules that publish evaluator output (``EVALUATION_API_MODULES``):
+   the benchmark routes and post-run scoring. Every other API module stays
+   under rule 1, and no API module names the ledger: the two reach it only
+   through the evaluator's own functions.
 4. Retrievable artefacts (Parquet datasets, manifest) contain no ledger
    fields; scenario configuration in the manifest records only ids,
    strengths and row counts, never planted specifics.
@@ -40,6 +44,10 @@ ISOLATED_NAMESPACES = (
 )
 ISOLATED_MODULES = ("lab.py", "traces.py")
 FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "app.evaluation")
+# The only API modules that may import app.evaluation (Phase 4).
+EVALUATION_API_MODULES = frozenset({"benchmarks.py", "scoring.py"})
+LEDGER_STRINGS = ("data/truth", "truth_ledger")
+API_DIR = APP_DIR / "api"
 
 
 def _tree(path: Path) -> ast.Module:
@@ -68,9 +76,18 @@ def _imported_modules(tree: ast.Module, module_path: Path) -> set[str]:
     return modules
 
 
+def _imports_evaluation(path: Path) -> bool:
+    return any(name.startswith("app.evaluation") for name in _imported_modules(_tree(path), path))
+
+
+def _evaluation_api_module(path: Path) -> bool:
+    return path.parent == API_DIR and path.name in EVALUATION_API_MODULES
+
+
 def _isolated_paths() -> list[Path]:
     paths = [path for ns in ISOLATED_NAMESPACES for path in sorted((APP_DIR / ns).rglob("*.py"))]
-    return [*paths, *(APP_DIR / name for name in ISOLATED_MODULES)]
+    kept = [path for path in paths if not _evaluation_api_module(path)]
+    return [*kept, *(APP_DIR / name for name in ISOLATED_MODULES)]
 
 
 def test_isolated_modules_exist() -> None:
@@ -88,6 +105,23 @@ def test_isolated_namespaces_never_reference_evaluator_truth() -> None:
         imports = _imported_modules(_tree(path), path)
         assert not any(name.startswith("app.evaluation") for name in imports), (
             f"{where} imports app.evaluation"
+        )
+
+
+def test_only_two_api_modules_import_evaluation() -> None:
+    importing = {path.name for path in sorted(API_DIR.rglob("*.py")) if _imports_evaluation(path)}
+    assert importing <= EVALUATION_API_MODULES, importing - EVALUATION_API_MODULES
+    assert all(
+        path.parent == API_DIR for path in API_DIR.rglob("*.py") if _imports_evaluation(path)
+    )
+    assert "benchmarks.py" in importing
+
+
+def test_api_reads_the_ledger_only_through_evaluation() -> None:
+    for path in sorted(API_DIR.rglob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert not any(marker in source for marker in LEDGER_STRINGS), (
+            f"{path.relative_to(APP_DIR)} names the truth ledger"
         )
 
 
@@ -125,9 +159,9 @@ def test_scenario_writer_never_imports_the_loader() -> None:
         )
 
 
-def test_evaluation_loader_is_imported_only_by_itself() -> None:
+def test_evaluation_is_imported_only_by_itself_and_the_two_api_modules() -> None:
     for path in sorted(APP_DIR.rglob("*.py")):
-        if path.relative_to(APP_DIR).parts[0] == "evaluation":
+        if path.relative_to(APP_DIR).parts[0] == "evaluation" or _evaluation_api_module(path):
             continue
         imports = _imported_modules(_tree(path), path)
         assert not any(name.startswith("app.evaluation") for name in imports), (

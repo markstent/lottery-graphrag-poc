@@ -80,7 +80,7 @@ def test_concepts_carry_four_language_labels(client: TestClient) -> None:
     assert set(concept["labels"]) >= {"en", "el", "de", "cs"}
     assert concept["parent_id"] == "CONCEPT_DRAW_GAME"
     assert concept["synonyms"]["el"]
-    assert concept["allowed_relationships"] == ["IS_A", "MAPS_TO"]
+    assert concept["relationships"] == ["IS_A", "MAPS_TO"]
     counts = concept["binding_counts"]
     assert sum(counts.values()) > 0
     assert set(counts) <= {"MKT_UK", "MKT_GR", "MKT_AT", "MKT_CZ", "shared"}
@@ -90,7 +90,7 @@ def test_a_concept_without_bindings_has_empty_counts(client: TestClient) -> None
     root = _concepts(client)["CONCEPT_LOTTERY_PRODUCT"]
     assert root["binding_counts"] == {}
     assert root["parent_id"] is None
-    assert root["allowed_relationships"] == ["IS_A"]
+    assert root["relationships"] == ["IS_A"]
 
 
 def test_members_are_the_bound_local_codes_with_their_names(client: TestClient) -> None:

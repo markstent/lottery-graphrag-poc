@@ -12,6 +12,10 @@ Cancellation is cooperative: once a run's cancel flag is set, the next
 event any pipeline emits raises ``RunCancelled``, so every event is a
 cancellation point between stages.
 
+Live runs share Neo4j with benchmark jobs, which ingest other worlds into
+it while they run; ``GraphLease`` keeps the two apart, so a run starts only
+while no benchmark job holds the graph.
+
 The truth ledger is never read here: the service grounds nothing and scores
 nothing. It runs retrieval and records observable events plus answers.
 """
@@ -26,7 +30,14 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Literal
 
-from app.api.errors import CANCELLED_BODY, ApiErrorBody, ErrorCode, classify, run_error_body
+from app.api.errors import (
+    CANCELLED_BODY,
+    ApiError,
+    ApiErrorBody,
+    ErrorCode,
+    classify,
+    run_error_body,
+)
 from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
 from app.events import (
@@ -179,19 +190,69 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+GRAPH_BUSY_MESSAGE = "a benchmark run is using the graph; try again when it finishes"
+QUERY_RUNNING_MESSAGE = "a live query is using the graph; try again when it finishes"
+JOB_RUNNING_MESSAGE = "a benchmark job is already running; one runs at a time"
+
+
+class GraphLease:
+    """Who holds the shared graph: any number of live runs, or one benchmark job.
+
+    A benchmark job re-ingests other worlds into the Neo4j that live runs
+    read, so neither starts while the other holds the graph; each refusal is
+    a 409 a client may retry. ``app.main`` owns the one lease and hands it to
+    the query service and the benchmark jobs. Safe for concurrent calls.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._queries = 0
+        self._benchmark = False
+
+    def take_query(self) -> None:
+        with self._lock:
+            if self._benchmark:
+                raise ApiError(409, ErrorCode.VALIDATION_ERROR, GRAPH_BUSY_MESSAGE, retryable=True)
+            self._queries += 1
+
+    def release_query(self) -> None:
+        with self._lock:
+            self._queries -= 1
+
+    def take_benchmark(self) -> None:
+        with self._lock:
+            if self._benchmark:
+                raise ApiError(409, ErrorCode.VALIDATION_ERROR, JOB_RUNNING_MESSAGE, retryable=True)
+            if self._queries:
+                raise ApiError(
+                    409, ErrorCode.VALIDATION_ERROR, QUERY_RUNNING_MESSAGE, retryable=True
+                )
+            self._benchmark = True
+
+    def release_benchmark(self) -> None:
+        with self._lock:
+            self._benchmark = False
+
+
 class QueryService:
     """Starts, runs and cancels persisted runs; safe for concurrent calls.
 
     ``_lock`` guards only the map of active runs (each holding its cancel
     flag); the store is safe to share across threads. The lab is built once,
     by ``warm_up`` at start-up (or by the first run), behind its own lock that
-    no route takes, so a slow cold start never blocks a read.
+    no route takes, so a slow cold start never blocks a read. Each run holds
+    ``lease`` from its start until its worker ends.
     """
 
     def __init__(
-        self, store: RunStore, lab_factory: Callable[[], Lab], graph_config: GraphConfig
+        self,
+        store: RunStore,
+        lab_factory: Callable[[], Lab],
+        graph_config: GraphConfig,
+        lease: GraphLease | None = None,
     ) -> None:
         self.store = store
+        self._lease = lease if lease is not None else GraphLease()
         self._lab_factory = lab_factory
         self._graph_config = graph_config
         self._lab: Lab | None = None
@@ -202,7 +263,17 @@ class QueryService:
         self._active: dict[str, RecordingSink] = {}
 
     def start(self, request: QueryRequest) -> str:
-        """Store a queued run and start its worker; returns the run id."""
+        """Store a queued run and start its worker; returns the run id.
+        Raises a 409 ``ApiError``, storing nothing, while a benchmark job
+        holds the graph."""
+        self._lease.take_query()
+        try:
+            return self._start(request)
+        except BaseException:
+            self._lease.release_query()
+            raise
+
+    def _start(self, request: QueryRequest) -> str:
         run_id = f"RUN-{uuid.uuid4().hex[:12].upper()}"
         configurations = tuple(request.configurations)
         row = RunRow(
@@ -308,6 +379,7 @@ class QueryService:
                 # Whatever happened, the run is no longer active and its waiters wake.
                 with self._lock:
                     self._active.pop(row.run_id, None)
+                self._lease.release_query()
                 sink.close()
                 self.store.close()
 

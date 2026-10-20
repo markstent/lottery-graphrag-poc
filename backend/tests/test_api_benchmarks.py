@@ -1,0 +1,652 @@
+"""Benchmark routes: published runs, the question catalogue with answer keys
+and hidden truths, and benchmark jobs with cancel (Phase 4 Task 12).
+
+No service runs here. The question catalogue reads a frozen bank grounded
+into the planted tiny world. Jobs run ``run_benchmark`` with the recorders
+of tests/test_official.py as its preparation steps and runner, over a
+temporary data directory, so nothing is generated, ingested or indexed.
+"""
+
+from __future__ import annotations
+
+import json
+import shutil
+import threading
+import time
+from collections.abc import Callable, Iterator
+from pathlib import Path
+from typing import Any
+
+import pytest
+from app.datasets.config import GenerationConfig
+from app.datasets.parquet import write_world
+from app.datasets.schema import TABLE_SCHEMAS
+from app.datasets.world import build_world
+from app.evaluation import official
+from app.evaluation.catalogue import question_catalogue
+from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
+from app.evaluation.official import InstanceHook, WorldPaths, world_paths
+from app.evaluation.runner import WorldRun
+from app.lab import Lab
+from app.main import create_app
+from app.scenarios.engine import apply_scenarios
+from app.scenarios.ledger import build_ledger, write_ledger
+from fastapi.testclient import TestClient
+
+from tests.conftest import build_lab_offline
+from tests.test_official import FakeRunner, Recorder
+
+GRAPH_BUSY = "a benchmark run is using the graph; try again when it finishes"
+DEADLINE_S = 15.0
+FINISHED = frozenset({"completed", "failed", "cancelled"})
+
+
+def smoke(**fields: Any) -> dict[str, Any]:
+    return {"kind": "smoke", "seeds": [2026], "repeats": 1, **fields}
+
+
+def wait_job(client: TestClient, job_id: str) -> dict[str, Any]:
+    """Poll the job until it finishes; fail the test after ``DEADLINE_S``."""
+    deadline = time.monotonic() + DEADLINE_S
+    while time.monotonic() < deadline:
+        job: dict[str, Any] = client.get(f"/api/v1/benchmarks/jobs/{job_id}").json()
+        if job["status"] in FINISHED:
+            return job
+        time.sleep(0.01)
+    raise AssertionError(f"job {job_id} did not finish within {DEADLINE_S}s")
+
+
+def wait_query(client: TestClient, run_id: str) -> dict[str, Any]:
+    deadline = time.monotonic() + DEADLINE_S
+    while time.monotonic() < deadline:
+        run: dict[str, Any] = client.get(f"/api/v1/queries/{run_id}").json()
+        if run["status"] in FINISHED:
+            return run
+        time.sleep(0.01)
+    raise AssertionError(f"query {run_id} did not finish within {DEADLINE_S}s")
+
+
+# -- fixtures -------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def tiny_bank(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, FrozenBank]:
+    """The planted tiny world, its ledger and the bank frozen into them."""
+    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
+    outcomes = apply_scenarios(world)
+    root = tmp_path_factory.mktemp("tiny-world-benchmarks")
+    dataset_dir = root / "tiny-seed42"
+    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
+    manifest = json.dumps(world.manifest, indent=2, sort_keys=True) + "\n"
+    (dataset_dir / "_manifest.json").write_text(manifest)
+    ledger_path = write_ledger(root / "ledger.json", build_ledger(outcomes, world))
+    return dataset_dir, ledger_path, freeze_bank(dataset_dir, ledger_path)
+
+
+@pytest.fixture
+def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    root = tmp_path / "data"
+    monkeypatch.setattr(official, "DATA_DIR", root)
+    monkeypatch.delenv("QDRANT_COLLECTION", raising=False)
+    return root
+
+
+@pytest.fixture
+def runs_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    path = tmp_path / "runs"
+    path.mkdir()
+    monkeypatch.setenv("BENCHMARK_DIR", str(path))
+    return path
+
+
+@pytest.fixture
+def client(data_dir: Path, runs_dir: Path) -> Iterator[TestClient]:
+    with TestClient(create_app()) as test_client:
+        yield test_client
+
+
+@pytest.fixture
+def presentation_bank(data_dir: Path, tiny_bank: tuple[Path, Path, FrozenBank]) -> FrozenBank:
+    """The tiny bank and its ledger where the API finds the presentation world's."""
+    _, ledger_path, bank = tiny_bank
+    paths = world_paths(official.PRESENTATION_SEED)
+    paths.ledger_path.parent.mkdir(parents=True)
+    shutil.copyfile(ledger_path, paths.ledger_path)
+    write_frozen_bank(bank, paths.bank_path)
+    return bank
+
+
+@pytest.fixture
+def client_with_bank(presentation_bank: FrozenBank, client: TestClient) -> TestClient:
+    return client
+
+
+class BlockingRunner(FakeRunner):
+    """Reports the world's first instance until the gate opens, then runs
+    like ``FakeRunner``; cancellation reaches it through the hook."""
+
+    gate: threading.Event
+
+    def run(self, on_instance: InstanceHook | None = None) -> WorldRun:
+        while not self.gate.wait(0.005):
+            if on_instance is not None:
+                on_instance(0, len(self.bank.instances))
+        return super().run(on_instance)
+
+
+@pytest.fixture
+def recorder(tmp_path: Path, data_dir: Path) -> Recorder:
+    return Recorder(tmp_path)
+
+
+@pytest.fixture
+def gate() -> threading.Event:
+    return threading.Event()
+
+
+@pytest.fixture
+def blocking_benchmark(
+    recorder: Recorder, gate: threading.Event, monkeypatch: pytest.MonkeyPatch
+) -> Recorder:
+    """``run_benchmark``'s real steps and runner replaced by recorders whose
+    runner blocks until ``gate`` opens."""
+
+    def factory(paths: WorldPaths, bank: FrozenBank, **options: Any) -> BlockingRunner:
+        fake = recorder.runner(paths, bank, **options)
+        runner = BlockingRunner(fake.seed, fake.bank, fake.kind, fake.depth, fake.pipelines, False)
+        runner.gate = gate
+        return runner
+
+    monkeypatch.setattr(official, "default_steps", lambda: recorder.steps)
+    monkeypatch.setattr(official, "build_runner", factory)
+    return recorder
+
+
+def _drain(client: TestClient, gate: threading.Event) -> None:
+    """Open the gate and wait for every job the test started, so no job
+    thread outlives the test's data directory."""
+    gate.set()
+    jobs = client.app.state.benchmark_jobs  # type: ignore[attr-defined]
+    for job_id in jobs.job_ids():
+        wait_job(client, job_id)
+
+
+@pytest.fixture
+def client_with_blocking_benchmark(
+    blocking_benchmark: Recorder, gate: threading.Event, client: TestClient
+) -> Iterator[TestClient]:
+    yield client
+    _drain(client, gate)
+
+
+# -- the brief's tests ------------------------------------------------------------
+
+
+def test_question_catalogue_serves_answer_keys_and_hidden_truths(
+    client_with_bank: TestClient,
+) -> None:
+    questions = client_with_bank.get("/api/v1/benchmarks/questions").json()
+    h5 = [q for q in questions if q["stratum"] == "H5"]
+    assert questions and h5
+    assert all(q["expected_answer"] for q in questions)
+    assert all(q["hidden_truth"] for q in h5)
+
+
+def test_one_benchmark_job_at_a_time(client_with_blocking_benchmark: TestClient) -> None:
+    assert (
+        client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke()).status_code == 202
+    )
+    second = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke())
+    assert second.status_code == 409
+    assert second.json()["error"]["error_code"] == "VALIDATION_ERROR"
+
+
+def test_cancelled_job_publishes_nothing(
+    client_with_blocking_benchmark: TestClient, runs_dir: Path, blocking_benchmark: Recorder
+) -> None:
+    job = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke()).json()
+    cancel = client_with_blocking_benchmark.post(f"/api/v1/benchmarks/jobs/{job['job_id']}/cancel")
+    assert cancel.status_code == 202
+    finished = wait_job(client_with_blocking_benchmark, job["job_id"])
+    assert finished["status"] == "cancelled" and finished["run_id"] is None
+    assert not list(runs_dir.glob("*/summary.json"))
+    # The presentation graph is restored after the cancelled world.
+    assert blocking_benchmark.ingested == [2026, 2026]
+
+
+def test_official_start_runs_preflight_before_accepting(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/benchmarks", json={"kind": "official", "seeds": [2026], "repeats": 1}
+    )
+    assert (
+        response.status_code == 422 and response.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    )
+
+
+# -- jobs -----------------------------------------------------------------------
+
+
+def test_a_finished_job_names_its_published_run(
+    client_with_blocking_benchmark: TestClient, gate: threading.Event, runs_dir: Path
+) -> None:
+    gate.set()
+    job = client_with_blocking_benchmark.post(
+        "/api/v1/benchmarks", json=smoke(seeds=[2026, 2027])
+    ).json()
+    assert job["status"] == "running" and job["run_id"] is None
+    finished = wait_job(client_with_blocking_benchmark, job["job_id"])
+    assert finished["status"] == "completed" and finished["error"] is None
+    assert (runs_dir / finished["run_id"] / "summary.json").is_file()
+    assert finished["progress"] == {"world_seed": 2027, "instances_done": 9, "instances_total": 9}
+    summary = client_with_blocking_benchmark.get(f"/api/v1/benchmarks/{finished['run_id']}").json()
+    assert summary["run_kind"] == "smoke" and summary["summary"]["worlds"] == [2026, 2027]
+
+
+def test_progress_reports_the_running_world(
+    client_with_blocking_benchmark: TestClient,
+) -> None:
+    job = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke()).json()
+    deadline = time.monotonic() + DEADLINE_S
+    progress = None
+    while progress is None and time.monotonic() < deadline:
+        progress = client_with_blocking_benchmark.get(
+            f"/api/v1/benchmarks/jobs/{job['job_id']}"
+        ).json()["progress"]
+    assert progress == {"world_seed": 2026, "instances_done": 0, "instances_total": 9}
+
+
+def test_a_failed_job_reports_the_error_and_publishes_nothing(
+    client: TestClient, tmp_path: Path, runs_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    failing = Recorder(tmp_path, fail_on=2026)
+    monkeypatch.setattr(official, "default_steps", lambda: failing.steps)
+    monkeypatch.setattr(official, "build_runner", failing.runner)
+    job = client.post("/api/v1/benchmarks", json=smoke()).json()
+    finished = wait_job(client, job["job_id"])
+    assert finished["status"] == "failed" and finished["run_id"] is None
+    assert finished["error"]["error_code"] == "RUN_ERROR"
+    assert "world 2026 failed" not in finished["error"]["message"]
+    assert not list(runs_dir.glob("*/summary.json"))
+    assert failing.ingested == [2026, 2026]
+
+
+def test_cancelling_a_finished_job_is_refused(
+    client_with_blocking_benchmark: TestClient, gate: threading.Event
+) -> None:
+    gate.set()
+    job = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke()).json()
+    wait_job(client_with_blocking_benchmark, job["job_id"])
+    response = client_with_blocking_benchmark.post(
+        f"/api/v1/benchmarks/jobs/{job['job_id']}/cancel"
+    )
+    assert response.status_code == 409
+
+
+def test_an_unknown_job_is_not_found(client: TestClient) -> None:
+    assert client.get("/api/v1/benchmarks/jobs/JOB-NONE").status_code == 404
+    assert client.post("/api/v1/benchmarks/jobs/JOB-NONE/cancel").status_code == 404
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"seeds": []},
+        {"seeds": [2026, 2026]},
+        {"seeds": [1999]},
+        {"repeats": 0},
+        {"strata": ["H9"]},
+        {"limit": 0},
+        {"kind": "sweep"},
+    ],
+)
+def test_a_start_outside_the_bounds_is_refused(client: TestClient, fields: dict[str, Any]) -> None:
+    response = client.post("/api/v1/benchmarks", json=smoke(**fields))
+    assert response.status_code == 422
+    assert response.json()["error"]["error_code"] == "VALIDATION_ERROR"
+
+
+# -- the shared graph -------------------------------------------------------------
+
+
+QUERY = {"question": "What is the ticket price of game GAME_UK_01?", "configurations": ["A"]}
+
+
+def test_a_query_is_refused_while_a_benchmark_runs_and_accepted_after(
+    client_with_blocking_benchmark: TestClient, gate: threading.Event
+) -> None:
+    job = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke()).json()
+    refused = client_with_blocking_benchmark.post("/api/v1/queries", json=QUERY)
+    assert refused.status_code == 409
+    assert refused.json()["error"] == {
+        "error_code": "VALIDATION_ERROR",
+        "message": GRAPH_BUSY,
+        "retryable": True,
+    }
+    gate.set()
+    wait_job(client_with_blocking_benchmark, job["job_id"])
+    accepted = client_with_blocking_benchmark.post("/api/v1/queries", json=QUERY)
+    assert accepted.status_code == 202
+    wait_query(client_with_blocking_benchmark, accepted.json()["run_id"])
+
+
+@pytest.fixture
+def lab_gate() -> threading.Event:
+    return threading.Event()
+
+
+@pytest.fixture
+def client_with_slow_lab(
+    data_dir: Path,
+    runs_dir: Path,
+    lab_gate: threading.Event,
+    blocking_benchmark: Recorder,
+    gate: threading.Event,
+) -> Iterator[TestClient]:
+    """The lab build blocks until ``lab_gate`` opens, so a query stays running."""
+
+    def slow_lab() -> Lab:
+        assert lab_gate.wait(DEADLINE_S), "the test never released the lab"
+        return build_lab_offline()
+
+    with TestClient(create_app(lab_factory=slow_lab)) as test_client:
+        yield test_client
+        lab_gate.set()
+        _drain(test_client, gate)
+
+
+def test_a_benchmark_does_not_start_while_a_query_runs(
+    client_with_slow_lab: TestClient, lab_gate: threading.Event, gate: threading.Event
+) -> None:
+    query = client_with_slow_lab.post("/api/v1/queries", json=QUERY)
+    assert query.status_code == 202
+    refused = client_with_slow_lab.post("/api/v1/benchmarks", json=smoke())
+    assert refused.status_code == 409
+    assert refused.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    lab_gate.set()
+    wait_query(client_with_slow_lab, query.json()["run_id"])
+    gate.set()
+    accepted = client_with_slow_lab.post("/api/v1/benchmarks", json=smoke())
+    assert accepted.status_code == 202
+    assert wait_job(client_with_slow_lab, accepted.json()["job_id"])["status"] == "completed"
+
+
+# -- published runs -------------------------------------------------------------
+
+
+def publish(
+    root: Path,
+    name: str,
+    kind: str,
+    started_at: str,
+    schema: str = "2",
+    selection: dict[str, Any] | None = None,
+    results: dict[str, Any] | None = None,
+) -> None:
+    run_dir = root / name
+    run_dir.mkdir(parents=True)
+    summary = {
+        "schema_version": schema,
+        "run_kind": kind,
+        "label": "scorer smoke test" if kind == "smoke" else None,
+        "headlines": [f"{name} headline"],
+        "worlds": [2026],
+        "selection": selection or {"strata": None, "limit": None},
+        "reproducibility": {"run": {"started_at": started_at}, "worlds": []},
+    }
+    if selection is not None:
+        summary["label"] = "subset run"
+    (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
+    if results is not None:
+        (run_dir / "results.json").write_text(json.dumps(results), encoding="utf-8")
+
+
+def _latest(runs_dir: Path) -> tuple[int, Any]:
+    with TestClient(create_app(), raise_server_exceptions=False) as client:
+        response = client.get("/api/v1/benchmarks/latest")
+    return response.status_code, response.json() if response.status_code != 500 else None
+
+
+def test_runs_are_listed_newest_first(client: TestClient, runs_dir: Path) -> None:
+    publish(runs_dir, "old", "official", "2026-10-01T09:00:00+00:00")
+    publish(runs_dir, "new", "smoke", "2026-10-02T09:00:00+00:00")
+    publish(runs_dir, "v1", "official", "2026-10-03T09:00:00+00:00", schema="1")
+    (runs_dir / "unpublished").mkdir()
+    runs = client.get("/api/v1/benchmarks").json()
+    assert [run["run_id"] for run in runs] == ["new", "old"]
+    assert runs[0] == {
+        "run_id": "new",
+        "run_kind": "smoke",
+        "label": "scorer smoke test",
+        "started_at": "2026-10-02T09:00:00+00:00",
+        "selection": {"strata": None, "limit": None},
+        "worlds": [2026],
+    }
+
+
+def test_a_run_is_read_by_its_id(client: TestClient, runs_dir: Path) -> None:
+    publish(runs_dir, "run", "official", "2026-10-01T09:00:00+00:00")
+    body = client.get("/api/v1/benchmarks/run").json()
+    assert (body["run_id"], body["run_kind"], body["label"]) == ("run", "official", None)
+    assert body["summary"]["headlines"] == ["run headline"]
+
+
+@pytest.mark.parametrize("run_id", ["missing", "..", "unpublished"])
+def test_an_unpublished_run_is_not_found(client: TestClient, runs_dir: Path, run_id: str) -> None:
+    (runs_dir / "unpublished").mkdir()
+    response = client.get(f"/api/v1/benchmarks/{run_id}")
+    assert response.status_code == 404
+    assert response.json()["error"]["error_code"] == "NOT_FOUND"
+
+
+def test_benchmarks_latest_404_without_runs(client: TestClient) -> None:
+    assert client.get("/api/v1/benchmarks/latest").status_code == 404
+
+
+def test_unset_benchmark_dir_reads_the_repository_runs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # The default is anchored at the repository root, not the server's
+    # working directory: re-anchor the root and the API follows it.
+    from app import config as app_config
+
+    publish(tmp_path / "data" / "evaluation" / "runs", "run", "smoke", "2026-10-01T09:00:00+00:00")
+    monkeypatch.setattr(app_config, "REPO_ROOT", tmp_path)
+    monkeypatch.delenv("BENCHMARK_DIR", raising=False)
+    with TestClient(create_app()) as client:
+        assert client.get("/api/v1/benchmarks/latest").json()["run_id"] == "run"
+
+
+def test_a_subset_official_run_is_not_the_official_latest(runs_dir: Path) -> None:
+    subset = {"strata": ["H1"], "limit": 2}
+    publish(runs_dir, "full", "official", "2026-10-01T09:00:00+00:00")
+    publish(runs_dir, "pilot", "official", "2026-10-02T09:00:00+00:00", selection=subset)
+    status, body = _latest(runs_dir)
+    assert (status, body["run_id"]) == (200, "full")
+
+
+def test_a_subset_official_run_falls_back_like_other_runs(runs_dir: Path) -> None:
+    limited = {"strata": None, "limit": 2}
+    publish(runs_dir, "smoke", "smoke", "2026-10-01T09:00:00+00:00")
+    publish(runs_dir, "pilot", "official", "2026-10-02T09:00:00+00:00", selection=limited)
+    status, body = _latest(runs_dir)
+    assert (status, body["run_id"], body["label"]) == (200, "pilot", "subset run")
+
+
+def test_latest_benchmark_prefers_official_runs(runs_dir: Path) -> None:
+    publish(runs_dir, "official-old", "official", "2026-10-01T09:00:00+00:00")
+    publish(runs_dir, "official-new", "official", "2026-10-02T09:00:00+00:00")
+    publish(runs_dir, "smoke-newest", "smoke", "2026-10-03T09:00:00+00:00")
+    status, body = _latest(runs_dir)
+    assert status == 200
+    assert (body["run_kind"], body["run_id"], body["label"]) == ("official", "official-new", None)
+    assert body["summary"]["headlines"] == ["official-new headline"]
+
+
+def test_latest_benchmark_falls_back_to_the_newest_labelled_run(runs_dir: Path) -> None:
+    publish(runs_dir, "b-smoke", "smoke", "2026-10-02T09:00:00+00:00")
+    publish(runs_dir, "a-sweep", "sweep", "2026-10-01T09:00:00+00:00")
+    status, body = _latest(runs_dir)
+    assert status == 200
+    assert (body["run_id"], body["run_kind"]) == ("b-smoke", "smoke")
+    assert body["label"] == "scorer smoke test"
+
+
+def test_latest_benchmark_orders_by_time_not_text(runs_dir: Path) -> None:
+    # 10:00 in UTC+02:00 is 08:00 UTC, earlier than 09:00 UTC, though it sorts later as text.
+    publish(runs_dir, "later", "official", "2026-10-02T09:00:00+00:00")
+    publish(runs_dir, "earlier", "official", "2026-10-02T10:00:00+02:00")
+    status, body = _latest(runs_dir)
+    assert (status, body["run_id"]) == (200, "later")
+
+
+def test_a_malformed_summary_fails_loudly(runs_dir: Path) -> None:
+    publish(runs_dir, "good", "official", "2026-10-02T09:00:00+00:00")
+    (runs_dir / "broken").mkdir()
+    (runs_dir / "broken" / "summary.json").write_text("{not json", encoding="utf-8")
+    status, _ = _latest(runs_dir)
+    assert status == 500
+
+
+def test_latest_benchmark_ignores_summaries_of_another_schema(runs_dir: Path) -> None:
+    publish(runs_dir, "run-v1", "official", "2026-10-09T09:00:00+00:00", schema="1")
+    status, _ = _latest(runs_dir)
+    assert status == 404
+
+
+# -- the question catalogue -------------------------------------------------------
+
+
+def _score(answer: float | None, f1: float) -> dict[str, Any]:
+    return {"answer": answer, "evidence": {"f1": f1}}
+
+
+def _results(bank: FrozenBank, scores: Callable[[str], dict[str, list[Any]]]) -> dict[str, Any]:
+    """A results.json over the bank's first two instances."""
+    return {
+        "kind": "official",
+        "worlds": [
+            {
+                "world_seed": bank.world_seed,
+                "bank_hash": bank.bank_hash,
+                "results": [
+                    {"instance": instance.to_payload(), "scores": scores(instance.instance_id)}
+                    for instance in bank.instances[:2]
+                ],
+            }
+        ],
+    }
+
+
+def _repeats(instance_id: str) -> dict[str, list[Any]]:
+    return {
+        "A": [_score(1.0, 0.5), None, _score(0.0, 1.0)],
+        "B": [_score(None, 0.25), _score(1.0, 0.75), _score(None, 0.5)],
+        "C": [None, None, None],
+    }
+
+
+def test_question_cards_carry_the_bank_fields(
+    client_with_bank: TestClient, presentation_bank: FrozenBank
+) -> None:
+    questions = client_with_bank.get("/api/v1/benchmarks/questions").json()
+    assert [q["instance_id"] for q in questions] == [
+        i.instance_id for i in presentation_bank.instances
+    ]
+    first, instance = questions[0], presentation_bank.instances[0]
+    assert first["question_id"] == instance.question_id and first["text"] == instance.text
+    assert first["expected_answer"] == instance.expected_answer
+    assert first["tests"] and first["scenario_id"] is None and first["hidden_truth"] is None
+    planted = next(q for q in questions if q["stratum"] == "H5")
+    assert planted["scenario_id"].startswith("SCN-")
+    assert all(q["scores"] is None for q in questions)
+
+
+def test_scores_are_means_over_the_scored_repeats_of_the_latest_official_run(
+    client_with_bank: TestClient, presentation_bank: FrozenBank, runs_dir: Path
+) -> None:
+    publish(
+        runs_dir,
+        "official",
+        "official",
+        "2026-10-01T09:00:00+00:00",
+        results=_results(presentation_bank, _repeats),
+    )
+    # A newer subset run (no results.json) is not the one the scores come from.
+    publish(
+        runs_dir,
+        "newer-subset",
+        "official",
+        "2026-10-02T09:00:00+00:00",
+        selection={"strata": None, "limit": 1},
+    )
+    questions = client_with_bank.get("/api/v1/benchmarks/questions").json()
+    assert questions[0]["scores"] == {
+        "A": {"answer": 0.5, "evidence_f1": 0.75},
+        "B": {"answer": 1.0, "evidence_f1": 0.5},
+        "C": {"answer": None, "evidence_f1": None},
+    }
+    assert questions[1]["scores"] is not None
+    assert all(q["scores"] is None for q in questions[2:])
+
+
+def test_scores_come_from_the_named_run(
+    client_with_bank: TestClient, presentation_bank: FrozenBank, runs_dir: Path
+) -> None:
+    publish(
+        runs_dir,
+        "smoke",
+        "smoke",
+        "2026-10-01T09:00:00+00:00",
+        results=_results(presentation_bank, _repeats),
+    )
+    unnamed = client_with_bank.get("/api/v1/benchmarks/questions").json()
+    named = client_with_bank.get("/api/v1/benchmarks/questions?run_id=smoke").json()
+    assert unnamed[0]["scores"] is None
+    assert named[0]["scores"]["A"] == {"answer": 0.5, "evidence_f1": 0.75}
+
+
+def test_a_run_over_another_bank_gives_no_scores(
+    client_with_bank: TestClient, presentation_bank: FrozenBank, runs_dir: Path
+) -> None:
+    results = _results(presentation_bank, _repeats)
+    results["worlds"][0]["bank_hash"] = "another bank"
+    publish(runs_dir, "official", "official", "2026-10-01T09:00:00+00:00", results=results)
+    questions = client_with_bank.get("/api/v1/benchmarks/questions").json()
+    assert all(q["scores"] is None for q in questions)
+
+
+def test_questions_of_an_unknown_run_are_not_found(client_with_bank: TestClient) -> None:
+    assert client_with_bank.get("/api/v1/benchmarks/questions?run_id=nope").status_code == 404
+
+
+def test_questions_without_a_frozen_bank_are_not_found(client: TestClient) -> None:
+    response = client.get("/api/v1/benchmarks/questions")
+    assert response.status_code == 404
+    assert response.json()["error"]["error_code"] == "NOT_FOUND"
+
+
+def test_hidden_truths_are_built_from_ledger_values_only(
+    tiny_bank: tuple[Path, Path, FrozenBank],
+) -> None:
+    _, ledger_path, bank = tiny_bank
+    ledger = json.loads(ledger_path.read_text())
+    truth = {s["scenario_id"]: s["truth"] for s in ledger["scenarios"]}
+    cards = {
+        card.scenario_id: card for card in question_catalogue(bank, ledger_path) if card.scenario_id
+    }
+    devices = cards["SCN-002"].hidden_truth or ""
+    assert all(player in devices for player in truth["SCN-002"]["cluster_players"])
+    assert all(device in devices for device in truth["SCN-002"]["shared_devices"])
+    assert truth["SCN-002"]["expected_interpretation"] in devices
+    conflict = cards["SCN-015"].hidden_truth or ""
+    assert truth["SCN-015"]["conflicting_document"] in conflict
+
+
+def test_a_catalogue_refuses_a_ledger_the_bank_was_not_grounded_on(
+    tiny_bank: tuple[Path, Path, FrozenBank], tmp_path: Path
+) -> None:
+    _, ledger_path, bank = tiny_bank
+    other = tmp_path / "ledger.json"
+    other.write_text(ledger_path.read_text() + "\n")
+    with pytest.raises(ValueError, match="ledger"):
+        question_catalogue(bank, other)

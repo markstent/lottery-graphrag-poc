@@ -1,8 +1,11 @@
 """Evaluator-only truth-ledger loader (ADR-008).
 
-The only sanctioned reader of ``data/truth/ledger.json``. Retrieval, API,
-dataset, scenario and graph modules must never import this package; the
-boundary is enforced by a static scan in tests/test_truth_ledger_isolation.py.
+The only sanctioned reader of ``data/truth/ledger.json``. Retrieval, dataset,
+scenario and graph modules must never import this package, nor may any API
+module except the two that publish evaluator output (the benchmark routes
+and post-run scoring), which reach the ledger only through evaluator
+functions; the boundary is enforced by a static scan in
+tests/test_truth_ledger_isolation.py.
 """
 
 from __future__ import annotations
