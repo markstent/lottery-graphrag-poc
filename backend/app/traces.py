@@ -27,6 +27,7 @@ import argparse
 import time
 
 from app.api.benchmarks import presentation_bank
+from app.api.errors import ApiError
 from app.api.schemas import DemoQuestion
 from app.api.scoring import BANK_NOT_GROUNDED, demo_questions
 from app.config import GraphConfig, RetrievalSettings, from_env
@@ -392,7 +393,10 @@ def select_questions(questions: list[DemoQuestion], ids: list[str] | None) -> li
 
 
 def main() -> None:
-    bank = presentation_bank()
+    try:
+        bank = presentation_bank()
+    except ApiError as error:
+        raise SystemExit(error.message) from None
     if bank is None:
         raise SystemExit(BANK_NOT_GROUNDED)
     questions = demo_questions(bank)

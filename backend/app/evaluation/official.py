@@ -77,6 +77,8 @@ from app.retrieval.standard.index import MANIFEST_NAME, build_index, build_store
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
 PRESENTATION_SEED = 2026
+# The presentation world's truth ledger; read only here, inside the evaluator.
+TRUTH_LEDGER_ENV = "TRUTH_LEDGER_PATH"
 OFFICIAL_SEEDS = (2026, 2027, 2028)
 PROFILE = "dev"
 # Official cells and headline tiles use depth 2; the sweep varies it (spec 10a.7).
@@ -147,18 +149,37 @@ class RunnerFactory(Protocol):
     ) -> WorldRunner: ...
 
 
+def bank_path_for(world_dir: Path) -> Path:
+    """The frozen bank of a world, named after the world's directory."""
+    return DATA_DIR / "evaluation" / "bank" / f"bank-{BANK_VERSION}-{world_dir.name}.json"
+
+
 def world_paths(seed: int) -> WorldPaths:
-    """The presentation seed keeps the default ledger and collection names."""
+    """Where one world's data, ledger, bank and collection live.
+
+    The presentation seed is the one place the presentation world is
+    defined: its directory is ``DATASET_DIR`` and its ledger is
+    ``TRUTH_LEDGER_PATH`` (default ``data/truth/ledger.json``), so the demo
+    world is the same world with other values of those two variables. Other
+    seeds live beside the development world. Every bank is named after its
+    world's directory. ``ValueError`` names an invalid setting.
+    """
     collection = os.environ.get("QDRANT_COLLECTION", "semantic_context_lab")
-    presentation = seed == PRESENTATION_SEED
+    if seed == PRESENTATION_SEED:
+        world_dir = Path(from_env().dataset_dir)
+        configured = os.environ.get(TRUTH_LEDGER_ENV)
+        ledger_path = Path(configured) if configured else DATA_DIR / "truth" / "ledger.json"
+        collection_name = collection
+    else:
+        world_dir = DATA_DIR / "generated" / f"{PROFILE}-seed{seed}"
+        ledger_path = DATA_DIR / "truth" / f"dev-seed{seed}.json"
+        collection_name = f"{collection}_seed{seed}"
     return WorldPaths(
         seed=seed,
-        world_dir=DATA_DIR / "generated" / f"{PROFILE}-seed{seed}",
-        ledger_path=DATA_DIR
-        / "truth"
-        / ("ledger.json" if presentation else f"dev-seed{seed}.json"),
-        bank_path=DATA_DIR / "evaluation" / "bank" / f"bank-{BANK_VERSION}-seed{seed}.json",
-        collection=collection if presentation else f"{collection}_seed{seed}",
+        world_dir=world_dir,
+        ledger_path=ledger_path,
+        bank_path=bank_path_for(world_dir),
+        collection=collection_name,
     )
 
 
@@ -289,26 +310,16 @@ def _bank_is_current(paths: WorldPaths) -> bool:
     )
 
 
-def bank_matches_active_world(dataset_dir: Path) -> bool:
-    """Whether the presentation bank is the one grounded for ``dataset_dir``,
-    the world the API serves (``DATASET_DIR``), with every check the runner
-    makes before it uses a bank: the bank's world directory is that
-    directory, and its version, world manifest, ledger and record serialiser
-    are current. A bank whose world or ledger is missing does not match."""
+def bank_matches_active_world() -> bool:
+    """Whether the presentation bank is current for the world the API serves
+    (``DATASET_DIR`` and ``TRUTH_LEDGER_PATH``), with every check the runner
+    makes before it uses a bank: its version, world manifest, ledger and
+    record serialiser. A bank whose world or ledger is missing does not
+    match."""
     paths = world_paths(PRESENTATION_SEED)
-    if dataset_dir.resolve() != paths.world_dir.resolve():
-        return False
     if not ((paths.world_dir / WORLD_MANIFEST).is_file() and paths.ledger_path.is_file()):
         return False
     return _bank_is_current(paths)
-
-
-def _presentation_world() -> WorldPaths:
-    """The presentation world as the API serves it: the seed's own ledger,
-    bank and collection, in the directory ``DATASET_DIR`` names."""
-    return dataclasses.replace(
-        world_paths(PRESENTATION_SEED), world_dir=Path(from_env().dataset_dir)
-    )
 
 
 def _sha256(path: Path) -> str:
@@ -696,7 +707,7 @@ def _presentation_graph_restored(steps: PrepareSteps) -> Iterator[None]:
     When the block failed, its error is raised; a failed restore is logged
     and attached to it as a note rather than replacing it.
     """
-    presentation = _presentation_world()
+    presentation = world_paths(PRESENTATION_SEED)
     try:
         yield
     except BaseException as error:

@@ -180,7 +180,7 @@ Cancelling a finished run is a 409 `CONFLICT`; an unknown run is a 404 `NOT_FOUN
 {"benchmark_instance_id": "L05-2026-INC_S007_GR", "configurations": ["A", "B", "C"]}
 ```
 
-`benchmark_instance_id` names an instance of the presentation world's frozen bank (seed 2026, `make ground-bank`).
+`benchmark_instance_id` names an instance of the presentation world's frozen bank (`make ground-bank`; the bank is named after the dataset directory, and `make ground-demo-bank` grounds the demo world).
 The run asks that instance's text: every pipeline receives the instance text and nothing else, never its expected answer, checks or claims.
 `question` may then be left out; when it is sent it must equal the instance text, otherwise the request is a 422 `VALIDATION_ERROR` "a bank question runs with its own text".
 An id the bank does not hold is a 422 `VALIDATION_ERROR`, and before the bank is grounded, or when it is not current for the active world, the request is a 503 `CONFIGURATION_ERROR` (section 20, "Benchmark reads").
@@ -623,8 +623,8 @@ A malformed `summary.json` is a server error, never silently skipped.
   Each entry has `question_id`, `instance_id`, `text`, `tests`, `stratum`, `scenario_id`, `ontology_dependent`, `expected_answer`, `hidden_truth` (the planted scenario's truth for an H5 question, else null) and `scores`.
   `scores` are per pipeline (`answer` and `evidence_f1`, null where undefined) from the run named by the optional `run_id` query parameter, else from the newest official run of the whole bank; they are null when that run did not score the question or no such run exists.
   A 404 `NOT_FOUND` says no published run has the given `run_id`.
-  The presentation world is the active dataset (`DATASET_DIR`).
-  A bank that has not been grounded is a 503 `CONFIGURATION_ERROR` "the question bank has not been grounded; run make ground-bank", and so is a bank that is not current for that world (another world directory, manifest, ledger, bank version or record serialiser): "the question bank does not match the active world; run make ground-bank".
+  The presentation world is the active dataset (`DATASET_DIR`) with its ledger (`TRUTH_LEDGER_PATH`, default `data/truth/ledger.json`); its bank is `data/evaluation/bank/bank-2.0.0-<dataset directory name>.json`, so another dataset directory has no bank until it is grounded.
+  A bank that has not been grounded is a 503 `CONFIGURATION_ERROR` "the question bank has not been grounded; run make ground-bank", and so is a bank that is not current for that world (manifest, ledger, bank version or record serialiser): "the question bank does not match the active world; run make ground-bank".
   `GET /demo/questions` and a bank question sent to `POST /queries` answer the same two 503s.
   This is the one route that serves expected answers and hidden truth, both read from evaluator output; the live query routes never do.
 
@@ -782,6 +782,8 @@ When the counts differ, the node routes return 409 `CONFLICT` with the message `
 Equal counts are a fingerprint, not a proof: another world with the same count for every label would pass.
 
 A run of B or C is refused with a 503 `CONFIGURATION_ERROR` "the graph holds another world; run make ingest-graph" while the same check says the graph holds another world; a run of A alone is accepted, and so is any run of a dataset with no statistics file.
+A graph that cannot be read during the check is treated like a dataset that cannot be compared: the run is accepted and stored, B and C fail with recorded `GRAPH_QUERY_ERROR` events (`pipeline.failed`, then `run.failed`), and A keeps its result.
+An invalid setting on a question route or a run start is a 503 `CONFIGURATION_ERROR` whose message names the variable.
 
 ### Not built
 

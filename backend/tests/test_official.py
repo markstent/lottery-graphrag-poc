@@ -192,6 +192,8 @@ class FakeRunner:
 def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "data"
     monkeypatch.setattr(official, "DATA_DIR", root)
+    monkeypatch.setenv("DATASET_DIR", str(root / "generated" / "dev-seed2026"))
+    monkeypatch.delenv("TRUTH_LEDGER_PATH", raising=False)
     monkeypatch.delenv("QDRANT_COLLECTION", raising=False)
     return root
 
@@ -366,10 +368,12 @@ def test_world_paths_name_the_world_ledger_bank_and_collection(data_dir: Path) -
     assert OFFICIAL_SEEDS == (2026, 2027, 2028)
     assert presentation.world_dir == data_dir / "generated" / "dev-seed2026"
     assert presentation.ledger_path == data_dir / "truth" / "ledger.json"
-    assert presentation.bank_path == data_dir / "evaluation" / "bank" / "bank-2.0.0-seed2026.json"
+    assert (
+        presentation.bank_path == data_dir / "evaluation" / "bank" / "bank-2.0.0-dev-seed2026.json"
+    )
     assert other.world_dir == data_dir / "generated" / "dev-seed2028"
     assert other.ledger_path == data_dir / "truth" / "dev-seed2028.json"
-    assert other.bank_path.name == "bank-2.0.0-seed2028.json"
+    assert other.bank_path.name == "bank-2.0.0-dev-seed2028.json"
     assert other.seed == 2028
 
 
@@ -397,15 +401,56 @@ def grounded_world(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> WorldPath
 
 
 def test_a_bank_is_current_for_the_world_it_was_grounded_on(grounded_world: WorldPaths) -> None:
-    assert bank_matches_active_world(grounded_world.world_dir)
+    assert bank_matches_active_world()
+
+
+def test_the_presentation_world_is_dataset_dir_and_the_truth_ledger_path(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One definition: the demo world and its ledger are named by the two
+    variables, and its bank is named after the dataset directory."""
+    monkeypatch.setenv("DATASET_DIR", str(data_dir / "generated" / "demo-seed2026"))
+    monkeypatch.setenv("TRUTH_LEDGER_PATH", str(data_dir / "truth" / "ledger-demo.json"))
+    paths = world_paths(PRESENTATION_SEED)
+    assert paths.world_dir == data_dir / "generated" / "demo-seed2026"
+    assert paths.ledger_path == data_dir / "truth" / "ledger-demo.json"
+    assert paths.bank_path == data_dir / "evaluation" / "bank" / "bank-2.0.0-demo-seed2026.json"
+    assert world_paths(2027).world_dir == data_dir / "generated" / "dev-seed2027"
 
 
 def test_a_bank_is_not_current_for_another_world_dir(
-    grounded_world: WorldPaths, tmp_path: Path
+    grounded_world: WorldPaths, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     other = tmp_path / "other"
     shutil.copytree(grounded_world.world_dir, other)
-    assert not bank_matches_active_world(other)
+    monkeypatch.setenv("DATASET_DIR", str(other))
+    assert not bank_matches_active_world()
+
+
+def test_the_demo_world_is_grounded_by_its_own_variables(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """``ground`` with no arguments grounds the active world from DATASET_DIR
+    and TRUTH_LEDGER_PATH into the bank named after that directory."""
+    from app.datasets.config import GenerationConfig
+    from app.datasets.parquet import write_world
+    from app.datasets.schema import TABLE_SCHEMAS
+    from app.datasets.world import build_world
+    from app.scenarios.engine import apply_scenarios
+    from app.scenarios.ledger import build_ledger, write_ledger
+
+    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
+    outcomes = apply_scenarios(world)
+    demo = data_dir / "generated" / "demo-seed2026"
+    write_world(demo, TABLE_SCHEMAS, world.tables)
+    (demo / "_manifest.json").write_text(json.dumps(world.manifest, indent=2, sort_keys=True))
+    ledger = write_ledger(data_dir / "truth" / "ledger-demo.json", build_ledger(outcomes, world))
+    monkeypatch.setenv("DATASET_DIR", str(demo))
+    monkeypatch.setenv("TRUTH_LEDGER_PATH", str(ledger))
+    assert cli.main(["ground"]) == 0
+    bank = data_dir / "evaluation" / "bank" / "bank-2.0.0-demo-seed2026.json"
+    assert bank.is_file() and f"wrote {bank}" in capsys.readouterr().out
+    assert bank_matches_active_world()
 
 
 @pytest.mark.parametrize("stale", ["manifest", "ledger", "serialiser", "version", "no manifest"])
@@ -426,7 +471,7 @@ def test_a_bank_is_not_current_once_what_it_was_grounded_on_changes(
             else dataclasses.replace(bank, bank_version="0.0.1")
         )
         write_frozen_bank(seal_bank(changed), grounded_world.bank_path)
-    assert not bank_matches_active_world(grounded_world.world_dir)
+    assert not bank_matches_active_world()
 
 
 def test_the_presentation_collection_follows_the_environment(

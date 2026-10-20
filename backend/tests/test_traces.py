@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import pytest
+from app import traces
+from app.api.errors import ApiError, ErrorCode
 from app.api.schemas import DemoQuestion
 from app.events import RetrievalEvent
 from app.evidence import EvidenceChunk, GraphEvidence, GraphRunResult, RagAnswer, RagRunResult
@@ -202,3 +204,15 @@ def test_timings_line_reports_wall_clock_and_judge_time() -> None:
     text = "\n".join(trace_g("B", result, events, wall_ms=1234.4))
     assert "- timings: run 1234 ms, judge 250 ms over 2 candidates" in text
     assert "timings" not in "\n".join(trace_g("B", result, events))
+
+
+def test_a_bank_that_is_not_current_is_a_plain_error_not_a_traceback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def refused() -> None:
+        raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, "the bank does not match; fix it")
+
+    monkeypatch.setattr(traces, "presentation_bank", refused)
+    with pytest.raises(SystemExit) as stopped:
+        traces.main()
+    assert stopped.value.code == "the bank does not match; fix it"

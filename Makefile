@@ -7,7 +7,7 @@ UV := uv --directory $(BACKEND)
 PNPM := pnpm -C $(FRONTEND)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank run-smoke run-benchmark run-sweep traces
+.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep traces
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -82,7 +82,7 @@ generate-demo-data: ## Generate the demo dataset (5M tickets; writes a separate 
 # The demo world lives beside the development world and uses its own Qdrant
 # collection, so demo and development states never overwrite each other.
 DEMO_DATASET_DIR = ../data/generated/demo-seed2026
-DEMO_ENV = DATASET_DIR=$(DEMO_DATASET_DIR) QDRANT_COLLECTION=semantic_context_lab_demo
+DEMO_ENV = DATASET_DIR=$(DEMO_DATASET_DIR) TRUTH_LEDGER_PATH=../data/truth/ledger-demo.json QDRANT_COLLECTION=semantic_context_lab_demo
 
 ingest-demo-graph: ## Ingest the demo dataset into Neo4j (demo reset, part 1)
 	$(DEMO_ENV) $(UV) run python -m app.graph --wipe
@@ -101,11 +101,12 @@ demo-reset: ## Reset the presentation demo state (re-ingest graph + rebuild vect
 # data/evaluation/runs/<run id>; worlds 2027 and 2028 are generated, indexed
 # and grounded on first use, and the seed 2026 graph is restored afterwards.
 SEEDS = 2026,2027,2028
-PRESENTATION_BANK = ../data/evaluation/bank/bank-2.0.0-seed2026.json
 
-ground-bank: ## Ground bank 2.0.0 into the presentation world (seed 2026)
-	$(UV) run python -m app.evaluation ground --world ../data/generated/dev-seed2026 \
-		--ledger ../data/truth/ledger.json --out $(PRESENTATION_BANK)
+ground-bank: ## Ground bank 2.0.0 into the active world (DATASET_DIR and TRUTH_LEDGER_PATH)
+	$(UV) run python -m app.evaluation ground
+
+ground-demo-bank: ## Ground bank 2.0.0 into the demo world and its ledger
+	$(DEMO_ENV) $(UV) run python -m app.evaluation ground
 
 run-smoke: ## Scorer smoke test on three worlds (fake generator and judge; needs services)
 	$(UV) run python -m app.evaluation run --kind smoke --seeds $(SEEDS)

@@ -218,11 +218,19 @@ class RetrievalSettings:
 
 
 def _env_int(name: str, default: int) -> int:
-    return int(os.environ.get(name, str(default)))
+    raw = os.environ.get(name, str(default))
+    try:
+        return int(raw)
+    except ValueError:
+        raise ValueError(f"{name} must be an integer, got {raw!r}") from None
 
 
 def _env_float(name: str, default: float) -> float:
-    return float(os.environ.get(name, str(default)))
+    raw = os.environ.get(name, str(default))
+    try:
+        return float(raw)
+    except ValueError:
+        raise ValueError(f"{name} must be a number, got {raw!r}") from None
 
 
 def from_env() -> RetrievalSettings:

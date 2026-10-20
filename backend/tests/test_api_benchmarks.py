@@ -89,6 +89,8 @@ def tiny_bank(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path, Fro
 def data_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "data"
     monkeypatch.setattr(official, "DATA_DIR", root)
+    monkeypatch.setenv("DATASET_DIR", str(root / "generated" / "dev-seed2026"))
+    monkeypatch.delenv("TRUTH_LEDGER_PATH", raising=False)
     monkeypatch.delenv("QDRANT_COLLECTION", raising=False)
     return root
 
@@ -816,7 +818,7 @@ def _unmatch_ledger(paths: WorldPaths, tmp_path: Path, monkeypatch: pytest.Monke
     paths.ledger_path.write_text(paths.ledger_path.read_text() + "\n")
 
 
-@pytest.mark.parametrize("unmatch", [_unmatch_manifest, _unmatch_dataset_dir, _unmatch_ledger])
+@pytest.mark.parametrize("unmatch", [_unmatch_manifest, _unmatch_ledger])
 def test_a_bank_for_another_world_is_refused_by_every_route_that_reads_it(
     client_with_bank: TestClient,
     tmp_path: Path,
@@ -835,6 +837,84 @@ def test_a_bank_for_another_world_is_refused_by_every_route_that_reads_it(
             "message": NOT_ACTIVE,
             "retryable": False,
         }
+
+
+def test_a_bank_grounded_for_another_dataset_dir_is_not_grounded_for_this_one(
+    client_with_bank: TestClient, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A bank is named after its dataset directory, so another directory has
+    none yet; the hint is the command that grounds it."""
+    _unmatch_dataset_dir(world_paths(official.PRESENTATION_SEED), tmp_path, monkeypatch)
+    for response in (
+        client_with_bank.get("/api/v1/demo/questions"),
+        client_with_bank.get("/api/v1/benchmarks/questions"),
+    ):
+        assert response.status_code == 503
+        assert response.json()["error"]["message"] == (
+            "the question bank has not been grounded; run make ground-bank"
+        )
+
+
+def test_the_demo_world_serves_bank_questions(
+    data_dir: Path,
+    tiny_bank: tuple[Path, Path, FrozenBank],
+    runs_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The demo environment (DATASET_DIR and TRUTH_LEDGER_PATH of the demo
+    world) has its own bank, named after its directory, and serves it."""
+    dataset_dir, ledger_path, bank = tiny_bank
+    demo = data_dir / "generated" / "demo-seed2026"
+    shutil.copytree(dataset_dir, demo)
+    demo_ledger = data_dir / "truth" / "ledger-demo.json"
+    demo_ledger.parent.mkdir(parents=True)
+    shutil.copyfile(ledger_path, demo_ledger)
+    monkeypatch.setenv("DATASET_DIR", str(demo))
+    monkeypatch.setenv("TRUTH_LEDGER_PATH", str(demo_ledger))
+    write_frozen_bank(bank, world_paths(official.PRESENTATION_SEED).bank_path)
+    assert world_paths(official.PRESENTATION_SEED).bank_path.name == "bank-2.0.0-demo-seed2026.json"
+    with TestClient(create_app()) as demo_client:
+        demos = demo_client.get("/api/v1/demo/questions")
+        questions = demo_client.get("/api/v1/benchmarks/questions")
+    assert demos.status_code == 200 and demos.json()
+    assert questions.status_code == 200
+    assert [q["instance_id"] for q in questions.json()] == [i.instance_id for i in bank.instances]
+
+
+def test_an_invalid_setting_on_a_question_route_is_a_configuration_error_naming_it(
+    client_with_bank: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("RAG_TOP_K", "many")
+    for response in (
+        client_with_bank.get("/api/v1/demo/questions"),
+        client_with_bank.get("/api/v1/benchmarks/questions"),
+        client_with_bank.post("/api/v1/queries", json={"benchmark_instance_id": "L05-x"}),
+    ):
+        assert response.status_code == 503
+        error = response.json()["error"]
+        assert error["error_code"] == "CONFIGURATION_ERROR"
+        assert "RAG_TOP_K" in error["message"]
+
+
+def test_the_bank_is_loaded_and_hashed_once_until_a_file_changes(
+    client_with_bank: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app.evaluation.grounding import load_frozen_bank
+
+    loads: list[Path] = []
+
+    def counting(path: Path) -> FrozenBank:
+        loads.append(path)
+        return load_frozen_bank(path)
+
+    monkeypatch.setattr("app.api.benchmarks.load_frozen_bank", counting)
+    for _ in range(3):
+        assert client_with_bank.get("/api/v1/demo/questions").status_code == 200
+    first = len(loads)
+    assert first <= 1
+    ledger = world_paths(official.PRESENTATION_SEED).ledger_path
+    ledger.write_text(ledger.read_text() + "\n")
+    assert client_with_bank.get("/api/v1/demo/questions").status_code == 503
 
 
 def test_an_ungrounded_bank_reads_the_same_on_both_question_routes(client: TestClient) -> None:

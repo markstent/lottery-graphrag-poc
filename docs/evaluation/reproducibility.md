@@ -8,7 +8,7 @@ How answers are scored is in [scoring.md](scoring.md); how scores become compari
 
 | Command | What it does |
 |---|---|
-| `make ground-bank` | Grounds bank 2.0.0 into the presentation world (seed 2026) and writes `data/evaluation/bank/bank-2.0.0-seed2026.json`. |
+| `make ground-bank` | Grounds bank 2.0.0 into the active world (`DATASET_DIR` with `TRUTH_LEDGER_PATH`) and writes `data/evaluation/bank/bank-2.0.0-<dataset directory name>.json`; `make ground-demo-bank` does the same for the demo world and `data/truth/ledger-demo.json`. |
 | `make run-smoke` | Scorer smoke test on seeds 2026, 2027 and 2028 with the fake generator and the fake judge. |
 | `make run-benchmark` | Official run on the same three seeds with three repeats; needs `GENERATION_PROVIDER=litellm` and `JUDGE_PROVIDER=litellm` with their models and families set. |
 | `make run-sweep` | The H1 depth sweep at depths 0, 1, 2 and 3 for B and C on the three seeds; needs a gateway judge. |
@@ -50,8 +50,11 @@ Where each seed lives:
 
 | Seed | World | Truth ledger | Frozen bank | Qdrant collection |
 |---|---|---|---|---|
-| 2026 (presentation) | `data/generated/dev-seed2026` | `data/truth/ledger.json` | `data/evaluation/bank/bank-2.0.0-seed2026.json` | `QDRANT_COLLECTION` (default `semantic_context_lab`) |
-| 2027, 2028 | `data/generated/dev-seed{seed}` | `data/truth/dev-seed{seed}.json` | `data/evaluation/bank/bank-2.0.0-seed{seed}.json` | `QDRANT_COLLECTION` plus `_seed{seed}` |
+| 2026 (presentation) | `DATASET_DIR` (default `data/generated/dev-seed2026`) | `TRUTH_LEDGER_PATH` (default `data/truth/ledger.json`) | `data/evaluation/bank/bank-2.0.0-<dataset directory name>.json` | `QDRANT_COLLECTION` (default `semantic_context_lab`) |
+| 2027, 2028 | `data/generated/dev-seed{seed}` | `data/truth/dev-seed{seed}.json` | `data/evaluation/bank/bank-2.0.0-dev-seed{seed}.json` | `QDRANT_COLLECTION` plus `_seed{seed}` |
+
+The presentation world is defined once, by `DATASET_DIR` and `TRUTH_LEDGER_PATH` (`world_paths(2026)`); the API, the post-job restore and `make ground-bank` all follow it, so the demo world is the same world with other values of the two variables.
+`TRUTH_LEDGER_PATH` is read only inside `app.evaluation`.
 
 After the last world, and also when any world fails, the presentation world's graph (seed 2026) is ingested again, so Live Lab and Data Model read the world they expect.
 When a world fails and the restore fails too, the world's error is raised with the restore failure attached as a note and logged; run `make ingest-graph` to restore the graph by hand.

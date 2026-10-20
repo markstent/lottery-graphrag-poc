@@ -275,24 +275,29 @@ class QueryService:
 
     def _require_active_world(self, request: QueryRequest) -> None:
         """A 503 when a run of B or C is asked while the graph holds another
-        world than the active dataset; a graph that cannot be read is the
-        graph error the run itself would fail with."""
+        world than the active dataset. A graph that cannot be read is treated
+        like a dataset that cannot be compared: the run is accepted, B and C
+        then fail with recorded ``GRAPH_QUERY_ERROR`` events, and A keeps its
+        result."""
         if self._graph_world is None or not {"B", "C"} & set(request.configurations):
             return
         try:
+            dataset_dir = Path(from_env().dataset_dir)
+        except ValueError as error:
+            raise ApiError(
+                503, ErrorCode.CONFIGURATION_ERROR, f"invalid configuration: {error}"
+            ) from None
+        try:
             reader = GraphReader(self._graph_config)
             try:
-                matches = self._graph_world(reader, Path(from_env().dataset_dir))
+                matches = self._graph_world(reader, dataset_dir)
             finally:
                 reader.close()
         except Exception as error:
-            body = run_error_body(error)
-            if body.error_code != ErrorCode.GRAPH_QUERY_ERROR:
+            if classify(error)[0] != ErrorCode.GRAPH_QUERY_ERROR:
                 raise
-            logger.warning("graph world check failed", exc_info=error)
-            raise ApiError(
-                503, ErrorCode.GRAPH_QUERY_ERROR, body.message, body.retryable
-            ) from error
+            logger.warning("graph world check failed; the run starts unchecked", exc_info=error)
+            return
         if matches is False:
             raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, OTHER_WORLD_MESSAGE)
 

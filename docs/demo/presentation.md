@@ -24,6 +24,7 @@ pattern comes from the scenario engine (SCN-002/003/007/015).
 make services-up        # Neo4j + Qdrant
 make generate-demo-data # only if data/generated/demo-seed2026 is absent (~100s)
 make demo-reset         # ingest demo graph + rebuild demo vector index
+make ground-demo-bank   # freeze the question bank of the demo world (needs ledger-demo.json)
 make serve-demo-api     # API on :8000 against the demo world
 make dev-frontend       # UI on :5173 (or open the built bundle)
 ```
@@ -48,7 +49,8 @@ pane event still streams from real recorded telemetry.
    right. Rewind the timeline to replay any moment.
 2. **Switch to Live backend.** The composer loads the demo questions from
    `GET /api/v1/demo/questions`: the first instance of strata H1, H2, H3
-   and H5 in the frozen bank (`make ground-bank` first). Each one is scored
+   and H5 in the frozen bank (`make ground-demo-bank` first; the bank is named
+   after the demo world's directory, so the development bank is not used). Each one is scored
    against the answer key once its run completes. Run the H1 question:
    both panes animate from the recorded event stream of a real A/B/C
    execution, and the scores per pipeline appear under the panes.

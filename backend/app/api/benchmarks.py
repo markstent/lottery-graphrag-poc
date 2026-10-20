@@ -45,7 +45,6 @@ from app.api.schemas import (
     QuestionOut,
 )
 from app.api.scoring import require_bank
-from app.config import from_env
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
@@ -61,6 +60,7 @@ from app.evaluation.official import (
     world_paths,
 )
 from app.evaluation.report import SUMMARY_SCHEMA_VERSION
+from app.evaluation.runner import WORLD_MANIFEST
 from app.observability.logging import run_context
 
 logger = logging.getLogger(__name__)
@@ -121,25 +121,62 @@ def _summary_out(run: Published) -> BenchmarkSummary:
 
 
 def presentation_bank() -> FrozenBank | None:
-    """The frozen bank of the presentation world, read afresh on every call,
-    or None before it is grounded. The presentation world is ``DATASET_DIR``'s;
-    a bank that does not match it (its world, ledger, manifest, bank version
+    """The frozen bank of the presentation world (``DATASET_DIR`` and
+    ``TRUTH_LEDGER_PATH``), or None before it is grounded.
+
+    A bank that does not match the world (its manifest, ledger, bank version
     or record serialiser), or that is corrupt, is a 503
-    ``CONFIGURATION_ERROR``."""
-    path = world_paths(PRESENTATION_SEED).bank_path
-    if not path.is_file():
-        return None
+    ``CONFIGURATION_ERROR``, and so is an invalid setting, which the message
+    names. The bank is loaded and checked once, then served until the size or
+    modification time of the bank, the world manifest or the ledger changes.
+    """
     try:
-        bank = load_frozen_bank(path)
+        paths = world_paths(PRESENTATION_SEED)
+    except ValueError as error:
+        raise ApiError(
+            503, ErrorCode.CONFIGURATION_ERROR, f"invalid configuration: {error}"
+        ) from None
+    if not paths.bank_path.is_file():
+        return None
+    files = (paths.bank_path, paths.world_dir / WORLD_MANIFEST, paths.ledger_path)
+    stamp = tuple(_stat_key(file) for file in files)
+    cached = _checked
+    if cached is not None and cached[0] == (files, stamp):
+        return cached[1]
+    try:
+        bank = load_frozen_bank(paths.bank_path)
     except GroundingError as error:
         logger.warning("question bank refused", extra={"reason": str(error)})
         raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE) from None
-    if not bank_matches_active_world(Path(from_env().dataset_dir)):
+    if not bank_matches_active_world():
         logger.warning(
             "question bank refused", extra={"reason": "not current for the active world"}
         )
         raise ApiError(503, ErrorCode.CONFIGURATION_ERROR, STALE_BANK_MESSAGE)
+    _remember((files, stamp), bank)
     return bank
+
+
+# The last bank that passed the checks, with the files and stamps it passed on.
+_checked: tuple[tuple[tuple[Path, ...], tuple[tuple[int, int] | None, ...]], FrozenBank] | None = (
+    None
+)
+
+
+def _remember(
+    key: tuple[tuple[Path, ...], tuple[tuple[int, int] | None, ...]], bank: FrozenBank
+) -> None:
+    global _checked
+    _checked = (key, bank)
+
+
+def _stat_key(path: Path) -> tuple[int, int] | None:
+    """The modification time and size of a file, None when it is missing."""
+    try:
+        info = path.stat()
+    except FileNotFoundError:
+        return None
+    return info.st_mtime_ns, info.st_size
 
 
 def _questions(runs_dir: Path, name: str | None) -> list[QuestionOut]:

@@ -1,6 +1,7 @@
 """CLI entry point: ``uv run python -m app.evaluation``.
 
-``ground`` grounds bank 2.0.0 into one generated world and writes the hashed
+``ground`` grounds bank 2.0.0 into one generated world (by default the
+active one, from DATASET_DIR and TRUTH_LEDGER_PATH) and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
 bank page. ``run`` runs a smoke or official benchmark over one or more
 world seeds, ``sweep`` runs the multi-hop depth sweep and ``compare`` pairs
@@ -32,9 +33,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="app.evaluation", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     ground = commands.add_parser("ground", help="Ground the bank into one world.")
-    ground.add_argument("--world", type=Path, required=True, help="Generated world directory.")
-    ground.add_argument("--ledger", type=Path, required=True, help="The world's truth ledger.")
-    ground.add_argument("--out", type=Path, required=True, help="Frozen bank JSON to write.")
+    ground.add_argument(
+        "--world", type=Path, default=None, help="World directory (default: $DATASET_DIR)."
+    )
+    ground.add_argument(
+        "--ledger", type=Path, default=None, help="Truth ledger (default: $TRUTH_LEDGER_PATH)."
+    )
+    ground.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="Frozen bank JSON to write (default: the bank named after the world).",
+    )
     doc = commands.add_parser("bank-doc", help="Render a frozen bank as Markdown.")
     doc.add_argument("--bank", type=Path, required=True, help="Frozen bank JSON to read.")
     doc.add_argument("--out", type=Path, required=True, help="Markdown page to write.")
@@ -96,8 +106,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {official.write_comparison(comparison, out)}")
         return 0
     if args.command == "ground":
-        bank = freeze_bank(args.world, args.ledger)
-        write_frozen_bank(bank, args.out)
+        active = official.world_paths(official.PRESENTATION_SEED)
+        world = args.world or active.world_dir
+        out = args.out or official.bank_path_for(world)
+        bank = freeze_bank(world, args.ledger or active.ledger_path)
+        write_frozen_bank(bank, out)
         for line in stratum_counts(bank):
             print(line)
         for item in bank.unavailable:
@@ -105,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         if not bank.unavailable:
             print("unavailable: none")
         print(f"bank hash: {bank.bank_hash}")
-        print(f"wrote {args.out}")
+        print(f"wrote {out}")
         return 0
 
     bank = load_frozen_bank(args.bank)
