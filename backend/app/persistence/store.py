@@ -378,3 +378,18 @@ class RunStore:
                     (finished_at, _dumps(pipelines), _dumps(INTERRUPTED_ERROR), record["run_id"]),
                 )
         return len(records)
+
+    def mark_unscored(self, record: dict[str, Any]) -> int:
+        """Give ``record`` as the score of every completed bank-question run
+        that has none, as left behind by a server that stopped between a
+        run's final row and its score. Call it at start-up, before any
+        worker runs. Returns how many runs were marked."""
+        with self._write() as connection:
+            cursor = connection.execute(
+                "INSERT INTO scores (run_id, score_json) "
+                "SELECT run_id, ? FROM runs WHERE status = 'completed' "
+                "AND benchmark_instance_id IS NOT NULL "
+                "AND run_id NOT IN (SELECT run_id FROM scores)",
+                (_dumps(record),),
+            )
+            return cursor.rowcount

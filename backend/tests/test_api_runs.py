@@ -185,6 +185,9 @@ def wait_idle(client: TestClient) -> None:
         return all(run["status"] in FINISHED for run in runs)
 
     wait_until(idle)
+    # Retired too: a worker scores a bank question after its final status.
+    service = client.app.state.query_service  # type: ignore[attr-defined]
+    wait_until(lambda: not service._active)
 
 
 # -- fixtures -----------------------------------------------------------------
@@ -270,7 +273,7 @@ def tiny_client(settings: RetrievalSettings) -> TestClient:
 
 
 def test_results_of_a_finished_pipeline_are_readable_while_the_next_runs(
-    service_with_slow_c: QueryService,
+    service_with_slow_c: QueryService, release: threading.Event
 ) -> None:
     run_id = service_with_slow_c.start(request(configurations=["A", "C"]))
     wait_until(
@@ -280,6 +283,9 @@ def test_results_of_a_finished_pipeline_are_readable_while_the_next_runs(
     )
     assert "A" in store(service_with_slow_c).results(run_id)
     assert row(service_with_slow_c, run_id).pipeline_status["C"] == "running"
+    release.set()  # the run ends inside the test, so no worker crosses its teardown
+    assert wait_finished(service_with_slow_c, run_id).status == "completed"
+    wait_until(lambda: not service_with_slow_c._active)
 
 
 def test_a_completed_run_stores_every_result_and_status(client: TestClient) -> None:
@@ -481,7 +487,7 @@ def test_a_malformed_history_cursor_is_a_validation_error(client: TestClient, be
 
 
 def test_a_slow_cold_start_does_not_block_history(
-    client_with_slow_lab: TestClient, lab_built: threading.Event
+    client_with_slow_lab: TestClient, lab_built: threading.Event, lab_gate: threading.Event
 ) -> None:
     run_id = start(client_with_slow_lab)
     assert client_with_slow_lab.get("/api/v1/queries").status_code == 200
@@ -493,6 +499,9 @@ def test_a_slow_cold_start_does_not_block_history(
     # Both reads returned while the lab factory was still blocked on its gate,
     # so neither waited for the cold start. No wall-clock bound is needed.
     assert not lab_built.is_set()
+    lab_gate.set()  # the run ends inside the test, so no worker crosses its teardown
+    assert await_finished(client_with_slow_lab, run_id)["status"] == "completed"
+    wait_idle(client_with_slow_lab)
 
 
 # -- start-up -----------------------------------------------------------------

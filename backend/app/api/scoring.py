@@ -44,6 +44,7 @@ INSTANCE_SCOPE: tuple[str, ...] = ()
 # is recorded too (the store keeps one JSON document per run).
 SCORED = "scored"
 FAILED = "failed"
+INTERRUPTED = "interrupted"
 # The pipelines that resolve entities before retrieval (the runner's ``seeded``).
 SEEDED_PIPELINES = frozenset({"B", "C"})
 LIVE_METRICS = ("answer", "evidence_f1", "anchor_resolution")
@@ -116,15 +117,30 @@ def failed_record() -> dict[str, Any]:
     return {"status": FAILED}
 
 
-def score_state(row: RunRow, record: dict[str, Any] | None) -> tuple[ScoreStatus, LiveScore | None]:
-    """The run's score status and score, from its row and stored score record."""
+def interrupted_record() -> dict[str, Any]:
+    """The score of a completed bank run whose scoring a server stop cut off."""
+    return {"status": FAILED, "reason": INTERRUPTED}
+
+
+@dataclass(frozen=True, slots=True)
+class ScoreState:
+    """Where a run stands with its answer key, as the results route reports it."""
+
+    status: ScoreStatus
+    score: LiveScore | None = None
+    # Why scoring failed when the reason is known: "interrupted" by a server stop.
+    failure_reason: str | None = None
+
+
+def score_state(row: RunRow, record: dict[str, Any] | None) -> ScoreState:
+    """The run's score state, from its row and stored score record."""
     if row.benchmark_instance_id is None or row.status != "completed":
-        return "not_applicable", None
+        return ScoreState("not_applicable")
     if record is None:
-        return "pending", None
+        return ScoreState("pending")
     if record["status"] == SCORED:
-        return "scored", LiveScore.model_validate(record["score"])
-    return "failed", None
+        return ScoreState("scored", LiveScore.model_validate(record["score"]))
+    return ScoreState("failed", failure_reason=record.get("reason"))
 
 
 def score_run(run: RunRow, results: Results, events: Events, bank: FrozenBank) -> LiveScore:

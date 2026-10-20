@@ -134,6 +134,7 @@ const RESULTS = {
   error: null,
   answer_key: 'none',
   score_status: 'not_applicable',
+  score_failure: null,
   score: null,
   results: {
     A: {

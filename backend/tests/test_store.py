@@ -3,6 +3,7 @@ paging, interrupted runs and schema versioning."""
 
 from __future__ import annotations
 
+import dataclasses
 import sqlite3
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -371,3 +372,28 @@ def test_a_newer_schema_is_refused(tmp_path: Path) -> None:
         raw.execute("PRAGMA user_version = 99")
     with pytest.raises(RuntimeError, match=rf"99.*{SCHEMA_VERSION}"):
         RunStore(tmp_path / "app.db", 10)
+
+
+def test_completed_bank_runs_left_unscored_are_marked_at_start(tmp_path: Path) -> None:
+    first = RunStore(tmp_path / "app.db", 10)
+
+    def bank_run(run_id: str, status: str) -> RunRow:
+        return dataclasses.replace(row(run_id, status=status), benchmark_instance_id="L05-2026-X")
+
+    first.create_run(bank_run("RUN-UNSCORED", "completed"))
+    first.create_run(bank_run("RUN-SCORED", "completed"))
+    first.put_score("RUN-SCORED", {"status": "scored", "score": {"total": 1}})
+    first.create_run(bank_run("RUN-CANCELLED", "cancelled"))
+    first.create_run(row("RUN-AD-HOC", status="completed"))
+    first.close()
+    marker = {"status": "failed", "reason": "interrupted"}
+    reopened = RunStore(tmp_path / "app.db", 10)
+    try:
+        assert reopened.mark_unscored(marker) == 1
+        assert reopened.score("RUN-UNSCORED") == marker
+        assert reopened.score("RUN-SCORED") == {"status": "scored", "score": {"total": 1}}
+        assert reopened.score("RUN-CANCELLED") is None
+        assert reopened.score("RUN-AD-HOC") is None
+        assert reopened.mark_unscored(marker) == 0
+    finally:
+        reopened.close()

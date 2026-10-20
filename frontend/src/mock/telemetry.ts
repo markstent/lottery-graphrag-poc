@@ -128,12 +128,17 @@ export interface MockRun {
   answerKey?: 'none' | 'available'
   /** Where the run stands with its answer key (backend score_status). */
   scoreStatus?: ScoreStatus
+  /** Why scoring failed when known (backend score_failure). */
+  scoreFailure?: ScoreFailure | null
   /** A completed bank question's scores against its answer key; null when not scored. */
   liveScore?: LiveScore | null
 }
 
 /** Ad hoc, cancelled and failed runs are not scored; a completed bank question is pending, then scored or failed. */
 export type ScoreStatus = 'not_applicable' | 'pending' | 'scored' | 'failed'
+
+/** A server stop cut the scoring off; recorded at the next start-up. */
+export type ScoreFailure = 'interrupted'
 
 /** One pipeline's deterministic scores on a live bank question (backend LivePipelineScore). */
 export interface LivePipelineScore {

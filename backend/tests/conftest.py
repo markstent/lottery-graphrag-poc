@@ -41,25 +41,46 @@ LEAK_DRAIN_S = 15.0
 _leaks: list[str] = []
 
 
-def _workers() -> list[threading.Thread]:
-    return [t for t in threading.enumerate() if t.name.startswith(WORKER_PREFIXES)]
+def _workers(prefixes: tuple[str, ...] = WORKER_PREFIXES) -> list[threading.Thread]:
+    return [t for t in threading.enumerate() if t.name.startswith(prefixes)]
 
 
-def _drain(test: str) -> None:
+def _drain(test: str, prefixes: tuple[str, ...] = WORKER_PREFIXES) -> None:
     """Note each worker still running after ``test``, then let it finish."""
-    for thread in _workers():
+    for thread in _workers(prefixes):
         thread.join(LEAK_GRACE_S)
         if thread.is_alive():
             _leaks.append(f"{thread.name} (left running by {test})")
             thread.join(LEAK_DRAIN_S)
 
 
+# pytest releases its output capture between a test's phases to report
+# them, and the JSON log handler writes to whatever sys.stderr is then, so a
+# run worker running across a phase boundary prints its stage timings to the
+# terminal. Each phase is therefore checked, inside its capture, as it ends.
+# Setup and call check run workers only: a benchmark job a test holds behind
+# a gate logs nothing while it waits, and its fixture releases it.
+RUN_WORKER = ("query-",)
+
+
+@pytest.hookimpl(wrapper=True, trylast=True)
+def pytest_runtest_setup(item: pytest.Item) -> Iterator[None]:
+    result = yield
+    _drain(f"{item.nodeid} (setup)", RUN_WORKER)
+    return result
+
+
+@pytest.hookimpl(wrapper=True, trylast=True)
+def pytest_runtest_call(item: pytest.Item) -> Iterator[None]:
+    result = yield
+    _drain(f"{item.nodeid} (call)", RUN_WORKER)
+    return result
+
+
 @pytest.hookimpl(wrapper=True, trylast=True)
 def pytest_runtest_teardown(item: pytest.Item) -> Iterator[None]:
-    """After every test's teardown, still inside its output capture, so a
-    leaked worker never writes to the terminal between tests."""
     result = yield
-    _drain(item.nodeid)
+    _drain(f"{item.nodeid} (teardown)")
     return result
 
 

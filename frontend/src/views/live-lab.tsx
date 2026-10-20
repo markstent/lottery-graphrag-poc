@@ -409,6 +409,7 @@ export function LiveLab() {
         <LiveScoreNote
           answerKey={liveRun.answerKey ?? 'none'}
           status={liveRun.scoreStatus ?? 'not_applicable'}
+          failure={liveRun.scoreFailure ?? null}
           score={liveRun.liveScore ?? null}
         />
       )}

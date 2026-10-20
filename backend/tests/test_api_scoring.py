@@ -17,6 +17,7 @@ import json
 import logging
 import threading
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -27,8 +28,10 @@ from app.api.runs import QueryService
 from app.api.schemas import LIVE_SCORE_LABEL, LivePipelineScore, LiveScore, QueryRequest
 from app.api.scoring import (
     DEMO_STRATA,
+    ScoreState,
     demo_questions,
     failed_record,
+    interrupted_record,
     score_run,
     score_state,
     scored_record,
@@ -281,6 +284,9 @@ def _wait_idle(client: TestClient) -> None:
         return all(run["status"] in FINISHED for run in runs)
 
     wait_until(idle)
+    # Retired too: a worker scores a bank question after its final status.
+    service = client.app.state.query_service  # type: ignore[attr-defined]
+    wait_until(lambda: not service._active)
 
 
 def run_to_completion(client: TestClient, **body: Any) -> dict[str, Any]:
@@ -565,13 +571,19 @@ SCORE = LiveScore(instance_id="L05-x", per_pipeline={})
 @pytest.mark.parametrize(
     ("status", "instance_id", "record", "expected"),
     [
-        ("completed", None, None, ("not_applicable", None)),
-        ("cancelled", "L05-x", None, ("not_applicable", None)),
-        ("failed", "L05-x", None, ("not_applicable", None)),
-        ("running", "L05-x", None, ("not_applicable", None)),
-        ("completed", "L05-x", None, ("pending", None)),
-        ("completed", "L05-x", scored_record(SCORE), ("scored", SCORE)),
-        ("completed", "L05-x", failed_record(), ("failed", None)),
+        ("completed", None, None, ScoreState("not_applicable")),
+        ("cancelled", "L05-x", None, ScoreState("not_applicable")),
+        ("failed", "L05-x", None, ScoreState("not_applicable")),
+        ("running", "L05-x", None, ScoreState("not_applicable")),
+        ("completed", "L05-x", None, ScoreState("pending")),
+        ("completed", "L05-x", scored_record(SCORE), ScoreState("scored", SCORE)),
+        ("completed", "L05-x", failed_record(), ScoreState("failed")),
+        (
+            "completed",
+            "L05-x",
+            interrupted_record(),
+            ScoreState("failed", failure_reason="interrupted"),
+        ),
     ],
 )
 def test_score_status_follows_the_run_and_its_score_record(
@@ -651,3 +663,25 @@ def test_a_bank_question_runs_with_its_own_scope(service: QueryService, bank: Fr
     # An ad hoc question keeps the scope it asks for.
     ad_hoc = service.start(request(question=AD_HOC, market_scope=["GR"]))
     assert wait_finished(service, ad_hoc).market_scope == ("MKT_GR",)
+
+
+def test_a_bank_run_whose_scoring_a_stop_cut_off_reads_interrupted_at_start_up(
+    offline_graph: None, lab: Lab, run_database: Path
+) -> None:
+    left = RunStore(run_database, retention=50)
+    left.create_run(
+        dataclasses.replace(
+            _row("completed", "L05-2026-INC_S007_GR"),
+            run_id="RUN-UNSCORED",
+            created_at=datetime.now(UTC).isoformat(),
+        )
+    )
+    left.close()
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as client:
+        run = client.get("/api/v1/queries/RUN-UNSCORED").json()
+    assert (run["status"], run["score_status"], run["score_failure"], run["score"]) == (
+        "completed",
+        "failed",
+        "interrupted",
+        None,
+    )

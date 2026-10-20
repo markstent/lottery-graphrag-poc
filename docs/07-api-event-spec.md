@@ -226,8 +226,9 @@ A metric the instance does not define (evidence F1 when no claim survives anchor
 - `pending`: a completed bank question whose score is not stored yet; it follows the final status by a few milliseconds, so a client polls briefly (Live Lab gives up after 2 s);
 - `scored`: `score` is set;
 - `failed`: scoring raised; the error is logged, `score` stays null and the run stays `completed`.
+- `failed` with `score_failure: "interrupted"`: the server stopped between the run's final row and its score; the next start-up records it (beside marking unfinished runs `INTERRUPTED`), so no run stays `pending` for good. `score_failure` is null otherwise.
 
-The store keeps the score with its status in one record (`{"status": "scored", "score": ...}` or `{"status": "failed"}`), so no schema change was needed.
+The store keeps the score with its status in one record (`{"status": "scored", "score": ...}`, `{"status": "failed"}` or `{"status": "failed", "reason": "interrupted"}`), so no schema change was needed.
 
 `GET /demo/questions` serves the first instance in bank order of each of the strata H1, H2, H3 and H5, as `instance_id`, `question_id`, `text`, `stratum` and `market_scope` (empty: all markets).
 Before the bank is grounded it is the same 503 `CONFIGURATION_ERROR`, never an empty list.

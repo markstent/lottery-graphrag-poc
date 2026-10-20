@@ -27,6 +27,7 @@ from app.api.errors import install_handlers
 from app.api.graph_world import GraphLease, GraphWorldCheck
 from app.api.readiness import ReadinessChecks
 from app.api.runs import QueryService, start_lab
+from app.api.scoring import interrupted_record
 from app.config import GraphConfig, api_from_env, from_env
 from app.lab import Lab
 from app.observability.logging import configure_logging, run_context
@@ -70,10 +71,13 @@ def create_app(
         store = RunStore(settings.db_path, settings.run_retention)
         try:
             interrupted = store.mark_interrupted()
+            unscored = store.mark_unscored(interrupted_record())
         finally:
             store.close()
         if interrupted:
             logger.warning("runs interrupted by a server stop", extra={"runs": interrupted})
+        if unscored:
+            logger.warning("scoring interrupted by a server stop", extra={"runs": unscored})
         factory = lab_factory if lab_factory is not None else default_lab
         service = QueryService(store, factory, graph, lease)
         application.state.query_service = service

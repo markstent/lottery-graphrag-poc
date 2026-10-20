@@ -165,6 +165,9 @@ class QueryResults(RunSummary):
     benchmark_instance_id: str | None = None
     answer_key: AnswerKey = "none"
     score_status: ScoreStatus = "not_applicable"
+    # Why a failed scoring failed when known: "interrupted" when the server
+    # stopped before the score was written (recorded at the next start-up).
+    score_failure: Literal["interrupted"] | None = None
     score: LiveScore | None = None
 
 

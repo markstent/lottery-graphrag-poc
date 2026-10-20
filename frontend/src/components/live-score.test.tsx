@@ -16,6 +16,19 @@ describe('LiveScoreNote', () => {
     expect(screen.getByText('Scoring failed.')).toBeVisible()
   })
 
+  it('says a scoring a server stop cut off was interrupted', () => {
+    render(
+      <LiveScoreNote
+        answerKey="available"
+        status="failed"
+        failure="interrupted"
+        score={null}
+      />,
+    )
+    expect(screen.getByText('Scoring was interrupted.')).toBeVisible()
+    expect(screen.queryByText('Scoring failed.')).not.toBeInTheDocument()
+  })
+
   it('says an ad hoc question has no answer key', () => {
     render(
       <LiveScoreNote answerKey="none" status="not_applicable" score={null} />,

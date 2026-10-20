@@ -8,6 +8,7 @@
 import type {
   LivePipelineScore,
   LiveScore,
+  ScoreFailure,
   ScoreStatus,
 } from '../mock/telemetry'
 
@@ -29,10 +30,12 @@ function pipelineLine(tag: string, score: LivePipelineScore): string {
 export function LiveScoreNote({
   answerKey,
   status,
+  failure = null,
   score,
 }: {
   answerKey: 'none' | 'available'
   status: ScoreStatus
+  failure?: ScoreFailure | null
   score: LiveScore | null
 }) {
   if (answerKey === 'none') {
@@ -50,6 +53,17 @@ export function LiveScoreNote({
         <span className="font-medium text-warning">Score pending.</span> The run
         completed, but its score against the answer key has not arrived yet. Run
         the question again to see it.
+      </p>
+    )
+  }
+  if (status === 'failed' && failure === 'interrupted') {
+    return (
+      <p className="text-xs text-muted">
+        <span className="font-medium text-warning">
+          Scoring was interrupted.
+        </span>{' '}
+        The server stopped before this run was scored against the answer key.
+        Run the question again to score it.
       </p>
     )
   }

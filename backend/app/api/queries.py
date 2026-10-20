@@ -138,15 +138,16 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
             if row is None:
                 raise _unknown_run()
             results = store.results(run_id)
-            score_status, score = score_state(row, store.score(run_id))
+            state = score_state(row, store.score(run_id))
         return QueryResults.model_validate(
             {
                 **_summary(row),
                 "results": results,
                 "benchmark_instance_id": row.benchmark_instance_id,
                 "answer_key": "none" if row.benchmark_instance_id is None else "available",
-                "score_status": score_status,
-                "score": score,
+                "score_status": state.status,
+                "score_failure": state.failure_reason,
+                "score": state.score,
             }
         )
 

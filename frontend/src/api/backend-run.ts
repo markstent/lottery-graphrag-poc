@@ -24,6 +24,7 @@ import type {
   MockRun,
   LiveScore,
   RagEvent,
+  ScoreFailure,
   ScoreStatus,
 } from '../mock/telemetry'
 
@@ -104,6 +105,7 @@ interface ResultsDto {
   error: ErrorDto | null
   answer_key: 'none' | 'available'
   score_status: ScoreStatus
+  score_failure: ScoreFailure | null
   score: LiveScore | null
 }
 
@@ -662,6 +664,7 @@ export async function runBackendQuestion(
     evaluation: [],
     answerKey: results.answer_key,
     scoreStatus: results.score_status,
+    scoreFailure: results.score_failure,
     liveScore: results.score,
   }
 }
