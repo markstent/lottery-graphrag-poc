@@ -17,7 +17,7 @@ Every event carries exactly these eight fields, in replay and in the stream:
 - payload
 - sequence
 
-Event types are the typed catalogue in `docs/07-api-event-spec.md` (run.* and pipeline.* lifecycle events, rag.*, graph.*, ontology.*, evaluation.*).
+Event types are the typed catalogue in `docs/07-api-event-spec.md` (run.* and pipeline.* lifecycle events, rag.* and graph.*; the ontology.* and evaluation.* families are reserved and not emitted).
 
 ## Lifecycle
 

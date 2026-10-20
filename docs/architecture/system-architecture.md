@@ -32,7 +32,7 @@ Define the component structure, data flows and storage boundaries for the POC. D
         Experiment Orchestrator    Event Recorder -> SQLite (events, runs, evidence, results)
                 |                      |
     +-----------+----------+           |
-    |           |          |       SSE hub -> UI live view
+    |           |          |       per-run condition -> SSE route -> UI live view
   RAG A      GraphRAG B   GraphRAG C
     |           |          |
     |      Neo4j overlay  Neo4j + ontology expansion
@@ -52,7 +52,7 @@ Define the component structure, data flows and storage boundaries for the POC. D
 
 1. `POST /api/v1/queries` validates the request and creates a run row (SQLite) with reproducibility metadata.
 2. The orchestrator executes each requested configuration (A, B, C) as an in-process background task.
-3. Each pipeline emits typed events (`rag.*`, `graph.*`, `ontology.*`) through a recorder that both persists them (ADR-007) and fans them out to the SSE hub.
+3. Each pipeline emits typed events (`rag.*`, `graph.*`, `ontology.*`) through a recording sink that stores each event in the run store the moment it is emitted (ADR-007) and wakes the run's condition, which the SSE route waits on between reads of the store.
 4. Pipelines assemble context under the configured budget and call the model gateway. Final numeric claims are resolved against the DuckDB layer where the graph indicates a source record.
 5. The evaluator scores answers and evidence against its own data (truth ledger only inside evaluation) and persists metrics.
 6. The UI follows the run through SSE; `GET /queries/{run_id}/events` replays the stored sequence.
@@ -72,7 +72,7 @@ All of `data/` is gitignored; worlds are reproducible from seeds and configurati
 
 ## 6. Process model
 
-One FastAPI process hosts the API, orchestrator, pipelines, recorder, SSE hub and evaluator. No message broker: the POC serves a single operator and presentation mode, so an in-process task queue is the minimum sufficient mechanism. Long pipeline stages remain async and emit events incrementally so the UI streams in real time. If multi-user or multi-experiment concurrency is ever required, this is the boundary to revisit first.
+One FastAPI process hosts the API, orchestrator, pipelines, recording sink, run store and evaluator; the live stream is a route that reads the run store and waits on the run's condition, with no hub or broker between them. No message broker: the POC serves a single operator and presentation mode, so an in-process task queue is the minimum sufficient mechanism. Long pipeline stages remain async and emit events incrementally so the UI streams in real time. If multi-user or multi-experiment concurrency is ever required, this is the boundary to revisit first.
 
 ## 7. Configuration surface
 

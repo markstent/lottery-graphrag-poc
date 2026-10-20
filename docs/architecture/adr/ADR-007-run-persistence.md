@@ -1,15 +1,15 @@
 # ADR-007 — SQLite for Run, Event and Result Persistence
 
-**Decision:** Application persistence (experiments, runs, ordered execution events, evidence records, benchmark results, reproducibility metadata) uses a single SQLite database (`data/app.db`, WAL mode) with JSON payloads where structure is open-ended.
+**Decision:** Application persistence stores four things: runs, their ordered execution events, their per-pipeline results and their live scores. It uses a single SQLite database (`data/app.db`, WAL mode) with JSON payloads where structure is open-ended.
 
-**Reason:** The POC must persist every execution event for replay (`GET /queries/{run_id}/events`) and every result for the dashboards, without adding a database service. SQLite covers this in-process: ordered events by `sequence`, evidence lookups per run, cross-run aggregation for the Results Dashboard, all transactional and file-backed. One storage engine serves both telemetry and metrics, which keeps replay and scoring consistent (same rows the UI streamed).
+**Reason:** The POC must persist every execution event for replay (`GET /queries/{run_id}/events`) and every pipeline result and live score of a run, without adding a database service. SQLite covers this in-process: ordered events by `sequence`, results and scores per run, run history, all transactional and file-backed. One storage engine serves both the event stream and the results, which keeps replay and scoring consistent (same rows the UI streamed). Benchmark results are not stored here: they are the run directories the harness writes.
 
 **Consequences:**
 - Replay reads persisted events by sequence; it never re-runs retrieval.
 - The SSE stream and the replay endpoint are fed from the same stored events, so what the audience saw live is exactly what replay shows.
-- Evidence objects are persisted per run for the Evidence Explorer and for scoring after the run.
+- Evidence objects are stored inside each pipeline's result, for the Evidence Explorer and for scoring after the run.
 - Schema versions recorded via `PRAGMA user_version`; migrations land with the phases that introduce the tables.
-- `data/` is gitignored; reproducibility metadata (git SHA, seeds, model identifiers) is stored inside the database and exportable with results.
+- `data/` is gitignored; the reproducibility metadata of a benchmark (git SHA, seeds, model identifiers) is in the run directory's `summary.json`, not in the database.
 - Rejected alternatives: JSONL files per run (no cross-run queries for dashboards), PostgreSQL/Redis (extra service for no POC-scale benefit).
 
 ## As built (Phase 4, Task 4)
@@ -67,7 +67,9 @@ Any other field, including `run_id`, `kind`, `created_at` and the request fields
 ### Interrupted runs
 
 `mark_interrupted()` is called once at start-up.
-It sets every `queued` or `running` run to `failed`, stamps `finished_at`, marks its `pending` or `running` pipelines `failed`, and records the error `{"error_code": "INTERRUPTED", "message": "the server stopped during this run", "retryable": true}`.
+It sets every `queued` or `running` run to `failed`, stamps `finished_at`, marks its `pending` or `running` pipelines `failed`, and records the INTERRUPTED error envelope (`{"error_code": "INTERRUPTED", "message": "The server stopped during this run.", "retryable": true}`, from `RUN_ERROR_MESSAGES`).
+In the same transaction it appends, with the next sequences, a `pipeline.failed` event for each pipeline that was `running` and then a `run.failed` event, each carrying that envelope, so a stream of the run reaches a terminal event.
+The caller builds those events (the store does not know the event types); a run whose terminal event is already stored, because the write of its final row failed, is marked the same way and gets no second terminal event.
 It returns how many runs it marked.
 This assumes a single API process owns the database: any queued or running run found at start-up must have belonged to a process that has stopped.
 Running two API processes against one database would let one process fail the other's live runs, so that deployment is not supported.
@@ -91,7 +93,7 @@ Every connection sets, in this order, `PRAGMA foreign_keys = ON` (needed for the
 `busy_timeout` comes first so that switching to WAL also waits for locks rather than failing.
 `close()` closes the calling thread's connection.
 Every thread that uses the store must call `close()` before it ends; otherwise its connection is left to garbage collection, which emits a `ResourceWarning`.
-The API (Task 5) follows this rule for every thread it runs store calls on.
+The API follows this rule for every thread it runs store calls on.
 Each run's worker thread closes its connection in a `finally` when the run ends.
 The synchronous routes run on the server's thread pool, so each route closes its thread's connection before it returns.
 The start-up lifespan opens the store, calls `mark_interrupted()` and closes its own connection before the server accepts requests.

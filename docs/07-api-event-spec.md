@@ -24,7 +24,14 @@ Live visualisation must be driven by real backend events.
 - explicit error types
 - idempotency where appropriate
 - structured telemetry
-- no hidden truth in public APIs
+- no hidden truth in the live query surface (see below)
+
+Hidden truth and the answer key:
+
+- The owner decided on 2026-10-18 that the Help screen shows each bank question's answer key and, for a planted scenario, its hidden truth.
+- `GET /benchmarks/questions` is the only route that serves them, both read from evaluator output (`app.evaluation`) after the fact.
+- No live query route, event, stream frame or log record carries an expected answer or a hidden truth, and no retrieval pipeline can reach either (ADR-008).
+- The truth ledger itself is never read or exposed by an API route.
 
 Base path:
 
@@ -165,7 +172,7 @@ Cancellation is cooperative.
 `POST /queries/{run_id}/cancel` sets the run's cancel flag and returns 202 with the run summary; the running pipeline stops at its next event, finished pipelines keep their results, and the run ends `cancelled`.
 The one exception is a pipeline that fails before its next event: the run then ends `failed` with the real error.
 A 202 is decided before the run's final row is written, so a run whose end is already being written refuses the cancel with 409.
-Cancelling a finished run is a 409 `VALIDATION_ERROR`; an unknown run is a 404 `NOT_FOUND`.
+Cancelling a finished run is a 409 `CONFLICT`; an unknown run is a 404 `NOT_FOUND`.
 
 ### Bank questions and live scoring (Phase 4)
 
@@ -176,7 +183,7 @@ Cancelling a finished run is a 409 `VALIDATION_ERROR`; an unknown run is a 404 `
 `benchmark_instance_id` names an instance of the presentation world's frozen bank (seed 2026, `make ground-bank`).
 The run asks that instance's text: every pipeline receives the instance text and nothing else, never its expected answer, checks or claims.
 `question` may then be left out; when it is sent it must equal the instance text, otherwise the request is a 422 `VALIDATION_ERROR` "a bank question runs with its own text".
-An id the bank does not hold is a 422 `VALIDATION_ERROR`, and before the bank is grounded the request is a 503 `CONFIGURATION_ERROR` "the question bank has not been grounded; run make ground-bank".
+An id the bank does not hold is a 422 `VALIDATION_ERROR`, and before the bank is grounded, or when it is not current for the active world, the request is a 503 `CONFIGURATION_ERROR` (section 20, "Benchmark reads").
 A request with neither `question` nor `benchmark_instance_id` is a 422.
 A bank question runs with the instance's own market scope, or unscoped when the instance has none (every bank 2.0.0 instance), so a live score always matches the benchmark's; a request `market_scope` that differs is a 422 `VALIDATION_ERROR` "a bank question runs with its own scope".
 
@@ -432,6 +439,8 @@ These are the codes the API emits (`ErrorCode` in `backend/app/api/errors.py`):
 ```text
 VALIDATION_ERROR
 NOT_FOUND
+CONFLICT
+METHOD_NOT_ALLOWED
 MODEL_ERROR
 EMBEDDING_ERROR
 VECTOR_RETRIEVAL_ERROR
@@ -442,6 +451,10 @@ CANCELLED
 RUN_ERROR
 CONFIGURATION_ERROR
 ```
+
+`CONFLICT` is a valid request that the current state refuses: the graph is held by a benchmark job or a live run (retryable), the graph is held by another world, a run or job has already finished, or a record id is not unique.
+`METHOD_NOT_ALLOWED` is a 405.
+Any other client error the framework raises (a 4xx other than 404 and 405) is a `VALIDATION_ERROR`; none is ever a `RUN_ERROR`.
 
 `ONTOLOGY_ERROR`, `EVALUATION_ERROR` and `TIMEOUT_ERROR` from the first design are not used.
 A timeout surfaces as the error of the stage that timed out (for example `GRAPH_QUERY_ERROR`, retryable, for a Neo4j timeout).
@@ -474,69 +487,33 @@ The exception's own text goes to the server log only, because wrapped library er
 
 ---
 
-## 12. Evidence Object
+## 12. Evidence Objects
 
-Common evidence schema:
+Evidence is not a separate resource.
+Each pipeline's result in `GET /queries/{run_id}` carries it, typed by `app/evidence/__init__.py`:
 
-```json
-{
-  "evidence_id": "EVD-001",
-  "evidence_type": "DOCUMENT_CHUNK",
-  "source_id": "CHUNK-0081",
-  "source_system": "synthetic_document_store",
-  "title": "March Mobile Release Review",
-  "excerpt": "...",
-  "market_id": "GR",
-  "valid_from": "2026-03-01",
-  "valid_to": null,
-  "score": 0.91,
-  "provenance": {}
-}
-```
+- `EvidenceChunk`, in A's `evidence` and in B and C's `document_evidence`: `chunk_id`, `document_id`, `chunk_index`, `text`, `title`, `document_type`, `market_id`, `language_code`, `source_system`, `valid_from`, `valid_to`, `kind` (`chunk`, `record` or `node`), `record_table`, `similarity` (the fused reciprocal-rank score of the dense and sparse channels, not a cosine), `dense_rank`, `sparse_rank`, `rank`, `discovered_via` (`vector`, `graph_traversal` or `vector+graph_traversal`), `rerank_score`, `selected` and `discard_reason` (`context_budget`, `slot_limit`, `duplicate` or `superseded_by_structured_fact`).
+- `GraphEvidence`, in B and C's `node_evidence`: `node_id`, `node_label`, `hops`, `path` (node ids from the seed), `rel_type`, `score` (the graph composite), `components` (the weighted score parts), `rerank_score`, `selected`, `discard_reason` and `authoritative` (facts read from the structured layer for that node).
+- `Citation`, in the answer's `citations`: one per block shown to the model, in prompt order, with `chunk_id`, `document_id`, `title`, `source_system`, `source_record_id`, `record_table`, `market_id` and `language_code`; `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
 
-Other evidence types:
-
-```text
-STRUCTURED_RECORD
-GRAPH_NODE
-GRAPH_RELATIONSHIP
-GRAPH_PATH
-DERIVED_METRIC
-DOCUMENT_CHUNK
-```
+B and C also carry `ontology_concepts`, the concepts their expansion used.
 
 ---
 
-## 13. Graph Node DTO
+## 13. Graph Nodes
 
-```json
-{
-  "node_id": "GAME_GR_04",
-  "node_type": "Game",
-  "display_label": "Synthetic Game 04",
-  "market_id": "GR",
-  "visual_state": "candidate",
-  "provenance": {
-    "source_system": "synthetic_warehouse",
-    "source_record_id": "GAME_GR_04"
-  }
-}
-```
+The graph is read in two ways, and both are typed.
+
+- A run shows the nodes and relationships it visited through its recorded events (section 8): `graph.node.discovered`, `graph.relationship.traversed`, `graph.candidate.selected` and `graph.candidate.discarded`, with `GraphEvidence` in the result.
+  The visual state of a node (seed, candidate, selected, discarded, ontology concept, source record) is derived from those events by the client; the backend does not send a state field.
+- The Graph Model screens read the stored graph through `NodeOut` and `Neighbours` (section 20, "Graph reads"): `node_id`, `labels`, `properties` and `provenance` (`table`, `row_id`, `dataset_id`).
 
 ---
 
-## 14. Graph Edge DTO
+## 14. Graph Edges
 
-```json
-{
-  "edge_id": "EDGE-992",
-  "source_id": "GAME_GR_04",
-  "target_id": "PLATFORM_MOBILE_02",
-  "relationship_type": "RUNS_ON",
-  "visual_state": "traversed",
-  "properties": {}
-}
-```
+An edge is a recorded `graph.relationship.traversed` event, with `from_id`, `relationship_type`, `to_id`, `to_label` and `hop` in its payload (section 8), or a `NeighbourOut` (`rel_type`, `direction` and the node at the other end) from `GET /graph/nodes/{node_id}/neighbours`.
+There is no edge identifier: an edge is the triple of its two node ids and its type.
 
 ---
 
@@ -554,26 +531,16 @@ Replay must use recorded event sequence rather than rerunning retrieval.
 
 ---
 
-## 16. Benchmark Results DTO
+## 16. Benchmark Results
 
-Each question result:
+The API publishes benchmark results unchanged from the harness.
 
-```json
-{
-  "question_id": "Q-021",
-  "configuration": "C",
-  "metrics": {
-    "correctness": 0.94,
-    "evidence_precision": 0.88,
-    "evidence_recall": 1.0,
-    "grounding": 0.96,
-    "latency_ms": 2680,
-    "input_tokens": 4120,
-    "output_tokens": 480
-  },
-  "failure_class": null
-}
-```
+- `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, summary}`, where `summary` is the run's `summary.json` (schema version 2): the headline tiles, metrics per stratum and pipeline, confidence intervals, failure counts and reproducibility record.
+  Its contents are specified in `docs/evaluation/reproducibility.md` and `docs/evaluation/scoring.md`.
+- `GET /benchmarks/questions` carries each bank question's mean `answer` and `evidence_f1` per pipeline from a published run (`PipelineScore`), null where undefined.
+- A live bank question's score (`LiveScore` in `GET /queries/{run_id}`) holds, per pipeline, `answer`, `evidence_f1`, `anchor_resolution` and `failure_class`, scored by the deterministic scorers and never the judge.
+
+There is no per-question result resource: the per-instance results are the run directory's `results.json`.
 
 ---
 
@@ -592,15 +559,12 @@ Breaking changes require:
 
 ## 18. Testing
 
-Contract tests must cover:
+Contract tests cover request validation, invalid configuration, event ordering and envelope, replay and stream parity, error envelopes and codes, and truth-ledger non-exposure.
+They are listed in section 20.
 
-- request validation
-- invalid config
-- event ordering
-- event schema
-- graph replay
-- error events
-- truth-ledger non-exposure
+Truth-ledger non-exposure is tested in two ways.
+`tests/test_truth_ledger_isolation.py` enforces which modules may import `app.evaluation` and that retrieval loads none of it at run time (ADR-008).
+`tests/test_api_scoring.py` and `tests/test_api_benchmarks.py` check that the demo questions, run results, events and logs carry no expected answer, and that `GET /benchmarks/questions` is the one route that serves answer keys and hidden truths, as the owner decided on 2026-10-18 (section 2).
 
 ---
 
@@ -616,10 +580,26 @@ Do not freeze event contracts before reviewing real prototype traces.
 
 The API is built as section 3 lists it.
 It is tested offline in `tests/test_api_queries.py`, `tests/test_api_runs.py`, `tests/test_api_stream.py`, `tests/test_api_scoring.py`, `tests/test_api_benchmarks.py`, `tests/test_api_data_model.py`, `tests/test_api_graph_model.py`, `tests/test_api_reference.py`, `tests/test_api_errors.py`, `tests/test_store.py` and `tests/test_health.py`.
-`tests/test_api_live.py` is the live check (`VECTOR_E2E=1 GRAPH_E2E=1`).
-It starts the application on the presentation world, asks the first H1 demo question, reads the run over server-sent events, waits for the score against the answer key, restarts the application on the same run store, and checks that the run, its events and readiness survive.
+`tests/test_api_live.py` is the live check (`GRAPH_E2E=1 VECTOR_E2E=1 LIVE_WORLD_E2E=1`).
+It starts the application on the presentation world, asks the first H1 demo question, reads the run over server-sent events, waits for the score against the answer key, restarts the application on the same run store, and checks that the run, its events and readiness survive, and that no log record holds the question's expected answer.
 It reads Neo4j and never writes to it.
-Its tiny-world companion in the same file does wipe Neo4j, so it runs second.
+Its tiny-world companion in the same file needs only `GRAPH_E2E=1` and does wipe Neo4j.
+
+### Live test flags
+
+Three flags switch the live tests on.
+CI sets `GRAPH_E2E` and `VECTOR_E2E`, which have services in CI, and never `LIVE_WORLD_E2E`.
+
+| Flag | Tests it enables |
+|---|---|
+| `GRAPH_E2E=1` | tests that use Neo4j; several wipe and re-ingest it |
+| `VECTOR_E2E=1` | tests that use Qdrant |
+| `LIVE_WORLD_E2E=1` | tests that need the presentation world (generated, ingested, indexed, grounded), its bank, its ledger or Ollama: `test_benchmark_live.py`, the presentation test in `test_api_live.py`, the live test in `test_api_graph_model.py` and the `dev_world` tests in `test_benchmark_grounding.py` |
+
+A test whose flag is unset is skipped, and CI runs pytest with `-rs` so every skip and its reason is listed.
+A test whose flag is set never skips: a missing prerequisite or an unreachable service is a failure.
+After each test module, a fixture ingests the presentation world (`DATASET_DIR`'s) again if Neo4j holds another, when that world's `_graph_stats.json` exists, so running the whole live suite leaves the graph at the presentation world.
+The gating is in `backend/tests/live.py`; `docs/development/commands.md` has the commands.
 
 ### Benchmark reads
 
@@ -642,9 +622,10 @@ A malformed `summary.json` is a server error, never silently skipped.
 - `GET /benchmarks/questions` lists the questions of the presentation world's frozen bank for the Help screen.
   Each entry has `question_id`, `instance_id`, `text`, `tests`, `stratum`, `scenario_id`, `ontology_dependent`, `expected_answer`, `hidden_truth` (the planted scenario's truth for an H5 question, else null) and `scores`.
   `scores` are per pipeline (`answer` and `evidence_f1`, null where undefined) from the run named by the optional `run_id` query parameter, else from the newest official run of the whole bank; they are null when that run did not score the question or no such run exists.
-  A 404 `NOT_FOUND` says no frozen bank exists for the presentation world, or no published run has the given `run_id`.
-  A 409 `VALIDATION_ERROR` says the truth ledger does not match the frozen bank.
-  A bank that does not match its world is a 503 `CONFIGURATION_ERROR`.
+  A 404 `NOT_FOUND` says no published run has the given `run_id`.
+  The presentation world is the active dataset (`DATASET_DIR`).
+  A bank that has not been grounded is a 503 `CONFIGURATION_ERROR` "the question bank has not been grounded; run make ground-bank", and so is a bank that is not current for that world (another world directory, manifest, ledger, bank version or record serialiser): "the question bank does not match the active world; run make ground-bank".
+  `GET /demo/questions` and a bank question sent to `POST /queries` answer the same two 503s.
   This is the one route that serves expected answers and hidden truth, both read from evaluator output; the live query routes never do.
 
 ### Reference reads
@@ -686,10 +667,10 @@ The response is 202 with a job: `{job_id, status, run_id, error, progress}`.
 `run_id` names the published run once the job has completed, and is null before that and for a job that did not complete.
 `progress` is `{world_seed, instances_done, instances_total}` for the world being run, and null until the first world reaches its first instance.
 `error` is the section 11 envelope of a failed job, with a curated message; the exception text is logged only.
-`GET /api/v1/benchmarks/jobs/{job_id}` reads the job and `POST /api/v1/benchmarks/jobs/{job_id}/cancel` asks it to stop (202); an unknown job is a 404 `NOT_FOUND`, and cancelling a finished job is a 409 `VALIDATION_ERROR`.
+`GET /api/v1/benchmarks/jobs/{job_id}` reads the job and `POST /api/v1/benchmarks/jobs/{job_id}/cancel` asks it to stop (202); an unknown job is a 404 `NOT_FOUND`, and cancelling a finished job is a 409 `CONFLICT`.
 A job ingests seeds 2027 and 2028 into the same Neo4j that Live Lab reads, then ingests seed 2026 again, so one graph lease keeps jobs and live runs apart:
 
-- `POST /api/v1/queries` answers 409 `VALIDATION_ERROR` "a benchmark run is using the graph; try again when it finishes" while a job runs, and `POST /api/v1/benchmarks` answers 409 while a live query or another job runs.
+- `POST /api/v1/queries` answers 409 `CONFLICT` "a benchmark run is using the graph; try again when it finishes" while a job runs, and `POST /api/v1/benchmarks` answers 409 while a live query or another job runs.
 - `GET /api/v1/graph/nodes/{node_id}` and `/neighbours` answer the same 409; a record read answers with `edges: null` and `graph_error: "OTHER_WORLD"`; the readiness `graph` check reads "a benchmark run is using the graph".
   None of these consult the 30 s world cache while a job runs, and the cache does not survive a job.
 - `GET /api/v1/graph/stats` and `/graph/schema` read files only and are unaffected.
@@ -708,13 +689,15 @@ Runs, events, results and scores are persisted in the SQLite run store (ADR-007,
 It keeps the newest `RUN_RETENTION` finished live runs (default 500); queued and running runs are never pruned, so the count can briefly exceed it.
 Pruning happens when a run is created and removes the run's events, results and score with it.
 At start-up, every run left `queued` or `running` is marked `failed` with `INTERRUPTED`, and every completed bank run with no score is given the interrupted score record (section 5).
+The same transaction appends the events that end the run: `pipeline.failed` for each pipeline that was running, then `run.failed`, each with the INTERRUPTED envelope, so a stream of that run ends at a terminal event.
+A run whose terminal event is already stored, because the write of its final row failed, is marked the same way and gets no second terminal event.
 `tests/test_store.py` and `tests/test_api_runs.py` cover it.
 
 ### Health and readiness
 
 `GET /api/v1/health` is the liveness probe and returns `{status: "ok", version}`.
 `GET /api/v1/health/ready` is tested in `tests/test_health.py`.
-It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `lab`, `index`, `graph` and `model`, with status 200 when every check passes and 503 otherwise.
+It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `lab`, `index`, `graph`, `model` and `embedding`, with status 200 when every check passes and 503 otherwise.
 
 - `lab`: the retrieval lab is built; otherwise the detail is `building`, `not started` or that the last build failed.
   Start-up begins the build in a background thread; no route waits on it, a run started meanwhile waits for it, and a failed build is retried by the next run.
@@ -726,6 +709,7 @@ It returns `Readiness {ready, checks}` with one `Check {ok, detail}` each for `l
   An Ollama-routed model (an `ollama/` or `ollama_chat/` model, or `GENERATION_API_BASE` equal to `OLLAMA_HOST`) is `available` when `GET {base}/api/tags` lists it within 5 s, where `base` is the one generation uses (`gateway.generation_api_base`: `GENERATION_API_BASE`, else LiteLLM's Ollama default `http://localhost:11434`), and `not pulled` otherwise; no generation is asked for, so a cold model is not loaded.
   Any other provider must answer one gateway call with `max_tokens=1` within `min(30 s, GENERATION_TIMEOUT_S)`; an empty one-token answer counts as reachable.
   The result is cached for 30 s, and concurrent polls share one in-flight probe.
+- `embedding`: the embedding model is reachable, through the same cached `ModelReachability` as `model`: an Ollama model must be listed by its server (`GET {OLLAMA_HOST}/api/tags` within 5 s) and is `not pulled` otherwise; the hashing embedder is always reachable.
 
 The checks run concurrently, each under its own timeout; a check that times out reports `timed out after N s`.
 Details are curated sentences: raw driver and provider text, which can name service addresses, is logged only.
@@ -756,7 +740,7 @@ GET /api/v1/datasets/{dataset_id}/tables/{table}/rows/{row_id} RecordOut
   Rows are ordered by the primary key, then the other columns, so pages are stable; `total` counts every row matching the same filter.
   The filter casts the bound value to the column's declared type (`column = TRY_CAST(? AS <type>)`, the type taken from a fixed mapping of the registry's types), so an ISO timestamp copied from a row matches that row; a value that does not cast is a 422 before any row is read.
   Dates and timestamps are ISO strings and decimals their exact text, never floats.
-- `rows/{row_id}` reads the row whose primary key is `row_id` (cast the same way): a 404 when none matches, a 409 when the row id is not unique in the table (link tables such as `incident_game_map`, whose first column repeats).
+- `rows/{row_id}` reads the row whose primary key is `row_id` (cast the same way): a 404 when none matches, a 409 `CONFLICT` when the row id is not unique in the table (link tables such as `incident_game_map`, whose first column repeats).
   `graph_node_id` follows the ingestion mapping (`app.graph.node_rows.NODE_TABLES`, the table-to-label-and-id rule ingestion builds every table node by): for a table that creates no nodes it is null and `edges` is empty.
   The graph holds the active world only and ids repeat across worlds, so a record of another world has `graph_node_id` and `edges` null and `graph_error` `OTHER_WORLD`.
   The same holds for a record of the active world when the graph holds another world (see "Which world the graph holds" below).
@@ -794,8 +778,10 @@ Neo4j holds one ingested world at a time, and node ids repeat across worlds.
 `app.api.graph_world.graph_world_matches` compares the live node count of every label (one statement) with the active dataset's `_graph_stats.json`.
 It returns null when the dataset has no statistics file, so the world cannot be compared.
 The result is cached for 30 s, for the last dataset and statistics file checked, so a re-ingestion that rewrites the file is seen at once.
-When the counts differ, the node routes return 409 `VALIDATION_ERROR` with the message `the graph holds a different world than the active dataset`, a record's `graph_error` is `OTHER_WORLD`, and the readiness graph check fails.
+When the counts differ, the node routes return 409 `CONFLICT` with the message `the graph holds a different world than the active dataset`, a record's `graph_error` is `OTHER_WORLD`, and the readiness graph check fails.
 Equal counts are a fingerprint, not a proof: another world with the same count for every label would pass.
+
+A run of B or C is refused with a 503 `CONFIGURATION_ERROR` "the graph holds another world; run make ingest-graph" while the same check says the graph holds another world; a run of A alone is accepted, and so is any run of a dataset with no statistics file.
 
 ### Not built
 
@@ -821,10 +807,12 @@ Messages are curated sentences; library text, service addresses and stack traces
 | Status | Code | When |
 |---|---|---|
 | 404 | `NOT_FOUND` | an unknown run, job, dataset, table row, node, concept, published benchmark run or statistics file |
-| 409 | `VALIDATION_ERROR` | cancelling a run or job that has finished; the graph is held by a benchmark job or a live run (the graph lease); the graph holds a different world than the active dataset; a record id that is not unique; a truth ledger that does not match the frozen bank |
+| 405 | `METHOD_NOT_ALLOWED` | a method the route does not have |
+| 409 | `CONFLICT` | cancelling a run or job that has finished; the graph is held by a benchmark job or a live run (the graph lease, retryable); the graph holds a different world than the active dataset; a record id that is not unique |
+| 4xx | `VALIDATION_ERROR` | any other client error the framework raises |
 | 422 | `VALIDATION_ERROR` | a body or parameter that fails validation, including unknown fields, a limit above its maximum, an unknown market, table, column or relationship type, a malformed cursor or resume point, and a bank question sent with other text or scope |
 | 500 | `RUN_ERROR` | an unexpected failure; the body is the generic sentence and the cause is in the log |
-| 503 | `CONFIGURATION_ERROR` | the question bank has not been grounded, or it does not match its world (`make ground-bank`) |
+| 503 | `CONFIGURATION_ERROR` | the question bank has not been grounded, or it does not match the active world (`make ground-bank`); a run of B or C while the graph holds another world (`make ingest-graph`) |
 | 503 | `GRAPH_QUERY_ERROR` | Neo4j is unreachable or busy (retryable); other Neo4j failures are 500 |
 | 503 | readiness body | `GET /health/ready` with a failed check; the body is `Readiness`, not an error object |
 
@@ -837,9 +825,9 @@ Cross-origin calls are allowed for `CORS_ORIGINS` with the methods GET and POST 
 | Where | Bound |
 |---|---|
 | `POST /queries` | `question` 1 to 2000 characters; `configurations` from A, B and C; `market_scope` entries are known markets |
-| `GET /queries` | `limit` 1 to 100, default 20; a larger value is a 422 |
+| `GET /queries` | `limit` 1 to 100, default 20; a larger value is a 422; `status` is one of `queued`, `running`, `completed`, `failed` or `cancelled`, otherwise a 422 |
 | `GET /queries/{run_id}/events/stream` | resume point a non-negative integer of at most 2^63 - 1; heartbeat every `SSE_HEARTBEAT_S` |
-| `GET .../tables/{table}/rows` | `limit` at most 200, default 50; `column` and `value` together |
+| `GET .../tables/{table}/rows` | `limit` at most 200, default 50; `offset` 0 to 2^63 - 1, default 0; `column` and `value` together |
 | `GET /graph/nodes/{node_id}/neighbours` | `limit` 1 to 100, default 25 |
 | Graph traversal | depth, nodes per hop, edges per node type and total nodes are the `GRAPH_*` settings, shown by `GET /graph/schema` |
 | Neo4j reads | one statement each, under `NEO4J_TIMEOUT_S` |
