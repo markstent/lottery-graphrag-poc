@@ -689,8 +689,8 @@ Runs, events, results and scores are persisted in the SQLite run store (ADR-007,
 It keeps the newest `RUN_RETENTION` finished live runs (default 500); queued and running runs are never pruned, so the count can briefly exceed it.
 Pruning happens when a run is created and removes the run's events, results and score with it.
 At start-up, every run left `queued` or `running` is marked `failed` with `INTERRUPTED`, and every completed bank run with no score is given the interrupted score record (section 5).
-The same transaction appends the events that end the run: `pipeline.failed` for each pipeline that was running, then `run.failed`, each with the INTERRUPTED envelope, so a stream of that run ends at a terminal event.
-A run whose terminal event is already stored, because the write of its final row failed, is marked the same way and gets no second terminal event.
+The same transaction appends the events that end the run: `pipeline.failed` for each pipeline that was running, then `run.failed`, each with the INTERRUPTED envelope and the last stored event's `t_ms`, so a stream of that run ends at a terminal event.
+A run whose terminal event is already stored, because the write of its final row failed, gets no event and takes its outcome from that event: `run.completed` gives `completed`, `run.failed` gives `failed` with its payload as the error, `run.cancelled` gives `cancelled`; its pipelines take their `pipeline.*` end events and `finished_at` is the event's timestamp.
 `tests/test_store.py` and `tests/test_api_runs.py` cover it.
 
 ### Health and readiness

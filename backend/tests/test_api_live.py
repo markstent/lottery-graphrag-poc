@@ -59,6 +59,7 @@ from tests.test_graph_rag import make_settings
 presentation_live = live.only_with(live.GRAPH, live.VECTOR, live.WORLD)
 READY_DEADLINE_S = 300.0
 SCORE_DEADLINE_S = 30.0
+MIN_CHECKED_ANSWER_CHARS = 4
 
 
 def wait_until(condition: Callable[[], bool], deadline_s: float, what: str) -> None:
@@ -125,7 +126,7 @@ def live_app_factory(
     live.require_paths(paths.world_dir, paths.bank_path)
     live.require_neo4j()
     monkeypatch.setenv("APP_DB_PATH", str(tmp_path / "app.db"))
-    monkeypatch.setenv("DATASET_DIR", live.PRESENTATION_DATASET_DIR)
+    live.use_the_real_world(monkeypatch)
     running: list[ExitStack] = []
 
     def factory() -> TestClient:
@@ -161,7 +162,13 @@ def test_live_run_streams_persists_scores_and_survives_a_restart(
         for q in client.get("/api/v1/benchmarks/questions").json()
         if q["instance_id"] == demo["instance_id"]
     )
-    assert expected and expected not in logged, "the expected answer reached a log record"
+    # The check is only meaningful if the run logged something and the answer
+    # is long enough not to appear by chance (a bare number would).
+    assert caplog.records, "the run captured no log records"
+    assert len(expected) >= MIN_CHECKED_ANSWER_CHARS, (
+        f"expected answer too short to check: {expected!r}"
+    )
+    assert expected not in logged, "the expected answer reached a log record"
     assert events[-1]["event_type"] == "run.completed"
     assert [event["sequence"] for event in events] == list(range(1, len(events) + 1))
     assert {event["pipeline"] for event in events} == {"run", "A", "B", "C"}

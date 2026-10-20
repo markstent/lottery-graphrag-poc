@@ -1110,3 +1110,109 @@ def test_a_world_never_ingested_does_not_refuse_a_graph_run(
     _CountingGraph.counts = {"Player": 10_000}
     run_id = world_service.start(request(configurations=["B"]))
     assert wait_finished(world_service, run_id).status == "completed"
+
+
+def _event(
+    run_id: str, number: int, event_type: str, pipeline: str, **payload: Any
+) -> dict[str, Any]:
+    return {
+        "event_id": f"EV-{number}",
+        "timestamp": f"2026-10-20T00:00:{number:02d}+00:00",
+        "run_id": run_id,
+        "event_type": event_type,
+        "pipeline": pipeline,
+        "t_ms": 100.0 * number,
+        "payload": payload,
+    }
+
+
+FAILURE = {
+    "error_code": "MODEL_ERROR",
+    "message": "The language model could not produce an answer.",
+    "retryable": True,
+}
+CANCEL = {"error_code": "CANCELLED", "message": "The run was cancelled.", "retryable": True}
+
+
+@pytest.mark.parametrize(
+    ("ended", "status", "error", "pipelines"),
+    [
+        (("run.completed", {}), "completed", None, {"A": "completed", "B": "completed"}),
+        (("run.failed", FAILURE), "failed", FAILURE, {"A": "completed", "B": "failed"}),
+        (("run.cancelled", CANCEL), "cancelled", CANCEL, {"A": "completed", "B": "cancelled"}),
+    ],
+)
+def test_start_up_respects_a_terminal_event_already_stored(
+    lab: Lab,
+    run_database: Path,
+    ended: tuple[str, dict[str, Any]],
+    status: str,
+    error: dict[str, Any] | None,
+    pipelines: dict[str, str],
+) -> None:
+    """The write of the final row failed after the terminal event was stored:
+    the row is set from that event, and no event is appended."""
+    event_type, payload = ended
+    store_ = RunStore(run_database, retention=50)
+    store_.create_run(
+        RunRow(
+            run_id="RUN-HALF",
+            kind="live",
+            status="running",
+            question=QUESTION,
+            market_scope=(),
+            configurations=("A", "B"),
+            benchmark_instance_id=None,
+            created_at=datetime.now(UTC).isoformat(),
+            finished_at=None,
+            pipeline_status={"A": "completed", "B": "running"},
+            error=None,
+        )
+    )
+    stored = [
+        _event("RUN-HALF", 1, "run.started", "run"),
+        _event("RUN-HALF", 2, "pipeline.completed", "A"),
+    ]
+    if event_type == "run.completed":
+        stored.append(_event("RUN-HALF", 3, "pipeline.completed", "B"))
+    else:
+        end = "pipeline.failed" if event_type == "run.failed" else "pipeline.cancelled"
+        stored.append(_event("RUN-HALF", 3, end, "B", **payload))
+    stored.append(_event("RUN-HALF", 4, event_type, "run", **payload))
+    for event in stored:
+        store_.append_event("RUN-HALF", event)
+    store_.close()
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as test_client:
+        run = test_client.get("/api/v1/queries/RUN-HALF").json()
+        events = test_client.get("/api/v1/queries/RUN-HALF/events").json()["events"]
+    assert run["status"] == status and run["error"] == error
+    assert run["pipeline_status"] == pipelines
+    assert run["finished_at"] == "2026-10-20T00:00:04+00:00"
+    assert [e["event_type"] for e in events] == [e["event_type"] for e in stored]
+
+
+def test_interruption_events_carry_the_last_stored_t_ms(lab: Lab, run_database: Path) -> None:
+    """The restarted process's monotonic clock is unrelated to the stored
+    events, so the new events reuse the last stored ``t_ms``."""
+    left = RunStore(run_database, retention=50)
+    left.create_run(
+        RunRow(
+            run_id="RUN-T",
+            kind="live",
+            status="running",
+            question=QUESTION,
+            market_scope=(),
+            configurations=("A",),
+            benchmark_instance_id=None,
+            created_at=datetime.now(UTC).isoformat(),
+            finished_at=None,
+            pipeline_status={"A": "running"},
+            error=None,
+        )
+    )
+    left.append_event("RUN-T", _event("RUN-T", 1, "run.started", "run"))
+    left.append_event("RUN-T", _event("RUN-T", 2, "pipeline.started", "A"))
+    left.close()
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as test_client:
+        events = test_client.get("/api/v1/queries/RUN-T/events").json()["events"]
+    assert [e["t_ms"] for e in events] == [100.0, 200.0, 200.0, 200.0]

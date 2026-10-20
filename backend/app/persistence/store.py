@@ -14,7 +14,7 @@ import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -96,9 +96,21 @@ class RunRow:
     error: dict[str, Any] | None
 
 
-# What ends an interrupted run: (run id, its running pipelines, its stored
-# events) to the events to append.
-InterruptionEvents = Callable[[str, list[str], list[dict[str, Any]]], list[dict[str, Any]]]
+@dataclass(frozen=True)
+class RunEnd:
+    """How start-up ends a run it found unfinished: the events to append
+    (full envelope, the store assigns their sequences) and the run's new
+    state. The store knows no event types; the caller decides all of it."""
+
+    events: list[dict[str, Any]]
+    status: str
+    finished_at: str
+    pipeline_status: dict[str, str]
+    error: dict[str, Any] | None
+
+
+# What ends an unfinished run: the run as stored and its stored events to its end.
+EndRun = Callable[["RunRow", list[dict[str, Any]]], RunEnd]
 
 _RUN_FIELDS = tuple(f.name for f in fields(RunRow))
 # A run's identity and request are fixed at creation; only its progress changes.
@@ -355,48 +367,46 @@ class RunStore:
         )
         return None if record is None else dict(json.loads(record["score_json"]))
 
-    def mark_interrupted(self, error: dict[str, Any], events_of: InterruptionEvents) -> int:
-        """Fail every queued or running run with ``error``, as left behind by
-        a server that stopped mid-run (or whose final write failed). Their
-        unfinished pipelines are marked failed too.
+    def mark_interrupted(self, end_run: EndRun) -> int:
+        """End every queued or running run, as left behind by a server that
+        stopped mid-run (or whose final write failed).
 
-        ``events_of(run_id, running_pipelines, stored_events)`` returns the
-        events that end the run, with their full envelope; they are stored
-        after the run's own, with the next sequences, in the same transaction
-        as the run's new state, so a client streaming the run reaches a
-        terminal event. Returns how many runs were marked."""
-        finished_at = datetime.now(UTC).isoformat()
+        ``end_run(run, stored_events)`` returns a ``RunEnd``: the events that
+        end the run, stored after its own with the next sequences, and the
+        run's new state, written in the same transaction, so a client
+        streaming the run reaches a terminal event. A run whose terminal
+        event is already stored has none to append. Returns how many runs
+        were ended."""
         with self._write() as connection:
             records = connection.execute(
-                "SELECT run_id, pipeline_status_json FROM runs "
-                "WHERE status IN ('queued', 'running')"
+                f"SELECT {_RUN_COLUMNS} FROM runs WHERE status IN ('queued', 'running')"
             ).fetchall()
             for record in records:
                 run_id = record["run_id"]
-                states: dict[str, str] = json.loads(record["pipeline_status_json"])
                 stored = connection.execute(
                     "SELECT sequence, event_json FROM events WHERE run_id = ? ORDER BY sequence",
                     (run_id,),
                 ).fetchall()
-                new_events = events_of(
-                    run_id,
-                    [name for name, state in states.items() if state == "running"],
+                end = end_run(
+                    _row_from_record(record),
                     [{**json.loads(r["event_json"]), "sequence": r["sequence"]} for r in stored],
                 )
                 next_sequence = stored[-1]["sequence"] + 1 if stored else 1
-                for offset, event in enumerate(new_events):
+                for offset, event in enumerate(end.events):
                     connection.execute(
                         "INSERT INTO events (run_id, sequence, event_json) VALUES (?, ?, ?)",
                         (run_id, next_sequence + offset, _dumps(event)),
                     )
-                pipelines = {
-                    name: "failed" if state in ("pending", "running") else state
-                    for name, state in states.items()
-                }
                 connection.execute(
-                    "UPDATE runs SET status = 'failed', finished_at = ?, "
+                    "UPDATE runs SET status = ?, finished_at = ?, "
                     "pipeline_status_json = ?, error_json = ? WHERE run_id = ?",
-                    (finished_at, _dumps(pipelines), _dumps(error), run_id),
+                    (
+                        end.status,
+                        end.finished_at,
+                        _dumps(end.pipeline_status),
+                        None if end.error is None else _dumps(end.error),
+                        run_id,
+                    ),
                 )
         return len(records)
 

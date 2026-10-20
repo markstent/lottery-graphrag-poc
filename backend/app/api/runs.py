@@ -90,7 +90,7 @@ from app.events import (
 from app.evidence import GraphRunResult, RagRunResult
 from app.lab import Lab, WiredGraphPipelines, build_generator, build_lab, wired_pipelines
 from app.observability.logging import log_stage, run_context, stage_timer
-from app.persistence.store import RunRow, RunStore
+from app.persistence.store import RunEnd, RunRow, RunStore
 from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.standard.index import index_corpus, persists_index, write_manifest
 
@@ -572,22 +572,65 @@ def _close_reader(wiring: WiredGraphPipelines) -> None:
         logger.error("graph reader close failed", exc_info=error, extra={"error_code": code})
 
 
-def interruption_events(
-    run_id: str, running: list[str], stored: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """The events that end a run a server stop left unfinished (the store's
-    ``InterruptionEvents``): ``pipeline.failed`` for each running pipeline,
-    then ``run.failed``, each with the INTERRUPTED envelope. A run whose
-    terminal event is already stored (its final row write failed) gets none,
-    since a stream has already ended there."""
-    if any(event["event_type"] in TERMINAL_EVENT_TYPES for event in stored):
-        return []
+_TERMINAL_STATUS = {RUN_COMPLETED: "completed", RUN_FAILED: "failed", RUN_CANCELLED: "cancelled"}
+_PIPELINE_STATUS = {
+    PIPELINE_COMPLETED: "completed",
+    PIPELINE_FAILED: "failed",
+    PIPELINE_CANCELLED: "cancelled",
+}
+
+
+def end_unfinished_run(run: RunRow, stored: list[dict[str, Any]]) -> RunEnd:
+    """How start-up ends a run found queued or running (the store's ``EndRun``).
+
+    A run whose terminal event is already stored (the write of its final row
+    failed) takes its outcome from that event and gets no event: ``run.failed``
+    gives its payload as the error, ``run.cancelled`` the cancelled envelope,
+    the pipelines their ``pipeline.*`` end events, and ``finished_at`` is the
+    event's timestamp. Any other run was cut off: it fails with the INTERRUPTED
+    envelope, after ``pipeline.failed`` for each running pipeline and then
+    ``run.failed``, stamped with the last stored event's ``t_ms`` because the
+    restarted process's clock is unrelated to it.
+    """
+    terminal = next((e for e in stored if e["event_type"] in TERMINAL_EVENT_TYPES), None)
+    states = dict(run.pipeline_status)
+    if terminal is not None:
+        for event in stored:
+            ended = _PIPELINE_STATUS.get(event["event_type"])
+            if ended is not None:
+                states[event["pipeline"]] = ended
+        outcome = _TERMINAL_STATUS[terminal["event_type"]]
+        error = {
+            "completed": None,
+            "failed": terminal["payload"],
+            "cancelled": CANCELLED_BODY.model_dump(),
+        }[outcome]
+        return RunEnd(
+            events=[],
+            status=outcome,
+            finished_at=terminal["timestamp"],
+            pipeline_status={
+                tag: "skipped" if state == "pending" else state for tag, state in states.items()
+            },
+            error=error,
+        )
     sink = ListEventSink()
     payload = INTERRUPTED_BODY.model_dump()
-    for tag in running:
-        EventEmitter(tag, sink).emit(PIPELINE_FAILED, **payload)
-    EventEmitter(RUN_PIPELINE, sink).emit(RUN_FAILED, **payload)
-    return [{**event.as_dict(), "run_id": run_id} for event in sink.events]
+    last_t_ms = stored[-1]["t_ms"] if stored else 0.0
+    for tag, state in states.items():
+        if state == "running":
+            EventEmitter(tag, sink, clock=lambda: last_t_ms).emit(PIPELINE_FAILED, **payload)
+    EventEmitter(RUN_PIPELINE, sink, clock=lambda: last_t_ms).emit(RUN_FAILED, **payload)
+    return RunEnd(
+        events=[{**event.as_dict(), "run_id": run.run_id} for event in sink.events],
+        status="failed",
+        finished_at=_now(),
+        pipeline_status={
+            tag: "failed" if state in ("pending", "running") else state
+            for tag, state in states.items()
+        },
+        error=payload,
+    )
 
 
 def _outcome_of(code: str) -> str:

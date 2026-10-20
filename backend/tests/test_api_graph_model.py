@@ -3,7 +3,9 @@ neighbours, and which world the graph holds (Phase 4 Task 10).
 
 The routes run on the tiny generated world under a temporary dataset root.
 Graph reads go through a fake reader offline. The live test reads the
-already-ingested dev-seed2026 graph under GRAPH_E2E=1 and never writes it.
+already-ingested dev-seed2026 graph, only with GRAPH_E2E=1 and LIVE_WORLD_E2E=1
+(it fails, never skips, when the graph or its statistics are missing), and never
+writes it.
 """
 
 from __future__ import annotations

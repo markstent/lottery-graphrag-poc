@@ -66,11 +66,16 @@ Any other field, including `run_id`, `kind`, `created_at` and the request fields
 
 ### Interrupted runs
 
-`mark_interrupted()` is called once at start-up.
-It sets every `queued` or `running` run to `failed`, stamps `finished_at`, marks its `pending` or `running` pipelines `failed`, and records the INTERRUPTED error envelope (`{"error_code": "INTERRUPTED", "message": "The server stopped during this run.", "retryable": true}`, from `RUN_ERROR_MESSAGES`).
-In the same transaction it appends, with the next sequences, a `pipeline.failed` event for each pipeline that was `running` and then a `run.failed` event, each carrying that envelope, so a stream of the run reaches a terminal event.
-The caller builds those events (the store does not know the event types); a run whose terminal event is already stored, because the write of its final row failed, is marked the same way and gets no second terminal event.
-It returns how many runs it marked.
+`mark_interrupted(end_run)` is called once at start-up, before `mark_unscored`.
+For every `queued` or `running` run it calls the caller's `end_run(run, stored_events)`, which returns a `RunEnd`: the events to append (full envelope; the store assigns the next sequences) and the run's new status, `finished_at`, pipeline states and error.
+The store writes them in one transaction and knows no event types.
+The API's `end_unfinished_run` decides:
+
+- A run cut off mid-way is `failed` with the INTERRUPTED envelope (`{"error_code": "INTERRUPTED", "message": "The server stopped during this run.", "retryable": true}`, from `RUN_ERROR_MESSAGES`); its `pending` or `running` pipelines are `failed`, and it gets a `pipeline.failed` event for each pipeline that was `running` and then `run.failed`, each carrying that envelope and the last stored event's `t_ms`, so a stream of the run reaches a terminal event.
+- A run whose terminal event is already stored, because the write of its final row failed, gets no event: the row is set from that event.
+  `run.completed` gives `completed`, `run.failed` gives `failed` with its payload as the error, `run.cancelled` gives `cancelled` with the cancelled envelope, the pipelines take their `pipeline.*` end events, and `finished_at` is the event's timestamp.
+
+It returns how many runs it ended.
 This assumes a single API process owns the database: any queued or running run found at start-up must have belonged to a process that has stopped.
 Running two API processes against one database would let one process fail the other's live runs, so that deployment is not supported.
 

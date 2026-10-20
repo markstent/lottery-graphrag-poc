@@ -4,6 +4,7 @@ the check that no run worker or benchmark job thread outlives its test."""
 
 from __future__ import annotations
 
+import socket
 import sys
 import threading
 import types
@@ -143,6 +144,39 @@ def no_ingested_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     path = tmp_path / "no-world"
     monkeypatch.setenv("DATASET_DIR", str(path))
     return path
+
+
+OLLAMA_PORT = 11434
+
+
+@pytest.fixture(autouse=True)
+def no_ollama_without_the_live_world(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
+    """An ungated test never opens a socket to Ollama: it is refused, and the
+    attempt fails the test even where the code under test swallows the error
+    (a readiness probe reports it as a failed check)."""
+    if live.enabled(live.WORLD):
+        yield
+        return
+    attempts: list[object] = []
+    real_connect = socket.socket.connect
+
+    def guarded(self: socket.socket, address: Any) -> None:
+        if isinstance(address, tuple) and len(address) >= 2 and address[1] == OLLAMA_PORT:
+            attempts.append(address)
+            raise ConnectionRefusedError(f"a test tried to reach Ollama at {address}")
+        real_connect(self, address)
+
+    monkeypatch.setattr(socket.socket, "connect", guarded)
+    yield
+    assert not attempts, f"an ungated test contacted Ollama: {attempts}"
+
+
+@pytest.fixture(autouse=True)
+def hashing_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests embed with the deterministic hashing embedder, so the embedding
+    readiness check and the lab never need a running Ollama. A live test
+    that needs the real model calls ``live.use_the_real_world``."""
+    monkeypatch.setenv("EMBEDDING_PROVIDER", "hashing")
 
 
 @pytest.fixture(autouse=True)

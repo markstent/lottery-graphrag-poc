@@ -8,12 +8,11 @@ import sqlite3
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pytest
-from app.persistence.store import SCHEMA_VERSION, RunRow, RunStore, cursor
+from app.persistence.store import SCHEMA_VERSION, RunEnd, RunRow, RunStore, cursor
 
 
 def row(
@@ -318,22 +317,42 @@ STOPPED: dict[str, Any] = {
     "message": "the server stopped during this run",
     "retryable": True,
 }
+TERMINAL = {"run.completed": "completed", "run.failed": "failed", "run.cancelled": "cancelled"}
 
 
-def interruption(
-    run_id: str, running: list[str], stored: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """The caller's events: one per running pipeline, then the run's, unless
-    the run already has its terminal event."""
-    if any(event["event_type"] == "run.completed" for event in stored):
-        return []
-    return [
-        *(
-            {"event_type": "pipeline.failed", "pipeline": tag, "run_id": run_id, "payload": STOPPED}
-            for tag in running
-        ),
-        {"event_type": "run.failed", "pipeline": "run", "run_id": run_id, "payload": STOPPED},
-    ]
+def ending(current: RunRow, stored: list[dict[str, Any]]) -> RunEnd:
+    """The caller's decision: a run with a stored terminal event is set from
+    it and gets no events; any other is failed with one event per running
+    pipeline, then its own."""
+    terminal = next((e for e in stored if e["event_type"] in TERMINAL), None)
+    if terminal is not None:
+        return RunEnd(
+            events=[],
+            status=TERMINAL[terminal["event_type"]],
+            finished_at=terminal["timestamp"],
+            pipeline_status={
+                tag: "completed" if state == "running" else state
+                for tag, state in current.pipeline_status.items()
+            },
+            error=terminal["payload"] or None,
+        )
+    running = [tag for tag, state in current.pipeline_status.items() if state == "running"]
+    return RunEnd(
+        events=[
+            *(
+                {"event_type": "pipeline.failed", "pipeline": tag, "payload": STOPPED}
+                for tag in running
+            ),
+            {"event_type": "run.failed", "pipeline": "run", "payload": STOPPED},
+        ],
+        status="failed",
+        finished_at="2026-10-20T01:00:00+00:00",
+        pipeline_status={
+            tag: "failed" if state in ("pending", "running") else state
+            for tag, state in current.pipeline_status.items()
+        },
+        error=STOPPED,
+    )
 
 
 def test_runs_left_running_at_start_are_marked_interrupted(tmp_path: Path) -> None:
@@ -351,20 +370,19 @@ def test_runs_left_running_at_start_are_marked_interrupted(tmp_path: Path) -> No
     first.close()
     reopened = RunStore(tmp_path / "app.db", 10)
     try:
-        assert reopened.mark_interrupted(STOPPED, interruption) == 2
+        assert reopened.mark_interrupted(ending) == 2
         interrupted = reopened.get_run("RUN-1")
         assert interrupted is not None and interrupted.error is not None
         assert interrupted.status == "failed"
         assert interrupted.error == STOPPED
-        assert interrupted.finished_at is not None
-        assert datetime.fromisoformat(interrupted.finished_at).utcoffset() == timedelta(0)
+        assert interrupted.finished_at == "2026-10-20T01:00:00+00:00"
         assert interrupted.pipeline_status == {"A": "completed", "B": "failed", "C": "failed"}
         queued = reopened.get_run("RUN-2")
         assert queued is not None and queued.status == "failed" and queued.finished_at is not None
         assert queued.pipeline_status == {"A": "failed", "C": "failed"}
         untouched = reopened.get_run("RUN-3")
         assert untouched is not None and untouched.status == "completed" and untouched.error is None
-        assert reopened.mark_interrupted(STOPPED, interruption) == 0
+        assert reopened.mark_interrupted(ending) == 0
     finally:
         reopened.close()
 
@@ -380,7 +398,7 @@ def test_an_interrupted_run_gets_its_terminal_events_in_sequence(tmp_path: Path)
     first.close()
     reopened = RunStore(tmp_path / "app.db", 10)
     try:
-        reopened.mark_interrupted(STOPPED, interruption)
+        reopened.mark_interrupted(ending)
         stored = reopened.events("RUN-1")
         assert [(e["sequence"], e["event_type"], e["pipeline"]) for e in stored] == [
             (1, "run.started", "run"),
@@ -394,37 +412,44 @@ def test_an_interrupted_run_gets_its_terminal_events_in_sequence(tmp_path: Path)
         reopened.close()
 
 
-def test_a_run_whose_terminal_event_is_stored_gets_no_second_one(tmp_path: Path) -> None:
+def test_a_run_with_a_stored_terminal_event_takes_its_outcome_from_it(tmp_path: Path) -> None:
     """The final row write failed after the terminal event was stored: the
-    run is repaired as interrupted without a second terminal event."""
+    row is set from that event and nothing is appended."""
     first = RunStore(tmp_path / "app.db", 10)
-    first.create_run(row("RUN-1", status="running", pipeline_status={"A": "completed"}))
-    first.append_event("RUN-1", {"event_type": "run.completed", "pipeline": "run"})
+    first.create_run(row("RUN-1", status="running", pipeline_status={"A": "running"}))
+    first.append_event(
+        "RUN-1",
+        {
+            "event_type": "run.completed",
+            "pipeline": "run",
+            "timestamp": "2026-10-20T00:30:00+00:00",
+            "payload": {},
+        },
+    )
     first.close()
     reopened = RunStore(tmp_path / "app.db", 10)
     try:
-        assert reopened.mark_interrupted(STOPPED, interruption) == 1
+        assert reopened.mark_interrupted(ending) == 1
         assert [e["event_type"] for e in reopened.events("RUN-1")] == ["run.completed"]
         repaired = reopened.get_run("RUN-1")
-        assert repaired is not None and repaired.status == "failed"
+        assert repaired is not None and repaired.status == "completed"
+        assert repaired.error is None and repaired.finished_at == "2026-10-20T00:30:00+00:00"
     finally:
         reopened.close()
 
 
-def test_a_failing_event_builder_leaves_every_run_as_it_was(tmp_path: Path) -> None:
+def test_a_failing_end_builder_leaves_every_run_as_it_was(tmp_path: Path) -> None:
     first = RunStore(tmp_path / "app.db", 10)
     first.create_run(row("RUN-1", status="running", pipeline_status={"A": "running"}))
     first.close()
     reopened = RunStore(tmp_path / "app.db", 10)
 
-    def broken(
-        run_id: str, running: list[str], stored: list[dict[str, Any]]
-    ) -> list[dict[str, Any]]:
+    def broken(current: RunRow, stored: list[dict[str, Any]]) -> RunEnd:
         raise RuntimeError("cannot build")
 
     try:
         with pytest.raises(RuntimeError):
-            reopened.mark_interrupted(STOPPED, broken)
+            reopened.mark_interrupted(broken)
         unchanged = reopened.get_run("RUN-1")
         assert unchanged is not None and unchanged.status == "running"
     finally:

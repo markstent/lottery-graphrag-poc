@@ -52,7 +52,7 @@ Define the component structure, data flows and storage boundaries for the POC. D
 
 1. `POST /api/v1/queries` validates the request and creates a run row (SQLite) with reproducibility metadata.
 2. The orchestrator executes each requested configuration (A, B, C) as an in-process background task.
-3. Each pipeline emits typed events (`rag.*`, `graph.*`, `ontology.*`) through a recording sink that stores each event in the run store the moment it is emitted (ADR-007) and wakes the run's condition, which the SSE route waits on between reads of the store.
+3. Each pipeline emits typed events (`rag.*` and `graph.*`; the `ontology.*` family is reserved and not emitted) through a recording sink that stores each event in the run store the moment it is emitted (ADR-007) and wakes the run's condition, which the SSE route waits on between reads of the store.
 4. Pipelines assemble context under the configured budget and call the model gateway. Final numeric claims are resolved against the DuckDB layer where the graph indicates a source record.
 5. The evaluator scores answers and evidence against its own data (truth ledger only inside evaluation) and persists metrics.
 6. The UI follows the run through SSE; `GET /queries/{run_id}/events` replays the stored sequence.

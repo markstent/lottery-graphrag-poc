@@ -30,10 +30,22 @@ from app.retrieval.graph.neo4j_adapter import GraphReader
 # directory (conftest.no_ingested_world), and a live test that needs the real
 # world sets it back to this.
 PRESENTATION_DATASET_DIR = from_env().dataset_dir
+_REAL_EMBEDDING_PROVIDER = os.environ.get("EMBEDDING_PROVIDER")
 
 GRAPH = "GRAPH_E2E"
 VECTOR = "VECTOR_E2E"
 WORLD = "LIVE_WORLD_E2E"
+
+
+def use_the_real_world(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Undo, for one live test, the isolation every test gets (an empty
+    ``DATASET_DIR`` and the hashing embedder): the presentation world and the
+    embedding model the developer's environment names."""
+    monkeypatch.setenv("DATASET_DIR", PRESENTATION_DATASET_DIR)
+    if _REAL_EMBEDDING_PROVIDER is None:
+        monkeypatch.delenv("EMBEDDING_PROVIDER", raising=False)
+    else:
+        monkeypatch.setenv("EMBEDDING_PROVIDER", _REAL_EMBEDDING_PROVIDER)
 
 
 def enabled(*flags: str) -> bool:
