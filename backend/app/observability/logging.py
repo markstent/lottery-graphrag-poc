@@ -33,7 +33,21 @@ STAGES = (
     "pipeline_run",
 )
 _SECRET_PARTS = frozenset(
-    {"key", "token", "password", "pwd", "secret", "authorization", "credential"}
+    {
+        "key",
+        "apikey",
+        "token",
+        "bearer",
+        "password",
+        "passwords",
+        "passwd",
+        "pwd",
+        "secret",
+        "secrets",
+        "authorization",
+        "credential",
+        "credentials",
+    }
 )
 _RESERVED = ("ts", "level", "logger", "message")
 _NAME_PARTS = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+")
@@ -136,7 +150,6 @@ class JsonFormatter(logging.Formatter):
             "ts": datetime.fromtimestamp(record.created, UTC).isoformat(timespec="milliseconds"),
             "level": record.levelname,
             "logger": record.name,
-            "message": record.getMessage(),
         }
         fields: dict[str, Any] = dict(getattr(record, "context", {}))
         extras = {
@@ -146,12 +159,14 @@ class JsonFormatter(logging.Formatter):
         }
         for name, value in extras.items():
             fields[f"extra_{name}" if name in _RESERVED else name] = value
-        if record.exc_info:
-            base["exception"] = self.formatException(record.exc_info)
         try:
+            base["message"] = record.getMessage()
+            if record.exc_info:
+                base["exception"] = self.formatException(record.exc_info)
             payload = base | {k: _scrub(v) for k, v in fields.items() if not _is_secret(k)}
             return json.dumps(payload, default=str)
-        except (TypeError, ValueError, RecursionError):
+        except Exception:  # a logging call must never lose its line or raise
+            base.setdefault("message", repr(record.msg))
             names = [k for k in fields if not _is_secret(k)]
             return json.dumps(base | {"extra_repr": repr(names)}, default=str)
 

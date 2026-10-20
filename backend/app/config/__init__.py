@@ -86,6 +86,7 @@ class GenerationSettings:
     quantisation: str | None = None
     # "default" or "off" (app.models.gateway.REASONING_MODES); recorded with every run.
     reasoning: str = "default"
+    timeout_s: float = 120.0  # one gateway call
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,6 +265,7 @@ def from_env() -> RetrievalSettings:
             reasoning=parse_reasoning(
                 os.environ.get("GENERATION_REASONING") or "default", "GENERATION_REASONING"
             ),
+            timeout_s=_env_float("GENERATION_TIMEOUT_S", 120.0),
         ),
         graph=GraphRagSettings(
             max_depth=_env_int("GRAPH_DEPTH", 2),
@@ -290,6 +292,7 @@ class GraphConfig:
     user: str
     password: str
     database: str
+    timeout_s: float = 10.0  # connection and per-query timeout
 
     @classmethod
     def from_env(cls) -> GraphConfig:
@@ -299,6 +302,7 @@ class GraphConfig:
             user=os.environ.get("NEO4J_USER", "neo4j"),
             password=os.environ.get("NEO4J_PASSWORD", "devpassword"),
             database=os.environ.get("NEO4J_DATABASE", "neo4j"),
+            timeout_s=_env_float("NEO4J_TIMEOUT_S", 10.0),
         )
 
 

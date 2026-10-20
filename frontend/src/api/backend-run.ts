@@ -87,7 +87,7 @@ interface ResultsDto {
       node_evidence?: NodeEvidenceDto[]
     }
   >
-  error: { error_code: string; message: string } | null
+  error: { error_code: string; message: string; retryable: boolean } | null
 }
 
 interface BenchmarkQuestionResult {

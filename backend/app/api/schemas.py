@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from app.api.errors import ApiErrorBody
 from app.datasets.master_data import MARKETS
 from app.evidence import GraphRunResult, RagRunResult
 
@@ -62,13 +63,6 @@ class QueryAccepted(BaseModel):
     events_url: str
 
 
-class ApiError(BaseModel):
-    """Typed error surface (docs/07 section 11); never a stack trace."""
-
-    error_code: str
-    message: str
-
-
 class QueryResults(BaseModel):
     """Response for GET /api/v1/queries/{run_id}."""
 
@@ -78,7 +72,7 @@ class QueryResults(BaseModel):
     configurations: list[PipelineId]
     market_scope: list[str] = Field(default_factory=list)
     results: dict[str, RagRunResult | GraphRunResult] = Field(default_factory=dict)
-    error: ApiError | None = None
+    error: ApiErrorBody | None = None
 
 
 class RecordedEvent(BaseModel):

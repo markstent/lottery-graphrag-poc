@@ -13,35 +13,30 @@ nothing. It runs retrieval and returns observable events plus answers.
 from __future__ import annotations
 
 import dataclasses
+import logging
 import threading
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Any
 
+from app.api.errors import UNEXPECTED_MESSAGE, ErrorCode, classify
 from app.api.schemas import QueryRequest
 from app.config import GraphConfig, RetrievalSettings
 from app.events import EventEmitter, ListEventSink, RetrievalEvent
 from app.lab import Lab, build_generator, build_lab, wired_pipelines
 from app.observability.logging import run_context, stage_timer
-from app.retrieval.standard.embeddings import EmbeddingError
-from app.retrieval.standard.generation import GenerationError
 from app.retrieval.standard.index import index_corpus, persists_index, write_manifest
-from app.retrieval.standard.reranking import RerankError
-from app.retrieval.standard.sparse import SparseEmbeddingError
-from app.retrieval.standard.vector_store import VectorStoreError
-
-# Error classes from docs/07 section 11. The reranker is the judge of
-# context selection, so its failures are context build errors.
-_ERROR_CODES: dict[type[Exception], str] = {
-    GenerationError: "MODEL_ERROR",
-    EmbeddingError: "EMBEDDING_ERROR",
-    SparseEmbeddingError: "EMBEDDING_ERROR",
-    VectorStoreError: "VECTOR_RETRIEVAL_ERROR",
-    RerankError: "CONTEXT_BUILD_ERROR",
-}
 
 MAX_RUNS = 50
+
+# Driver and unexpected errors carry hosts, queries or traces: the log has
+# them, the response gets a plain sentence.
+GENERIC_MESSAGES = {
+    ErrorCode.GRAPH_QUERY_ERROR: "The graph database could not answer the query.",
+    ErrorCode.RUN_ERROR: UNEXPECTED_MESSAGE,
+}
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -57,13 +52,14 @@ class RunRecord:
     results: dict[str, Any] = field(default_factory=dict)
     error_code: str | None = None
     error_message: str | None = None
+    error_retryable: bool = False
 
 
-def _error_code(error: Exception) -> str:
-    for error_type, code in _ERROR_CODES.items():
-        if isinstance(error, error_type):
-            return code
-    return "RUN_ERROR"
+def _message(code: ErrorCode, error: Exception) -> str:
+    """The user-facing message: the error's own text, except where it is technical detail."""
+    if code in (ErrorCode.RUN_ERROR, ErrorCode.GRAPH_QUERY_ERROR):
+        return GENERIC_MESSAGES[code]
+    return str(error)
 
 
 class QueryService:
@@ -143,6 +139,7 @@ class QueryService:
                 results=dict(record.results),
                 error_code=record.error_code,
                 error_message=record.error_message,
+                error_retryable=record.error_retryable,
             )
 
     # -- execution --------------------------------------------------------
@@ -162,16 +159,18 @@ class QueryService:
                     else:
                         self._run_graph(lab, record, tag)
             record.status = "completed"
-        except tuple(_ERROR_CODES) as error:
-            record.status = "failed"
-            record.error_code = _error_code(error)
-            record.error_message = str(error)
-            self._attach_error(record, record.error_code, str(error))
         except Exception as error:  # surfaced as a typed error, never a trace
+            code, retryable = classify(error)
+            logger.error(
+                "run failed",
+                exc_info=error,
+                extra={"run_id": record.run_id, "error_code": code, "retryable": retryable},
+            )
             record.status = "failed"
-            record.error_code = _error_code(error)
-            record.error_message = f"{type(error).__name__}: {error}"
-            self._attach_error(record, record.error_code, record.error_message)
+            record.error_code = code
+            record.error_retryable = retryable
+            record.error_message = _message(code, error)
+            self._attach_error(record, code, record.error_message, retryable)
 
     def _run_graph(self, lab: Lab, record: RunRecord, tag: str) -> None:
         wired = wired_pipelines(lab, self._graph_config)
@@ -190,10 +189,10 @@ class QueryService:
             for event in events:
                 record.events.append({"sequence": len(record.events) + 1, **event.as_dict()})
 
-    def _attach_error(self, record: RunRecord, code: str, message: str) -> None:
+    def _attach_error(self, record: RunRecord, code: str, message: str, retryable: bool) -> None:
         """Record the docs/07 section 11 error event on the failed run."""
         sink = ListEventSink()
         EventEmitter("+".join(record.configurations), sink, clock=lambda: 0.0).emit(
-            "run.error", error_code=code, message=message, retryable=True
+            "run.error", error_code=code, message=message, retryable=retryable
         )
         self._attach(record, sink.events)

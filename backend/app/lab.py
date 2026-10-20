@@ -95,6 +95,7 @@ def build_generator(name: str, settings: RetrievalSettings) -> AnswerGenerator:
             api_base=settings.generation.api_base,
             max_tokens=settings.generation.max_tokens,
             reasoning=settings.generation.reasoning,
+            timeout_s=settings.generation.timeout_s,
         )
     raise ValueError(f"Unknown generator: {name!r}")
 

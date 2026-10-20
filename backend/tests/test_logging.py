@@ -56,7 +56,21 @@ def test_context_nests_and_restores(caplog: pytest.LogCaptureFixture) -> None:
 
 
 @pytest.mark.parametrize(
-    "name", ["API_KEY", "auth_token", "DbPassword", "client_secret", "accessToken", "Authorization"]
+    "name",
+    [
+        "API_KEY",
+        "auth_token",
+        "DbPassword",
+        "client_secret",
+        "accessToken",
+        "Authorization",
+        "apikey",
+        "passwd",
+        "bearer",
+        "secrets",
+        "passwords",
+        "db_credentials",
+    ],
 )
 def test_secret_named_fields_are_dropped(name: str) -> None:
     record = logging.makeLogRecord({"msg": "m", name: "hidden", "kept": 1})
@@ -152,3 +166,17 @@ def test_reserved_keys_are_renamed() -> None:
     assert line["level"] != "x" and line["message"] == "m" and line["logger"] != "z"
     assert line["extra_level"] == "x" and line["extra_ts"] == 1
     assert line["extra_logger"] == "z"
+
+
+def test_a_bad_message_format_still_yields_a_line() -> None:
+    record = logging.makeLogRecord({"msg": "%d items", "args": ("not a number",), "kept": 1})
+    line = json.loads(JsonFormatter().format(record))
+    assert line["message"] == "'%d items'"
+
+
+def test_an_unformattable_exception_still_yields_a_line() -> None:
+    record = logging.makeLogRecord(
+        {"msg": "boom", "exc_info": (ValueError, ValueError("x"), "not a traceback")}
+    )
+    line = json.loads(JsonFormatter().format(record))
+    assert line["message"] == "boom" and "exception" not in line

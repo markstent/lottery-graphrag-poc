@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api import health, queries
+from app.api.errors import install_handlers
 from app.api.runs import QueryService
 from app.config import GraphConfig, RetrievalSettings, api_from_env, from_env
 from app.observability.logging import configure_logging, run_context
@@ -43,6 +44,7 @@ def create_app(
     settings = api_from_env()
     configure_logging(settings.log_level)
     application = FastAPI(title="Semantic Context Lab", version=__version__)
+    install_handlers(application)
 
     @application.middleware("http")
     async def request_id(

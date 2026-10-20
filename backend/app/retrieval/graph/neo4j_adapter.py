@@ -24,8 +24,20 @@ class GraphReader:
     def __init__(self, config: GraphConfig) -> None:
         from neo4j import GraphDatabase  # imported lazily: heavy import
 
-        self._driver: Any = GraphDatabase.driver(config.uri, auth=(config.user, config.password))
+        self._driver: Any = GraphDatabase.driver(
+            config.uri, auth=(config.user, config.password), connection_timeout=config.timeout_s
+        )
         self._database = config.database
+        self._timeout_s = config.timeout_s
+
+    def _records(self, statement: str, params: dict[str, Any]) -> list[Any]:
+        """Run one statement under the configured transaction timeout."""
+        from neo4j import Query
+
+        result = self._driver.execute_query(
+            Query(statement, timeout=self._timeout_s), params, database_=self._database
+        )
+        return list(result.records)
 
     def close(self) -> None:
         self._driver.close()
@@ -38,9 +50,7 @@ class GraphReader:
 
     def lookup_node(self, node_id: str) -> tuple[str, bool] | None:
         """(label, exists) for an id, or None when the id is unknown."""
-        records = self._driver.execute_query(
-            statements.RETRIEVAL_NODE, {"id": node_id}, database_=self._database
-        ).records
+        records = self._records(statements.RETRIEVAL_NODE, {"id": node_id})
         if not records:
             return None
         return str(records[0]["node_label"]), True
@@ -59,7 +69,7 @@ class GraphReader:
         total caps are applied by the traversal, which orders edges by
         relationship strength so the cut is never alphabetical.
         """
-        records = self._driver.execute_query(
+        records = self._records(
             statements.RETRIEVAL_NEIGHBOURS,
             {
                 "ids": ids,
@@ -67,8 +77,7 @@ class GraphReader:
                 "per_type": per_type,
                 "excluded_labels": list(excluded_labels),
             },
-            database_=self._database,
-        ).records
+        )
         return [
             NeighbourEdge(
                 from_id=str(record["from_id"]),
@@ -83,18 +92,15 @@ class GraphReader:
         self, concept_id: str, limit: int, excluded_labels: tuple[str, ...]
     ) -> list[tuple[str, str]]:
         """Entities bound to a BusinessConcept via MAPS_TO (id, label)."""
-        records = self._driver.execute_query(
+        records = self._records(
             statements.RETRIEVAL_CONCEPT_BOUND,
             {"concept_id": concept_id, "limit": limit, "excluded_labels": list(excluded_labels)},
-            database_=self._database,
-        ).records
+        )
         return [(str(record["entity_id"]), str(record["entity_label"])) for record in records]
 
     def markets(self) -> dict[str, str]:
         """Alias -> market id for the resolver."""
-        records = self._driver.execute_query(
-            statements.RETRIEVAL_MARKETS, {}, database_=self._database
-        ).records
+        records = self._records(statements.RETRIEVAL_MARKETS, {})
         aliases: dict[str, str] = {}
         for record in records:
             market_id = str(record["id"])

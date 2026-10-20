@@ -371,6 +371,7 @@ describe('runBackendQuestion', () => {
             error: {
               error_code: 'MODEL_ERROR',
               message: 'provider unreachable',
+              retryable: true,
             },
           }),
         )

@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from app.api.runs import _error_code
+from app.api.errors import classify
 from app.evidence import EvidenceChunk
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import StaticEntityResolver
@@ -209,5 +209,5 @@ class TestFastembedFailure:
             reranker.rerank("checkout", [chunk])
 
     def test_api_maps_fastembed_errors_like_the_other_adapters(self) -> None:
-        assert _error_code(SparseEmbeddingError("x")) == "EMBEDDING_ERROR"
-        assert _error_code(RerankError("x")) == "CONTEXT_BUILD_ERROR"
+        assert classify(SparseEmbeddingError("x")) == ("EMBEDDING_ERROR", True)
+        assert classify(RerankError("x")) == ("CONTEXT_BUILD_ERROR", False)

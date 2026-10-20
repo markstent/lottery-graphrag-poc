@@ -14,9 +14,9 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException
 
+from app.api.errors import ApiErrorBody
 from app.api.runs import QueryService
 from app.api.schemas import (
-    ApiError,
     BenchmarkSummary,
     DemoQuestion,
     EventStream,
@@ -100,9 +100,10 @@ def build_queries_router(service: QueryService) -> APIRouter:
             error=(
                 None
                 if record.error_code is None
-                else ApiError(
+                else ApiErrorBody(
                     error_code=record.error_code,
                     message=record.error_message or "run failed",
+                    retryable=record.error_retryable,
                 )
             ),
         )

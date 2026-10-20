@@ -121,7 +121,9 @@ def ingest(
         ontology_version=ontology.version,
     )
 
-    driver: Driver = GraphDatabase.driver(config.uri, auth=(config.user, config.password))
+    driver: Driver = GraphDatabase.driver(
+        config.uri, auth=(config.user, config.password), connection_timeout=config.timeout_s
+    )
     try:
         driver.verify_connectivity()
         with driver.session(database=config.database) as session:
