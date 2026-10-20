@@ -3,9 +3,12 @@
 The boundary is structural, not conventional:
 
 1. No module in an isolated namespace (``ISOLATED_NAMESPACES``) or among the
-   isolated top-level modules (the lab and the trace CLI) may import
-   ``app.evaluation`` or reference the truth path by name; the scenario
-   package reaches its output path only through ``DEFAULT_TRUTH_PATH``.
+   isolated top-level modules (the lab) may import ``app.evaluation`` or
+   reference the truth path by name; the scenario package reaches its output
+   path only through ``DEFAULT_TRUTH_PATH``. The trace CLI is the one
+   operator tool that reads the frozen bank for its demo questions, through
+   the two API modules (ADR-008): it is held to the import and ledger-name
+   rules but not to the runtime rule below.
 2. The scenario package may write the ledger but must never import the
    loader; producer and consumer share only the JSON contract.
 3. ``app.evaluation`` is imported by nothing under ``app/`` except itself and
@@ -13,7 +16,10 @@ The boundary is structural, not conventional:
    the benchmark routes and post-run scoring. Every other API module stays
    under rule 1, and no API module names the ledger: the two reach it only
    through the evaluator's own functions.
-4. Retrievable artefacts (Parquet datasets, manifest) contain no ledger
+4. At run time, importing the lab and every retrieval module loads no
+   ``app.evaluation`` module, directly or through a dependency (a subprocess
+   test: the static rules above see direct imports only).
+5. Retrievable artefacts (Parquet datasets, manifest) contain no ledger
    fields; scenario configuration in the manifest records only ids,
    strengths and row counts, never planted specifics.
 """
@@ -22,6 +28,9 @@ from __future__ import annotations
 
 import ast
 import json
+import pkgutil
+import subprocess
+import sys
 from pathlib import Path
 
 from app.evaluation import load_ledger
@@ -42,7 +51,9 @@ ISOLATED_NAMESPACES = (
     "persistence",
     "models",
 )
-ISOLATED_MODULES = ("lab.py", "traces.py")
+ISOLATED_MODULES = ("lab.py",)
+# The trace CLI reaches the frozen bank only through the two API modules.
+OPERATOR_TOOLS = ("traces.py",)
 FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "app.evaluation")
 # The only API modules that may import app.evaluation (Phase 4).
 EVALUATION_API_MODULES = frozenset({"benchmarks.py", "scoring.py"})
@@ -123,6 +134,46 @@ def test_api_reads_the_ledger_only_through_evaluation() -> None:
         assert not any(marker in source for marker in LEDGER_STRINGS), (
             f"{path.relative_to(APP_DIR)} names the truth ledger"
         )
+
+
+def test_operator_tools_never_import_evaluation_or_name_the_ledger() -> None:
+    for name in OPERATOR_TOOLS:
+        path = APP_DIR / name
+        assert not _imports_evaluation(path), f"{name} imports app.evaluation"
+        source = path.read_text(encoding="utf-8")
+        assert not any(marker in source for marker in LEDGER_STRINGS), f"{name} names the ledger"
+
+
+def _retrieval_modules() -> list[str]:
+    import app.retrieval
+
+    return [m.name for m in pkgutil.walk_packages(app.retrieval.__path__, "app.retrieval.")]
+
+
+def _evaluation_modules_loaded_by(modules: list[str]) -> list[str]:
+    """The ``app.evaluation`` modules a fresh interpreter has loaded after
+    importing ``modules``; run in a subprocess so nothing else has loaded them."""
+    code = (
+        "import importlib, sys\n"
+        f"for name in {modules!r}:\n"
+        "    importlib.import_module(name)\n"
+        "print('\\n'.join(sorted(n for n in sys.modules if n.startswith('app.evaluation'))))\n"
+    )
+    done = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, check=True, timeout=120
+    )
+    return done.stdout.split()
+
+
+def test_the_lab_and_every_retrieval_module_load_no_evaluation_module() -> None:
+    modules = ["app.lab", *_retrieval_modules()]
+    assert len(modules) > 10  # the walk found the retrieval packages
+    assert _evaluation_modules_loaded_by(modules) == []
+
+
+def test_the_runtime_check_sees_an_evaluation_module_when_one_is_loaded() -> None:
+    """The check is not vacuous: a module that does load the evaluator is caught."""
+    assert "app.evaluation.grounding" in _evaluation_modules_loaded_by(["app.api.scoring"])
 
 
 def test_retrieval_imports_nothing_from_api() -> None:
