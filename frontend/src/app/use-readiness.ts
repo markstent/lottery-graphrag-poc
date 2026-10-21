@@ -39,7 +39,9 @@ export function useReadiness(): {
       controller = request
       let next: Reading
       try {
-        next = await getReadiness(request.signal)
+        const answer = await getReadiness(request.signal)
+        // A 503 that is an error envelope, not a readiness body, is no answer.
+        next = 'checks' in answer ? answer : 'unreachable'
       } catch {
         next = 'unreachable'
       }
