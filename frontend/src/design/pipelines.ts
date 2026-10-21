@@ -26,12 +26,14 @@ function define(id: PipelineId, name: string): Pipeline {
   }
 }
 
-export const PIPELINES = [
-  define('A', 'Text search'),
-  define('B', 'Graph'),
-  define('C', 'Graph + Ontology'),
-] as const
+const BY_ID: Record<PipelineId, Pipeline> = {
+  A: define('A', 'Text search'),
+  B: define('B', 'Graph'),
+  C: define('C', 'Graph + Ontology'),
+}
+
+export const PIPELINES = [BY_ID.A, BY_ID.B, BY_ID.C] as const
 
 export function pipeline(id: PipelineId): Pipeline {
-  return PIPELINES.find((p) => p.id === id) as Pipeline
+  return BY_ID[id]
 }

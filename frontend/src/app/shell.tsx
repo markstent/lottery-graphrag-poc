@@ -66,7 +66,7 @@ function SettingsDrawer() {
     <div
       role="dialog"
       aria-label="Settings"
-      className="fixed inset-y-0 right-0 z-40 w-80 border-l border-border bg-surface p-4 shadow-xl"
+      className="fixed inset-y-0 right-0 z-40 w-80 border-l border-border bg-surface p-4 shadow-overlay"
     >
       <div className="flex items-center justify-between">
         <h2 className="text-lg">Settings</h2>

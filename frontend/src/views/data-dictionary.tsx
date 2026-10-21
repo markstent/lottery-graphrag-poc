@@ -711,7 +711,7 @@ export function DataDictionary() {
                   <p className="text-xs font-semibold text-text-secondary">
                     1. Parquet Warehouse Row
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] text-text-muted">
+                  <p className="mt-0.5 font-mono text-xs text-text-muted">
                     incidents.parquet
                   </p>
                   <dl className="mt-2 space-y-1 font-mono text-xs">
@@ -738,7 +738,7 @@ export function DataDictionary() {
                   <p className="text-xs font-semibold text-graph">
                     2. Neo4j Graph Node & Edges
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] text-text-muted">
+                  <p className="mt-0.5 font-mono text-xs text-text-muted">
                     (:Incident &#123;entity_id: &quot;INC_S007_GR&quot;&#125;)
                   </p>
                   <ul className="mt-2 space-y-1 font-mono text-xs text-text-secondary">
@@ -757,7 +757,7 @@ export function DataDictionary() {
                   <p className="text-xs font-semibold text-ontology">
                     3. Enterprise Ontology Concept
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] text-text-muted">
+                  <p className="mt-0.5 font-mono text-xs text-text-muted">
                     (:BusinessConcept)
                   </p>
                   <p className="mt-2 font-mono text-xs text-text-primary">

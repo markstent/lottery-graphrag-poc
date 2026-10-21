@@ -65,6 +65,28 @@ const TEXT_ON_SURFACE: [TokenName, TokenName][] = [
   ['color-background', 'color-pipeline-c-strong'],
 ]
 
+const TINTS: TokenName[] = [
+  'color-pipeline-a-tint',
+  'color-pipeline-b-tint',
+  'color-pipeline-c-tint',
+  'color-state-concept-fill',
+  'color-state-traversed-fill',
+  'color-state-discarded-fill',
+]
+
+TEXT_ON_SURFACE.push(
+  ...(
+    ['color-text-primary', 'color-text-secondary', 'color-text-muted'] as const
+  ).flatMap((text) =>
+    TINTS.map((fill): [TokenName, TokenName] => [text, fill]),
+  ),
+  // Text on a status fill: ink on the three light fills, white on critical.
+  ['color-text-primary', 'color-status-good'],
+  ['color-text-primary', 'color-status-warning'],
+  ['color-text-primary', 'color-status-serious'],
+  ['color-surface', 'color-status-critical'],
+)
+
 const BORDER_ON_SURFACE: [TokenName, TokenName][] = SURFACES.map((surface) => [
   'color-border',
   surface,
@@ -152,6 +174,28 @@ describe('token usage in src', () => {
     },
   )
   const text = Object.values(modules).join('\n')
+
+  test('market and status colours are marks and fills, never text', () => {
+    expect(
+      text.match(/(?<![\w-])(?:[a-z-]+:)*text-(?:market|status)-[a-z]+/g) ?? [],
+    ).toEqual([])
+    expect(
+      text.match(/(?:^|[^-\w])color:\s*var\(--color-(?:market|status)-/g) ?? [],
+    ).toEqual([])
+    expect(
+      text.match(/\bcolor:\s*['"]?TOKENS\[['"]color-(?:market|status)-/g) ?? [],
+    ).toEqual([])
+  })
+
+  test('text sizes come from the scale and shadows from the overlay token', () => {
+    expect(
+      text.match(/(?<![\w-])text-\[[0-9.]+(?:px|rem|em)\]/g) ?? [],
+    ).toEqual([])
+    expect(
+      text.match(/(?<![\w-])shadow-(?:xs|sm|md|lg|xl|2xl|inner)(?![\w-])/g) ??
+        [],
+    ).toEqual([])
+  })
 
   test('every var(--token) src uses is defined', () => {
     const defined = new Set(Object.keys(TOKENS))

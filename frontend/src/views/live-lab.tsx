@@ -355,7 +355,7 @@ export function LiveLab() {
               }
               className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-left text-xs text-text-secondary transition-colors duration-micro hover:border-graph/60 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <span className="mr-1.5 font-mono text-[11px] text-graph">
+              <span className="mr-1.5 font-mono text-xs text-graph">
                 {demo.id}
               </span>
               {demo.text}
@@ -435,7 +435,7 @@ export function LiveLab() {
             onKeyDown={(event) => {
               if (event.key === 'Escape') setDrawerEvidenceId(null)
             }}
-            className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-surface p-6 shadow-2xl"
+            className="h-full w-full max-w-2xl overflow-y-auto border-l border-border bg-surface p-6 shadow-overlay"
           >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
               <div>

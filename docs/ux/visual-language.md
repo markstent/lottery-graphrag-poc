@@ -38,42 +38,30 @@ Each pipeline has one fixed colour, used everywhere, in three tones.
 | Pipeline | Hue (marks, fills) | Tint (backgrounds) | Strong (text, thin lines) |
 |---|---|---|---|
 | A · Text search | `#2a78d6` | `#e5effa` | `#1c5cab` |
-| B · Graph | `#c98500` | `#f9f0e0` | `#7a5000` |
+| B · Graph | `#a86e00` | `#f5eee0` | `#7a5000` |
 | C · Graph + Ontology | `#c4358f` | `#f8e7f2` | `#a02574` |
 
 The hues carry no meaning in the status palette: no red or green is used for a pipeline.
 B's gold sits near the warning yellow, so status is always shown with an icon and a label, never by hue alone.
-Hues are validated against white and must only be used for marks on white or on their own tint.
-On the page or inset surfaces, use the strong tone, because B's hue is just under 3:1 there.
+Every hue reaches 3:1 as a mark on white, on the page, on the inset surface and on its own tint, and the tests enforce it.
+The strong tone is for text and thin lines.
 The v1 names `--color-baseline`, `--color-graph` and `--color-ontology` remain until the Phase 6 rebuild and map to the strong tones of A, B and C.
 
 ## Palette validation
 
 The pipeline hues were chosen with the project's data visualisation method.
-They are checked with `validate_palette.js` against the white chart surface, with `--pairs all` because any two pipelines can sit side by side.
+They are checked with `validate_palette.js` against the white chart surface, with `--pairs all`.
+B's contrast was re-run on the page (`#f6f7f9`) and the inset surface (`#eef0f3`) too, and passes there as well.
+The output below is for white because any two pipelines can sit side by side.
 Teal and violet candidates failed the colour-blind and chroma checks against blue, which is why B is gold and C is magenta.
 
 ```text
-=== pipelines (all)
-
 Palette (light, surface #ffffff, categorical): 3 slots
   [PASS] Lightness band         all 3 inside L 0.43–0.77
   [PASS] Chroma floor           all 3 >= 0.1
-  [PASS] CVD separation         worst all-pairs #c4358f↔#2a78d6 ΔE 13.0 (protan) · tritan 12.5
-  [PASS] Normal-vision floor    worst all-pairs #c4358f↔#c98500 ΔE 25.7 (normal)
+  [PASS] CVD separation         worst all-pairs #c4358f↔#2a78d6 ΔE 13.0 (protan) · tritan 8.9
+  [PASS] Normal-vision floor    worst all-pairs #c4358f↔#a86e00 ΔE 22.8 (normal)
   [PASS] Contrast vs surface    all 3 >= 3:1
-
-  → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
-  scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
-
-=== markets (adjacent)
-
-Palette (light, surface #ffffff, categorical): 4 slots
-  [PASS] Lightness band         all 4 inside L 0.43–0.77
-  [PASS] Chroma floor           all 4 >= 0.1
-  [PASS] CVD separation         worst adjacent #75528e↔#14938d ΔE 11.2 (deutan) · tritan 4.5
-  [PASS] Normal-vision floor    worst adjacent #796006↔#75528e ΔE 18.9 (normal)
-  [PASS] Contrast vs surface    all 4 >= 3:1
 
   → ALL CHECKS PASS  (CVD in the 6–8 floor band is legal ONLY with secondary encoding: direct labels, gaps, or texture)
   scope: categorical palettes only. For a lone status/text color check WCAG text contrast; for a sequential ramp, lightness monotonicity.
@@ -88,6 +76,8 @@ Each market colour is at least 15 apart from A, B and C under normal vision, and
 ## Status
 
 Status colours are reserved and never used for pipelines or markets.
+Market and status colours are marks and fills only, never text; a test scans `src` for text use.
+Text on a status fill is `--color-text-primary` on good, warning and serious, and white (`--color-surface`) on critical.
 The fills are `--color-status-good` `#0ca30c`, `--color-status-warning` `#fab219`, `--color-status-serious` `#ec835a` and `--color-status-critical` `#d03b3b`, always paired with an icon and a label.
 Where status is text, use `--color-success` `#006300`, `--color-warning` `#8a5a00` and `--color-error` `#b42323`, which meet 4.5:1.
 
@@ -112,9 +102,11 @@ A concept is the ontology layer, so it wears C's tones with its own shape.
 ## Contrast
 
 WCAG ratios, computed from the token values.
+The tests also check text on every tint and state fill, state strokes (3:1 on every surface and on their fills), pipeline hues on every surface and tint, and the focus ring.
 
 | Token | background #f6f7f9 | surface #ffffff | surface-raised #eef0f3 |
 |---|---|---|---|
+| focus #12151b | 17.05 | 18.28 | 16.01 |
 | text-primary #12151b | 17.05 | 18.28 | 16.01 |
 | text-secondary #454c58 | 8.07 | 8.65 | 7.58 |
 | text-muted #596170 | 5.82 | 6.23 | 5.46 |
@@ -126,19 +118,28 @@ WCAG ratios, computed from the token values.
 | pipeline-c-strong #a02574 | 6.51 | 6.97 | 6.11 |
 | border #7f8692 (3:1 needed) | 3.42 | 3.67 | 3.21 |
 | pipeline-a #2a78d6 (3:1) | 4.12 | 4.42 | 3.87 |
-| pipeline-b #c98500 (3:1) | 2.86 | 3.07 | 2.69 |
+| pipeline-b #a86e00 (3:1) | 4.00 | 4.29 | 3.76 |
 | pipeline-c #c4358f (3:1) | 4.61 | 4.94 | 4.32 |
 
-Strong tones on their own tint, and the page colour on a strong fill:
+Other pairs:
 
 | Pair | Ratio |
 |---|---|
 | pipeline-a-strong on tint #e5effa | 5.70 |
-| pipeline-b-strong on tint #f9f0e0 | 6.24 |
+| pipeline-b-strong on tint #f5eee0 | 6.11 |
 | pipeline-c-strong on tint #f8e7f2 | 5.88 |
 | background on pipeline-a-strong | 6.18 |
 | background on pipeline-b-strong | 6.59 |
 | background on pipeline-c-strong | 6.51 |
+| pipeline-a on tint | 3.80 |
+| pipeline-b on tint | 3.72 |
+| pipeline-c on tint | 4.16 |
+| text-primary on status-good | 5.45 |
+| text-primary on status-warning | 9.96 |
+| text-primary on status-serious | 6.93 |
+| white on status-critical | 4.80 |
+| text-muted on discarded fill | 5.82 |
+| text-muted on concept fill | 5.26 |
 
 ## Motion and accessibility
 

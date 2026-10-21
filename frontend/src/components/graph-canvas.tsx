@@ -175,7 +175,7 @@ export function GraphCanvas({
                     x={mx}
                     y={my - 8}
                     textAnchor="middle"
-                    className="fill-success text-[10px] label-halo"
+                    className="fill-success text-xs label-halo"
                   >
                     evidence path
                   </text>
@@ -228,7 +228,7 @@ export function GraphCanvas({
                 y={33}
                 textAnchor="middle"
                 fill="var(--color-text-primary)"
-                className="text-[11px] font-medium label-halo"
+                className="text-xs font-medium label-halo"
               >
                 {node.label}
               </text>

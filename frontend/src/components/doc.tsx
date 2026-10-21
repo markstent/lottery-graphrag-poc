@@ -206,7 +206,7 @@ export function Code({ children }: { children: string }) {
 
 export function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-chip border border-border bg-surface-raised px-2 py-0.5 font-mono text-[11px] text-text-secondary">
+    <span className="rounded-chip border border-border bg-surface-raised px-2 py-0.5 font-mono text-xs text-text-secondary">
       {children}
     </span>
   )

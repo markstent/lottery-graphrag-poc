@@ -126,9 +126,7 @@ function DiagramChip({ node }: { node: DiagramNode }) {
       }`}
     >
       <span className="font-mono text-xs font-medium">{node.id}</span>
-      {node.sub && (
-        <span className="text-[11px] text-text-muted">{node.sub}</span>
-      )}
+      {node.sub && <span className="text-xs text-text-muted">{node.sub}</span>}
     </span>
   )
 }
@@ -158,7 +156,7 @@ function GraphDiagram() {
                   className="flex items-center gap-1.5 text-xs text-text-muted"
                 >
                   <span aria-hidden>→</span>
-                  <span className="font-mono text-[11px] uppercase tracking-wide text-graph">
+                  <span className="font-mono text-xs uppercase tracking-wide text-graph">
                     {token.rel}
                   </span>
                   <span aria-hidden>→</span>
@@ -166,7 +164,7 @@ function GraphDiagram() {
               ),
             )}
             {path.note && (
-              <span className="text-[11px] text-ontology">({path.note})</span>
+              <span className="text-xs text-ontology">({path.note})</span>
             )}
           </li>
         ))}
