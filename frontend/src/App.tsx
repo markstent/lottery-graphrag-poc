@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react'
+
 import { SettingsProvider } from './app/settings'
 import { useSettings } from './app/use-settings'
 import { Shell } from './app/shell'
@@ -36,14 +38,26 @@ function Routes() {
   }
 }
 
+/** Development pages, kept out of the production build. */
+const GraphHarness =
+  import.meta.env.MODE !== 'production'
+    ? lazy(() => import('./dev/graph-harness'))
+    : null
+
 /** Applies the reduced-motion class around the whole tree (docs/ux/accessibility.md). */
 function ThemedApp() {
   const { reducedMotion } = useSettings()
   return (
     <div className={reducedMotion ? 'reduced-motion' : ''}>
-      <Shell>
-        <Routes />
-      </Shell>
+      {GraphHarness && window.location.hash.startsWith('#/__graph') ? (
+        <Suspense fallback={null}>
+          <GraphHarness />
+        </Suspense>
+      ) : (
+        <Shell>
+          <Routes />
+        </Shell>
+      )}
     </div>
   )
 }

@@ -8,12 +8,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { GraphPane } from '../components/graph-pane'
 import { LiveScoreNote } from '../components/live-score'
 import { RagPane } from '../components/rag-pane'
 import { ScoreStrip } from '../components/score-strip'
 import { Timeline } from '../components/timeline'
 import { EvidenceInspector } from './evidence-explorer'
+import { GraphPane } from './v1-graph-pane'
 import { useSettings } from '../app/use-settings'
 import { hrefFor } from '../app/router'
 import { DEMO_QUESTIONS } from '../mock/content'

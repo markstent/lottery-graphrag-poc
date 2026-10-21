@@ -1,0 +1,374 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+
+import { SettingsContext, type Settings } from '../app/use-settings'
+import type { components } from '../api/schema'
+import { EVIDENCE_STATES } from '../design/evidence-states'
+import fixture from '../run/fixtures/run-abc.json'
+import { reduceAll, type RunEvent } from '../run/reduce'
+import { recordedPathsFromResult } from './from-result'
+import { GraphCanvas } from './graph-canvas'
+import { graphView, type GraphView } from './model'
+
+const recorded = fixture.events as unknown as RunEvent[]
+const resultOf = (pipeline: 'B' | 'C') =>
+  fixture.results.results[
+    pipeline
+  ] as unknown as components['schemas']['GraphRunResult']
+
+/** The B or C graph after the events up to `sequence` (all of them by default). */
+function viewAt(
+  pipeline: 'B' | 'C',
+  options: { sequence?: number; cap?: number; focus?: boolean } = {},
+): GraphView {
+  const { sequence = Infinity, cap = 1000, focus = false } = options
+  const state = reduceAll(recorded.filter((e) => e.sequence <= sequence))
+  return graphView(state.graph[pipeline], {
+    cap,
+    focus,
+    paths: recordedPathsFromResult(resultOf(pipeline)),
+  })
+}
+
+/** A sequence at which `pipeline` has discovered about `count` nodes. */
+function sequenceWithNodes(pipeline: 'B' | 'C', count: number): number {
+  for (const e of recorded) {
+    if (e.sequence < 1) continue
+    const n = reduceAll(recorded.filter((x) => x.sequence <= e.sequence)).graph[
+      pipeline
+    ].nodes.length
+    if (n >= count) return e.sequence
+  }
+  throw new Error('fixture has too few nodes')
+}
+
+const noop = () => undefined
+const canvas = (
+  view: GraphView,
+  extra: Partial<Parameters<typeof GraphCanvas>[0]> = {},
+) => (
+  <GraphCanvas
+    view={view}
+    onSelectNode={noop}
+    focusMode={false}
+    presentation={false}
+    {...extra}
+  />
+)
+
+const nodeButtons = () =>
+  screen
+    .queryAllByRole('button')
+    .filter((el) => el.hasAttribute('data-node-id'))
+
+const nodeButton = (id: string) =>
+  nodeButtons().find(
+    (el) => el.getAttribute('data-node-id') === id,
+  ) as HTMLElement
+
+/** Waits for the async layout to place every node. */
+async function placed(count: number) {
+  await waitFor(() => expect(nodeButtons()).toHaveLength(count))
+}
+
+const transformOf = (id: string) =>
+  (document.querySelector(`.react-flow__node[data-id="${id}"]`) as HTMLElement)
+    .style.transform
+
+describe('GraphCanvas', () => {
+  it('draws one DOM node for each node of the view', async () => {
+    const view = viewAt('B')
+    expect(view.nodes).toHaveLength(41)
+    render(canvas(view))
+    await placed(41)
+    expect(nodeButtons().map((el) => el.dataset.nodeId)).toEqual(
+      view.nodes.map((n) => n.id),
+    )
+  })
+
+  it('names each node by its state and its label in plain words', async () => {
+    const view = viewAt('C')
+    render(canvas(view))
+    await placed(61)
+    const seed = nodeButton('INC_037')
+    expect(seed).toHaveAccessibleName(`${EVIDENCE_STATES.seed.label}: incident`)
+    expect(seed).toHaveAccessibleDescription(
+      'INC_037, used as evidence, on an evidence path',
+    )
+    expect(nodeButton('CONCEPT_INCIDENT')).toHaveAccessibleName(
+      `${EVIDENCE_STATES.seed.label}: business concept`,
+    )
+    expect(
+      screen.getAllByRole('button', { name: /^Set aside: incident type$/ })
+        .length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('tags each edge with its relationship in plain words while the view is small', async () => {
+    const sequence = sequenceWithNodes('B', 12)
+    const view = viewAt('B', { sequence })
+    render(canvas(view))
+    await placed(view.nodes.length)
+    await waitFor(() =>
+      expect(document.querySelectorAll('[data-edge-id]')).toHaveLength(
+        view.edges.length,
+      ),
+    )
+    const tags = [...document.querySelectorAll('[data-edge-id]')].map(
+      (el) => el.textContent,
+    )
+    for (const tag of tags) expect(tag).toMatch(/^[a-z][a-z ,x0-9]+$/)
+    expect(tags).toContain('is related to version')
+  })
+
+  it('tags every evidence path edge even when the view is crowded', async () => {
+    const view = viewAt('C')
+    render(canvas(view))
+    await placed(61)
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll('[data-edge-id]').length,
+      ).toBeGreaterThan(0),
+    )
+    const tags = [...document.querySelectorAll('[data-edge-id]')]
+    const onPath = view.edges.filter((e) => e.onPath)
+    expect(onPath.length).toBeGreaterThan(0)
+    for (const edge of onPath)
+      expect(
+        tags.some(
+          (el) =>
+            el.getAttribute('data-edge-id') === `${edge.source}>${edge.target}`,
+        ),
+      ).toBe(true)
+  })
+
+  it('puts the evidence path edges of the fixture on the path', () => {
+    for (const id of ['B', 'C'] as const) {
+      const view = viewAt(id)
+      const steps = view.pathSteps.flat().filter((s) => s !== null)
+      expect(steps.length).toBeGreaterThan(0)
+      expect(view.edges.filter((e) => e.onPath).length).toBeGreaterThanOrEqual(
+        new Set(steps).size,
+      )
+    }
+  })
+
+  it('dims every node and edge off the path to 25 percent in focus mode', async () => {
+    const view = viewAt('C')
+    render(canvas(view, { focusMode: true }))
+    await placed(61)
+    for (const node of view.nodes) {
+      const el = nodeButton(node.id)
+      expect(el.dataset.dimmed).toBe(String(!node.onPath))
+      expect(el.style.opacity).toBe(node.onPath ? '1' : '0.25')
+    }
+    expect(
+      [
+        ...document.querySelectorAll<SVGPathElement>('.react-flow__edge-path'),
+      ].filter((p) => p.style.opacity === '0.25').length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('leaves nothing dimmed with focus mode off', async () => {
+    render(canvas(viewAt('B')))
+    await placed(41)
+    for (const el of nodeButtons()) expect(el.style.opacity).toBe('1')
+  })
+
+  it('lets Tab reach exactly one node, the first on the path', async () => {
+    const user = userEvent.setup()
+    const view = viewAt('B')
+    render(canvas(view))
+    await placed(41)
+    const tabbable = nodeButtons().filter((el) => el.tabIndex === 0)
+    expect(tabbable).toHaveLength(1)
+    await user.tab()
+    expect(document.activeElement).toBe(tabbable[0])
+    expect(tabbable[0].dataset.nodeId).toBe(view.path[0])
+  })
+
+  it('moves focus along an edge with the arrow keys', async () => {
+    const user = userEvent.setup()
+    const view = viewAt('B')
+    render(canvas(view))
+    await placed(41)
+    await user.tab()
+    const start = (document.activeElement as HTMLElement).dataset.nodeId
+    const linked = new Set(
+      view.edges.flatMap((e) =>
+        e.source === start ? [e.target] : e.target === start ? [e.source] : [],
+      ),
+    )
+    expect(linked.size).toBeGreaterThan(0)
+    const visited: string[] = []
+    for (const key of [
+      '{ArrowRight}',
+      '{ArrowLeft}',
+      '{ArrowDown}',
+      '{ArrowUp}',
+    ]) {
+      await user.keyboard(key)
+      const now = (document.activeElement as HTMLElement).dataset
+        .nodeId as string
+      if (now !== start) {
+        visited.push(now)
+        expect(linked.has(now)).toBe(true)
+        await user.keyboard('{ArrowLeft}{ArrowRight}')
+        nodeButton(start as string).focus()
+      }
+    }
+    expect(visited.length).toBeGreaterThan(0)
+  })
+
+  it('stays on a node when no edge leads the way of the arrow key', async () => {
+    const user = userEvent.setup()
+    render(canvas(viewAt('B')))
+    await placed(41)
+    await user.tab()
+    const start = document.activeElement
+    await user.keyboard('{ArrowLeft}')
+    expect(document.activeElement).toBe(start)
+  })
+
+  it('calls onSelectNode with the focused node on Enter', async () => {
+    const user = userEvent.setup()
+    const onSelectNode = vi.fn()
+    render(canvas(viewAt('B'), { onSelectNode }))
+    await placed(41)
+    await user.tab()
+    await user.keyboard('{Enter}')
+    expect(onSelectNode).toHaveBeenCalledExactlyOnceWith('INC_037')
+  })
+
+  it('calls onSelectNode on a click', async () => {
+    const onSelectNode = vi.fn()
+    render(canvas(viewAt('B'), { onSelectNode }))
+    await placed(41)
+    // user-event's pointer sequence reaches d3-drag, which needs a real window.
+    fireEvent.click(nodeButton('SUP_00113'))
+    expect(onSelectNode).toHaveBeenCalledExactlyOnceWith('SUP_00113')
+  })
+
+  it('moves focus past the canvas on Escape', async () => {
+    const user = userEvent.setup()
+    render(
+      <>
+        {canvas(viewAt('B'))}
+        <button type="button">After the graph</button>
+      </>,
+    )
+    await placed(41)
+    await user.tab()
+    expect(document.activeElement?.hasAttribute('data-node-id')).toBe(true)
+    await user.keyboard('{Escape}')
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'After the graph' }),
+    )
+  })
+
+  it('keeps the position of every node already placed when nodes are added', async () => {
+    const small = viewAt('C', { sequence: sequenceWithNodes('C', 12) })
+    const full = viewAt('C')
+    const { rerender } = render(canvas(small))
+    await placed(small.nodes.length)
+    const before = new Map(small.nodes.map((n) => [n.id, transformOf(n.id)]))
+    expect(new Set(before.values()).size).toBe(small.nodes.length)
+    rerender(canvas(full))
+    await placed(full.nodes.length)
+    for (const [id, transform] of before)
+      expect(transformOf(id)).toBe(transform)
+    expect(new Set(full.nodes.map((n) => transformOf(n.id))).size).toBe(
+      full.nodes.length,
+    )
+  })
+
+  it('folds the nodes above the cap into group nodes', async () => {
+    const view = viewAt('C', { cap: 20 })
+    expect(view.clusters.length).toBeGreaterThan(0)
+    const visible = view.nodes.filter((n) => n.clusterId === undefined).length
+    render(canvas(view))
+    await placed(visible + view.clusters.length)
+    const group = screen.getAllByRole('button', { name: /^Group: / })
+    expect(group).toHaveLength(view.clusters.length)
+    expect(group[0]).toHaveAccessibleName(/^Group: \d+ [a-z ]+s$/)
+  })
+
+  it('says so when there is nothing to draw', () => {
+    render(canvas(viewAt('B', { sequence: 0 })))
+    expect(
+      screen.getByText('No graph activity has been recorded yet.'),
+    ).toBeVisible()
+  })
+
+  it('gives the canvas a name and a description that covers the whole view', async () => {
+    const view = viewAt('C', { cap: 20 })
+    render(canvas(view, { label: 'Graph for configuration C' }))
+    await placed(
+      view.nodes.filter((n) => n.clusterId === undefined).length +
+        view.clusters.length,
+    )
+    const region = screen.getByRole('group', {
+      name: 'Graph for configuration C',
+    })
+    const summary = document.getElementById(
+      region.getAttribute('aria-describedby') as string,
+    ) as HTMLElement
+    expect(summary).not.toBeNull()
+    expect(summary).toHaveTextContent(
+      `The graph shows ${view.nodes.length} nodes`,
+    )
+    // Every node is either on a path or in the summary.
+    const onPath = new Set(view.path)
+    for (const node of view.nodes)
+      if (!onPath.has(node.id)) expect(summary).toHaveTextContent(node.id)
+  })
+
+  it('draws no transition under reduced motion', async () => {
+    const settings: Settings = {
+      presentation: false,
+      togglePresentation: noop,
+      reducedMotion: true,
+      toggleReducedMotion: noop,
+      settingsOpen: false,
+      setSettingsOpen: noop,
+    }
+    const view = viewAt('B', { sequence: sequenceWithNodes('B', 12) })
+    render(
+      <SettingsContext.Provider value={settings}>
+        {canvas(view)}
+      </SettingsContext.Provider>,
+    )
+    await placed(view.nodes.length)
+    const wrapper = document.querySelector('.react-flow__node') as HTMLElement
+    expect(wrapper.style.transition).toBe('none')
+    expect(nodeButtons()[0].className).not.toContain('graph-node-enter')
+  })
+
+  it('eases position and fades new nodes in otherwise', async () => {
+    const view = viewAt('B', { sequence: sequenceWithNodes('B', 12) })
+    render(canvas(view))
+    await placed(view.nodes.length)
+    const wrapper = document.querySelector('.react-flow__node') as HTMLElement
+    expect(wrapper.style.transition).toBe('transform 240ms ease-out')
+    expect(nodeButtons()[0].className).toContain('graph-node-enter')
+  })
+
+  it('sets node text at 14 px, or 20 px in presentation mode', async () => {
+    const view = viewAt('B', { sequence: sequenceWithNodes('B', 12) })
+    const { rerender } = render(canvas(view))
+    await placed(view.nodes.length)
+    const fontOf = () =>
+      nodeButtons()[0].querySelector<HTMLElement>('span[style*="font-size"]')
+        ?.style.fontSize
+    expect(fontOf()).toBe('14px')
+    rerender(canvas(view, { presentation: true }))
+    await waitFor(() => expect(fontOf()).toBe('20px'))
+  })
+
+  it('gives a node the focus ring class', async () => {
+    render(canvas(viewAt('B')))
+    await placed(41)
+    expect(nodeButtons()[0].className).toContain('graph-node')
+  })
+})

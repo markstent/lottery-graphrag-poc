@@ -278,8 +278,10 @@ describe('token usage in src', () => {
     )
     const utilities =
       '(?:bg|text|border|fill|stroke|ring|from|to|via|divide|outline|decoration|accent|shadow)'
+    // A module path such as './from-result' is not a class.
+    const classNames = text.replace(/\bfrom\s+['"][^'"]*['"]/g, '')
     const classes = [
-      ...text.matchAll(
+      ...classNames.matchAll(
         new RegExp(
           `(?<![\\w-])(?:[a-z-]+:)*${utilities}-([a-z0-9-]+)(?:/\\d+)?(?![\\w-])`,
           'g',

@@ -133,31 +133,23 @@ body {
   animation-duration: 1ms !important;
 }
 
-/* Progressive graph reveal (docs/ux/animation-specification.md: 180-300ms). */
-@keyframes node-reveal {
+/* Graph canvas nodes (docs/ux/animation-specification.md: 180-300ms): a new
+   node fades in to whatever opacity it ends at; the focus ring is the
+   focus token at 3px so it reads against every node shape. */
+@keyframes graph-node-enter {
   from {
     opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
   }
 }
 
-.node-reveal {
-  animation: node-reveal var(--duration-node) ease-out;
-  transform-box: fill-box;
-  transform-origin: center;
+.graph-node-enter {
+  animation: graph-node-enter var(--duration-panel) ease-out;
 }
 
-/* Readable labels over edges: surface-coloured halo behind the glyphs. */
-.label-halo {
-  fill: var(--color-text-primary);
-  paint-order: stroke;
-  stroke: var(--color-surface);
-  stroke-width: 4px;
-  stroke-linejoin: round;
+.graph-node:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 5px;
+  border-radius: 12px;
 }
 
 @keyframes panel-reveal {

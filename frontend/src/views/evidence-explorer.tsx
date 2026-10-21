@@ -6,10 +6,12 @@
 
 import { useMemo, useState } from 'react'
 
-import { GraphCanvas, GraphLegend } from '../components/graph-canvas'
 import { hrefFor } from '../app/router'
 import { EVIDENCE_PATH_IDS, getEvidence } from '../mock/evidence'
 import { MOCK_RUN, projectGraph } from '../mock/telemetry'
+import { EvidenceGraph } from './v1-graph-pane'
+
+const noop = () => undefined
 
 export type Tab = 'sources' | 'graph' | 'provenance'
 
@@ -105,10 +107,11 @@ export function EvidenceInspector({
           aria-label="Evidence graph"
           className="rounded-card border border-border bg-surface p-4"
         >
-          <GraphCanvas state={finalGraph} compact />
-          <div className="mt-2">
-            <GraphLegend />
-          </div>
+          <EvidenceGraph
+            state={finalGraph}
+            height="h-[360px]"
+            onSelect={noop}
+          />
           <p className="mt-2 text-xs text-text-muted">
             Nodes and edges shown are the events recorded for run{' '}
             {MOCK_RUN.runId}; the full enterprise graph is never rendered.
