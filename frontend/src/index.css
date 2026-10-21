@@ -1,41 +1,90 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens (docs/06-ux-spec.md section 19).
- * Restrained dark research-lab aesthetic: calm, high contrast, sparse accents.
+ * Design tokens (docs/ux/visual-language.md).
+ * Light theme: white and near-white surfaces, one cool neutral scale, one fixed
+ * colour per pipeline, status colours reserved for status.
+ * src/design/tokens.ts holds typed copies; tokens.test.ts keeps both equal.
  */
 @theme {
-  --color-background: #0b0e14;
-  --color-surface: #11151d;
-  --color-surface-raised: #171c26;
-  --color-border: #232a37;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 
-  --color-text-primary: #e8ebf1;
-  --color-text-secondary: #a8b0bf;
-  --color-text-muted: #6b7382;
+  --color-background: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-surface-raised: #eef0f3;
+  --color-border: #7f8692;
+  --color-hairline: #e3e6eb;
 
-  --color-baseline: #8a93a6;
-  --color-graph: #56a8ab;
-  --color-ontology: #b58bd8;
-  --color-success: #6fbf8b;
-  --color-warning: #d9a662;
-  --color-error: #d97b7b;
+  --color-grey-50: #f6f7f9;
+  --color-grey-100: #eef0f3;
+  --color-grey-200: #e3e6eb;
+  --color-grey-300: #cfd4db;
+  --color-grey-400: #aab1bc;
+  --color-grey-500: #7f8692;
+  --color-grey-600: #596170;
+  --color-grey-700: #454c58;
+  --color-grey-800: #2a303a;
+  --color-grey-900: #12151b;
 
-  --color-market-uk: #6a8fd8;
-  --color-market-gr: #6fbf8b;
-  --color-market-at: #d9a662;
-  --color-market-cz: #d97b7b;
+  --color-text-primary: #12151b;
+  --color-text-secondary: #454c58;
+  --color-text-muted: #596170;
+  --color-focus: #12151b;
+
+  --color-pipeline-a: #2a78d6;
+  --color-pipeline-a-tint: #e5effa;
+  --color-pipeline-a-strong: #1c5cab;
+  --color-pipeline-b: #c98500;
+  --color-pipeline-b-tint: #f9f0e0;
+  --color-pipeline-b-strong: #7a5000;
+  --color-pipeline-c: #c4358f;
+  --color-pipeline-c-tint: #f8e7f2;
+  --color-pipeline-c-strong: #a02574;
+
+  /* v1 names kept alive until the Phase 6 rebuild: A, B and C at their strong tone. */
+  --color-baseline: #1c5cab;
+  --color-graph: #7a5000;
+  --color-ontology: #a02574;
+
+  --color-status-good: #0ca30c;
+  --color-status-warning: #fab219;
+  --color-status-serious: #ec835a;
+  --color-status-critical: #d03b3b;
+  --color-success: #006300;
+  --color-warning: #8a5a00;
+  --color-error: #b42323;
+
+  --color-market-uk: #90502a;
+  --color-market-gr: #14938d;
+  --color-market-at: #75528e;
+  --color-market-cz: #796006;
+
+  --color-state-seed-fill: #ffffff;
+  --color-state-seed-stroke: #12151b;
+  --color-state-traversed-fill: #e3e6eb;
+  --color-state-traversed-stroke: #454c58;
+  --color-state-candidate-fill: #ffffff;
+  --color-state-candidate-stroke: #7f8692;
+  --color-state-selected-fill: #12151b;
+  --color-state-selected-stroke: #12151b;
+  --color-state-discarded-fill: #f6f7f9;
+  --color-state-discarded-stroke: #7f8692;
+  --color-state-concept-fill: #f8e7f2;
+  --color-state-concept-stroke: #a02574;
+  --color-state-source-record-fill: #ffffff;
+  --color-state-source-record-stroke: #454c58;
 
   --text-xs: 0.75rem;
-  --text-sm: 0.8438rem;
-  --text-base: 0.9375rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.7285rem;
-  --text-3xl: 2.25rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.75rem;
+  --text-2xl: 2.5rem;
 
   --radius-card: 0.5rem;
   --radius-chip: 0.25rem;
+
+  --shadow-overlay: 0 8px 24px rgb(18 21 27 / 0.14);
 
   --duration-micro: 140ms;
   --duration-panel: 200ms;
@@ -47,11 +96,16 @@
 body {
   background-color: var(--color-background);
   color: var(--color-text-primary);
-  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-sans);
+}
+
+/* Scores and any column of figures that must line up. */
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
 *:focus-visible {
-  outline: 2px solid var(--color-graph);
+  outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 
@@ -97,7 +151,7 @@ body {
   transform-origin: center;
 }
 
-/* Readable labels over edges: dark halo behind the glyphs. */
+/* Readable labels over edges: surface-coloured halo behind the glyphs. */
 .label-halo {
   fill: var(--color-text-primary);
   paint-order: stroke;

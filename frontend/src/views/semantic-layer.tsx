@@ -104,10 +104,10 @@ export function SemanticLayer() {
             <p className="text-xs font-semibold uppercase tracking-wide text-ontology">
               Architecture Explainer
             </p>
-            <h2 className="mt-0.5 text-lg font-semibold text-primary">
+            <h2 className="mt-0.5 text-lg font-semibold text-text-primary">
               How raw tables & documents become connected graph concepts
             </h2>
-            <p className="mt-1 text-xs text-secondary">
+            <p className="mt-1 text-xs text-text-secondary">
               The knowledge graph sits above existing tables and documents as a
               semantic index; it never replaces the warehouse. Click a data
               source or concept below to trace the mapping.
@@ -115,7 +115,7 @@ export function SemanticLayer() {
           </div>
           <a
             href={hrefFor('dictionary')}
-            className="rounded-chip border border-border bg-surface-raised px-3 py-1.5 text-xs text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-primary"
+            className="rounded-chip border border-border bg-surface-raised px-3 py-1.5 text-xs text-text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-text-primary"
           >
             Inspect full schema & sample rows →
           </a>
@@ -128,7 +128,7 @@ export function SemanticLayer() {
       >
         <ol className="space-y-4">
           <li>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
               Step 1 · Click an existing enterprise data source
             </p>
             <div
@@ -143,14 +143,14 @@ export function SemanticLayer() {
                   aria-pressed={source === item.id}
                   className={`rounded-card border p-3 text-left transition-colors duration-micro ${
                     source === item.id
-                      ? 'border-graph bg-surface-raised text-primary'
-                      : 'border-border bg-surface text-secondary hover:text-primary'
+                      ? 'border-graph bg-surface-raised text-text-primary'
+                      : 'border-border bg-surface text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   <span className="block text-sm font-medium">
                     {item.label}
                   </span>
-                  <span className="mt-1 block text-xs text-muted">
+                  <span className="mt-1 block text-xs text-text-muted">
                     {item.detail}
                   </span>
                 </button>
@@ -163,18 +163,20 @@ export function SemanticLayer() {
             className="rounded-card border border-border bg-surface-raised p-4"
           >
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                 Step 2 · Example source record & extracted graph nodes
               </p>
-              <span className="font-mono text-xs text-muted">
+              <span className="font-mono text-xs text-text-muted">
                 {activeSource.table}
               </span>
             </div>
-            <p className="mt-2 rounded-chip border border-border bg-background px-3 py-2 font-mono text-xs text-primary">
+            <p className="mt-2 rounded-chip border border-border bg-background px-3 py-2 font-mono text-xs text-text-primary">
               {activeSource.sampleRow}
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="text-xs text-muted">Maps to Neo4j labels:</span>
+              <span className="text-xs text-text-muted">
+                Maps to Neo4j labels:
+              </span>
               <ul className="flex flex-wrap gap-1.5">
                 {activeSource.mappedNodes.map((entity) => (
                   <li
@@ -205,7 +207,7 @@ export function SemanticLayer() {
                     className={`rounded-chip border px-3 py-1 text-xs font-medium transition-colors duration-micro ${
                       concept === item.id
                         ? 'border-ontology bg-ontology/15 text-ontology'
-                        : 'border-border text-secondary hover:text-primary'
+                        : 'border-border text-text-secondary hover:text-text-primary'
                     }`}
                   >
                     {item.label}
@@ -218,11 +220,11 @@ export function SemanticLayer() {
                 <span className="font-mono text-xs font-semibold text-ontology">
                   {activeConceptDetail.conceptId}
                 </span>
-                <span className="text-xs text-muted">
+                <span className="text-xs text-text-muted">
                   binds: {activeConcept.entities.join(' · ')}
                 </span>
               </div>
-              <p className="mt-1.5 text-xs leading-relaxed text-secondary">
+              <p className="mt-1.5 text-xs leading-relaxed text-text-secondary">
                 {activeConceptDetail.whyItMatters}
               </p>
             </div>
@@ -236,21 +238,21 @@ export function SemanticLayer() {
               <p className="text-xs font-semibold uppercase tracking-wide text-graph">
                 Step 4 · Knowledge graph overlay (Neo4j)
               </p>
-              <p className="mt-1 text-xs text-secondary">
+              <p className="mt-1 text-xs text-text-secondary">
                 26 node labels · 26 relationship types · every node keeps{' '}
-                <code className="text-primary">source_system</code> and{' '}
-                <code className="text-primary">source_record_id</code> pointers
-                to the warehouse.
+                <code className="text-text-primary">source_system</code> and{' '}
+                <code className="text-text-primary">source_record_id</code>{' '}
+                pointers to the warehouse.
               </p>
             </div>
             <div
               aria-label="AI agent"
               className="rounded-card border border-border bg-surface-raised p-3"
             >
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                 Step 5 · Grounded AI answer
               </p>
-              <p className="mt-1 text-xs text-secondary">
+              <p className="mt-1 text-xs text-text-secondary">
                 Combines Qdrant document chunks with 2-hop Neo4j paths and cites
                 exact record IDs.
               </p>

@@ -40,16 +40,16 @@ export function LiveScoreNote({
 }) {
   if (answerKey === 'none') {
     return (
-      <p className="text-xs text-muted">
-        <span className="font-medium text-primary">No answer key.</span> This
-        question is not in the question bank, so it is not scored. Run a saved
-        question to see it scored against the answer key.
+      <p className="text-xs text-text-muted">
+        <span className="font-medium text-text-primary">No answer key.</span>{' '}
+        This question is not in the question bank, so it is not scored. Run a
+        saved question to see it scored against the answer key.
       </p>
     )
   }
   if (status === 'pending') {
     return (
-      <p className="text-xs text-muted">
+      <p className="text-xs text-text-muted">
         <span className="font-medium text-warning">Score pending.</span> The run
         completed, but its score against the answer key has not arrived yet.
         Reload this run's results later to see it.
@@ -58,7 +58,7 @@ export function LiveScoreNote({
   }
   if (status === 'failed' && failure === 'interrupted') {
     return (
-      <p className="text-xs text-muted">
+      <p className="text-xs text-text-muted">
         <span className="font-medium text-warning">
           Scoring was interrupted.
         </span>{' '}
@@ -69,7 +69,7 @@ export function LiveScoreNote({
   }
   if (status === 'failed' || score === null) {
     return (
-      <p className="text-xs text-muted">
+      <p className="text-xs text-text-muted">
         <span className="font-medium text-warning">Scoring failed.</span> This
         bank question has an answer key, but the run could not be scored against
         it.
@@ -78,9 +78,9 @@ export function LiveScoreNote({
   }
   const tags = PIPELINE_ORDER.filter((tag) => tag in score.per_pipeline)
   return (
-    <section aria-label="Live score" className="text-xs text-muted">
+    <section aria-label="Live score" className="text-xs text-text-muted">
       <p>
-        <span className="font-medium text-primary">
+        <span className="font-medium text-text-primary">
           Question {score.instance_id}: {score.label}.
         </span>
       </p>

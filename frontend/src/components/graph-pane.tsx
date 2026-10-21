@@ -35,18 +35,18 @@ export function GraphPane({
       <header className="mb-3 flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-wide text-graph">
           + GRAPH &amp; ONTOLOGY
-          <span className="ml-2 text-xs font-normal text-muted">
+          <span className="ml-2 text-xs font-normal text-text-muted">
             relationships and canonical concepts
           </span>
         </h3>
       </header>
 
-      <p className="mb-2 text-sm text-secondary" role="status">
+      <p className="mb-2 text-sm text-text-secondary" role="status">
         {headline}
       </p>
 
       {nodes.length === 0 ? (
-        <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-muted">
+        <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-text-muted">
           Pick a question chip above or press Run to watch entity seeds and
           graph traversal unfold.
         </p>
@@ -68,7 +68,7 @@ export function GraphPane({
       )}
 
       {state.tokenCount !== null && (
-        <p className="mt-1 text-xs text-muted">
+        <p className="mt-1 text-xs text-text-muted">
           Context assembled: {state.tokenCount.toLocaleString()} tokens
         </p>
       )}

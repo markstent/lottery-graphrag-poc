@@ -33,9 +33,9 @@ export function RagPane({
       className="flex flex-col"
     >
       <header className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-wide text-secondary">
+        <h3 className="text-sm font-semibold tracking-wide text-text-secondary">
           CURRENT APPROACH
-          <span className="ml-2 text-xs font-normal text-muted">
+          <span className="ml-2 text-xs font-normal text-text-muted">
             vector retrieval over documents and metrics
           </span>
         </h3>
@@ -48,10 +48,10 @@ export function RagPane({
             aria-current={index === stageIndex ? 'step' : undefined}
             className={`rounded-chip px-2 py-0.5 text-xs ${
               index < stageIndex
-                ? 'bg-surface-raised text-secondary'
+                ? 'bg-surface-raised text-text-secondary'
                 : index === stageIndex
-                  ? 'border border-baseline text-primary'
-                  : 'text-muted'
+                  ? 'border border-baseline text-text-primary'
+                  : 'text-text-muted'
             }`}
           >
             {label}
@@ -60,7 +60,7 @@ export function RagPane({
       </ol>
 
       {state.chunks.length === 0 ? (
-        <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-muted">
+        <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-text-muted">
           {state.stage === 'idle'
             ? 'Run a question to see semantic retrieval.'
             : state.stage === 'embedding'
@@ -81,8 +81,12 @@ export function RagPane({
                 }`}
               >
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-primary">{chunk.title}</span>
-                  <span className="text-xs text-muted">{chunk.sourceType}</span>
+                  <span className="text-sm text-text-primary">
+                    {chunk.title}
+                  </span>
+                  <span className="text-xs text-text-muted">
+                    {chunk.sourceType}
+                  </span>
                 </div>
                 <div
                   className="mt-2 h-1.5 rounded-full bg-border"
@@ -97,7 +101,7 @@ export function RagPane({
                     style={{ width: `${Math.round(chunk.similarity * 100)}%` }}
                   />
                 </div>
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1 text-xs text-text-muted">
                   similarity {chunk.similarity.toFixed(2)}
                   {selected ? ' · selected into context' : ' · discarded'}
                 </p>
@@ -108,7 +112,7 @@ export function RagPane({
       )}
 
       {state.tokenCount !== null && (
-        <p className="mt-3 text-xs text-muted">
+        <p className="mt-3 text-xs text-text-muted">
           Context assembled: {state.tokenCount.toLocaleString()} tokens
         </p>
       )}

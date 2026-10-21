@@ -130,20 +130,20 @@ export function LiveLab() {
               <p className="text-xs font-semibold uppercase tracking-wide text-graph">
                 What you are testing
               </p>
-              <h2 className="mt-0.5 text-base font-semibold text-primary">
+              <h2 className="mt-0.5 text-base font-semibold text-text-primary">
                 Same question, same data: Conventional RAG vs Graph + Ontology
               </h2>
             </div>
             <div className="flex items-center gap-2 text-xs">
               <a
                 href={hrefFor('dictionary')}
-                className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-primary"
+                className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-text-primary"
               >
                 Inspect sample database rows →
               </a>
               <a
                 href={hrefFor('help')}
-                className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-primary"
+                className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-text-primary"
               >
                 How it works →
               </a>
@@ -151,29 +151,29 @@ export function LiveLab() {
           </div>
           <ol className="mt-3 grid gap-3 text-xs sm:grid-cols-3">
             <li className="rounded-card border border-border bg-surface-raised p-3">
-              <p className="font-semibold text-primary">
+              <p className="font-semibold text-text-primary">
                 1. Click a question chip below
               </p>
-              <p className="mt-1 text-secondary">
+              <p className="mt-1 text-text-secondary">
                 Pick <span className="font-mono text-graph">dq-1</span> (Greece
                 checkout drop) or press <strong>Run</strong> to start both
                 pipelines side by side.
               </p>
             </li>
             <li className="rounded-card border border-border bg-surface-raised p-3">
-              <p className="font-semibold text-primary">
+              <p className="font-semibold text-text-primary">
                 2. Compare the two panes
               </p>
-              <p className="mt-1 text-secondary">
+              <p className="mt-1 text-text-secondary">
                 Left retrieves text chunks from Qdrant; right traverses Neo4j
                 relationships and ontology concepts across UK, GR, AT and CZ.
               </p>
             </li>
             <li className="rounded-card border border-border bg-surface-raised p-3">
-              <p className="font-semibold text-primary">
+              <p className="font-semibold text-text-primary">
                 3. Click any citation chip
               </p>
-              <p className="mt-1 text-secondary">
+              <p className="mt-1 text-text-secondary">
                 Opens the inline Evidence Inspector showing the underlying
                 Parquet warehouse row, document and provenance.
               </p>
@@ -195,7 +195,7 @@ export function LiveLab() {
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
           placeholder="Ask an enterprise question, e.g. why did digital conversion fall in Greece?"
-          className="w-full resize-none rounded-card border border-border bg-surface-raised p-3 text-base text-primary placeholder:text-muted focus:border-graph"
+          className="w-full resize-none rounded-card border border-border bg-surface-raised p-3 text-base text-text-primary placeholder:text-text-muted focus:border-graph"
         />
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
@@ -225,7 +225,7 @@ export function LiveLab() {
           <button
             type="button"
             onClick={() => setQuestion('')}
-            className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+            className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
           >
             Clear
           </button>
@@ -243,14 +243,14 @@ export function LiveLab() {
                 className={`rounded-chip px-3 py-1 text-xs transition-colors duration-micro ${
                   source === option
                     ? 'bg-graph text-background'
-                    : 'text-secondary hover:text-primary'
+                    : 'text-text-secondary hover:text-text-primary'
                 }`}
               >
                 {option === 'story' ? 'Demo story' : 'Live backend'}
               </button>
             ))}
           </div>
-          <span className="text-xs text-muted">
+          <span className="text-xs text-text-muted">
             scope:{' '}
             {markets.length
               ? markets
@@ -269,7 +269,7 @@ export function LiveLab() {
           aria-label="Market scope"
           className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3"
         >
-          <span className="mr-1 text-xs font-medium text-muted">
+          <span className="mr-1 text-xs font-medium text-text-muted">
             Market scope:
           </span>
           <button
@@ -284,8 +284,8 @@ export function LiveLab() {
             }
             className={`rounded-chip border px-2.5 py-1 text-xs transition-colors duration-micro disabled:cursor-not-allowed disabled:opacity-40 ${
               markets.length === 0
-                ? 'border-graph bg-graph/15 font-medium text-primary'
-                : 'border-border bg-surface-raised text-secondary hover:text-primary'
+                ? 'border-graph bg-graph/15 font-medium text-text-primary'
+                : 'border-border bg-surface-raised text-text-secondary hover:text-text-primary'
             }`}
           >
             All markets
@@ -310,14 +310,14 @@ export function LiveLab() {
               }
               className={`rounded-chip border px-2.5 py-1 text-xs transition-colors duration-micro disabled:cursor-not-allowed disabled:opacity-40 ${
                 markets.includes(market.code)
-                  ? 'border-graph bg-graph/15 font-medium text-primary'
-                  : 'border-border bg-surface-raised text-secondary hover:text-primary'
+                  ? 'border-graph bg-graph/15 font-medium text-text-primary'
+                  : 'border-border bg-surface-raised text-text-secondary hover:text-text-primary'
               }`}
             >
               {market.label}
             </button>
           ))}
-          <span className="text-xs text-muted">
+          <span className="text-xs text-text-muted">
             {source === 'story'
               ? 'switch to Live backend to scope a run'
               : 'retrieval is restricted to the selected markets; saved questions run with their own scope (all markets)'}
@@ -329,7 +329,7 @@ export function LiveLab() {
           </p>
         )}
         {source === 'backend' && backendQuestionsError && (
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-xs text-text-muted">
             Saved questions unavailable; the backend may be offline. Start it
             with <code>make serve-api</code>.
           </p>
@@ -338,7 +338,7 @@ export function LiveLab() {
           className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border pt-3"
           aria-label="Saved demo questions"
         >
-          <span className="mr-1 text-xs font-medium text-muted">Try:</span>
+          <span className="mr-1 text-xs font-medium text-text-muted">Try:</span>
           {savedQuestions.map((demo) => (
             <button
               key={demo.id}
@@ -353,7 +353,7 @@ export function LiveLab() {
                   ? 'Not part of the recorded demo; switch to Live backend to run this question'
                   : undefined
               }
-              className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-left text-xs text-secondary transition-colors duration-micro hover:border-graph/60 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-left text-xs text-text-secondary transition-colors duration-micro hover:border-graph/60 hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-40"
             >
               <span className="mr-1.5 font-mono text-[11px] text-graph">
                 {demo.id}
@@ -362,7 +362,7 @@ export function LiveLab() {
             </button>
           ))}
           {source === 'story' && (
-            <span className="text-xs text-muted">
+            <span className="text-xs text-text-muted">
               only dq-1 is in the recorded story; switch to Live backend to run
               the others
             </span>
@@ -415,7 +415,7 @@ export function LiveLab() {
       )}
 
       {!started && (
-        <p className="text-xs text-muted">
+        <p className="text-xs text-text-muted">
           Both pipelines run on the same question, corpus, embedding model and
           generation model. Pane activity is driven by real execution telemetry
           events.
@@ -439,24 +439,24 @@ export function LiveLab() {
           >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
               <div>
-                <h2 className="text-lg font-semibold text-primary">
+                <h2 className="text-lg font-semibold text-text-primary">
                   Evidence Inspector
                 </h2>
-                <p className="text-xs text-muted">
+                <p className="text-xs text-text-muted">
                   run {activeRun.runId} · citation {drawerEvidenceId}
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <a
                   href={citationHref(drawerEvidenceId)}
-                  className="rounded-chip border border-border px-2.5 py-1 text-xs text-secondary transition-colors duration-micro hover:text-primary"
+                  className="rounded-chip border border-border px-2.5 py-1 text-xs text-text-secondary transition-colors duration-micro hover:text-text-primary"
                 >
                   Open full page ↗
                 </a>
                 <button
                   type="button"
                   onClick={() => setDrawerEvidenceId(null)}
-                  className="rounded-chip border border-border px-2.5 py-1 text-xs text-secondary transition-colors duration-micro hover:text-primary"
+                  className="rounded-chip border border-border px-2.5 py-1 text-xs text-text-secondary transition-colors duration-micro hover:text-text-primary"
                 >
                   Close
                 </button>

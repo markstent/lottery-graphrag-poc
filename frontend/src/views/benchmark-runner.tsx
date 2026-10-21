@@ -26,14 +26,14 @@ export function BenchmarkRunner() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg">Benchmark Runner</h2>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-text-muted">
               {results.benchmarkRunId} · exp-demo-2026-10 · completed
             </p>
           </div>
           <div className="flex items-center gap-2">
             <a
               href={hrefFor('experiment')}
-              className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+              className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
             >
               ← Setup
             </a>
@@ -53,11 +53,11 @@ export function BenchmarkRunner() {
         aria-label="Progress"
         className="rounded-card border border-border bg-surface p-4"
       >
-        <div className="flex items-center justify-between text-sm text-secondary">
+        <div className="flex items-center justify-between text-sm text-text-secondary">
           <span>
             {results.questions}/{results.questions} questions complete
           </span>
-          <span className="text-xs text-muted">
+          <span className="text-xs text-text-muted">
             2 errors recorded and surfaced
           </span>
         </div>
@@ -89,8 +89,10 @@ export function BenchmarkRunner() {
             ] as const
           ).map(([term, detail]) => (
             <div key={term} className="rounded-card border border-border p-2">
-              <dt className="text-muted">{term}</dt>
-              <dd className="mt-0.5 text-secondary tabular-nums">{detail}</dd>
+              <dt className="text-text-muted">{term}</dt>
+              <dd className="mt-0.5 text-text-secondary tabular-nums">
+                {detail}
+              </dd>
             </div>
           ))}
         </dl>
@@ -100,11 +102,13 @@ export function BenchmarkRunner() {
         aria-label="Questions"
         className="rounded-card border border-border bg-surface p-4"
       >
-        <h3 className="mb-2 text-sm font-semibold text-secondary">Questions</h3>
+        <h3 className="mb-2 text-sm font-semibold text-text-secondary">
+          Questions
+        </h3>
         <table className="w-full text-sm">
           <caption className="sr-only">Benchmark question statuses</caption>
           <thead>
-            <tr className="text-left text-xs text-muted">
+            <tr className="text-left text-xs text-text-muted">
               <th scope="col" className="pb-1 font-normal">
                 Question
               </th>
@@ -124,11 +128,11 @@ export function BenchmarkRunner() {
               <tr key={question.id} className="border-t border-border">
                 <th
                   scope="row"
-                  className="py-1.5 pr-3 font-normal text-secondary"
+                  className="py-1.5 pr-3 font-normal text-text-secondary"
                 >
                   {question.id}
                 </th>
-                <td className="py-1.5 pr-3 text-muted">
+                <td className="py-1.5 pr-3 text-text-muted">
                   {question.complexity}
                 </td>
                 <td className="py-1.5 pr-3">
@@ -150,7 +154,7 @@ export function BenchmarkRunner() {
             ))}
           </tbody>
         </table>
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-2 text-xs text-text-muted">
           Prototype: shows a sample of the mock suite. Errors stay visible and
           link to replays; the runner stays calm during automated execution.
         </p>

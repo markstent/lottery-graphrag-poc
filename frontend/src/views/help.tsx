@@ -113,9 +113,9 @@ const DIAGRAM_PATHS: { note?: string; tokens: DiagramToken[] }[] = [
 ]
 
 const NODE_TONES = {
-  seed: 'border-graph/60 bg-graph/10 text-primary',
+  seed: 'border-graph/60 bg-graph/10 text-text-primary',
   concept: 'border-ontology/60 bg-ontology/10 text-ontology',
-  plain: 'border-border bg-surface-raised text-secondary',
+  plain: 'border-border bg-surface-raised text-text-secondary',
 } as const
 
 function DiagramChip({ node }: { node: DiagramNode }) {
@@ -126,7 +126,9 @@ function DiagramChip({ node }: { node: DiagramNode }) {
       }`}
     >
       <span className="font-mono text-xs font-medium">{node.id}</span>
-      {node.sub && <span className="text-[11px] text-muted">{node.sub}</span>}
+      {node.sub && (
+        <span className="text-[11px] text-text-muted">{node.sub}</span>
+      )}
     </span>
   )
 }
@@ -153,7 +155,7 @@ function GraphDiagram() {
               ) : (
                 <span
                   key={tokenIndex}
-                  className="flex items-center gap-1.5 text-xs text-muted"
+                  className="flex items-center gap-1.5 text-xs text-text-muted"
                 >
                   <span aria-hidden>→</span>
                   <span className="font-mono text-[11px] uppercase tracking-wide text-graph">
@@ -169,7 +171,7 @@ function GraphDiagram() {
           </li>
         ))}
       </ol>
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-xs text-text-muted">
         This is the planted neighbourhood for scenario SCN-007, one of 26 node
         labels joined by 26 relationship types. Every edge above is a real
         traversal in the demo world: watch it unfold step by step in the Live
@@ -194,8 +196,10 @@ export function Help() {
             className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
             href={hrefFor('lab')}
           >
-            <span className="font-medium text-primary">1. Try a question</span>
-            <span className="block text-xs text-secondary">
+            <span className="font-medium text-text-primary">
+              1. Try a question
+            </span>
+            <span className="block text-xs text-text-secondary">
               Open Live Lab and click a demo chip →
             </span>
           </a>
@@ -203,10 +207,10 @@ export function Help() {
             className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
             href={hrefFor('dictionary')}
           >
-            <span className="font-medium text-primary">
+            <span className="font-medium text-text-primary">
               2. See the database rows
             </span>
-            <span className="block text-xs text-secondary">
+            <span className="block text-xs text-text-secondary">
               Inspect sample Parquet tables & graph →
             </span>
           </a>
@@ -214,10 +218,10 @@ export function Help() {
             className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
             href={hrefFor('results')}
           >
-            <span className="font-medium text-primary">
+            <span className="font-medium text-text-primary">
               3. Check the benchmark
             </span>
-            <span className="block text-xs text-secondary">
+            <span className="block text-xs text-text-secondary">
               Compare A vs B vs C scores →
             </span>
           </a>
@@ -238,8 +242,8 @@ export function Help() {
             onClick={() => setTab(item.id)}
             className={`rounded-chip px-3.5 py-1.5 text-sm font-medium transition-colors duration-micro ${
               tab === item.id
-                ? 'border border-graph/60 bg-surface-raised text-primary'
-                : 'border border-transparent text-secondary hover:bg-surface-raised hover:text-primary'
+                ? 'border border-graph/60 bg-surface-raised text-text-primary'
+                : 'border border-transparent text-text-secondary hover:bg-surface-raised hover:text-text-primary'
             }`}
           >
             {item.label}
@@ -267,7 +271,7 @@ export function Help() {
               <Card
                 title="A · Conventional RAG"
                 footer={
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted">
+                  <p className="text-xs font-medium uppercase tracking-wide text-text-muted">
                     Baseline · Documents only
                   </p>
                 }
@@ -364,7 +368,7 @@ export function Help() {
             <Card
               title="What Conventional RAG sees (Text Chunks)"
               footer={
-                <p className="text-xs text-muted">
+                <p className="text-xs text-text-muted">
                   Result: Explains Greece, misses Austria/Czechia and UK
                   deferral
                 </p>
@@ -392,7 +396,7 @@ export function Help() {
               <p>
                 Starting from <Code>MKT_GR</Code>, Neo4j traverses:
               </p>
-              <p className="mt-2 font-mono text-xs text-primary">
+              <p className="mt-2 font-mono text-xs text-text-primary">
                 INC_S007_GR → PLV_PAYMENTS_3 ← INC_S007_AT / INC_S007_CZ
               </p>
               <p className="mt-2">

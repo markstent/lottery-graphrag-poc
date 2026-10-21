@@ -550,19 +550,21 @@ function OntologyBinding() {
             key={id}
             className="rounded-card border border-border bg-surface-raised px-3 py-2"
           >
-            <p className="font-mono text-xs font-medium text-primary">{id}</p>
-            <p className="text-xs text-muted">{note}</p>
+            <p className="font-mono text-xs font-medium text-text-primary">
+              {id}
+            </p>
+            <p className="text-xs text-text-muted">{note}</p>
           </li>
         ))}
       </ul>
-      <span aria-hidden className="text-xl text-muted">
+      <span aria-hidden className="text-lg text-text-muted">
         →
       </span>
       <div className="rounded-card border border-graph/60 bg-surface p-4">
-        <p className="font-mono text-sm font-semibold text-primary">
+        <p className="font-mono text-sm font-semibold text-text-primary">
           CONCEPT_PLATFORM_INCIDENT
         </p>
-        <p className="mt-1 text-xs text-secondary">
+        <p className="mt-1 text-xs text-text-secondary">
           One BusinessConcept of type BusinessEvent. A question mentioning any
           one of the three incidents discovers the other two through this shared
           node; that traversal is pipeline C only.
@@ -592,7 +594,9 @@ export function DataDictionary() {
               key={store.title}
               title={store.title}
               footer={
-                <p className="font-mono text-xs text-muted">{store.tech}</p>
+                <p className="font-mono text-xs text-text-muted">
+                  {store.tech}
+                </p>
               }
             >
               <p>{store.body}</p>
@@ -622,8 +626,8 @@ export function DataDictionary() {
             onClick={() => setActiveTab(key)}
             className={`rounded-chip px-3.5 py-1.5 text-sm font-medium transition-colors duration-micro ${
               activeTab === key
-                ? 'border border-graph/60 bg-surface-raised text-primary'
-                : 'border border-transparent text-secondary hover:bg-surface-raised hover:text-primary'
+                ? 'border border-graph/60 bg-surface-raised text-text-primary'
+                : 'border border-transparent text-text-secondary hover:bg-surface-raised hover:text-text-primary'
             }`}
           >
             {label}
@@ -669,10 +673,10 @@ export function DataDictionary() {
                   key={entry.title}
                   className="rounded-card border border-border bg-surface p-3.5"
                 >
-                  <p className="text-sm font-semibold text-primary">
+                  <p className="text-sm font-semibold text-text-primary">
                     {entry.title}
                   </p>
-                  <p className="mt-1 text-xs leading-relaxed text-secondary">
+                  <p className="mt-1 text-xs leading-relaxed text-text-secondary">
                     {entry.body}
                   </p>
                 </div>
@@ -699,33 +703,33 @@ export function DataDictionary() {
             lead="Click any table below to see actual records from data/generated/demo-seed2026 and how a single record transforms from a warehouse row into a Neo4j node and an ontology concept."
           >
             <div className="rounded-card border border-border bg-surface p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-text-muted">
                 How one incident is represented across all 3 layers
               </p>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-card border border-border bg-surface-raised p-3">
-                  <p className="text-xs font-semibold text-secondary">
+                  <p className="text-xs font-semibold text-text-secondary">
                     1. Parquet Warehouse Row
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] text-muted">
+                  <p className="mt-0.5 font-mono text-[11px] text-text-muted">
                     incidents.parquet
                   </p>
                   <dl className="mt-2 space-y-1 font-mono text-xs">
                     <div className="flex justify-between">
-                      <dt className="text-muted">incident_id:</dt>
-                      <dd className="text-primary">INC_S007_GR</dd>
+                      <dt className="text-text-muted">incident_id:</dt>
+                      <dd className="text-text-primary">INC_S007_GR</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted">market_id:</dt>
-                      <dd className="text-secondary">MKT_GR</dd>
+                      <dt className="text-text-muted">market_id:</dt>
+                      <dd className="text-text-secondary">MKT_GR</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted">platform_version:</dt>
+                      <dt className="text-text-muted">platform_version:</dt>
                       <dd className="text-graph">PLV_PAYMENTS_3</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt className="text-muted">root_cause_code:</dt>
-                      <dd className="text-secondary">RC_77</dd>
+                      <dt className="text-text-muted">root_cause_code:</dt>
+                      <dd className="text-text-secondary">RC_77</dd>
                     </div>
                   </dl>
                 </div>
@@ -734,16 +738,16 @@ export function DataDictionary() {
                   <p className="text-xs font-semibold text-graph">
                     2. Neo4j Graph Node & Edges
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] text-muted">
+                  <p className="mt-0.5 font-mono text-[11px] text-text-muted">
                     (:Incident &#123;entity_id: &quot;INC_S007_GR&quot;&#125;)
                   </p>
-                  <ul className="mt-2 space-y-1 font-mono text-xs text-secondary">
+                  <ul className="mt-2 space-y-1 font-mono text-xs text-text-secondary">
                     <li>-[:AFFECTS_MARKET]-&gt; (MKT_GR)</li>
                     <li className="text-graph">
                       -[:RELATED_TO_VERSION]-&gt; (PLV_PAYMENTS_3)
                     </li>
                     <li>-[:RELATED_TO]-&gt; (PLT_PAYMENTS)</li>
-                    <li className="text-muted">
+                    <li className="text-text-muted">
                       source_record_id: &quot;INC_S007_GR&quot;
                     </li>
                   </ul>
@@ -753,13 +757,13 @@ export function DataDictionary() {
                   <p className="text-xs font-semibold text-ontology">
                     3. Enterprise Ontology Concept
                   </p>
-                  <p className="mt-0.5 font-mono text-[11px] text-muted">
+                  <p className="mt-0.5 font-mono text-[11px] text-text-muted">
                     (:BusinessConcept)
                   </p>
-                  <p className="mt-2 font-mono text-xs text-primary">
+                  <p className="mt-2 font-mono text-xs text-text-primary">
                     CONCEPT_PLATFORM_INCIDENT
                   </p>
-                  <p className="mt-1 text-xs text-secondary">
+                  <p className="mt-1 text-xs text-text-secondary">
                     Binds <span className="font-mono">INC_S007_GR</span>,{' '}
                     <span className="font-mono">INC_S007_AT</span> and{' '}
                     <span className="font-mono">INC_S007_CZ</span> via{' '}
@@ -783,12 +787,12 @@ export function DataDictionary() {
                   onClick={() => setSampleTableId(tbl.id)}
                   className={`rounded-chip border px-3 py-1.5 text-xs font-mono transition-colors duration-micro ${
                     sampleTableId === tbl.id
-                      ? 'border-graph bg-graph/15 font-medium text-primary'
-                      : 'border-border bg-surface-raised text-secondary hover:text-primary'
+                      ? 'border-graph bg-graph/15 font-medium text-text-primary'
+                      : 'border-border bg-surface-raised text-text-secondary hover:text-text-primary'
                   }`}
                 >
                   {tbl.name}{' '}
-                  <span className="ml-1 font-sans text-muted">
+                  <span className="ml-1 font-sans text-text-muted">
                     ({tbl.rows})
                   </span>
                 </button>
@@ -796,10 +800,10 @@ export function DataDictionary() {
             </div>
 
             <div className="rounded-card border border-border bg-surface-raised p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                 What a row in {activeSample.name} means
               </p>
-              <p className="mt-1 text-sm leading-relaxed text-secondary">
+              <p className="mt-1 text-sm leading-relaxed text-text-secondary">
                 {activeSample.what}
               </p>
             </div>
@@ -891,14 +895,14 @@ export function DataDictionary() {
                   key={chain.what}
                   className="rounded-card border border-border bg-surface p-3.5"
                 >
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
                     {chain.what}
                   </p>
                   <Rail items={chain.rail} />
                 </div>
               ))}
             </div>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-text-muted">
               Every graph node carries <Chip>source_system</Chip> and{' '}
               <Chip>source_record_id</Chip>, so any claim in an answer traces
               back to an authoritative warehouse row above.
@@ -1207,7 +1211,7 @@ export function DataDictionary() {
             </div>
           </Disclosure>
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-ontology/40 bg-surface-raised p-3">
-            <p className="text-xs text-secondary">
+            <p className="text-xs text-text-secondary">
               Want to click through how warehouse tables, documents and
               telemetry bind to these concepts step by step?
             </p>

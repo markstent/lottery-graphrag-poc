@@ -42,11 +42,11 @@ export function Timeline({
 }) {
   return (
     <section aria-label="Execution timeline">
-      <h3 className="mb-2 text-sm font-semibold text-secondary">
+      <h3 className="mb-2 text-sm font-semibold text-text-secondary">
         Execution timeline
       </h3>
       {timeline.length === 0 ? (
-        <p className="rounded-card border border-dashed border-border p-4 text-center text-sm text-muted">
+        <p className="rounded-card border border-dashed border-border p-4 text-center text-sm text-text-muted">
           Events appear here as the pipelines execute. Select an event to
           rewind.
         </p>
@@ -63,9 +63,9 @@ export function Timeline({
                   className={`flex w-full items-center gap-2 rounded-chip px-2 py-1 text-left text-xs transition-colors duration-micro ${
                     isPast
                       ? index === played - 1
-                        ? 'border border-graph/60 bg-surface-raised text-primary'
-                        : 'text-secondary hover:bg-surface-raised'
-                      : 'text-muted'
+                        ? 'border border-graph/60 bg-surface-raised text-text-primary'
+                        : 'text-text-secondary hover:bg-surface-raised'
+                      : 'text-text-muted'
                   }`}
                 >
                   <span className="w-12 shrink-0 tabular-nums">
@@ -76,7 +76,7 @@ export function Timeline({
                       entry.stream === 'graph'
                         ? 'bg-graph/15 text-graph'
                         : entry.stream === 'rag'
-                          ? 'bg-baseline/15 text-secondary'
+                          ? 'bg-baseline/15 text-text-secondary'
                           : 'bg-ontology/15 text-ontology'
                     }`}
                   >

@@ -56,7 +56,7 @@ export function ExperimentHome() {
         className="rounded-card border border-border bg-surface p-4"
       >
         <h2 className="text-lg">Start here</h2>
-        <p className="mt-1 max-w-3xl text-sm leading-relaxed text-secondary">
+        <p className="mt-1 max-w-3xl text-sm leading-relaxed text-text-secondary">
           This app measures what a knowledge graph and an enterprise ontology
           add to AI retrieval over a synthetic lottery enterprise. The quickest
           way to understand it is to follow one question through the app:
@@ -74,9 +74,11 @@ export function ExperimentHome() {
                 >
                   {item.step}
                 </span>
-                <p className="text-sm font-medium text-primary">{item.title}</p>
+                <p className="text-sm font-medium text-text-primary">
+                  {item.title}
+                </p>
               </div>
-              <p className="mt-1.5 flex-1 text-sm leading-relaxed text-secondary">
+              <p className="mt-1.5 flex-1 text-sm leading-relaxed text-text-secondary">
                 {item.body}
               </p>
               <a
@@ -106,10 +108,10 @@ export function ExperimentHome() {
                     : 'border-border'
                 }`}
               >
-                <p className="text-sm font-medium text-primary">
+                <p className="text-sm font-medium text-text-primary">
                   {experiment.label}
                 </p>
-                <p className="mt-0.5 text-xs text-muted">
+                <p className="mt-0.5 text-xs text-text-muted">
                   {experiment.id} · {experiment.detail}
                 </p>
               </li>
@@ -137,8 +139,8 @@ export function ExperimentHome() {
               ] as const
             ).map(([term, detail]) => (
               <div key={term} className="contents">
-                <dt className="text-muted">{term}</dt>
-                <dd className="text-secondary">{detail}</dd>
+                <dt className="text-text-muted">{term}</dt>
+                <dd className="text-text-secondary">{detail}</dd>
               </div>
             ))}
           </dl>
@@ -151,12 +153,12 @@ export function ExperimentHome() {
             </a>
             <a
               href={hrefFor('scenarios')}
-              className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+              className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
             >
               Configure scenarios
             </a>
           </div>
-          <p className="mt-3 text-xs text-muted">
+          <p className="mt-3 text-xs text-text-muted">
             Prototype: dataset generation and benchmark execution are mocked.
             Phase 9 wires these to the API.
           </p>

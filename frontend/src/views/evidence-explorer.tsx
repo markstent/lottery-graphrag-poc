@@ -50,8 +50,8 @@ export function EvidenceInspector({
             onClick={() => setTab(key)}
             className={`rounded-chip px-3 py-1.5 text-sm transition-colors duration-micro ${
               tab === key
-                ? 'border border-graph/60 bg-surface-raised text-primary'
-                : 'border border-transparent text-secondary hover:text-primary'
+                ? 'border border-graph/60 bg-surface-raised text-text-primary'
+                : 'border border-transparent text-text-secondary hover:text-text-primary'
             }`}
           >
             {label}
@@ -80,17 +80,17 @@ export function EvidenceInspector({
                   }`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-primary">
+                    <span className="text-sm font-medium text-text-primary">
                       {record.label}
                     </span>
-                    <span className="rounded-chip bg-surface-raised px-2 py-0.5 text-xs text-muted">
+                    <span className="rounded-chip bg-surface-raised px-2 py-0.5 text-xs text-text-muted">
                       {KIND_BADGE[record.kind]}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs leading-relaxed text-secondary">
+                  <p className="mt-2 text-xs leading-relaxed text-text-secondary">
                     {record.excerpt}
                   </p>
-                  <p className="mt-2 text-xs text-muted">
+                  <p className="mt-2 text-xs text-text-muted">
                     {record.sourceSystem} · {record.sourceRecordId}
                   </p>
                 </button>
@@ -109,7 +109,7 @@ export function EvidenceInspector({
           <div className="mt-2">
             <GraphLegend />
           </div>
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-xs text-text-muted">
             Nodes and edges shown are the events recorded for run{' '}
             {MOCK_RUN.runId}; the full enterprise graph is never rendered.
           </p>
@@ -121,7 +121,9 @@ export function EvidenceInspector({
           aria-label={`Provenance for ${focus.label}`}
           className="rounded-card border border-border bg-surface p-4"
         >
-          <h3 className="text-sm font-semibold text-primary">{focus.label}</h3>
+          <h3 className="text-sm font-semibold text-text-primary">
+            {focus.label}
+          </h3>
           <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[10rem_1fr]">
             {(
               [
@@ -133,12 +135,12 @@ export function EvidenceInspector({
               ] as const
             ).map(([term, detail]) => (
               <div key={term} className="contents">
-                <dt className="text-muted">{term}</dt>
-                <dd className="text-secondary">{detail}</dd>
+                <dt className="text-text-muted">{term}</dt>
+                <dd className="text-text-secondary">{detail}</dd>
               </div>
             ))}
           </dl>
-          <p className="mt-3 text-xs text-muted">
+          <p className="mt-3 text-xs text-text-muted">
             Provenance records how this evidence entered the context. Evaluation
             truth is never exposed here.
           </p>
@@ -164,13 +166,13 @@ export function EvidenceExplorer({
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg">Evidence Explorer</h2>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-text-muted">
               run {MOCK_RUN.runId} · “{MOCK_RUN.question}”
             </p>
           </div>
           <a
             href={hrefFor('lab', { run: MOCK_RUN.runId })}
-            className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+            className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
           >
             ← Back to Live Lab
           </a>

@@ -259,7 +259,7 @@ const LEGEND: Array<[GraphNodeState, string]> = [
 
 export function GraphLegend() {
   return (
-    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-secondary">
+    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">
       {LEGEND.map(([state, label]) => (
         <li key={state} className="flex items-center gap-1.5">
           <span

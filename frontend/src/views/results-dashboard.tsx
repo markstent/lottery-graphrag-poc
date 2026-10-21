@@ -44,14 +44,14 @@ function MetricCard({
 }) {
   return (
     <div className="rounded-card border border-border bg-surface p-4">
-      <h3 className="text-xs text-muted">{label}</h3>
+      <h3 className="text-xs text-text-muted">{label}</h3>
       <table className="mt-2 w-full text-sm">
         <tbody>
           {CONFIGS.map((config, index) => (
             <tr key={config}>
               <th
                 scope="row"
-                className="py-0.5 pr-2 text-left font-normal text-secondary"
+                className="py-0.5 pr-2 text-left font-normal text-text-secondary"
               >
                 {config}
               </th>
@@ -85,24 +85,27 @@ function BenchmarkV2Section({ notice }: { notice: BenchmarkV2Notice }) {
       aria-label="Benchmark v2 run"
       className="rounded-card border border-border bg-surface p-4"
     >
-      <h2 className="text-lg font-semibold text-primary">Results Dashboard</h2>
-      <p className="mt-1 text-sm text-secondary">
+      <h2 className="text-lg font-semibold text-text-primary">
+        Results Dashboard
+      </h2>
+      <p className="mt-1 text-sm text-text-secondary">
         A benchmark v2 run is published: run{' '}
         <span className="font-mono">{notice.runId}</span>, kind{' '}
         <span className="font-mono">{notice.runKind}</span>
         {notice.label && (
           <>
-            , labelled <strong className="text-primary">{notice.label}</strong>
+            , labelled{' '}
+            <strong className="text-text-primary">{notice.label}</strong>
           </>
         )}
         .
       </p>
-      <p className="mt-1 text-sm text-secondary">
+      <p className="mt-1 text-sm text-text-secondary">
         The full results screen for benchmark v2 arrives in the product phase.
         Until then, these are the run&apos;s headlines as the harness wrote
         them:
       </p>
-      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-primary">
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-text-primary">
         {notice.headlines.map((line) => (
           <li key={line}>{line}</li>
         ))}
@@ -149,10 +152,10 @@ export function ResultsDashboard() {
             <p className="text-xs font-semibold uppercase tracking-wide text-graph">
               30-question Evaluation Harness
             </p>
-            <h2 className="mt-0.5 text-lg font-semibold text-primary">
+            <h2 className="mt-0.5 text-lg font-semibold text-text-primary">
               Results Dashboard
             </h2>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-text-muted">
               benchmark run {results.benchmarkRunId} · {results.questions}{' '}
               questions · same world, corpus, embedding and generation models
               {source === 'committed' && ' · committed validation run'}
@@ -162,16 +165,16 @@ export function ResultsDashboard() {
             href={hrefFor('benchmark', {
               benchmark_run_id: results.benchmarkRunId,
             })}
-            className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+            className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
           >
             Open runner
           </a>
         </div>
-        <div className="mt-3 rounded-card border border-graph/30 bg-surface-raised p-3 text-xs text-secondary">
-          <strong className="text-primary">Key finding:</strong> Across the 30
-          benchmark questions, adding the knowledge graph and ontology lifts
+        <div className="mt-3 rounded-card border border-graph/30 bg-surface-raised p-3 text-xs text-text-secondary">
+          <strong className="text-text-primary">Key finding:</strong> Across the
+          30 benchmark questions, adding the knowledge graph and ontology lifts
           evidence recall from{' '}
-          <span className="font-mono text-primary">
+          <span className="font-mono text-text-primary">
             {results.overview.evidenceRecall[0].toFixed(2)}
           </span>{' '}
           (Conventional RAG) to{' '}
@@ -179,7 +182,7 @@ export function ResultsDashboard() {
             {results.overview.evidenceRecall[2].toFixed(2)}
           </span>{' '}
           (Graph + Ontology) and answer correctness from{' '}
-          <span className="font-mono text-primary">
+          <span className="font-mono text-text-primary">
             {results.overview.correctness[0].toFixed(2)}
           </span>{' '}
           to{' '}
@@ -207,7 +210,7 @@ export function ResultsDashboard() {
         aria-label="By complexity"
         className="rounded-card border border-border bg-surface p-4"
       >
-        <h3 className="mb-2 text-sm font-semibold text-secondary">
+        <h3 className="mb-2 text-sm font-semibold text-text-secondary">
           Correctness by complexity
         </h3>
         <table className="w-full text-sm">
@@ -215,7 +218,7 @@ export function ResultsDashboard() {
             Correctness per complexity level and configuration
           </caption>
           <thead>
-            <tr className="text-left text-xs text-muted">
+            <tr className="text-left text-xs text-text-muted">
               <th scope="col" className="pb-1 font-normal">
                 Level
               </th>
@@ -231,9 +234,10 @@ export function ResultsDashboard() {
               <tr key={row.level} className="border-t border-border">
                 <th
                   scope="row"
-                  className="py-1.5 pr-3 font-normal text-secondary"
+                  className="py-1.5 pr-3 font-normal text-text-secondary"
                 >
-                  {row.level} <span className="text-muted">· {row.label}</span>
+                  {row.level}{' '}
+                  <span className="text-text-muted">· {row.label}</span>
                 </th>
                 {[row.baseline, row.graphRelationships, row.graphOntology].map(
                   (value, index) => (
@@ -264,13 +268,13 @@ export function ResultsDashboard() {
             aria-label="By market"
             className="rounded-card border border-border bg-surface p-4"
           >
-            <h3 className="mb-2 text-sm font-semibold text-secondary">
+            <h3 className="mb-2 text-sm font-semibold text-text-secondary">
               Correctness by market
             </h3>
             <ul className="space-y-2 text-sm">
               {results.byMarket.map((row) => (
                 <li key={row.market} className="flex items-center gap-3">
-                  <span className="w-32 shrink-0 text-secondary">
+                  <span className="w-32 shrink-0 text-text-secondary">
                     {row.market}
                   </span>
                   {[
@@ -288,7 +292,7 @@ export function ResultsDashboard() {
                       />
                     </span>
                   ))}
-                  <span className="w-10 text-right tabular-nums text-muted">
+                  <span className="w-10 text-right tabular-nums text-text-muted">
                     {row.graphOntology.toFixed(2)}
                   </span>
                 </li>
@@ -301,7 +305,7 @@ export function ResultsDashboard() {
           aria-label="Efficiency"
           className="rounded-card border border-border bg-surface p-4"
         >
-          <h3 className="mb-2 text-sm font-semibold text-secondary">
+          <h3 className="mb-2 text-sm font-semibold text-text-secondary">
             Efficiency
           </h3>
           <table className="w-full text-sm">
@@ -309,11 +313,11 @@ export function ResultsDashboard() {
               <tr>
                 <th
                   scope="row"
-                  className="py-1 pr-3 text-left font-normal text-secondary"
+                  className="py-1 pr-3 text-left font-normal text-text-secondary"
                 >
                   Median latency
                 </th>
-                <td className="text-muted tabular-nums">
+                <td className="text-text-muted tabular-nums">
                   {results.efficiency.latencyMs
                     .map((ms) => `${(ms / 1000).toFixed(1)}s`)
                     .join(' · ')}
@@ -322,17 +326,17 @@ export function ResultsDashboard() {
               <tr>
                 <th
                   scope="row"
-                  className="py-1 pr-3 text-left font-normal text-secondary"
+                  className="py-1 pr-3 text-left font-normal text-text-secondary"
                 >
                   Context tokens
                 </th>
-                <td className="text-muted tabular-nums">
+                <td className="text-text-muted tabular-nums">
                   {results.efficiency.contextTokens.join(' · ')}
                 </td>
               </tr>
             </tbody>
           </table>
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-xs text-text-muted">
             Order: A · B · C. Graph context costs more tokens and latency.
           </p>
         </section>
@@ -342,7 +346,7 @@ export function ResultsDashboard() {
         aria-label="Failure analysis"
         className="rounded-card border border-border bg-surface p-4"
       >
-        <h3 className="mb-2 text-sm font-semibold text-secondary">
+        <h3 className="mb-2 text-sm font-semibold text-text-secondary">
           Failure analysis
         </h3>
         <ul className="space-y-2">
@@ -352,7 +356,7 @@ export function ResultsDashboard() {
               className="rounded-card border border-border p-3 text-sm"
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-chip bg-surface-raised px-2 py-0.5 text-xs text-muted">
+                <span className="rounded-chip bg-surface-raised px-2 py-0.5 text-xs text-text-muted">
                   {failure.questionId} · {failure.complexity}
                   {failure.pipeline
                     ? ` · pipeline ${failure.pipeline}`
@@ -365,11 +369,11 @@ export function ResultsDashboard() {
                   watch a replay
                 </a>
               </div>
-              <p className="mt-1 text-secondary">{failure.note}</p>
+              <p className="mt-1 text-text-secondary">{failure.note}</p>
             </li>
           ))}
           {results.failures.length === 0 && (
-            <li className="text-sm text-muted">No failures recorded.</li>
+            <li className="text-sm text-text-muted">No failures recorded.</li>
           )}
         </ul>
       </section>
@@ -379,7 +383,7 @@ export function ResultsDashboard() {
         note={`${results.questions}/${results.questions} questions complete · sample status drill-in`}
       >
         <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-secondary">
+          <div className="flex items-center justify-between text-xs text-text-secondary">
             <span>
               Run {results.benchmarkRunId} · {results.questions}/
               {results.questions} questions complete
@@ -396,7 +400,7 @@ export function ResultsDashboard() {
           <table className="w-full text-sm">
             <caption className="sr-only">Benchmark question statuses</caption>
             <thead>
-              <tr className="text-left text-xs text-muted">
+              <tr className="text-left text-xs text-text-muted">
                 <th scope="col" className="pb-1 font-normal">
                   Question
                 </th>
@@ -416,11 +420,11 @@ export function ResultsDashboard() {
                 <tr key={question.id} className="border-t border-border">
                   <th
                     scope="row"
-                    className="py-1.5 pr-3 font-normal text-secondary"
+                    className="py-1.5 pr-3 font-normal text-text-secondary"
                   >
                     {question.id}
                   </th>
-                  <td className="py-1.5 pr-3 text-muted">
+                  <td className="py-1.5 pr-3 text-text-muted">
                     {question.complexity}
                   </td>
                   <td className="py-1.5 pr-3">

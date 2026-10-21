@@ -24,8 +24,8 @@ export function PageHero({
       <p className="text-xs font-medium uppercase tracking-wide text-graph">
         {eyebrow}
       </p>
-      <h1 className="mt-1 text-2xl font-semibold text-primary">{title}</h1>
-      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-secondary">
+      <h1 className="mt-1 text-xl font-semibold text-text-primary">{title}</h1>
+      <p className="mt-2 max-w-3xl text-sm leading-relaxed text-text-secondary">
         {lead}
       </p>
       {children && <div className="mt-4">{children}</div>}
@@ -46,15 +46,15 @@ export function Section({
 }) {
   return (
     <section aria-labelledby={`help-${id}`} className="scroll-mt-28">
-      <h2 id={`help-${id}`} className="text-xl font-semibold text-primary">
+      <h2 id={`help-${id}`} className="text-lg font-semibold text-text-primary">
         {title}
       </h2>
       {lead && (
-        <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-secondary">
+        <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-text-secondary">
           {lead}
         </p>
       )}
-      <div className="mt-3 space-y-4 text-sm leading-relaxed text-secondary">
+      <div className="mt-3 space-y-4 text-sm leading-relaxed text-text-secondary">
         {children}
       </div>
     </section>
@@ -86,14 +86,14 @@ export function Callout({
   const styles = CALLOUT_STYLES[tone]
   return (
     <div className={`rounded-card border ${styles.border} bg-surface p-3.5`}>
-      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-text-primary">
         <span
           className={`h-1.5 w-1.5 rounded-full ${styles.dot}`}
           aria-hidden
         />
         {title ?? styles.label}
       </p>
-      <div className="mt-1.5 text-sm leading-relaxed text-secondary">
+      <div className="mt-1.5 text-sm leading-relaxed text-text-secondary">
         {children}
       </div>
     </div>
@@ -111,8 +111,8 @@ export function Card({
 }) {
   return (
     <div className="flex flex-col rounded-card border border-border bg-surface p-4">
-      <h3 className="text-sm font-semibold text-primary">{title}</h3>
-      <div className="mt-1.5 flex-1 text-sm leading-relaxed text-secondary">
+      <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+      <div className="mt-1.5 flex-1 text-sm leading-relaxed text-text-secondary">
         {children}
       </div>
       {footer && <div className="mt-3">{footer}</div>}
@@ -136,8 +136,10 @@ export function Steps({
             {index + 1}
           </span>
           <div>
-            <p className="text-sm font-medium text-primary">{item.title}</p>
-            <div className="mt-0.5 text-sm leading-relaxed text-secondary">
+            <p className="text-sm font-medium text-text-primary">
+              {item.title}
+            </p>
+            <div className="mt-0.5 text-sm leading-relaxed text-text-secondary">
               {item.children}
             </div>
           </div>
@@ -158,7 +160,7 @@ export function Table({
     <div className="overflow-x-auto rounded-card border border-border">
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-surface-raised text-left text-xs text-muted">
+          <tr className="bg-surface-raised text-left text-xs text-text-muted">
             {head.map((cell) => (
               <th key={cell} scope="col" className="px-3 py-2 font-medium">
                 {cell}
@@ -178,7 +180,9 @@ export function Table({
                 <td
                   key={index}
                   className={`px-3 py-2 ${
-                    index === 0 ? 'font-medium text-primary' : 'text-secondary'
+                    index === 0
+                      ? 'font-medium text-text-primary'
+                      : 'text-text-secondary'
                   }`}
                 >
                   {cell}
@@ -194,7 +198,7 @@ export function Table({
 
 export function Code({ children }: { children: string }) {
   return (
-    <code className="rounded-chip bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-primary">
+    <code className="rounded-chip bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-text-primary">
       {children}
     </code>
   )
@@ -202,7 +206,7 @@ export function Code({ children }: { children: string }) {
 
 export function Chip({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-chip border border-border bg-surface-raised px-2 py-0.5 font-mono text-[11px] text-secondary">
+    <span className="rounded-chip border border-border bg-surface-raised px-2 py-0.5 font-mono text-[11px] text-text-secondary">
       {children}
     </span>
   )
@@ -223,14 +227,16 @@ export function Rail({
       {items.map((item, index) => (
         <li key={item.label} className="flex items-center gap-2">
           {index > 0 && (
-            <span aria-hidden className="text-sm text-muted">
+            <span aria-hidden className="text-sm text-text-muted">
               →
             </span>
           )}
-          <span className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-xs font-medium text-primary">
+          <span className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-xs font-medium text-text-primary">
             {item.label}
             {item.note && (
-              <span className="ml-1.5 font-normal text-muted">{item.note}</span>
+              <span className="ml-1.5 font-normal text-text-muted">
+                {item.note}
+              </span>
             )}
           </span>
         </li>
@@ -255,16 +261,16 @@ export function Disclosure({
       open={defaultOpen}
       className="group rounded-card border border-border bg-surface"
     >
-      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-primary hover:bg-surface-raised">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-text-primary hover:bg-surface-raised">
         <span className="flex items-baseline gap-2">
           <span>{summary}</span>
           {note && (
-            <span className="text-xs font-normal text-muted">{note}</span>
+            <span className="text-xs font-normal text-text-muted">{note}</span>
           )}
         </span>
         <span
           aria-hidden
-          className="text-xs text-muted transition-transform duration-micro group-open:rotate-90"
+          className="text-xs text-text-muted transition-transform duration-micro group-open:rotate-90"
         >
           ▸
         </span>
@@ -276,7 +282,7 @@ export function Disclosure({
 
 export function CommandBlock({ lines }: { lines: string[] }) {
   return (
-    <pre className="overflow-x-auto rounded-card border border-border bg-surface p-3 font-mono text-xs leading-relaxed text-primary">
+    <pre className="overflow-x-auto rounded-card border border-border bg-surface p-3 font-mono text-xs leading-relaxed text-text-primary">
       {lines.join('\n')}
     </pre>
   )

@@ -23,14 +23,14 @@ export function ScenarioLab() {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-lg">Scenario Lab</h2>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-text-muted">
               Planted patterns and observable signals · blind benchmark mode
               hides evaluator truth
             </p>
           </div>
           <a
             href="#/experiment"
-            className="rounded-chip border border-border px-3 py-1.5 text-sm text-secondary transition-colors duration-micro hover:text-primary"
+            className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
           >
             ← Back to Setup
           </a>
@@ -68,20 +68,20 @@ export function ScenarioLab() {
                   }`}
                 >
                   <span className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-primary">
+                    <span className="text-sm font-medium text-text-primary">
                       {scenario.id}
                     </span>
                     <span
                       className={`rounded-chip px-2 py-0.5 text-xs ${
                         scenario.enabled
                           ? 'bg-success/15 text-success'
-                          : 'bg-surface-raised text-muted'
+                          : 'bg-surface-raised text-text-muted'
                       }`}
                     >
                       {scenario.enabled ? 'enabled' : 'registered'}
                     </span>
                   </span>
-                  <span className="mt-1 block text-xs text-secondary">
+                  <span className="mt-1 block text-xs text-text-secondary">
                     {scenario.type.replace(/_/g, ' ')}
                   </span>
                 </button>
@@ -98,23 +98,25 @@ export function ScenarioLab() {
           {selected ? (
             <dl className="space-y-3 text-sm">
               <div>
-                <dt className="text-xs text-muted">Identifier</dt>
-                <dd className="text-primary">{selected.id}</dd>
+                <dt className="text-xs text-text-muted">Identifier</dt>
+                <dd className="text-text-primary">{selected.id}</dd>
               </div>
               <div>
-                <dt className="text-xs text-muted">Description</dt>
-                <dd className="text-secondary">{selected.description}</dd>
+                <dt className="text-xs text-text-muted">Description</dt>
+                <dd className="text-text-secondary">{selected.description}</dd>
               </div>
               <div>
-                <dt className="text-xs text-muted">Strength</dt>
-                <dd className="text-secondary">
+                <dt className="text-xs text-text-muted">Strength</dt>
+                <dd className="text-text-secondary">
                   {selected.strength.toFixed(1)} (signal intensity)
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted">Status</dt>
+                <dt className="text-xs text-text-muted">Status</dt>
                 <dd
-                  className={selected.enabled ? 'text-success' : 'text-muted'}
+                  className={
+                    selected.enabled ? 'text-success' : 'text-text-muted'
+                  }
                 >
                   {selected.enabled
                     ? 'Enabled: the dev world plants this scenario deterministically.'
@@ -122,15 +124,15 @@ export function ScenarioLab() {
                 </dd>
               </div>
               <div>
-                <dt className="text-xs text-muted">Truth</dt>
-                <dd className="text-muted">
+                <dt className="text-xs text-text-muted">Truth</dt>
+                <dd className="text-text-muted">
                   Hidden in blind mode. Observable signals only are documented
                   in the catalogue.
                 </dd>
               </div>
             </dl>
           ) : (
-            <p className="text-sm text-muted">Select a scenario.</p>
+            <p className="text-sm text-text-muted">Select a scenario.</p>
           )}
         </section>
       </div>

@@ -64,13 +64,15 @@ export function ScoreStrip({ scores }: { scores: ScoreStrip }) {
       aria-label="Evaluation scores"
       className="panel-reveal rounded-card border border-border bg-surface p-4"
     >
-      <h3 className="mb-3 text-sm font-semibold text-secondary">Evaluation</h3>
+      <h3 className="mb-3 text-sm font-semibold text-text-secondary">
+        Evaluation
+      </h3>
       <table className="w-full text-sm">
         <caption className="sr-only">
           Evaluation metrics for both pipelines
         </caption>
         <thead>
-          <tr className="text-left text-xs text-muted">
+          <tr className="text-left text-xs text-text-muted">
             <th scope="col" className="pb-1 font-normal">
               Metric
             </th>
@@ -87,7 +89,7 @@ export function ScoreStrip({ scores }: { scores: ScoreStrip }) {
             <tr key={row.label} className="border-t border-border">
               <th
                 scope="row"
-                className="py-1.5 pr-4 font-normal text-secondary"
+                className="py-1.5 pr-4 font-normal text-text-secondary"
               >
                 {row.label}
               </th>
@@ -116,7 +118,7 @@ export function ScoreStrip({ scores }: { scores: ScoreStrip }) {
         </tbody>
       </table>
       <details className="mt-3">
-        <summary className="cursor-pointer text-xs text-secondary hover:text-primary">
+        <summary className="cursor-pointer text-xs text-text-secondary hover:text-text-primary">
           Extended discovery measures
         </summary>
         <dl className="mt-2 grid grid-cols-3 gap-3 text-xs">
@@ -128,8 +130,8 @@ export function ScoreStrip({ scores }: { scores: ScoreStrip }) {
             ] as const
           ).map(([label, values]) => (
             <div key={label} className="rounded-card border border-border p-2">
-              <dt className="text-muted">{label}</dt>
-              <dd className="mt-1 flex items-center gap-2 text-secondary">
+              <dt className="text-text-muted">{label}</dt>
+              <dd className="mt-1 flex items-center gap-2 text-text-secondary">
                 <span className="tabular-nums">
                   {values.baseline.toFixed(2)}
                 </span>
@@ -142,7 +144,7 @@ export function ScoreStrip({ scores }: { scores: ScoreStrip }) {
           ))}
         </dl>
       </details>
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-xs text-text-muted">
         Scores come from the evaluator, never from retrieval. Latency and tokens
         show the cost of the richer context.
       </p>

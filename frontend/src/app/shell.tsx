@@ -74,22 +74,22 @@ function SettingsDrawer() {
           ref={closeRef}
           type="button"
           onClick={() => setSettingsOpen(false)}
-          className="rounded-chip border border-border px-2 py-1 text-sm text-secondary hover:text-primary"
+          className="rounded-chip border border-border px-2 py-1 text-sm text-text-secondary hover:text-text-primary"
         >
           Close
         </button>
       </div>
       <dl className="mt-4 space-y-3 text-sm">
         <div>
-          <dt className="text-xs text-muted">Provider</dt>
-          <dd className="text-secondary">{EXPERIMENT.provider}</dd>
+          <dt className="text-xs text-text-muted">Provider</dt>
+          <dd className="text-text-secondary">{EXPERIMENT.provider}</dd>
         </div>
         <div>
-          <dt className="text-xs text-muted">Model</dt>
-          <dd className="text-secondary">{EXPERIMENT.model}</dd>
+          <dt className="text-xs text-text-muted">Model</dt>
+          <dd className="text-text-secondary">{EXPERIMENT.model}</dd>
         </div>
       </dl>
-      <label className="mt-4 flex items-center gap-2 text-sm text-secondary">
+      <label className="mt-4 flex items-center gap-2 text-sm text-text-secondary">
         <input
           type="checkbox"
           checked={reducedMotion}
@@ -97,7 +97,7 @@ function SettingsDrawer() {
         />
         Reduce motion
       </label>
-      <label className="mt-2 flex items-center gap-2 text-sm text-secondary">
+      <label className="mt-2 flex items-center gap-2 text-sm text-text-secondary">
         <input
           type="checkbox"
           checked={presentation}
@@ -125,12 +125,12 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <a
             href={hrefFor('lab')}
-            className="text-base font-semibold tracking-tight text-primary transition-colors duration-micro hover:text-graph"
+            className="text-base font-semibold tracking-tight text-text-primary transition-colors duration-micro hover:text-graph"
             aria-label="Semantic Context Lab home"
           >
             {EXPERIMENT.name}
           </a>
-          <p className="text-xs text-muted">
+          <p className="text-xs text-text-muted">
             {EXPERIMENT.dataset} · {EXPERIMENT.markets.length} markets ·{' '}
             {EXPERIMENT.model} · {EXPERIMENT.embedding}
           </p>
@@ -142,7 +142,7 @@ export function Shell({ children }: { children: ReactNode }) {
               className={`rounded-chip border px-3 py-1 text-xs transition-colors duration-micro ${
                 presentation
                   ? 'border-graph bg-graph/15 text-graph'
-                  : 'border-border text-secondary hover:text-primary'
+                  : 'border-border text-text-secondary hover:text-text-primary'
               }`}
             >
               Presentation mode
@@ -151,7 +151,7 @@ export function Shell({ children }: { children: ReactNode }) {
               type="button"
               onClick={() => setSettingsOpen(true)}
               aria-haspopup="dialog"
-              className="rounded-chip border border-border px-3 py-1 text-xs text-secondary hover:text-primary"
+              className="rounded-chip border border-border px-3 py-1 text-xs text-text-secondary hover:text-text-primary"
             >
               Settings
             </button>
@@ -182,8 +182,8 @@ export function Shell({ children }: { children: ReactNode }) {
                       }
                       className={`inline-block rounded-chip px-3 py-1.5 text-sm transition-colors duration-micro ${
                         active
-                          ? 'bg-surface-raised font-medium text-primary'
-                          : 'text-secondary hover:bg-surface-raised hover:text-primary'
+                          ? 'bg-surface-raised font-medium text-text-primary'
+                          : 'text-text-secondary hover:bg-surface-raised hover:text-text-primary'
                       }`}
                     >
                       {item.label}
