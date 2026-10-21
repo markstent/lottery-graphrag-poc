@@ -5,9 +5,10 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from './App'
+import { SHELL_API } from './test/api-stub'
 import { ResultsDashboard } from './views/results-dashboard'
 
 function jsonResponse(body: unknown): Response {
@@ -55,6 +56,11 @@ function stubLiveBackend(
     'fetch',
     vi.fn((input: RequestInfo | URL) => {
       const url = String(input)
+      const shellPath = new URL(url, 'http://localhost').pathname
+      if (shellPath in SHELL_API)
+        return Promise.resolve(
+          jsonResponse(SHELL_API[shellPath as keyof typeof SHELL_API]),
+        )
       if (url.endsWith('/demo/questions'))
         return Promise.resolve(
           jsonResponse([
@@ -120,6 +126,11 @@ async function runLiveQuestion() {
 }
 
 describe('App', () => {
+  // The screens below are the v1 Live Lab, which the shell now reaches at #/live-lab.
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/#/live-lab')
+  })
+
   it('renders the application shell with primary navigation', () => {
     render(<App />)
 
@@ -128,11 +139,12 @@ describe('App', () => {
     expect(nav).toBeVisible()
     expect(screen.getByRole('link', { name: 'Live Lab' })).toHaveAttribute(
       'href',
-      '#/lab',
+      '#/live-lab',
     )
-    expect(
-      screen.getByRole('link', { name: 'Semantic Layer' }),
-    ).toHaveAttribute('href', '#/semantic')
+    expect(screen.getByRole('link', { name: 'Data Model' })).toHaveAttribute(
+      'href',
+      '#/data-model',
+    )
   })
 
   it('lands on Live Lab by default', () => {

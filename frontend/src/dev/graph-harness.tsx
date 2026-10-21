@@ -10,11 +10,15 @@
  *   present  1 for presentation mode
  *   mount    click to draw the canvas only when "Show graph" is pressed
  *   mode     replay (default) or live
+ *   evidence 1 to open the evidence drawer on the node opened from the canvas
+ *   shell    1 to draw the page inside the application shell
  */
 
 import { useMemo, useState } from 'react'
 
 import type { components } from '../api/schema'
+import { Shell } from '../app/shell'
+import { EvidenceDrawer } from '../components/evidence-drawer'
 import { EvidencePathList } from '../graph/evidence-path-list'
 import { recordedPathsFromResult } from '../graph/from-result'
 import { GraphCanvas } from '../graph/graph-canvas'
@@ -66,8 +70,11 @@ export default function GraphHarness() {
   const live = params.get('mode') === 'live'
   const hasOverlay = config === 'C' && !generatedRun
 
-  return (
-    <main className="flex h-screen flex-col gap-3 bg-background p-4">
+  const inShell = params.get('shell') === '1'
+  const page = (
+    <div
+      className={`flex flex-col gap-3 bg-background p-4 ${inShell ? 'h-[calc(100vh-8rem)]' : 'h-screen'}`}
+    >
       <header className="flex flex-wrap items-center gap-4 text-sm">
         <h1 className="font-semibold">Graph canvas</h1>
         <button
@@ -122,6 +129,13 @@ export default function GraphHarness() {
         </aside>
       </div>
       <GraphLegend pipeline={config} ontologyAdded={hasOverlay} />
-    </main>
+      {params.get('evidence') === '1' && (
+        <EvidenceDrawer
+          source={opened ? { kind: 'node', nodeId: opened } : null}
+          onClose={() => setOpened(null)}
+        />
+      )}
+    </div>
   )
+  return inShell ? <Shell>{page}</Shell> : <main>{page}</main>
 }

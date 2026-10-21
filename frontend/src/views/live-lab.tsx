@@ -12,7 +12,7 @@ import { LiveScoreNote } from '../components/live-score'
 import { RagPane } from '../components/rag-pane'
 import { ScoreStrip } from '../components/score-strip'
 import { Timeline } from '../components/timeline'
-import { EvidenceInspector } from './evidence-explorer'
+import { EvidenceInspector } from './v1-evidence-inspector'
 import { GraphPane } from './v1-graph-pane'
 import { useSettings } from '../app/use-settings'
 import { hrefFor } from '../app/router'
@@ -186,7 +186,7 @@ export function LiveLab() {
   }
 
   const citationHref = (id: string) =>
-    hrefFor('evidence', { run: activeRun.runId, evidence: id })
+    hrefFor('live-lab', { run: activeRun.runId, evidence: id })
 
   const savedQuestions: { id: string; text: string }[] =
     source === 'backend'
@@ -220,7 +220,7 @@ export function LiveLab() {
             </div>
             <div className="flex items-center gap-2 text-xs">
               <a
-                href={hrefFor('dictionary')}
+                href={hrefFor('data-model')}
                 className="rounded-chip border border-border bg-surface-raised px-2.5 py-1 text-text-secondary transition-colors duration-micro hover:border-graph/50 hover:text-text-primary"
               >
                 Inspect sample database rows →

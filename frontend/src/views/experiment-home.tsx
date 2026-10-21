@@ -29,15 +29,15 @@ const START_HERE = [
     step: '1',
     title: 'Watch it answer',
     body: 'Run a saved question in Live Lab and watch standard RAG and the graph pipeline side by side.',
-    target: 'lab' as const,
+    target: 'live-lab' as const,
     label: 'Open Live Lab',
   },
   {
     step: '2',
     title: 'Check the proof',
     body: 'Click any citation to see the document chunk or graph node behind it, with full provenance.',
-    target: 'evidence' as const,
-    label: 'Open Evidence Explorer',
+    target: 'live-lab' as const,
+    label: 'Open Live Lab',
   },
   {
     step: '3',
@@ -146,13 +146,13 @@ export function ExperimentHome() {
           </dl>
           <div className="mt-4 flex gap-2">
             <a
-              href={hrefFor('benchmark')}
+              href={hrefFor('results')}
               className="rounded-chip bg-graph px-4 py-1.5 text-sm font-medium text-background transition-opacity duration-micro hover:opacity-90"
             >
               Run benchmark
             </a>
             <a
-              href={hrefFor('scenarios')}
+              href={hrefFor('data-model')}
               className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
             >
               Configure scenarios

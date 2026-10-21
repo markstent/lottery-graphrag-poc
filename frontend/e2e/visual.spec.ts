@@ -14,26 +14,18 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('live lab idle', async ({ page }) => {
-  await page.goto('/#/lab')
+  await page.goto('/#/live-lab')
   await expect(page.getByRole('button', { name: 'Run' })).toBeVisible()
   await expect(page).toHaveScreenshot('lab-idle.png', { fullPage: true })
 })
 
 test('live lab completed run with score strip', async ({ page }) => {
-  await page.goto('/#/lab')
+  await page.goto('/#/live-lab')
   await page.getByRole('button', { name: 'Run' }).click()
   await expect(
     page.getByRole('region', { name: 'Evaluation scores' }),
   ).toBeVisible()
   await expect(page).toHaveScreenshot('lab-completed.png', { fullPage: true })
-})
-
-test('evidence explorer', async ({ page }) => {
-  await page.goto('/#/evidence?run=RUN-2026-10-07-01&evidence=INC_S007_GR')
-  await expect(
-    page.getByRole('heading', { name: 'Evidence Explorer' }),
-  ).toBeVisible()
-  await expect(page).toHaveScreenshot('evidence.png', { fullPage: true })
 })
 
 test('results dashboard', async ({ page }) => {
@@ -42,16 +34,6 @@ test('results dashboard', async ({ page }) => {
     page.getByRole('heading', { name: 'Results Dashboard' }),
   ).toBeVisible()
   await expect(page).toHaveScreenshot('results.png', { fullPage: true })
-})
-
-test('semantic layer', async ({ page }) => {
-  await page.goto('/#/semantic')
-  await expect(
-    page.getByRole('heading', {
-      name: 'How raw tables & documents become connected graph concepts',
-    }),
-  ).toBeVisible()
-  await expect(page).toHaveScreenshot('semantic.png', { fullPage: true })
 })
 
 test('help', async ({ page }) => {
@@ -76,13 +58,13 @@ test('help graph diagram', async ({ page }) => {
   await expect(diagram).toHaveScreenshot('help-graph-diagram.png')
 })
 
-test('data dictionary', async ({ page }) => {
-  await page.goto('/#/dictionary')
+test('data model', async ({ page }) => {
+  await page.goto('/#/data-model')
   await expect(
     page.getByRole('heading', {
       name: 'Inspect the synthetic enterprise data, graph and ontology',
       level: 1,
     }),
   ).toBeVisible()
-  await expect(page).toHaveScreenshot('dictionary.png', { fullPage: true })
+  await expect(page).toHaveScreenshot('data-model.png', { fullPage: true })
 })

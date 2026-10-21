@@ -1,5 +1,5 @@
 /**
- * Mock evidence registry backing the Evidence Explorer (UX-EVIDENCE-001).
+ * Mock evidence registry backing the v1 evidence inspector (UX-EVIDENCE-001).
  * Provenance fields mirror what retrieval telemetry records; the truth
  * ledger is never surfaced (ADR-008).
  */

@@ -359,6 +359,10 @@ describe('GraphCanvas', () => {
       togglePresentation: noop,
       reducedMotion: true,
       toggleReducedMotion: noop,
+      nodeCap: 24,
+      setNodeCap: noop,
+      sidebarCollapsed: false,
+      toggleSidebar: noop,
       settingsOpen: false,
       setSettingsOpen: noop,
     }

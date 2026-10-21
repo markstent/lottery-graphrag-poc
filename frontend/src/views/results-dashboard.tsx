@@ -162,7 +162,7 @@ export function ResultsDashboard() {
             </p>
           </div>
           <a
-            href={hrefFor('benchmark', {
+            href={hrefFor('results', {
               benchmark_run_id: results.benchmarkRunId,
             })}
             className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
@@ -363,7 +363,7 @@ export function ResultsDashboard() {
                     : ' · not scored'}
                 </span>
                 <a
-                  href={hrefFor('lab', { run: MOCK_RUN_ID })}
+                  href={hrefFor('live-lab', { run: MOCK_RUN_ID })}
                   className="text-xs text-graph hover:underline"
                 >
                   watch a replay
@@ -389,7 +389,7 @@ export function ResultsDashboard() {
               {results.questions} questions complete
             </span>
             <a
-              href={hrefFor('benchmark', {
+              href={hrefFor('results', {
                 benchmark_run_id: results.benchmarkRunId,
               })}
               className="text-graph hover:underline"
@@ -436,7 +436,7 @@ export function ResultsDashboard() {
                   </td>
                   <td className="py-1.5">
                     <a
-                      href={hrefFor('lab', { run: MOCK_RUN_ID })}
+                      href={hrefFor('live-lab', { run: MOCK_RUN_ID })}
                       className="text-xs text-graph hover:underline"
                     >
                       watch

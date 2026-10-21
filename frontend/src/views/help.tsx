@@ -192,7 +192,7 @@ export function Help() {
         <div className="grid gap-2 text-sm sm:grid-cols-3">
           <a
             className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
-            href={hrefFor('lab')}
+            href={hrefFor('live-lab')}
           >
             <span className="font-medium text-text-primary">
               1. Try a question
@@ -203,7 +203,7 @@ export function Help() {
           </a>
           <a
             className="rounded-card border border-border bg-surface-raised p-3 transition-colors duration-micro hover:border-graph/50"
-            href={hrefFor('dictionary')}
+            href={hrefFor('data-model')}
           >
             <span className="font-medium text-text-primary">
               2. See the database rows

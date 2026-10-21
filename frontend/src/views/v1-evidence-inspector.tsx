@@ -1,12 +1,11 @@
 /**
- * Evidence Explorer (docs/06 section 6): every citation is inspectable via
- * Sources / Graph / Provenance tabs. The URL round-trips run and evidence
- * ids so views stay shareable.
+ * The v1 evidence inspector (Sources / Graph / Provenance tabs over mock
+ * evidence), kept for the v1 Live Lab until Phase 6 replaces both with the
+ * evidence drawer.
  */
 
 import { useMemo, useState } from 'react'
 
-import { hrefFor } from '../app/router'
 import { EVIDENCE_PATH_IDS, getEvidence } from '../mock/evidence'
 import { MOCK_RUN, projectGraph } from '../mock/telemetry'
 import { EvidenceGraph } from './v1-graph-pane'
@@ -150,43 +149,6 @@ export function EvidenceInspector({
           </p>
         </section>
       )}
-    </div>
-  )
-}
-
-export function EvidenceExplorer({
-  evidenceId,
-}: {
-  evidenceId: string | null
-}) {
-  const [selectedId, setSelectedId] = useState<string | null>(evidenceId)
-
-  return (
-    <div className="space-y-4">
-      <section
-        aria-label="Run context"
-        className="rounded-card border border-border bg-surface p-4"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <h2 className="text-lg">Evidence Explorer</h2>
-            <p className="text-xs text-text-muted">
-              run {MOCK_RUN.runId} · “{MOCK_RUN.question}”
-            </p>
-          </div>
-          <a
-            href={hrefFor('lab', { run: MOCK_RUN.runId })}
-            className="rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary transition-colors duration-micro hover:text-text-primary"
-          >
-            ← Back to Live Lab
-          </a>
-        </div>
-      </section>
-
-      <EvidenceInspector
-        evidenceId={selectedId ?? evidenceId}
-        onSelectEvidence={setSelectedId}
-      />
     </div>
   )
 }
