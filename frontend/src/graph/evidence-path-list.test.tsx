@@ -44,13 +44,13 @@ describe('EvidencePathList', () => {
     render(<EvidencePathList view={view} />)
     const [first, second] = screen.getAllByRole('listitem')
     expect(first).toHaveTextContent(
-      `${EVIDENCE_STATES.seed.label}: Incident (INC_037)`,
+      `${EVIDENCE_STATES.seed.label}: incident (INC_037)`,
     )
     expect(first).not.toHaveTextContent('related')
     const edge = full.graph.B.relationships.find((r) => r.to === 'SUP_00113')
     expect(edge).toBeDefined()
     expect(second).toHaveTextContent(
-      `${EVIDENCE_STATES.selected.label}: SupportCase (SUP_00113), Incident is related to SupportCase`,
+      `${EVIDENCE_STATES.selected.label}: support case (SUP_00113), incident is related to support case`,
     )
   })
 
@@ -60,6 +60,33 @@ describe('EvidencePathList', () => {
     expect(
       screen.getByText('No evidence path was recorded for this pipeline.'),
     ).toBeVisible()
+  })
+
+  it('says a step was not recorded and does not join its neighbours', () => {
+    const view = graphView(full.graph.B, {
+      ...options,
+      paths: [['INC_037', 'NOT_A_NODE', 'SUP_00113']],
+    })
+    expect(view.droppedPathIds).toEqual(['NOT_A_NODE'])
+    render(<EvidencePathList view={view} />)
+    const [first, gap, last] = screen.getAllByRole('listitem')
+    expect(first).toHaveTextContent('incident (INC_037)')
+    expect(gap).toHaveTextContent('A step that was not recorded (NOT_A_NODE)')
+    expect(last).toHaveTextContent('support case (SUP_00113)')
+    expect(last).not.toHaveTextContent('related')
+    expect(last).not.toHaveTextContent('incident')
+  })
+
+  it('names no step between two recorded nodes with no recorded edge', () => {
+    const view = graphView(full.graph.B, {
+      ...options,
+      paths: [['SUP_00005', 'MKT_UK']],
+    })
+    expect(view.pathSteps).toEqual([[null]])
+    render(<EvidencePathList view={view} />)
+    const [, second] = screen.getAllByRole('listitem')
+    expect(second).toHaveTextContent('market (MKT_UK)')
+    expect(second).not.toHaveTextContent(',')
   })
 
   it('uses none of the banned words', () => {

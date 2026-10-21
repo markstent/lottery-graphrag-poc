@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 
 import type { components } from '../api/schema'
 import fixture from '../run/fixtures/run-abc.json'
-import { pathsFromResult, sourceRecordsFromResult } from './from-result'
+import {
+  pathsFromResult,
+  recordedPathsFromResult,
+  sourceRecordsFromResult,
+} from './from-result'
 
 type GraphRunResult = components['schemas']['GraphRunResult']
 const result = (pipeline: 'B' | 'C') =>
@@ -22,6 +26,20 @@ describe('pathsFromResult', () => {
     const all = result('C').node_evidence.length
     expect(all).toBe(61)
     expect(pathsFromResult(result('C'))).toHaveLength(4)
+  })
+})
+
+describe('recordedPathsFromResult', () => {
+  it('carries the relationship that reached each selected node past the seed', () => {
+    const selected = result('B').node_evidence.filter((n) => n.selected)
+    const recorded = recordedPathsFromResult(result('B'))
+    expect(recorded.map((p) => p.ids)).toEqual(selected.map((n) => n.path))
+    recorded.forEach((p, i) => {
+      if (p.ids.length > 1)
+        expect(p.lastRelationship).toBe(selected[i].rel_type)
+      else expect(p.lastRelationship).toBeUndefined()
+    })
+    expect(recorded.some((p) => p.lastRelationship !== undefined)).toBe(true)
   })
 })
 

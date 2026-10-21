@@ -384,3 +384,66 @@ describe('edges', () => {
     expect(new Set(view.edges.map((e) => e.id)).size).toBe(2)
   })
 })
+
+describe('path steps', () => {
+  const twoWay: GraphEvents = {
+    ...graphOf([
+      { ...node('A', 'Incident', 0), seed: true, outcome: 'selected' },
+      { ...node('B', 'Game', 1), outcome: 'selected' },
+    ]),
+    relationships: [
+      { from: 'A', type: 'AFFECTS', to: 'B', toLabel: 'Game', hop: 1 },
+      { from: 'B', type: 'RELATED_TO', to: 'A', toLabel: 'Incident', hop: 1 },
+    ],
+  }
+
+  it('puts every edge between neighbours on a bare path', () => {
+    const view = graphView(twoWay, { ...options, paths: [['A', 'B']] })
+    expect(view.edges.map((e) => e.onPath)).toEqual([true, true])
+  })
+
+  it('puts only the edge of the named relationship on a path', () => {
+    const view = graphView(twoWay, {
+      ...options,
+      paths: [{ ids: ['A', 'B'], lastRelationship: 'RELATED_TO' }],
+    })
+    expect(view.edges.map((e) => [e.relationship, e.onPath])).toEqual([
+      ['AFFECTS', false],
+      ['RELATED_TO', true],
+    ])
+    expect(view.pathSteps).toEqual([['B>RELATED_TO>A']])
+  })
+
+  it('takes the edge that runs along the path before one that runs against it', () => {
+    const both: GraphEvents = {
+      ...twoWay,
+      relationships: [
+        { from: 'B', type: 'AFFECTS', to: 'A', toLabel: 'Incident', hop: 1 },
+        { from: 'A', type: 'AFFECTS', to: 'B', toLabel: 'Game', hop: 1 },
+      ],
+    }
+    const view = graphView(both, {
+      ...options,
+      paths: [{ ids: ['A', 'B'], lastRelationship: 'AFFECTS' }],
+    })
+    expect(view.pathSteps).toEqual([['A>AFFECTS>B']])
+    expect(view.edges.map((e) => e.onPath)).toEqual([false, true])
+  })
+
+  it('takes an edge that runs against the path when none runs along it', () => {
+    const view = graphView(twoWay, {
+      ...options,
+      paths: [{ ids: ['B', 'A'], lastRelationship: 'AFFECTS' }],
+    })
+    expect(view.pathSteps).toEqual([['A>AFFECTS>B']])
+  })
+
+  it('reports ids with no recorded node and keeps the path as recorded', () => {
+    const view = graphView(twoWay, { ...options, paths: [['A', 'X', 'B']] })
+    expect(view.droppedPathIds).toEqual(['X'])
+    expect(view.recordedPaths).toEqual([['A', 'X', 'B']])
+    expect(view.paths).toEqual([['A', 'B']])
+    expect(view.pathSteps).toEqual([[null, null]])
+    expect(view.edges.map((e) => e.onPath)).toEqual([false, false])
+  })
+})

@@ -71,10 +71,33 @@ export interface GraphView {
   nodes: GraphNodeView[]
   edges: GraphEdgeView[]
   clusters: GraphCluster[]
-  /** Each recorded evidence path as node ids from the seed to the evidence. */
+  /**
+   * Each recorded evidence path as node ids from the seed to the evidence,
+   * with the ids that have no recorded node left out.
+   */
   paths: string[][]
+  /**
+   * The same paths exactly as recorded, unknown ids included, so a list can
+   * show where a step is missing instead of joining its neighbours.
+   */
+  recordedPaths: string[][]
+  /** Ids on a recorded path that have no recorded node, in order of appearance. */
+  droppedPathIds: string[]
+  /**
+   * For each recorded path, the id of the edge of each hop (entry `i` is the
+   * hop from position `i` to `i + 1`); null where either end has no recorded
+   * node or no edge was recorded between them.
+   */
+  pathSteps: (string | null)[][]
   /** The ids on any path, in path order, each once. */
   path: string[]
+}
+
+/** A path as the run's results carry it: node ids and how the last node was reached. */
+export interface RecordedPath {
+  ids: string[]
+  /** The relationship type that reached the last node, when the result names one. */
+  lastRelationship?: string
 }
 
 export interface GraphViewOptions {
@@ -87,10 +110,13 @@ export interface GraphViewOptions {
   /** Configuration B's events when `events` are C's. */
   overlay?: GraphEvents
   /**
-   * The evidence paths the backend recorded (`pathsFromResult`). Ids with no
-   * recorded node are left out.
+   * The evidence paths the backend recorded. A bare id list matches every
+   * edge between neighbours. A `RecordedPath` that names the relationship of
+   * its last hop matches only edges of that type, and takes the edge that
+   * runs along the path before one that runs against it. Ids with no recorded
+   * node are left out of `paths` and listed in `droppedPathIds`.
    */
-  paths?: string[][]
+  paths?: (string[] | RecordedPath)[]
   /** Nodes whose evidence is a source record (`sourceRecordsFromResult`). */
   sourceRecordIds?: ReadonlySet<string>
 }
@@ -108,12 +134,22 @@ function nodeState(
   return isSourceRecord ? 'source_record' : 'traversed'
 }
 
-const hasStep = (path: string[], a: string, b: string): boolean =>
-  path.some(
-    (id, i) =>
-      i > 0 &&
-      ((path[i - 1] === a && id === b) || (path[i - 1] === b && id === a)),
+/** The edges that make the hop from `a` to `b`, narrowed to `type` when one is given. */
+function stepEdges(
+  edges: GraphEdgeView[],
+  a: string,
+  b: string,
+  type: string | undefined,
+): GraphEdgeView[] {
+  const between = edges.filter(
+    (e) =>
+      (e.source === a && e.target === b) || (e.source === b && e.target === a),
   )
+  if (type === undefined) return between
+  const typed = between.filter((e) => e.relationship === type)
+  const along = typed.filter((e) => e.source === a)
+  return along.length > 0 ? along : typed
+}
 
 /** The (hop, label) groups of `nodes`, largest first, ties by label then first event. */
 function groupsOf(nodes: GraphNodeView[]): GraphCluster[] {
@@ -144,9 +180,16 @@ export function graphView(
 ): GraphView {
   const { cap, focus, overlay, sourceRecordIds = new Set<string>() } = options
   const known = new Set(events.nodes.map((node) => node.id))
-  const paths = (options.paths ?? [])
-    .map((path) => path.filter((id) => known.has(id)))
-    .filter((path) => path.length > 0)
+  const given = (options.paths ?? []).map((p) =>
+    Array.isArray(p) ? { ids: p } : p,
+  )
+  const recordedPaths = given.map((p) => p.ids).filter((ids) => ids.length > 0)
+  const droppedPathIds = [
+    ...new Set(recordedPaths.flat().filter((id) => !known.has(id))),
+  ]
+  const paths = recordedPaths
+    .map((ids) => ids.filter((id) => known.has(id)))
+    .filter((ids) => ids.length > 0)
   const path = [...new Set(paths.flat())]
   const concepts = new Set(events.concepts.map((concept) => concept.id))
   const overlayIds = overlay && new Set(overlay.nodes.map((node) => node.id))
@@ -174,9 +217,21 @@ export function graphView(
       target: edge.to,
       relationship: edge.type,
       state: stateOf.get(edge.to) ?? 'traversed',
-      onPath: paths.some((p) => hasStep(p, edge.from, edge.to)),
+      onPath: false,
     }
   })
+  const pathSteps = given
+    .filter((p) => p.ids.length > 0)
+    .map((p) =>
+      p.ids.slice(1).map((id, i) => {
+        const from = p.ids[i]
+        if (!known.has(from) || !known.has(id)) return null
+        const last = i === p.ids.length - 2 ? p.lastRelationship : undefined
+        const found = stepEdges(edges, from, id, last)
+        for (const edge of found) edge.onPath = true
+        return found[0]?.id ?? null
+      }),
+    )
 
   const clusters: GraphCluster[] = []
   if (focus || nodes.length > cap) {
@@ -193,5 +248,14 @@ export function graphView(
         if (members.has(node.id)) node.clusterId = group.id
     }
   }
-  return { nodes, edges, clusters, paths, path }
+  return {
+    nodes,
+    edges,
+    clusters,
+    paths,
+    recordedPaths,
+    droppedPathIds,
+    pathSteps,
+    path,
+  }
 }
