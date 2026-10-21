@@ -102,6 +102,8 @@ export interface GraphView {
    * show where a step is missing instead of joining its neighbours.
    */
   recordedPaths: string[][]
+  /** True once the pipeline has recorded its evidence paths (the path event has arrived). */
+  pathRecorded: boolean
   /** Ids on a recorded path that have no recorded node, in order of appearance. */
   droppedPathIds: string[]
   /**
@@ -284,6 +286,7 @@ export function graphView(
     clusters,
     paths,
     recordedPaths,
+    pathRecorded: recorded,
     droppedPathIds,
     pathSteps,
     path,

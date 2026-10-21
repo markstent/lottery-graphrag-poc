@@ -28,6 +28,8 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStore,
+  useViewport,
   type Node,
 } from '@xyflow/react'
 import {
@@ -61,6 +63,7 @@ import {
   type EntityNodeData,
   type GraphFlowNode,
 } from './node'
+import { nextAfter, outOfView, outOfViewNote } from './view-bounds'
 import {
   groupWidth,
   nodeWidth,
@@ -519,6 +522,52 @@ function Canvas(props: GraphCanvasProps) {
       ? activeId
       : (visible.nodes.find((n) => n.onPath) ?? visible.nodes[0])?.id
 
+  // Evidence the viewport does not wholly show. The fit keeps the type
+  // legible, so it can leave some off screen; the strip above the drawing says
+  // so and steps through them.
+  const viewport = useViewport()
+  const frameWidth = useStore((state) => state.width)
+  const frameHeight = useStore((state) => state.height)
+  const hidden = useMemo(() => {
+    if (!laidOut) return []
+    const onPath = new Set(shown.path)
+    return outOfView(
+      visible.nodes.flatMap((v) => {
+        const at = positions.get(v.id)
+        return at && onPath.has(v.nodeId)
+          ? [
+              {
+                id: v.id,
+                x: at.x,
+                y: at.y,
+                width: widths.get(v.id) ?? type.minWidth,
+                height: type.height,
+              },
+            ]
+          : []
+      }),
+      viewport,
+      { width: frameWidth, height: frameHeight },
+    )
+  }, [
+    laidOut,
+    shown.path,
+    visible,
+    positions,
+    widths,
+    type,
+    viewport,
+    frameWidth,
+    frameHeight,
+  ])
+  const lastShown = useRef<string | null>(null)
+  const showNextHidden = () => {
+    const next = nextAfter(hidden, lastShown.current)
+    if (!next) return
+    lastShown.current = next
+    focusNode(next)
+  }
+
   const nodes: GraphFlowNode[] = visible.nodes.flatMap((v): GraphFlowNode[] => {
     const at = positions.get(v.id)
     const node = byId.get(v.nodeId)
@@ -703,18 +752,28 @@ function Canvas(props: GraphCanvasProps) {
       </div>
       <GraphSummary id={summaryId} view={shown} />
       {/* Last in the tab order, first on screen: Tab enters at a node. */}
-      <div
-        role="toolbar"
-        aria-label="Zoom"
-        className="order-first flex shrink-0 items-center gap-1 border-b border-hairline px-2 py-1"
-      >
-        <ToolButton name="Zoom in" icon={ZoomIn} onClick={zoomIn} />
-        <ToolButton name="Zoom out" icon={ZoomOut} onClick={zoomOut} />
-        <ToolButton
-          name="Fit to the evidence"
-          icon={Maximize}
-          onClick={refit}
-        />
+      <div className="order-first flex shrink-0 items-center gap-3 border-b border-hairline px-2 py-1">
+        <div role="toolbar" aria-label="Zoom" className="flex gap-1">
+          <ToolButton name="Zoom in" icon={ZoomIn} onClick={zoomIn} />
+          <ToolButton name="Zoom out" icon={ZoomOut} onClick={zoomOut} />
+          <ToolButton
+            name="Fit to the evidence"
+            icon={Maximize}
+            onClick={refit}
+          />
+        </div>
+        <p aria-live="polite" className="text-sm text-text-primary">
+          {outOfViewNote(hidden.length)}
+        </p>
+        {hidden.length > 0 ? (
+          <button
+            type="button"
+            className="rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary hover:bg-surface-raised"
+            onClick={showNextHidden}
+          >
+            Bring into view
+          </button>
+        ) : null}
       </div>
     </div>
   )

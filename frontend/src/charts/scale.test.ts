@@ -48,7 +48,7 @@ describe('formatNumber', () => {
   it('groups thousands, signs on request and never prints a negative zero', () => {
     expect(formatNumber(12345.6, { decimals: 0 })).toBe('12,346')
     expect(formatNumber(4.2, { decimals: 1, signed: true })).toBe('+4.2')
-    expect(formatNumber(-4.2, { decimals: 1, signed: true })).toBe('-4.2')
+    expect(formatNumber(-4.2, { decimals: 1, signed: true })).toBe('\u22124.2')
     expect(formatNumber(-0.001, { decimals: 1, signed: true })).toBe('0.0')
   })
 
@@ -86,5 +86,16 @@ describe('gap and range text', () => {
     expect(formatOrGap(undefined, one)).toBe('no value')
     expect(formatOrGap(2, one)).toBe('2.0')
     expect(formatRange(1, 3, one)).toBe('1.0 to 3.0')
+  })
+})
+
+describe('the minus sign', () => {
+  it('is the true minus sign with no space, in numbers and axis ticks', () => {
+    expect(formatNumber(-3.5)).toBe('\u22123.5')
+    expect(formatNumber(-3.5, { signed: true })).toBe('\u22123.5')
+    expect(formatNumber(3.5, { signed: true })).toBe('+3.5')
+    expect(formatTick(-20)).toBe('\u221220')
+    expect(formatTick(-2500)).toBe('\u22122.5K')
+    expect(formatRange(-9, 2, (v) => formatNumber(v))).toBe('\u22129.0 to 2.0')
   })
 })

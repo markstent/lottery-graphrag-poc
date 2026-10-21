@@ -72,7 +72,7 @@ describe('GroupedBars', () => {
     )
     // 80 - 40 is 40: the chart draws the given 9, and the given negative one.
     expect(screen.getByText('A \u2212 C +9.0')).toBeInTheDocument()
-    expect(screen.getByText('A \u2212 C -4.0')).toBeInTheDocument()
+    expect(screen.getByText('A \u2212 C \u22124.0')).toBeInTheDocument()
     expect(screen.queryByText(/\+40\.0/)).toBeNull()
   })
 
@@ -311,6 +311,15 @@ describe('GroupedBars', () => {
     const { container } = render(<GroupedBars {...props} status="loading" />)
     expect(screen.getByRole('figure')).toHaveAttribute('aria-busy', 'true')
     expect(container.querySelectorAll('[data-mark="bar"]')).toHaveLength(5)
+  })
+
+  it('says Updating beside the title while loading with data, and not otherwise', () => {
+    const { rerender } = render(<GroupedBars {...props} status="loading" />)
+    expect(screen.getByText('Updating')).toBeInTheDocument()
+    rerender(<GroupedBars {...props} />)
+    expect(screen.queryByText('Updating')).toBeNull()
+    rerender(<GroupedBars {...props} groups={[]} status="loading" />)
+    expect(screen.queryByText('Updating')).toBeNull()
   })
 
   it('says so when there is nothing to draw', () => {

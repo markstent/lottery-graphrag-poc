@@ -638,13 +638,25 @@ function Paths() {
         )
       })}
       <Block
-        id="paths-empty"
-        title="Evidence path list: no path recorded"
+        id="paths-pending"
+        title="Evidence path list: before the path event"
         width="w-[40rem]"
       >
         <Card>
           <EvidencePathList
             view={fixtureView({ source: 'abc', config: 'C', upTo: 5 })}
+          />
+        </Card>
+      </Block>
+      <Block
+        id="paths-absent"
+        title="Evidence path list: ended without a path"
+        width="w-[40rem]"
+      >
+        <Card>
+          <EvidencePathList
+            view={fixtureView({ source: 'abc', config: 'C', upTo: 5 })}
+            ended
           />
         </Card>
       </Block>

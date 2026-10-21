@@ -5,6 +5,11 @@ import { Legend } from './legend'
 import { StatTile } from './stat-tile'
 
 describe('StatTile', () => {
+  it('draws a negative value with the true minus sign, no space', () => {
+    render(<StatTile label="Change" value={-3.5} unit="points" />)
+    expect(screen.getByText('\u22123.5')).toBeInTheDocument()
+  })
+
   it('shows the value, its unit and its interval and counts in muted text', () => {
     render(
       <StatTile

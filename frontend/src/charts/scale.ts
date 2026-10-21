@@ -38,6 +38,10 @@ export function extent(
   return given.length === 0 ? null : [Math.min(...given), Math.max(...given)]
 }
 
+/** The true minus sign (U+2212), never a hyphen, for every negative number a chart draws. */
+const MINUS = '\u2212'
+const withMinus = (text: string) => text.replace(/^-/, MINUS)
+
 export function formatNumber(
   value: number,
   {
@@ -50,13 +54,14 @@ export function formatNumber(
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })
-  return signed && rounded > 0 ? `+${text}` : text
+  return signed && rounded > 0 ? `+${text}` : withMinus(text)
 }
 
 /** Axis tick text: compact from a thousand up, otherwise as short as it can be. */
 export function formatTick(value: number): string {
-  if (Math.abs(value) >= 1000) return `${Number((value / 1000).toFixed(1))}K`
-  return String(value)
+  if (Math.abs(value) >= 1000)
+    return withMinus(`${Number((value / 1000).toFixed(1))}K`)
+  return withMinus(String(value))
 }
 
 /** Decimals that keep a value readable on this domain: one on a wide one, two on a unit one. */

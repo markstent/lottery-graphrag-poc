@@ -69,6 +69,7 @@ function toGraphView(state: GraphPaneState): GraphView {
     clusters: [],
     paths: path.length > 0 ? [path] : [],
     recordedPaths: path.length > 0 ? [path] : [],
+    pathRecorded: path.length > 0,
     droppedPathIds: [],
     pathSteps: path.length > 1 ? [path.slice(1).map(() => null)] : [],
     path,

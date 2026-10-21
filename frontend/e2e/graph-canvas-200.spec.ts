@@ -423,3 +423,43 @@ test.describe('graph canvas with 200 nodes', () => {
     ).toBe(false)
   })
 })
+
+test.describe('evidence out of view', () => {
+  test('in presentation mode the toolbar says so, and the button brings a cropped node into view', async ({
+    page,
+  }) => {
+    // A shorter screen than the evidence needs at presentation size.
+    await page.setViewportSize({ width: 1920, height: 720 })
+    await page.goto('/#/__graph?config=C&present=1')
+    await page.reload()
+    await expect(nodes(page).first()).toBeVisible()
+    await page.waitForTimeout(800)
+    const note = page.getByText(/evidence nodes? out of view/)
+    await expect(note).toBeVisible()
+    await expect(note).toHaveText(/^\d+ evidence nodes? out of view$/)
+    await page.getByRole('button', { name: 'Bring into view' }).click()
+    await page.waitForTimeout(500)
+    // Focus moved to an evidence node, and that node is wholly in the frame.
+    const focused = await page.evaluate(() => {
+      const el = document.activeElement as HTMLElement
+      const box = el.getBoundingClientRect()
+      const frame = document
+        .querySelector('.react-flow')!
+        .getBoundingClientRect()
+      return {
+        id: el.getAttribute('data-node-id'),
+        inside:
+          box.left >= frame.left &&
+          box.top >= frame.top &&
+          box.right <= frame.right &&
+          box.bottom <= frame.bottom,
+      }
+    })
+    expect(focused.id).not.toBeNull()
+    expect(focused.inside).toBe(true)
+    // The evidence is taller than the frame, so framing one can push another out.
+    await expect(page.getByText(/evidence nodes? out of view/)).toBeVisible()
+    for (const { id, onScreen } of await labelSizes(page))
+      expect(onScreen, `${id} type size on screen`).toBeGreaterThanOrEqual(14)
+  })
+})

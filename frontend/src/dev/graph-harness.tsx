@@ -123,7 +123,11 @@ export default function GraphHarness({ query }: { query?: string }) {
           ) : null}
         </div>
         <aside className="w-96 overflow-auto rounded-card border border-border bg-surface p-3">
-          <EvidencePathList id={pathListId} view={view} />
+          <EvidencePathList
+            id={pathListId}
+            view={view}
+            ended={count === events.length}
+          />
         </aside>
       </div>
       <GraphLegend pipeline={config} ontologyAdded={hasOverlay} />

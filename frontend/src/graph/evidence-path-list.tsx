@@ -23,18 +23,24 @@ function stepText(
     : null
 }
 
+const PATH_PENDING = 'The evidence path appears when this pipeline records it.'
+const PATH_ABSENT = 'No evidence path was recorded.'
+
 export function EvidencePathList({
   view,
   id,
+  ended = false,
 }: {
   view: GraphView
   /** An id for the list, so a canvas can point `aria-describedby` at it. */
   id?: string
+  /** True once the pipeline has finished, so a missing path is absent, not yet to come. */
+  ended?: boolean
 }) {
   if (view.recordedPaths.length === 0) {
     return (
       <p id={id} className="text-xs text-text-muted">
-        No evidence path was recorded for this pipeline.
+        {view.pathRecorded || ended ? PATH_ABSENT : PATH_PENDING}
       </p>
     )
   }

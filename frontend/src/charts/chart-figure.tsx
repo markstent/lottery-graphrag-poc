@@ -65,8 +65,13 @@ export function ChartFigure({
     >
       <figcaption className="flex items-start justify-between gap-4">
         <div>
-          <div className="text-base font-semibold text-text-primary">
+          <div className="flex items-baseline gap-2 text-base font-semibold text-text-primary">
             {title}
+            {status === 'loading' && !empty ? (
+              <span className="text-sm font-normal text-text-secondary">
+                Updating
+              </span>
+            ) : null}
           </div>
           {description ? (
             <div className="text-sm text-text-secondary">{description}</div>

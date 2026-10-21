@@ -54,12 +54,29 @@ describe('EvidencePathList', () => {
     )
   })
 
-  it('says so when no path was recorded', () => {
+  it('says no path was recorded once the path event has arrived without one', () => {
     render(<EvidencePathList view={graphView(full.graph.B, options)} />)
     expect(screen.queryByRole('list')).toBeNull()
+    expect(screen.getByText('No evidence path was recorded.')).toBeVisible()
+  })
+
+  it('says the path is still to come before the path event', () => {
+    const early = reduceAll(recorded.slice(0, 5))
+    const view = graphView(early.graph.C, options)
+    expect(view.pathRecorded).toBe(false)
+    render(<EvidencePathList view={view} />)
     expect(
-      screen.getByText('No evidence path was recorded for this pipeline.'),
+      screen.getByText(
+        'The evidence path appears when this pipeline records it.',
+      ),
     ).toBeVisible()
+  })
+
+  it('says no path was recorded when the pipeline ended before recording one', () => {
+    const early = reduceAll(recorded.slice(0, 5))
+    render(<EvidencePathList view={graphView(early.graph.C, options)} ended />)
+    expect(screen.getByText('No evidence path was recorded.')).toBeVisible()
+    expect(screen.queryByText(/appears when/)).toBeNull()
   })
 
   it('says a step was not recorded and does not join its neighbours', () => {

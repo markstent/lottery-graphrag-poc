@@ -266,7 +266,7 @@ describe('IntervalPlot', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('+6.0 to +19.0')
     await user.keyboard('{ArrowDown}')
     expect(hits(container)[1]).toHaveFocus()
-    expect(screen.getByRole('tooltip')).toHaveTextContent('-3.0')
+    expect(screen.getByRole('tooltip')).toHaveTextContent('\u22123.0')
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
@@ -282,6 +282,7 @@ describe('IntervalPlot', () => {
   it('handles loading, empty, error and disabled', () => {
     const { rerender } = render(<IntervalPlot {...props} status="loading" />)
     expect(screen.getByRole('figure')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('Updating')).toBeInTheDocument()
     rerender(<IntervalPlot {...props} rows={[]} />)
     expect(screen.getByText('No results to show.')).toBeInTheDocument()
     rerender(
