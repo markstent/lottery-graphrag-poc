@@ -1,0 +1,358 @@
+/**
+ * The run reducer over a recorded A, B, C run (fixtures/run-abc.json, captured
+ * from the API with the fake generator) and small hand-built streams for the
+ * terminal, failure and unknown-event cases.
+ */
+
+import { describe, expect, it } from 'vitest'
+
+import fixture from './fixtures/run-abc.json'
+import { initialRunState, reduce, reduceAll, type RunEvent } from './reduce'
+import type { RunState } from './reduce'
+
+const recorded = fixture.events as unknown as RunEvent[]
+
+function event(
+  sequence: number,
+  event_type: string,
+  pipeline: string,
+  payload: object = {},
+  t_ms = sequence,
+): RunEvent {
+  return {
+    event_id: `e${sequence}`,
+    timestamp: '2026-01-01T10:00:00+00:00',
+    run_id: 'RUN-TEST',
+    pipeline,
+    event_type,
+    t_ms,
+    payload,
+    sequence,
+  } as unknown as RunEvent
+}
+
+const CANCELLED = {
+  error_code: 'CANCELLED',
+  message: 'The run was cancelled.',
+  retryable: true,
+}
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value === 'object' && value !== null) {
+    Object.values(value).forEach(deepFreeze)
+    Object.freeze(value)
+  }
+  return value
+}
+
+function firstPayload<T extends RunEvent['event_type']>(
+  type: T,
+): Extract<RunEvent, { event_type: T }>['payload'] {
+  const found = recorded.find((e) => e.event_type === type)
+  if (found === undefined) throw new Error(`the fixture has no ${type}`)
+  // The find above matched the type argument, so the payload has its shape.
+  return found.payload as never
+}
+
+const count = (type: string, pipeline?: string) =>
+  recorded.filter(
+    (e) => e.event_type === type && (pipeline ? e.pipeline === pipeline : true),
+  ).length
+
+describe('the recorded run', () => {
+  const state = reduceAll(recorded)
+
+  it('completes every pipeline and the run', () => {
+    expect(state.status).toBe('completed')
+    expect(state.error).toBeNull()
+    expect(state.lastSequence).toBe(recorded.at(-1)?.sequence)
+    for (const id of ['A', 'B', 'C'] as const) {
+      expect(state.pipelines[id].status).toBe('completed')
+      expect(state.pipelines[id].error).toBeNull()
+    }
+    expect(state.unknown).toEqual({ count: 0, events: [] })
+  })
+
+  it('keeps pipeline A candidates, selection and discards as the events gave them', () => {
+    const a = state.pipelines.A
+    expect(a.candidates).toHaveLength(count('rag.candidate.retrieved'))
+    expect(a.selected).toHaveLength(count('rag.evidence.selected'))
+    expect(a.discarded).toHaveLength(count('rag.evidence.discarded'))
+    expect(a.candidates.every((c) => c.rerankScore !== null)).toBe(true)
+    const first = firstPayload('rag.candidate.retrieved')
+    expect(a.candidates[0]).toMatchObject({
+      id: first.chunk_id,
+      similarity: first.similarity,
+    })
+  })
+
+  it('walks the stages of A and of the graph pipelines in order', () => {
+    expect(Object.keys(state.pipelines.A.stages)).toEqual([
+      'embedding',
+      'search',
+      'rerank',
+      'context',
+      'generation',
+    ])
+    expect(Object.keys(state.pipelines.C.stages)).toEqual([
+      'resolution',
+      'traversal',
+      'rerank',
+      'context',
+      'generation',
+    ])
+    for (const id of ['A', 'B', 'C'] as const) {
+      for (const stage of Object.values(state.pipelines[id].stages)) {
+        expect(stage?.status).toBe('completed')
+        expect(stage?.endedMs).toBeGreaterThanOrEqual(
+          stage?.startedMs ?? Infinity,
+        )
+      }
+    }
+  })
+
+  it('records each answer from its generation event', () => {
+    const first = firstPayload('rag.generation.completed')
+    expect(state.pipelines.A.answer).toEqual({
+      model: first.model,
+      latencyMs: first.latency_ms,
+      contextTokens: first.context_tokens,
+      verdict: first.verdict,
+      citedBlocks: first.cited_blocks,
+    })
+    expect(state.pipelines.B.answer).not.toBeNull()
+    expect(state.pipelines.C.answer).not.toBeNull()
+  })
+
+  it('gives B and C a graph with every discovered node, edge and outcome', () => {
+    for (const id of ['B', 'C'] as const) {
+      const graph = state.graph[id]
+      const discovered = new Set(
+        recorded
+          .filter(
+            (e) =>
+              e.pipeline === id && e.event_type === 'graph.node.discovered',
+          )
+          .map((e) =>
+            e.event_type === 'graph.node.discovered' ? e.payload.node_id : '',
+          ),
+      )
+      const seeds = recorded.filter(
+        (e) => e.pipeline === id && e.event_type === 'graph.seed.selected',
+      )
+      expect(graph.relationships).toHaveLength(
+        count('graph.relationship.traversed', id),
+      )
+      expect(graph.entities).toHaveLength(count('graph.entity.resolved', id))
+      expect(graph.concepts).toHaveLength(count('graph.ontology.expanded', id))
+      expect(graph.nodes.filter((n) => n.seed)).toHaveLength(seeds.length)
+      for (const node of graph.nodes) {
+        if (!node.seed) expect(discovered.has(node.id)).toBe(true)
+      }
+      const nodeOutcome = (type: string) =>
+        recorded.filter(
+          (e) =>
+            e.pipeline === id &&
+            e.event_type === type &&
+            'node_id' in (e.payload as object),
+        ).length
+      expect(graph.nodes.filter((n) => n.outcome === 'selected')).toHaveLength(
+        nodeOutcome('graph.candidate.selected'),
+      )
+      expect(graph.nodes.filter((n) => n.outcome === 'discarded')).toHaveLength(
+        nodeOutcome('graph.candidate.discarded'),
+      )
+    }
+    expect(state.graph.B.concepts).toEqual([])
+    expect(state.graph.C.concepts.length).toBeGreaterThan(0)
+  })
+
+  it('keeps document outcomes of the graph pipelines beside the node outcomes', () => {
+    const c = state.pipelines.C
+    const chunkEvents = (type: string) =>
+      recorded.filter(
+        (e) =>
+          e.pipeline === 'C' &&
+          e.event_type === type &&
+          'chunk_id' in (e.payload as object),
+      ).length
+    const nodeEvents = (type: string) => count(type, 'C') - chunkEvents(type)
+    expect(c.selected).toHaveLength(count('graph.candidate.selected', 'C'))
+    expect(c.discarded).toHaveLength(count('graph.candidate.discarded', 'C'))
+    expect(c.selected.filter((s) => s.kind === 'node')).toHaveLength(
+      nodeEvents('graph.candidate.selected'),
+    )
+    expect(c.candidates).toHaveLength(count('graph.candidate.reranked', 'C'))
+  })
+})
+
+describe('resuming', () => {
+  it('a resumed stream state equals the uninterrupted one', () => {
+    const cut = 7
+    const resumed = reduceAll([
+      ...recorded.slice(0, cut),
+      ...recorded.slice(cut - 2),
+    ])
+    expect(resumed).toEqual(reduceAll(recorded))
+  })
+
+  it('ignores an event at or below the last sequence, returning the same state', () => {
+    const state = reduceAll(recorded.slice(0, 20))
+    expect(reduce(state, recorded[19])).toBe(state)
+    expect(reduce(state, recorded[3])).toBe(state)
+  })
+
+  it('never mutates the state it is given', () => {
+    const state = deepFreeze(reduceAll(recorded.slice(0, 30)))
+    expect(() => recorded.slice(30).reduce(reduce, state)).not.toThrow()
+  })
+})
+
+describe('lifecycle events', () => {
+  it('a terminal event ends the run: a cancelled pipeline stays cancelled and unstarted ones are skipped', () => {
+    const state = reduceAll([
+      event(1, 'run.started', 'run'),
+      event(2, 'pipeline.started', 'A'),
+      event(3, 'pipeline.completed', 'A'),
+      event(4, 'pipeline.started', 'B'),
+      event(5, 'pipeline.cancelled', 'B', CANCELLED),
+      event(6, 'run.cancelled', 'run', CANCELLED),
+    ])
+    expect(state.status).toBe('cancelled')
+    expect(state.error).toEqual(CANCELLED)
+    expect(state.pipelines.A.status).toBe('completed')
+    expect(state.pipelines.B.status).toBe('cancelled')
+    expect(state.pipelines.B.error).toEqual(CANCELLED)
+    expect(state.pipelines.C.status).toBe('skipped')
+  })
+
+  it('a failure marks the pipeline and the run failed with the envelope', () => {
+    const failure = {
+      error_code: 'MODEL_ERROR',
+      message: 'The language model could not produce an answer.',
+      retryable: true,
+    }
+    const state = reduceAll([
+      event(1, 'run.started', 'run'),
+      event(2, 'pipeline.started', 'A'),
+      event(3, 'pipeline.failed', 'A', failure),
+      event(4, 'run.failed', 'run', failure),
+    ])
+    expect(state.status).toBe('failed')
+    expect(state.error).toEqual(failure)
+    expect(state.pipelines.A).toMatchObject({
+      status: 'failed',
+      error: failure,
+    })
+    expect(state.pipelines.B.status).toBe('skipped')
+    expect(state.pipelines.C.status).toBe('skipped')
+  })
+
+  it('starts pending and running before any pipeline event', () => {
+    expect(initialRunState().status).toBe('pending')
+    expect(
+      reduce(initialRunState(), event(1, 'run.started', 'run')).status,
+    ).toBe('running')
+  })
+})
+
+describe('unknown events', () => {
+  it('are kept, counted and listed, and still advance the sequence', () => {
+    const odd = event(2, 'rag.invented.event', 'A', { note: 'x' })
+    const state = reduceAll([
+      event(1, 'run.started', 'run'),
+      odd,
+      event(3, 'pipeline.started', 'A'),
+    ])
+    expect(state.unknown.count).toBe(1)
+    expect(state.unknown.events).toEqual([
+      {
+        sequence: 2,
+        event_type: 'rag.invented.event',
+        pipeline: 'A',
+        payload: { note: 'x' },
+      },
+    ])
+    expect(state.lastSequence).toBe(3)
+    expect(state.pipelines.A.status).toBe('running')
+  })
+
+  it('include a known type sent under a pipeline it cannot belong to', () => {
+    const state = reduce(
+      initialRunState(),
+      event(1, 'graph.seed.selected', 'A', { node_id: 'X' }),
+    )
+    expect(state.unknown.count).toBe(1)
+    expect(state.graph.B.nodes).toEqual([])
+  })
+})
+
+describe('graph outcomes', () => {
+  const state: RunState = reduceAll([
+    event(1, 'graph.entity.resolved', 'B', {
+      entity_id: 'INC_1',
+      node_label: 'Incident',
+      origin: 'id',
+      matched_text: 'INC_1',
+      via_concept: null,
+      confidence: 1,
+    }),
+    event(2, 'graph.seed.selected', 'B', { node_id: 'INC_1' }),
+    event(3, 'graph.node.discovered', 'B', {
+      node_id: 'PLT_1',
+      node_label: 'Platform',
+      hop: 1,
+    }),
+    event(4, 'graph.node.discovered', 'B', {
+      node_id: 'PLT_1',
+      node_label: 'Platform',
+      hop: 2,
+    }),
+    event(5, 'graph.candidate.selected', 'B', {
+      node_id: 'INC_1',
+      score: 0.9,
+      rerank_score: 0.8,
+      hops: 0,
+      seed: true,
+      weight_graph_distance: 1,
+      weight_relationship_type: 1,
+      weight_semantic_relevance: 1,
+      weight_temporal_validity: 1,
+    }),
+    event(6, 'graph.candidate.discarded', 'B', {
+      node_id: 'PLT_1',
+      score: 0.2,
+      rerank_score: null,
+      hops: 1,
+      seed: false,
+      reason: 'out_of_scope_market',
+    }),
+  ])
+
+  it('mark a seed, keep a node once at its first hop, and record the outcome', () => {
+    expect(state.graph.B.nodes).toEqual([
+      {
+        id: 'INC_1',
+        label: 'Incident',
+        hop: 0,
+        seed: true,
+        viaConcept: null,
+        outcome: 'selected',
+        reason: null,
+        score: 0.9,
+        rerankScore: 0.8,
+      },
+      {
+        id: 'PLT_1',
+        label: 'Platform',
+        hop: 1,
+        seed: false,
+        viaConcept: null,
+        outcome: 'discarded',
+        reason: 'out_of_scope_market',
+        score: 0.2,
+        rerankScore: null,
+      },
+    ])
+  })
+})
