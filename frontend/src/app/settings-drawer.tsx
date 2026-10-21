@@ -8,21 +8,9 @@ import { useState } from 'react'
 import { getDataset, getModels, getOntology, listDatasets } from '../api/client'
 import { Drawer } from '../components/drawer'
 import { Panel } from '../components/panel'
+import { MODEL_LABELS, REACHABLE } from './settings-labels'
 import { useLoad } from './use-load'
 import { NODE_CAP_MAX, NODE_CAP_MIN, useSettings } from './use-settings'
-
-const MODEL_LABELS = {
-  generation: 'Answer model',
-  embedding: 'Embedding model',
-  rerank: 'Re-ordering model',
-  sparse: 'Keyword search model',
-} as const
-
-const REACHABLE = {
-  true: 'Reachable',
-  false: 'Not reachable',
-  null: 'Not checked',
-} as const
 
 async function loadSettings(signal: AbortSignal) {
   const active = (await listDatasets(signal)).find((dataset) => dataset.active)

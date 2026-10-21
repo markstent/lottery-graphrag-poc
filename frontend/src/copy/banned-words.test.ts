@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest'
 import { datasetName, plainName, plainValue } from '../app/plain-words'
 import { EVIDENCE_STATES } from '../design/evidence-states'
 import { NODE_LABELS, countedLabel, nodeLabel } from '../design/node-labels'
+import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
 import {
   RELATIONSHIP_PHRASES,
@@ -54,27 +55,19 @@ const COPY_ATTRIBUTES = new Set([
 ])
 
 /**
- * Files that Phase 6 deletes or rewrites. They still carry v1 copy and are
- * skipped by the scan until then. A test fails if a listed file is gone, so
- * the list cannot outlive the files.
+ * Files that Phase 6 deletes or rewrites and that still carry banned v1 copy.
+ * They are skipped by the scan until then. Tests fail if a listed file is gone
+ * or no longer has a hit, so the list shrinks as files are cleaned.
  */
 export const PHASE6_REWRITES = [
   'views/live-lab.tsx',
-  'views/results-dashboard.tsx',
   'views/data-dictionary.tsx',
   'views/help.tsx',
   'views/experiment-home.tsx',
-  'views/v1-graph-pane.tsx',
   'views/v1-evidence-inspector.tsx',
   'components/rag-pane.tsx',
   'components/score-strip.tsx',
-  'components/timeline.tsx',
-  'components/doc.tsx',
-  'components/answer-block.tsx',
   'mock/content.ts',
-  'mock/evidence.ts',
-  'mock/telemetry.ts',
-  'api/backend-run.ts',
 ] as const
 
 const isStringLike = (node: ts.Node): node is ts.StringLiteralLike =>
@@ -258,6 +251,16 @@ describe('copy scan', () => {
     expect(hits).toEqual([])
   })
 
+  it('only excludes files that still have banned copy', () => {
+    const clean = PHASE6_REWRITES.filter(
+      (file) =>
+        !copyIn(sources[`/src/${file}`] ?? '', file).some((copy) =>
+          violation(copy.text),
+        ),
+    )
+    expect(clean).toEqual([])
+  })
+
   it('only excludes files that still exist', () => {
     const existing = new Set(Object.keys(sources).map(relative))
     expect(PHASE6_REWRITES.filter((file) => !existing.has(file))).toEqual([])
@@ -278,6 +281,8 @@ describe('generated copy', () => {
     ...Object.values(EVIDENCE_STATES).map((state) => state.label),
     ...PIPELINES.flatMap((pipeline) => [pipeline.name, pipeline.label]),
     ...['dev-seed2026', 'dev-seed2027', 'dev-seed2028'].map(datasetName),
+    ...Object.values(MODEL_LABELS),
+    ...Object.values(REACHABLE),
     plainName('affected_systems'),
     plainValue({ affectedSystems: ['a', null], note: 'ok' }),
     // Relationship types in the graph schema that have no phrase of their own.
