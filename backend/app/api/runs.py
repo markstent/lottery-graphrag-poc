@@ -35,6 +35,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
 
+from pydantic import ValidationError
+
 from app.api.benchmarks import presentation_bank
 from app.api.errors import (
     CANCELLED_BODY,
@@ -45,6 +47,7 @@ from app.api.errors import (
     classify,
     run_error_body,
 )
+from app.api.event_schemas import RecordedEvent
 from app.api.graph_world import GraphLease, GraphWorldCheck, LeaseHold
 from app.api.schemas import QueryRequest
 from app.api.scoring import (
@@ -131,6 +134,11 @@ class RunCancelled(Exception):
     """Raised by ``RecordingSink.emit`` once the run's cancel flag is set."""
 
 
+class EventPayloadError(Exception):
+    """An event's payload does not match its declared model (a defect in the
+    emitter); the run fails rather than store an event the API cannot serve."""
+
+
 class RecordingSink(EventSink):
     """Stores each event of one run as it is emitted and wakes its waiters.
 
@@ -158,11 +166,27 @@ class RecordingSink(EventSink):
         self.record(event)
 
     def record(self, event: RetrievalEvent) -> None:
+        self._check_payload(event)
         sequence = self.store.append_event(self.run_id, {**event.as_dict(), "run_id": self.run_id})
         with self._condition:
             self._last_sequence = sequence
             self._condition.notify_all()
         self._time_stage(event)
+
+    def _check_payload(self, event: RetrievalEvent) -> None:
+        """Refuse to store an event that does not validate as the API serves
+        it. The details are logged; the run fails with the curated RUN_ERROR."""
+        try:
+            RecordedEvent.model_validate(
+                {**event.as_dict(), "run_id": self.run_id, "sequence": self._last_sequence + 1}
+            )
+        except ValidationError as error:
+            logger.error(
+                "event does not match its payload model; failing the run",
+                exc_info=error,
+                extra={"event_type": event.event_type, "pipeline": event.pipeline},
+            )
+            raise EventPayloadError(event.event_type) from error
 
     def wait(self, after: int, timeout: float) -> bool:
         """Whether, within ``timeout``, an event with a sequence above

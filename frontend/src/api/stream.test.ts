@@ -13,6 +13,9 @@ import {
   RECONNECT_DELAY_MS,
   subscribeRun,
   type EventSourceLike,
+  type RunEvent,
+  type RunStreamHandlers,
+  type RunStreamOptions,
 } from './stream'
 
 class FakeEventSource implements EventSourceLike {
@@ -70,19 +73,31 @@ class FakeEventSource implements EventSourceLike {
 
 const latest = () => FakeEventSource.instances.at(-1) as FakeEventSource
 
-function subscribe(after?: number) {
+function subscribe(
+  after?: number,
+  loadEvents?: RunStreamOptions['loadEvents'],
+) {
   const seen: number[] = []
+  const types: string[] = []
   const handlers = {
-    onEvent: vi.fn((event: { sequence: number }) => seen.push(event.sequence)),
-    onEnd: vi.fn(),
-    onError: vi.fn(),
+    onEvent: vi.fn<RunStreamHandlers['onEvent']>((event) => {
+      seen.push(event.sequence)
+      types.push(event.event_type)
+    }),
+    onEnd: vi.fn<RunStreamHandlers['onEnd']>(),
+    onError: vi.fn<RunStreamHandlers['onError']>(),
   }
-  const stop = subscribeRun('RUN-1', handlers as never, {
+  const stop = subscribeRun('RUN-1', handlers, {
     after,
     eventSource: FakeEventSource,
+    loadEvents,
   })
-  return { handlers, seen, stop }
+  return { handlers, seen, types, stop }
 }
+
+/** A stored event as the replay route gives it (only what the stream reads). */
+const stored = (sequence: number, event_type: string) =>
+  ({ sequence, event_type, payload: {} }) as unknown as RunEvent
 
 beforeEach(() => {
   FakeEventSource.instances = []
@@ -197,5 +212,60 @@ describe('subscribeRun', () => {
     expect(error).toBeInstanceOf(ApiError)
     expect(error.retryable).toBe(false)
     expect(handlers.onEvent).not.toHaveBeenCalled()
+  })
+
+  it('fills a gap from the stored events, unknown types included, before the frame', async () => {
+    let release: (value: { events: RunEvent[] }) => void = () => {}
+    const loadEvents = vi.fn(
+      () =>
+        new Promise<{ events: RunEvent[] }>((resolve) => {
+          release = resolve
+        }),
+    )
+    const { handlers, seen, types } = subscribe(undefined, loadEvents)
+    latest().frame(1, 'run.started')
+    latest().frame(4, 'pipeline.completed') // 2 and 3 never reached a listener
+    latest().frame(5, 'run.completed') // arrives while the gap is being read
+    await vi.advanceTimersByTimeAsync(0)
+    expect(seen).toEqual([1])
+    expect(loadEvents).toHaveBeenCalledExactlyOnceWith('RUN-1')
+
+    release({
+      events: [
+        stored(1, 'run.started'),
+        stored(2, 'pipeline.started'),
+        stored(3, 'rag.invented.event'),
+        stored(4, 'pipeline.completed'),
+      ],
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(seen).toEqual([1, 2, 3, 4, 5])
+    expect(types[2]).toBe('rag.invented.event')
+    expect(handlers.onEnd).toHaveBeenCalledTimes(1)
+    expect(loadEvents).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports an ApiError when the missing range cannot be read', async () => {
+    const loadEvents = vi.fn(() =>
+      Promise.reject(new ApiError('NOT_FOUND', 'Run not found.', false, 404)),
+    )
+    const { handlers, seen } = subscribe(undefined, loadEvents)
+    latest().frame(1, 'run.started')
+    latest().frame(3, 'pipeline.started')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(seen).toEqual([1])
+    expect(handlers.onError).toHaveBeenCalledTimes(1)
+    expect(handlers.onError.mock.calls[0][0]).toMatchObject({
+      code: 'NOT_FOUND',
+    })
+    expect(latest().closed).toBe(true)
+  })
+
+  it('does not read anything while the frames follow one another', () => {
+    const loadEvents = vi.fn()
+    subscribe(undefined, loadEvents)
+    latest().frame(1, 'run.started')
+    latest().frame(2, 'pipeline.started')
+    expect(loadEvents).not.toHaveBeenCalled()
   })
 })

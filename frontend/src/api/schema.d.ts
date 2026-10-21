@@ -890,8 +890,11 @@ export interface components {
             event_type: "graph.candidate.discarded";
             /** Payload */
             payload: components["schemas"]["GraphNodeDiscarded"] | components["schemas"]["GraphChunkDiscarded"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -925,8 +928,11 @@ export interface components {
              */
             event_type: "graph.candidate.reranked";
             payload: components["schemas"]["GraphCandidateReranked"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -947,8 +953,11 @@ export interface components {
             event_type: "graph.candidate.selected";
             /** Payload */
             payload: components["schemas"]["GraphNodeSelected"] | components["schemas"]["GraphChunkSelected"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1000,8 +1009,11 @@ export interface components {
              */
             event_type: "graph.context.assembled";
             payload: components["schemas"]["GraphContextAssembled"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1028,8 +1040,11 @@ export interface components {
              */
             event_type: "graph.entity_resolution.started";
             payload: components["schemas"]["GraphEntityResolutionStarted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1073,8 +1088,11 @@ export interface components {
              */
             event_type: "graph.entity.resolved";
             payload: components["schemas"]["GraphEntityResolved"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1145,8 +1163,11 @@ export interface components {
              */
             event_type: "graph.evidence_path.completed";
             payload: components["schemas"]["GraphEvidencePathCompleted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1166,8 +1187,11 @@ export interface components {
              */
             event_type: "graph.generation.completed";
             payload: components["schemas"]["GenerationCompleted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1187,8 +1211,11 @@ export interface components {
              */
             event_type: "graph.generation.started";
             payload: components["schemas"]["ModelStarted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1237,8 +1264,11 @@ export interface components {
              */
             event_type: "graph.node.discovered";
             payload: components["schemas"]["GraphNodeDiscovered"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1286,8 +1316,11 @@ export interface components {
              */
             event_type: "graph.ontology.expanded";
             payload: components["schemas"]["GraphOntologyExpanded"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1314,8 +1347,11 @@ export interface components {
              */
             event_type: "graph.query.expanded";
             payload: components["schemas"]["GraphQueryExpanded"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1348,8 +1384,11 @@ export interface components {
              */
             event_type: "graph.relationship.traversed";
             payload: components["schemas"]["GraphRelationshipTraversed"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1369,8 +1408,11 @@ export interface components {
              */
             event_type: "graph.rerank.started";
             payload: components["schemas"]["RerankStarted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1441,8 +1483,11 @@ export interface components {
              */
             event_type: "graph.seed.selected";
             payload: components["schemas"]["GraphSeedSelected"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1499,8 +1544,11 @@ export interface components {
              */
             event_type: "graph.traversal.started";
             payload: components["schemas"]["GraphTraversalStarted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1690,8 +1738,11 @@ export interface components {
              */
             event_type: "pipeline.cancelled";
             payload: components["schemas"]["ErrorPayload"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1711,8 +1762,11 @@ export interface components {
              */
             event_type: "pipeline.completed";
             payload: components["schemas"]["Empty"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1732,8 +1786,11 @@ export interface components {
              */
             event_type: "pipeline.failed";
             payload: components["schemas"]["ErrorPayload"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1764,8 +1821,11 @@ export interface components {
              */
             event_type: "pipeline.started";
             payload: components["schemas"]["Empty"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -1989,8 +2049,11 @@ export interface components {
              */
             event_type: "rag.candidate.reranked";
             payload: components["schemas"]["RagCandidateReranked"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2025,8 +2088,11 @@ export interface components {
              */
             event_type: "rag.candidate.retrieved";
             payload: components["schemas"]["RagCandidateRetrieved"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2057,8 +2123,11 @@ export interface components {
              */
             event_type: "rag.context.assembled";
             payload: components["schemas"]["RagContextAssembled"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2085,8 +2154,11 @@ export interface components {
              */
             event_type: "rag.embedding.completed";
             payload: components["schemas"]["RagEmbeddingCompleted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2106,8 +2178,11 @@ export interface components {
              */
             event_type: "rag.embedding.started";
             payload: components["schemas"]["ModelStarted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2137,8 +2212,11 @@ export interface components {
              */
             event_type: "rag.evidence.discarded";
             payload: components["schemas"]["RagEvidenceDiscarded"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2165,8 +2243,11 @@ export interface components {
              */
             event_type: "rag.evidence.selected";
             payload: components["schemas"]["RagEvidenceSelected"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2186,8 +2267,11 @@ export interface components {
              */
             event_type: "rag.generation.completed";
             payload: components["schemas"]["GenerationCompleted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2207,8 +2291,11 @@ export interface components {
              */
             event_type: "rag.generation.started";
             payload: components["schemas"]["ModelStarted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2235,8 +2322,11 @@ export interface components {
              */
             event_type: "rag.query.received";
             payload: components["schemas"]["RagQueryReceived"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2256,8 +2346,11 @@ export interface components {
              */
             event_type: "rag.rerank.started";
             payload: components["schemas"]["RerankStarted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2299,8 +2392,11 @@ export interface components {
              */
             event_type: "rag.vector_search.started";
             payload: components["schemas"]["RagVectorSearchStarted"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2404,8 +2500,11 @@ export interface components {
              */
             event_type: "run.cancelled";
             payload: components["schemas"]["ErrorPayload"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2425,8 +2524,11 @@ export interface components {
              */
             event_type: "run.completed";
             payload: components["schemas"]["Empty"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2446,8 +2548,11 @@ export interface components {
              */
             event_type: "run.failed";
             payload: components["schemas"]["ErrorPayload"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */
@@ -2478,8 +2583,11 @@ export interface components {
              */
             event_type: "run.started";
             payload: components["schemas"]["Empty"];
-            /** Pipeline */
-            pipeline: string;
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
             /** Run Id */
             run_id: string;
             /** Sequence */

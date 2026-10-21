@@ -262,6 +262,9 @@ It also closes, with no further frame, when the run is no longer active and has 
 Every event type has one payload model in `backend/app/events/payloads.py`, and `RecordedEvent` (`backend/app/api/event_schemas.py`) is a union discriminated on `event_type`.
 The OpenAPI contract therefore carries the payload of every event, and the frontend reads its types from the generated `schema.d.ts`.
 Pipelines still emit plain dicts; the models forbid unknown fields, so an emitter that adds a field without declaring it fails `backend/tests/test_event_payloads.py`.
+The run's recording sink validates every event before storing it: an event that does not match its model fails the run (`run.failed`, `RUN_ERROR`, details in the log).
+The replay route answers a stored event that no longer validates with a 500 `RUN_ERROR` ("This run was stored by an older version and cannot be shown."), and the stream logs it and closes.
+The envelope forbids unknown fields, and `pipeline` is one of `A`, `B`, `C` or `run`.
 `graph.candidate.selected` and `graph.candidate.discarded` are either a node event (`node_id`) or a document event (`chunk_id`).
 
 ### Run lifecycle events

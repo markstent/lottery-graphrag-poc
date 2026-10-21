@@ -11,12 +11,14 @@ before it returns (ADR-007's per-thread rule).
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Query, Request
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 
 from app.api.benchmarks import presentation_bank
 from app.api.errors import ApiError, ErrorCode
@@ -37,6 +39,9 @@ from app.api.schemas import (
 from app.api.scoring import demo_questions, require_bank, score_state
 from app.api.stream import sse_frames
 from app.persistence.store import RunRow, RunStore, cursor
+
+logger = logging.getLogger(__name__)
+STORED_OLDER_MESSAGE = "This run was stored by an older version and cannot be shown."
 
 
 def query_service(request: Request) -> QueryService:
@@ -184,9 +189,15 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
             if row is None:
                 raise _unknown_run()
             events = store.events(run_id)
-        return EventStream.model_validate(
-            {"run_id": run_id, "status": row.status, "events": events}
-        )
+        try:
+            return EventStream.model_validate(
+                {"run_id": run_id, "status": row.status, "events": events}
+            )
+        except ValidationError as error:
+            logger.error(
+                "stored events do not match their models", exc_info=error, extra={"run_id": run_id}
+            )
+            raise ApiError(500, ErrorCode.RUN_ERROR, STORED_OLDER_MESSAGE) from error
 
     @router.get(
         "/queries/{run_id}/events/stream",

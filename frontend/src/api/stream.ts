@@ -8,11 +8,17 @@
  * error) is closed, so the subscription opens a new one with `?after=<last
  * sequence>`. Events at or below the last sequence are not delivered twice.
  *
+ * A frame whose sequence skips ahead means events were not delivered to a
+ * listener (a type this contract does not know, or a lost frame). The missing
+ * range is read from the replay route and handed on in order before the frame,
+ * so nothing is dropped silently.
+ *
  * A named SSE event reaches a listener only if one is registered for its name,
  * so the listeners come from the contract's event types, and a type the
  * contract does not know is not delivered here.
  */
 
+import { getRunEvents } from './client'
 import { ApiError } from './http'
 import type { components } from './schema'
 
@@ -94,6 +100,8 @@ export interface RunStreamOptions {
   /** Resume after this sequence (default: from the first event). */
   after?: number
   eventSource?: new (url: string) => EventSourceLike
+  /** Reads a run's stored events to fill a gap (default: the replay route). */
+  loadEvents?: (runId: string) => Promise<{ events: RunEvent[] }>
 }
 
 const streamUrl = (runId: string, after: number) =>
@@ -104,7 +112,11 @@ const streamUrl = (runId: string, after: number) =>
 export function subscribeRun(
   runId: string,
   handlers: RunStreamHandlers,
-  { after = 0, eventSource = EventSource }: RunStreamOptions = {},
+  {
+    after = 0,
+    eventSource = EventSource,
+    loadEvents = (id) => getRunEvents(id),
+  }: RunStreamOptions = {},
 ): () => void {
   let last = after
   let failures = 0
@@ -123,6 +135,41 @@ export function subscribeRun(
     handlers.onError(error)
   }
 
+  /** Hand one event on; a replay at or below the last sequence is ignored. */
+  const deliver = (event: RunEvent) => {
+    if (stopped || event.sequence <= last) return
+    last = event.sequence
+    handlers.onEvent(event)
+    if (TERMINAL.includes(event.event_type)) {
+      stop()
+      handlers.onEnd()
+    }
+  }
+
+  /** Frames that wait behind a gap read run in arrival order after it. */
+  let queued = 0
+  let tail: Promise<void> = Promise.resolve()
+
+  const fillGapThen = async (event: RunEvent) => {
+    if (stopped) return
+    if (event.sequence > last + 1) {
+      try {
+        const stored = await loadEvents(runId)
+        for (const missing of stored.events) {
+          if (missing.sequence < event.sequence) deliver(missing)
+        }
+      } catch (error) {
+        fail(
+          error instanceof ApiError
+            ? error
+            : new ApiError('RUN_ERROR', CONNECTION_LOST_MESSAGE, true, 0),
+        )
+        return
+      }
+    }
+    deliver(event)
+  }
+
   const onFrame = (message: MessageEvent<string>) => {
     let event: RunEvent
     try {
@@ -131,14 +178,18 @@ export function subscribeRun(
       fail(new ApiError('RUN_ERROR', UNREADABLE_MESSAGE, false, 0))
       return
     }
+    // The failure count resets only here, when a frame arrives. An `open`
+    // alone proves nothing: a server that accepts the connection and closes it
+    // at once (a run whose final write failed) would otherwise reset the count
+    // on every cycle and the subscription would reconnect for ever. Only
+    // delivered data shows that the connection works.
     failures = 0
-    if (event.sequence <= last) return
-    last = event.sequence
-    handlers.onEvent(event)
-    if (TERMINAL.includes(event.event_type)) {
-      stop()
-      handlers.onEnd()
+    if (queued === 0 && event.sequence <= last + 1) {
+      deliver(event)
+      return
     }
+    queued += 1
+    tail = tail.then(() => fillGapThen(event)).finally(() => (queued -= 1))
   }
 
   const onError = () => {

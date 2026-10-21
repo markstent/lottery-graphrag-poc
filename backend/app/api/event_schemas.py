@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 from app.events.payloads import (
     Empty,
@@ -44,10 +44,12 @@ from app.events.payloads import (
 
 
 class _Envelope(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     event_id: str
     timestamp: str
     run_id: str
-    pipeline: str
+    pipeline: Literal["A", "B", "C", "run"]
     t_ms: float
     sequence: int
 

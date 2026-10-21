@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import logging
 import threading
 from pathlib import Path
 from typing import Any, get_args
@@ -18,8 +19,10 @@ from typing import Any, get_args
 import app.api.runs as runs_module
 import app.events as events_module
 import pytest
+from app.api.errors import UNEXPECTED_MESSAGE
 from app.api.event_schemas import RecordedEvent
-from app.api.runs import QueryService
+from app.api.runs import EventPayloadError, QueryService, RecordingSink
+from app.events import RetrievalEvent
 from app.events.payloads import Payload
 from app.lab import Lab
 from app.main import create_app
@@ -28,7 +31,7 @@ from app.retrieval.standard.index import index_corpus
 from fastapi.testclient import TestClient
 
 from tests.conftest import build_lab_offline
-from tests.test_api_runs import (
+from tests.helpers import (
     GRAPH,
     FailingGenerator,
     SlowNeighbours,
@@ -43,6 +46,8 @@ from tests.test_api_runs import (
 from tests.test_graph_rag import build_corpus, scn007_adjacency
 
 GOLDEN_DIR = Path(__file__).parent / "fixtures"
+# A live-shaped run (dense and sparse ranks, rerank scores and fused scores that are null).
+FRONTEND_RUN = Path(__file__).parents[2] / "frontend" / "src" / "run" / "fixtures" / "run-abc.json"
 ENVELOPE = {
     "event_id": "0" * 32,
     "timestamp": "2026-01-01T10:00:00+00:00",
@@ -162,6 +167,59 @@ def test_every_stored_event_of_a_real_run_validates_against_its_model(
         service.store.close()
     assert {"pipeline.cancelled", "run.cancelled"} <= seen
 
+    # The run captured through the API for the frontend, with the nulls a live run has.
+    recorded = json.loads(FRONTEND_RUN.read_text())["events"]
+    assert len(recorded) > 700
+    seen |= validate(recorded)
+
     # The golden graph streams reach the events SCN-007 does not.
     seen |= validate(golden_events())
     assert seen == event_type_constants()
+
+
+def test_the_sink_refuses_to_store_an_event_that_does_not_validate(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    store = RunStore(tmp_path / "runs.db", retention=50)
+    sink = RecordingSink(store, "RUN-BAD", threading.Event())
+    bad = RetrievalEvent(
+        event_type="rag.embedding.started",
+        pipeline="A",
+        t_ms=1.0,
+        event_id="0" * 32,
+        timestamp="2026-01-01T10:00:00+00:00",
+        payload={"model": "m", "undeclared": 1},
+    )
+    try:
+        with caplog.at_level(logging.ERROR), pytest.raises(EventPayloadError):
+            sink.emit(bad)
+        assert store.events("RUN-BAD") == []
+        (logged,) = [r for r in caplog.records if r.name == "app.api.runs"]
+        assert getattr(logged, "event_type", None) == "rag.embedding.started"
+        assert logged.exc_info is not None
+    finally:
+        store.close()
+
+
+def test_a_run_whose_emitter_breaks_its_model_fails_with_a_curated_run_error(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(runs_module, "PIPELINE_STARTED", "pipeline.invented")
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as client:
+        with caplog.at_level(logging.ERROR):
+            run = run_to_completion(client, configurations=["A"])
+        wait_idle(client)
+    assert run["results"]["status"] == "failed"
+    envelope = {
+        "error_code": "RUN_ERROR",
+        "message": UNEXPECTED_MESSAGE,
+        "retryable": False,
+    }
+    assert run["results"]["error"] == envelope
+    assert [e["event_type"] for e in run["events"]] == ["run.started", "run.failed"]
+    assert run["events"][-1]["payload"] == envelope
+    assert "pipeline.invented" not in json.dumps(run["events"])
+    assert any(
+        "payload model" in r.getMessage() and getattr(r, "event_type", "") == "pipeline.invented"
+        for r in caplog.records
+    )

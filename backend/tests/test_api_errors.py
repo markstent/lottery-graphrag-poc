@@ -22,7 +22,8 @@ from app.retrieval.standard.vector_store import VectorStoreError
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from tests.test_api_runs import GRAPH, await_finished, lab, start  # noqa: F401
+from tests.helpers import GRAPH, await_finished, start
+from tests.test_api_runs import lab  # noqa: F401
 from tests.test_standard_rag import make_settings
 
 

@@ -34,7 +34,8 @@ export type Stage =
   | 'generation'
 
 export interface StageState {
-  status: 'running' | 'completed'
+  /** `failed` and `cancelled` mark a stage the run ended while it was running. */
+  status: 'running' | 'completed' | 'failed' | 'cancelled'
   /** The event's `t_ms` when the stage began and ended (null while running). */
   startedMs: number
   endedMs: number | null
@@ -238,15 +239,39 @@ function assembled(
   }
 }
 
+/** End every stage still running at `t` with the status that ended it. */
+function endStages(
+  pipeline: PipelineState,
+  t: number,
+  status: 'completed' | 'failed' | 'cancelled',
+): PipelineState {
+  const stages = { ...pipeline.stages }
+  for (const [name, stage] of Object.entries(stages) as [Stage, StageState][]) {
+    if (stage.status === 'running')
+      stages[name] = { ...stage, status, endedMs: t }
+  }
+  return { ...pipeline, stages }
+}
+
+/**
+ * The run's end. Stages still running end with the terminal event. A pipeline
+ * that never started is `skipped`, except in an interrupted run, where the
+ * server marks it `failed` (the start-up repair in `end_unfinished_run`).
+ */
 function finishRun(
   state: RunState,
-  status: RunStatus,
+  status: 'completed' | 'failed' | 'cancelled',
   error: ErrorPayload | null,
+  t: number,
 ): RunState {
+  const interrupted = status === 'failed' && error?.error_code === 'INTERRUPTED'
   const pipelines = { ...state.pipelines }
   for (const id of PIPELINE_IDS) {
-    if (pipelines[id].status === 'pending')
-      pipelines[id] = { ...pipelines[id], status: 'skipped' }
+    const ended = endStages(pipelines[id], t, status)
+    pipelines[id] =
+      ended.status === 'pending'
+        ? { ...ended, status: interrupted ? 'failed' : 'skipped' }
+        : ended
   }
   return { ...state, status, error, pipelines }
 }
@@ -399,11 +424,11 @@ function apply(state: RunState, event: RunEvent): RunState {
     case 'run.started':
       return { ...state, status: 'running' }
     case 'run.completed':
-      return finishRun(state, 'completed', null)
+      return finishRun(state, 'completed', null, t)
     case 'run.failed':
-      return finishRun(state, 'failed', event.payload)
+      return finishRun(state, 'failed', event.payload, t)
     case 'run.cancelled':
-      return finishRun(state, 'cancelled', event.payload)
+      return finishRun(state, 'cancelled', event.payload, t)
   }
   if (!isPipeline(id)) return unknownEvent(state, event)
   switch (event.event_type) {
@@ -413,13 +438,13 @@ function apply(state: RunState, event: RunEvent): RunState {
       return updatePipeline(state, id, (p) => ({ ...p, status: 'completed' }))
     case 'pipeline.failed':
       return updatePipeline(state, id, (p) => ({
-        ...p,
+        ...endStages(p, t, 'failed'),
         status: 'failed',
         error: event.payload,
       }))
     case 'pipeline.cancelled':
       return updatePipeline(state, id, (p) => ({
-        ...p,
+        ...endStages(p, t, 'cancelled'),
         status: 'cancelled',
         error: event.payload,
       }))

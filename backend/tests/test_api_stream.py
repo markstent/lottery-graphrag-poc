@@ -444,3 +444,49 @@ def test_a_streamed_response_carries_the_request_id_and_its_logs_do_too(
     assert [event["sequence"] for event in parse(text)] == [1, 2, 3]
     (logged,) = [r for r in caplog.records if r.name == "app.api.stream"]
     assert logged.context["request_id"] == "stream-request-1"  # type: ignore[attr-defined]
+
+
+# -- stored events that no longer validate --------------------------------------
+
+
+@pytest.fixture
+def invalid_run_id(run_database: Path) -> str:
+    """A run whose stored event has a payload its model rejects (an older version's)."""
+    store = RunStore(run_database, RETENTION)
+    try:
+        add_run(store, "RUN-OLDVERSION01", "completed")
+        store.append_event("RUN-OLDVERSION01", envelope("RUN-OLDVERSION01", 1, RUN_STARTED, "run"))
+        store.append_event(
+            "RUN-OLDVERSION01",
+            envelope("RUN-OLDVERSION01", 2, "rag.vector_search.started", payload={"top_k": "all"}),
+        )
+    finally:
+        store.close()
+    return "RUN-OLDVERSION01"
+
+
+def test_replay_of_an_event_that_does_not_validate_is_a_500_envelope(
+    client: TestClient, invalid_run_id: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.ERROR):
+        response = client.get(f"/api/v1/queries/{invalid_run_id}/events")
+    assert response.status_code == 500
+    assert response.json() == {
+        "error": {
+            "error_code": "RUN_ERROR",
+            "message": "This run was stored by an older version and cannot be shown.",
+            "retryable": False,
+        }
+    }
+    logged = [r for r in caplog.records if r.name == "app.api.queries" and r.exc_info]
+    assert [getattr(r, "run_id", None) for r in logged] == [invalid_run_id]
+
+
+def test_the_stream_of_an_event_that_does_not_validate_is_logged_and_closes(
+    client: TestClient, invalid_run_id: str, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.ERROR):
+        assert parsed_stream(client, invalid_run_id) == []
+    (logged,) = [r for r in caplog.records if r.name == "app.api.stream"]
+    assert getattr(logged, "run_id", None) == invalid_run_id
+    assert logged.exc_info is not None

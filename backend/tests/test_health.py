@@ -40,7 +40,7 @@ from app.retrieval.standard.vector_store import InMemoryVectorStore, VectorStore
 from fastapi.testclient import TestClient
 
 from tests.conftest import StubLiteLLM, build_lab_offline
-from tests.test_api_runs import (
+from tests.helpers import (
     DEADLINE_S,
     await_finished,
     run_to_completion,

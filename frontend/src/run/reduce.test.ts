@@ -248,6 +248,70 @@ describe('lifecycle events', () => {
     expect(state.pipelines.C.status).toBe('skipped')
   })
 
+  it('an interrupted run fails the pipelines that never started', () => {
+    const interrupted = {
+      error_code: 'INTERRUPTED',
+      message: 'The server stopped during this run.',
+      retryable: true,
+    }
+    const state = reduceAll([
+      event(1, 'run.started', 'run'),
+      event(2, 'pipeline.started', 'A'),
+      event(3, 'pipeline.completed', 'A'),
+      event(4, 'pipeline.started', 'B'),
+      event(5, 'pipeline.failed', 'B', interrupted),
+      event(6, 'run.failed', 'run', interrupted),
+    ])
+    expect(state.pipelines.A.status).toBe('completed')
+    expect(state.pipelines.B.status).toBe('failed')
+    expect(state.pipelines.C.status).toBe('failed')
+  })
+
+  it('stages still running end with the terminal event and its status', () => {
+    const running = (end: string, payload: object, status: string) => {
+      const state = reduceAll([
+        event(1, 'run.started', 'run'),
+        event(2, 'pipeline.started', 'A', {}, 10),
+        event(3, 'rag.embedding.started', 'A', { model: 'm' }, 20),
+        event(
+          4,
+          'rag.embedding.completed',
+          'A',
+          { model: 'm', dimensions: 4 },
+          30,
+        ),
+        event(5, 'rag.vector_search.started', 'A', { top_k: 4 }, 40),
+        event(6, end, 'run', payload, 90),
+      ])
+      expect(state.pipelines.A.stages.embedding).toEqual({
+        status: 'completed',
+        startedMs: 20,
+        endedMs: 30,
+      })
+      expect(state.pipelines.A.stages.search).toEqual({
+        status,
+        startedMs: 40,
+        endedMs: 90,
+      })
+    }
+    running('run.cancelled', CANCELLED, 'cancelled')
+    running('run.failed', { ...CANCELLED, error_code: 'MODEL_ERROR' }, 'failed')
+    running('run.completed', {}, 'completed')
+  })
+
+  it('a pipeline end ends its own running stages', () => {
+    const state = reduceAll([
+      event(1, 'pipeline.started', 'A', {}, 10),
+      event(2, 'rag.embedding.started', 'A', { model: 'm' }, 20),
+      event(3, 'pipeline.cancelled', 'A', CANCELLED, 55),
+    ])
+    expect(state.pipelines.A.stages.embedding).toEqual({
+      status: 'cancelled',
+      startedMs: 20,
+      endedMs: 55,
+    })
+  })
+
   it('starts pending and running before any pipeline event', () => {
     expect(initialRunState().status).toBe('pending')
     expect(

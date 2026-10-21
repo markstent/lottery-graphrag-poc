@@ -54,18 +54,18 @@ from app.retrieval.standard.pipeline import StandardRagPipeline
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 from fastapi.testclient import TestClient
 
-from tests.test_api_benchmarks import (  # noqa: F401
-    data_dir,
-    presentation_bank,
-    runs_dir,
-    tiny_bank,
-)
-from tests.test_api_runs import (
+from tests.helpers import (
     GRAPH,
     FailingGenerator,
     SlowNeighbours,
     offline_wiring,
     wait_until,
+)
+from tests.test_api_benchmarks import (  # noqa: F401
+    data_dir,
+    presentation_bank,
+    runs_dir,
+    tiny_bank,
 )
 from tests.test_benchmark_runner import indexed_lab
 from tests.test_graph_rag import scn007_adjacency
