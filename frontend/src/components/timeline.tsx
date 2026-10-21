@@ -3,7 +3,7 @@
  * (UX-LIVE-004). Selecting a row rewinds both panes to that moment.
  */
 
-import type { TimelineEntry } from '../state/use-run-playback'
+import type { TimelineEntry } from '../mock/telemetry'
 
 const STREAM_LABEL = {
   rag: 'RAG',

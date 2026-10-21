@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { MOCK_RUN, projectGraph, projectRag } from './telemetry'
+import { MOCK_RUN, mergeTimeline, projectGraph, projectRag } from './telemetry'
 
 describe('projectRag', () => {
   it('starts idle and empty', () => {
@@ -66,5 +66,17 @@ describe('projectGraph', () => {
     expect(projectGraph(MOCK_RUN.graph.slice(0, 8)).nodes.size).toBe(
       half.nodes.size,
     )
+  })
+})
+
+describe('mergeTimeline', () => {
+  it('merges streams ordered by event time', () => {
+    const timeline = mergeTimeline(MOCK_RUN)
+    expect(timeline.length).toBe(
+      MOCK_RUN.rag.length + MOCK_RUN.graph.length + MOCK_RUN.evaluation.length,
+    )
+    for (let i = 1; i < timeline.length; i += 1) {
+      expect(timeline[i].t).toBeGreaterThanOrEqual(timeline[i - 1].t)
+    }
   })
 })

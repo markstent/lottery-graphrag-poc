@@ -600,3 +600,25 @@ export function projectGraph(events: GraphEvent[]): GraphPaneState {
   }
   return state
 }
+
+export interface TimelineEntry {
+  stream: 'rag' | 'graph' | 'evaluation'
+  index: number
+  t: number
+  kind: string
+}
+
+/** The mock run's three streams merged by event time (v1 only). */
+export function mergeTimeline(run: MockRun): TimelineEntry[] {
+  const entries: TimelineEntry[] = []
+  for (const [stream, events] of [
+    ['rag', run.rag],
+    ['graph', run.graph],
+    ['evaluation', run.evaluation],
+  ] as const) {
+    events.forEach((event, i) =>
+      entries.push({ stream, index: i + 1, t: event.t, kind: event.kind }),
+    )
+  }
+  return entries.sort((a, b) => a.t - b.t || a.stream.localeCompare(b.stream))
+}

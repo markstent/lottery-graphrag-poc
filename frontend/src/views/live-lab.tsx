@@ -6,7 +6,7 @@
  * questions come from the frozen bank and are scored against the answer key.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { GraphPane } from '../components/graph-pane'
 import { LiveScoreNote } from '../components/live-score'
@@ -17,9 +17,20 @@ import { EvidenceInspector } from './evidence-explorer'
 import { useSettings } from '../app/use-settings'
 import { hrefFor } from '../app/router'
 import { DEMO_QUESTIONS } from '../mock/content'
-import { MOCK_RUN, projectGraph, projectRag } from '../mock/telemetry'
-import type { MockRun } from '../mock/telemetry'
-import { useRunPlayback } from '../state/use-run-playback'
+import {
+  MOCK_RUN,
+  mergeTimeline,
+  projectGraph,
+  projectRag,
+} from '../mock/telemetry'
+import type {
+  EvaluationEvent,
+  GraphEvent,
+  MockRun,
+  RagEvent,
+} from '../mock/telemetry'
+import type { RunEvent } from '../run/reduce'
+import { useReplay } from '../run/use-replay'
 import {
   fetchDemoQuestions,
   runBackendQuestion,
@@ -35,6 +46,79 @@ const MARKETS = [
   { code: 'AT', label: 'Austria' },
   { code: 'CZ', label: 'Czech Republic' },
 ] as const
+
+/**
+ * v1 adapter: plays a mock run on the replay clock. The mock timeline is
+ * passed as stand-in events (only `sequence` and `t_ms` are read by the
+ * clock); the clock's own run state is ignored. Phase 6 replaces this view
+ * with one driven by recorded run events, and this adapter goes with it.
+ */
+function useMockPlayback(run: MockRun, reducedMotion: boolean) {
+  const timeline = useMemo(() => mergeTimeline(run), [run])
+  const events = useMemo(
+    () =>
+      timeline.map((entry, i) => ({
+        sequence: i + 1,
+        t_ms: entry.t,
+        event_type: entry.kind,
+        pipeline: entry.stream,
+        payload: {},
+      })) as unknown as RunEvent[],
+    [timeline],
+  )
+  const replay = useReplay(events, { reducedMotion })
+  const { controls } = replay
+  const played = replay.count
+
+  const prefixes = useMemo(() => {
+    let rag = 0
+    let graph = 0
+    let evaluation = 0
+    for (const entry of timeline.slice(0, played)) {
+      if (entry.stream === 'rag') rag = entry.index
+      else if (entry.stream === 'graph') graph = entry.index
+      else evaluation = entry.index
+    }
+    return {
+      rag: run.rag.slice(0, rag) as RagEvent[],
+      graph: run.graph.slice(0, graph) as GraphEvent[],
+      evaluation: run.evaluation.slice(0, evaluation) as EvaluationEvent[],
+    }
+  }, [timeline, played, run])
+
+  const runQuestion = useCallback(() => {
+    controls.reset()
+    controls.speed(2)
+    controls.play()
+  }, [controls])
+
+  /** Show exactly the first `count` events, whatever their timestamps. */
+  const rewindTo = useCallback(
+    (count: number) => {
+      controls.pause()
+      const target = Math.max(0, Math.min(count, timeline.length))
+      controls.seek(target === 0 ? 0 : controls.offsets[target - 1])
+      while (controls.snapshot().count > target) controls.step(-1)
+    },
+    [controls, timeline.length],
+  )
+
+  const status: 'idle' | 'running' | 'done' = replay.playing
+    ? 'running'
+    : played > 0
+      ? 'done'
+      : 'idle'
+
+  return {
+    status,
+    played,
+    timeline,
+    ...prefixes,
+    scores: prefixes.evaluation.at(-1)?.scores ?? null,
+    runQuestion,
+    rewindTo,
+  }
+}
 
 export function LiveLab() {
   const settings = useSettings()
@@ -60,7 +144,7 @@ export function LiveLab() {
   }, [source, backendQuestions.length])
 
   const activeRun = source === 'backend' && liveRun ? liveRun : MOCK_RUN
-  const playback = useRunPlayback(activeRun, settings.reducedMotion)
+  const playback = useMockPlayback(activeRun, settings.reducedMotion)
 
   const ragState = projectRag(playback.rag)
   const graphState = projectGraph(playback.graph)
