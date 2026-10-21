@@ -1,76 +1,120 @@
 # Information Architecture
 
-Phase 6 artefact (HITL-06). Governing spec: docs/06-ux-spec.md; API naming: docs/07-api-event-spec.md. Low-fidelity here; high-fidelity mock-ups are the HITL-07 contract.
+This file describes the five-destination shell as built in Phase 5.
+The governing specification is section 7 of `docs/superpowers/specs/2026-10-18-overhaul-design.md`.
+It replaces the seven-screen architecture of HITL-06, which the overhaul retired.
 
-## 1. Primary navigation
+The shell is built.
+The content of each destination is still the earlier application's view until Phase 6 rebuilds it.
+This file records what the shell does today and what each destination is for.
 
-```text
-Live Lab | Experiment Home | Scenario Lab | Evidence Explorer | Benchmark | Results | Semantic Layer
-```
+## 1. Destinations
 
-- Live Lab is the default landing screen in presentation mode.
-- Settings is a global drawer (provider, model defaults, theme, reduced motion), not a primary destination.
-- Deviation from the Phase 1 nav stub: Experiment Home moves into primary navigation (docs/06 section 11 defines it as a first-class screen) and Settings becomes a drawer. The stub's single "Settings" entry could not carry experiment configuration.
+The left sidebar lists five destinations, in this order.
+Each destination is described by one sentence, taken from spec section 7.1.
+The sentence is the link's tooltip and its accessible description.
 
-## 2. Route map
+| Destination | Route          | Purpose in one sentence                                                                                   |
+| ----------- | -------------- | --------------------------------------------------------------------------------------------------------- |
+| Overview    | `#/overview`   | The verdict from the latest official run, how the three approaches differ, and a button to run a question |
+| Live Lab    | `#/live-lab`   | Run one question through all three approaches and watch them work                                         |
+| Results     | `#/results`    | Every official run, every question, every score, with intervals                                           |
+| Data Model  | `#/data-model` | What the warehouse, the graph and the ontology look like, with live counts and sample rows                |
+| Help        | `#/help`       | How it works in plain language, every benchmark question with its answer key, glossary, how to run it     |
 
-| Route | Screen | Deep link |
-|---|---|---|
-| `/lab` | Live Lab | `?run={run_id}` reopens a finished run |
-| `/experiment` | Experiment Home | `?experiment_id={experiment_id}` |
-| `/scenarios` | Scenario Lab | `?scenario_id=SCN-007` |
-| `/evidence` | Evidence Explorer | `?run={run_id}&evidence={evidence_id}` |
-| `/benchmark` | Benchmark Runner | `?benchmark_run_id={id}` |
-| `/results` | Results Dashboard | `?benchmark_run_id={id}` |
-| `/semantic` | Semantic Layer | `?concept={concept_id}` |
+Overview is the default.
+The bare address and any unknown hash open it and are rewritten to `#/overview`, so a refresh or a shared link reopens the same screen.
 
-All state needed to reconstruct a view comes from the API (experiments, runs, benchmark runs), never from in-page memory alone: every screen survives refresh and direct entry.
+Setup, Scenario Lab, Benchmark Runner and Evidence Explorer are no longer pages.
+Setup is the Settings drawer plus, from Phase 6, the Overview configuration strip.
+Scenarios live in Data Model and Help.
+Benchmark execution lives in Results.
+Evidence is a drawer.
 
-## 3. Screen inventory
+## 2. Old routes
 
-| Screen | Purpose | Primary user | Key API (docs/07) | Acceptance |
-|---|---|---|---|---|
-| Live Lab | Watch A/B/C retrieval live; ask questions | Presenter, analyst | `POST /queries`, `GET /queries/{run_id}/events` (SSE), `GET /queries/{run_id}/evidence` | UX-LIVE-001..004, UX-GRAPH-001 |
-| Experiment Home | Create/choose experiment configuration; dataset, seeds, models, budgets | Analyst | `POST /experiments`, `GET /experiments/{id}`, `POST /datasets/generate`, `GET /models` | UX-PRESENT-001 |
-| Scenario Lab | Inspect scenario catalogue; trigger deterministic world generation | Analyst (not blind mode) | `GET /scenarios`, `POST /datasets/generate`, `POST /scenarios/validate` | blind-mode truth rule |
-| Evidence Explorer | Inspect every citation: source records, graph paths, provenance | Analyst | `GET /queries/{run_id}/evidence`, `GET /graph/nodes/{id}`, `GET /graph/evidence-paths/{run_id}` | UX-EVIDENCE-001 |
-| Benchmark Runner | Run the suite; monitor progress; drill into a question | Analyst | `POST /benchmarks`, `GET /benchmarks/{id}`, `POST /benchmarks/{id}/cancel` | — |
-| Results Dashboard | A/B/C outcomes by complexity, market, evidence, efficiency, failure | Presenter, analyst | `GET /benchmarks/{id}/results` | — |
-| Semantic Layer | Explain the architecture: sources → mapping → ontology → graph → agent | Presenter | `GET /graph/nodes/{id}` | user-research question 5 |
+The routes of the earlier application redirect to the destination that took their place.
 
-Settings drawer: provider/model defaults, `GET /models/status`, reduced motion, theme. No truth-ledger surface exists anywhere in the UI (ADR-008).
+| Old route                                   | Opens      |
+| ------------------------------------------- | ---------- |
+| `#/lab`, `#/evidence`                       | Live Lab   |
+| `#/experiment`                              | Overview   |
+| `#/benchmark`                               | Results    |
+| `#/dictionary`, `#/semantic`, `#/scenarios` | Data Model |
 
-## 4. Navigation rules
+Query parameters on a route survive the redirect.
 
-- Back/forward and refresh work on every route (URL is the state owner).
-- Live Lab run deep links load replayable events; replay is client-side over stored telemetry.
-- Evidence Explorer opens as a route with the originating run in the URL, so citations from Live Lab remain shareable during a session.
-- Presentation mode changes density and chrome, never routes: the same seven screens exist, plus a fixed demo-question rail in Live Lab.
-- Help (added at HITL-11, 2026-10-10) is documentation chrome beside the
-  seven experiment screens, now two routes: `#/help` (operator and
-  presenter guide) and `#/dictionary` (data dictionary: table inventory,
-  field-level detail, graph schema and ontology catalogue with diagrams).
-  Both link back into Live Lab, Results and Semantic Layer.
-- Primary navigation is grouped and consolidated (2026-10-18 SaaS polish):
-  Experiment (`Live Lab`, `Results`, `Semantic Layer`, `Setup`) then Learn
-  (`Help`, `Data Dictionary`), separated by a divider and announced by
-  visually hidden group labels. All nine routes remain directly addressable
-  and deep-linkable; drill-down screens activate their parent tab and
-  expose explicit back-links (`Evidence Explorer` under `Live Lab`;
-  `Benchmark` under `Results` and `Setup`; `Scenario Lab` under `Setup`).
-  The Live Lab composer displays saved demo question chips (`Try:`) by
-  default so users can trigger a run in one click without entering
-  presentation mode first.
-- Blind benchmark mode hides Scenario Lab truth details (docs/06 section 12); the Scenario Lab route shows configuration but not planted specifics.
+## 3. The shell
 
-## 5. Required states per screen
+### 3.1 Header
 
-| State | Requirement |
-|---|---|
-| Loading | Skeletons match final layout; graph panes show seed placeholders, never fake activity |
-| Empty | Explicit empty copy (e.g. no benchmark results yet) with the action that creates data |
-| Error | Understandable message + retry; backend error detail preserved in logs, not in faces |
-| Disabled | Present during running operations (e.g. Run while a run is active); reasons visible on focus |
-| Presentation | Larger type, simplified chrome, fixed demo questions, reset control |
+The header carries only the product name, the active dataset, the model status, the presentation toggle and Settings.
+The product name links to Overview.
+The dataset reads in plain words, for example "dev world, 2026", and reads "No active dataset" when none is active.
+Seeds, versions and model identifiers live in Settings and, from Phase 6, in the Results reproducibility panel.
 
-Non-colour cues (icons/labels/position) accompany every status; reduced motion collapses all animation to opacity changes (docs/ux/accessibility.md).
+The model status is one button with a coloured dot and a word: Checking, Ready, Starting or Not ready.
+It opens a list of the five readiness checks, each with its own state and detail.
+The status polls every 15 seconds while something is not ready and every 60 seconds once all is ready, and pauses while the tab is hidden.
+A server that does not answer reads as Not ready, with the sentence "The server did not answer."
+
+### 3.2 Sidebar
+
+The sidebar holds the five destinations and a collapse button.
+Collapsed, it shows icons only, and each destination's name and purpose stay available as its tooltip and accessible name.
+The collapsed state is kept in the browser.
+The active destination carries a heavy left bar and bold text, so it does not rely on colour.
+
+### 3.3 Drawers
+
+Two drawers open from the right edge.
+Both trap focus while open, close with Escape or the Close button, and return focus to what opened them.
+
+| Drawer   | Opens from                               | Holds                                                                                                                                                                  |
+| -------- | ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Settings | The Settings button in the header        | Reduce motion, the visible-node cap for the graph, the world and scenario numbers, generator and ontology versions, and the model names with whether each is reachable |
+| Evidence | Any citation, evidence row or graph node | The record itself (table row or graph node properties), then where it came from                                                                                        |
+
+The evidence drawer shows loading, error with a retry, and "This node has no source record" as states of its own.
+
+### 3.4 Presentation mode
+
+Presentation mode hides the sidebar and raises the type scale by one step.
+It never changes the route.
+It lives in the address as `?present=1`, before the hash, so a reload keeps it.
+While it is on, Space plays or pauses the replay of the screen being shown, the right arrow steps it, and R resets it.
+Those keys are left alone when focus is in a field, a drawer or a pressable control.
+
+## 4. Graph canvas pages
+
+The graph canvas is drawn from recorded events only.
+It has a replay mode, where the whole run is known, and a live mode, where the graph grows with the stream.
+Every canvas is described to a screen reader by a summary of the whole view and an ordered evidence path list.
+The canvas is reachable by keyboard: Tab enters it at one node, the arrow keys move along edges, Enter opens the node in the evidence drawer, plus and minus zoom, 0 fits, and Escape moves focus on.
+
+## 5. Required states
+
+Every panel and chart defines normal, loading, empty, error and disabled states.
+
+| State    | Requirement                                                                                                |
+| -------- | ---------------------------------------------------------------------------------------------------------- |
+| Loading  | A skeleton of the content to come, or the previous render dimmed. No motion under reduced motion           |
+| Empty    | A plain sentence saying why there is nothing, and the action that creates something                        |
+| Error    | An understandable sentence, with Retry when the failure can be retried. Technical detail stays in the logs |
+| Disabled | The panel says why it is not available                                                                     |
+
+Every status has a cue besides colour: an icon, a word or a position.
+Reduced motion is honoured from the operating system setting and from the Settings drawer.
+
+## 6. Development pages
+
+Two pages exist only in development and in the end-to-end build, never in a production build.
+A test builds for production and fails if either is present.
+
+| Page               | Route         | Use                                                                                                                                                          |
+| ------------------ | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Foundation gallery | `#/__gallery` | Every primitive in every state from the committed fixtures. `?section=<id>` shows one section: tokens, evidence-states, charts, panel, graph, paths, drawers |
+| Graph harness      | `#/__graph`   | One graph canvas with its parameters in the address, used by the end-to-end specs. The gallery draws the same page once per graph state                      |
+
+The visual baselines in `frontend/e2e/visual.spec.ts` come from these pages and from the shell.
+The shell is baselined on each destination with the view's own content hidden, because Phase 6 rebuilds those views.

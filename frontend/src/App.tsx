@@ -26,20 +26,20 @@ function Routes() {
   }
 }
 
-/** Development pages, kept out of the production build. */
-const GraphHarness =
-  import.meta.env.MODE !== 'production'
-    ? lazy(() => import('./dev/graph-harness'))
-    : null
+/** Development pages (graph harness, gallery), kept out of the production build. */
+const DevPage =
+  import.meta.env.MODE !== 'production' ? lazy(() => import('./dev')) : null
+
+const DEV_HASH = /^#\/__(graph|gallery)/
 
 /** Applies the reduced-motion class around the whole tree (docs/ux/accessibility.md). */
 function ThemedApp() {
   const { reducedMotion } = useSettings()
   return (
     <div className={reducedMotion ? 'reduced-motion' : ''}>
-      {GraphHarness && window.location.hash.startsWith('#/__graph') ? (
+      {DevPage && DEV_HASH.test(window.location.hash) ? (
         <Suspense fallback={null}>
-          <GraphHarness />
+          <DevPage />
         </Suspense>
       ) : (
         <Shell>

@@ -12,34 +12,35 @@
  *   mode     replay (default) or live
  *   evidence 1 to open the evidence drawer on the node opened from the canvas
  *   shell    1 to draw the page inside the application shell
+ * The gallery (gallery.tsx) draws this same page, in a box of its own, once
+ * per state, passing the parameters as `query`.
  */
 
-import { useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
 
-import type { components } from '../api/schema'
 import { Shell } from '../app/shell'
 import { EvidenceDrawer } from '../components/evidence-drawer'
 import { EvidencePathList } from '../graph/evidence-path-list'
-import { recordedPathsFromResult } from '../graph/from-result'
 import { GraphCanvas } from '../graph/graph-canvas'
 import { GraphLegend } from '../graph/graph-legend'
-import { DEFAULT_VISIBLE_NODE_CAP, graphView } from '../graph/model'
-import { reduceAll, type RunEvent } from '../run/reduce'
+import { DEFAULT_VISIBLE_NODE_CAP } from '../graph/model'
+import { type RunEvent } from '../run/reduce'
 import recordedRun from '../run/fixtures/run-abc.json'
+import { fixtureView } from './fixture-view'
 import generated from './fixtures/graph-200.json'
 
-type GraphRunResult = components['schemas']['GraphRunResult']
-
-export default function GraphHarness() {
-  const params = new URLSearchParams(window.location.hash.split('?')[1] ?? '')
+export default function GraphHarness({ query }: { query?: string }) {
+  // Without a query the page is the whole screen and reads the hash.
+  const embedded = query !== undefined
+  const params = new URLSearchParams(
+    query ?? window.location.hash.split('?')[1] ?? '',
+  )
   const generatedRun = params.get('source') === '200'
   // The generated run holds configuration C only.
   const config = generatedRun || params.get('config') !== 'B' ? 'C' : 'B'
-  const run = generatedRun ? generated : recordedRun
-  const events = run.events as unknown as RunEvent[]
-  const result = (
-    run.results.results as unknown as Record<string, GraphRunResult>
-  )[config]
+  const events = (generatedRun ? generated : recordedRun)
+    .events as unknown as RunEvent[]
+  const pathListId = useId()
   const [count, setCount] = useState(
     Number(params.get('count') ?? events.length),
   )
@@ -49,22 +50,17 @@ export default function GraphHarness() {
   const presentation = params.get('present') === '1'
   const cap = Number(params.get('cap') ?? DEFAULT_VISIBLE_NODE_CAP)
 
-  // C is drawn against B, so what the ontology added shows. The generated
-  // run has no B of its own.
-  const viewAt = useMemo(() => {
-    const recordedEvents = recordedRun.events as unknown as RunEvent[]
-    const paths = recordedPathsFromResult(result)
-    return (upTo: number) =>
-      graphView(reduceAll(events.slice(0, upTo)).graph[config], {
+  const viewAt = useMemo(
+    () => (upTo: number) =>
+      fixtureView({
+        source: generatedRun ? '200' : 'abc',
+        config,
+        upTo,
         cap,
         focus,
-        overlay:
-          config === 'C' && !generatedRun
-            ? reduceAll(recordedEvents.slice(0, upTo)).graph.B
-            : undefined,
-        paths,
-      })
-  }, [events, cap, focus, config, result, generatedRun])
+      }),
+    [cap, focus, config, generatedRun],
+  )
   const view = useMemo(() => viewAt(count), [viewAt, count])
   const finalView = useMemo(() => viewAt(events.length), [viewAt, events])
   const live = params.get('mode') === 'live'
@@ -73,7 +69,9 @@ export default function GraphHarness() {
   const inShell = params.get('shell') === '1'
   const page = (
     <div
-      className={`flex flex-col gap-3 bg-background p-4 ${inShell ? 'h-[calc(100vh-8rem)]' : 'h-screen'}`}
+      className={`flex flex-col gap-3 bg-background p-4 ${
+        embedded ? 'h-[56rem]' : inShell ? 'h-[calc(100vh-8rem)]' : 'h-screen'
+      }`}
     >
       <header className="flex flex-wrap items-center gap-4 text-sm">
         <h1 className="font-semibold">Graph canvas</h1>
@@ -120,12 +118,12 @@ export default function GraphHarness() {
               presentation={presentation}
               pipeline={config}
               label={`Graph for configuration ${config}`}
-              pathListId="harness-paths"
+              pathListId={pathListId}
             />
           ) : null}
         </div>
         <aside className="w-96 overflow-auto rounded-card border border-border bg-surface p-3">
-          <EvidencePathList id="harness-paths" view={view} />
+          <EvidencePathList id={pathListId} view={view} />
         </aside>
       </div>
       <GraphLegend pipeline={config} ontologyAdded={hasOverlay} />
@@ -137,5 +135,6 @@ export default function GraphHarness() {
       )}
     </div>
   )
+  if (embedded) return page
   return inShell ? <Shell>{page}</Shell> : <main>{page}</main>
 }

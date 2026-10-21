@@ -1,5 +1,10 @@
 # Screen Specifications
 
+> Note.
+> The v2 screens follow section 7 of `docs/superpowers/specs/2026-10-18-overhaul-design.md` until Phase 6 rewrites this file.
+> Where this file and that section disagree, the section wins.
+> The shell and navigation as built are in `docs/ux/information-architecture.md`.
+
 Phase 6 artefact (HITL-06): low-fidelity wireframes, layout hierarchy and required states per screen. High-fidelity mock-ups and visual language application are the HITL-07 contract. Region letters are referenced by the IA and user flows.
 
 ## 1. Live Lab
