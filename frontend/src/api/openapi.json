@@ -1,0 +1,3588 @@
+{
+  "components": {
+    "schemas": {
+      "ApiErrorBody": {
+        "description": "The error object every failure carries (docs/07 section 11).",
+        "properties": {
+          "error_code": {
+            "title": "Error Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "retryable": {
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "error_code",
+          "message",
+          "retryable"
+        ],
+        "title": "ApiErrorBody",
+        "type": "object"
+      },
+      "BenchmarkJob": {
+        "description": "A benchmark job (POST /api/v1/benchmarks, GET /benchmarks/jobs/{job_id}).\n\n``run_id`` names the published run once the job completed; ``progress``\nis None until the first world reaches its first instance; ``error`` is\nthe curated envelope of a failed job.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobProgress"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "enum": [
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "status"
+        ],
+        "title": "BenchmarkJob",
+        "type": "object"
+      },
+      "BenchmarkRunOut": {
+        "description": "One published run in GET /api/v1/benchmarks, from its ``summary.json``:\n``selection`` is the part of the bank it scored, ``worlds`` its seeds.",
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "run_kind": {
+            "title": "Run Kind",
+            "type": "string"
+          },
+          "selection": {
+            "additionalProperties": true,
+            "title": "Selection",
+            "type": "object"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "string"
+          },
+          "worlds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Worlds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run_id",
+          "run_kind",
+          "label",
+          "started_at",
+          "selection",
+          "worlds"
+        ],
+        "title": "BenchmarkRunOut",
+        "type": "object"
+      },
+      "BenchmarkStart": {
+        "additionalProperties": false,
+        "description": "Request for POST /api/v1/benchmarks; the seeds, strata and kind are\nchecked against the harness's own before a job starts.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "smoke",
+              "official"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "repeats": {
+            "minimum": 1.0,
+            "title": "Repeats",
+            "type": "integer"
+          },
+          "seeds": {
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 1,
+            "title": "Seeds",
+            "type": "array"
+          },
+          "strata": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strata"
+          }
+        },
+        "required": [
+          "kind",
+          "seeds",
+          "repeats"
+        ],
+        "title": "BenchmarkStart",
+        "type": "object"
+      },
+      "BenchmarkSummary": {
+        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json`` (schema 2), passed through\nunchanged: the only benchmark source the API publishes. ``run_kind``\nand ``label`` are copied out of it so a client can tell a smoke or\nsweep run from an official result without reading the summary.",
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "run_kind": {
+            "title": "Run Kind",
+            "type": "string"
+          },
+          "summary": {
+            "additionalProperties": true,
+            "title": "Summary",
+            "type": "object"
+          }
+        },
+        "required": [
+          "run_id",
+          "run_kind",
+          "label",
+          "summary"
+        ],
+        "title": "BenchmarkSummary",
+        "type": "object"
+      },
+      "Check": {
+        "description": "One readiness check: whether it passed and a curated detail, never a\nservice address or raw driver or provider text.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok",
+          "detail"
+        ],
+        "title": "Check",
+        "type": "object"
+      },
+      "Citation": {
+        "description": "A citation rendered under an answer; every citation is inspectable.",
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "language_code": {
+            "title": "Language Code",
+            "type": "string"
+          },
+          "market_id": {
+            "title": "Market Id",
+            "type": "string"
+          },
+          "record_table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source table of a record block or graph node; None for documents",
+            "title": "Record Table"
+          },
+          "source_record_id": {
+            "title": "Source Record Id",
+            "type": "string"
+          },
+          "source_system": {
+            "title": "Source System",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "document_id",
+          "title",
+          "source_system",
+          "source_record_id",
+          "market_id",
+          "language_code"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
+      "ColumnOut": {
+        "description": "One column; ``description`` is None where the schema registry has none.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "description"
+        ],
+        "title": "ColumnOut",
+        "type": "object"
+      },
+      "ConceptOut": {
+        "description": "One ontology concept. ``labels`` and ``synonyms`` are keyed by\nlanguage, ``binding_counts`` by market id; codes shared by every market\n(channels, incident types) count under ``shared``. ``relationships`` are\nthe relationship types the concept takes part in, derived from ingestion\n(``IS_A`` with a parent or child, ``MAPS_TO`` with a bound code).",
+        "properties": {
+          "binding_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Binding Counts",
+            "type": "object"
+          },
+          "concept_id": {
+            "title": "Concept Id",
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "object"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "relationships": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Relationships",
+            "type": "array"
+          },
+          "synonyms": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Synonyms",
+            "type": "object"
+          }
+        },
+        "required": [
+          "concept_id",
+          "parent_id",
+          "labels",
+          "synonyms",
+          "relationships",
+          "binding_counts"
+        ],
+        "title": "ConceptOut",
+        "type": "object"
+      },
+      "DatasetDetail": {
+        "description": "Response for GET /datasets/{dataset_id}; ``index_status`` is None\nwhen no persistent index was built over the world.",
+        "properties": {
+          "index_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IndexStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provenance": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/TableProvenance"
+            },
+            "title": "Provenance",
+            "type": "object"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/DatasetSummary"
+          }
+        },
+        "required": [
+          "summary",
+          "provenance",
+          "index_status"
+        ],
+        "title": "DatasetDetail",
+        "type": "object"
+      },
+      "DatasetSummary": {
+        "description": "One generated world as GET /datasets lists it; ``active`` marks the\nworld the lab serves (``DATASET_DIR``).",
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "generator_version": {
+            "title": "Generator Version",
+            "type": "string"
+          },
+          "profile": {
+            "title": "Profile",
+            "type": "string"
+          },
+          "row_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Row Counts",
+            "type": "object"
+          },
+          "scenario_seed": {
+            "title": "Scenario Seed",
+            "type": "integer"
+          },
+          "world_seed": {
+            "title": "World Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "dataset_id",
+          "generator_version",
+          "world_seed",
+          "scenario_seed",
+          "profile",
+          "row_counts",
+          "active"
+        ],
+        "title": "DatasetSummary",
+        "type": "object"
+      },
+      "DemoQuestion": {
+        "description": "A demo question: one instance of the presentation world's frozen bank.\n\nPipeline-visible fields only: the text every pipeline receives, never\nthe expected answer, checks or claims. ``market_scope`` is empty (all\nmarkets): the bank defines no scope of its own.",
+        "properties": {
+          "instance_id": {
+            "title": "Instance Id",
+            "type": "string"
+          },
+          "market_scope": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Market Scope",
+            "type": "array"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "stratum": {
+            "title": "Stratum",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "instance_id",
+          "question_id",
+          "text",
+          "stratum",
+          "market_scope"
+        ],
+        "title": "DemoQuestion",
+        "type": "object"
+      },
+      "EdgeSummary": {
+        "description": "How many relationships of one type meet a node in one direction.",
+        "properties": {
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          },
+          "direction": {
+            "enum": [
+              "out",
+              "in"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "direction",
+          "count"
+        ],
+        "title": "EdgeSummary",
+        "type": "object"
+      },
+      "EventStream": {
+        "description": "Response for GET /api/v1/queries/{run_id}/events (replay source).",
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/RecordedEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "events"
+        ],
+        "title": "EventStream",
+        "type": "object"
+      },
+      "EvidenceChunk": {
+        "description": "One retrieved chunk with its provenance and ranking outcome.",
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "chunk_index": {
+            "title": "Chunk Index",
+            "type": "integer"
+          },
+          "dense_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1-based rank in the dense channel; None if absent or unknown",
+            "title": "Dense Rank"
+          },
+          "discard_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the chunk was not selected: context_budget | slot_limit | duplicate | superseded_by_structured_fact",
+            "title": "Discard Reason"
+          },
+          "discovered_via": {
+            "default": "vector",
+            "description": "How the chunk entered the candidate set: vector | graph_traversal | vector+graph_traversal",
+            "title": "Discovered Via",
+            "type": "string"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_type": {
+            "title": "Document Type",
+            "type": "string"
+          },
+          "kind": {
+            "default": "chunk",
+            "description": "chunk (document text) | record (table row) | node (graph block)",
+            "title": "Kind",
+            "type": "string"
+          },
+          "language_code": {
+            "title": "Language Code",
+            "type": "string"
+          },
+          "market_id": {
+            "title": "Market Id",
+            "type": "string"
+          },
+          "rank": {
+            "description": "Position after ranking (1-based)",
+            "title": "Rank",
+            "type": "integer"
+          },
+          "record_table": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Source table when kind is record, or of a graph node's authoritative row",
+            "title": "Record Table"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Reranker score when reranking is enabled",
+            "title": "Rerank Score"
+          },
+          "selected": {
+            "default": false,
+            "title": "Selected",
+            "type": "boolean"
+          },
+          "similarity": {
+            "description": "Score within the candidate's channel: for chunks and records the fused reciprocal-rank score of the dense and sparse channels (not a cosine); for graph nodes the graph composite score",
+            "title": "Similarity",
+            "type": "number"
+          },
+          "source_system": {
+            "title": "Source System",
+            "type": "string"
+          },
+          "sparse_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1-based rank in the sparse channel; None if absent or unknown",
+            "title": "Sparse Rank"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "document_id",
+          "chunk_index",
+          "text",
+          "title",
+          "document_type",
+          "market_id",
+          "language_code",
+          "source_system",
+          "similarity",
+          "rank"
+        ],
+        "title": "EvidenceChunk",
+        "type": "object"
+      },
+      "ForeignKeyOut": {
+        "description": "``column`` references ``table.ref_column`` (the parent's primary key).",
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "ref_column": {
+            "title": "Ref Column",
+            "type": "string"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "table",
+          "ref_column"
+        ],
+        "title": "ForeignKeyOut",
+        "type": "object"
+      },
+      "GraphEvidence": {
+        "description": "One graph node candidate with its transparent ranking outcome.\n\nStructured nodes additionally carry authoritative facts read from the\nwarehouse Parquet layer (the graph guides, Parquet states facts).",
+        "properties": {
+          "authoritative": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Authoritative structured-layer facts for this node",
+            "title": "Authoritative"
+          },
+          "components": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Components",
+            "type": "object"
+          },
+          "discard_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Discard Reason"
+          },
+          "hops": {
+            "title": "Hops",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_label": {
+            "title": "Node Label",
+            "type": "string"
+          },
+          "path": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Path",
+            "type": "array"
+          },
+          "rel_type": {
+            "title": "Rel Type",
+            "type": "string"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shared reranker score; None when the node was never judged",
+            "title": "Rerank Score"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "selected": {
+            "default": false,
+            "title": "Selected",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_label",
+          "hops",
+          "path",
+          "rel_type",
+          "score",
+          "components"
+        ],
+        "title": "GraphEvidence",
+        "type": "object"
+      },
+      "GraphRunResult": {
+        "description": "Complete record of one graph-enhanced execution (pipeline B or C).",
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/RagAnswer"
+          },
+          "document_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceChunk"
+            },
+            "title": "Document Evidence",
+            "type": "array"
+          },
+          "embedding_model": {
+            "title": "Embedding Model",
+            "type": "string"
+          },
+          "generation_model": {
+            "title": "Generation Model",
+            "type": "string"
+          },
+          "node_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEvidence"
+            },
+            "title": "Node Evidence",
+            "type": "array"
+          },
+          "ontology_concepts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Ontology Concepts",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "question",
+          "answer",
+          "node_evidence",
+          "document_evidence",
+          "ontology_concepts",
+          "embedding_model",
+          "generation_model"
+        ],
+        "title": "GraphRunResult",
+        "type": "object"
+      },
+      "GraphSchema": {
+        "description": "Response for GET /graph/schema: the graph model and the traversal\nsettings pipelines B and C run with.",
+        "properties": {
+          "allow_list": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": "Allow List",
+            "type": "object"
+          },
+          "caps": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Caps",
+            "type": "object"
+          },
+          "label_version": {
+            "title": "Label Version",
+            "type": "string"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "relationship_types": {
+            "items": {
+              "$ref": "#/components/schemas/RelTypeOut"
+            },
+            "title": "Relationship Types",
+            "type": "array"
+          },
+          "weights": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "title": "Weights",
+            "type": "object"
+          }
+        },
+        "required": [
+          "labels",
+          "relationship_types",
+          "allow_list",
+          "weights",
+          "caps",
+          "label_version"
+        ],
+        "title": "GraphSchema",
+        "type": "object"
+      },
+      "GraphStats": {
+        "description": "Response for GET /graph/stats, read from the active dataset's\n``_graph_stats.json``: what its ingestion pushed, not a live count.",
+        "properties": {
+          "ingestion_version": {
+            "title": "Ingestion Version",
+            "type": "string"
+          },
+          "nodes_by_label": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Nodes By Label",
+            "type": "object"
+          },
+          "relationships_by_type": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Relationships By Type",
+            "type": "object"
+          },
+          "source": {
+            "const": "ingestion",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "nodes_by_label",
+          "relationships_by_type",
+          "ingestion_version",
+          "source"
+        ],
+        "title": "GraphStats",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "description": "Response for GET /api/v1/health.",
+        "properties": {
+          "status": {
+            "const": "ok",
+            "title": "Status",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "version"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "IndexStatus": {
+        "description": "The vector index built over a world, from its index manifest.",
+        "properties": {
+          "built_at": {
+            "title": "Built At",
+            "type": "string"
+          },
+          "collection": {
+            "title": "Collection",
+            "type": "string"
+          },
+          "points": {
+            "title": "Points",
+            "type": "integer"
+          },
+          "serialiser_version": {
+            "title": "Serialiser Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "collection",
+          "points",
+          "serialiser_version",
+          "built_at"
+        ],
+        "title": "IndexStatus",
+        "type": "object"
+      },
+      "JobProgress": {
+        "description": "The world a job is running and how far through its instances it is.",
+        "properties": {
+          "instances_done": {
+            "title": "Instances Done",
+            "type": "integer"
+          },
+          "instances_total": {
+            "title": "Instances Total",
+            "type": "integer"
+          },
+          "world_seed": {
+            "title": "World Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "world_seed",
+          "instances_done",
+          "instances_total"
+        ],
+        "title": "JobProgress",
+        "type": "object"
+      },
+      "JsonValue": {},
+      "LivePipelineScore": {
+        "description": "One pipeline's deterministic scores on a live bank question; None\nwhere the instance does not define the metric.",
+        "properties": {
+          "anchor_resolution": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Anchor Resolution"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "evidence_f1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence F1"
+          },
+          "failure_class": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Class"
+          }
+        },
+        "required": [
+          "answer",
+          "evidence_f1",
+          "anchor_resolution",
+          "failure_class"
+        ],
+        "title": "LivePipelineScore",
+        "type": "object"
+      },
+      "LiveScore": {
+        "description": "A completed bank question's live answers scored against its answer\nkey by the deterministic scorers (never the judge, spec 10a.1).",
+        "properties": {
+          "instance_id": {
+            "title": "Instance Id",
+            "type": "string"
+          },
+          "label": {
+            "const": "scored against the answer key",
+            "default": "scored against the answer key",
+            "title": "Label",
+            "type": "string"
+          },
+          "per_pipeline": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/LivePipelineScore"
+            },
+            "title": "Per Pipeline",
+            "type": "object"
+          }
+        },
+        "required": [
+          "instance_id",
+          "per_pipeline"
+        ],
+        "title": "LiveScore",
+        "type": "object"
+      },
+      "MemberOut": {
+        "description": "A local code bound to a concept; ``name`` is its local display name\nwhen the term table has one.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "market_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Market Id"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "kind",
+          "code",
+          "market_id",
+          "name"
+        ],
+        "title": "MemberOut",
+        "type": "object"
+      },
+      "ModelOut": {
+        "description": "One configured model. ``reachable`` is null for a model that runs in\nprocess and has not been loaded.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "reachable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reachable"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "reachable",
+          "detail"
+        ],
+        "title": "ModelOut",
+        "type": "object"
+      },
+      "ModelsOut": {
+        "properties": {
+          "embedding": {
+            "$ref": "#/components/schemas/ModelOut"
+          },
+          "generation": {
+            "$ref": "#/components/schemas/ModelOut"
+          },
+          "rerank": {
+            "$ref": "#/components/schemas/ModelOut"
+          },
+          "sparse": {
+            "$ref": "#/components/schemas/ModelOut"
+          }
+        },
+        "required": [
+          "embedding",
+          "sparse",
+          "rerank",
+          "generation"
+        ],
+        "title": "ModelsOut",
+        "type": "object"
+      },
+      "NeighbourOut": {
+        "description": "One relationship from the node and the node at its other end.",
+        "properties": {
+          "direction": {
+            "enum": [
+              "out",
+              "in"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "node": {
+            "$ref": "#/components/schemas/NodeOut"
+          },
+          "rel_type": {
+            "title": "Rel Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rel_type",
+          "direction",
+          "node"
+        ],
+        "title": "NeighbourOut",
+        "type": "object"
+      },
+      "Neighbours": {
+        "description": "Response for GET /graph/nodes/{node_id}/neighbours; ``truncated``\nsays the node has more neighbours than ``limit``.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NeighbourOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "node_id",
+          "items",
+          "truncated"
+        ],
+        "title": "Neighbours",
+        "type": "object"
+      },
+      "NodeOut": {
+        "description": "One graph node; ``provenance`` is None for a node no source table\nmaps to (PrizeType, BusinessConcept).",
+        "properties": {
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Properties",
+            "type": "object"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProvenanceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "node_id",
+          "labels",
+          "properties",
+          "provenance"
+        ],
+        "title": "NodeOut",
+        "type": "object"
+      },
+      "OntologyOut": {
+        "properties": {
+          "concepts": {
+            "items": {
+              "$ref": "#/components/schemas/ConceptOut"
+            },
+            "title": "Concepts",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "concepts"
+        ],
+        "title": "OntologyOut",
+        "type": "object"
+      },
+      "PipelineScore": {
+        "description": "One pipeline's means over the scored repeats of one question; None\nwhere no scored repeat defines the metric.",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "evidence_f1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence F1"
+          }
+        },
+        "required": [
+          "answer",
+          "evidence_f1"
+        ],
+        "title": "PipelineScore",
+        "type": "object"
+      },
+      "ProvenanceOut": {
+        "description": "The warehouse row a graph node was built from.",
+        "properties": {
+          "dataset_id": {
+            "title": "Dataset Id",
+            "type": "string"
+          },
+          "row_id": {
+            "title": "Row Id",
+            "type": "string"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "row_id",
+          "dataset_id"
+        ],
+        "title": "ProvenanceOut",
+        "type": "object"
+      },
+      "QueryAccepted": {
+        "description": "Response for POST /api/v1/queries: the run is queued for its worker.",
+        "properties": {
+          "events_url": {
+            "title": "Events Url",
+            "type": "string"
+          },
+          "results_url": {
+            "title": "Results Url",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "default": "queued",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "results_url",
+          "events_url"
+        ],
+        "title": "QueryAccepted",
+        "type": "object"
+      },
+      "QueryRequest": {
+        "additionalProperties": false,
+        "description": "Request for POST /api/v1/queries (docs/07 section 4).\n\nUnknown fields are refused, so a client still sending the retired\n``profile`` gets a 422 rather than a silently ignored field.",
+        "properties": {
+          "benchmark_instance_id": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Instance Id"
+          },
+          "configurations": {
+            "default": [
+              "A",
+              "B",
+              "C"
+            ],
+            "items": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ],
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Configurations",
+            "type": "array"
+          },
+          "market_scope": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 4,
+            "title": "Market Scope",
+            "type": "array"
+          },
+          "question": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question"
+          }
+        },
+        "title": "QueryRequest",
+        "type": "object"
+      },
+      "QueryResults": {
+        "description": "Response for GET /api/v1/queries/{run_id}: the summary plus every\nstored pipeline result, readable as soon as each pipeline finishes.\n\n``answer_key`` says whether the question has one: \"none\" for an ad hoc\nquestion, which is never scored. ``score_status`` says where the score\nstands: \"not_applicable\" for an ad hoc question and for a run that was\ncancelled or failed, \"pending\" for a completed bank question until its\nscore is written (just after the final status), then \"scored\" with\n``score`` set, or \"failed\" when scoring failed.",
+        "properties": {
+          "answer_key": {
+            "default": "none",
+            "enum": [
+              "none",
+              "available"
+            ],
+            "title": "Answer Key",
+            "type": "string"
+          },
+          "benchmark_instance_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark Instance Id"
+          },
+          "configurations": {
+            "items": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ],
+              "type": "string"
+            },
+            "title": "Configurations",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "kind": {
+            "enum": [
+              "live",
+              "recorded"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "market_scope": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Market Scope",
+            "type": "array"
+          },
+          "pipeline_status": {
+            "additionalProperties": {
+              "enum": [
+                "pending",
+                "running",
+                "completed",
+                "failed",
+                "cancelled",
+                "skipped"
+              ],
+              "type": "string"
+            },
+            "title": "Pipeline Status",
+            "type": "object"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "results": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/RagRunResult"
+                },
+                {
+                  "$ref": "#/components/schemas/GraphRunResult"
+                }
+              ]
+            },
+            "title": "Results",
+            "type": "object"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveScore"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score_failure": {
+            "anyOf": [
+              {
+                "const": "interrupted",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score Failure"
+          },
+          "score_status": {
+            "default": "not_applicable",
+            "enum": [
+              "not_applicable",
+              "pending",
+              "scored",
+              "failed"
+            ],
+            "title": "Score Status",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "kind",
+          "question",
+          "status",
+          "configurations",
+          "market_scope",
+          "pipeline_status",
+          "created_at",
+          "finished_at",
+          "error"
+        ],
+        "title": "QueryResults",
+        "type": "object"
+      },
+      "QuestionOut": {
+        "description": "One bank question for the Help screen (GET /api/v1/benchmarks/questions).\n\n``hidden_truth`` is the planted scenario's truth for H5 questions, else\nNone. ``scores`` are per pipeline from the chosen run, None when that run\ndid not score this question or no run exists.",
+        "properties": {
+          "expected_answer": {
+            "title": "Expected Answer",
+            "type": "string"
+          },
+          "hidden_truth": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hidden Truth"
+          },
+          "instance_id": {
+            "title": "Instance Id",
+            "type": "string"
+          },
+          "ontology_dependent": {
+            "title": "Ontology Dependent",
+            "type": "boolean"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "scenario_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scenario Id"
+          },
+          "scores": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/PipelineScore"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scores"
+          },
+          "stratum": {
+            "title": "Stratum",
+            "type": "string"
+          },
+          "tests": {
+            "title": "Tests",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "instance_id",
+          "text",
+          "tests",
+          "stratum",
+          "scenario_id",
+          "ontology_dependent",
+          "expected_answer",
+          "hidden_truth",
+          "scores"
+        ],
+        "title": "QuestionOut",
+        "type": "object"
+      },
+      "RagAnswer": {
+        "description": "Generated answer plus its cost and grounded citations.\n\n`citations` lists every block shown to the model in prompt order (the\nselected evidence in judge order, whatever its kind), so\n`cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.",
+        "properties": {
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "cited_blocks": {
+            "description": "1-based context blocks the answer cites, in first-seen order",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Cited Blocks",
+            "type": "array"
+          },
+          "context_tokens": {
+            "title": "Context Tokens",
+            "type": "integer"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "raw_text": {
+            "description": "Model output verbatim",
+            "title": "Raw Text",
+            "type": "string"
+          },
+          "text": {
+            "description": "Parsed prose answer; what the evaluator scores",
+            "title": "Text",
+            "type": "string"
+          },
+          "usage": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gateway token counts when the provider reports them",
+            "title": "Usage"
+          },
+          "verdict": {
+            "description": "One-line verdict; empty when the model gave none",
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "verdict",
+          "cited_blocks",
+          "raw_text",
+          "model",
+          "latency_ms",
+          "context_tokens",
+          "citations"
+        ],
+        "title": "RagAnswer",
+        "type": "object"
+      },
+      "RagRunResult": {
+        "description": "Complete record of one standard RAG execution.",
+        "properties": {
+          "answer": {
+            "$ref": "#/components/schemas/RagAnswer"
+          },
+          "embedding_model": {
+            "title": "Embedding Model",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceChunk"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "generation_model": {
+            "title": "Generation Model",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "question",
+          "answer",
+          "evidence",
+          "embedding_model",
+          "generation_model"
+        ],
+        "title": "RagRunResult",
+        "type": "object"
+      },
+      "Readiness": {
+        "description": "Response for GET /api/v1/health/ready: 200 when ready, else 503.",
+        "properties": {
+          "checks": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Check"
+            },
+            "title": "Checks",
+            "type": "object"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ready",
+          "checks"
+        ],
+        "title": "Readiness",
+        "type": "object"
+      },
+      "RecordOut": {
+        "description": "One warehouse row and the graph node it maps to.\n\n``graph_node_id`` is the id ingestion gives the row's node\n(``app.graph.node_rows.NODE_TABLES``); None with ``edges`` empty when the\ntable creates no nodes. For a world the graph does not hold, ``edges``\nis None and ``graph_error`` is ``OTHER_WORLD``; when the graph cannot be\nread, the node id is kept, ``edges`` is None and ``graph_error`` is\n``GRAPH_QUERY_ERROR``.",
+        "properties": {
+          "edges": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EdgeSummary"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Edges"
+          },
+          "graph_error": {
+            "anyOf": [
+              {
+                "enum": [
+                  "GRAPH_QUERY_ERROR",
+                  "OTHER_WORLD"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Error"
+          },
+          "graph_node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Node Id"
+          },
+          "row": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Row",
+            "type": "object"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "row",
+          "graph_node_id",
+          "edges"
+        ],
+        "title": "RecordOut",
+        "type": "object"
+      },
+      "RecordedEvent": {
+        "description": "One execution event: the envelope shared by replay and the stream\n(docs/07 section 6). ``pipeline`` is ``run`` for run lifecycle events.",
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": true,
+            "title": "Payload",
+            "type": "object"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "event_type",
+          "t_ms",
+          "payload",
+          "sequence"
+        ],
+        "title": "RecordedEvent",
+        "type": "object"
+      },
+      "RelTypeOut": {
+        "description": "One relationship type between the labels it joins.",
+        "properties": {
+          "from_label": {
+            "title": "From Label",
+            "type": "string"
+          },
+          "to_label": {
+            "title": "To Label",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "from_label",
+          "to_label"
+        ],
+        "title": "RelTypeOut",
+        "type": "object"
+      },
+      "RowPage": {
+        "description": "One page of sample rows, ordered by the primary key; ``total`` counts\nevery row matching the same filter.",
+        "properties": {
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "offset": {
+            "title": "Offset",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "table",
+          "offset",
+          "limit",
+          "total",
+          "rows"
+        ],
+        "title": "RowPage",
+        "type": "object"
+      },
+      "RunHistory": {
+        "description": "Response for GET /api/v1/queries: newest first; ``next_before`` is the\n``before`` value of the next page, or None on the last page.",
+        "properties": {
+          "next_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Before"
+          },
+          "runs": {
+            "items": {
+              "$ref": "#/components/schemas/RunSummary"
+            },
+            "title": "Runs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "runs",
+          "next_before"
+        ],
+        "title": "RunHistory",
+        "type": "object"
+      },
+      "RunSummary": {
+        "description": "One run as history lists it, and the response of POST .../cancel.",
+        "properties": {
+          "configurations": {
+            "items": {
+              "enum": [
+                "A",
+                "B",
+                "C"
+              ],
+              "type": "string"
+            },
+            "title": "Configurations",
+            "type": "array"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApiErrorBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "kind": {
+            "enum": [
+              "live",
+              "recorded"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "market_scope": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Market Scope",
+            "type": "array"
+          },
+          "pipeline_status": {
+            "additionalProperties": {
+              "enum": [
+                "pending",
+                "running",
+                "completed",
+                "failed",
+                "cancelled",
+                "skipped"
+              ],
+              "type": "string"
+            },
+            "title": "Pipeline Status",
+            "type": "object"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "kind",
+          "question",
+          "status",
+          "configurations",
+          "market_scope",
+          "pipeline_status",
+          "created_at",
+          "finished_at",
+          "error"
+        ],
+        "title": "RunSummary",
+        "type": "object"
+      },
+      "ScenarioOut": {
+        "description": "A catalogue scenario and whether the active dataset planted it. Carries\nconfiguration only: never the truth ledger.",
+        "properties": {
+          "noise_level": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Noise Level"
+          },
+          "planted": {
+            "title": "Planted",
+            "type": "boolean"
+          },
+          "planted_rows": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Planted Rows",
+            "type": "object"
+          },
+          "scenario_id": {
+            "title": "Scenario Id",
+            "type": "string"
+          },
+          "scenario_type": {
+            "title": "Scenario Type",
+            "type": "string"
+          },
+          "strength": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "scenario_id",
+          "scenario_type",
+          "title",
+          "planted",
+          "planted_rows",
+          "strength",
+          "noise_level"
+        ],
+        "title": "ScenarioOut",
+        "type": "object"
+      },
+      "TableProvenance": {
+        "description": "Where a table's rows come from, as the world's manifest records it.",
+        "properties": {
+          "source_system": {
+            "title": "Source System",
+            "type": "string"
+          },
+          "source_table": {
+            "title": "Source Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_system",
+          "source_table"
+        ],
+        "title": "TableProvenance",
+        "type": "object"
+      },
+      "TableSchemaOut": {
+        "description": "One table of the data dictionary (GET /datasets/{dataset_id}/dictionary).",
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnOut"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "dictionary_source": {
+            "enum": [
+              "world",
+              "registry"
+            ],
+            "title": "Dictionary Source",
+            "type": "string"
+          },
+          "foreign_keys": {
+            "items": {
+              "$ref": "#/components/schemas/ForeignKeyOut"
+            },
+            "title": "Foreign Keys",
+            "type": "array"
+          },
+          "primary_key": {
+            "title": "Primary Key",
+            "type": "string"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TableProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_system": {
+            "title": "Source System",
+            "type": "string"
+          },
+          "table": {
+            "title": "Table",
+            "type": "string"
+          }
+        },
+        "required": [
+          "table",
+          "source_system",
+          "primary_key",
+          "columns",
+          "foreign_keys",
+          "provenance",
+          "dictionary_source"
+        ],
+        "title": "TableSchemaOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Semantic Context Lab",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/benchmarks": {
+      "get": {
+        "operationId": "list_benchmarks_api_v1_benchmarks_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BenchmarkRunOut"
+                  },
+                  "title": "Response List Benchmarks Api V1 Benchmarks Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Benchmarks"
+      },
+      "post": {
+        "operationId": "start_benchmark_api_v1_benchmarks_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BenchmarkStart"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Benchmark"
+      }
+    },
+    "/api/v1/benchmarks/jobs/{job_id}": {
+      "get": {
+        "operationId": "read_job_api_v1_benchmarks_jobs__job_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Job"
+      }
+    },
+    "/api/v1/benchmarks/jobs/{job_id}/cancel": {
+      "post": {
+        "description": "Request the job to stop before its next instance; the instance in\nprogress finishes first, so the job stays running until then.",
+        "operationId": "cancel_job_api_v1_benchmarks_jobs__job_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkJob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Job"
+      }
+    },
+    "/api/v1/benchmarks/latest": {
+      "get": {
+        "operationId": "read_latest_benchmark_api_v1_benchmarks_latest_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Latest Benchmark"
+      }
+    },
+    "/api/v1/benchmarks/questions": {
+      "get": {
+        "operationId": "read_questions_api_v1_benchmarks_questions_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "run_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/QuestionOut"
+                  },
+                  "title": "Response Read Questions Api V1 Benchmarks Questions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Questions"
+      }
+    },
+    "/api/v1/benchmarks/{run_id}": {
+      "get": {
+        "operationId": "read_benchmark_api_v1_benchmarks__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BenchmarkSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Benchmark"
+      }
+    },
+    "/api/v1/datasets": {
+      "get": {
+        "operationId": "list_datasets_api_v1_datasets_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DatasetSummary"
+                  },
+                  "title": "Response List Datasets Api V1 Datasets Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Datasets"
+      }
+    },
+    "/api/v1/datasets/{dataset_id}": {
+      "get": {
+        "operationId": "read_dataset_api_v1_datasets__dataset_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatasetDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Dataset"
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/dictionary": {
+      "get": {
+        "operationId": "read_dictionary_api_v1_datasets__dataset_id__dictionary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TableSchemaOut"
+                  },
+                  "title": "Response Read Dictionary Api V1 Datasets  Dataset Id  Dictionary Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Dictionary"
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/tables/{table}/rows": {
+      "get": {
+        "operationId": "read_rows_api_v1_datasets__dataset_id__tables__table__rows_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "offset",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "maximum": 9223372036854775807,
+              "minimum": 0,
+              "title": "Offset",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Column"
+            }
+          },
+          {
+            "in": "query",
+            "name": "value",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Value"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RowPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Rows"
+      }
+    },
+    "/api/v1/datasets/{dataset_id}/tables/{table}/rows/{row_id}": {
+      "get": {
+        "operationId": "read_record_api_v1_datasets__dataset_id__tables__table__rows__row_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "dataset_id",
+            "required": true,
+            "schema": {
+              "title": "Dataset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "table",
+            "required": true,
+            "schema": {
+              "title": "Table",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "row_id",
+            "required": true,
+            "schema": {
+              "title": "Row Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Record"
+      }
+    },
+    "/api/v1/demo/questions": {
+      "get": {
+        "description": "One bank instance per demo stratum; a 503 before the bank is grounded.",
+        "operationId": "read_demo_questions_api_v1_demo_questions_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DemoQuestion"
+                  },
+                  "title": "Response Read Demo Questions Api V1 Demo Questions Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Demo Questions"
+      }
+    },
+    "/api/v1/graph/nodes/{node_id}": {
+      "get": {
+        "operationId": "read_node_api_v1_graph_nodes__node_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NodeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Node"
+      }
+    },
+    "/api/v1/graph/nodes/{node_id}/neighbours": {
+      "get": {
+        "operationId": "read_neighbours_api_v1_graph_nodes__node_id__neighbours_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Neighbours"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Neighbours"
+      }
+    },
+    "/api/v1/graph/schema": {
+      "get": {
+        "operationId": "read_schema_api_v1_graph_schema_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSchema"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Schema"
+      }
+    },
+    "/api/v1/graph/stats": {
+      "get": {
+        "operationId": "read_stats_api_v1_graph_stats_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphStats"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Stats"
+      }
+    },
+    "/api/v1/health": {
+      "get": {
+        "description": "Liveness probe used by CI, Docker and the frontend.",
+        "operationId": "read_health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Health"
+      }
+    },
+    "/api/v1/health/ready": {
+      "get": {
+        "description": "Readiness: the lab, the index, Neo4j and the model provider.",
+        "operationId": "read_readiness_api_v1_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            },
+            "description": "A check failed"
+          }
+        },
+        "summary": "Read Readiness"
+      }
+    },
+    "/api/v1/models": {
+      "get": {
+        "operationId": "read_models_api_v1_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Models"
+      }
+    },
+    "/api/v1/ontology": {
+      "get": {
+        "operationId": "read_ontology_api_v1_ontology_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OntologyOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Ontology"
+      }
+    },
+    "/api/v1/ontology/concepts/{concept_id}/members": {
+      "get": {
+        "operationId": "read_members_api_v1_ontology_concepts__concept_id__members_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "concept_id",
+            "required": true,
+            "schema": {
+              "title": "Concept Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "market",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Market"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/MemberOut"
+                  },
+                  "title": "Response Read Members Api V1 Ontology Concepts  Concept Id  Members Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Members"
+      }
+    },
+    "/api/v1/queries": {
+      "get": {
+        "operationId": "read_history_api_v1_queries_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "before",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "queued",
+                    "running",
+                    "completed",
+                    "failed",
+                    "cancelled"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunHistory"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read History"
+      },
+      "post": {
+        "operationId": "submit_query_api_v1_queries_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Submit Query"
+      }
+    },
+    "/api/v1/queries/{run_id}": {
+      "get": {
+        "operationId": "read_results_api_v1_queries__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResults"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Results"
+      }
+    },
+    "/api/v1/queries/{run_id}/cancel": {
+      "post": {
+        "operationId": "cancel_run_api_v1_queries__run_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Run"
+      }
+    },
+    "/api/v1/queries/{run_id}/events": {
+      "get": {
+        "operationId": "read_events_api_v1_queries__run_id__events_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventStream"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Events"
+      }
+    },
+    "/api/v1/queries/{run_id}/events/stream": {
+      "get": {
+        "description": "The run's events as server-sent events: every stored event after\nthe resume point, then each new one, closing after the terminal event.",
+        "operationId": "stream_events_api_v1_queries__run_id__events_stream_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          },
+          {
+            "in": "header",
+            "name": "last-event-id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {}
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Events"
+      }
+    },
+    "/api/v1/scenarios": {
+      "get": {
+        "operationId": "read_scenarios_api_v1_scenarios_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScenarioOut"
+                  },
+                  "title": "Response Read Scenarios Api V1 Scenarios Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Scenarios"
+      }
+    }
+  }
+}

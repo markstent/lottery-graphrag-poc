@@ -82,6 +82,7 @@ jobs:
           pnpm format:check
           pnpm lint
           pnpm typecheck
+          pnpm api:check
           pnpm test
           pnpm build
 

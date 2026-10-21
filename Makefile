@@ -7,7 +7,7 @@ UV := uv --directory $(BACKEND)
 PNPM := pnpm -C $(FRONTEND)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep traces
+.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build api-contract e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep traces
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -48,6 +48,10 @@ format: ## Apply ruff and Prettier formatting
 
 build: ## Build the frontend production bundle
 	$(PNPM) run build
+
+api-contract: ## Export the OpenAPI schema and regenerate the frontend types
+	$(UV) run python -m app.api.openapi_export
+	$(PNPM) run api:types
 
 e2e: ## Build the frontend and run Playwright smoke tests
 	$(PNPM) run build

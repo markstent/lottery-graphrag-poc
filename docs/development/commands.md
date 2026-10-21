@@ -10,6 +10,7 @@ lint
 typecheck
 format
 build
+api-contract
 services-up
 services-down
 generate-dev-data
@@ -25,6 +26,21 @@ demo-reset
 ```
 
 Exact command implementation may use Makefile or task runner.
+
+## API contract
+
+The backend's OpenAPI schema is committed as `frontend/src/api/openapi.json`, and the frontend types as `frontend/src/api/schema.d.ts`.
+The frontend imports its API types only from `schema.d.ts`.
+After changing a route or a response model, run `make api-contract`.
+It writes the schema with `python -m app.api.openapi_export` and then regenerates the types with `pnpm api:types`.
+
+Two checks fail when the files drift:
+
+- `backend/tests/test_openapi_contract.py` compares the committed `openapi.json` with the schema the application serves.
+- `pnpm api:check` regenerates the types from the committed `openapi.json` into a temporary file and compares it byte for byte with `schema.d.ts`.
+  It needs no backend, so the frontend CI job runs it after the typecheck.
+
+`openapi.json` and `schema.d.ts` are generated output, so Prettier ignores both and oxlint ignores `schema.d.ts`.
 
 ## Live tests
 
