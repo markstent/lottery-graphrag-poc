@@ -22,6 +22,7 @@ import {
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { listDatasets } from '../api/client'
+import { datasetName } from './plain-words'
 import { DESTINATIONS, hrefFor, useRoute, type RouteName } from './router'
 import { SettingsDrawer } from './settings-drawer'
 import { useLoad } from './use-load'
@@ -211,9 +212,7 @@ function ActiveDataset() {
     load.status === 'ready' ? load.data.find((dataset) => dataset.active) : null
   return (
     <p className="text-sm text-text-secondary">
-      {active
-        ? `${active.profile} world, ${active.world_seed}`
-        : 'No active dataset'}
+      {active ? datasetName(active.dataset_id) : 'No active dataset'}
     </p>
   )
 }
@@ -268,7 +267,11 @@ export function Shell({ children }: { children: ReactNode }) {
       {!presentation && <Sidebar />}
       <div className="flex min-w-0 flex-1 flex-col">
         <Header />
-        <main id="main" className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+        <main
+          id="main"
+          tabIndex={-1}
+          className="mx-auto w-full max-w-7xl flex-1 px-4 py-6"
+        >
           {children}
         </main>
       </div>

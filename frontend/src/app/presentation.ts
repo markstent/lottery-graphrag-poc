@@ -51,7 +51,14 @@ const PRESSABLE =
 
 /** True when the key belongs to whatever has focus, not to the replay. */
 function keyIsTaken(event: KeyboardEvent): boolean {
-  if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey)
+  // A held key repeats; one press is one step.
+  if (
+    event.repeat ||
+    event.defaultPrevented ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey
+  )
     return true
   const target = event.target instanceof Element ? event.target : null
   if (target?.closest(`${TYPING}, [role="dialog"]`)) return true

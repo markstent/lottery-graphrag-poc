@@ -101,6 +101,17 @@ describe('presentation mode', () => {
     expect(replay.play).not.toHaveBeenCalled()
   })
 
+  it('takes a held key once, not on every repeat', () => {
+    const replay = fakeReplay()
+    renderPresenting(replay)
+    fireEvent.keyDown(document.body, { key: ' ' })
+    fireEvent.keyDown(document.body, { key: ' ', repeat: true })
+    fireEvent.keyDown(document.body, { key: ' ', repeat: true })
+    fireEvent.keyDown(document.body, { key: 'ArrowRight', repeat: true })
+    expect(replay.play).toHaveBeenCalledOnce()
+    expect(replay.step).not.toHaveBeenCalled()
+  })
+
   it('does not take keys typed in an input or pressed on a button', () => {
     const replay = fakeReplay()
     renderPresenting(replay)

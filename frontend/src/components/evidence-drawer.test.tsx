@@ -7,7 +7,12 @@ import { EvidenceDrawer } from './evidence-drawer'
 
 const RECORD = {
   table: 'incidents',
-  row: { incident_id: 'INC_S007_GR', market: 'GR', severity: 3 },
+  row: {
+    incident_id: 'INC_S007_GR',
+    market: 'GR',
+    severity: 3,
+    affected_systems: ['checkout', 'wallet'],
+  },
   graph_node_id: 'INC_S007_GR',
   edges: [{ type: 'AFFECTS', direction: 'out', count: 2 }],
   graph_error: null,
@@ -58,7 +63,12 @@ describe('EvidenceDrawer', () => {
       name: 'Provenance',
     })
     expect(provenance).toHaveTextContent('incidents')
-    expect(provenance).toHaveTextContent('dev-seed2026')
+    expect(provenance).toHaveTextContent('dev world, 2026')
+    expect(provenance).not.toHaveTextContent('seed')
+    expect(within(record).getByText('affected systems')).toBeVisible()
+    expect(within(record).getByText('checkout, wallet')).toBeVisible()
+    expect(record).not.toHaveTextContent('affected_systems')
+    expect(record).not.toHaveTextContent('["checkout"')
     expect(
       record.compareDocumentPosition(provenance) &
         Node.DOCUMENT_POSITION_FOLLOWING,

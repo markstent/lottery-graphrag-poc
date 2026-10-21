@@ -6,10 +6,13 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
 import { SettingsContext, type Settings } from '../app/use-settings'
 import type { components } from '../api/schema'
+import { EvidenceDrawer } from '../components/evidence-drawer'
+import { stubApi } from '../test/api-stub'
 import { EVIDENCE_STATES } from '../design/evidence-states'
 import { TOKENS } from '../design/tokens'
 import fixture from '../run/fixtures/run-abc.json'
@@ -268,6 +271,44 @@ describe('GraphCanvas', () => {
     await user.tab()
     await user.keyboard('{Enter}')
     expect(onSelectNode).toHaveBeenCalledExactlyOnceWith('INC_037')
+  })
+
+  it('opens the evidence drawer on Enter and returns focus to the node on close', async () => {
+    stubApi({
+      '/api/v1/graph/nodes/INC_037': {
+        node_id: 'INC_037',
+        labels: ['Incident'],
+        properties: { title: 'Payment outage' },
+        provenance: null,
+      },
+    })
+    function Page() {
+      const [opened, setOpened] = useState<string | null>(null)
+      return (
+        <>
+          {canvas(viewAt('B'), { onSelectNode: setOpened })}
+          <EvidenceDrawer
+            source={opened ? { kind: 'node', nodeId: opened } : null}
+            onClose={() => setOpened(null)}
+          />
+        </>
+      )
+    }
+    const user = userEvent.setup()
+    render(<Page />)
+    await placed(41)
+    await user.tab()
+    const node = document.activeElement
+    expect(node).toHaveAttribute('data-node-id', 'INC_037')
+    await user.keyboard('{Enter}')
+    expect(
+      await screen.findByRole('dialog', { name: 'Evidence' }),
+    ).toBeVisible()
+    expect(await screen.findByText('Payment outage')).toBeVisible()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(document.activeElement).toBe(node)
+    vi.unstubAllGlobals()
   })
 
   it('calls onSelectNode on a click', async () => {

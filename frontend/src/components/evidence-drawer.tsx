@@ -5,6 +5,7 @@
  */
 
 import { getNode, getRecord, type Schemas } from '../api/client'
+import { datasetName, plainName, plainValue } from '../app/plain-words'
 import { useLoad } from '../app/use-load'
 import { Drawer } from './drawer'
 import { Panel } from './panel'
@@ -24,9 +25,6 @@ interface EvidenceDrawerProps {
 type JsonValue = Schemas['JsonValue']
 type Fields = Record<string, JsonValue>
 
-const formatValue = (value: JsonValue): string =>
-  typeof value === 'string' ? value : (JSON.stringify(value) ?? 'none')
-
 function Fact({ term, children }: { term: string; children: string }) {
   return (
     <div className="grid grid-cols-[9rem_1fr] gap-x-4 text-sm">
@@ -43,8 +41,8 @@ function Facts({ fields }: { fields: Fields }) {
   return (
     <dl className="space-y-2">
       {entries.map(([name, value]) => (
-        <Fact key={name} term={name}>
-          {formatValue(value)}
+        <Fact key={name} term={plainName(name)}>
+          {plainValue(value)}
         </Fact>
       ))}
     </dl>
@@ -71,7 +69,7 @@ function loaded(source: EvidenceSource) {
           provenance: (
             <dl className="space-y-2">
               <Fact term="Table">{record.table}</Fact>
-              <Fact term="Dataset">{source.datasetId}</Fact>
+              <Fact term="Dataset">{datasetName(source.datasetId)}</Fact>
               <Fact term="Graph node">
                 {record.graph_node_id ?? 'Not in the graph'}
               </Fact>
@@ -99,7 +97,9 @@ function loaded(source: EvidenceSource) {
             <dl className="space-y-2">
               <Fact term="Table">{node.provenance.table}</Fact>
               <Fact term="Row">{node.provenance.row_id}</Fact>
-              <Fact term="Dataset">{node.provenance.dataset_id}</Fact>
+              <Fact term="Dataset">
+                {datasetName(node.provenance.dataset_id)}
+              </Fact>
             </dl>
           ) : (
             <p className="text-sm text-text-secondary">

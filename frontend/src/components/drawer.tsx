@@ -18,6 +18,19 @@ interface DrawerProps {
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
+/**
+ * Back to what opened the drawer. If that has gone (the screen redrew while
+ * the drawer was open), the graph canvas's current node, else the main area.
+ */
+function returnFocus(opener: Element | null) {
+  const target =
+    opener instanceof HTMLElement && opener.isConnected
+      ? opener
+      : (document.querySelector<HTMLElement>('[data-node-id][tabindex="0"]') ??
+        document.getElementById('main'))
+  target?.focus()
+}
+
 export function Drawer({ open, title, onClose, children }: DrawerProps) {
   const titleId = useId()
   const dialog = useRef<HTMLDivElement>(null)
@@ -56,7 +69,7 @@ export function Drawer({ open, title, onClose, children }: DrawerProps) {
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)
-      if (opener instanceof HTMLElement && opener.isConnected) opener.focus()
+      returnFocus(opener)
     }
   }, [open])
 
