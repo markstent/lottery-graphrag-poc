@@ -172,6 +172,7 @@ export function createReplay(
         moveTo(events.length, duration)
         return
       }
+      if (playing) return
       if (count >= events.length) {
         count = 0
         cursor = 0

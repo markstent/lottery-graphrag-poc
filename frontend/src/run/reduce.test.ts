@@ -166,6 +166,25 @@ describe('the recorded run', () => {
     expect(state.graph.C.concepts.length).toBeGreaterThan(0)
   })
 
+  it('keeps what the evidence path event recorded, per graph pipeline', () => {
+    for (const id of ['B', 'C'] as const) {
+      const recordedPath = recorded.find(
+        (e) =>
+          e.pipeline === id && e.event_type === 'graph.evidence_path.completed',
+      )
+      expect(recordedPath).toBeDefined()
+      const payload = recordedPath?.payload as {
+        paths: number
+        max_hops: number
+      }
+      expect(state.graph[id].evidencePath).toEqual({
+        paths: payload.paths,
+        maxHops: payload.max_hops,
+      })
+    }
+    expect(reduceAll([]).graph.B.evidencePath).toBeNull()
+  })
+
   it('keeps document outcomes of the graph pipelines beside the node outcomes', () => {
     const c = state.pipelines.C
     const chunkEvents = (type: string) =>
@@ -417,5 +436,42 @@ describe('graph outcomes', () => {
         rerankScore: null,
       },
     ])
+  })
+})
+
+describe('graph node outcome before the verdict', () => {
+  const stream = (withRerank: boolean): RunEvent[] => [
+    event(1, 'graph.node.discovered', 'B', {
+      node_id: 'PLT_1',
+      node_label: 'Platform',
+      hop: 1,
+    }),
+    ...(withRerank
+      ? [
+          event(2, 'graph.candidate.reranked', 'B', {
+            candidate_id: 'PLT_1',
+            kind: 'node',
+            rank: 1,
+            rerank_score: 0.4,
+          }),
+        ]
+      : []),
+  ]
+
+  it('a node is only discovered until the reranker has judged it', () => {
+    expect(reduceAll(stream(false)).graph.B.nodes[0].outcome).toBe('discovered')
+    expect(reduceAll(stream(true)).graph.B.nodes[0].outcome).toBe('candidate')
+  })
+
+  it('a reranked node the graph never discovered is not invented', () => {
+    const state = reduceAll([
+      event(1, 'graph.candidate.reranked', 'B', {
+        candidate_id: 'GHOST',
+        kind: 'node',
+        rank: 1,
+        rerank_score: 0.4,
+      }),
+    ])
+    expect(state.graph.B.nodes).toEqual([])
   })
 })

@@ -207,6 +207,16 @@ describe('playback', () => {
     expect(replay.snapshot().state).toEqual(reduceAll(upTo(1000)))
   })
 
+  it('play while already playing keeps the clock where it is', () => {
+    const { replay, advance } = make()
+    replay.play()
+    advance(8000) // inside the recorded pause after the event at 6007
+    replay.play()
+    expect(replay.snapshot().playing).toBe(true)
+    advance(3000)
+    expect(replay.snapshot().state).toEqual(reduceAll(upTo(11000)))
+  })
+
   it('pause stops the clock and leaves no timer', () => {
     const { replay, advance, pending } = make()
     replay.play()

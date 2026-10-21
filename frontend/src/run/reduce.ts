@@ -99,7 +99,8 @@ export interface GraphNode {
   hop: number
   seed: boolean
   viaConcept: string | null
-  outcome: 'candidate' | 'selected' | 'discarded'
+  /** `discovered` until the reranker has judged the node. */
+  outcome: 'discovered' | 'candidate' | 'selected' | 'discarded'
   reason: DiscardReason | null
   score: number | null
   rerankScore: number | null
@@ -118,6 +119,11 @@ export interface GraphEvents {
   nodes: GraphNode[]
   relationships: GraphEdge[]
   concepts: { id: string; boundEntities: number }[]
+  /**
+   * What `graph.evidence_path.completed` recorded: how many paths and the
+   * longest in hops. The paths themselves are in the run's results.
+   */
+  evidencePath: { paths: number; maxHops: number } | null
 }
 
 /** An event the reducer has no rule for, kept as received. */
@@ -154,6 +160,7 @@ const emptyGraph = (): GraphEvents => ({
   nodes: [],
   relationships: [],
   concepts: [],
+  evidencePath: null,
 })
 
 export const initialRunState = (): RunState => ({
@@ -363,7 +370,7 @@ function discovered(
     hop,
     seed: false,
     viaConcept,
-    outcome: 'candidate',
+    outcome: 'discovered',
     reason: null,
     score: null,
     rerankScore: null,
@@ -571,9 +578,15 @@ function apply(state: RunState, event: RunEvent): RunState {
       )
     case 'graph.candidate.reranked': {
       const { candidate_id, kind, rank, rerank_score } = event.payload
-      return updatePipeline(state, id, (p) =>
+      const next = updatePipeline(state, id, (p) =>
         reranked(p, candidate_id, kind, rank, rerank_score, null),
       )
+      const known = state.graph[id].nodes.find((n) => n.id === candidate_id)
+      return kind === 'node' && known?.outcome === 'discovered'
+        ? updateGraph(next, id, (g) =>
+            changeNode(g, candidate_id, { outcome: 'candidate' }),
+          )
+        : next
     }
     case 'graph.candidate.selected': {
       const payload = event.payload
@@ -618,8 +631,13 @@ function apply(state: RunState, event: RunEvent): RunState {
         discardedIn(p, payload.chunk_id, payload.reason, payload.rerank_score),
       )
     }
-    case 'graph.evidence_path.completed':
-      return state
+    case 'graph.evidence_path.completed': {
+      const { paths, max_hops } = event.payload
+      return updateGraph(state, id, (g) => ({
+        ...g,
+        evidencePath: { paths, maxHops: max_hops },
+      }))
+    }
     case 'graph.context.assembled':
       return updatePipeline(state, id, (p) => assembled(p, t, 'rerank'))
     case 'graph.generation.started':
