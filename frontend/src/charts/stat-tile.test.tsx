@@ -35,7 +35,7 @@ describe('StatTile', () => {
     expect(screen.getByText('interval 80.0 to 10.0')).toBeInTheDocument()
   })
 
-  it('draws a large value with separators and without tabular figures', () => {
+  it('draws a large value with separators, in tabular numerals so tiles compare', () => {
     render(
       <StatTile
         label="Questions"
@@ -44,7 +44,7 @@ describe('StatTile', () => {
         decimals={0}
       />,
     )
-    expect(screen.getByText('12,840')).not.toHaveClass('tabular')
+    expect(screen.getByText('12,840')).toHaveClass('tabular')
   })
 
   it('sets the interval and counts in tabular numerals', () => {
@@ -60,10 +60,11 @@ describe('StatTile', () => {
     expect(screen.getByText('interval 55.2 to 67.9')).toHaveClass('tabular')
   })
 
-  it('draws a missing value as no value, never zero', () => {
+  it('draws a missing value as no value with no unit, never zero', () => {
     render(<StatTile label="Evidence found" value={null} unit="points" />)
     expect(screen.getByText('no value')).toBeInTheDocument()
     expect(screen.queryByText('0.0')).toBeNull()
+    expect(screen.queryByText('points')).toBeNull()
   })
 
   it('does not wear a series colour on its text', () => {

@@ -29,11 +29,13 @@ export function StatTile({
         {value === null ? (
           <span className="text-lg text-text-muted">no value</span>
         ) : (
-          <span className="text-2xl font-semibold text-text-primary">
+          <span className="tabular text-2xl font-semibold text-text-primary">
             {fmt(value)}
           </span>
         )}
-        <span className="text-sm text-text-secondary">{unit}</span>
+        {value === null ? null : (
+          <span className="text-sm text-text-secondary">{unit}</span>
+        )}
       </div>
       {interval ? (
         <div className="tabular text-sm text-text-muted">

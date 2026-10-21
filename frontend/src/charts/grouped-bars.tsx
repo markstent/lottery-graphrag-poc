@@ -164,7 +164,7 @@ export function GroupedBars({
       columns={[
         ...series.map((id) => pipeline(id).label),
         ...intervalSeries.map((id) => `${pipeline(id).label} interval`),
-        ...(delta ? [`${delta.between[0]} vs ${delta.between[1]}`] : []),
+        ...(delta ? [`${delta.between[0]} \u2212 ${delta.between[1]}`] : []),
       ]}
       rows={groups.map((g) => {
         const given = delta?.values[g.key]
@@ -360,7 +360,7 @@ export function GroupedBars({
                     className="tabular"
                     fill={TOKENS['color-text-primary']}
                   >
-                    {fmt(given, true)}
+                    {`${first} \u2212 ${second} ${fmt(given, true)}`}
                   </text>
                 </g>
               )

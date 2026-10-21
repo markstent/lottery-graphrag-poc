@@ -71,9 +71,19 @@ describe('GroupedBars', () => {
       />,
     )
     // 80 - 40 is 40: the chart draws the given 9, and the given negative one.
-    expect(screen.getByText('+9.0')).toBeInTheDocument()
-    expect(screen.getByText('-4.0')).toBeInTheDocument()
-    expect(screen.queryByText('+40.0')).toBeNull()
+    expect(screen.getByText('A \u2212 C +9.0')).toBeInTheDocument()
+    expect(screen.getByText('A \u2212 C -4.0')).toBeInTheDocument()
+    expect(screen.queryByText(/\+40\.0/)).toBeNull()
+  })
+
+  it('names the pair the bracket compares, with a true minus sign', () => {
+    render(
+      <GroupedBars
+        {...props}
+        delta={{ between: ['C', 'B'], values: { H1: 3.5 } }}
+      />,
+    )
+    expect(screen.getByText('C \u2212 B +3.5')).toBeInTheDocument()
   })
 
   it('spans the delta bracket from the first to the second bar', () => {
