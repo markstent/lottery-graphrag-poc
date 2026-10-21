@@ -32,6 +32,7 @@ from app.api.schemas import (
     QueryStatus,
     RunHistory,
     RunSummary,
+    error_responses,
 )
 from app.api.scoring import demo_questions, require_bank, score_state
 from app.api.stream import sse_frames
@@ -103,7 +104,12 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
     seconds without an event (ApiSettings.sse_heartbeat_s)."""
     router = APIRouter()
 
-    @router.post("/queries", status_code=202, response_model=QueryAccepted)
+    @router.post(
+        "/queries",
+        status_code=202,
+        response_model=QueryAccepted,
+        responses=error_responses(409, 422, 503),
+    )
     def submit_query(request: QueryRequest, service: Service) -> QueryAccepted:
         with _reading(service.store):
             run_id = service.start(request)
@@ -113,7 +119,7 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
             events_url=f"/api/v1/queries/{run_id}/events",
         )
 
-    @router.get("/queries", response_model=RunHistory)
+    @router.get("/queries", response_model=RunHistory, responses=error_responses(422))
     def read_history(
         service: Service,
         limit: Annotated[int, Query(ge=1, le=HISTORY_LIMIT_MAX)] = HISTORY_LIMIT_DEFAULT,
@@ -131,7 +137,9 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
             next_before=cursor(page[-1]) if len(rows) > limit else None,
         )
 
-    @router.get("/queries/{run_id}", response_model=QueryResults)
+    @router.get(
+        "/queries/{run_id}", response_model=QueryResults, responses=error_responses(404, 422)
+    )
     def read_results(run_id: str, service: Service) -> QueryResults:
         with _reading(service.store) as store:
             row = store.get_run(run_id)
@@ -151,7 +159,12 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
             }
         )
 
-    @router.post("/queries/{run_id}/cancel", status_code=202, response_model=RunSummary)
+    @router.post(
+        "/queries/{run_id}/cancel",
+        status_code=202,
+        response_model=RunSummary,
+        responses=error_responses(404, 409, 422),
+    )
     def cancel_run(run_id: str, service: Service) -> RunSummary:
         with _reading(service.store) as store:
             cancelled = service.cancel(run_id)
@@ -162,7 +175,9 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
             raise ApiError(409, ErrorCode.CONFLICT, f"run {run_id} has already finished")
         return RunSummary.model_validate(_summary(row))
 
-    @router.get("/queries/{run_id}/events", response_model=EventStream)
+    @router.get(
+        "/queries/{run_id}/events", response_model=EventStream, responses=error_responses(404, 422)
+    )
     def read_events(run_id: str, service: Service) -> EventStream:
         with _reading(service.store) as store:
             row = store.get_run(run_id)
@@ -176,7 +191,10 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
     @router.get(
         "/queries/{run_id}/events/stream",
         response_class=StreamingResponse,
-        responses={200: {"content": {"text/event-stream": {}}}},
+        responses={
+            **error_responses(404, 422),
+            200: {"content": {"text/event-stream": {}}},
+        },
     )
     def stream_events(
         run_id: str,
@@ -193,7 +211,9 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
         frames = sse_frames(run_id, start, service.store, service.wait_for, heartbeat_s)
         return StreamingResponse(frames, media_type="text/event-stream", headers=_STREAM_HEADERS)
 
-    @router.get("/demo/questions", response_model=list[DemoQuestion])
+    @router.get(
+        "/demo/questions", response_model=list[DemoQuestion], responses=error_responses(503)
+    )
     def read_demo_questions() -> list[DemoQuestion]:
         """One bank instance per demo stratum; a 503 before the bank is grounded."""
         return demo_questions(require_bank(presentation_bank()))

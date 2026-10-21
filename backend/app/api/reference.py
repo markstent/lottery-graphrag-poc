@@ -26,6 +26,7 @@ from app.api.schemas import (
     ModelsOut,
     OntologyOut,
     ScenarioOut,
+    error_responses,
 )
 from app.config import RetrievalSettings, from_env
 from app.datasets.master_data import MARKETS
@@ -88,7 +89,7 @@ def _in_process(provider: str, model: str, loaded: bool) -> ModelOut:
 def build_reference_router() -> APIRouter:
     router = APIRouter()
 
-    @router.get("/ontology", response_model=OntologyOut)
+    @router.get("/ontology", response_model=OntologyOut, responses=error_responses())
     def read_ontology() -> OntologyOut:
         ontology = _ontology()
         return OntologyOut(
@@ -96,7 +97,11 @@ def build_reference_router() -> APIRouter:
             concepts=[_concept(ontology, concept) for concept in ontology.concepts],
         )
 
-    @router.get("/ontology/concepts/{concept_id}/members", response_model=list[MemberOut])
+    @router.get(
+        "/ontology/concepts/{concept_id}/members",
+        response_model=list[MemberOut],
+        responses=error_responses(404, 422),
+    )
     def read_members(
         concept_id: str, market: Annotated[str | None, Query()] = None
     ) -> list[MemberOut]:
@@ -117,7 +122,7 @@ def build_reference_router() -> APIRouter:
             if market is None or binding.market_id == market
         ]
 
-    @router.get("/scenarios", response_model=list[ScenarioOut])
+    @router.get("/scenarios", response_model=list[ScenarioOut], responses=error_responses())
     def read_scenarios() -> list[ScenarioOut]:
         applied = _applied_scenarios()
         scenarios = []
@@ -138,7 +143,7 @@ def build_reference_router() -> APIRouter:
             )
         return scenarios
 
-    @router.get("/models", response_model=ModelsOut)
+    @router.get("/models", response_model=ModelsOut, responses=error_responses())
     def read_models(request: Request) -> ModelsOut:
         checks: ReadinessChecks = request.app.state.readiness
         lab, _state = request.app.state.query_service.lab_status()

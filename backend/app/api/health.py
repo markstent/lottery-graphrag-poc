@@ -9,12 +9,12 @@ from fastapi import APIRouter, Request, Response
 
 from app import __version__
 from app.api.readiness import ReadinessChecks
-from app.api.schemas import HealthResponse, Readiness
+from app.api.schemas import HealthResponse, Readiness, error_responses
 
 router = APIRouter()
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse, responses=error_responses())
 def read_health() -> HealthResponse:
     """Liveness probe used by CI, Docker and the frontend."""
     return HealthResponse(status="ok", version=__version__)
@@ -23,7 +23,11 @@ def read_health() -> HealthResponse:
 @router.get(
     "/health/ready",
     response_model=Readiness,
-    responses={503: {"model": Readiness, "description": "A check failed"}},
+    responses={
+        **error_responses(),
+        # Not an envelope: a failed check carries the same body as a pass.
+        503: {"model": Readiness, "description": "A check failed"},
+    },
 )
 def read_readiness(request: Request, response: Response) -> Readiness:
     """Readiness: the lab, the index, Neo4j and the model provider."""

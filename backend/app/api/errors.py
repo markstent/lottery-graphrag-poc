@@ -61,7 +61,7 @@ class ErrorCode(StrEnum):
 class ApiErrorBody(BaseModel):
     """The error object every failure carries (docs/07 section 11)."""
 
-    error_code: str
+    error_code: ErrorCode
     message: str
     retryable: bool
 

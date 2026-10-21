@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
+from app.api.errors import ErrorCode
 from app.api.openapi_export import CONTRACT_PATH, render_contract
 from app.main import create_app
 
@@ -34,3 +36,54 @@ def test_contract_is_sorted_two_space_json_with_a_trailing_newline() -> None:
     assert text == render_contract(create_app(lab_factory=build_lab_offline))
     assert text.endswith("}\n")
     assert text.startswith('{\n  "')
+
+
+# A failed readiness check answers 503 with the readiness body, not an envelope.
+READINESS_FAILURE = ("/api/v1/health/ready", "get", "503")
+ENVELOPE_REF = "#/components/schemas/ErrorEnvelope"
+
+
+def _operations() -> list[tuple[str, str, dict[str, Any]]]:
+    paths = create_app(lab_factory=build_lab_offline).openapi()["paths"]
+    return [
+        (path, method, operation)
+        for path, item in paths.items()
+        for method, operation in item.items()
+    ]
+
+
+def test_every_failure_response_is_the_error_envelope() -> None:
+    operations = _operations()
+    assert len(operations) == 29
+    for path, method, operation in operations:
+        failures = {
+            status: response
+            for status, response in operation["responses"].items()
+            if not status.startswith("2")
+        }
+        assert "500" in failures, f"{method} {path} does not declare 500"
+        for status, response in failures.items():
+            if (path, method, status) == READINESS_FAILURE:
+                continue
+            schema = response["content"]["application/json"]["schema"]
+            assert schema == {"$ref": ENVELOPE_REF}, f"{method} {path} {status}"
+
+
+def test_every_route_with_input_declares_its_422() -> None:
+    for path, method, operation in _operations():
+        takes_input = bool(operation.get("parameters") or operation.get("requestBody"))
+        assert ("422" in operation["responses"]) == takes_input, f"{method} {path}"
+
+
+def test_the_framework_validation_error_is_not_in_the_contract() -> None:
+    served = create_app(lab_factory=build_lab_offline).openapi()
+    assert "HTTPValidationError" not in json.dumps(served)
+    assert "ValidationError" not in served["components"]["schemas"]
+
+
+def test_the_envelope_names_every_error_code() -> None:
+    schemas = create_app(lab_factory=build_lab_offline).openapi()["components"]["schemas"]
+    assert schemas["ApiErrorBody"]["properties"]["error_code"] == {
+        "$ref": "#/components/schemas/ErrorCode"
+    }
+    assert set(schemas["ErrorCode"]["enum"]) == {code.value for code in ErrorCode}

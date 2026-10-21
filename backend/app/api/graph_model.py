@@ -35,6 +35,7 @@ from app.api.schemas import (
     NodeOut,
     ProvenanceOut,
     RelTypeOut,
+    error_responses,
 )
 from app.config import LABEL_VERSION, GraphConfig, from_env
 from app.graph.node_rows import node_table
@@ -111,7 +112,7 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
     """The graph routes; node reads go to the graph at ``graph``."""
     router = APIRouter()
 
-    @router.get("/graph/schema", response_model=GraphSchema)
+    @router.get("/graph/schema", response_model=GraphSchema, responses=error_responses())
     def read_schema() -> GraphSchema:
         settings_b, settings_c = bc_graph_settings(from_env())
         traversal = settings_c.graph
@@ -135,7 +136,7 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
             label_version=LABEL_VERSION,
         )
 
-    @router.get("/graph/stats", response_model=GraphStats)
+    @router.get("/graph/stats", response_model=GraphStats, responses=error_responses(404))
     def read_stats() -> GraphStats:
         active = active_dataset_dir()
         stats = read_graph_stats(active)
@@ -158,14 +159,22 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
             source="ingestion",
         )
 
-    @router.get("/graph/nodes/{node_id}", response_model=NodeOut)
+    @router.get(
+        "/graph/nodes/{node_id}",
+        response_model=NodeOut,
+        responses=error_responses(404, 409, 422, 503),
+    )
     def read_node(node_id: str) -> NodeOut:
         active = active_dataset_dir()
         with _reader(graph, world, active) as reader:
             labels, props = _one_node(reader, node_id)
         return _node(labels, props, active.name)
 
-    @router.get("/graph/nodes/{node_id}/neighbours", response_model=Neighbours)
+    @router.get(
+        "/graph/nodes/{node_id}/neighbours",
+        response_model=Neighbours,
+        responses=error_responses(404, 409, 422, 503),
+    )
     def read_neighbours(
         node_id: str,
         limit: Annotated[int, Query(ge=1, le=NEIGHBOURS_LIMIT_MAX)] = NEIGHBOURS_LIMIT_DEFAULT,

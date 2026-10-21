@@ -5,6 +5,7 @@ domain models in app.evidence directly: they are the retrieval layer's own
 public record (provenance included) and are already Pydantic.
 """
 
+from http import HTTPStatus
 from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
@@ -547,3 +548,21 @@ class ModelsOut(BaseModel):
     sparse: ModelOut
     rerank: ModelOut
     generation: ModelOut
+
+
+class ErrorEnvelope(BaseModel):
+    """The body of every non-2xx response: ``{"error": {...}}``."""
+
+    error: ApiErrorBody
+
+
+def error_responses(*statuses: int) -> dict[int | str, dict[str, Any]]:
+    """The OpenAPI ``responses`` of a route's failures, each the error envelope.
+
+    A 500 is always possible, so it is always included. Declaring 422 here
+    replaces FastAPI's default ``HTTPValidationError``, which this API never sends.
+    """
+    return {
+        status: {"model": ErrorEnvelope, "description": HTTPStatus(status).phrase}
+        for status in sorted({*statuses, 500})
+    }

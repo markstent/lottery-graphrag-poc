@@ -44,6 +44,7 @@ from app.api.schemas import (
     RowPage,
     TableProvenance,
     TableSchemaOut,
+    error_responses,
 )
 from app.config import GraphConfig, from_env
 from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE, TABLE_SCHEMAS, primary_key
@@ -310,12 +311,14 @@ def build_data_model_router(graph: GraphConfig, graph_world: GraphWorldCheck) ->
     ``graph`` unless ``graph_world`` finds it holding another world."""
     router = APIRouter()
 
-    @router.get("/datasets", response_model=list[DatasetSummary])
+    @router.get("/datasets", response_model=list[DatasetSummary], responses=error_responses())
     def list_datasets() -> list[DatasetSummary]:
         active = active_dataset_dir()
         return [_summary(world, active) for world in _worlds(active).values()]
 
-    @router.get("/datasets/{dataset_id}", response_model=DatasetDetail)
+    @router.get(
+        "/datasets/{dataset_id}", response_model=DatasetDetail, responses=error_responses(404, 422)
+    )
     def read_dataset(dataset_id: str) -> DatasetDetail:
         active = active_dataset_dir()
         world = _world(dataset_id, active)
@@ -328,7 +331,11 @@ def build_data_model_router(graph: GraphConfig, graph_world: GraphWorldCheck) ->
             index_status=_index_status(world),
         )
 
-    @router.get("/datasets/{dataset_id}/dictionary", response_model=list[TableSchemaOut])
+    @router.get(
+        "/datasets/{dataset_id}/dictionary",
+        response_model=list[TableSchemaOut],
+        responses=error_responses(404, 422),
+    )
     def read_dictionary(dataset_id: str) -> list[TableSchemaOut]:
         world = _world(dataset_id, active_dataset_dir())
         provenance = _manifest(world).get("provenance", {})
@@ -337,7 +344,11 @@ def build_data_model_router(graph: GraphConfig, graph_world: GraphWorldCheck) ->
             return _registry_dictionary(provenance)
         return _world_dictionary(json.loads(path.read_text("utf-8")), provenance)
 
-    @router.get("/datasets/{dataset_id}/tables/{table}/rows", response_model=RowPage)
+    @router.get(
+        "/datasets/{dataset_id}/tables/{table}/rows",
+        response_model=RowPage,
+        responses=error_responses(404, 422),
+    )
     def read_rows(
         dataset_id: str,
         table: str,
@@ -376,7 +387,11 @@ def build_data_model_router(graph: GraphConfig, graph_world: GraphWorldCheck) ->
             ],
         )
 
-    @router.get("/datasets/{dataset_id}/tables/{table}/rows/{row_id}", response_model=RecordOut)
+    @router.get(
+        "/datasets/{dataset_id}/tables/{table}/rows/{row_id}",
+        response_model=RecordOut,
+        responses=error_responses(404, 409, 422),
+    )
     def read_record(dataset_id: str, table: str, row_id: str) -> RecordOut:
         kinds = dict(_columns(table))
         columns = list(kinds)

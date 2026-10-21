@@ -43,6 +43,7 @@ from app.api.schemas import (
     JobStatus,
     PipelineScore,
     QuestionOut,
+    error_responses,
 )
 from app.api.scoring import require_bank
 from app.evaluation.bank import STRATA
@@ -368,7 +369,7 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
     """The benchmark routes over ``runs_dir`` (ApiSettings.benchmark_dir)."""
     router = APIRouter()
 
-    @router.get("/benchmarks", response_model=list[BenchmarkRunOut])
+    @router.get("/benchmarks", response_model=list[BenchmarkRunOut], responses=error_responses())
     def list_benchmarks() -> list[BenchmarkRunOut]:
         return [
             BenchmarkRunOut(
@@ -382,33 +383,55 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
             for name, summary in published_runs(runs_dir)
         ]
 
-    @router.get("/benchmarks/latest", response_model=BenchmarkSummary)
+    @router.get(
+        "/benchmarks/latest", response_model=BenchmarkSummary, responses=error_responses(404)
+    )
     def read_latest_benchmark() -> BenchmarkSummary:
         latest = latest_benchmark(runs_dir)
         if latest is None:
             raise ApiError(404, ErrorCode.NOT_FOUND, "no published benchmark run")
         return _summary_out(latest)
 
-    @router.get("/benchmarks/questions", response_model=list[QuestionOut])
+    @router.get(
+        "/benchmarks/questions",
+        response_model=list[QuestionOut],
+        responses=error_responses(404, 422, 503),
+    )
     def read_questions(run_id: str | None = None) -> list[QuestionOut]:
         return _questions(runs_dir, run_id)
 
-    @router.post("/benchmarks", status_code=202, response_model=BenchmarkJob)
+    @router.post(
+        "/benchmarks",
+        status_code=202,
+        response_model=BenchmarkJob,
+        responses=error_responses(409, 422, 503),
+    )
     def start_benchmark(request: BenchmarkStart) -> BenchmarkJob:
         return jobs.start(request)
 
-    @router.get("/benchmarks/jobs/{job_id}", response_model=BenchmarkJob)
+    @router.get(
+        "/benchmarks/jobs/{job_id}",
+        response_model=BenchmarkJob,
+        responses=error_responses(404, 422),
+    )
     def read_job(job_id: str) -> BenchmarkJob:
         return jobs.get(job_id)
 
-    @router.post("/benchmarks/jobs/{job_id}/cancel", status_code=202, response_model=BenchmarkJob)
+    @router.post(
+        "/benchmarks/jobs/{job_id}/cancel",
+        status_code=202,
+        response_model=BenchmarkJob,
+        responses=error_responses(404, 409, 422),
+    )
     def cancel_job(job_id: str) -> BenchmarkJob:
         """Request the job to stop before its next instance; the instance in
         progress finishes first, so the job stays running until then."""
         return jobs.cancel(job_id)
 
     # Last: the run id is a free path segment.
-    @router.get("/benchmarks/{run_id}", response_model=BenchmarkSummary)
+    @router.get(
+        "/benchmarks/{run_id}", response_model=BenchmarkSummary, responses=error_responses(404, 422)
+    )
     def read_benchmark(run_id: str) -> BenchmarkSummary:
         return _summary_out(_published(runs_dir, run_id))
 
