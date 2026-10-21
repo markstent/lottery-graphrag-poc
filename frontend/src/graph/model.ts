@@ -3,17 +3,18 @@
  * pipeline to what the canvas and the textual list draw. Every node and edge
  * is a recorded event; the model adds no activity and drops no node.
  *
- * State of a node. It comes only from recorded events, and when several
- * apply the first of this list wins:
+ * State of a node. A node's role comes first, then its outcome, all from
+ * recorded events:
+ *   seed          graph.seed.selected named it
+ *   concept       graph.ontology.expanded named it (when it is not a seed)
+ * every other node shows its outcome, the first that applies:
  *   selected      graph.candidate.selected named it
  *   discarded     graph.candidate.discarded named it
  *   candidate     graph.candidate.reranked judged it, with no verdict yet
- *   seed          graph.seed.selected named it
- *   concept       graph.ontology.expanded named it
- *   source_record the caller says its evidence is a source record
+ *   source_record the run's results attach structured source-record facts to it
  *   traversed     graph.node.discovered found it, nothing else applies
- * A node is a concept (`kind`) whenever an ontology expansion named it, even
- * when a verdict gives it another state.
+ * `outcome` is carried by every node, so a seed or concept that was selected
+ * or set aside can still be badged with its verdict.
  *
  * Clustering. Above the cap, the nodes that are neither on an evidence path
  * nor seeds are grouped by (hop, label), largest group first (ties by label,
@@ -21,11 +22,13 @@
  * cluster plus the clusters) is at most the cap. A group of one is never
  * clustered. If path and seed nodes alone exceed the cap, the view stays
  * above it. A clustered node stays in `nodes` with its `clusterId` and in its
- * cluster's `members`, so nothing is lost.
+ * cluster's `members`, so nothing is lost. With `focus` on, the cap no longer
+ * applies: every group of two or more such nodes is clustered, so only the
+ * evidence paths and the seeds stand alone.
  */
 
 import type { EvidenceState } from '../design/evidence-states'
-import type { GraphEvents } from '../run/reduce'
+import type { GraphEvents, GraphNode } from '../run/reduce'
 
 export const DEFAULT_VISIBLE_NODE_CAP = 60
 
@@ -34,7 +37,10 @@ export interface GraphNodeView {
   /** The recorded node label (its type, such as "Game"); the id if none was recorded. */
   label: string
   kind: 'entity' | 'concept'
+  /** The role (seed, concept) or else the outcome. */
   state: EvidenceState
+  /** The verdict the events gave, whatever the role. */
+  outcome: GraphNode['outcome']
   hop: number
   onPath: boolean
   /** True for a node the overlay (configuration B) never discovered. */
@@ -81,26 +87,25 @@ export interface GraphViewOptions {
   /** Configuration B's events when `events` are C's. */
   overlay?: GraphEvents
   /**
-   * The evidence paths the backend recorded (the selected evidence's `path`
-   * in the run's results). Ids with no recorded node are left out.
+   * The evidence paths the backend recorded (`pathsFromResult`). Ids with no
+   * recorded node are left out.
    */
   paths?: string[][]
-  /** Nodes whose evidence is attached as a source record. */
+  /** Nodes whose evidence is a source record (`sourceRecordsFromResult`). */
   sourceRecordIds?: ReadonlySet<string>
 }
 
 function nodeState(
-  node: GraphEvents['nodes'][number],
+  node: GraphNode,
   isConcept: boolean,
   isSourceRecord: boolean,
 ): EvidenceState {
+  if (node.seed) return 'seed'
+  if (isConcept) return 'concept'
   if (node.outcome === 'selected') return 'selected'
   if (node.outcome === 'discarded') return 'discarded'
   if (node.outcome === 'candidate') return 'candidate'
-  if (node.seed) return 'seed'
-  if (isConcept) return 'concept'
-  if (isSourceRecord) return 'source_record'
-  return 'traversed'
+  return isSourceRecord ? 'source_record' : 'traversed'
 }
 
 const hasStep = (path: string[], a: string, b: string): boolean =>
@@ -151,6 +156,7 @@ export function graphView(
     label: node.label ?? node.id,
     kind: concepts.has(node.id) ? 'concept' : 'entity',
     state: nodeState(node, concepts.has(node.id), sourceRecordIds.has(node.id)),
+    outcome: node.outcome,
     hop: node.hop,
     onPath: path.includes(node.id),
     addedByOntology: overlayIds !== undefined && !overlayIds.has(node.id),

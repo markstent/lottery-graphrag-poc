@@ -6,8 +6,8 @@
  * Timeline definition. Every event's `t_ms` is read from one process-wide
  * monotonic clock, so it is comparable across the A, B and C tracks and the
  * run-level events (fixtures/run-abc.json: `t_ms` never decreases in
- * `sequence` order, and the first and last events are 18016.2 ms apart by
- * `t_ms` and 18016.17 ms apart by wall-clock `timestamp`). The timeline is
+ * `sequence` order, and the first and last events are 17191.6 ms apart by
+ * `t_ms` and 17191.59 ms apart by wall-clock `timestamp`). The timeline is
  * therefore the events in `sequence` order at offset `t_ms - first t_ms`.
  * Every gap on it, including the pauses between pipelines, is a recorded
  * difference; nothing is added or shortened. If a `t_ms` ever stepped back the

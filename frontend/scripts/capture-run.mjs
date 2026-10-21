@@ -1,7 +1,9 @@
 // Captures one A, B, C run through the HTTP API into src/run/fixtures/run-abc.json.
 // Serve the backend first (GENERATION_PROVIDER=fake, the dev world):
 //   node scripts/capture-run.mjs [http://localhost:8000]
-// The run id and timestamps are kept as the API gave them.
+// The run id and timestamps are kept as the API gave them. The final results
+// (GET /queries/{id}) are stored beside the events, so the evidence paths and
+// source records the pipelines returned are part of the fixture.
 import { writeFileSync } from 'node:fs'
 
 const BASE = process.argv[2] ?? 'http://localhost:8000'
@@ -49,6 +51,7 @@ const fixture = {
   question: question.text,
   market_scope: question.market_scope,
   configurations: CONFIGURATIONS,
+  results: run,
   events,
 }
 writeFileSync(OUTPUT, `${JSON.stringify(fixture, null, 2)}\n`)

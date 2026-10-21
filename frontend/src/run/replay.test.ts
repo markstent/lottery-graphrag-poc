@@ -61,7 +61,7 @@ describe('timeline', () => {
     recorded.forEach((event, i) => {
       expect(replay.offsets[i]).toBeCloseTo(event.t_ms - origin, 6)
     })
-    expect(replay.duration).toBeCloseTo(18016.2, 1)
+    expect(replay.duration).toBeCloseTo(17191.6, 1)
   })
 
   it('orders events by sequence whatever order they arrive in', () => {
@@ -210,7 +210,7 @@ describe('playback', () => {
   it('play while already playing keeps the clock where it is', () => {
     const { replay, advance } = make()
     replay.play()
-    advance(8000) // inside the recorded pause after the event at 6007
+    advance(8000) // inside the recorded pause after the event at 5154
     replay.play()
     expect(replay.snapshot().playing).toBe(true)
     advance(3000)
