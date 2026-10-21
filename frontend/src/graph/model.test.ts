@@ -270,9 +270,19 @@ describe('added by the ontology', () => {
 
 describe('clustering', () => {
   it('does nothing at or below the cap', () => {
-    const view = graphView(full.graph.B, options)
+    const view = graphView(full.graph.B, { ...options, cap: 41 })
     expect(view.clusters).toEqual([])
     expect(view.nodes.every((n) => n.clusterId === undefined)).toBe(true)
+  })
+
+  it('has a default cap of 24, which folds the 41 nodes of B', () => {
+    expect(DEFAULT_VISIBLE_NODE_CAP).toBe(24)
+    const view = graphView(full.graph.B, options)
+    const visible =
+      view.nodes.filter((n) => n.clusterId === undefined).length +
+      view.clusters.length
+    expect(view.clusters.length).toBeGreaterThan(0)
+    expect(visible).toBeLessThanOrEqual(24)
   })
 
   it('groups the largest (hop, label) group of C above the cap and drops nothing', () => {

@@ -30,7 +30,11 @@
 import type { EvidenceState } from '../design/evidence-states'
 import type { GraphEvents, GraphNode } from '../run/reduce'
 
-export const DEFAULT_VISIBLE_NODE_CAP = 60
+/**
+ * The cap that keeps labels readable on a 1920 by 1080 screen (e2e/graph-canvas-200.spec.ts
+ * checks the type size on the screen at this cap).
+ */
+export const DEFAULT_VISIBLE_NODE_CAP = 24
 
 export interface GraphNodeView {
   id: string

@@ -5,7 +5,7 @@
  *   source   abc (the recorded run, default) or 200 (the generated 200-node fixture)
  *   config   B or C (default C)
  *   count    events applied (default all)
- *   cap      visible-node cap (default LEGIBLE_NODE_CAP)
+ *   cap      visible-node cap (default the model's cap)
  *   focus    1 for focus mode
  *   present  1 for presentation mode
  *   mount    click to draw the canvas only when "Show graph" is pressed
@@ -16,8 +16,9 @@ import { useMemo, useState } from 'react'
 import type { components } from '../api/schema'
 import { EvidencePathList } from '../graph/evidence-path-list'
 import { recordedPathsFromResult } from '../graph/from-result'
-import { GraphCanvas, LEGIBLE_NODE_CAP } from '../graph/graph-canvas'
-import { graphView } from '../graph/model'
+import { GraphCanvas } from '../graph/graph-canvas'
+import { GraphLegend } from '../graph/graph-legend'
+import { DEFAULT_VISIBLE_NODE_CAP, graphView } from '../graph/model'
 import { reduceAll, type RunEvent } from '../run/reduce'
 import recordedRun from '../run/fixtures/run-abc.json'
 import generated from './fixtures/graph-200.json'
@@ -41,16 +42,25 @@ export default function GraphHarness() {
   const [opened, setOpened] = useState<string | null>(null)
   const [shown, setShown] = useState(params.get('mount') !== 'click')
   const presentation = params.get('present') === '1'
-  const cap = Number(params.get('cap') ?? LEGIBLE_NODE_CAP)
+  const cap = Number(params.get('cap') ?? DEFAULT_VISIBLE_NODE_CAP)
 
   const view = useMemo(() => {
     const state = reduceAll(events.slice(0, count))
+    // C is drawn against B, so what the ontology added shows. The generated
+    // run has no B of its own.
+    const overlay =
+      config === 'C' && !generatedRun
+        ? reduceAll(
+            (recordedRun.events as unknown as RunEvent[]).slice(0, count),
+          ).graph.B
+        : undefined
     return graphView(state.graph[config], {
       cap,
       focus,
+      overlay,
       paths: recordedPathsFromResult(result),
     })
-  }, [events, count, cap, focus, config, result])
+  }, [events, count, cap, focus, config, result, generatedRun])
 
   return (
     <main className="flex h-screen flex-col gap-3 bg-background p-4">
@@ -94,6 +104,7 @@ export default function GraphHarness() {
               onSelectNode={setOpened}
               focusMode={focus}
               presentation={presentation}
+              pipeline={config}
               label={`Graph for configuration ${config}`}
             />
           ) : null}
@@ -102,6 +113,7 @@ export default function GraphHarness() {
           <EvidencePathList view={view} />
         </aside>
       </div>
+      <GraphLegend pipeline={config} />
     </main>
   )
 }

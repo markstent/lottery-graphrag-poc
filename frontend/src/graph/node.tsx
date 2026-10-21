@@ -12,24 +12,17 @@ import { EVIDENCE_STATES, type EvidenceShape } from '../design/evidence-states'
 import { countedLabel, nodeLabel } from '../design/node-labels'
 import { TOKENS } from '../design/tokens'
 import type { GraphCluster, GraphNodeView } from './model'
-import type { NodeSize } from './node-size'
-
-/** The share of the width a shape leaves for text. */
-const TEXT_SPAN: Record<EvidenceShape, number> = {
-  circle: 0.72,
-  square: 0.92,
-  diamond: 0.56,
-  hexagon: 0.78,
-  pill: 0.86,
-  'dashed-circle': 0.72,
-  document: 0.84,
-}
+import { TEXT_SPAN, type NodeSize } from './node-size'
 
 const STROKE = 2
 const PATH_STROKE = 4
 
 interface CommonData extends Record<string, unknown> {
   size: NodeSize
+  /** The strong tone of the canvas's pipeline: path nodes and used evidence are ringed in it. */
+  strong: string
+  /** The ontology pipeline's colours, for nodes it added. */
+  ontology: { hue: string; tint: string; strong: string }
   /** Dimmed to 25 percent by focus mode. */
   dimmed: boolean
   /** The node that takes Tab; every other node is reached with the arrow keys. */
@@ -51,7 +44,7 @@ export type ClusterFlowNode = Node<ClusterNodeData, 'cluster'>
 export type GraphFlowNode = EntityFlowNode | ClusterFlowNode
 
 /** The outline of a shape inside a `w` by `h` box, inset by half the stroke. */
-function Outline({
+export function Outline({
   shape,
   w,
   h,
@@ -203,7 +196,8 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
   const { node, size } = data
   const design = EVIDENCE_STATES[node.state]
   const Icon = design.icon
-  const darkFill = node.state === 'selected'
+  const added = node.addedByOntology
+  const darkFill = node.state === 'selected' && !added
   const ink = darkFill ? TOKENS['color-surface'] : TOKENS['color-text-primary']
   const quiet = darkFill
     ? TOKENS['color-grey-200']
@@ -244,8 +238,12 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
             shape={design.shape}
             w={size.width}
             h={size.height}
-            fill={design.fill}
-            stroke={design.stroke}
+            fill={added ? data.ontology.tint : design.fill}
+            stroke={
+              node.onPath || node.state === 'selected'
+                ? data.strong
+                : design.stroke
+            }
             strokeWidth={node.onPath ? PATH_STROKE : STROKE}
             dashed={design.shape === 'dashed-circle'}
           />
@@ -264,12 +262,27 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
               className="shrink-0"
               size={size.font + 2}
             />
-            <span className="truncate first-letter:uppercase">{words}</span>
+            <span className="whitespace-nowrap first-letter:uppercase">
+              {words}
+            </span>
           </span>
-          <span className="truncate" style={{ color: quiet }}>
+          <span className="whitespace-nowrap" style={{ color: quiet }}>
             {node.id}
           </span>
         </span>
+        {added ? (
+          <span
+            className="absolute -top-3 left-4 rounded-chip border px-1.5 leading-tight font-semibold whitespace-nowrap"
+            style={{
+              fontSize: size.font,
+              background: TOKENS['color-surface'],
+              borderColor: data.ontology.hue,
+              color: data.ontology.strong,
+            }}
+          >
+            + ontology
+          </span>
+        ) : null}
         {showVerdict ? (
           <span
             aria-hidden="true"
@@ -358,7 +371,9 @@ export function ClusterNode({ data }: NodeProps<ClusterFlowNode>) {
             className="shrink-0"
             size={size.font + 2}
           />
-          <span className="truncate first-letter:uppercase">{counted}</span>
+          <span className="whitespace-nowrap first-letter:uppercase">
+            {counted}
+          </span>
         </span>
       </button>
     </>

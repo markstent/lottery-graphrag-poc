@@ -1,31 +1,43 @@
 /**
- * A relationship edge: a curve from source to target with its relationship in
- * plain words on a white tag. Evidence-path edges are thick and dark; edges
- * into a set-aside node are dashed and grey.
+ * A relationship edge: the orthogonal route elk worked out, drawn with rounded
+ * corners, with its relationship in plain words on a tag where elk left room
+ * for it. Evidence-path edges are thick and in the pipeline's strong tone;
+ * edges into a set-aside node are dashed and grey; edges the ontology added
+ * are in the ontology pipeline's colour.
  */
 
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react'
 
 import type { EvidenceState } from '../design/evidence-states'
 import { TOKENS } from '../design/tokens'
-import { bezierPoint } from './label-placement'
+import { roundedPath } from './edge-path'
+import type { Point } from './layout'
 
 export interface RelationshipEdgeData extends Record<string, unknown> {
   /** The relationship in plain words; several for edges folded into one. */
   label: string
   state: EvidenceState
   onPath: boolean
+  /** True for an edge the ontology added (configuration C only). */
+  addedByOntology: boolean
   dimmed: boolean
-  /** Where along the curve the tag sits (0 to 1), or null when it has no free spot. */
-  tagAt: number | null
+  /** The elk route, from the source node's right side to the target node's left. */
+  points: Point[]
+  /** The centre of the tag. */
+  tag: Point
   /** Label size in px. */
   font: number
+  /** The strong tone of the canvas's pipeline, for evidence-path edges. */
+  strong: string
+  /** The pipeline colours of the ontology, for edges it added. */
+  ontology: { hue: string; tint: string; strong: string }
+  /** Prefix of this canvas's arrow head ids, so two canvases never share one. */
+  arrows: string
 }
 
 export type RelationshipFlowEdge = Edge<RelationshipEdgeData, 'relationship'>
@@ -35,7 +47,8 @@ function look(data: RelationshipEdgeData): {
   width: number
   dash?: string
 } {
-  if (data.onPath) return { color: TOKENS['color-grey-900'], width: 4 }
+  if (data.onPath) return { color: data.strong, width: 4 }
+  if (data.addedByOntology) return { color: data.ontology.hue, width: 2.5 }
   if (data.state === 'discarded')
     return { color: TOKENS['color-grey-500'], width: 1.5, dash: '6 5' }
   if (data.state === 'selected')
@@ -43,26 +56,24 @@ function look(data: RelationshipEdgeData): {
   return { color: TOKENS['color-grey-600'], width: 1.5 }
 }
 
-export function RelationshipEdge(props: EdgeProps<RelationshipFlowEdge>) {
-  const { data } = props
+export function RelationshipEdge({
+  id,
+  data,
+}: EdgeProps<RelationshipFlowEdge>) {
   if (!data) return null
-  const [path] = getBezierPath(props)
-  const tag =
-    data.tagAt === null
-      ? null
-      : bezierPoint(
-          { x: props.sourceX, y: props.sourceY },
-          { x: props.targetX, y: props.targetY },
-          data.tagAt,
-        )
   const { color, width, dash } = look(data)
   const opacity = data.dimmed ? 0.25 : 1
+  const marker = data.onPath
+    ? 'path'
+    : data.addedByOntology
+      ? 'ontology'
+      : 'plain'
   return (
     <>
       <BaseEdge
-        id={props.id}
-        path={path}
-        markerEnd={`url(#graph-arrow-${data.onPath ? 'path' : 'plain'})`}
+        id={id}
+        path={roundedPath(data.points)}
+        markerEnd={`url(#${data.arrows}-${marker})`}
         style={{
           stroke: color,
           strokeWidth: width,
@@ -70,32 +81,46 @@ export function RelationshipEdge(props: EdgeProps<RelationshipFlowEdge>) {
           opacity,
         }}
       />
-      {tag ? (
-        <EdgeLabelRenderer>
-          <span
-            className="nodrag nopan pointer-events-none absolute rounded-chip border border-hairline bg-surface px-1.5 leading-tight whitespace-nowrap"
-            data-edge-id={props.id}
-            style={{
-              transform: `translate(-50%, -50%) translate(${tag.x}px, ${tag.y}px)`,
-              fontSize: data.font,
-              fontWeight: data.onPath ? 600 : 400,
-              color: TOKENS['color-text-primary'],
-              opacity,
-            }}
-          >
-            {data.label}
-          </span>
-        </EdgeLabelRenderer>
-      ) : null}
+      <EdgeLabelRenderer>
+        <span
+          className="nodrag nopan pointer-events-none absolute rounded-chip border px-1.5 leading-tight whitespace-nowrap"
+          data-edge-id={id}
+          style={{
+            transform: `translate(-50%, -50%) translate(${data.tag.x}px, ${data.tag.y}px)`,
+            fontSize: data.font,
+            fontWeight: data.onPath ? 600 : 400,
+            color: data.addedByOntology
+              ? data.ontology.strong
+              : TOKENS['color-text-primary'],
+            background: data.addedByOntology
+              ? data.ontology.tint
+              : TOKENS['color-surface'],
+            borderColor: data.addedByOntology
+              ? data.ontology.hue
+              : TOKENS['color-hairline'],
+            opacity,
+          }}
+        >
+          {data.label}
+        </span>
+      </EdgeLabelRenderer>
     </>
   )
 }
 
-/** The two arrow heads the edges point to; drawn once inside the canvas. */
-export function ArrowDefinitions() {
-  const arrow = (id: string, color: string) => (
+/** The arrow heads the edges point to; drawn once inside the canvas. */
+export function ArrowDefinitions({
+  prefix,
+  pathColor,
+  ontologyColor,
+}: {
+  prefix: string
+  pathColor: string
+  ontologyColor: string
+}) {
+  const arrow = (name: string, color: string) => (
     <marker
-      id={id}
+      id={`${prefix}-${name}`}
       viewBox="0 0 10 10"
       refX="9"
       refY="5"
@@ -110,8 +135,9 @@ export function ArrowDefinitions() {
   return (
     <svg aria-hidden="true" className="absolute size-0">
       <defs>
-        {arrow('graph-arrow-plain', TOKENS['color-grey-600'])}
-        {arrow('graph-arrow-path', TOKENS['color-grey-900'])}
+        {arrow('plain', TOKENS['color-grey-600'])}
+        {arrow('path', pathColor)}
+        {arrow('ontology', ontologyColor)}
       </defs>
     </svg>
   )

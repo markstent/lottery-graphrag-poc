@@ -87,6 +87,42 @@ async function visibleNodeCount(page: Page): Promise<number> {
   return folded ? total - Number(folded[1]) + Number(folded[2]) : total
 }
 
+test.describe('graph canvas legibility', () => {
+  for (const config of ['B', 'C']) {
+    test(`on the full fixture for ${config} every label shows at 14 px or more under fit view`, async ({
+      page,
+    }) => {
+      await page.goto(`/#/__graph?config=${config}`)
+      await page.reload()
+      await expect(nodes(page).first()).toBeVisible()
+      await page.waitForTimeout(800)
+      const sizes = await page.evaluate(() => {
+        const zoom = new DOMMatrixReadOnly(
+          getComputedStyle(document.querySelector('.react-flow__viewport')!)
+            .transform,
+        ).a
+        return [...document.querySelectorAll('[data-node-id]')].map(
+          (button) => {
+            const label = button.querySelector<HTMLElement>(
+              'span[style*="font-size"]',
+            )!
+            return {
+              id: button.getAttribute('data-node-id'),
+              onScreen: parseFloat(getComputedStyle(label).fontSize) * zoom,
+              height: label.getBoundingClientRect().height,
+            }
+          },
+        )
+      })
+      expect(sizes.length).toBeGreaterThan(10)
+      for (const { id, onScreen, height } of sizes) {
+        expect(onScreen, `${id} type size on screen`).toBeGreaterThanOrEqual(14)
+        expect(height, `${id} label box height`).toBeGreaterThanOrEqual(14)
+      }
+    })
+  }
+})
+
 test.describe('graph canvas with 200 nodes', () => {
   test('clusters to the cap and lays out the first time in under a second', async ({
     page,

@@ -1,10 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { SettingsContext, type Settings } from '../app/use-settings'
 import type { components } from '../api/schema'
 import { EVIDENCE_STATES } from '../design/evidence-states'
+import { TOKENS } from '../design/tokens'
 import fixture from '../run/fixtures/run-abc.json'
 import { reduceAll, type RunEvent } from '../run/reduce'
 import { recordedPathsFromResult } from './from-result'
@@ -53,6 +60,7 @@ const canvas = (
     onSelectNode={noop}
     focusMode={false}
     presentation={false}
+    pipeline="C"
     {...extra}
   />
 )
@@ -370,5 +378,102 @@ describe('GraphCanvas', () => {
     render(canvas(viewAt('B')))
     await placed(41)
     expect(nodeButtons()[0].className).toContain('graph-node')
+  })
+})
+
+/** A #rrggbb colour as jsdom writes it in a style. */
+const rgb = (hex: string) =>
+  `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`
+
+describe('pipeline identity', () => {
+  const overlayView = (pipelineId: 'B' | 'C') => {
+    const state = reduceAll(recorded)
+    return graphView(state.graph[pipelineId], {
+      cap: 1000,
+      focus: false,
+      overlay: pipelineId === 'C' ? state.graph.B : undefined,
+      paths: recordedPathsFromResult(resultOf(pipelineId)),
+    })
+  }
+
+  it('badges and tints in C the nodes the ontology added, and only those', async () => {
+    const view = overlayView('C')
+    const added = view.nodes.filter((n) => n.addedByOntology)
+    expect(added.length).toBeGreaterThan(0)
+    render(canvas(view, { pipeline: 'C' }))
+    await placed(view.nodes.length)
+    for (const node of view.nodes) {
+      const badge = within(nodeButton(node.id)).queryByText('+ ontology')
+      expect(badge !== null, node.id).toBe(node.addedByOntology)
+    }
+    const tint = nodeButton(added[0].id).querySelector('svg')?.innerHTML
+    expect(tint).toContain(TOKENS['color-pipeline-c-tint'])
+  })
+
+  it('shows no ontology badge in B', async () => {
+    const view = overlayView('B')
+    render(canvas(view, { pipeline: 'B' }))
+    await placed(view.nodes.length)
+    expect(screen.queryByText('+ ontology')).toBeNull()
+  })
+
+  it('rings path nodes in the strong tone of the canvas pipeline', async () => {
+    const view = overlayView('B')
+    const { unmount } = render(canvas(view, { pipeline: 'B' }))
+    await placed(view.nodes.length)
+    const onPath = view.nodes.find((n) => n.onPath && n.state === 'selected')
+    const ring = () =>
+      nodeButton(onPath?.id as string)
+        .querySelector('svg')
+        ?.innerHTML.toLowerCase()
+    expect(ring()).toContain(TOKENS['color-pipeline-b-strong'])
+    unmount()
+    render(canvas(overlayView('C'), { pipeline: 'C' }))
+    await placed(61)
+    expect(ring()).toContain(TOKENS['color-pipeline-c-strong'])
+  })
+
+  it('draws path edges in the strong tone and ontology edges in C colour', async () => {
+    const view = overlayView('C')
+    render(canvas(view, { pipeline: 'C' }))
+    await placed(view.nodes.length)
+    await waitFor(() =>
+      expect(document.querySelectorAll('.react-flow__edge-path').length).toBe(
+        new Set(view.edges.map((e) => `${e.source}>${e.target}`)).size,
+      ),
+    )
+    const strokes = [
+      ...document.querySelectorAll<SVGPathElement>('.react-flow__edge-path'),
+    ].map((p) => p.style.stroke)
+    expect(strokes).toContain(rgb(TOKENS['color-pipeline-c-strong']))
+    expect(strokes).toContain(rgb(TOKENS['color-pipeline-c']))
+  })
+
+  it('never cuts an identifier or a label short', async () => {
+    const view = overlayView('C')
+    render(canvas(view, { pipeline: 'C' }))
+    await placed(view.nodes.length)
+    for (const node of view.nodes) {
+      expect(nodeButton(node.id)).toHaveTextContent(node.id)
+      expect(nodeButton(node.id).innerHTML).not.toMatch(/truncate|ellipsis/)
+    }
+    expect(nodeButton('CONCEPT_APPLICATION_INCIDENT')).toHaveTextContent(
+      'CONCEPT_APPLICATION_INCIDENT',
+    )
+  })
+
+  it('gives each canvas its own arrow heads', async () => {
+    const view = overlayView('B')
+    render(
+      <>
+        {canvas(view, { pipeline: 'B' })}
+        {canvas(view, { pipeline: 'C' })}
+      </>,
+    )
+    await waitFor(() =>
+      expect(document.querySelectorAll('marker[id$="-path"]').length).toBe(2),
+    )
+    const ids = [...document.querySelectorAll('marker')].map((m) => m.id)
+    expect(new Set(ids).size).toBe(ids.length)
   })
 })

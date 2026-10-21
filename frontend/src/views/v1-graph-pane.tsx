@@ -5,8 +5,9 @@
  */
 
 import { AnswerBlock } from '../components/answer-block'
-import { EVIDENCE_STATES, type EvidenceState } from '../design/evidence-states'
+import type { EvidenceState } from '../design/evidence-states'
 import { GraphCanvas } from '../graph/graph-canvas'
+import { GraphLegend } from '../graph/graph-legend'
 import type { GraphEdgeView, GraphNodeView, GraphView } from '../graph/model'
 import type {
   GraphNode,
@@ -74,21 +75,6 @@ function toGraphView(state: GraphPaneState): GraphView {
   }
 }
 
-const LEGEND = Object.values(EVIDENCE_STATES)
-
-function GraphLegend() {
-  return (
-    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">
-      {LEGEND.map(({ label, icon: Icon }) => (
-        <li key={label} className="flex items-center gap-1.5">
-          <Icon aria-hidden="true" size={14} />
-          {label}
-        </li>
-      ))}
-    </ul>
-  )
-}
-
 /** The graph of one mock run, with its legend. */
 export function EvidenceGraph({
   state,
@@ -107,10 +93,11 @@ export function EvidenceGraph({
           onSelectNode={onSelect}
           focusMode={false}
           presentation={false}
+          pipeline="C"
         />
       </div>
       <div className="mt-2">
-        <GraphLegend />
+        <GraphLegend pipeline="C" />
       </div>
     </>
   )
