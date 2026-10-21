@@ -90,6 +90,7 @@ export function RelationshipEdge({
           className="nodrag nopan pointer-events-none absolute rounded-chip border px-1.5 leading-tight whitespace-nowrap"
           data-edge-id={id}
           data-route={data.route}
+          data-on-path={data.onPath}
           style={{
             transform: `translate(-50%, -50%) translate(${data.tag.x}px, ${data.tag.y}px)`,
             fontSize: data.font,

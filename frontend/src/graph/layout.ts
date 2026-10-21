@@ -211,43 +211,63 @@ function placeTags(
         ),
     )
   const placed = new Map<string, Point>()
+  const boxAt = (x: number, y: number, tag: LayoutEdge['tag']): Box => ({
+    left: x - tag.width / 2,
+    right: x + tag.width / 2,
+    top: y - tag.height / 2,
+    bottom: y + tag.height / 2,
+  })
+  const free = (box: Box) => !taken.some((t) => overlaps(box, t))
+  const take = (box: Box) =>
+    taken.push({
+      left: box.left - TAG_GAP,
+      right: box.right + TAG_GAP,
+      top: box.top - TAG_GAP,
+      bottom: box.bottom + TAG_GAP,
+    })
   for (const edge of edges) {
+    const { tag } = edge
     const own = all.find((a) => a.id === edge.id)?.runs ?? []
-    const candidates = [...own]
-      .filter((r) => r.right - r.left >= edge.tag.width + 2 * TAG_GAP)
-      .sort(
-        (a, b) =>
-          Number(shared(edge.id, a)) - Number(shared(edge.id, b)) ||
-          b.right - b.left - (a.right - a.left),
-      )
+    const byFit = (
+      a: { y: number; left: number; right: number },
+      b: typeof a,
+    ) =>
+      Number(shared(edge.id, a)) - Number(shared(edge.id, b)) ||
+      b.right - b.left - (a.right - a.left)
+    const long = own
+      .filter((r) => r.right - r.left >= tag.width + 2 * TAG_GAP)
+      .sort(byFit)
     let chosen: Point | undefined
-    for (const run of candidates) {
+    // On a run long enough to hold the tag, below the line or above it.
+    for (const run of long) {
       const middle = (run.left + run.right) / 2
-      const slack = (run.right - run.left - edge.tag.width) / 2 - TAG_GAP
+      const slack = (run.right - run.left - tag.width) / 2 - TAG_GAP
       for (const x of [middle, middle - slack / 2, middle + slack / 2]) {
         for (const side of [1, -1]) {
-          const y = run.y + side * (edge.tag.height / 2 + TAG_GAP)
-          const box = {
-            left: x - edge.tag.width / 2,
-            right: x + edge.tag.width / 2,
-            top: y - edge.tag.height / 2,
-            bottom: y + edge.tag.height / 2,
-          }
-          if (taken.some((t) => overlaps(box, t))) continue
-          chosen = { x, y }
-          taken.push({
-            left: box.left - TAG_GAP,
-            right: box.right + TAG_GAP,
-            top: box.top - TAG_GAP,
-            bottom: box.bottom + TAG_GAP,
-          })
-          break
+          const y = run.y + side * (tag.height / 2 + TAG_GAP)
+          if (free(boxAt(x, y, tag))) chosen = { x, y }
+          if (chosen) break
         }
         if (chosen) break
       }
       if (chosen) break
     }
-    placed.set(edge.id, chosen ?? edge.elk)
+    // Otherwise as near the middle of the longest run as there is room,
+    // stepping up and down by whole tags until a spot is clear.
+    if (!chosen) {
+      const run = [...own].sort(byFit).at(0)
+      const anchor = run
+        ? { x: (run.left + run.right) / 2, y: run.y }
+        : edge.points[0]
+      for (let step = 1; step <= 60 && !chosen; step += 1) {
+        const rows = Math.ceil(step / 2) * (step % 2 ? 1 : -1)
+        const y = anchor.y + rows * (tag.height + TAG_GAP)
+        if (free(boxAt(anchor.x, y, tag))) chosen = { x: anchor.x, y }
+      }
+    }
+    const spot = chosen ?? edge.elk
+    take(boxAt(spot.x, spot.y, tag))
+    placed.set(edge.id, spot)
   }
   return placed
 }

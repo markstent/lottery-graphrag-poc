@@ -510,8 +510,25 @@ describe('withClustersOf', () => {
       finalView.nodes.map((n) => [n.id, n.clusterId]),
     )
     for (const n of shown.nodes)
-      expect(n.clusterId).toBe(finalCluster.get(n.id))
+      expect(n.clusterId ?? n.slot).toBe(finalCluster.get(n.id))
     expect(shown.nodes.some((n) => n.clusterId !== undefined)).toBe(true)
+  })
+
+  it('draws a group only from two revealed members; a lone member takes the group as its slot', () => {
+    const lone = shown.nodes.filter((n) => n.slot !== undefined)
+    expect(lone.length).toBeGreaterThan(0)
+    for (const n of lone) {
+      expect(n.clusterId).toBeUndefined()
+      expect(shown.clusters.some((c) => c.id === n.slot)).toBe(false)
+      const members = shown.nodes.filter(
+        (m) => (m.clusterId ?? m.slot) === n.slot,
+      )
+      expect(members).toHaveLength(1)
+    }
+    for (const c of shown.clusters) expect(c.count).toBeGreaterThanOrEqual(2)
+    expect(shown.nodes.some((n) => n.slot === undefined && n.clusterId)).toBe(
+      true,
+    )
   })
 
   it('counts only the members that have arrived, and drops a group with none', () => {
@@ -527,5 +544,6 @@ describe('withClustersOf', () => {
   it('is the final view when the view is complete', () => {
     const done = withClustersOf(finalView, finalView)
     expect(done.clusters).toEqual(finalView.clusters)
+    expect(done.nodes.some((n) => n.slot !== undefined)).toBe(false)
   })
 })

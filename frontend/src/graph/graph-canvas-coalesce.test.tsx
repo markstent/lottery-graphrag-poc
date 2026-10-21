@@ -10,12 +10,14 @@ import { graphView } from './model'
 
 // Each layout takes a while, so several are requested before the first ends.
 const calls: number[] = []
+const priorities: Set<string>[] = []
 vi.mock('./layout', async (importActual) => {
   const actual = await importActual<typeof import('./layout')>()
   return {
     ...actual,
     layoutGraph: async (...args: Parameters<typeof actual.layoutGraph>) => {
       calls.push(args[0].length)
+      priorities.push(new Set(args[4]))
       await new Promise((resolve) => setTimeout(resolve, 60))
       return actual.layoutGraph(...args)
     },
@@ -57,5 +59,36 @@ describe('GraphCanvas layout requests', () => {
     // The first layout, then one for the latest view; none of the ones between.
     expect(calls).toHaveLength(2)
     expect(calls.at(-1)).toBe(latest)
+  })
+
+  it('gives elk the seeds as priority in a replay, and the path and ontology additions too once a live stream settles', async () => {
+    calls.length = 0
+    priorities.length = 0
+    const final = graphView(reduceAll(recorded).graph.C, {
+      cap: 1000,
+      focus: false,
+      paths: recordedPathsFromResult(result),
+    })
+    const seeds = new Set(
+      final.nodes.filter((n) => n.state === 'seed').map((n) => n.id),
+    )
+    expect(final.path.some((id) => !seeds.has(id))).toBe(true)
+    const common = {
+      view: final,
+      onSelectNode: () => undefined,
+      focusMode: false,
+      presentation: false,
+      pipeline: 'C' as const,
+    }
+    const replay = render(
+      <GraphCanvas {...common} mode="replay" finalView={final} />,
+    )
+    await waitFor(() => expect(priorities.length).toBeGreaterThan(0))
+    expect(priorities.at(-1)).toEqual(seeds)
+    replay.unmount()
+    priorities.length = 0
+    render(<GraphCanvas {...common} mode="live" settled />)
+    await waitFor(() => expect(priorities.length).toBeGreaterThan(0))
+    expect(priorities.at(-1)).toEqual(new Set([...seeds, ...final.path]))
   })
 })

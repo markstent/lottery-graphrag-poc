@@ -1,4 +1,4 @@
-# Frontend — Semantic Context Lab
+# Frontend - Semantic Context Lab
 
 High-fidelity UX prototype (Phase 7 / HITL-07). Implements the approved
 information architecture (`docs/ux/information-architecture.md`) with mocked
@@ -6,7 +6,7 @@ retrieval telemetry; no backend integration yet (Phase 9 wires the API).
 
 ## Purpose
 
-Demonstrate the comparison story — Current Approach versus + Graph & Ontology —
+Demonstrate the comparison story - Current Approach versus + Graph & Ontology -
 with real event-driven visuals, replayable execution, evidence inspection and
 presentation mode, before production retrieval is connected.
 
@@ -28,8 +28,8 @@ and no activity is ever fabricated.
 
 ## Operation
 
-- `pnpm dev` — dev server.
-- `pnpm test` — Vitest + Testing Library (13 tests: projections, playback,
+- `pnpm dev` - dev server.
+- `pnpm test` - Vitest + Testing Library (13 tests: projections, playback,
   shell).
 - `pnpm e2e` - Playwright smoke and the graph canvas at 200 nodes (the CI
   set). It builds the app in mode `e2e` into `dist-e2e/` and serves it on port
@@ -38,7 +38,7 @@ and no activity is ever fabricated.
   browser once with `node node_modules/@playwright/test/cli.js install chromium`.
 - `node scripts/make-graph-200.mjs` - regenerates the 200-node test fixture
   `src/dev/fixtures/graph-200.json` from the recorded run.
-- `pnpm e2e:visual` — visual regression against committed baselines
+- `pnpm e2e:visual` - visual regression against committed baselines
   (`e2e/visual.spec.ts-snapshots/`). Local only: fonts differ across
   platforms. Regenerate with `pnpm e2e:visual -- --update-snapshots` after
   approved visual changes.

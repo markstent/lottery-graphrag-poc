@@ -17,7 +17,7 @@ import { reduceAll, type RunEvent } from '../run/reduce'
 import { recordedPathsFromResult } from './from-result'
 import { EvidencePathList } from './evidence-path-list'
 import { GraphCanvas } from './graph-canvas'
-import { graphView, type GraphView } from './model'
+import { graphView, withClustersOf, type GraphView } from './model'
 
 const recorded = fixture.events as unknown as RunEvent[]
 const resultOf = (pipeline: 'B' | 'C') =>
@@ -96,9 +96,14 @@ async function placed(count: number) {
   await waitFor(() => expect(nodeButtons()).toHaveLength(count))
 }
 
-const transformOf = (id: string) =>
-  (document.querySelector(`.react-flow__node[data-id="${id}"]`) as HTMLElement)
-    .style.transform
+/** The position of a node: its own place, or the group place a lone member stands in. */
+const transformOf = (id: string) => {
+  const wrapper = document
+    .querySelector(`[data-node-id="${id}"]`)
+    ?.closest<HTMLElement>('.react-flow__node')
+  if (!wrapper) throw new Error(`no node ${id} on the page`)
+  return wrapper.style.transform
+}
 
 describe('GraphCanvas', () => {
   it('draws one DOM node for each node of the view', async () => {
@@ -494,29 +499,39 @@ describe('pipeline identity', () => {
   })
 })
 
+const MID = 405
+
 describe('replay and live', () => {
-  const fullC = () => viewAt('C')
-  const MID = 405
+  const CAP = 20
+  const fullC = () => viewAt('C', { cap: CAP })
+  const midC = (sequence = MID) => viewAt('C', { sequence, cap: CAP })
   const routeKinds = () =>
     [...document.querySelectorAll('[data-edge-id]')].map((el) =>
       el.getAttribute('data-route'),
     )
+  /** What a replay draws for `view`: nodes standing alone or in a lone slot, and groups. */
+  const drawn = (view: GraphView, final: GraphView) => {
+    const shown = withClustersOf(view, final)
+    return (
+      shown.nodes.filter((n) => n.clusterId === undefined).length +
+      shown.clusters.length
+    )
+  }
+  const afterPaths = recorded.find(
+    (e) =>
+      e.event_type === 'graph.evidence_path.completed' && e.pipeline === 'C',
+  )?.sequence as number
 
   it('shows no evidence path before the path event, then shows it', async () => {
     const final = fullC()
-    const mid = viewAt('C', { sequence: MID })
+    const mid = midC()
     expect(final.path.length).toBeGreaterThan(0)
     expect(mid.path).toEqual([])
     const { rerender } = render(canvas(mid, { replayOf: final }))
-    await placed(mid.nodes.length)
+    await placed(drawn(mid, final))
     expect(document.querySelectorAll('[data-on-path="true"]')).toHaveLength(0)
-    const afterPaths = recorded.find(
-      (e) =>
-        e.event_type === 'graph.evidence_path.completed' && e.pipeline === 'C',
-    )?.sequence as number
     expect(afterPaths).toBeGreaterThan(MID)
-    const done = viewAt('C', { sequence: afterPaths })
-    rerender(canvas(done, { replayOf: final }))
+    rerender(canvas(midC(afterPaths), { replayOf: final }))
     await waitFor(() =>
       expect(
         document.querySelectorAll('[data-on-path="true"]').length,
@@ -526,36 +541,126 @@ describe('replay and live', () => {
 
   it('in replay lays out the final graph once: every node is where it will end, with an elk route', async () => {
     const final = fullC()
-    const mid = viewAt('C', { sequence: MID })
+    const mid = midC()
     const { rerender } = render(canvas(mid, { replayOf: final }))
-    await placed(mid.nodes.length)
-    const before = new Map(mid.nodes.map((n) => [n.id, transformOf(n.id)]))
+    await placed(drawn(mid, final))
+    const before = new Map(
+      nodeButtons().map((b) => [
+        b.dataset.nodeId as string,
+        transformOf(b.dataset.nodeId as string),
+      ]),
+    )
     await waitFor(() => expect(routeKinds().length).toBeGreaterThan(0))
     expect(routeKinds().every((kind) => kind === 'elk')).toBe(true)
     for (const sequence of [500, 650, Infinity]) {
-      const next = viewAt('C', { sequence })
+      const next = midC(sequence)
       rerender(canvas(next, { replayOf: final }))
-      await placed(next.nodes.length)
-      for (const [id, transform] of before)
-        expect(transformOf(id), id).toBe(transform)
+      await placed(drawn(next, final))
+      // A node that was drawn stays where it was, also when it becomes part of a group.
+      for (const [id, transform] of before) {
+        const wrapper = document
+          .querySelector(`[data-node-id="${id}"]`)
+          ?.closest('.react-flow__node') as HTMLElement | null
+        if (wrapper) expect(wrapper.style.transform, id).toBe(transform)
+      }
       await waitFor(() => expect(routeKinds().length).toBeGreaterThan(0))
       expect(routeKinds().every((kind) => kind === 'elk')).toBe(true)
     }
   })
 
-  it('in replay shows only the nodes and edges whose events have arrived', async () => {
+  it('in replay shows only the nodes whose events have arrived', async () => {
     const final = fullC()
-    const mid = viewAt('C', { sequence: MID })
+    const mid = midC()
     render(canvas(mid, { replayOf: final }))
-    await placed(mid.nodes.length)
-    expect(nodeButtons().length).toBeLessThan(final.nodes.length)
+    await placed(drawn(mid, final))
     const seen = new Set(mid.nodes.map((n) => n.id))
-    for (const button of nodeButtons())
-      expect(seen.has(button.dataset.nodeId as string)).toBe(true)
+    for (const button of nodeButtons()) {
+      const id = button.dataset.nodeId as string
+      expect(seen.has(id) || id.startsWith('cluster:'), id).toBe(true)
+    }
+    expect(nodeButtons().length).toBeLessThan(drawn(final, final))
+  })
+
+  it('in replay draws every edge of the cursor view and no edge that has not arrived, none of them on the path', async () => {
+    const final = fullC()
+    const mid = midC()
+    render(canvas(mid, { replayOf: final }))
+    await placed(drawn(mid, final))
+    await waitFor(() => expect(routeKinds().length).toBeGreaterThan(0))
+    const slotOf = (view: GraphView) => {
+      const shown = withClustersOf(view, final)
+      const place = new Map(
+        shown.nodes.map((n) => [n.id, n.clusterId ?? n.slot ?? n.id]),
+      )
+      return new Set(
+        shown.edges
+          .map((e) => [place.get(e.source), place.get(e.target)] as const)
+          .filter(([a, b]) => a !== b)
+          .map(([a, b]) => `${a}>${b}`),
+      )
+    }
+    const arrived = slotOf(mid)
+    const finalEdges = slotOf(final)
+    const futureOnly = [...finalEdges].filter((id) => !arrived.has(id))
+    expect(futureOnly.length).toBeGreaterThan(0)
+    const tags = [...document.querySelectorAll('[data-edge-id]')]
+    expect(tags).toHaveLength(arrived.size)
+    for (const tag of tags) {
+      const id = tag.getAttribute('data-edge-id') as string
+      expect(arrived.has(id), id).toBe(true)
+      expect(futureOnly.includes(id), id).toBe(false)
+      expect(tag.getAttribute('data-on-path')).toBe('false')
+    }
+  })
+
+  it('in replay draws a group from two revealed members, and a lone member as itself in the group place', async () => {
+    const final = fullC()
+    // A cursor at which some group has two members revealed and another has one.
+    const cursor = Array.from({ length: 80 }, (_, i) => 388 + i * 4).find(
+      (sequence) => {
+        const some = withClustersOf(midC(sequence), final)
+        return (
+          some.clusters.length > 0 &&
+          some.nodes.some((n) => n.slot !== undefined)
+        )
+      },
+    )
+    expect(cursor).toBeDefined()
+    const mid = midC(cursor)
+    const shown = withClustersOf(mid, final)
+    const lone = shown.nodes.filter((n) => n.slot !== undefined)
+    expect(shown.clusters.length).toBeGreaterThan(0)
+    const { rerender } = render(canvas(mid, { replayOf: final }))
+    await placed(drawn(mid, final))
+    for (const n of shown.clusters)
+      expect(
+        screen.getByRole('button', { name: new RegExp(`^Group: ${n.count} `) }),
+      ).toBeInTheDocument()
+    for (const group of screen.getAllByRole('button', { name: /^Group: / }))
+      expect(group.getAttribute('aria-label')).not.toMatch(/^Group: 1 /)
+    const spots = new Map(
+      lone.map((n) => [n.slot as string, transformOf(n.id)]),
+    )
+    for (const n of lone) {
+      expect(nodeButton(n.id)).toBeInTheDocument()
+      expect(
+        nodeButton(n.id).closest('.react-flow__node')?.getAttribute('data-id'),
+      ).toBe(n.slot)
+    }
+    // When the group is drawn, it takes the place the lone member had.
+    rerender(canvas(final, { replayOf: final }))
+    await placed(drawn(final, final))
+    for (const [slot, transform] of spots) {
+      const wrapper = document.querySelector(
+        `.react-flow__node[data-id="${slot}"]`,
+      ) as HTMLElement | null
+      expect(wrapper, slot).not.toBeNull()
+      expect(wrapper?.style.transform).toBe(transform)
+    }
   })
 
   it('in live settles into the whole layout when the stream ends', async () => {
-    const final = fullC()
+    const final = viewAt('C')
     const mid = viewAt('C', { sequence: MID })
     const { rerender } = render(canvas(mid))
     await placed(mid.nodes.length)
@@ -598,9 +703,21 @@ describe('what a screen reader is given', () => {
   })
 
   it('names what the ontology added in the node, the summary and the path list', async () => {
-    const v = view()
+    // Take a node on the path out of B, so it reads as added by the ontology.
+    const state = reduceAll(recorded)
+    const withoutOnPath = {
+      ...state.graph.B,
+      nodes: state.graph.B.nodes.filter((n) => n.id !== 'SUP_00005'),
+    }
+    const v = graphView(state.graph.C, {
+      cap: 1000,
+      focus: false,
+      overlay: withoutOnPath,
+      paths: recordedPathsFromResult(resultOf('C')),
+    })
     const added = v.nodes.filter((n) => n.addedByOntology)
     expect(added.length).toBeGreaterThan(0)
+    expect(added.some((n) => n.onPath)).toBe(true)
     render(
       <>
         {canvas(v, { label: 'Graph C', pathListId: 'paths' })}
@@ -620,5 +737,15 @@ describe('what a screen reader is given', () => {
       `${added.length} nodes were added by the ontology`,
     )
     expect(summary?.textContent).toContain(', added by the ontology')
+    const pathList = document.getElementById('paths')
+    const onPathAdded = added.filter((n) => n.onPath)
+    expect(onPathAdded.map((n) => n.id)).toContain('SUP_00005')
+    expect(pathList?.textContent).toContain(
+      'support case (SUP_00005), added by the ontology',
+    )
+    // A path node the ontology did not add is not marked.
+    expect(pathList?.textContent).not.toContain(
+      'support case (SUP_00113), added by the ontology',
+    )
   })
 })

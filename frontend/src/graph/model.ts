@@ -61,6 +61,12 @@ export interface GraphNodeView {
   /** True for a node the overlay (configuration B) never discovered. */
   addedByOntology: boolean
   clusterId?: string
+  /**
+   * The id of the group whose place the canvas draws this node in, when it
+   * stands in for a group of which it is the only member revealed so far
+   * (`withClustersOf`). It has no `clusterId`: a group is drawn from two members.
+   */
+  slot?: string
 }
 
 export interface GraphEdgeView {
@@ -288,20 +294,32 @@ export function graphView(
  * `view` with its nodes grouped the way `final` groups them, and each group
  * counting only the members `view` has so far. A replay draws the final
  * graph's layout, so a node must sit in the group (or stand alone) it will
- * have at the end, or it would have no place on the canvas.
+ * have at the end, or it would have no place on the canvas. A group with one
+ * revealed member is not drawn as a group (the model never groups one node):
+ * the member carries the group's id as its `slot` instead.
  */
 export function withClustersOf(view: GraphView, final: GraphView): GraphView {
   const clusterOf = new Map(final.nodes.map((n) => [n.id, n.clusterId]))
   const present = new Set(view.nodes.map((n) => n.id))
-  const nodes = view.nodes.map(({ clusterId: _ignored, ...node }) => {
-    const clusterId = clusterOf.get(node.id)
-    return clusterId === undefined ? node : { ...node, clusterId }
-  })
-  const clusters = final.clusters
+  const revealed = final.clusters
     .map((c) => {
       const members = c.members.filter((id) => present.has(id))
       return { ...c, members, count: members.length }
     })
     .filter((c) => c.count > 0)
-  return { ...view, nodes, clusters }
+  // A group is drawn once two of its members are revealed; before that the
+  // lone member is drawn as itself, in the group's place.
+  const drawn = new Set(revealed.filter((c) => c.count >= 2).map((c) => c.id))
+  const nodes = view.nodes.map(({ clusterId: _ignored, ...node }) => {
+    const clusterId = clusterOf.get(node.id)
+    if (clusterId === undefined) return node
+    return drawn.has(clusterId)
+      ? { ...node, clusterId }
+      : { ...node, slot: clusterId }
+  })
+  return {
+    ...view,
+    nodes,
+    clusters: revealed.filter((c) => drawn.has(c.id)),
+  }
 }

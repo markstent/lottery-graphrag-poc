@@ -271,6 +271,43 @@ describe('tags', () => {
   })
 })
 
+describe('crowded tags', () => {
+  it('still never overlap a node or each other when the runs are packed', async () => {
+    const { nodes, edges } = star(14)
+    const pinned = new Map<string, Point>([['n0', { x: 0, y: 200 }]])
+    nodes.slice(1).forEach((n, i) => pinned.set(n.id, { x: 330, y: i * 70 }))
+    const { positions, routes } = await layoutGraph(
+      nodes,
+      edges,
+      HEIGHT,
+      pinned,
+    )
+    const boxes = [...routes.values()].map((r) => ({
+      left: r.tag.x - tag.width / 2,
+      right: r.tag.x + tag.width / 2,
+      top: r.tag.y - tag.height / 2,
+      bottom: r.tag.y + tag.height / 2,
+    }))
+    const hit = (a: (typeof boxes)[0], b: (typeof boxes)[0]) =>
+      a.left < b.right &&
+      b.left < a.right &&
+      a.top < b.bottom &&
+      b.top < a.bottom
+    boxes.forEach((a, i) => {
+      for (const b of boxes.slice(i + 1)) expect(hit(a, b)).toBe(false)
+      for (const at of positions.values())
+        expect(
+          hit(a, {
+            left: at.x,
+            right: at.x + 260,
+            top: at.y,
+            bottom: at.y + HEIGHT,
+          }),
+        ).toBe(false)
+    })
+  })
+})
+
 describe('priority nodes', () => {
   it('take the top slots of their layer in a whole layout', async () => {
     const { nodes, edges } = star(14)
@@ -293,7 +330,7 @@ describe('priority nodes', () => {
     expect(new Set(top)).toEqual(priority)
   })
 
-  it('keep elk routes in the second pass', async () => {
+  it('keep elk routes when the priority nodes are listed first', async () => {
     const { nodes, edges } = star(10)
     const { routes } = await layoutGraph(
       nodes,

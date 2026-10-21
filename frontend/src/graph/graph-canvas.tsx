@@ -25,7 +25,6 @@
 import '@xyflow/react/dist/style.css'
 
 import {
-  Controls,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
@@ -42,6 +41,8 @@ import {
   type KeyboardEvent,
 } from 'react'
 
+import { Maximize, ZoomIn, ZoomOut, type LucideIcon } from 'lucide-react'
+
 import { SettingsContext } from '../app/use-settings'
 import type { EvidenceState } from '../design/evidence-states'
 import { pipeline, type PipelineId } from '../design/pipelines'
@@ -54,7 +55,12 @@ import {
 import { GraphSummary } from './graph-summary'
 import { layoutGraph, type Layout, type Positions } from './layout'
 import { withClustersOf, type GraphView } from './model'
-import { ClusterNode, EntityNode, type GraphFlowNode } from './node'
+import {
+  ClusterNode,
+  EntityNode,
+  type EntityNodeData,
+  type GraphFlowNode,
+} from './node'
 import {
   groupWidth,
   nodeWidth,
@@ -107,7 +113,10 @@ export type GraphCanvasProps = CommonProps &
   )
 
 interface Placed {
+  /** The id of the node's place: its own, a group's, or the group a lone member stands in for. */
   id: string
+  /** The id of the node the place draws: `id` unless a lone member stands in for a group. */
+  nodeId: string
   kind: 'entity' | 'cluster'
   state: EvidenceState
   onPath: boolean
@@ -133,7 +142,8 @@ function visibleGraph(view: GraphView) {
   for (const node of view.nodes) {
     if (node.clusterId === undefined) {
       nodes.push({
-        id: node.id,
+        id: node.slot ?? node.id,
+        nodeId: node.id,
         kind: 'entity',
         state: node.state,
         onPath: node.onPath,
@@ -143,6 +153,7 @@ function visibleGraph(view: GraphView) {
       seenClusters.add(node.clusterId)
       nodes.push({
         id: node.clusterId,
+        nodeId: node.clusterId,
         kind: 'cluster',
         state: 'traversed',
         onPath: false,
@@ -150,7 +161,9 @@ function visibleGraph(view: GraphView) {
       })
     }
   }
-  const clusterOf = new Map(view.nodes.map((n) => [n.id, n.clusterId]))
+  const clusterOf = new Map(
+    view.nodes.map((n) => [n.id, n.clusterId ?? n.slot]),
+  )
   const represent = (id: string) => clusterOf.get(id) ?? id
   const added = new Map(view.nodes.map((n) => [n.id, n.addedByOntology]))
 
@@ -247,6 +260,28 @@ interface Job {
   whole: boolean
 }
 
+function ToolButton({
+  name,
+  icon: Icon,
+  onClick,
+}: {
+  name: string
+  icon: LucideIcon
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={name}
+      title={name}
+      className="grid size-8 place-items-center rounded-chip border border-border bg-surface text-text-primary"
+      onClick={onClick}
+    >
+      <Icon aria-hidden="true" size={18} />
+    </button>
+  )
+}
+
 function Canvas(props: GraphCanvasProps) {
   const {
     view,
@@ -266,6 +301,8 @@ function Canvas(props: GraphCanvasProps) {
   const arrows = `arrow-${useId().replaceAll(':', '')}`
   const flow = useReactFlow()
   const container = useRef<HTMLDivElement>(null)
+  // The drawing area alone: the toolbar above it is not part of it.
+  const drawing = useRef<HTMLDivElement>(null)
   const autoFit = useRef(true)
 
   // What is laid out: the final graph of a replay, or the graph so far.
@@ -294,10 +331,18 @@ function Canvas(props: GraphCanvasProps) {
       forLayout.nodes.map((v) => {
         const node = nodeOf.get(v.id)
         const group = groupOf.get(v.id)
-        return [
-          v.id,
-          node ? nodeWidth(node, type) : group ? groupWidth(group, type) : 0,
-        ]
+        // A group's place is also where a lone member is drawn while the rest
+        // have not arrived, so it holds the widest of them.
+        const widest = group
+          ? Math.max(
+              groupWidth(group, type),
+              ...group.members.map((id) => {
+                const member = nodeOf.get(id)
+                return member ? nodeWidth(member, type) : 0
+              }),
+            )
+          : 0
+        return [v.id, node ? nodeWidth(node, type) : widest]
       }),
     )
   }, [forLayout, layoutView, type])
@@ -335,11 +380,16 @@ function Canvas(props: GraphCanvasProps) {
         tag: tagSize(e.text, type.font),
       })),
       height: type.height,
+      // The seeds are kept together at the top in every whole layout. The
+      // evidence path and what the ontology added are kept together too,
+      // except in a replay: its layout is made before the path is recorded
+      // and must not show where the path will be.
       priority: new Set(
         forLayout.nodes
           .filter(
             (n) =>
-              n.onPath || n.state === 'seed' || (pipelineId === 'C' && n.added),
+              n.state === 'seed' ||
+              (!replay && (n.onPath || (pipelineId === 'C' && n.added))),
           )
           .map((n) => n.id),
       ),
@@ -425,7 +475,7 @@ function Canvas(props: GraphCanvasProps) {
   const startId =
     shown.path[0] ?? visible.nodes.find((n) => n.state === 'seed')?.id
   const fit = useCallback(() => {
-    const box = container.current?.getBoundingClientRect()
+    const box = drawing.current?.getBoundingClientRect()
     const framed = framedIds.flatMap((id) => {
       const at = positions.get(id)
       return at ? [{ at, width: widths.get(id) ?? type.minWidth }] : []
@@ -471,7 +521,7 @@ function Canvas(props: GraphCanvasProps) {
 
   const nodes: GraphFlowNode[] = visible.nodes.flatMap((v): GraphFlowNode[] => {
     const at = positions.get(v.id)
-    const node = byId.get(v.id)
+    const node = byId.get(v.nodeId)
     const cluster = clusterById.get(v.id)
     if (!at) return []
     const size: NodeSize = {
@@ -536,12 +586,14 @@ function Canvas(props: GraphCanvasProps) {
 
   const focusNode = (id: string) => {
     setActiveId(id)
-    container.current
-      ?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"]`)
+    drawing.current
+      ?.querySelector<HTMLElement>(
+        `.react-flow__node[data-id="${CSS.escape(id)}"] button`,
+      )
       ?.focus({ preventScroll: true })
     const at = positions.get(id)
     const width = widths.get(id) ?? type.minWidth
-    const box = container.current?.getBoundingClientRect()
+    const box = drawing.current?.getBoundingClientRect()
     if (!at || !box) return
     const { x, y, zoom } = flow.getViewport()
     const left = at.x * zoom + x
@@ -559,20 +611,29 @@ function Canvas(props: GraphCanvasProps) {
       })
   }
 
+  const zoomIn = () => {
+    autoFit.current = false
+    void flow.zoomIn({ duration })
+  }
+  const zoomOut = () => {
+    autoFit.current = false
+    void flow.zoomOut({ duration })
+  }
+  // The fit button and the 0 key: the canvas's own fit, which keeps the type
+  // legible, not the library's, which would zoom out as far as it can.
+  const refit = () => {
+    autoFit.current = true
+    fit()
+  }
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const { key } = event
     if (key === 'Escape') {
       if (container.current) leave(container.current)
-    } else if (key === '+' || key === '=') {
-      autoFit.current = false
-      void flow.zoomIn({ duration })
-    } else if (key === '-') {
-      autoFit.current = false
-      void flow.zoomOut({ duration })
-    } else if (key === '0') {
-      autoFit.current = true
-      fit()
-    } else if (key.startsWith('Arrow') && active) {
+    } else if (key === '+' || key === '=') zoomIn()
+    else if (key === '-') zoomOut()
+    else if (key === '0') refit()
+    else if (key.startsWith('Arrow') && active) {
       const next = neighbourToward(key, active, linked, positions)
       if (next) focusNode(next)
     } else return
@@ -594,46 +655,67 @@ function Canvas(props: GraphCanvasProps) {
       aria-label={label}
       aria-describedby={pathListId ? `${summaryId} ${pathListId}` : summaryId}
       aria-busy={!laidOut && failure === null}
-      className="relative h-full min-h-64 w-full rounded-card border border-border bg-surface"
+      className="flex h-full min-h-64 w-full flex-col rounded-card border border-border bg-surface"
       onKeyDown={onKeyDown}
     >
-      <ArrowDefinitions
-        prefix={arrows}
-        pathColor={strong}
-        ontologyColor={ONTOLOGY.hue}
-      />
-      <ReactFlow<Node, RelationshipFlowEdge>
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        nodesDraggable={false}
-        nodesConnectable={false}
-        nodesFocusable={false}
-        edgesFocusable={false}
-        elementsSelectable={false}
-        disableKeyboardA11y
-        deleteKeyCode={null}
-        selectionKeyCode={null}
-        minZoom={0.1}
-        maxZoom={2}
-        proOptions={{ hideAttribution: true }}
-        onNodeClick={(_, node) => onSelectNode(node.id)}
-        onMoveStart={(event) => {
-          if (event) autoFit.current = false
-        }}
-      >
-        <Controls showInteractive={false} position="bottom-right" />
-      </ReactFlow>
+      <div ref={drawing} className="relative min-h-0 flex-1">
+        <ArrowDefinitions
+          prefix={arrows}
+          pathColor={strong}
+          ontologyColor={ONTOLOGY.hue}
+        />
+        <ReactFlow<Node, RelationshipFlowEdge>
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          style={{ position: 'absolute', inset: 0 }}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          nodesFocusable={false}
+          edgesFocusable={false}
+          elementsSelectable={false}
+          disableKeyboardA11y
+          deleteKeyCode={null}
+          selectionKeyCode={null}
+          minZoom={0.1}
+          maxZoom={2}
+          proOptions={{ hideAttribution: true }}
+          onNodeClick={(_, node) =>
+            onSelectNode(
+              node.type === 'entity'
+                ? (node.data as EntityNodeData).node.id
+                : node.id,
+            )
+          }
+          onMoveStart={(event) => {
+            if (event) autoFit.current = false
+          }}
+        />
+        {failure !== null ? (
+          <p
+            role="alert"
+            className="absolute inset-x-4 top-4 rounded-card border border-error bg-surface p-3 text-sm text-error"
+          >
+            The graph could not be laid out: {failure}
+          </p>
+        ) : null}
+      </div>
       <GraphSummary id={summaryId} view={shown} />
-      {failure !== null ? (
-        <p
-          role="alert"
-          className="absolute inset-x-4 top-4 rounded-card border border-error bg-surface p-3 text-sm text-error"
-        >
-          The graph could not be laid out: {failure}
-        </p>
-      ) : null}
+      {/* Last in the tab order, first on screen: Tab enters at a node. */}
+      <div
+        role="toolbar"
+        aria-label="Zoom"
+        className="order-first flex shrink-0 items-center gap-1 border-b border-hairline px-2 py-1"
+      >
+        <ToolButton name="Zoom in" icon={ZoomIn} onClick={zoomIn} />
+        <ToolButton name="Zoom out" icon={ZoomOut} onClick={zoomOut} />
+        <ToolButton
+          name="Fit to the evidence"
+          icon={Maximize}
+          onClick={refit}
+        />
+      </div>
     </div>
   )
 }

@@ -89,6 +89,25 @@ async function visibleNodeCount(page: Page): Promise<number> {
   return folded ? total - Number(folded[1]) + Number(folded[2]) : total
 }
 
+/** The size each node's label shows at on screen, and its box height. */
+const labelSizes = (page: Page) =>
+  page.evaluate(() => {
+    const zoom = new DOMMatrixReadOnly(
+      getComputedStyle(document.querySelector('.react-flow__viewport')!)
+        .transform,
+    ).a
+    return [...document.querySelectorAll('[data-node-id]')].map((button) => {
+      const label = button.querySelector<HTMLElement>(
+        'span[style*="font-size"]',
+      )!
+      return {
+        id: button.getAttribute('data-node-id'),
+        onScreen: parseFloat(getComputedStyle(label).fontSize) * zoom,
+        height: label.getBoundingClientRect().height,
+      }
+    })
+  })
+
 /** Events applied: all of them, and a cursor part way through the run. */
 const CURSORS = [
   { name: 'the full fixture', B: '', C: '' },
@@ -105,24 +124,7 @@ test.describe('graph canvas legibility', () => {
         await page.reload()
         await expect(nodes(page).first()).toBeVisible()
         await page.waitForTimeout(800)
-        const sizes = await page.evaluate(() => {
-          const zoom = new DOMMatrixReadOnly(
-            getComputedStyle(document.querySelector('.react-flow__viewport')!)
-              .transform,
-          ).a
-          return [...document.querySelectorAll('[data-node-id]')].map(
-            (button) => {
-              const label = button.querySelector<HTMLElement>(
-                'span[style*="font-size"]',
-              )!
-              return {
-                id: button.getAttribute('data-node-id'),
-                onScreen: parseFloat(getComputedStyle(label).fontSize) * zoom,
-                height: label.getBoundingClientRect().height,
-              }
-            },
-          )
-        })
+        const sizes = await labelSizes(page)
         expect(sizes.length).toBeGreaterThan(5)
         for (const { id, onScreen, height } of sizes) {
           expect(onScreen, `${id} type size on screen`).toBeGreaterThanOrEqual(
@@ -135,9 +137,43 @@ test.describe('graph canvas legibility', () => {
   }
 })
 
+test.describe('graph canvas toolbar', () => {
+  test('sits outside the drawing, and its fit button keeps labels at 14 px or more', async ({
+    page,
+  }) => {
+    await page.goto('/#/__graph?config=C')
+    await page.reload()
+    await expect(nodes(page).first()).toBeVisible()
+    await page.waitForTimeout(600)
+    // The library's own controls are not used.
+    await expect(page.locator('.react-flow__controls')).toHaveCount(0)
+    const toolbar = page.getByRole('toolbar', { name: 'Zoom' })
+    const [bar, drawing] = await Promise.all([
+      toolbar.boundingBox(),
+      page.locator('.react-flow').boundingBox(),
+    ])
+    expect(bar!.y + bar!.height).toBeLessThanOrEqual(drawing!.y + 1)
+    // Zoom out as far as the button allows, then fit.
+    for (let i = 0; i < 4; i += 1)
+      await page.getByRole('button', { name: 'Zoom out' }).click()
+    await page.waitForTimeout(400)
+    const small = await labelSizes(page)
+    expect(Math.min(...small.map((n) => n.onScreen))).toBeLessThan(14)
+    await page.getByRole('button', { name: 'Fit to the evidence' }).click()
+    await page.waitForTimeout(500)
+    for (const { id, onScreen } of await labelSizes(page))
+      expect(onScreen, `${id} after fit`).toBeGreaterThanOrEqual(14)
+  })
+})
+
 test.describe('graph canvas after scrubbing', () => {
   /** Every tag clear of every node and of every other tag, and every route elk's own. */
-  async function expectTidy(page: Page, at: string, edges: boolean) {
+  async function expectTidy(
+    page: Page,
+    at: string,
+    edges: boolean,
+    allowPlain = false,
+  ) {
     const report = await page.evaluate(() => {
       const box = (el: Element) => el.getBoundingClientRect()
       const hit = (a: DOMRect, b: DOMRect) =>
@@ -158,7 +194,8 @@ test.describe('graph canvas after scrubbing', () => {
       }
     })
     if (edges) expect(report.tags, `tags at ${at}`).toBeGreaterThan(0)
-    expect(report.plain, `edges on a fallback route at ${at}`).toBe(0)
+    if (!allowPlain)
+      expect(report.plain, `edges on a fallback route at ${at}`).toBe(0)
     expect(report.onNode, `tags on a node at ${at}`).toBe(0)
     expect(report.stacked, `tags over tags at ${at}`).toBe(0)
   }
@@ -176,6 +213,24 @@ test.describe('graph canvas after scrubbing', () => {
       await page.waitForTimeout(450)
       await expectTidy(page, `${count} events`, count >= 405)
     }
+  })
+
+  test('in live a tag never sits on a node or another tag, though some routes are plain', async ({
+    page,
+  }) => {
+    await page.goto('/#/__graph?config=C&mode=live')
+    await page.reload()
+    await expect(nodes(page).first()).toBeVisible()
+    const slider = page.getByRole('slider')
+    for (const count of [405, 450, 500, 600, 650, 704]) {
+      await slider.fill(String(count))
+      await page.waitForTimeout(450)
+      await expectTidy(page, `${count} events (live)`, true, true)
+    }
+    // At the end of the stream the final graph is laid out whole.
+    await slider.fill('705')
+    await page.waitForTimeout(800)
+    await expectTidy(page, 'the end of the stream (live)', true)
   })
 
   test('shows no evidence path before its event and the path after it', async ({
