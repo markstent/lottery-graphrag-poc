@@ -154,5 +154,6 @@ Other pairs:
 ## Motion and accessibility
 
 Animation explains system state only, and collapses to near-instant under `prefers-reduced-motion` or the `.reduced-motion` class.
-The classes `.presentation`, `.node-reveal`, `.panel-reveal` and `.label-halo` are unchanged.
+The classes `.presentation` and `.panel-reveal` are unchanged.
+The graph canvas adds `.graph-node-enter` (a node fades in, 200 ms) and the focus ring `.graph-node:focus-visible` (3 px, the focus token).
 Focus states are always visible, status never relies on colour alone, and graph information needs a text alternative.

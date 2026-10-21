@@ -9,6 +9,7 @@
  *   focus    1 for focus mode
  *   present  1 for presentation mode
  *   mount    click to draw the canvas only when "Show graph" is pressed
+ *   mode     replay (default) or live
  */
 
 import { useMemo, useState } from 'react'
@@ -44,23 +45,26 @@ export default function GraphHarness() {
   const presentation = params.get('present') === '1'
   const cap = Number(params.get('cap') ?? DEFAULT_VISIBLE_NODE_CAP)
 
-  const view = useMemo(() => {
-    const state = reduceAll(events.slice(0, count))
-    // C is drawn against B, so what the ontology added shows. The generated
-    // run has no B of its own.
-    const overlay =
-      config === 'C' && !generatedRun
-        ? reduceAll(
-            (recordedRun.events as unknown as RunEvent[]).slice(0, count),
-          ).graph.B
-        : undefined
-    return graphView(state.graph[config], {
-      cap,
-      focus,
-      overlay,
-      paths: recordedPathsFromResult(result),
-    })
-  }, [events, count, cap, focus, config, result, generatedRun])
+  // C is drawn against B, so what the ontology added shows. The generated
+  // run has no B of its own.
+  const viewAt = useMemo(() => {
+    const recordedEvents = recordedRun.events as unknown as RunEvent[]
+    const paths = recordedPathsFromResult(result)
+    return (upTo: number) =>
+      graphView(reduceAll(events.slice(0, upTo)).graph[config], {
+        cap,
+        focus,
+        overlay:
+          config === 'C' && !generatedRun
+            ? reduceAll(recordedEvents.slice(0, upTo)).graph.B
+            : undefined,
+        paths,
+      })
+  }, [events, cap, focus, config, result, generatedRun])
+  const view = useMemo(() => viewAt(count), [viewAt, count])
+  const finalView = useMemo(() => viewAt(events.length), [viewAt, events])
+  const live = params.get('mode') === 'live'
+  const hasOverlay = config === 'C' && !generatedRun
 
   return (
     <main className="flex h-screen flex-col gap-3 bg-background p-4">
@@ -100,20 +104,24 @@ export default function GraphHarness() {
         <div className="min-w-0 flex-1">
           {shown ? (
             <GraphCanvas
+              {...(live
+                ? { mode: 'live' as const, settled: count === events.length }
+                : { mode: 'replay' as const, finalView })}
               view={view}
               onSelectNode={setOpened}
               focusMode={focus}
               presentation={presentation}
               pipeline={config}
               label={`Graph for configuration ${config}`}
+              pathListId="harness-paths"
             />
           ) : null}
         </div>
         <aside className="w-96 overflow-auto rounded-card border border-border bg-surface p-3">
-          <EvidencePathList view={view} />
+          <EvidencePathList id="harness-paths" view={view} />
         </aside>
       </div>
-      <GraphLegend pipeline={config} />
+      <GraphLegend pipeline={config} ontologyAdded={hasOverlay} />
     </main>
   )
 }

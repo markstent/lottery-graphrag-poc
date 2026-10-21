@@ -23,6 +23,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
   for (const node of others)
     byState.set(node.state, [...(byState.get(node.state) ?? []), node])
   const folded = view.clusters.reduce((total, c) => total + c.count, 0)
+  const added = view.nodes.filter((node) => node.addedByOntology).length
   return (
     <div id={id} className="sr-only">
       <p>
@@ -34,6 +35,9 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
         {view.path.length > 0
           ? ` ${countedLabel(view.path.length, 'node')} lie on an evidence path, listed with the evidence paths.`
           : ' No evidence path has been recorded yet.'}
+        {added > 0
+          ? ` ${countedLabel(added, 'node')} were added by the ontology.`
+          : ''}
       </p>
       {(Object.keys(EVIDENCE_STATES) as EvidenceState[])
         .filter((state) => byState.has(state))
@@ -50,6 +54,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
                 {single.map((node) => (
                   <li key={node.id}>
                     {nodeLabel(node.label)} ({node.id}), {steps(node.hop)}
+                    {node.addedByOntology ? ', added by the ontology' : ''}
                   </li>
                 ))}
                 {view.clusters.flatMap((cluster) => {
@@ -63,6 +68,9 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
                           Group of {countedLabel(members.length, cluster.label)}
                           , {steps(cluster.hop)}:{' '}
                           {members.map((n) => n.id).join(', ')}
+                          {members.some((n) => n.addedByOntology)
+                            ? `, ${members.filter((n) => n.addedByOntology).length} added by the ontology`
+                            : ''}
                         </li>,
                       ]
                 })}

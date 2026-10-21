@@ -3,8 +3,16 @@ import type { Point } from './layout'
 
 const RADIUS = 10
 
+/** Dots, set apart from the long dashes of a set-aside edge. */
+export const ONTOLOGY_DASH = '1 6'
+
 /** An SVG path through `points` with each corner rounded. */
-export function roundedPath(points: Point[]): string {
+export function roundedPath(route: Point[]): string {
+  // A repeated point has no direction, so it would divide by zero below.
+  const points = route.filter(
+    (p, i) => i === 0 || p.x !== route[i - 1].x || p.y !== route[i - 1].y,
+  )
+  if (points.length === 0) return ''
   const [first, ...rest] = points
   let path = `M${first.x},${first.y}`
   rest.forEach((point, i) => {

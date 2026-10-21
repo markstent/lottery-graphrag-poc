@@ -15,6 +15,7 @@ import { TOKENS } from '../design/tokens'
 import fixture from '../run/fixtures/run-abc.json'
 import { reduceAll, type RunEvent } from '../run/reduce'
 import { recordedPathsFromResult } from './from-result'
+import { EvidencePathList } from './evidence-path-list'
 import { GraphCanvas } from './graph-canvas'
 import { graphView, type GraphView } from './model'
 
@@ -51,19 +52,34 @@ function sequenceWithNodes(pipeline: 'B' | 'C', count: number): number {
 }
 
 const noop = () => undefined
-const canvas = (
-  view: GraphView,
-  extra: Partial<Parameters<typeof GraphCanvas>[0]> = {},
-) => (
-  <GraphCanvas
-    view={view}
-    onSelectNode={noop}
-    focusMode={false}
-    presentation={false}
-    pipeline="C"
-    {...extra}
-  />
-)
+interface Extra {
+  pipeline?: 'B' | 'C'
+  focusMode?: boolean
+  presentation?: boolean
+  label?: string
+  pathListId?: string
+  onSelectNode?: (id: string) => void
+  /** Draw as a replay of this final view; otherwise as a live stream. */
+  replayOf?: GraphView
+  /** For a live stream: it has ended. */
+  settled?: boolean
+}
+const canvas = (view: GraphView, extra: Extra = {}) => {
+  const { replayOf, settled, ...rest } = extra
+  const base = {
+    view,
+    onSelectNode: noop,
+    focusMode: false,
+    presentation: false,
+    pipeline: 'C' as const,
+    ...rest,
+  }
+  return replayOf ? (
+    <GraphCanvas {...base} mode="replay" finalView={replayOf} />
+  ) : (
+    <GraphCanvas {...base} mode="live" settled={settled} />
+  )
+}
 
 const nodeButtons = () =>
   screen
@@ -362,16 +378,16 @@ describe('GraphCanvas', () => {
     expect(nodeButtons()[0].className).toContain('graph-node-enter')
   })
 
-  it('sets node text at 14 px, or 20 px in presentation mode', async () => {
+  it('sets node text at 16 px, or 22 px in presentation mode', async () => {
     const view = viewAt('B', { sequence: sequenceWithNodes('B', 12) })
     const { rerender } = render(canvas(view))
     await placed(view.nodes.length)
     const fontOf = () =>
       nodeButtons()[0].querySelector<HTMLElement>('span[style*="font-size"]')
         ?.style.fontSize
-    expect(fontOf()).toBe('14px')
+    expect(fontOf()).toBe('16px')
     rerender(canvas(view, { presentation: true }))
-    await waitFor(() => expect(fontOf()).toBe('20px'))
+    await waitFor(() => expect(fontOf()).toBe('22px'))
   })
 
   it('gives a node the focus ring class', async () => {
@@ -475,5 +491,134 @@ describe('pipeline identity', () => {
     )
     const ids = [...document.querySelectorAll('marker')].map((m) => m.id)
     expect(new Set(ids).size).toBe(ids.length)
+  })
+})
+
+describe('replay and live', () => {
+  const fullC = () => viewAt('C')
+  const MID = 405
+  const routeKinds = () =>
+    [...document.querySelectorAll('[data-edge-id]')].map((el) =>
+      el.getAttribute('data-route'),
+    )
+
+  it('shows no evidence path before the path event, then shows it', async () => {
+    const final = fullC()
+    const mid = viewAt('C', { sequence: MID })
+    expect(final.path.length).toBeGreaterThan(0)
+    expect(mid.path).toEqual([])
+    const { rerender } = render(canvas(mid, { replayOf: final }))
+    await placed(mid.nodes.length)
+    expect(document.querySelectorAll('[data-on-path="true"]')).toHaveLength(0)
+    const afterPaths = recorded.find(
+      (e) =>
+        e.event_type === 'graph.evidence_path.completed' && e.pipeline === 'C',
+    )?.sequence as number
+    expect(afterPaths).toBeGreaterThan(MID)
+    const done = viewAt('C', { sequence: afterPaths })
+    rerender(canvas(done, { replayOf: final }))
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll('[data-on-path="true"]').length,
+      ).toBeGreaterThan(0),
+    )
+  })
+
+  it('in replay lays out the final graph once: every node is where it will end, with an elk route', async () => {
+    const final = fullC()
+    const mid = viewAt('C', { sequence: MID })
+    const { rerender } = render(canvas(mid, { replayOf: final }))
+    await placed(mid.nodes.length)
+    const before = new Map(mid.nodes.map((n) => [n.id, transformOf(n.id)]))
+    await waitFor(() => expect(routeKinds().length).toBeGreaterThan(0))
+    expect(routeKinds().every((kind) => kind === 'elk')).toBe(true)
+    for (const sequence of [500, 650, Infinity]) {
+      const next = viewAt('C', { sequence })
+      rerender(canvas(next, { replayOf: final }))
+      await placed(next.nodes.length)
+      for (const [id, transform] of before)
+        expect(transformOf(id), id).toBe(transform)
+      await waitFor(() => expect(routeKinds().length).toBeGreaterThan(0))
+      expect(routeKinds().every((kind) => kind === 'elk')).toBe(true)
+    }
+  })
+
+  it('in replay shows only the nodes and edges whose events have arrived', async () => {
+    const final = fullC()
+    const mid = viewAt('C', { sequence: MID })
+    render(canvas(mid, { replayOf: final }))
+    await placed(mid.nodes.length)
+    expect(nodeButtons().length).toBeLessThan(final.nodes.length)
+    const seen = new Set(mid.nodes.map((n) => n.id))
+    for (const button of nodeButtons())
+      expect(seen.has(button.dataset.nodeId as string)).toBe(true)
+  })
+
+  it('in live settles into the whole layout when the stream ends', async () => {
+    const final = fullC()
+    const mid = viewAt('C', { sequence: MID })
+    const { rerender } = render(canvas(mid))
+    await placed(mid.nodes.length)
+    rerender(canvas(final))
+    await placed(final.nodes.length)
+    rerender(canvas(final, { settled: true }))
+    await waitFor(() => expect(routeKinds().length).toBeGreaterThan(0))
+    await waitFor(() =>
+      expect(routeKinds().every((kind) => kind === 'elk')).toBe(true),
+    )
+  })
+})
+
+describe('what a screen reader is given', () => {
+  const view = () => {
+    const state = reduceAll(recorded)
+    return graphView(state.graph.C, {
+      cap: 1000,
+      focus: false,
+      overlay: state.graph.B,
+      paths: recordedPathsFromResult(resultOf('C')),
+    })
+  }
+
+  it('is described by the summary and the evidence-path list together', async () => {
+    const v = view()
+    render(
+      <>
+        {canvas(v, { label: 'Graph C', pathListId: 'paths' })}
+        <EvidencePathList id="paths" view={v} />
+      </>,
+    )
+    await placed(v.nodes.length)
+    const region = screen.getByRole('group', { name: 'Graph C' })
+    const [summary, paths] = (region.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id))
+    expect(summary).toHaveTextContent('The graph shows')
+    expect(paths).toHaveTextContent('Evidence path 1 of')
+  })
+
+  it('names what the ontology added in the node, the summary and the path list', async () => {
+    const v = view()
+    const added = v.nodes.filter((n) => n.addedByOntology)
+    expect(added.length).toBeGreaterThan(0)
+    render(
+      <>
+        {canvas(v, { label: 'Graph C', pathListId: 'paths' })}
+        <EvidencePathList id="paths" view={v} />
+      </>,
+    )
+    await placed(v.nodes.length)
+    for (const node of added)
+      expect(nodeButton(node.id)).toHaveAccessibleDescription(
+        /added by the ontology/,
+      )
+    const region = screen.getByRole('group', { name: 'Graph C' })
+    const summary = document.getElementById(
+      (region.getAttribute('aria-describedby') ?? '').split(' ')[0],
+    )
+    expect(summary).toHaveTextContent(
+      `${added.length} nodes were added by the ontology`,
+    )
+    expect(summary?.textContent).toContain(', added by the ontology')
   })
 })

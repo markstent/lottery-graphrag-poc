@@ -1,17 +1,27 @@
 /**
- * Layered left-to-right layout with elkjs, kept stable as the graph grows:
- * a node that already has a position keeps it exactly, and only new nodes are
- * placed. elk sees the placed positions and keeps to them (interactive
- * layering, crossing and node placement), then the placed nodes are pinned
- * and any new node that would overlap another is moved down to the next free
- * slot.
+ * Layered left-to-right layout with elkjs.
  *
- * elk also routes the edges, orthogonally, and places their tags: each tag is
- * given its measured size and elk leaves room for it on the edge. An edge
- * whose two nodes ended where elk put them uses elk's route and tag position.
- * An edge with an end that was pinned or nudged elsewhere gets a plain
- * three-segment route and a tag at its middle instead, since elk's route no
- * longer meets its nodes.
+ * Two uses:
+ * - A whole layout: every node is placed by elk and every edge keeps elk's
+ *   orthogonal route. A replay of a recorded run uses this once, on the final
+ *   graph, and then shows nodes and edges as their events arrive, so nothing
+ *   ever moves.
+ * - A growing layout (a live stream): a node that already has a position keeps
+ *   it exactly, and only new nodes are placed. elk sees the placed positions
+ *   and keeps to them (interactive layering, crossing and node placement), the
+ *   placed nodes are pinned, and a new node that would overlap another is moved
+ *   down to the next free slot. An edge whose two nodes ended where elk put
+ *   them keeps elk's route; any other edge gets a plain three-segment route.
+ *   When the stream ends the caller lays the final graph out whole.
+ *
+ * Tags: elk is given each edge's tag size so it leaves room for it, but the
+ * tag is then placed here, on the longest stretch of the edge's own route that
+ * no other edge shares, clear of every node and every other tag. A tag on a
+ * shared vertical or horizontal run could belong to any of the edges on it.
+ *
+ * `priority` nodes (the evidence path, the seeds, what the ontology added) are
+ * kept together at the top of their layers in a whole layout, by giving elk
+ * its nodes and edges priority-first (`considerModelOrder`).
  *
  * elk runs in a web worker, so a large layout never blocks input. Vite
  * bundles the worker script from the `?worker` import with no configuration.
@@ -39,10 +49,12 @@ export interface LayoutEdge {
   tag: { width: number; height: number }
 }
 
-/** An edge's path, and the centre of its tag. */
+/** An edge's path, the centre of its tag, and where the path came from. */
 export interface Route {
   points: Point[]
   tag: Point
+  /** `elk` for elk's own route, `plain` for the three-segment route. */
+  kind: 'elk' | 'plain'
 }
 
 export interface Layout {
@@ -59,58 +71,199 @@ const EDGE_GAP = 14
 const EDGE_NODE_GAP = 24
 /** How far a node may sit from where elk put it and still use elk's route. */
 const TOLERANCE = 0.5
+/** A step in a route no taller than this is a kink, and is flattened. */
+const KINK = 10
+/** Space kept between a tag and its edge, a node or another tag. */
+const TAG_GAP = 4
 
 /** elk and its worker are large, so they load when the first layout needs them. */
 let elk: Promise<ELK> | undefined
-const loadElk = (): Promise<ELK> =>
-  (elk ??= Promise.all([
+const loadElk = (): Promise<ELK> => {
+  elk ??= Promise.all([
     import('elkjs/lib/elk-api.js'),
     import('elkjs/lib/elk-worker.min.js?worker'),
-  ]).then(
-    ([api, worker]) =>
-      new api.default({ workerFactory: () => new worker.default() }),
-  ))
+  ])
+    .then(
+      ([api, worker]) =>
+        new api.default({ workerFactory: () => new worker.default() }),
+    )
+    .catch((error: unknown) => {
+      // A failed load is tried again by the next layout.
+      elk = undefined
+      throw error
+    })
+  return elk
+}
 
-const overlaps = (
-  a: Point,
-  wa: number,
-  b: Point,
-  wb: number,
-  height: number,
-): boolean =>
-  a.x < b.x + wb + NODE_GAP / 2 &&
-  b.x < a.x + wa + NODE_GAP / 2 &&
-  Math.abs(a.y - b.y) < height + NODE_GAP / 2
+interface Box {
+  left: number
+  top: number
+  right: number
+  bottom: number
+}
+
+const overlaps = (a: Box, b: Box): boolean =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
 
 const near = (a: Point, b: Point): boolean =>
   Math.abs(a.x - b.x) <= TOLERANCE && Math.abs(a.y - b.y) <= TOLERANCE
 
 /** Out of the right side of the source, down or up at the middle, into the left side of the target. */
-function plainRoute(from: Point, to: Point): Route {
+function plainRoute(from: Point, to: Point): Point[] {
   const x = (from.x + to.x) / 2
-  return {
-    points: [from, { x, y: from.y }, { x, y: to.y }, to],
-    tag: { x, y: (from.y + to.y) / 2 },
+  return [from, { x, y: from.y }, { x, y: to.y }, to]
+}
+
+const sameSpot = (a: Point, b: Point) => a.x === b.x && a.y === b.y
+
+/**
+ * `points` without repeated points or middle points of a straight run, and
+ * with a kink (a short step between two parallel runs) flattened where an end
+ * of the route does not pin it.
+ */
+export function tidyRoute(points: Point[]): Point[] {
+  let route = dedupe(points)
+  for (let again = true; again;) {
+    again = false
+    for (let i = 0; i + 3 < route.length; i += 1) {
+      const [a, b, c, d] = route.slice(i, i + 4)
+      const step = Math.abs(b.y - c.y)
+      if (b.x !== c.x || step === 0 || step > KINK) continue
+      if (i > 0 && a.y === b.y) {
+        // Raise or lower the run before the step to the run after it.
+        route[i] = { x: a.x, y: c.y }
+        route[i + 1] = { x: b.x, y: c.y }
+        again = true
+      } else if (i + 3 < route.length - 1 && c.y === d.y) {
+        // Or the run after it to the run before.
+        route[i + 2] = { x: c.x, y: b.y }
+        route[i + 3] = { x: d.x, y: b.y }
+        again = true
+      }
+      if (again) break
+    }
+    route = straighten(dedupe(route))
   }
+  return route
+}
+
+const dedupe = (points: Point[]): Point[] =>
+  points.filter((p, i) => i === 0 || !sameSpot(p, points[i - 1]))
+
+/** Without the middle point of a straight run. */
+const straighten = (points: Point[]): Point[] =>
+  points.filter((p, i) => {
+    const before = points[i - 1]
+    const after = points[i + 1]
+    return (
+      !before ||
+      !after ||
+      !(
+        (before.x === p.x && p.x === after.x) ||
+        (before.y === p.y && p.y === after.y)
+      )
+    )
+  })
+
+/** The horizontal runs of a route. */
+function runs(points: Point[]) {
+  return points.slice(1).flatMap((end, i) => {
+    const start = points[i]
+    return Math.abs(start.y - end.y) < 0.5
+      ? [
+          {
+            y: start.y,
+            left: Math.min(start.x, end.x),
+            right: Math.max(start.x, end.x),
+          },
+        ]
+      : []
+  })
 }
 
 /**
- * Positions for `nodes` (the position in `placed` where there is one, else a
- * fresh one) and a route for each edge. Every node has the same `height`. An
- * edge with an end outside `nodes` is ignored.
+ * Where each edge's tag goes: on a horizontal run of its own route that no
+ * other edge shares if there is one (the longest first), below the line or
+ * above it, in the first spot clear of nodes and of tags already placed.
  */
-export async function layoutGraph(
+function placeTags(
+  edges: { id: string; points: Point[]; tag: LayoutEdge['tag']; elk: Point }[],
+  nodes: Box[],
+): Map<string, Point> {
+  const taken: Box[] = nodes.map((b) => ({
+    left: b.left - 2,
+    top: b.top - 2,
+    right: b.right + 2,
+    bottom: b.bottom + 2,
+  }))
+  const all = edges.map((e) => ({ id: e.id, runs: runs(e.points) }))
+  const shared = (
+    id: string,
+    run: { y: number; left: number; right: number },
+  ) =>
+    all.some(
+      (other) =>
+        other.id !== id &&
+        other.runs.some(
+          (o) =>
+            Math.abs(o.y - run.y) < 1 &&
+            Math.min(o.right, run.right) - Math.max(o.left, run.left) > 4,
+        ),
+    )
+  const placed = new Map<string, Point>()
+  for (const edge of edges) {
+    const own = all.find((a) => a.id === edge.id)?.runs ?? []
+    const candidates = [...own]
+      .filter((r) => r.right - r.left >= edge.tag.width + 2 * TAG_GAP)
+      .sort(
+        (a, b) =>
+          Number(shared(edge.id, a)) - Number(shared(edge.id, b)) ||
+          b.right - b.left - (a.right - a.left),
+      )
+    let chosen: Point | undefined
+    for (const run of candidates) {
+      const middle = (run.left + run.right) / 2
+      const slack = (run.right - run.left - edge.tag.width) / 2 - TAG_GAP
+      for (const x of [middle, middle - slack / 2, middle + slack / 2]) {
+        for (const side of [1, -1]) {
+          const y = run.y + side * (edge.tag.height / 2 + TAG_GAP)
+          const box = {
+            left: x - edge.tag.width / 2,
+            right: x + edge.tag.width / 2,
+            top: y - edge.tag.height / 2,
+            bottom: y + edge.tag.height / 2,
+          }
+          if (taken.some((t) => overlaps(box, t))) continue
+          chosen = { x, y }
+          taken.push({
+            left: box.left - TAG_GAP,
+            right: box.right + TAG_GAP,
+            top: box.top - TAG_GAP,
+            bottom: box.bottom + TAG_GAP,
+          })
+          break
+        }
+        if (chosen) break
+      }
+      if (chosen) break
+    }
+    placed.set(edge.id, chosen ?? edge.elk)
+  }
+  return placed
+}
+
+interface ElkResult {
+  fromElk: Map<string, Point>
+  edges: Map<string, ElkExtendedEdge>
+}
+
+async function runElk(
   nodes: LayoutNode[],
   edges: LayoutEdge[],
   height: number,
-  placed: Positions,
-): Promise<Layout> {
-  const widths = new Map(nodes.map((n) => [n.id, n.width]))
-  const usable = edges.filter(
-    (e) =>
-      e.source !== e.target && widths.has(e.source) && widths.has(e.target),
-  )
-  const interactive = nodes.some((n) => placed.has(n.id))
+  hints: Positions,
+  interactive: boolean,
+): Promise<ElkResult> {
   const laidOut = await (
     await loadElk()
   ).layout({
@@ -128,20 +281,19 @@ export async function layoutGraph(
       'elk.edgeLabels.placement': 'CENTER',
       'elk.layered.edgeLabels.centerLabelPlacementStrategy': 'MEDIAN_LAYER',
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
-      ...(!interactive && {
-        'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
-      }),
+      'elk.layered.nodePlacement.strategy': interactive
+        ? 'INTERACTIVE'
+        : 'NETWORK_SIMPLEX',
       ...(interactive && {
         'elk.layered.layering.strategy': 'INTERACTIVE',
         'elk.layered.crossingMinimization.strategy': 'INTERACTIVE',
-        'elk.layered.nodePlacement.strategy': 'INTERACTIVE',
       }),
     },
     children: nodes.map(({ id, width }) => ({
       id,
       width,
       height,
-      ...placed.get(id),
+      ...hints.get(id),
       layoutOptions: { 'elk.portConstraints': 'FIXED_POS' },
       // One port at the middle of each side, so every edge meets a node where
       // its arrow and its shape's outline are.
@@ -164,75 +316,145 @@ export async function layoutGraph(
         },
       ],
     })),
-    edges: usable.map((e): ElkExtendedEdge => ({
+    edges: edges.map((e): ElkExtendedEdge => ({
       id: e.id,
       sources: [`${e.source}:out`],
       targets: [`${e.target}:in`],
       labels: [{ text: e.id, ...e.tag }],
     })),
   })
+  return {
+    fromElk: new Map(
+      (laidOut.children ?? []).map((c) => [c.id, { x: c.x ?? 0, y: c.y ?? 0 }]),
+    ),
+    edges: new Map(
+      (laidOut.edges ?? []).map((e) => [e.id, e as ElkExtendedEdge]),
+    ),
+  }
+}
+
+/**
+ * Positions for `nodes` (the position in `placed` where there is one, else a
+ * fresh one) and a route for each edge. Every node has the same `height`. An
+ * edge with an end outside `nodes` is ignored. With nothing placed and some
+ * `priority` nodes, the layout is a whole one that keeps them together.
+ */
+export async function layoutGraph(
+  nodes: LayoutNode[],
+  edges: LayoutEdge[],
+  height: number,
+  placed: Positions,
+  priority: ReadonlySet<string> = new Set(),
+): Promise<Layout> {
+  const widths = new Map(nodes.map((n) => [n.id, n.width]))
+  const usable = edges.filter(
+    (e) =>
+      e.source !== e.target && widths.has(e.source) && widths.has(e.target),
+  )
+  const growing = nodes.some((n) => placed.has(n.id))
+
+  // elk keeps the order it is given where nothing else decides, so listing the
+  // priority nodes (and the edges into them) first keeps them together.
+  const first = <T>(items: T[], isFirst: (item: T) => boolean) => [
+    ...items.filter(isFirst),
+    ...items.filter((item) => !isFirst(item)),
+  ]
+  const result = await runElk(
+    growing ? nodes : first(nodes, (n) => priority.has(n.id)),
+    growing
+      ? usable
+      : first(usable, (e) => priority.has(e.source) || priority.has(e.target)),
+    height,
+    placed,
+    growing,
+  )
+  const { fromElk } = result
 
   const positions = new Map<string, Point>()
-  const fromElk = new Map<string, Point>()
   const fresh: { id: string; at: Point }[] = []
-  for (const child of laidOut.children ?? []) {
-    const at = { x: child.x ?? 0, y: child.y ?? 0 }
-    fromElk.set(child.id, at)
-    const kept = placed.get(child.id)
-    if (kept) positions.set(child.id, kept)
-    else fresh.push({ id: child.id, at })
+  for (const [id, at] of fromElk) {
+    const kept = placed.get(id)
+    if (kept) positions.set(id, kept)
+    else fresh.push({ id, at })
   }
   // Nudge only the new nodes, left to right then top to bottom, so the
-  // result does not depend on elk's output order.
+  // result does not depend on elk's output order. A whole layout needs none.
   fresh.sort((a, b) => a.at.x - b.at.x || a.at.y - b.at.y)
-  const clear = (point: Point, width: number) =>
-    ![...positions].some(([id, other]) =>
-      overlaps(point, width, other, widths.get(id) ?? 0, height),
+  const boxOf = (at: Point, id: string): Box => ({
+    left: at.x - NODE_GAP / 2,
+    top: at.y - NODE_GAP / 2,
+    right: at.x + (widths.get(id) ?? 0) + NODE_GAP / 2,
+    bottom: at.y + height + NODE_GAP / 2,
+  })
+  const clear = (point: Point, id: string) =>
+    ![...positions].some(([other, at]) =>
+      overlaps(boxOf(point, id), boxOf(at, other)),
     )
   for (const { id, at } of fresh) {
     const point = { ...at }
-    const width = widths.get(id) ?? 0
-    while (!clear(point, width)) point.y += height + NODE_GAP
+    while (!clear(point, id)) point.y += height + NODE_GAP
     positions.set(id, point)
   }
 
-  const routes = new Map<string, Route>()
-  const elkEdges = new Map(
-    (laidOut.edges ?? []).map((e) => [e.id, e as ElkExtendedEdge]),
-  )
+  const routes = new Map<string, Omit<Route, 'tag'>>()
   for (const edge of usable) {
     const source = positions.get(edge.source) as Point
     const target = positions.get(edge.target) as Point
-    const elkEdge = elkEdges.get(edge.id)
-    const section = elkEdge?.sections?.[0]
-    const label = elkEdge?.labels?.[0]
+    const section = result.edges.get(edge.id)?.sections?.[0]
     const unmoved =
       near(source, fromElk.get(edge.source) as Point) &&
       near(target, fromElk.get(edge.target) as Point)
-    if (section && label && unmoved) {
-      routes.set(edge.id, {
-        points: [
-          section.startPoint,
-          ...(section.bendPoints ?? []),
-          section.endPoint,
-        ],
-        tag: {
-          x: (label.x ?? 0) + (label.width ?? 0) / 2,
-          y: (label.y ?? 0) + (label.height ?? 0) / 2,
-        },
-      })
-    } else {
-      routes.set(
-        edge.id,
-        plainRoute(
-          {
-            x: source.x + (widths.get(edge.source) ?? 0),
-            y: source.y + height / 2,
+    routes.set(
+      edge.id,
+      section && unmoved
+        ? {
+            points: tidyRoute([
+              section.startPoint,
+              ...(section.bendPoints ?? []),
+              section.endPoint,
+            ]),
+            kind: 'elk',
+          }
+        : {
+            points: plainRoute(
+              {
+                x: source.x + (widths.get(edge.source) ?? 0),
+                y: source.y + height / 2,
+              },
+              { x: target.x, y: target.y + height / 2 },
+            ),
+            kind: 'plain',
           },
-          { x: target.x, y: target.y + height / 2 },
-        ),
-      )
-    }
+    )
   }
-  return { positions, routes }
+  const tags = placeTags(
+    usable.map((e) => {
+      const label = result.edges.get(e.id)?.labels?.[0]
+      const points = (routes.get(e.id) as { points: Point[] }).points
+      return {
+        id: e.id,
+        points,
+        tag: e.tag,
+        elk: {
+          x: (label?.x ?? points[0].x) + (label?.width ?? 0) / 2,
+          y: (label?.y ?? points[0].y) + (label?.height ?? 0) / 2,
+        },
+      }
+    }),
+    [...positions].map(([id, at]) => ({
+      left: at.x,
+      top: at.y,
+      right: at.x + (widths.get(id) ?? 0),
+      bottom: at.y + height,
+    })),
+  )
+  return {
+    positions,
+    routes: new Map(
+      [...routes].map(([id, route]) => [
+        id,
+        { ...route, tag: tags.get(id) as Point },
+      ]),
+    ),
+  }
 }

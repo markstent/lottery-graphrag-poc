@@ -31,12 +31,12 @@ and no activity is ever fabricated.
 - `pnpm dev` — dev server.
 - `pnpm test` — Vitest + Testing Library (13 tests: projections, playback,
   shell).
-- `pnpm e2e` — Playwright smoke and the graph canvas at 200 nodes (the CI
+- `pnpm e2e` - Playwright smoke and the graph canvas at 200 nodes (the CI
   set). It builds the app in mode `e2e` into `dist-e2e/` and serves it on port
   4180, because the development pages under `src/dev` (the graph canvas
   harness at `#/__graph`) are left out of the production build. Install the
   browser once with `node node_modules/@playwright/test/cli.js install chromium`.
-- `node scripts/make-graph-200.mjs` — regenerates the 200-node test fixture
+- `node scripts/make-graph-200.mjs` - regenerates the 200-node test fixture
   `src/dev/fixtures/graph-200.json` from the recorded run.
 - `pnpm e2e:visual` — visual regression against committed baselines
   (`e2e/visual.spec.ts-snapshots/`). Local only: fonts differ across

@@ -14,16 +14,18 @@ describe('GraphLegend', () => {
     ])
   })
 
-  it('adds "added by the ontology" for C only', () => {
-    const { rerender } = render(<GraphLegend pipeline="C" />)
+  it('adds "added by the ontology" for C when the canvas marks it, and only then', () => {
+    const { rerender } = render(<GraphLegend pipeline="C" ontologyAdded />)
     expect(screen.getByText('Added by the ontology')).toBeVisible()
     expect(screen.getByText('+ ontology')).toBeVisible()
-    rerender(<GraphLegend pipeline="B" />)
+    rerender(<GraphLegend pipeline="C" />)
+    expect(screen.queryByText('Added by the ontology')).toBeNull()
+    rerender(<GraphLegend pipeline="B" ontologyAdded />)
     expect(screen.queryByText('Added by the ontology')).toBeNull()
   })
 
   it('uses none of the banned words', () => {
-    const { container } = render(<GraphLegend pipeline="C" />)
+    const { container } = render(<GraphLegend pipeline="C" ontologyAdded />)
     expect(container.textContent).not.toMatch(
       /honest|never|real|fake|prototype|telemetry|seed|chunk|rerank|MAPS_TO/i,
     )

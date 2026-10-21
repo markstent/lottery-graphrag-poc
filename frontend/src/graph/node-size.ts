@@ -10,7 +10,7 @@ import { countedLabel, nodeLabel } from '../design/node-labels'
 export interface NodeSize {
   width: number
   height: number
-  /** Label type size in px: at least 14, or 20 in presentation mode. */
+  /** Label type size in px at 100 percent zoom. */
   font: number
 }
 
@@ -19,13 +19,25 @@ export interface TypeSize {
   height: number
   font: number
   minWidth: number
+  /**
+   * The smallest type size on screen, in px, that fit view may zoom to: 14,
+   * or 20 in presentation mode. The type is set a little larger than this so
+   * fit has a range of zoom to work in.
+   */
+  minPx: number
 }
 
-export const TYPE_SIZE: TypeSize = { height: 64, font: 14, minWidth: 200 }
+export const TYPE_SIZE: TypeSize = {
+  height: 70,
+  font: 16,
+  minWidth: 220,
+  minPx: 14,
+}
 export const PRESENTATION_TYPE_SIZE: TypeSize = {
-  height: 92,
-  font: 20,
-  minWidth: 280,
+  height: 100,
+  font: 22,
+  minWidth: 300,
+  minPx: 20,
 }
 
 /** The share of the width a shape leaves for text. */

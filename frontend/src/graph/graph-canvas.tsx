@@ -9,10 +9,17 @@
  * edges, Enter opens the node, `+` `-` and `0` zoom and fit, Escape moves
  * focus on past the canvas.
  *
- * Edges are routed orthogonally by elk, which also places each edge's tag
- * (layout.ts). Evidence paths and selected evidence are drawn in the strong
- * tone of the pipeline the canvas shows; in C, what the ontology added is
- * tinted in C's colour and badged.
+ * Edges are routed orthogonally by elk and carry a tag (layout.ts). Evidence
+ * paths and selected evidence are drawn in the strong tone of the pipeline the
+ * canvas shows; in C, what the ontology added is tinted in C's colour, badged
+ * and dotted.
+ *
+ * Two modes. In `replay` every event is known: the final graph is laid out
+ * once, and nodes and edges appear at their final places and with their elk
+ * routes as their events arrive, so nothing moves. In `live` the graph grows
+ * with the stream: new nodes are placed beside the old ones, which keep their
+ * positions, and when the stream is `settled` the final graph is laid out
+ * whole (no motion under reduced motion).
  */
 
 import '@xyflow/react/dist/style.css'
@@ -46,7 +53,7 @@ import {
 } from './edge'
 import { GraphSummary } from './graph-summary'
 import { layoutGraph, type Layout, type Positions } from './layout'
-import type { GraphView } from './model'
+import { withClustersOf, type GraphView } from './model'
 import { ClusterNode, EntityNode, type GraphFlowNode } from './node'
 import {
   groupWidth,
@@ -56,16 +63,18 @@ import {
   type NodeSize,
 } from './node-size'
 
-/** Space left around the framed path, in px. */
+/** Space left around the framed nodes, in px. */
 const FIT_MARGIN = 32
 
-/** The smallest label size on screen that fit view allows when it frames a path. */
-export const MIN_TYPE_PX = 14
+/** The ontology pipeline's colours, for what it added. */
+const ONTOLOGY = (({ hue, tint, strong }) => ({ hue, tint, strong }))(
+  pipeline('C'),
+)
 
 const nodeTypes = { entity: EntityNode, cluster: ClusterNode }
 const edgeTypes = { relationship: RelationshipEdge }
 
-export interface GraphCanvasProps {
+interface CommonProps {
   view: GraphView
   /** Called with a node id, or a group id for a group node. */
   onSelectNode: (id: string) => void
@@ -77,28 +86,58 @@ export interface GraphCanvasProps {
   pipeline: Exclude<PipelineId, 'A'>
   /** The accessible name of the canvas. */
   label?: string
+  /** The id of the evidence-path list, which the canvas is described by with its summary. */
+  pathListId?: string
 }
+
+export type GraphCanvasProps = CommonProps &
+  (
+    | {
+        /** A recorded run: every event is known, so the final graph sets the layout. */
+        mode: 'replay'
+        /** The view at the end of the run. */
+        finalView: GraphView
+      }
+    | {
+        /** A stream: the graph grows with it. */
+        mode: 'live'
+        /** True once the stream has ended; the final graph is then laid out whole. */
+        settled?: boolean
+      }
+  )
 
 interface Placed {
   id: string
   kind: 'entity' | 'cluster'
   state: EvidenceState
   onPath: boolean
+  added: boolean
+}
+
+interface VisibleEdge {
+  id: string
+  source: string
+  target: string
+  phrases: Set<string>
+  count: number
+  onPath: boolean
+  added: boolean
+  state: EvidenceState
 }
 
 /** What the canvas draws: the nodes the cap left standing and one node per group. */
 function visibleGraph(view: GraphView) {
   const clusters = new Map(view.clusters.map((c) => [c.id, c]))
-  const nodes: (Placed & { index: number })[] = []
+  const nodes: Placed[] = []
   const seenClusters = new Set<string>()
-  view.nodes.forEach((node, index) => {
+  for (const node of view.nodes) {
     if (node.clusterId === undefined) {
       nodes.push({
         id: node.id,
         kind: 'entity',
         state: node.state,
         onPath: node.onPath,
-        index,
+        added: node.addedByOntology,
       })
     } else if (!seenClusters.has(node.clusterId)) {
       seenClusters.add(node.clusterId)
@@ -107,27 +146,15 @@ function visibleGraph(view: GraphView) {
         kind: 'cluster',
         state: 'traversed',
         onPath: false,
-        index,
+        added: false,
       })
     }
-  })
+  }
   const clusterOf = new Map(view.nodes.map((n) => [n.id, n.clusterId]))
   const represent = (id: string) => clusterOf.get(id) ?? id
-
-  const edges = new Map<
-    string,
-    {
-      id: string
-      source: string
-      target: string
-      phrases: Set<string>
-      count: number
-      onPath: boolean
-      added: boolean
-      state: EvidenceState
-    }
-  >()
   const added = new Map(view.nodes.map((n) => [n.id, n.addedByOntology]))
+
+  const edges = new Map<string, VisibleEdge>()
   for (const edge of view.edges) {
     const source = represent(edge.source)
     const target = represent(edge.target)
@@ -151,6 +178,10 @@ function visibleGraph(view: GraphView) {
   }
   return { nodes, edges: [...edges.values()] }
 }
+
+/** An edge's tag: its relationships in plain words, and how many edges it stands for. */
+const tagText = (edge: { phrases: Set<string>; count: number }): string =>
+  `${[...edge.phrases].join(', ')}${edge.count > 1 ? ` ×${edge.count}` : ''}`
 
 /** The size of an edge's tag, estimated from its text. */
 const tagSize = (text: string, font: number) => ({
@@ -202,47 +233,74 @@ function leave(container: HTMLElement): void {
   else (document.activeElement as HTMLElement | null)?.blur()
 }
 
-function Canvas({
-  view,
-  onSelectNode,
-  focusMode,
-  presentation,
-  pipeline: pipelineId,
-  label = 'Evidence graph',
-}: GraphCanvasProps) {
+/** One layout to run: what to lay out, and whether from scratch. */
+interface Job {
+  nodes: { id: string; width: number }[]
+  edges: {
+    id: string
+    source: string
+    target: string
+    tag: { width: number; height: number }
+  }[]
+  height: number
+  priority: Set<string>
+  whole: boolean
+}
+
+function Canvas(props: GraphCanvasProps) {
+  const {
+    view,
+    onSelectNode,
+    focusMode,
+    presentation,
+    pipeline: pipelineId,
+    label = 'Evidence graph',
+    pathListId,
+  } = props
+  const replay = props.mode === 'replay'
+  const settled = props.mode === 'live' && props.settled === true
   const reducedMotion = useContext(SettingsContext)?.reducedMotion ?? false
   const summaryId = useId()
   const type = presentation ? PRESENTATION_TYPE_SIZE : TYPE_SIZE
   const strong = pipeline(pipelineId).strong
-  const ontology = pipeline('C')
   const arrows = `arrow-${useId().replaceAll(':', '')}`
   const flow = useReactFlow()
   const container = useRef<HTMLDivElement>(null)
   const autoFit = useRef(true)
 
-  const visible = useMemo(() => visibleGraph(view), [view])
-  const byId = useMemo(() => new Map(view.nodes.map((n) => [n.id, n])), [view])
+  // What is laid out: the final graph of a replay, or the graph so far.
+  const layoutView = props.mode === 'replay' ? props.finalView : view
+  // What is drawn: a replay's graph so far, grouped as the final graph is.
+  const finalView = props.mode === 'replay' ? props.finalView : undefined
+  const shown = useMemo(
+    () => (finalView ? withClustersOf(view, finalView) : view),
+    [view, finalView],
+  )
+  const forLayout = useMemo(() => visibleGraph(layoutView), [layoutView])
+  const visible = useMemo(() => visibleGraph(shown), [shown])
+  const byId = useMemo(
+    () => new Map(shown.nodes.map((n) => [n.id, n])),
+    [shown],
+  )
   const clusterById = useMemo(
-    () => new Map(view.clusters.map((c) => [c.id, c])),
-    [view],
+    () => new Map(shown.clusters.map((c) => [c.id, c])),
+    [shown],
   )
-  const ids = useMemo(() => visible.nodes.map((n) => n.id), [visible])
-  const widths = useMemo(
-    () =>
-      new Map(
-        visible.nodes.map((v) => {
-          const node = byId.get(v.id)
-          const group = clusterById.get(v.id)
-          return [
-            v.id,
-            node ? nodeWidth(node, type) : group ? groupWidth(group, type) : 0,
-          ]
-        }),
-      ),
-    [visible, byId, clusterById, type],
-  )
-  const tagText = (edge: { phrases: Set<string>; count: number }): string =>
-    `${[...edge.phrases].join(', ')}${edge.count > 1 ? ` \u00d7${edge.count}` : ''}`
+  const ids = useMemo(() => forLayout.nodes.map((n) => n.id), [forLayout])
+  const widths = useMemo(() => {
+    const nodeOf = new Map(layoutView.nodes.map((n) => [n.id, n]))
+    const groupOf = new Map(layoutView.clusters.map((c) => [c.id, c]))
+    return new Map(
+      forLayout.nodes.map((v) => {
+        const node = nodeOf.get(v.id)
+        const group = groupOf.get(v.id)
+        return [
+          v.id,
+          node ? nodeWidth(node, type) : group ? groupWidth(group, type) : 0,
+        ]
+      }),
+    )
+  }, [forLayout, layoutView, type])
   const linked = useMemo(() => {
     const map = new Map<string, Set<string>>()
     for (const edge of visible.edges) {
@@ -258,76 +316,121 @@ function Canvas({
   })
   const { positions, routes } = layout
   const placed = useRef<Positions>(new Map())
-  const fontRef = useRef(type.font)
   const [failure, setFailure] = useState<string | null>(null)
   const [laidOut, setLaidOut] = useState(false)
 
-  // The layout reruns when the nodes, their widths, the edges, their tags or
-  // the type size change, not when the view is rebuilt with the same shape.
-  const tagged = visible.edges.map((e) => ({ ...e, text: tagText(e) }))
-  const structure = `${type.font}|${ids.map((id) => `${id}:${widths.get(id)}`).join(',')}|${tagged.map((e) => `${e.id}:${e.text}`).join(',')}`
-  const latest = useRef({ ids, widths, tagged, type })
+  // The layout reruns when the nodes, their widths, the edges, their tags, the
+  // type size or the mode change, not when the view is rebuilt with the same
+  // shape. Only the latest pending layout runs; one in flight finishes first.
+  const laidTags = forLayout.edges.map((e) => ({ ...e, text: tagText(e) }))
+  const structure = `${replay}|${settled}|${type.font}|${ids.map((id) => `${id}:${widths.get(id)}`).join(',')}|${laidTags.map((e) => `${e.id}:${e.text}`).join(',')}`
+  const latest = useRef<Job>(null)
   useEffect(() => {
-    latest.current = { ids, widths, tagged, type }
-  })
-  useEffect(() => {
-    const { ids, widths, tagged, type } = latest.current
-    let current = true
-    // A change of type size starts the layout afresh.
-    if (fontRef.current !== type.font) {
-      fontRef.current = type.font
-      placed.current = new Map()
-    }
-    const present = new Set(ids)
-    const kept = new Map([...placed.current].filter(([id]) => present.has(id)))
-    layoutGraph(
-      ids.map((id) => ({ id, width: widths.get(id) ?? type.minWidth })),
-      tagged.map((e) => ({
+    latest.current = {
+      nodes: ids.map((id) => ({ id, width: widths.get(id) ?? type.minWidth })),
+      edges: laidTags.map((e) => ({
         id: e.id,
         source: e.source,
         target: e.target,
         tag: tagSize(e.text, type.font),
       })),
-      type.height,
-      kept,
-    )
-      .then((next) => {
-        if (!current) return
-        placed.current = next.positions
-        setLayout(next)
-        setFailure(null)
-        setLaidOut(true)
-      })
-      .catch((error: unknown) => {
-        if (current)
-          setFailure(error instanceof Error ? error.message : String(error))
-      })
-    return () => {
-      current = false
+      height: type.height,
+      priority: new Set(
+        forLayout.nodes
+          .filter(
+            (n) =>
+              n.onPath || n.state === 'seed' || (pipelineId === 'C' && n.added),
+          )
+          .map((n) => n.id),
+      ),
+      // A replay and a settled stream are laid out whole.
+      whole: replay || settled,
     }
-  }, [structure])
+  })
+  const pending = useRef<Job | null>(null)
+  const busy = useRef(false)
+  const alive = useRef(true)
+  const lastSize = useRef(type.font)
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+    }
+  }, [])
+  useEffect(() => {
+    const job = latest.current
+    if (!job) return
+    // A change of type size starts the layout afresh.
+    if (lastSize.current !== type.font) {
+      lastSize.current = type.font
+      placed.current = new Map()
+    }
+    pending.current = job
+    if (busy.current) return
+    busy.current = true
+    void (async () => {
+      try {
+        while (pending.current) {
+          const next = pending.current
+          pending.current = null
+          const kept = next.whole
+            ? new Map()
+            : new Map(
+                [...placed.current].filter(([id]) =>
+                  next.nodes.some((n) => n.id === id),
+                ),
+              )
+          const result = await layoutGraph(
+            next.nodes,
+            next.edges,
+            next.height,
+            kept,
+            next.whole ? next.priority : undefined,
+          )
+          // A newer layout is waiting: this one is stale.
+          if (pending.current || !alive.current) continue
+          placed.current = result.positions
+          setLayout(result)
+          setFailure(null)
+          setLaidOut(true)
+        }
+      } catch (error: unknown) {
+        if (alive.current)
+          setFailure(error instanceof Error ? error.message : String(error))
+      } finally {
+        busy.current = false
+      }
+    })()
+  }, [structure, type.font])
 
   const duration = reducedMotion ? 0 : 240
-  // Fit frames the evidence path when there is one, and never zooms out far
-  // enough to take the type below MIN_TYPE_PX on screen. The path sits against
-  // the left edge so the graph it leads into shows beside it, centred
-  // vertically. A path taller than the screen at the smallest size is framed
-  // from its start, the seed, and the rest is reached by panning or by zooming
-  // out. With no path yet, fit frames every node.
-  const pathIds = useMemo(
-    () => visible.nodes.filter((n) => n.onPath).map((n) => n.id),
-    [visible],
-  )
+  // Fit frames what matters: the evidence path, every seed and, on C, what the
+  // ontology added; until a path is recorded, every node. It never zooms out far
+  // enough to take the type below `type.minPx` on screen, so a framed set that
+  // is taller than the screen is framed from its start (the first node of the
+  // path, else the first seed) and the rest is reached by panning or by
+  // zooming out. The framed set sits against the left edge so the graph it
+  // leads into shows beside it.
+  const framedIds = useMemo(() => {
+    // Until a path is recorded the graph is still growing: frame all of it.
+    const important =
+      shown.path.length > 0
+        ? visible.nodes.filter(
+            (n) =>
+              n.onPath || n.state === 'seed' || (pipelineId === 'C' && n.added),
+          )
+        : visible.nodes
+    return important.map((n) => n.id)
+  }, [visible, shown.path, pipelineId])
+  const startId =
+    shown.path[0] ?? visible.nodes.find((n) => n.state === 'seed')?.id
   const fit = useCallback(() => {
     const box = container.current?.getBoundingClientRect()
-    const framed = pathIds.flatMap((id) => {
+    const framed = framedIds.flatMap((id) => {
       const at = positions.get(id)
-      return at ? [{ id, at, width: widths.get(id) ?? type.minWidth }] : []
+      return at ? [{ at, width: widths.get(id) ?? type.minWidth }] : []
     })
-    if (!box || framed.length === 0) {
-      void flow.fitView({ padding: 0.15, maxZoom: 1, minZoom: 0.1, duration })
-      return
-    }
+    if (!box || framed.length === 0) return
     const left = Math.min(...framed.map((n) => n.at.x))
     const right = Math.max(...framed.map((n) => n.at.x + n.width))
     const top = Math.min(...framed.map((n) => n.at.y))
@@ -338,14 +441,13 @@ function Canvas({
     }
     const zoom = Math.max(
       Math.min(1, room.width / (right - left), room.height / (bottom - top)),
-      Math.min(1, MIN_TYPE_PX / type.font),
+      type.minPx / type.font,
     )
-    // Centre on the path, or on its start when the path is taller than the screen.
-    const seed = positions.get(view.path[0])
+    const start = startId ? positions.get(startId) : undefined
     const middle =
-      (bottom - top) * zoom <= room.height || !seed
+      (bottom - top) * zoom <= room.height || !start
         ? (top + bottom) / 2
-        : seed.y + type.height / 2
+        : start.y + type.height / 2
     void flow.setViewport(
       {
         x: FIT_MARGIN - left * zoom,
@@ -354,16 +456,16 @@ function Canvas({
       },
       { duration },
     )
-  }, [flow, duration, pathIds, positions, widths, type, view.path])
+  }, [flow, duration, framedIds, positions, widths, type, startId])
   useEffect(() => {
     if (!laidOut || !autoFit.current) return
     const frame = requestAnimationFrame(fit)
     return () => cancelAnimationFrame(frame)
   }, [layout, laidOut, fit])
 
-  const [activeId, setActive] = useState<string | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const active =
-    activeId !== null && ids.includes(activeId)
+    activeId !== null && visible.nodes.some((n) => n.id === activeId)
       ? activeId
       : (visible.nodes.find((n) => n.onPath) ?? visible.nodes[0])?.id
 
@@ -388,15 +490,11 @@ function Canvas({
       data: {
         size,
         strong,
-        ontology: {
-          hue: ontology.hue,
-          tint: ontology.tint,
-          strong: ontology.strong,
-        },
+        ontology: ONTOLOGY,
         dimmed: focusMode && !v.onPath,
         active: v.id === active,
         reducedMotion,
-        onFocusNode: setActive,
+        onFocusNode: setActiveId,
       },
     }
     if (v.kind === 'entity' && node)
@@ -406,7 +504,7 @@ function Canvas({
     return []
   })
 
-  const edges: RelationshipFlowEdge[] = tagged.flatMap((edge) => {
+  const edges: RelationshipFlowEdge[] = visible.edges.flatMap((edge) => {
     const route = routes.get(edge.id)
     return route
       ? [
@@ -418,20 +516,17 @@ function Canvas({
             focusable: false,
             selectable: false,
             data: {
-              label: edge.text,
+              label: tagText(edge),
               state: edge.state,
               onPath: edge.onPath,
               addedByOntology: edge.added,
               dimmed: focusMode && !edge.onPath,
               points: route.points,
               tag: route.tag,
+              route: route.kind,
               font: type.font,
               strong,
-              ontology: {
-                hue: ontology.hue,
-                tint: ontology.tint,
-                strong: ontology.strong,
-              },
+              ontology: ONTOLOGY,
               arrows,
             },
           },
@@ -440,7 +535,7 @@ function Canvas({
   })
 
   const focusNode = (id: string) => {
-    setActive(id)
+    setActiveId(id)
     container.current
       ?.querySelector<HTMLElement>(`[data-node-id="${CSS.escape(id)}"]`)
       ?.focus({ preventScroll: true })
@@ -497,7 +592,7 @@ function Canvas({
       ref={container}
       role="group"
       aria-label={label}
-      aria-describedby={summaryId}
+      aria-describedby={pathListId ? `${summaryId} ${pathListId}` : summaryId}
       aria-busy={!laidOut && failure === null}
       className="relative h-full min-h-64 w-full rounded-card border border-border bg-surface"
       onKeyDown={onKeyDown}
@@ -505,7 +600,7 @@ function Canvas({
       <ArrowDefinitions
         prefix={arrows}
         pathColor={strong}
-        ontologyColor={ontology.hue}
+        ontologyColor={ONTOLOGY.hue}
       />
       <ReactFlow<Node, RelationshipFlowEdge>
         nodes={nodes}
@@ -528,9 +623,9 @@ function Canvas({
           if (event) autoFit.current = false
         }}
       >
-        <Controls showInteractive={false} position="bottom-left" />
+        <Controls showInteractive={false} position="bottom-right" />
       </ReactFlow>
-      <GraphSummary id={summaryId} view={view} />
+      <GraphSummary id={summaryId} view={shown} />
       {failure !== null ? (
         <p
           role="alert"

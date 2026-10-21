@@ -15,7 +15,7 @@ import {
 
 import type { EvidenceState } from '../design/evidence-states'
 import { TOKENS } from '../design/tokens'
-import { roundedPath } from './edge-path'
+import { ONTOLOGY_DASH, roundedPath } from './edge-path'
 import type { Point } from './layout'
 
 export interface RelationshipEdgeData extends Record<string, unknown> {
@@ -30,6 +30,8 @@ export interface RelationshipEdgeData extends Record<string, unknown> {
   points: Point[]
   /** The centre of the tag. */
   tag: Point
+  /** Where the route came from: elk's own, or the plain three-segment one. */
+  route: 'elk' | 'plain'
   /** Label size in px. */
   font: number
   /** The strong tone of the canvas's pipeline, for evidence-path edges. */
@@ -48,7 +50,8 @@ function look(data: RelationshipEdgeData): {
   dash?: string
 } {
   if (data.onPath) return { color: data.strong, width: 4 }
-  if (data.addedByOntology) return { color: data.ontology.hue, width: 2.5 }
+  if (data.addedByOntology)
+    return { color: data.ontology.hue, width: 3, dash: ONTOLOGY_DASH }
   if (data.state === 'discarded')
     return { color: TOKENS['color-grey-500'], width: 1.5, dash: '6 5' }
   if (data.state === 'selected')
@@ -78,6 +81,7 @@ export function RelationshipEdge({
           stroke: color,
           strokeWidth: width,
           strokeDasharray: dash,
+          strokeLinecap: dash === ONTOLOGY_DASH ? 'round' : undefined,
           opacity,
         }}
       />
@@ -85,6 +89,7 @@ export function RelationshipEdge({
         <span
           className="nodrag nopan pointer-events-none absolute rounded-chip border px-1.5 leading-tight whitespace-nowrap"
           data-edge-id={id}
+          data-route={data.route}
           style={{
             transform: `translate(-50%, -50%) translate(${data.tag.x}px, ${data.tag.y}px)`,
             fontSize: data.font,

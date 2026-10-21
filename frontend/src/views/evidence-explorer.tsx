@@ -110,6 +110,7 @@ export function EvidenceInspector({
           <EvidenceGraph
             state={finalGraph}
             height="h-[360px]"
+            settled
             onSelect={noop}
           />
           <p className="mt-2 text-xs text-text-muted">

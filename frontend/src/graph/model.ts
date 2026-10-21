@@ -25,6 +25,17 @@
  * cluster's `members`, so nothing is lost. With `focus` on, the cap no longer
  * applies: every group of two or more such nodes is clustered, so only the
  * evidence paths and the seeds stand alone.
+ *
+ * Evidence paths and source records come from the run's results, which exist
+ * only when the run is over. They are ignored until the events show the path
+ * was recorded (`graph.evidence_path.completed` sets `events.evidencePath`),
+ * so a replay never shows a path before its event.
+ *
+ * The ontology overlay (`addedByOntology`) compares C with the events of B it
+ * is given. A caller replaying a run gives B's events up to the same cursor,
+ * so mid-replay a node reads as "added by the ontology" when C has found it
+ * and B has not found it yet, which is not the same as B never finding it.
+ * Phase 6 should decide whether the overlay waits for B's final graph.
  */
 
 import type { EvidenceState } from '../design/evidence-states'
@@ -114,14 +125,18 @@ export interface GraphViewOptions {
   /** Configuration B's events when `events` are C's. */
   overlay?: GraphEvents
   /**
-   * The evidence paths the backend recorded. A bare id list matches every
+   * The evidence paths the backend recorded, used only once
+   * `events.evidencePath` is set. A bare id list matches every
    * edge between neighbours. A `RecordedPath` that names the relationship of
    * its last hop matches only edges of that type, and takes the edge that
    * runs along the path before one that runs against it. Ids with no recorded
    * node are left out of `paths` and listed in `droppedPathIds`.
    */
   paths?: (string[] | RecordedPath)[]
-  /** Nodes whose evidence is a source record (`sourceRecordsFromResult`). */
+  /**
+   * Nodes whose evidence is a source record (`sourceRecordsFromResult`), used
+   * only once `events.evidencePath` is set.
+   */
   sourceRecordIds?: ReadonlySet<string>
 }
 
@@ -182,9 +197,14 @@ export function graphView(
   events: GraphEvents,
   options: GraphViewOptions,
 ): GraphView {
-  const { cap, focus, overlay, sourceRecordIds = new Set<string>() } = options
+  const { cap, focus, overlay } = options
+  // The results are not recorded until the path event: ignore them before.
+  const recorded = events.evidencePath !== null
+  const sourceRecordIds = recorded
+    ? (options.sourceRecordIds ?? new Set<string>())
+    : new Set<string>()
   const known = new Set(events.nodes.map((node) => node.id))
-  const given = (options.paths ?? []).map((p) =>
+  const given = (recorded ? (options.paths ?? []) : []).map((p) =>
     Array.isArray(p) ? { ids: p } : p,
   )
   const recordedPaths = given.map((p) => p.ids).filter((ids) => ids.length > 0)
@@ -262,4 +282,26 @@ export function graphView(
     pathSteps,
     path,
   }
+}
+
+/**
+ * `view` with its nodes grouped the way `final` groups them, and each group
+ * counting only the members `view` has so far. A replay draws the final
+ * graph's layout, so a node must sit in the group (or stand alone) it will
+ * have at the end, or it would have no place on the canvas.
+ */
+export function withClustersOf(view: GraphView, final: GraphView): GraphView {
+  const clusterOf = new Map(final.nodes.map((n) => [n.id, n.clusterId]))
+  const present = new Set(view.nodes.map((n) => n.id))
+  const nodes = view.nodes.map(({ clusterId: _ignored, ...node }) => {
+    const clusterId = clusterOf.get(node.id)
+    return clusterId === undefined ? node : { ...node, clusterId }
+  })
+  const clusters = final.clusters
+    .map((c) => {
+      const members = c.members.filter((id) => present.has(id))
+      return { ...c, members, count: members.length }
+    })
+    .filter((c) => c.count > 0)
+  return { ...view, nodes, clusters }
 }

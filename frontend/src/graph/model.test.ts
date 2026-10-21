@@ -16,6 +16,7 @@ import {
 import {
   DEFAULT_VISIBLE_NODE_CAP,
   graphView,
+  withClustersOf,
   type GraphView,
   type GraphViewOptions,
 } from './model'
@@ -81,7 +82,7 @@ const graphOf = (nodes: GraphNode[]): GraphEvents => ({
   nodes,
   relationships: [],
   concepts: [],
-  evidencePath: null,
+  evidencePath: { paths: 1, maxHops: 1 },
 })
 
 describe('the recorded run', () => {
@@ -198,9 +199,15 @@ describe('state: role first (seed, concept), then outcome (selected, discarded, 
     expect([...sourceRecordIds].sort()).toEqual(
       ['INC_037', 'SUP_00005', 'SUP_00113', 'SUP_00121'].sort(),
     )
-    const seq = sequenceOf('graph.node.discovered', 'C', 'SUP_00113')
-    const early = graphView(graphAt('C', seq), { ...options, sourceRecordIds })
-    expect(stateOf(early, 'SUP_00113')).toBe('source_record')
+    const found: GraphNode = {
+      ...node('X', 'SupportCase'),
+      outcome: 'discovered',
+    }
+    const once = graphView(graphOf([found]), {
+      ...options,
+      sourceRecordIds: new Set(['X']),
+    })
+    expect(stateOf(once, 'X')).toBe('source_record')
     const done = graphView(full.graph.C, { ...options, sourceRecordIds })
     expect(stateOf(done, 'SUP_00113')).toBe('selected')
     expect(stateOf(done, 'INC_037')).toBe('seed')
@@ -208,6 +215,35 @@ describe('state: role first (seed, concept), then outcome (selected, discarded, 
 })
 
 describe('evidence paths', () => {
+  it('are ignored until the path event is recorded', () => {
+    const paths = pathsOf('C')
+    const sourceRecordIds = sourceRecordsFromResult(resultOf('C'))
+    const before = sequenceOf('graph.evidence_path.completed', 'C', 'paths') - 1
+    const early = graphView(graphAt('C', before), {
+      ...options,
+      paths,
+      sourceRecordIds,
+    })
+    expect(early.path).toEqual([])
+    expect(early.paths).toEqual([])
+    expect(early.recordedPaths).toEqual([])
+    expect(early.nodes.some((n) => n.onPath)).toBe(false)
+    expect(early.edges.some((e) => e.onPath)).toBe(false)
+    expect(early.nodes.some((n) => n.state === 'source_record')).toBe(false)
+    const at = graphView(graphAt('C', before + 1), { ...options, paths })
+    expect(at.path.length).toBeGreaterThan(0)
+  })
+
+  it('are ignored at a mid-replay cursor too', () => {
+    const mid = recorded.filter((e) => e.pipeline === 'C')[40].sequence
+    const view = graphView(graphAt('C', mid), {
+      ...options,
+      paths: pathsOf('C'),
+    })
+    expect(view.path).toEqual([])
+    expect(view.nodes.some((n) => n.onPath)).toBe(false)
+  })
+
   it('keep the recorded order and mark their nodes and edges', () => {
     const paths = pathsOf('C')
     const view = graphView(full.graph.C, { ...options, paths })
@@ -455,5 +491,41 @@ describe('path steps', () => {
     expect(view.paths).toEqual([['A', 'B']])
     expect(view.pathSteps).toEqual([[null, null]])
     expect(view.edges.map((e) => e.onPath)).toEqual([false, false])
+  })
+})
+
+describe('withClustersOf', () => {
+  const finalView = graphView(full.graph.C, { ...options, cap: 20 })
+  const partial = graphView(graphAt('C', 405), { ...options, cap: 1000 })
+  const shown = withClustersOf(partial, finalView)
+
+  it('keeps the nodes, edges and paths of the view it is given', () => {
+    expect(shown.nodes.map((n) => n.id)).toEqual(partial.nodes.map((n) => n.id))
+    expect(shown.edges).toEqual(partial.edges)
+    expect(shown.path).toEqual(partial.path)
+  })
+
+  it('puts each node in the group it has in the final view, or in none', () => {
+    const finalCluster = new Map(
+      finalView.nodes.map((n) => [n.id, n.clusterId]),
+    )
+    for (const n of shown.nodes)
+      expect(n.clusterId).toBe(finalCluster.get(n.id))
+    expect(shown.nodes.some((n) => n.clusterId !== undefined)).toBe(true)
+  })
+
+  it('counts only the members that have arrived, and drops a group with none', () => {
+    for (const c of shown.clusters) {
+      expect(c.count).toBe(c.members.length)
+      expect(c.count).toBeGreaterThan(0)
+      const whole = finalView.clusters.find((f) => f.id === c.id)
+      expect(c.count).toBeLessThanOrEqual(whole?.count ?? 0)
+    }
+    expect(shown.clusters.length).toBeLessThanOrEqual(finalView.clusters.length)
+  })
+
+  it('is the final view when the view is complete', () => {
+    const done = withClustersOf(finalView, finalView)
+    expect(done.clusters).toEqual(finalView.clusters)
   })
 })

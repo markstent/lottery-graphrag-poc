@@ -79,10 +79,13 @@ function toGraphView(state: GraphPaneState): GraphView {
 export function EvidenceGraph({
   state,
   height,
+  settled,
   onSelect,
 }: {
   state: GraphPaneState
   height: string
+  /** True once the run has finished, so the final graph is laid out whole. */
+  settled: boolean
   onSelect: (id: string) => void
 }) {
   return (
@@ -94,6 +97,8 @@ export function EvidenceGraph({
           focusMode={false}
           presentation={false}
           pipeline="C"
+          mode="live"
+          settled={settled}
         />
       </div>
       <div className="mt-2">
@@ -116,7 +121,7 @@ export function GraphPane({
     state.stage === 'idle'
       ? 'Entities appear here as they are resolved.'
       : state.stage === 'seeding'
-        ? 'Resolving seeds from the question…'
+        ? 'Resolving starting points from the question…'
         : state.stage === 'traversing'
           ? 'Traversing relationships…'
           : state.stage === 'selecting'
@@ -142,14 +147,15 @@ export function GraphPane({
 
       {nodes.length === 0 ? (
         <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-text-muted">
-          Pick a question chip above or press Run to watch entity seeds and
-          graph traversal unfold.
+          Pick a question chip above or press Run to watch the starting points
+          and graph traversal unfold.
         </p>
       ) : (
         <>
           <EvidenceGraph
             state={state}
             height="h-[420px]"
+            settled={state.stage === 'done'}
             onSelect={(id) => onCitation?.(id)}
           />
         </>

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   layoutGraph,
+  tidyRoute,
   type LayoutEdge,
   type LayoutNode,
   type Point,
@@ -189,5 +190,162 @@ describe('edge routes', () => {
     const { points } = routes.get('n0>n1') as { points: Point[] }
     expect(points).toHaveLength(4)
     expect(points[3]).toEqual({ x: 900, y: 532 })
+  })
+})
+
+describe('tags', () => {
+  const box = (centre: Point) => ({
+    left: centre.x - tag.width / 2,
+    right: centre.x + tag.width / 2,
+    top: centre.y - tag.height / 2,
+    bottom: centre.y + tag.height / 2,
+  })
+  const hit = (
+    a: { left: number; right: number; top: number; bottom: number },
+    b: { left: number; right: number; top: number; bottom: number },
+  ) =>
+    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+
+  it('never overlap one another or a node, in a whole layout', async () => {
+    const { nodes, edges } = star(14)
+    const { positions, routes } = await layoutGraph(
+      nodes,
+      edges,
+      HEIGHT,
+      new Map(),
+    )
+    const tags = [...routes.values()].map((r) => box(r.tag))
+    tags.forEach((a, i) => {
+      for (const b of tags.slice(i + 1)) expect(hit(a, b)).toBe(false)
+      for (const [id, at] of positions)
+        expect(
+          hit(a, {
+            left: at.x,
+            right: at.x + (nodes.find((n) => n.id === id)?.width ?? 0),
+            top: at.y,
+            bottom: at.y + HEIGHT,
+          }),
+        ).toBe(false)
+    })
+  })
+
+  it('sit on a stretch of their own edge that no other edge shares', async () => {
+    const { nodes, edges } = star(6)
+    const { routes } = await layoutGraph(nodes, edges, HEIGHT, new Map())
+    for (const edge of edges) {
+      const route = routes.get(edge.id) as { points: Point[]; tag: Point }
+      const last = route.points.slice(-2)
+      // The run into the target is the edge's own: the tag is within its x range.
+      expect(route.tag.x).toBeGreaterThanOrEqual(Math.min(last[0].x, last[1].x))
+      expect(route.tag.x).toBeLessThanOrEqual(Math.max(last[0].x, last[1].x))
+    }
+  })
+
+  it('are clear of nodes and of each other on a plain route as well', async () => {
+    const { nodes, edges } = star(6)
+    const pinned = new Map<string, Point>(
+      nodes
+        .slice(1)
+        .map((n, i): [string, Point] => [n.id, { x: 700, y: i * 100 }]),
+    )
+    const { positions, routes } = await layoutGraph(
+      nodes,
+      edges,
+      HEIGHT,
+      pinned,
+    )
+    const tags = [...routes.values()].map((r) => box(r.tag))
+    tags.forEach((a, i) => {
+      for (const b of tags.slice(i + 1)) expect(hit(a, b)).toBe(false)
+    })
+    for (const a of tags)
+      for (const at of positions.values())
+        expect(
+          hit(a, {
+            left: at.x,
+            right: at.x + 260,
+            top: at.y,
+            bottom: at.y + HEIGHT,
+          }),
+        ).toBe(false)
+  })
+})
+
+describe('priority nodes', () => {
+  it('take the top slots of their layer in a whole layout', async () => {
+    const { nodes, edges } = star(14)
+    const priority = new Set(['n9', 'n12', 'n3'])
+    const { positions } = await layoutGraph(
+      nodes,
+      edges,
+      HEIGHT,
+      new Map(),
+      priority,
+    )
+    const layer = nodes.slice(1).map((n) => ({
+      id: n.id,
+      y: (positions.get(n.id) as Point).y,
+    }))
+    const top = layer
+      .sort((a, b) => a.y - b.y)
+      .slice(0, priority.size)
+      .map((n) => n.id)
+    expect(new Set(top)).toEqual(priority)
+  })
+
+  it('keep elk routes in the second pass', async () => {
+    const { nodes, edges } = star(10)
+    const { routes } = await layoutGraph(
+      nodes,
+      edges,
+      HEIGHT,
+      new Map(),
+      new Set(['n5']),
+    )
+    expect([...routes.values()].every((r) => r.kind === 'elk')).toBe(true)
+  })
+})
+
+describe('tidyRoute', () => {
+  it('flattens a short kink between two runs', () => {
+    expect(
+      tidyRoute([
+        { x: 0, y: 100 },
+        { x: 50, y: 100 },
+        { x: 50, y: 329 },
+        { x: 200, y: 329 },
+        { x: 200, y: 322 },
+        { x: 300, y: 322 },
+      ]),
+    ).toEqual([
+      { x: 0, y: 100 },
+      { x: 50, y: 100 },
+      { x: 50, y: 322 },
+      { x: 300, y: 322 },
+    ])
+  })
+
+  it('keeps a real step', () => {
+    const route = [
+      { x: 0, y: 0 },
+      { x: 50, y: 0 },
+      { x: 50, y: 80 },
+      { x: 100, y: 80 },
+    ]
+    expect(tidyRoute(route)).toEqual(route)
+  })
+
+  it('drops repeated points and the middle of a straight run', () => {
+    expect(
+      tidyRoute([
+        { x: 0, y: 0 },
+        { x: 0, y: 0 },
+        { x: 40, y: 0 },
+        { x: 100, y: 0 },
+      ]),
+    ).toEqual([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+    ])
   })
 })

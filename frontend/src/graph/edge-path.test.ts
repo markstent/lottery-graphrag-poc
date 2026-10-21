@@ -32,4 +32,21 @@ describe('roundedPath', () => {
       ]),
     ).toBe('M0,0 L6,0 Q10,0 10,4 L10,8')
   })
+
+  it('draws an empty route as nothing and a single point as a move', () => {
+    expect(roundedPath([])).toBe('')
+    expect(roundedPath([{ x: 3, y: 4 }])).toBe('M3,4')
+  })
+
+  it('ignores a repeated point instead of dividing by its zero length', () => {
+    const path = roundedPath([
+      { x: 0, y: 0 },
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 50 },
+    ])
+    expect(path).toBe('M0,0 L90,0 Q100,0 100,10 L100,50')
+    expect(path).not.toMatch(/NaN|Infinity/)
+  })
 })

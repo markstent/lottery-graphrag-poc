@@ -78,49 +78,122 @@ async function timeResponse(
 
 /** The "x nodes ... folded into y groups" counts from the canvas description. */
 async function visibleNodeCount(page: Page): Promise<number> {
-  const id = await page
+  // The canvas is described by its summary and then the path list.
+  const ids = await page
     .getByRole('group', { name: /^Graph for configuration/ })
     .getAttribute('aria-describedby')
-  const text = (await page.locator(`[id="${id}"]`).textContent()) ?? ''
+  const summary = (ids ?? '').split(' ')[0]
+  const text = (await page.locator(`[id="${summary}"]`).textContent()) ?? ''
   const total = Number(/shows (\d+) nodes/.exec(text)?.[1])
   const folded = /(\d+) nodes are folded into (\d+) groups/.exec(text)
   return folded ? total - Number(folded[1]) + Number(folded[2]) : total
 }
 
+/** Events applied: all of them, and a cursor part way through the run. */
+const CURSORS = [
+  { name: 'the full fixture', B: '', C: '' },
+  { name: 'a mid-replay cursor', B: '&count=157', C: '&count=405' },
+] as const
+
 test.describe('graph canvas legibility', () => {
-  for (const config of ['B', 'C']) {
-    test(`on the full fixture for ${config} every label shows at 14 px or more under fit view`, async ({
-      page,
-    }) => {
-      await page.goto(`/#/__graph?config=${config}`)
-      await page.reload()
-      await expect(nodes(page).first()).toBeVisible()
-      await page.waitForTimeout(800)
-      const sizes = await page.evaluate(() => {
-        const zoom = new DOMMatrixReadOnly(
-          getComputedStyle(document.querySelector('.react-flow__viewport')!)
-            .transform,
-        ).a
-        return [...document.querySelectorAll('[data-node-id]')].map(
-          (button) => {
-            const label = button.querySelector<HTMLElement>(
-              'span[style*="font-size"]',
-            )!
-            return {
-              id: button.getAttribute('data-node-id'),
-              onScreen: parseFloat(getComputedStyle(label).fontSize) * zoom,
-              height: label.getBoundingClientRect().height,
-            }
-          },
-        )
+  for (const config of ['B', 'C'] as const) {
+    for (const cursor of CURSORS) {
+      test(`on ${cursor.name} for ${config} every label shows at 14 px or more under fit view`, async ({
+        page,
+      }) => {
+        await page.goto(`/#/__graph?config=${config}${cursor[config]}`)
+        await page.reload()
+        await expect(nodes(page).first()).toBeVisible()
+        await page.waitForTimeout(800)
+        const sizes = await page.evaluate(() => {
+          const zoom = new DOMMatrixReadOnly(
+            getComputedStyle(document.querySelector('.react-flow__viewport')!)
+              .transform,
+          ).a
+          return [...document.querySelectorAll('[data-node-id]')].map(
+            (button) => {
+              const label = button.querySelector<HTMLElement>(
+                'span[style*="font-size"]',
+              )!
+              return {
+                id: button.getAttribute('data-node-id'),
+                onScreen: parseFloat(getComputedStyle(label).fontSize) * zoom,
+                height: label.getBoundingClientRect().height,
+              }
+            },
+          )
+        })
+        expect(sizes.length).toBeGreaterThan(5)
+        for (const { id, onScreen, height } of sizes) {
+          expect(onScreen, `${id} type size on screen`).toBeGreaterThanOrEqual(
+            14,
+          )
+          expect(height, `${id} label box height`).toBeGreaterThanOrEqual(14)
+        }
       })
-      expect(sizes.length).toBeGreaterThan(10)
-      for (const { id, onScreen, height } of sizes) {
-        expect(onScreen, `${id} type size on screen`).toBeGreaterThanOrEqual(14)
-        expect(height, `${id} label box height`).toBeGreaterThanOrEqual(14)
+    }
+  }
+})
+
+test.describe('graph canvas after scrubbing', () => {
+  /** Every tag clear of every node and of every other tag, and every route elk's own. */
+  async function expectTidy(page: Page, at: string, edges: boolean) {
+    const report = await page.evaluate(() => {
+      const box = (el: Element) => el.getBoundingClientRect()
+      const hit = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right &&
+        b.left < a.right &&
+        a.top < b.bottom &&
+        b.top < a.bottom
+      const tags = [...document.querySelectorAll('[data-edge-id]')]
+      const boxes = [...document.querySelectorAll('[data-node-id]')].map(box)
+      return {
+        tags: tags.length,
+        plain: tags.filter((t) => t.getAttribute('data-route') !== 'elk')
+          .length,
+        onNode: tags.filter((t) => boxes.some((b) => hit(box(t), b))).length,
+        stacked: tags.filter((t, i) =>
+          tags.slice(i + 1).some((o) => hit(box(t), box(o))),
+        ).length,
       }
     })
+    if (edges) expect(report.tags, `tags at ${at}`).toBeGreaterThan(0)
+    expect(report.plain, `edges on a fallback route at ${at}`).toBe(0)
+    expect(report.onNode, `tags on a node at ${at}`).toBe(0)
+    expect(report.stacked, `tags over tags at ${at}`).toBe(0)
   }
+
+  test('in replay no edge uses a fallback route and no tag sits on a node', async ({
+    page,
+  }) => {
+    await page.goto('/#/__graph?config=C')
+    await page.reload()
+    await expect(nodes(page).first()).toBeVisible()
+    const slider = page.getByRole('slider')
+    // Scrub up, down and up again, as a person drags the cursor.
+    for (const count of [120, 300, 405, 500, 650, 705, 405, 160, 705]) {
+      await slider.fill(String(count))
+      await page.waitForTimeout(450)
+      await expectTidy(page, `${count} events`, count >= 405)
+    }
+  })
+
+  test('shows no evidence path before its event and the path after it', async ({
+    page,
+  }) => {
+    await page.goto('/#/__graph?config=C')
+    await page.reload()
+    await expect(nodes(page).first()).toBeVisible()
+    const slider = page.getByRole('slider')
+    await slider.fill('405')
+    await page.waitForTimeout(400)
+    expect(await page.locator('[data-on-path="true"]').count()).toBe(0)
+    await slider.fill('705')
+    await page.waitForTimeout(400)
+    expect(await page.locator('[data-on-path="true"]').count()).toBeGreaterThan(
+      0,
+    )
+  })
 })
 
 test.describe('graph canvas with 200 nodes', () => {

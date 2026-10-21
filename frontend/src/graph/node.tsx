@@ -44,6 +44,25 @@ export type ClusterFlowNode = Node<ClusterNodeData, 'cluster'>
 export type GraphFlowNode = EntityFlowNode | ClusterFlowNode
 
 /** The outline of a shape inside a `w` by `h` box, inset by half the stroke. */
+/**
+ * Where the verdict badge sits so that it touches the outline of the shape:
+ * its top-right corner would float well off an ellipse, a pill or a diamond.
+ */
+function badgeSpot(
+  shape: EvidenceShape,
+  { width: w, height: h }: NodeSize,
+): { left: number; top: number } {
+  const half = 12
+  const round = Math.SQRT1_2
+  const point =
+    shape === 'circle' || shape === 'dashed-circle' || shape === 'pill'
+      ? { x: w / 2 + (w / 2) * round, y: h / 2 - (h / 2) * round }
+      : shape === 'diamond'
+        ? { x: (w * 3) / 4, y: h / 4 }
+        : { x: w, y: 0 }
+  return { left: point.x - half, top: point.y - half }
+}
+
 export function Outline({
   shape,
   w,
@@ -208,7 +227,7 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
       : null
   const showVerdict = verdict !== null && node.state !== verdict
   const verdictText = verdict === 'selected' ? 'Used as evidence' : 'Set aside'
-  const description = `${node.id}${showVerdict ? `, ${verdictText.toLowerCase()}` : ''}${node.onPath ? ', on an evidence path' : ''}`
+  const description = `${node.id}${showVerdict ? `, ${verdictText.toLowerCase()}` : ''}${node.onPath ? ', on an evidence path' : ''}${added ? ', added by the ontology' : ''}`
   const words = nodeLabel(node.label)
   return (
     <>
@@ -286,8 +305,9 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
         {showVerdict ? (
           <span
             aria-hidden="true"
-            className="absolute -top-2 -right-2 grid size-6 place-items-center rounded-full border-2"
+            className="absolute grid size-6 place-items-center rounded-full border-2"
             style={{
+              ...badgeSpot(design.shape, size),
               background:
                 verdict === 'selected'
                   ? TOKENS['color-grey-900']

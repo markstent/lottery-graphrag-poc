@@ -23,10 +23,17 @@ function stepText(
     : null
 }
 
-export function EvidencePathList({ view }: { view: GraphView }) {
+export function EvidencePathList({
+  view,
+  id,
+}: {
+  view: GraphView
+  /** An id for the list, so a canvas can point `aria-describedby` at it. */
+  id?: string
+}) {
   if (view.recordedPaths.length === 0) {
     return (
-      <p className="text-xs text-text-muted">
+      <p id={id} className="text-xs text-text-muted">
         No evidence path was recorded for this pipeline.
       </p>
     )
@@ -34,7 +41,7 @@ export function EvidencePathList({ view }: { view: GraphView }) {
   const byId = new Map(view.nodes.map((node) => [node.id, node]))
   const edgeById = new Map(view.edges.map((edge) => [edge.id, edge]))
   return (
-    <div className="flex flex-col gap-3">
+    <div id={id} className="flex flex-col gap-3">
       {view.recordedPaths.map((path, index) => (
         <section key={path.join('>')} aria-label={`Evidence path ${index + 1}`}>
           <h4 className="text-xs font-medium text-text-primary">
@@ -60,6 +67,7 @@ export function EvidencePathList({ view }: { view: GraphView }) {
                   </span>
                   {': '}
                   {nodeLabel(node.label)} ({node.id})
+                  {node.addedByOntology ? ', added by the ontology' : ''}
                   {step ? (
                     <span className="text-text-muted">, {step}</span>
                   ) : null}
