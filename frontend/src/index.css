@@ -164,3 +164,14 @@ body {
 .panel-reveal {
   animation: panel-reveal var(--duration-result) ease-out;
 }
+
+/* Chart marks: the transparent hit area of a mark lifts to a wash on hover and
+   focus; --chart-lift is the pipeline tint where the mark has one. */
+.chart-hit {
+  fill: transparent;
+}
+
+.chart-hit:hover,
+.chart-hit:focus {
+  fill: var(--chart-lift, var(--color-grey-100));
+}
