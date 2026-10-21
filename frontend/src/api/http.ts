@@ -45,8 +45,34 @@ export interface RequestOptions {
   accept?: readonly number[]
 }
 
-const noAnswer = (status: number, retryable: boolean) =>
-  new ApiError('RUN_ERROR', NO_ANSWER_MESSAGE, retryable, status)
+// tsc fails here when the contract gains or loses a code, so the list cannot drift.
+const ERROR_CODES = {
+  VALIDATION_ERROR: true,
+  NOT_FOUND: true,
+  CONFLICT: true,
+  METHOD_NOT_ALLOWED: true,
+  MODEL_ERROR: true,
+  EMBEDDING_ERROR: true,
+  VECTOR_RETRIEVAL_ERROR: true,
+  GRAPH_QUERY_ERROR: true,
+  CONTEXT_BUILD_ERROR: true,
+  INTERRUPTED: true,
+  CANCELLED: true,
+  RUN_ERROR: true,
+  CONFIGURATION_ERROR: true,
+} satisfies Record<ErrorCode, true>
+
+const knownCode = (code: string): ErrorCode =>
+  code in ERROR_CODES ? (code as ErrorCode) : 'RUN_ERROR'
+
+/** A failure with no usable envelope; retrying helps only when the server or network was at fault. */
+const noAnswer = (status: number) =>
+  new ApiError(
+    'RUN_ERROR',
+    NO_ANSWER_MESSAGE,
+    status === 0 || status >= 500,
+    status,
+  )
 
 function isEnvelope(value: unknown): value is Envelope {
   if (typeof value !== 'object' || value === null || !('error' in value))
@@ -109,19 +135,24 @@ export async function request<T>(
     })
     const payload = await readJson(response)
     if (response.ok || accept.includes(response.status)) {
-      if (payload === undefined) throw noAnswer(response.status, true)
+      if (payload === undefined) throw noAnswer(response.status)
       return payload as T
     }
     if (isEnvelope(payload)) {
       const { error_code, message, retryable } = payload.error
-      throw new ApiError(error_code, message, retryable, response.status)
+      throw new ApiError(
+        knownCode(error_code),
+        message,
+        retryable,
+        response.status,
+      )
     }
-    throw noAnswer(response.status, true)
+    throw noAnswer(response.status)
   } catch (error) {
     if (error instanceof ApiError) throw error
     if (timedOut) throw new ApiError('RUN_ERROR', TIMEOUT_MESSAGE, true, 0)
     if (signal?.aborted) throw error
-    throw noAnswer(0, true)
+    throw noAnswer(0)
   } finally {
     clearTimeout(timer)
     signal?.removeEventListener('abort', onCallerAbort)

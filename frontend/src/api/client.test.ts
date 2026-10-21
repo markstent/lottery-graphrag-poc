@@ -85,6 +85,78 @@ describe('failures', () => {
     })
   })
 
+  it.each([
+    [404, 'NOT_FOUND', 'unknown run_id'],
+    [422, 'VALIDATION_ERROR', 'limit: must be at most 200'],
+  ])(
+    'a %i envelope maps to %s and is not retryable',
+    async (status, code, message) => {
+      reply(status, { error: { error_code: code, message, retryable: false } })
+      await expect(client.getModels()).rejects.toMatchObject({
+        code,
+        message,
+        retryable: false,
+        status,
+      })
+    },
+  )
+
+  it('an unknown error code becomes RUN_ERROR and keeps the curated message', async () => {
+    reply(503, {
+      error: { error_code: 'NEW_CODE', message: 'Try later.', retryable: true },
+    })
+    await expect(client.getModels()).rejects.toMatchObject({
+      code: 'RUN_ERROR',
+      message: 'Try later.',
+      retryable: true,
+      status: 503,
+    })
+  })
+
+  it('an envelope with a wrong-typed field is not trusted', async () => {
+    reply(409, {
+      error: { error_code: 'CONFLICT', message: 'busy', retryable: 'yes' },
+    })
+    await expect(client.getModels()).rejects.toMatchObject({
+      code: 'RUN_ERROR',
+      message: NO_ANSWER_MESSAGE,
+      retryable: false,
+    })
+  })
+
+  it.each([
+    [502, true],
+    [503, true],
+    [400, false],
+    [404, false],
+  ])('a non-envelope %i is retryable: %s', async (status, retryable) => {
+    reply(status, 'oops', 'text/plain')
+    await expect(client.getModels()).rejects.toMatchObject({
+      retryable,
+      status,
+    })
+  })
+
+  it('a network failure is retryable', async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    await expect(client.getModels()).rejects.toMatchObject({ retryable: true })
+  })
+
+  it('a timeout is retryable', async () => {
+    vi.useFakeTimers()
+    fetchMock.mockImplementationOnce(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init.signal?.addEventListener('abort', () =>
+            reject(new DOMException('a', 'AbortError')),
+          )
+        }),
+    )
+    const result = client.getModels().catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(10_000)
+    expect(await result).toMatchObject({ retryable: true })
+  })
+
   it('a JSON body that is not the envelope is not trusted either', async () => {
     reply(500, { detail: 'Traceback: secret' })
     await expect(client.getModels()).rejects.toMatchObject({
