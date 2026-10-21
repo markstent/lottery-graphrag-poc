@@ -71,7 +71,7 @@ The market colours are a separate categorical set.
 They are always shown with their code (UK, GR, AT, CZ), so hue is never the only cue.
 They validate in the order UK, GR, AT, CZ (adjacent pairs, as in stacked bars and legends).
 They do not validate all-pairs: brown (UK) and olive (CZ) are too close for four marks that may touch in any order.
-Each market colour is at least 15 apart from A, B and C under normal vision, and at least 13 from the status colours.
+The distances below were measured once with the validator's normal-vision metric when the colours were chosen, and no test enforces them: each market colour is at least 15 apart from A, B and C, and at least 13 from the status colours.
 
 ## Status
 
@@ -102,7 +102,17 @@ A concept is the ontology layer, so it wears C's tones with its own shape.
 ## Contrast
 
 WCAG ratios, computed from the token values.
-The tests also check text on every tint and state fill, state strokes (3:1 on every surface and on their fills), pipeline hues on every surface and tint, and the focus ring.
+`tokens.test.ts` enforces these checks:
+
+- Text tokens at 4.5:1 on the three surfaces, on the three pipeline tints and on the concept, followed and set-aside fills.
+- Ink on the good, warning and serious fills, and white on the critical fill, at 4.5:1.
+- The border token at 3:1 on the three surfaces.
+- Pipeline hues at 3:1 on the three surfaces and on their own tint.
+- Evidence-state strokes at 3:1 on their fill and on the three surfaces (for selected, whose fill equals its stroke, the fill is checked against the surfaces).
+- The focus ring at 3:1 on the three surfaces and on every tint.
+- Market and status colours are never used as text in `src`.
+
+The market colour palette check and the status and market distances are not covered by tests.
 
 | Token | background #f6f7f9 | surface #ffffff | surface-raised #eef0f3 |
 |---|---|---|---|

@@ -113,10 +113,58 @@ describe('tokens', () => {
     }
   })
 
-  test('pipeline marks meet 3:1 on white', () => {
+  test('pipeline hues meet 3:1 as marks on all three surfaces and on their own tint', () => {
     for (const id of ['a', 'b', 'c'] as const) {
+      const hue = TOKENS[`color-pipeline-${id}`]
+      const grounds: TokenName[] = [...SURFACES, `color-pipeline-${id}-tint`]
+      for (const ground of grounds) {
+        expect(
+          contrast(hue, TOKENS[ground]),
+          `pipeline-${id} on ${ground}`,
+        ).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  test('evidence-state strokes meet 3:1 on their fill and on all three surfaces', () => {
+    const names = [
+      'seed',
+      'traversed',
+      'candidate',
+      'selected',
+      'discarded',
+      'concept',
+      'source-record',
+    ] as const
+    for (const name of names) {
+      const stroke = TOKENS[`color-state-${name}-stroke`]
+      const fill = TOKENS[`color-state-${name}-fill`]
+      for (const surface of SURFACES) {
+        expect(
+          contrast(stroke, TOKENS[surface]),
+          `${name} stroke on ${surface}`,
+        ).toBeGreaterThanOrEqual(3)
+        if (stroke === fill) {
+          expect(
+            contrast(fill, TOKENS[surface]),
+            `${name} fill on ${surface}`,
+          ).toBeGreaterThanOrEqual(3)
+        }
+      }
+      if (stroke !== fill) {
+        expect(
+          contrast(stroke, fill),
+          `${name} stroke on its fill`,
+        ).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
+  test('the focus ring meets 3:1 on all three surfaces and on every tint', () => {
+    for (const ground of [...SURFACES, ...TINTS]) {
       expect(
-        contrast(TOKENS[`color-pipeline-${id}`], TOKENS['color-surface']),
+        contrast(TOKENS['color-focus'], TOKENS[ground]),
+        `focus on ${ground}`,
       ).toBeGreaterThanOrEqual(3)
     }
   })
@@ -181,6 +229,10 @@ describe('token usage in src', () => {
     ).toEqual([])
     expect(
       text.match(/(?:^|[^-\w])color:\s*var\(--color-(?:market|status)-/g) ?? [],
+    ).toEqual([])
+    expect(
+      text.match(/\bcolor:\s*['"`][^'"`]*var\(--color-(?:market|status)-/g) ??
+        [],
     ).toEqual([])
     expect(
       text.match(/\bcolor:\s*['"]?TOKENS\[['"]color-(?:market|status)-/g) ?? [],
