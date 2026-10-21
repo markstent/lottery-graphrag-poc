@@ -11,6 +11,10 @@ import { DataTable } from './data-table'
 import { Legend } from './legend'
 import {
   decimalsFor,
+  extent,
+  formatOrGap,
+  formatRange,
+  NO_VALUE,
   formatNumber,
   formatTick,
   linearScale,
@@ -43,13 +47,12 @@ export interface GroupedBarsProps extends ChartStateProps {
   }
   unit: string
   domain: Domain
-  width?: number
-  height?: number
   decimals?: number
 }
 
 const MARGIN = { top: 52, right: 16, left: 48 }
 const FALLBACK_WIDTH = 720
+const HEIGHT = 360
 const MAX_BAR = 24
 const GAP = 2
 const RADIUS = 4
@@ -75,8 +78,6 @@ export function GroupedBars({
   delta,
   unit,
   domain,
-  width: fixedWidth,
-  height = 360,
   decimals,
   status,
   error,
@@ -102,7 +103,7 @@ export function GroupedBars({
     tooltip,
     markProps,
   } = useMarkTips(bars.length, disabled)
-  const width = fixedWidth ?? measured ?? FALLBACK_WIDTH
+  const width = measured ?? FALLBACK_WIDTH
 
   const lines = Math.max(
     1,
@@ -116,11 +117,22 @@ export function GroupedBars({
     left: MARGIN.left,
     right: width - MARGIN.right,
     top: MARGIN.top,
-    bottom: height - bottom,
+    bottom: HEIGHT - bottom,
   }
-  const lo = Math.min(domain[0], 0)
-  const hi = Math.max(domain[1], 0)
-  const ticks = niceTicks([lo, hi], TICK_COUNT)
+  // The given domain is a floor: it widens to hold every bar and interval end, so nothing is clipped.
+  const reach = extent([
+    domain[0],
+    domain[1],
+    0,
+    ...bars.map((b) => b.value),
+    ...groups.flatMap((g) =>
+      Object.values(intervals?.[g.key] ?? {}).flatMap((r) => r ?? []),
+    ),
+  ]) as Domain
+  const ticks = niceTicks(reach, TICK_COUNT)
+  // Ticks round outwards; the scale spans them so the top tick is never above the plot.
+  const lo = Math.min(reach[0], ticks[0])
+  const hi = Math.max(reach[1], ticks[ticks.length - 1])
   const y = linearScale([lo, hi], [plot.bottom, plot.top])
   const base = y(0)
   const band = (plot.right - plot.left) / Math.max(groups.length, 1)
@@ -142,13 +154,13 @@ export function GroupedBars({
     const rows: TipRow[] = [
       {
         pipeline: bar.series,
-        value: bar.value === null ? 'no value' : fmt(bar.value),
+        value: formatOrGap(bar.value, fmt),
         label: pipeline(bar.series).label,
       },
     ]
     if (range)
       rows.push({
-        value: `${fmt(range[0])} to ${fmt(range[1])}`,
+        value: formatRange(range[0], range[1], fmt),
         label: 'interval',
       })
     return { title: bar.group.label, rows }
@@ -162,8 +174,8 @@ export function GroupedBars({
       caption={`${title}, ${unit}`}
       rowHeader="Group"
       columns={[
-        ...series.map((id) => pipeline(id).label),
-        ...intervalSeries.map((id) => `${pipeline(id).label} interval`),
+        ...series.map((id) => columnLabel(id)),
+        ...intervalSeries.map((id) => `${columnLabel(id)} interval`),
         ...(delta ? [`${delta.between[0]} \u2212 ${delta.between[1]}`] : []),
       ]}
       rows={groups.map((g) => {
@@ -172,14 +184,12 @@ export function GroupedBars({
           key: g.key,
           label: g.label,
           cells: [
-            ...series.map((id) => cell(g.values[id], fmt)),
+            ...series.map((id) => formatOrGap(g.values[id], fmt)),
             ...intervalSeries.map((id) => {
               const r = intervals?.[g.key]?.[id]
-              return r ? `${fmt(r[0])} to ${fmt(r[1])}` : 'no value'
+              return r ? formatRange(r[0], r[1], fmt) : NO_VALUE
             }),
-            ...(delta
-              ? [typeof given === 'number' ? fmt(given, true) : 'no value']
-              : []),
+            ...(delta ? [formatOrGap(given, (v) => fmt(v, true))] : []),
           ],
         }
       })}
@@ -203,8 +213,8 @@ export function GroupedBars({
         role="img"
         aria-label={title}
         width={width}
-        height={height}
-        viewBox={`0 0 ${width} ${height}`}
+        height={HEIGHT}
+        viewBox={`0 0 ${width} ${HEIGHT}`}
         style={{ maxWidth: '100%', height: 'auto' }}
         fontFamily={TOKENS['font-sans']}
       >
@@ -256,8 +266,9 @@ export function GroupedBars({
               height={hitHeight}
               {...markProps(
                 bar.index,
-                `${bar.group.label}, ${pipeline(bar.series).label}: ${bar.value === null ? 'no value' : fmt(bar.value)}`,
+                `${bar.group.label}, ${pipeline(bar.series).label}: ${formatOrGap(bar.value, fmt)}`,
                 describe(bar),
+                'beside',
               )}
             />
           )
@@ -275,11 +286,11 @@ export function GroupedBars({
                 transform={`rotate(-90 ${cx} ${base - 6})`}
                 x={cx}
                 y={base - 6 + 4}
-                fontSize={11}
+                fontSize={12}
                 fill={TOKENS['color-text-muted']}
                 pointerEvents="none"
               >
-                no value
+                {NO_VALUE}
               </text>
             )
           }
@@ -376,7 +387,7 @@ export function GroupedBars({
                     x={barX(g, s) + barW / 2}
                     y={plot.bottom + 14}
                     textAnchor="middle"
-                    fontSize={11}
+                    fontSize={12}
                     fontWeight={600}
                     fill={TOKENS['color-text-secondary']}
                   >
@@ -390,7 +401,7 @@ export function GroupedBars({
               LABEL_LINES,
             ).map((line, i) => (
               <text
-                key={line}
+                key={i}
                 x={plot.left + g * band + band / 2}
                 y={plot.bottom + AXIS_BAND + 14 + i * LABEL_LINE}
                 textAnchor="middle"
@@ -446,11 +457,9 @@ function labelChars(width: number, groups: number): number {
   )
 }
 
-function cell(
-  value: number | null | undefined,
-  fmt: (v: number) => string,
-): string {
-  return typeof value === 'number' ? fmt(value) : 'no value'
+/** A pipeline's table heading, with its letter and name kept on one line. */
+function columnLabel(id: PipelineId): string {
+  return pipeline(id).label.replace(' \u00b7 ', '\u00a0\u00b7\u00a0')
 }
 
 /** A column from the baseline to `end`, rounded at the data end only. */

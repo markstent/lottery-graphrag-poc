@@ -163,7 +163,7 @@ describe('IntervalPlot', () => {
     expect(
       container.querySelector('[data-mark="mean"][data-row="ba"]'),
     ).toHaveAttribute('data-tested', 'true')
-    expect(screen.getByText(/not tested/)).toBeInTheDocument()
+    expect(screen.getByText(/not tested: too/)).toBeInTheDocument()
   })
 
   it('labels a negative result on the minus side of zero', () => {
@@ -184,12 +184,62 @@ describe('IntervalPlot', () => {
     rerender(
       <IntervalPlot
         {...props}
-        rows={props.rows.filter((r) => r.pipeline === 'C')}
+        rows={props.rows.filter((r) => r.pipeline === 'C' && r.inFamily)}
       />,
     )
     expect(
       screen.queryByRole('list', { name: 'Key to the pipelines' }),
     ).toBeNull()
+  })
+
+  it('keys a not-tested row with a hollow grey dot in the legend', () => {
+    const { rerender } = render(<IntervalPlot {...props} />)
+    const legend = screen.getByRole('list', { name: 'Key to the pipelines' })
+    expect(within(legend).getByText('not tested')).toBeInTheDocument()
+    rerender(
+      <IntervalPlot {...props} rows={props.rows.filter((r) => r.inFamily)} />,
+    )
+    expect(screen.queryByText('not tested')).toBeNull()
+  })
+
+  it('links the focused row to its tooltip with aria-describedby', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<IntervalPlot {...props} />)
+    await user.tab()
+    await user.tab()
+    expect(hits(container)[0]).toHaveAttribute(
+      'aria-describedby',
+      screen.getByRole('tooltip').id,
+    )
+    expect(hits(container)[1]).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('widens a given domain to hold an interval end beyond it', () => {
+    const { container } = render(
+      <IntervalPlot
+        {...props}
+        domain={[-5, 5]}
+        rows={[{ ...props.rows[0], mean: 12, low: 6, high: 30 }]}
+      />,
+    )
+    const row = container.querySelector('[data-mark="interval"]')!
+    const top = container.querySelector('[data-grid="30"]')!
+    expect(Number(row.getAttribute('data-x-high'))).toBeCloseTo(
+      Number(top.getAttribute('x1')),
+    )
+  })
+
+  it('keeps the zero line inside the plot when the domain excludes zero', () => {
+    const { container } = render(<IntervalPlot {...props} domain={[10, 20]} />)
+    const grid = Array.from(container.querySelectorAll('[data-grid]')).map(
+      (g) => Number(g.getAttribute('x1')),
+    )
+    const zero = Number(
+      container.querySelector('[data-mark="zero"]')!.getAttribute('x1'),
+    )
+    expect(zero).toBeGreaterThanOrEqual(Math.min(...grid))
+    expect(zero).toBeLessThanOrEqual(Math.max(...grid))
+    expect(container.querySelector('[data-grid="0"]')).not.toBeNull()
   })
 
   it('offers the same numbers as a table', async () => {

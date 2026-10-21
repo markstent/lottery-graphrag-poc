@@ -1,6 +1,12 @@
 /** A single headline number with its interval and counts in muted text. */
 
-import { formatNumber, pairsInGroups, plural } from './scale'
+import {
+  formatNumber,
+  formatRange,
+  NO_VALUE,
+  pairsInGroups,
+  plural,
+} from './scale'
 
 export function StatTile({
   label,
@@ -27,7 +33,7 @@ export function StatTile({
       <div className="text-sm text-text-secondary">{label}</div>
       <div className="flex items-baseline gap-2">
         {value === null ? (
-          <span className="text-lg text-text-muted">no value</span>
+          <span className="text-lg text-text-muted">{NO_VALUE}</span>
         ) : (
           <span className="tabular text-2xl font-semibold text-text-primary">
             {fmt(value)}
@@ -39,7 +45,7 @@ export function StatTile({
       </div>
       {interval ? (
         <div className="tabular text-sm text-text-muted">
-          {`interval ${fmt(interval[0])} to ${fmt(interval[1])}`}
+          {`interval ${formatRange(interval[0], interval[1], fmt)}`}
         </div>
       ) : null}
       {n !== undefined ? (

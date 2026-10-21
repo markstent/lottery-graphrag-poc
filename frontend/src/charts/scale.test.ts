@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   extent,
+  formatOrGap,
+  formatRange,
   formatNumber,
   decimalsFor,
   formatTick,
@@ -74,5 +76,15 @@ describe('wrapText', () => {
       'one two',
       'three f…',
     ])
+  })
+})
+
+describe('gap and range text', () => {
+  const one = (v: number) => v.toFixed(1)
+  it('writes a null as no value and a given interval as low to high', () => {
+    expect(formatOrGap(null, one)).toBe('no value')
+    expect(formatOrGap(undefined, one)).toBe('no value')
+    expect(formatOrGap(2, one)).toBe('2.0')
+    expect(formatRange(1, 3, one)).toBe('1.0 to 3.0')
   })
 })

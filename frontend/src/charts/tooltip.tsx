@@ -29,10 +29,24 @@ export interface TipContent {
 }
 
 interface Placed {
+  index: number
   content: TipContent
   x: number
   y: number
+  side: Side
 }
+
+/** Where the tooltip sits against its mark: above it, or beside it on the roomier side. */
+type Side = 'above' | 'right' | 'left'
+
+const TRANSFORM: Record<Side, string> = {
+  above: 'translate(-50%, calc(-100% - 8px))',
+  right: 'none',
+  left: 'none',
+}
+
+/** 'above' sits over the mark; 'beside' keeps clear of everything above a tall mark. */
+type Place = 'above' | 'beside'
 
 const EDGE = 100
 
@@ -41,20 +55,23 @@ function tipElement({
   content,
   x,
   y,
+  side,
 }: {
   id: string
   content: TipContent
   x: number
   y: number
+  side: Side
 }) {
   return (
     <div
       id={id}
       role="tooltip"
       style={{
-        left: x,
+        // A tooltip beside a mark on the right half hangs from the right edge, so it keeps its width.
+        ...(side === 'left' ? { right: x } : { left: x }),
         top: y,
-        transform: 'translate(-50%, calc(-100% - 8px))',
+        transform: TRANSFORM[side],
       }}
       className="pointer-events-none absolute z-10 min-w-36 max-w-64 rounded-chip border border-hairline bg-surface px-3 py-2 text-sm shadow-overlay"
     >
@@ -107,19 +124,36 @@ export function useMarkTips(count: number, disabled: boolean) {
     return () => watch.disconnect()
   }, [host])
 
-  function show(el: Element, content: TipContent) {
+  function show(el: Element, index: number, content: TipContent, place: Place) {
     if (!host) return
     const area = host.getBoundingClientRect()
     const box = el.getBoundingClientRect()
     const centre = box.left - area.left + box.width / 2
+    const y = box.top - area.top
+    if (place === 'beside') {
+      const left = area.width > 0 && centre > area.width / 2
+      setPlaced({
+        index,
+        content,
+        y,
+        side: left ? 'left' : 'right',
+        x: left ? area.right - box.left + 8 : box.right - area.left + 8,
+      })
+      return
+    }
     const x =
       area.width > 0
         ? Math.min(Math.max(centre, EDGE), area.width - EDGE)
         : centre
-    setPlaced({ content, x, y: box.top - area.top })
+    setPlaced({ index, content, x, y, side: 'above' })
   }
 
-  function markProps(index: number, label: string, content: TipContent) {
+  function markProps(
+    index: number,
+    label: string,
+    content: TipContent,
+    place: Place = 'above',
+  ) {
     if (disabled) return {}
     return {
       ref: (el: SVGElement | null) => {
@@ -128,14 +162,14 @@ export function useMarkTips(count: number, disabled: boolean) {
       role: 'graphics-symbol',
       tabIndex: index === active ? 0 : -1,
       'aria-label': label,
-      'aria-describedby': placed?.content === content ? tipId : undefined,
+      'aria-describedby': placed?.index === index ? tipId : undefined,
       onFocus: (e: FocusEvent<SVGElement>) => {
         setCurrent(index)
-        show(e.currentTarget, content)
+        show(e.currentTarget, index, content, place)
       },
       onBlur: () => setPlaced(null),
       onPointerEnter: (e: PointerEvent<SVGElement>) =>
-        show(e.currentTarget, content),
+        show(e.currentTarget, index, content, place),
       onPointerLeave: (e: PointerEvent<SVGElement>) => {
         if (document.activeElement !== e.currentTarget) setPlaced(null)
       },
@@ -164,6 +198,7 @@ export function useMarkTips(count: number, disabled: boolean) {
         content: placed.content,
         x: placed.x,
         y: placed.y,
+        side: placed.side,
       })
     : null
   /** `width` is the measured width of the plot area, null until it is measured. */

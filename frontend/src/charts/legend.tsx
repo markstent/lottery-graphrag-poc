@@ -1,9 +1,19 @@
-/** The key to the pipeline colours; present whenever a chart has two or more series. */
+/**
+ * The key to the pipeline colours; present whenever a chart has two or more
+ * series, or has a row that was not tested (a hollow grey dot).
+ */
 
 import { pipeline, type PipelineId } from '../design/pipelines'
+import { TOKENS } from '../design/tokens'
 
-export function Legend({ series }: { series: readonly PipelineId[] }) {
-  if (series.length < 2) return null
+export function Legend({
+  series,
+  notTested = false,
+}: {
+  series: readonly PipelineId[]
+  notTested?: boolean
+}) {
+  if (series.length < 2 && !notTested) return null
   return (
     <ul
       aria-label="Key to the pipelines"
@@ -17,6 +27,21 @@ export function Legend({ series }: { series: readonly PipelineId[] }) {
           {pipeline(id).label}
         </li>
       ))}
+      {notTested ? (
+        <li className="flex items-center gap-2">
+          <svg aria-hidden="true" width={12} height={12}>
+            <circle
+              cx={6}
+              cy={6}
+              r={4}
+              fill={TOKENS['color-surface']}
+              stroke={TOKENS['color-grey-500']}
+              strokeWidth={2}
+            />
+          </svg>
+          not tested
+        </li>
+      ) : null}
     </ul>
   )
 }

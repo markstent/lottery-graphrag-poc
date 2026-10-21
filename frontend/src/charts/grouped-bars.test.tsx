@@ -192,7 +192,7 @@ describe('GroupedBars', () => {
     expect(container.querySelector('svg')).toBeNull()
     const table = screen.getByRole('table')
     expect(
-      within(table).getByRole('columnheader', { name: 'A · Text search' }),
+      within(table).getByRole('columnheader', { name: /^A\s·\sText search$/ }),
     ).toBeInTheDocument()
     const row = within(table).getByRole('row', { name: /Single record/ })
     expect(
@@ -221,6 +221,70 @@ describe('GroupedBars', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent('Text search')
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('tooltip')).toBeNull()
+  })
+
+  it('links the focused mark to its tooltip with aria-describedby', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<GroupedBars {...props} />)
+    await user.tab()
+    await user.tab()
+    const mark = marks(container)[0]
+    expect(mark).toHaveAttribute(
+      'aria-describedby',
+      screen.getByRole('tooltip').id,
+    )
+    expect(marks(container)[1]).not.toHaveAttribute('aria-describedby')
+    await user.keyboard('{Escape}')
+    expect(mark).not.toHaveAttribute('aria-describedby')
+  })
+
+  it('widens a given domain to hold a bar beyond it, never clipping', () => {
+    const { container } = render(
+      <GroupedBars
+        {...props}
+        groups={[
+          { key: 'H1', label: 'Single record', values: { A: 40, C: 150 } },
+        ]}
+      />,
+    )
+    const bar = container.querySelector('[data-series="C"][data-mark="bar"]')!
+    const top = container.querySelector('[data-grid="150"]')!
+    expect(Number(bar.getAttribute('data-top'))).toBeCloseTo(
+      Number(top.getAttribute('y1')),
+    )
+    expect(Number(bar.getAttribute('data-top'))).toBeGreaterThan(0)
+  })
+
+  it('keeps the top tick inside the plot when the reach is not on a tick', () => {
+    const { container } = render(
+      <GroupedBars
+        {...props}
+        groups={[{ key: 'H1', label: 'Single record', values: { A: 170 } }]}
+      />,
+    )
+    // 170 rounds out to a 200 tick; that line and its label stay below the unit caption.
+    const top = container.querySelector('[data-grid="200"]')!
+    expect(Number(top.getAttribute('y1'))).toBeGreaterThan(30)
+  })
+
+  it('widens a given domain to hold an interval end beyond it', () => {
+    const { container } = render(
+      <GroupedBars {...props} intervals={{ H1: { C: [70, 150] } }} />,
+    )
+    const whisker = container.querySelector('[data-mark="interval"]')!
+    const top = container.querySelector('[data-grid="150"]')!
+    expect(whisker.getAttribute('data-y-high')).toBe(top.getAttribute('y1'))
+  })
+
+  it('keeps a pipeline letter and its name together in a table heading', async () => {
+    const user = userEvent.setup()
+    render(<GroupedBars {...props} />)
+    await user.click(screen.getByRole('button', { name: 'Show as table' }))
+    expect(
+      screen
+        .getAllByRole('columnheader')[2]
+        .textContent?.startsWith('B\u00a0\u00b7\u00a0'),
+    ).toBe(true)
   })
 
   it('moves between marks with the arrow keys on a roving tabindex', async () => {

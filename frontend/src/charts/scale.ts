@@ -101,3 +101,22 @@ export function plural(count: number, noun: string): string {
 export function pairsInGroups(pairs: number, groups: number): string {
   return `${plural(pairs, 'pair')} in ${plural(groups, 'group')}`
 }
+
+export const NO_VALUE = 'no value'
+
+/** A given number as text, or the gap label for null and undefined. */
+export function formatOrGap(
+  value: number | null | undefined,
+  format: (v: number) => string,
+): string {
+  return typeof value === 'number' ? format(value) : NO_VALUE
+}
+
+/** "low to high": a given interval as text. */
+export function formatRange(
+  low: number,
+  high: number,
+  format: (v: number) => string,
+): string {
+  return `${format(low)} to ${format(high)}`
+}

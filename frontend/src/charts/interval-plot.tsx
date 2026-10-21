@@ -5,7 +5,7 @@
  * statistic.
  */
 
-import { pipeline, type PipelineId } from '../design/pipelines'
+import { PIPELINES, pipeline, type PipelineId } from '../design/pipelines'
 import { TOKENS } from '../design/tokens'
 import { ChartFigure, type ChartStateProps } from './chart-figure'
 import { DataTable } from './data-table'
@@ -13,8 +13,11 @@ import { Legend } from './legend'
 import {
   extent,
   formatNumber,
+  formatOrGap,
+  formatRange,
   formatTick,
   linearScale,
+  NO_VALUE,
   niceTicks,
   pairsInGroups,
   wrapText,
@@ -44,9 +47,8 @@ export interface IntervalPlotProps extends ChartStateProps {
   rows: readonly IntervalRow[]
   unit: string
   zero: boolean
-  /** Defaults to the span of the drawn values, widened to include zero. */
+  /** Widens to hold every drawn value, and zero when `zero` is set. Defaults to just that. */
   domain?: Domain
-  width?: number
   decimals?: number
 }
 
@@ -55,6 +57,7 @@ const ROW = 56
 const TOP = 16
 const AXIS = 48
 const CHAR_PX = 6.4
+const LABEL_CHAR_PX = 7.4
 const LABEL_MAX = 220
 const GUTTER = 16
 const DOT = 5
@@ -68,7 +71,6 @@ export function IntervalPlot({
   unit,
   zero,
   domain,
-  width: fixedWidth,
   decimals = 1,
   status,
   error,
@@ -80,7 +82,7 @@ export function IntervalPlot({
     tooltip,
     markProps,
   } = useMarkTips(rows.length, disabled)
-  const width = fixedWidth ?? measured ?? FALLBACK_WIDTH
+  const width = measured ?? FALLBACK_WIDTH
   const fmt = (v: number) => formatNumber(v, { decimals, signed: true })
   const drawnInterval = (r: IntervalRow) => r.low !== null && r.high !== null
   const drawn = rows.flatMap((r) => [
@@ -88,9 +90,8 @@ export function IntervalPlot({
     drawnInterval(r) ? r.low : null,
     drawnInterval(r) ? r.high : null,
   ])
-  const found = extent(zero ? [...drawn, 0] : drawn)
-  const span = found && found[0] !== found[1] ? found : FALLBACK_DOMAIN
-  const [lo, hi] = domain ?? span
+  const found = extent([...(domain ?? []), ...drawn, ...(zero ? [0] : [])])
+  const [lo, hi] = found && found[0] !== found[1] ? found : FALLBACK_DOMAIN
   const ticks = niceTicks([lo, hi], TICK_COUNT)
   const bounds: Domain = [
     Math.min(lo, ticks[0] ?? lo),
@@ -98,7 +99,7 @@ export function IntervalPlot({
   ]
   const labelW = Math.min(
     LABEL_MAX,
-    Math.max(...rows.map((r) => r.label.length), 8) * CHAR_PX + 8,
+    Math.max(...rows.map((r) => r.label.length), 8) * LABEL_CHAR_PX + 8,
   )
   const countW =
     Math.max(...rows.map((r) => pairsInGroups(r.n, r.groups).length), 8) *
@@ -112,7 +113,7 @@ export function IntervalPlot({
   }
   const x = linearScale(bounds, [plot.left, plot.right])
   const height = plot.bottom + AXIS
-  const series = (['A', 'B', 'C'] as const).filter((id) =>
+  const series = PIPELINES.map((p) => p.id).filter((id) =>
     rows.some((r) => r.pipeline === id),
   )
 
@@ -123,19 +124,19 @@ export function IntervalPlot({
       rows: [
         {
           pipeline: row.pipeline,
-          value: row.mean === null ? 'no value' : fmt(row.mean),
+          value: formatOrGap(row.mean, fmt),
           label: 'mean',
         },
         ...(drawnInterval(row)
           ? [
               {
-                value: `${fmt(row.low as number)} to ${fmt(row.high as number)}`,
+                value: formatRange(row.low as number, row.high as number, fmt),
                 label: 'interval',
               },
             ]
           : none
             ? []
-            : [{ value: 'no value', label: 'interval' }]),
+            : [{ value: NO_VALUE, label: 'interval' }]),
         {
           value: pairsInGroups(row.n, row.groups),
           label: row.inFamily ? 'tested' : (row.note ?? 'not tested'),
@@ -144,7 +145,6 @@ export function IntervalPlot({
     }
   }
 
-  const given = (v: number | null) => (v === null ? 'no value' : fmt(v))
   const table = (
     <DataTable
       caption={`${title}, ${unit}`}
@@ -154,9 +154,9 @@ export function IntervalPlot({
         key: r.key,
         label: r.label,
         cells: [
-          given(r.mean),
-          given(r.low),
-          given(r.high),
+          formatOrGap(r.mean, fmt),
+          formatOrGap(r.low, fmt),
+          formatOrGap(r.high, fmt),
           pairsInGroups(r.n, r.groups),
           r.inFamily ? 'tested' : (r.note ?? 'not tested'),
         ],
@@ -172,7 +172,9 @@ export function IntervalPlot({
       error={error}
       disabled={disabled}
       empty={rows.length === 0}
-      legend={<Legend series={series} />}
+      legend={
+        <Legend series={series} notTested={rows.some((r) => !r.inFamily)} />
+      }
       plotRef={hostRef}
       overlay={tooltip}
       table={table}
@@ -266,13 +268,13 @@ export function IntervalPlot({
               : x(row.mean)
           return (
             <g key={row.key} pointerEvents="none">
-              {wrapText(row.label, Math.floor(labelW / CHAR_PX), 2).map(
+              {wrapText(row.label, Math.floor(labelW / LABEL_CHAR_PX), 2).map(
                 (line, l, all) => (
                   <text
-                    key={line}
+                    key={l}
                     x={0}
                     y={cy + 4 + (l - (all.length - 1) / 2) * 15}
-                    fontSize={13}
+                    fontSize={14}
                     fill={TOKENS['color-text-primary']}
                   >
                     {line}
@@ -286,7 +288,7 @@ export function IntervalPlot({
                   : wrapText(row.note, Math.floor(countW / CHAR_PX), 2)),
               ].map((line, l, all) => (
                 <text
-                  key={line}
+                  key={l}
                   x={plot.right + GUTTER}
                   y={cy + 4 + (l - (all.length - 1) / 2) * 15}
                   fontSize={12}
@@ -304,7 +306,7 @@ export function IntervalPlot({
                   fontSize={12}
                   fill={TOKENS['color-text-muted']}
                 >
-                  no value
+                  {NO_VALUE}
                 </text>
               ) : (
                 <g
@@ -343,7 +345,7 @@ export function IntervalPlot({
                       x={left - 10}
                       y={cy + 4}
                       textAnchor="end"
-                      fontSize={11}
+                      fontSize={12}
                       fontWeight={600}
                       fill={TOKENS['color-text-secondary']}
                       stroke={TOKENS['color-surface']}
