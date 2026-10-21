@@ -11,6 +11,7 @@ from typing import Any, Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, field_validator, model_validator
 
 from app.api.errors import ApiErrorBody
+from app.api.event_schemas import RecordedEvent
 from app.datasets.master_data import MARKETS
 from app.evidence import GraphRunResult, RagRunResult
 
@@ -170,20 +171,6 @@ class QueryResults(RunSummary):
     # stopped before the score was written (recorded at the next start-up).
     score_failure: Literal["interrupted"] | None = None
     score: LiveScore | None = None
-
-
-class RecordedEvent(BaseModel):
-    """One execution event: the envelope shared by replay and the stream
-    (docs/07 section 6). ``pipeline`` is ``run`` for run lifecycle events."""
-
-    event_id: str
-    timestamp: str
-    run_id: str
-    pipeline: str
-    event_type: str
-    t_ms: float
-    payload: dict[str, Any]
-    sequence: int
 
 
 class EventStream(BaseModel):

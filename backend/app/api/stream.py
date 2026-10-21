@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable, Iterator
 
-from app.api.schemas import RecordedEvent
+from app.api.event_schemas import RecordedEvent
 from app.events import TERMINAL_EVENT_TYPES
 from app.persistence.store import RunStore
 
@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 def _frame(event: RecordedEvent) -> str:
-    return f"id: {event.sequence}\nevent: {event.event_type}\ndata: {event.model_dump_json()}\n\n"
+    inner = event.root
+    return f"id: {inner.sequence}\nevent: {inner.event_type}\ndata: {event.model_dump_json()}\n\n"
 
 
 def _read(store: RunStore, run_id: str, after: int) -> list[RecordedEvent]:
@@ -67,8 +68,8 @@ def sse_frames(
             return
         for event in events:
             yield _frame(event)
-            after = event.sequence
-            if event.event_type in TERMINAL_EVENT_TYPES:
+            after = event.root.sequence
+            if event.root.event_type in TERMINAL_EVENT_TYPES:
                 return
         if woke and not events:
             return

@@ -35,7 +35,13 @@ WaitFor = Callable[[str, int, float], bool]
 # -- helpers ------------------------------------------------------------------
 
 
-def envelope(run_id: str, index: int, event_type: str, pipeline: str = "A") -> dict[str, Any]:
+def envelope(
+    run_id: str,
+    index: int,
+    event_type: str,
+    pipeline: str = "A",
+    payload: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     return {
         "event_id": f"{index:032x}",
         "timestamp": "2026-01-01T10:00:00.000000+00:00",
@@ -43,7 +49,7 @@ def envelope(run_id: str, index: int, event_type: str, pipeline: str = "A") -> d
         "pipeline": pipeline,
         "event_type": event_type,
         "t_ms": float(index),
-        "payload": {"index": index},
+        "payload": payload or {},
     }
 
 
@@ -73,7 +79,7 @@ def add_events(store: RunStore, run_id: str, count: int, *, terminal: bool) -> N
         elif index == count and terminal:
             event = envelope(run_id, index, RUN_COMPLETED, RUN_PIPELINE)
         else:
-            event = envelope(run_id, index, "rag.vector_search.completed")
+            event = envelope(run_id, index, "rag.vector_search.started", payload={"top_k": index})
         store.append_event(run_id, event)
 
 

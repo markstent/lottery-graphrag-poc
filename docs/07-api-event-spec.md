@@ -257,6 +257,13 @@ While no new event arrives, a `: keep-alive` comment is sent every `SSE_HEARTBEA
 The stream closes after the run's terminal event.
 It also closes, with no further frame, when the run is no longer active and has no terminal event (its final write failed), and when the run store fails mid-stream; that failure is logged with the run id.
 
+### Typed payloads
+
+Every event type has one payload model in `backend/app/events/payloads.py`, and `RecordedEvent` (`backend/app/api/event_schemas.py`) is a union discriminated on `event_type`.
+The OpenAPI contract therefore carries the payload of every event, and the frontend reads its types from the generated `schema.d.ts`.
+Pipelines still emit plain dicts; the models forbid unknown fields, so an emitter that adds a field without declaring it fails `backend/tests/test_event_payloads.py`.
+`graph.candidate.selected` and `graph.candidate.discarded` are either a node event (`node_id`) or a document event (`chunk_id`).
+
 ### Run lifecycle events
 
 The worker brackets the pipelines' own events with lifecycle events:

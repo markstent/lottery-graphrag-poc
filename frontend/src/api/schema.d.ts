@@ -728,6 +728,11 @@ export interface components {
             type: string;
         };
         /**
+         * Empty
+         * @description Lifecycle events that carry no fields.
+         */
+        Empty: Record<string, never>;
+        /**
          * ErrorCode
          * @enum {string}
          */
@@ -738,6 +743,18 @@ export interface components {
          */
         ErrorEnvelope: {
             error: components["schemas"]["ApiErrorBody"];
+        };
+        /**
+         * ErrorPayload
+         * @description ``pipeline.failed``, ``pipeline.cancelled``, ``run.failed`` and
+         *     ``run.cancelled`` carry the docs/07 section 11 error envelope.
+         */
+        ErrorPayload: {
+            error_code: components["schemas"]["ErrorCode"];
+            /** Message */
+            message: string;
+            /** Retryable */
+            retryable: boolean;
         };
         /**
          * EventStream
@@ -847,6 +864,227 @@ export interface components {
             table: string;
         };
         /**
+         * GenerationCompleted
+         * @description ``rag.generation.completed`` and ``graph.generation.completed``.
+         */
+        GenerationCompleted: {
+            /** Cited Blocks */
+            cited_blocks: number;
+            /** Context Tokens */
+            context_tokens: number;
+            /** Latency Ms */
+            latency_ms: number;
+            /** Model */
+            model: string;
+            /** Verdict */
+            verdict: string;
+        };
+        /** GraphCandidateDiscardedEvent */
+        GraphCandidateDiscardedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.candidate.discarded";
+            /** Payload */
+            payload: components["schemas"]["GraphNodeDiscarded"] | components["schemas"]["GraphChunkDiscarded"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphCandidateReranked */
+        GraphCandidateReranked: {
+            /** Candidate Id */
+            candidate_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "node" | "chunk" | "record";
+            /** Rank */
+            rank: number;
+            /** Rerank Score */
+            rerank_score: number | null;
+        };
+        /** GraphCandidateRerankedEvent */
+        GraphCandidateRerankedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.candidate.reranked";
+            payload: components["schemas"]["GraphCandidateReranked"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphCandidateSelectedEvent */
+        GraphCandidateSelectedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.candidate.selected";
+            /** Payload */
+            payload: components["schemas"]["GraphNodeSelected"] | components["schemas"]["GraphChunkSelected"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphChunkDiscarded */
+        GraphChunkDiscarded: {
+            /** Chunk Id */
+            chunk_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "excluded_label" | "out_of_scope_market" | "superseded_by_structured_fact" | "context_budget" | "slot_limit" | "duplicate";
+            /** Rerank Score */
+            rerank_score: number | null;
+        };
+        /** GraphChunkSelected */
+        GraphChunkSelected: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Rank */
+            rank: number;
+            /** Rerank Score */
+            rerank_score: number | null;
+        };
+        /** GraphContextAssembled */
+        GraphContextAssembled: {
+            /** Context Tokens */
+            context_tokens: number;
+            /** Document Chunks */
+            document_chunks: number;
+            /** Evidence Slots */
+            evidence_slots: number;
+            /** Structured Nodes */
+            structured_nodes: number;
+        };
+        /** GraphContextAssembledEvent */
+        GraphContextAssembledEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.context.assembled";
+            payload: components["schemas"]["GraphContextAssembled"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphEntityResolutionStarted */
+        GraphEntityResolutionStarted: {
+            /** Markets */
+            markets: string;
+            /** Question */
+            question: string;
+        };
+        /** GraphEntityResolutionStartedEvent */
+        GraphEntityResolutionStartedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.entity_resolution.started";
+            payload: components["schemas"]["GraphEntityResolutionStarted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /**
+         * GraphEntityResolved
+         * @description A resolver match carries ``confidence``; a vector fallback seed has no
+         *     resolver confidence and carries ``fused_score`` instead.
+         */
+        GraphEntityResolved: {
+            /** Confidence */
+            confidence?: number | null;
+            /** Entity Id */
+            entity_id: string;
+            /** Fused Score */
+            fused_score?: number | null;
+            /** Matched Text */
+            matched_text: string;
+            /** Node Label */
+            node_label: string;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "id" | "market_alias" | "term" | "concept_binding" | "vector_fallback";
+            /** Via Concept */
+            via_concept: string | null;
+        };
+        /** GraphEntityResolvedEvent */
+        GraphEntityResolvedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.entity.resolved";
+            payload: components["schemas"]["GraphEntityResolved"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /**
          * GraphEvidence
          * @description One graph node candidate with its transparent ranking outcome.
          *
@@ -889,6 +1127,258 @@ export interface components {
              * @default false
              */
             selected: boolean;
+        };
+        /** GraphEvidencePathCompleted */
+        GraphEvidencePathCompleted: {
+            /** Max Hops */
+            max_hops: number;
+            /** Paths */
+            paths: number;
+        };
+        /** GraphEvidencePathCompletedEvent */
+        GraphEvidencePathCompletedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.evidence_path.completed";
+            payload: components["schemas"]["GraphEvidencePathCompleted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphGenerationCompletedEvent */
+        GraphGenerationCompletedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.generation.completed";
+            payload: components["schemas"]["GenerationCompleted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphGenerationStartedEvent */
+        GraphGenerationStartedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.generation.started";
+            payload: components["schemas"]["ModelStarted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphNodeDiscarded */
+        GraphNodeDiscarded: {
+            /** Hops */
+            hops: number;
+            /** Node Id */
+            node_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "excluded_label" | "out_of_scope_market" | "superseded_by_structured_fact" | "context_budget" | "slot_limit" | "duplicate";
+            /** Rerank Score */
+            rerank_score: number | null;
+            /** Score */
+            score: number;
+            /** Seed */
+            seed: boolean;
+        };
+        /** GraphNodeDiscovered */
+        GraphNodeDiscovered: {
+            /** Hop */
+            hop: number;
+            /** Node Id */
+            node_id: string;
+            /** Node Label */
+            node_label: string;
+            /** Via Concept */
+            via_concept?: string | null;
+        };
+        /** GraphNodeDiscoveredEvent */
+        GraphNodeDiscoveredEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.node.discovered";
+            payload: components["schemas"]["GraphNodeDiscovered"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphNodeSelected */
+        GraphNodeSelected: {
+            /** Hops */
+            hops: number;
+            /** Node Id */
+            node_id: string;
+            /** Rerank Score */
+            rerank_score: number | null;
+            /** Score */
+            score: number;
+            /** Seed */
+            seed: boolean;
+            /** Weight Graph Distance */
+            weight_graph_distance: number;
+            /** Weight Relationship Type */
+            weight_relationship_type: number;
+            /** Weight Semantic Relevance */
+            weight_semantic_relevance: number;
+            /** Weight Temporal Validity */
+            weight_temporal_validity: number;
+        };
+        /** GraphOntologyExpanded */
+        GraphOntologyExpanded: {
+            /** Bound Entities */
+            bound_entities: number;
+            /** Concept Id */
+            concept_id: string;
+        };
+        /** GraphOntologyExpandedEvent */
+        GraphOntologyExpandedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.ontology.expanded";
+            payload: components["schemas"]["GraphOntologyExpanded"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphQueryExpanded */
+        GraphQueryExpanded: {
+            /** Added Terms */
+            added_terms: number;
+            /** Expanded Length */
+            expanded_length: number;
+        };
+        /** GraphQueryExpandedEvent */
+        GraphQueryExpandedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.query.expanded";
+            payload: components["schemas"]["GraphQueryExpanded"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphRelationshipTraversed */
+        GraphRelationshipTraversed: {
+            /** From Id */
+            from_id: string;
+            /** Hop */
+            hop: number;
+            /** Relationship Type */
+            relationship_type: string;
+            /** To Id */
+            to_id: string;
+            /** To Label */
+            to_label: string;
+        };
+        /** GraphRelationshipTraversedEvent */
+        GraphRelationshipTraversedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.relationship.traversed";
+            payload: components["schemas"]["GraphRelationshipTraversed"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** GraphRerankStartedEvent */
+        GraphRerankStartedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.rerank.started";
+            payload: components["schemas"]["RerankStarted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
         };
         /**
          * GraphRunResult
@@ -936,6 +1426,32 @@ export interface components {
                 [key: string]: number;
             };
         };
+        /** GraphSeedSelected */
+        GraphSeedSelected: {
+            /** Node Id */
+            node_id: string;
+        };
+        /** GraphSeedSelectedEvent */
+        GraphSeedSelectedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.seed.selected";
+            payload: components["schemas"]["GraphSeedSelected"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
         /**
          * GraphStats
          * @description Response for GET /graph/stats, read from the active dataset's
@@ -957,6 +1473,42 @@ export interface components {
              * @constant
              */
             source: "ingestion";
+        };
+        /** GraphTraversalStarted */
+        GraphTraversalStarted: {
+            /** Max Depth */
+            max_depth: number;
+            /** Max Edges Per Node Type */
+            max_edges_per_node_type: number;
+            /** Max Nodes Per Hop */
+            max_nodes_per_hop: number;
+            /** Max Total Nodes */
+            max_total_nodes: number;
+            /** Ontology Expansion */
+            ontology_expansion: boolean;
+            /** Relationship Types */
+            relationship_types: number;
+        };
+        /** GraphTraversalStartedEvent */
+        GraphTraversalStartedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.traversal.started";
+            payload: components["schemas"]["GraphTraversalStarted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
         };
         /**
          * HealthResponse
@@ -1062,6 +1614,15 @@ export interface components {
             /** Reachable */
             reachable: boolean | null;
         };
+        /**
+         * ModelStarted
+         * @description Start of an embedding or generation stage (``rag.embedding.started``,
+         *     ``rag.generation.started``, ``graph.generation.started``).
+         */
+        ModelStarted: {
+            /** Model */
+            model: string;
+        };
         /** ModelsOut */
         ModelsOut: {
             embedding: components["schemas"]["ModelOut"];
@@ -1119,6 +1680,69 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** PipelineCancelled */
+        PipelineCancelled: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "pipeline.cancelled";
+            payload: components["schemas"]["ErrorPayload"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** PipelineCompleted */
+        PipelineCompleted: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "pipeline.completed";
+            payload: components["schemas"]["Empty"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** PipelineFailed */
+        PipelineFailed: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "pipeline.failed";
+            payload: components["schemas"]["ErrorPayload"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
         /**
          * PipelineScore
          * @description One pipeline's means over the scored repeats of one question; None
@@ -1129,6 +1753,27 @@ export interface components {
             answer: number | null;
             /** Evidence F1 */
             evidence_f1: number | null;
+        };
+        /** PipelineStarted */
+        PipelineStarted: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "pipeline.started";
+            payload: components["schemas"]["Empty"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
         };
         /**
          * ProvenanceOut
@@ -1323,6 +1968,305 @@ export interface components {
              */
             verdict: string;
         };
+        /** RagCandidateReranked */
+        RagCandidateReranked: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Rank */
+            rank: number;
+            /** Rerank Score */
+            rerank_score: number | null;
+            /** Similarity */
+            similarity: number;
+        };
+        /** RagCandidateRerankedEvent */
+        RagCandidateRerankedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.candidate.reranked";
+            payload: components["schemas"]["RagCandidateReranked"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagCandidateRetrieved */
+        RagCandidateRetrieved: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Dense Rank */
+            dense_rank: number | null;
+            /** Document Id */
+            document_id: string;
+            /** Rank */
+            rank: number;
+            /** Similarity */
+            similarity: number;
+            /** Sparse Rank */
+            sparse_rank: number | null;
+        };
+        /** RagCandidateRetrievedEvent */
+        RagCandidateRetrievedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.candidate.retrieved";
+            payload: components["schemas"]["RagCandidateRetrieved"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagContextAssembled */
+        RagContextAssembled: {
+            /** Context Tokens */
+            context_tokens: number;
+            /** Discarded */
+            discarded: number;
+            /** Evidence Slots */
+            evidence_slots: number;
+            /** Selected */
+            selected: number;
+        };
+        /** RagContextAssembledEvent */
+        RagContextAssembledEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.context.assembled";
+            payload: components["schemas"]["RagContextAssembled"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagEmbeddingCompleted */
+        RagEmbeddingCompleted: {
+            /** Dimensions */
+            dimensions: number;
+            /** Model */
+            model: string;
+        };
+        /** RagEmbeddingCompletedEvent */
+        RagEmbeddingCompletedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.embedding.completed";
+            payload: components["schemas"]["RagEmbeddingCompleted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagEmbeddingStartedEvent */
+        RagEmbeddingStartedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.embedding.started";
+            payload: components["schemas"]["ModelStarted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagEvidenceDiscarded */
+        RagEvidenceDiscarded: {
+            /** Chunk Id */
+            chunk_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "excluded_label" | "out_of_scope_market" | "superseded_by_structured_fact" | "context_budget" | "slot_limit" | "duplicate";
+        };
+        /** RagEvidenceDiscardedEvent */
+        RagEvidenceDiscardedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.evidence.discarded";
+            payload: components["schemas"]["RagEvidenceDiscarded"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagEvidenceSelected */
+        RagEvidenceSelected: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Rank */
+            rank: number;
+        };
+        /** RagEvidenceSelectedEvent */
+        RagEvidenceSelectedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.evidence.selected";
+            payload: components["schemas"]["RagEvidenceSelected"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagGenerationCompletedEvent */
+        RagGenerationCompletedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.generation.completed";
+            payload: components["schemas"]["GenerationCompleted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagGenerationStartedEvent */
+        RagGenerationStartedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.generation.started";
+            payload: components["schemas"]["ModelStarted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagQueryReceived */
+        RagQueryReceived: {
+            /** Markets */
+            markets: string;
+            /** Question */
+            question: string;
+        };
+        /** RagQueryReceivedEvent */
+        RagQueryReceivedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.query.received";
+            payload: components["schemas"]["RagQueryReceived"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RagRerankStartedEvent */
+        RagRerankStartedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.rerank.started";
+            payload: components["schemas"]["RerankStarted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
         /**
          * RagRunResult
          * @description Complete record of one standard RAG execution.
@@ -1339,6 +2283,32 @@ export interface components {
             question: string;
             /** Run Id */
             run_id: string;
+        };
+        /** RagVectorSearchStarted */
+        RagVectorSearchStarted: {
+            /** Top K */
+            top_k: number;
+        };
+        /** RagVectorSearchStartedEvent */
+        RagVectorSearchStartedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "rag.vector_search.started";
+            payload: components["schemas"]["RagVectorSearchStarted"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
         };
         /**
          * Readiness
@@ -1382,26 +2352,7 @@ export interface components {
          * @description One execution event: the envelope shared by replay and the stream
          *     (docs/07 section 6). ``pipeline`` is ``run`` for run lifecycle events.
          */
-        RecordedEvent: {
-            /** Event Id */
-            event_id: string;
-            /** Event Type */
-            event_type: string;
-            /** Payload */
-            payload: {
-                [key: string]: unknown;
-            };
-            /** Pipeline */
-            pipeline: string;
-            /** Run Id */
-            run_id: string;
-            /** Sequence */
-            sequence: number;
-            /** T Ms */
-            t_ms: number;
-            /** Timestamp */
-            timestamp: string;
-        };
+        RecordedEvent: components["schemas"]["RunStarted"] | components["schemas"]["PipelineStarted"] | components["schemas"]["PipelineCompleted"] | components["schemas"]["PipelineFailed"] | components["schemas"]["PipelineCancelled"] | components["schemas"]["RunCompleted"] | components["schemas"]["RunFailed"] | components["schemas"]["RunCancelled"] | components["schemas"]["RagQueryReceivedEvent"] | components["schemas"]["RagEmbeddingStartedEvent"] | components["schemas"]["RagEmbeddingCompletedEvent"] | components["schemas"]["RagVectorSearchStartedEvent"] | components["schemas"]["RagCandidateRetrievedEvent"] | components["schemas"]["RagRerankStartedEvent"] | components["schemas"]["RagCandidateRerankedEvent"] | components["schemas"]["RagEvidenceSelectedEvent"] | components["schemas"]["RagEvidenceDiscardedEvent"] | components["schemas"]["RagContextAssembledEvent"] | components["schemas"]["RagGenerationStartedEvent"] | components["schemas"]["RagGenerationCompletedEvent"] | components["schemas"]["GraphEntityResolutionStartedEvent"] | components["schemas"]["GraphEntityResolvedEvent"] | components["schemas"]["GraphQueryExpandedEvent"] | components["schemas"]["GraphSeedSelectedEvent"] | components["schemas"]["GraphTraversalStartedEvent"] | components["schemas"]["GraphNodeDiscoveredEvent"] | components["schemas"]["GraphRelationshipTraversedEvent"] | components["schemas"]["GraphOntologyExpandedEvent"] | components["schemas"]["GraphRerankStartedEvent"] | components["schemas"]["GraphCandidateRerankedEvent"] | components["schemas"]["GraphCandidateSelectedEvent"] | components["schemas"]["GraphCandidateDiscardedEvent"] | components["schemas"]["GraphEvidencePathCompletedEvent"] | components["schemas"]["GraphContextAssembledEvent"] | components["schemas"]["GraphGenerationStartedEvent"] | components["schemas"]["GraphGenerationCompletedEvent"];
         /**
          * RelTypeOut
          * @description One relationship type between the labels it joins.
@@ -1413,6 +2364,16 @@ export interface components {
             to_label: string;
             /** Type */
             type: string;
+        };
+        /**
+         * RerankStarted
+         * @description ``rag.rerank.started`` and ``graph.rerank.started``.
+         */
+        RerankStarted: {
+            /** Candidates */
+            candidates: number;
+            /** Model */
+            model: string;
         };
         /**
          * RowPage
@@ -1433,6 +2394,69 @@ export interface components {
             /** Total */
             total: number;
         };
+        /** RunCancelled */
+        RunCancelled: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "run.cancelled";
+            payload: components["schemas"]["ErrorPayload"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RunCompleted */
+        RunCompleted: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "run.completed";
+            payload: components["schemas"]["Empty"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** RunFailed */
+        RunFailed: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "run.failed";
+            payload: components["schemas"]["ErrorPayload"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
         /**
          * RunHistory
          * @description Response for GET /api/v1/queries: newest first; ``next_before`` is the
@@ -1443,6 +2467,27 @@ export interface components {
             next_before: string | null;
             /** Runs */
             runs: components["schemas"]["RunSummary"][];
+        };
+        /** RunStarted */
+        RunStarted: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "run.started";
+            payload: components["schemas"]["Empty"];
+            /** Pipeline */
+            pipeline: string;
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
         };
         /**
          * RunSummary

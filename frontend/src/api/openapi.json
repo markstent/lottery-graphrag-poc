@@ -539,6 +539,13 @@
         "title": "EdgeSummary",
         "type": "object"
       },
+      "Empty": {
+        "additionalProperties": false,
+        "description": "Lifecycle events that carry no fields.",
+        "properties": {},
+        "title": "Empty",
+        "type": "object"
+      },
       "ErrorCode": {
         "enum": [
           "VALIDATION_ERROR",
@@ -569,6 +576,30 @@
           "error"
         ],
         "title": "ErrorEnvelope",
+        "type": "object"
+      },
+      "ErrorPayload": {
+        "additionalProperties": false,
+        "description": "``pipeline.failed``, ``pipeline.cancelled``, ``run.failed`` and\n``run.cancelled`` carry the docs/07 section 11 error envelope.",
+        "properties": {
+          "error_code": {
+            "$ref": "#/components/schemas/ErrorCode"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "retryable": {
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "error_code",
+          "message",
+          "retryable"
+        ],
+        "title": "ErrorPayload",
         "type": "object"
       },
       "EventStream": {
@@ -794,6 +825,575 @@
         "title": "ForeignKeyOut",
         "type": "object"
       },
+      "GenerationCompleted": {
+        "additionalProperties": false,
+        "description": "``rag.generation.completed`` and ``graph.generation.completed``.",
+        "properties": {
+          "cited_blocks": {
+            "title": "Cited Blocks",
+            "type": "integer"
+          },
+          "context_tokens": {
+            "title": "Context Tokens",
+            "type": "integer"
+          },
+          "latency_ms": {
+            "title": "Latency Ms",
+            "type": "number"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "verdict": {
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "latency_ms",
+          "context_tokens",
+          "verdict",
+          "cited_blocks"
+        ],
+        "title": "GenerationCompleted",
+        "type": "object"
+      },
+      "GraphCandidateDiscardedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.candidate.discarded",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraphNodeDiscarded"
+              },
+              {
+                "$ref": "#/components/schemas/GraphChunkDiscarded"
+              }
+            ],
+            "title": "Payload"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphCandidateDiscardedEvent",
+        "type": "object"
+      },
+      "GraphCandidateReranked": {
+        "additionalProperties": false,
+        "properties": {
+          "candidate_id": {
+            "title": "Candidate Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "node",
+              "chunk",
+              "record"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          }
+        },
+        "required": [
+          "candidate_id",
+          "kind",
+          "rerank_score",
+          "rank"
+        ],
+        "title": "GraphCandidateReranked",
+        "type": "object"
+      },
+      "GraphCandidateRerankedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.candidate.reranked",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphCandidateReranked"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphCandidateRerankedEvent",
+        "type": "object"
+      },
+      "GraphCandidateSelectedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.candidate.selected",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraphNodeSelected"
+              },
+              {
+                "$ref": "#/components/schemas/GraphChunkSelected"
+              }
+            ],
+            "title": "Payload"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphCandidateSelectedEvent",
+        "type": "object"
+      },
+      "GraphChunkDiscarded": {
+        "additionalProperties": false,
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "excluded_label",
+              "out_of_scope_market",
+              "superseded_by_structured_fact",
+              "context_budget",
+              "slot_limit",
+              "duplicate"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "rerank_score",
+          "reason"
+        ],
+        "title": "GraphChunkDiscarded",
+        "type": "object"
+      },
+      "GraphChunkSelected": {
+        "additionalProperties": false,
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "rerank_score",
+          "rank"
+        ],
+        "title": "GraphChunkSelected",
+        "type": "object"
+      },
+      "GraphContextAssembled": {
+        "additionalProperties": false,
+        "properties": {
+          "context_tokens": {
+            "title": "Context Tokens",
+            "type": "integer"
+          },
+          "document_chunks": {
+            "title": "Document Chunks",
+            "type": "integer"
+          },
+          "evidence_slots": {
+            "title": "Evidence Slots",
+            "type": "integer"
+          },
+          "structured_nodes": {
+            "title": "Structured Nodes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "structured_nodes",
+          "document_chunks",
+          "context_tokens",
+          "evidence_slots"
+        ],
+        "title": "GraphContextAssembled",
+        "type": "object"
+      },
+      "GraphContextAssembledEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.context.assembled",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphContextAssembled"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphContextAssembledEvent",
+        "type": "object"
+      },
+      "GraphEntityResolutionStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "markets": {
+            "title": "Markets",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "markets"
+        ],
+        "title": "GraphEntityResolutionStarted",
+        "type": "object"
+      },
+      "GraphEntityResolutionStartedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.entity_resolution.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphEntityResolutionStarted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphEntityResolutionStartedEvent",
+        "type": "object"
+      },
+      "GraphEntityResolved": {
+        "additionalProperties": false,
+        "description": "A resolver match carries ``confidence``; a vector fallback seed has no\nresolver confidence and carries ``fused_score`` instead.",
+        "properties": {
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          },
+          "fused_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fused Score"
+          },
+          "matched_text": {
+            "title": "Matched Text",
+            "type": "string"
+          },
+          "node_label": {
+            "title": "Node Label",
+            "type": "string"
+          },
+          "origin": {
+            "enum": [
+              "id",
+              "market_alias",
+              "term",
+              "concept_binding",
+              "vector_fallback"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "via_concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Concept"
+          }
+        },
+        "required": [
+          "entity_id",
+          "node_label",
+          "origin",
+          "matched_text",
+          "via_concept"
+        ],
+        "title": "GraphEntityResolved",
+        "type": "object"
+      },
+      "GraphEntityResolvedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.entity.resolved",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphEntityResolved"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphEntityResolvedEvent",
+        "type": "object"
+      },
       "GraphEvidence": {
         "description": "One graph node candidate with its transparent ranking outcome.\n\nStructured nodes additionally carry authoritative facts read from the\nwarehouse Parquet layer (the graph guides, Parquet states facts).",
         "properties": {
@@ -885,6 +1485,631 @@
           "components"
         ],
         "title": "GraphEvidence",
+        "type": "object"
+      },
+      "GraphEvidencePathCompleted": {
+        "additionalProperties": false,
+        "properties": {
+          "max_hops": {
+            "title": "Max Hops",
+            "type": "integer"
+          },
+          "paths": {
+            "title": "Paths",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "paths",
+          "max_hops"
+        ],
+        "title": "GraphEvidencePathCompleted",
+        "type": "object"
+      },
+      "GraphEvidencePathCompletedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.evidence_path.completed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphEvidencePathCompleted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphEvidencePathCompletedEvent",
+        "type": "object"
+      },
+      "GraphGenerationCompletedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.generation.completed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GenerationCompleted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphGenerationCompletedEvent",
+        "type": "object"
+      },
+      "GraphGenerationStartedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.generation.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ModelStarted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphGenerationStartedEvent",
+        "type": "object"
+      },
+      "GraphNodeDiscarded": {
+        "additionalProperties": false,
+        "properties": {
+          "hops": {
+            "title": "Hops",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "excluded_label",
+              "out_of_scope_market",
+              "superseded_by_structured_fact",
+              "context_budget",
+              "slot_limit",
+              "duplicate"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "node_id",
+          "score",
+          "rerank_score",
+          "hops",
+          "seed",
+          "reason"
+        ],
+        "title": "GraphNodeDiscarded",
+        "type": "object"
+      },
+      "GraphNodeDiscovered": {
+        "additionalProperties": false,
+        "properties": {
+          "hop": {
+            "title": "Hop",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_label": {
+            "title": "Node Label",
+            "type": "string"
+          },
+          "via_concept": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Via Concept"
+          }
+        },
+        "required": [
+          "node_id",
+          "node_label",
+          "hop"
+        ],
+        "title": "GraphNodeDiscovered",
+        "type": "object"
+      },
+      "GraphNodeDiscoveredEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.node.discovered",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphNodeDiscovered"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphNodeDiscoveredEvent",
+        "type": "object"
+      },
+      "GraphNodeSelected": {
+        "additionalProperties": false,
+        "properties": {
+          "hops": {
+            "title": "Hops",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "boolean"
+          },
+          "weight_graph_distance": {
+            "title": "Weight Graph Distance",
+            "type": "number"
+          },
+          "weight_relationship_type": {
+            "title": "Weight Relationship Type",
+            "type": "number"
+          },
+          "weight_semantic_relevance": {
+            "title": "Weight Semantic Relevance",
+            "type": "number"
+          },
+          "weight_temporal_validity": {
+            "title": "Weight Temporal Validity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "node_id",
+          "score",
+          "rerank_score",
+          "hops",
+          "seed",
+          "weight_graph_distance",
+          "weight_relationship_type",
+          "weight_semantic_relevance",
+          "weight_temporal_validity"
+        ],
+        "title": "GraphNodeSelected",
+        "type": "object"
+      },
+      "GraphOntologyExpanded": {
+        "additionalProperties": false,
+        "properties": {
+          "bound_entities": {
+            "title": "Bound Entities",
+            "type": "integer"
+          },
+          "concept_id": {
+            "title": "Concept Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "concept_id",
+          "bound_entities"
+        ],
+        "title": "GraphOntologyExpanded",
+        "type": "object"
+      },
+      "GraphOntologyExpandedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.ontology.expanded",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphOntologyExpanded"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphOntologyExpandedEvent",
+        "type": "object"
+      },
+      "GraphQueryExpanded": {
+        "additionalProperties": false,
+        "properties": {
+          "added_terms": {
+            "title": "Added Terms",
+            "type": "integer"
+          },
+          "expanded_length": {
+            "title": "Expanded Length",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "added_terms",
+          "expanded_length"
+        ],
+        "title": "GraphQueryExpanded",
+        "type": "object"
+      },
+      "GraphQueryExpandedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.query.expanded",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphQueryExpanded"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphQueryExpandedEvent",
+        "type": "object"
+      },
+      "GraphRelationshipTraversed": {
+        "additionalProperties": false,
+        "properties": {
+          "from_id": {
+            "title": "From Id",
+            "type": "string"
+          },
+          "hop": {
+            "title": "Hop",
+            "type": "integer"
+          },
+          "relationship_type": {
+            "title": "Relationship Type",
+            "type": "string"
+          },
+          "to_id": {
+            "title": "To Id",
+            "type": "string"
+          },
+          "to_label": {
+            "title": "To Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_id",
+          "relationship_type",
+          "to_id",
+          "to_label",
+          "hop"
+        ],
+        "title": "GraphRelationshipTraversed",
+        "type": "object"
+      },
+      "GraphRelationshipTraversedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.relationship.traversed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphRelationshipTraversed"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphRelationshipTraversedEvent",
+        "type": "object"
+      },
+      "GraphRerankStartedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.rerank.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RerankStarted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphRerankStartedEvent",
         "type": "object"
       },
       "GraphRunResult": {
@@ -1001,6 +2226,68 @@
         "title": "GraphSchema",
         "type": "object"
       },
+      "GraphSeedSelected": {
+        "additionalProperties": false,
+        "properties": {
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id"
+        ],
+        "title": "GraphSeedSelected",
+        "type": "object"
+      },
+      "GraphSeedSelectedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.seed.selected",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphSeedSelected"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphSeedSelectedEvent",
+        "type": "object"
+      },
       "GraphStats": {
         "description": "Response for GET /graph/stats, read from the active dataset's\n``_graph_stats.json``: what its ingestion pushed, not a live count.",
         "properties": {
@@ -1035,6 +2322,93 @@
           "source"
         ],
         "title": "GraphStats",
+        "type": "object"
+      },
+      "GraphTraversalStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "max_depth": {
+            "title": "Max Depth",
+            "type": "integer"
+          },
+          "max_edges_per_node_type": {
+            "title": "Max Edges Per Node Type",
+            "type": "integer"
+          },
+          "max_nodes_per_hop": {
+            "title": "Max Nodes Per Hop",
+            "type": "integer"
+          },
+          "max_total_nodes": {
+            "title": "Max Total Nodes",
+            "type": "integer"
+          },
+          "ontology_expansion": {
+            "title": "Ontology Expansion",
+            "type": "boolean"
+          },
+          "relationship_types": {
+            "title": "Relationship Types",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "max_depth",
+          "max_nodes_per_hop",
+          "max_edges_per_node_type",
+          "max_total_nodes",
+          "relationship_types",
+          "ontology_expansion"
+        ],
+        "title": "GraphTraversalStarted",
+        "type": "object"
+      },
+      "GraphTraversalStartedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.traversal.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphTraversalStarted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphTraversalStartedEvent",
         "type": "object"
       },
       "HealthResponse": {
@@ -1275,6 +2649,21 @@
         "title": "ModelOut",
         "type": "object"
       },
+      "ModelStarted": {
+        "additionalProperties": false,
+        "description": "Start of an embedding or generation stage (``rag.embedding.started``,\n``rag.generation.started``, ``graph.generation.started``).",
+        "properties": {
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model"
+        ],
+        "title": "ModelStarted",
+        "type": "object"
+      },
       "ModelsOut": {
         "properties": {
           "embedding": {
@@ -1415,6 +2804,150 @@
         "title": "OntologyOut",
         "type": "object"
       },
+      "PipelineCancelled": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "pipeline.cancelled",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ErrorPayload"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "PipelineCancelled",
+        "type": "object"
+      },
+      "PipelineCompleted": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "pipeline.completed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/Empty"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "PipelineCompleted",
+        "type": "object"
+      },
+      "PipelineFailed": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "pipeline.failed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ErrorPayload"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "PipelineFailed",
+        "type": "object"
+      },
       "PipelineScore": {
         "description": "One pipeline's means over the scored repeats of one question; None\nwhere no scored repeat defines the metric.",
         "properties": {
@@ -1446,6 +2979,54 @@
           "evidence_f1"
         ],
         "title": "PipelineScore",
+        "type": "object"
+      },
+      "PipelineStarted": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "pipeline.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/Empty"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "PipelineStarted",
         "type": "object"
       },
       "ProvenanceOut": {
@@ -1898,6 +3479,736 @@
         "title": "RagAnswer",
         "type": "object"
       },
+      "RagCandidateReranked": {
+        "additionalProperties": false,
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          },
+          "similarity": {
+            "title": "Similarity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "similarity",
+          "rerank_score",
+          "rank"
+        ],
+        "title": "RagCandidateReranked",
+        "type": "object"
+      },
+      "RagCandidateRerankedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.candidate.reranked",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RagCandidateReranked"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagCandidateRerankedEvent",
+        "type": "object"
+      },
+      "RagCandidateRetrieved": {
+        "additionalProperties": false,
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "dense_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dense Rank"
+          },
+          "document_id": {
+            "title": "Document Id",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "similarity": {
+            "title": "Similarity",
+            "type": "number"
+          },
+          "sparse_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sparse Rank"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "document_id",
+          "similarity",
+          "dense_rank",
+          "sparse_rank",
+          "rank"
+        ],
+        "title": "RagCandidateRetrieved",
+        "type": "object"
+      },
+      "RagCandidateRetrievedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.candidate.retrieved",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RagCandidateRetrieved"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagCandidateRetrievedEvent",
+        "type": "object"
+      },
+      "RagContextAssembled": {
+        "additionalProperties": false,
+        "properties": {
+          "context_tokens": {
+            "title": "Context Tokens",
+            "type": "integer"
+          },
+          "discarded": {
+            "title": "Discarded",
+            "type": "integer"
+          },
+          "evidence_slots": {
+            "title": "Evidence Slots",
+            "type": "integer"
+          },
+          "selected": {
+            "title": "Selected",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "selected",
+          "discarded",
+          "context_tokens",
+          "evidence_slots"
+        ],
+        "title": "RagContextAssembled",
+        "type": "object"
+      },
+      "RagContextAssembledEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.context.assembled",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RagContextAssembled"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagContextAssembledEvent",
+        "type": "object"
+      },
+      "RagEmbeddingCompleted": {
+        "additionalProperties": false,
+        "properties": {
+          "dimensions": {
+            "title": "Dimensions",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model",
+          "dimensions"
+        ],
+        "title": "RagEmbeddingCompleted",
+        "type": "object"
+      },
+      "RagEmbeddingCompletedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.embedding.completed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RagEmbeddingCompleted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagEmbeddingCompletedEvent",
+        "type": "object"
+      },
+      "RagEmbeddingStartedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.embedding.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ModelStarted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagEmbeddingStartedEvent",
+        "type": "object"
+      },
+      "RagEvidenceDiscarded": {
+        "additionalProperties": false,
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "excluded_label",
+              "out_of_scope_market",
+              "superseded_by_structured_fact",
+              "context_budget",
+              "slot_limit",
+              "duplicate"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "reason"
+        ],
+        "title": "RagEvidenceDiscarded",
+        "type": "object"
+      },
+      "RagEvidenceDiscardedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.evidence.discarded",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RagEvidenceDiscarded"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagEvidenceDiscardedEvent",
+        "type": "object"
+      },
+      "RagEvidenceSelected": {
+        "additionalProperties": false,
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "rank"
+        ],
+        "title": "RagEvidenceSelected",
+        "type": "object"
+      },
+      "RagEvidenceSelectedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.evidence.selected",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RagEvidenceSelected"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagEvidenceSelectedEvent",
+        "type": "object"
+      },
+      "RagGenerationCompletedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.generation.completed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GenerationCompleted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagGenerationCompletedEvent",
+        "type": "object"
+      },
+      "RagGenerationStartedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.generation.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ModelStarted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagGenerationStartedEvent",
+        "type": "object"
+      },
+      "RagQueryReceived": {
+        "additionalProperties": false,
+        "properties": {
+          "markets": {
+            "title": "Markets",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "markets"
+        ],
+        "title": "RagQueryReceived",
+        "type": "object"
+      },
+      "RagQueryReceivedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.query.received",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RagQueryReceived"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagQueryReceivedEvent",
+        "type": "object"
+      },
+      "RagRerankStartedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.rerank.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RerankStarted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagRerankStartedEvent",
+        "type": "object"
+      },
       "RagRunResult": {
         "description": "Complete record of one standard RAG execution.",
         "properties": {
@@ -1937,6 +4248,68 @@
           "generation_model"
         ],
         "title": "RagRunResult",
+        "type": "object"
+      },
+      "RagVectorSearchStarted": {
+        "additionalProperties": false,
+        "properties": {
+          "top_k": {
+            "title": "Top K",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "top_k"
+        ],
+        "title": "RagVectorSearchStarted",
+        "type": "object"
+      },
+      "RagVectorSearchStartedEvent": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "rag.vector_search.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/RagVectorSearchStarted"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RagVectorSearchStartedEvent",
         "type": "object"
       },
       "Readiness": {
@@ -2027,53 +4400,158 @@
       },
       "RecordedEvent": {
         "description": "One execution event: the envelope shared by replay and the stream\n(docs/07 section 6). ``pipeline`` is ``run`` for run lifecycle events.",
-        "properties": {
-          "event_id": {
-            "title": "Event Id",
-            "type": "string"
+        "discriminator": {
+          "mapping": {
+            "graph.candidate.discarded": "#/components/schemas/GraphCandidateDiscardedEvent",
+            "graph.candidate.reranked": "#/components/schemas/GraphCandidateRerankedEvent",
+            "graph.candidate.selected": "#/components/schemas/GraphCandidateSelectedEvent",
+            "graph.context.assembled": "#/components/schemas/GraphContextAssembledEvent",
+            "graph.entity.resolved": "#/components/schemas/GraphEntityResolvedEvent",
+            "graph.entity_resolution.started": "#/components/schemas/GraphEntityResolutionStartedEvent",
+            "graph.evidence_path.completed": "#/components/schemas/GraphEvidencePathCompletedEvent",
+            "graph.generation.completed": "#/components/schemas/GraphGenerationCompletedEvent",
+            "graph.generation.started": "#/components/schemas/GraphGenerationStartedEvent",
+            "graph.node.discovered": "#/components/schemas/GraphNodeDiscoveredEvent",
+            "graph.ontology.expanded": "#/components/schemas/GraphOntologyExpandedEvent",
+            "graph.query.expanded": "#/components/schemas/GraphQueryExpandedEvent",
+            "graph.relationship.traversed": "#/components/schemas/GraphRelationshipTraversedEvent",
+            "graph.rerank.started": "#/components/schemas/GraphRerankStartedEvent",
+            "graph.seed.selected": "#/components/schemas/GraphSeedSelectedEvent",
+            "graph.traversal.started": "#/components/schemas/GraphTraversalStartedEvent",
+            "pipeline.cancelled": "#/components/schemas/PipelineCancelled",
+            "pipeline.completed": "#/components/schemas/PipelineCompleted",
+            "pipeline.failed": "#/components/schemas/PipelineFailed",
+            "pipeline.started": "#/components/schemas/PipelineStarted",
+            "rag.candidate.reranked": "#/components/schemas/RagCandidateRerankedEvent",
+            "rag.candidate.retrieved": "#/components/schemas/RagCandidateRetrievedEvent",
+            "rag.context.assembled": "#/components/schemas/RagContextAssembledEvent",
+            "rag.embedding.completed": "#/components/schemas/RagEmbeddingCompletedEvent",
+            "rag.embedding.started": "#/components/schemas/RagEmbeddingStartedEvent",
+            "rag.evidence.discarded": "#/components/schemas/RagEvidenceDiscardedEvent",
+            "rag.evidence.selected": "#/components/schemas/RagEvidenceSelectedEvent",
+            "rag.generation.completed": "#/components/schemas/RagGenerationCompletedEvent",
+            "rag.generation.started": "#/components/schemas/RagGenerationStartedEvent",
+            "rag.query.received": "#/components/schemas/RagQueryReceivedEvent",
+            "rag.rerank.started": "#/components/schemas/RagRerankStartedEvent",
+            "rag.vector_search.started": "#/components/schemas/RagVectorSearchStartedEvent",
+            "run.cancelled": "#/components/schemas/RunCancelled",
+            "run.completed": "#/components/schemas/RunCompleted",
+            "run.failed": "#/components/schemas/RunFailed",
+            "run.started": "#/components/schemas/RunStarted"
           },
-          "event_type": {
-            "title": "Event Type",
-            "type": "string"
-          },
-          "payload": {
-            "additionalProperties": true,
-            "title": "Payload",
-            "type": "object"
-          },
-          "pipeline": {
-            "title": "Pipeline",
-            "type": "string"
-          },
-          "run_id": {
-            "title": "Run Id",
-            "type": "string"
-          },
-          "sequence": {
-            "title": "Sequence",
-            "type": "integer"
-          },
-          "t_ms": {
-            "title": "T Ms",
-            "type": "number"
-          },
-          "timestamp": {
-            "title": "Timestamp",
-            "type": "string"
-          }
+          "propertyName": "event_type"
         },
-        "required": [
-          "event_id",
-          "timestamp",
-          "run_id",
-          "pipeline",
-          "event_type",
-          "t_ms",
-          "payload",
-          "sequence"
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/RunStarted"
+          },
+          {
+            "$ref": "#/components/schemas/PipelineStarted"
+          },
+          {
+            "$ref": "#/components/schemas/PipelineCompleted"
+          },
+          {
+            "$ref": "#/components/schemas/PipelineFailed"
+          },
+          {
+            "$ref": "#/components/schemas/PipelineCancelled"
+          },
+          {
+            "$ref": "#/components/schemas/RunCompleted"
+          },
+          {
+            "$ref": "#/components/schemas/RunFailed"
+          },
+          {
+            "$ref": "#/components/schemas/RunCancelled"
+          },
+          {
+            "$ref": "#/components/schemas/RagQueryReceivedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagEmbeddingStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagEmbeddingCompletedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagVectorSearchStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagCandidateRetrievedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagRerankStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagCandidateRerankedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagEvidenceSelectedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagEvidenceDiscardedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagContextAssembledEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagGenerationStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/RagGenerationCompletedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphEntityResolutionStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphEntityResolvedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphQueryExpandedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphSeedSelectedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphTraversalStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphNodeDiscoveredEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphRelationshipTraversedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphOntologyExpandedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphRerankStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCandidateRerankedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCandidateSelectedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphCandidateDiscardedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphEvidencePathCompletedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphContextAssembledEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphGenerationStartedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphGenerationCompletedEvent"
+          }
         ],
-        "title": "RecordedEvent",
-        "type": "object"
+        "title": "RecordedEvent"
       },
       "RelTypeOut": {
         "description": "One relationship type between the labels it joins.",
@@ -2097,6 +4575,26 @@
           "to_label"
         ],
         "title": "RelTypeOut",
+        "type": "object"
+      },
+      "RerankStarted": {
+        "additionalProperties": false,
+        "description": "``rag.rerank.started`` and ``graph.rerank.started``.",
+        "properties": {
+          "candidates": {
+            "title": "Candidates",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          }
+        },
+        "required": [
+          "candidates",
+          "model"
+        ],
+        "title": "RerankStarted",
         "type": "object"
       },
       "RowPage": {
@@ -2139,6 +4637,150 @@
         "title": "RowPage",
         "type": "object"
       },
+      "RunCancelled": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "run.cancelled",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ErrorPayload"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RunCancelled",
+        "type": "object"
+      },
+      "RunCompleted": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "run.completed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/Empty"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RunCompleted",
+        "type": "object"
+      },
+      "RunFailed": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "run.failed",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ErrorPayload"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RunFailed",
+        "type": "object"
+      },
       "RunHistory": {
         "description": "Response for GET /api/v1/queries: newest first; ``next_before`` is the\n``before`` value of the next page, or None on the last page.",
         "properties": {
@@ -2166,6 +4808,54 @@
           "next_before"
         ],
         "title": "RunHistory",
+        "type": "object"
+      },
+      "RunStarted": {
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "run.started",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/Empty"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "RunStarted",
         "type": "object"
       },
       "RunSummary": {
