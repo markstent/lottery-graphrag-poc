@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from './http'
 import {
   CONNECTION_LOST_MESSAGE,
+  INTERNAL_MESSAGE,
   MAX_RECONNECTS,
   RECONNECT_DELAY_MS,
   subscribeRun,
@@ -267,5 +268,80 @@ describe('subscribeRun', () => {
     latest().frame(1, 'run.started')
     latest().frame(2, 'pipeline.started')
     expect(loadEvents).not.toHaveBeenCalled()
+  })
+
+  describe('a handler that throws', () => {
+    const unhandled: unknown[] = []
+    const record = (reason: unknown) => unhandled.push(reason)
+    beforeEach(() => {
+      unhandled.length = 0
+      process.on('unhandledRejection', record)
+    })
+    afterEach(() => {
+      process.off('unhandledRejection', record)
+    })
+
+    /** Throws on `sequence`, as a broken view would. */
+    function throwingOn(
+      sequence: number,
+      loadEvents?: RunStreamOptions['loadEvents'],
+    ) {
+      const subscription = subscribe(undefined, loadEvents)
+      subscription.handlers.onEvent.mockImplementation((event) => {
+        subscription.seen.push(event.sequence)
+        if (event.sequence === sequence) throw new Error('view broke')
+      })
+      return subscription
+    }
+
+    async function expectOneInternalError(
+      handlers: ReturnType<typeof subscribe>['handlers'],
+    ) {
+      await vi.advanceTimersByTimeAsync(0)
+      expect(handlers.onError).toHaveBeenCalledTimes(1)
+      const error = handlers.onError.mock.calls[0][0]
+      expect(error).toBeInstanceOf(ApiError)
+      expect(error.code).toBe('RUN_ERROR')
+      expect(error.message).toBe(INTERNAL_MESSAGE)
+      expect(error.message).not.toBe(CONNECTION_LOST_MESSAGE)
+      expect(latest().closed).toBe(true)
+      expect(handlers.onEnd).not.toHaveBeenCalled()
+      expect(unhandled).toEqual([])
+    }
+
+    const gap = () =>
+      Promise.resolve({
+        events: [
+          stored(1, 'run.started'),
+          stored(2, 'pipeline.started'),
+          stored(3, 'pipeline.completed'),
+        ],
+      })
+
+    it('on a direct frame stops the stream with one internal error', async () => {
+      const { handlers, seen } = throwingOn(1)
+      latest().frame(1, 'run.started')
+      latest().frame(2, 'pipeline.started') // after the stop: not delivered
+      await expectOneInternalError(handlers)
+      expect(seen).toEqual([1])
+    })
+
+    it('on an event of the gap stops the stream with one internal error', async () => {
+      const { handlers, seen } = throwingOn(2, gap)
+      latest().frame(1, 'run.started')
+      latest().frame(4, 'run.completed')
+      latest().frame(5, 'run.completed') // queued behind the gap
+      await expectOneInternalError(handlers)
+      expect(seen).toEqual([1, 2])
+    })
+
+    it('on the frame after a gap stops the stream with one internal error', async () => {
+      const { handlers, seen } = throwingOn(4, gap)
+      latest().frame(1, 'run.started')
+      latest().frame(4, 'pipeline.completed')
+      latest().frame(5, 'run.completed')
+      await expectOneInternalError(handlers)
+      expect(seen).toEqual([1, 2, 3, 4])
+    })
   })
 })

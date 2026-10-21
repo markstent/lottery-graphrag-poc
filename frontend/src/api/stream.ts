@@ -27,6 +27,7 @@ export type RunEvent = components['schemas']['RecordedEvent']
 export const MAX_RECONNECTS = 5
 export const RECONNECT_DELAY_MS = 1_000
 export const CONNECTION_LOST_MESSAGE = 'The live connection was lost.'
+export const INTERNAL_MESSAGE = 'The run view stopped after an internal error.'
 export const UNREADABLE_MESSAGE =
   'The live connection sent an event that could not be read.'
 
@@ -130,19 +131,32 @@ export function subscribeRun(
     source?.close()
   }
 
+  let reported = false
   const fail = (error: ApiError) => {
     stop()
+    if (reported) return
+    reported = true
     handlers.onError(error)
   }
+  const internalFailure = () =>
+    fail(new ApiError('RUN_ERROR', INTERNAL_MESSAGE, false, 0))
 
-  /** Hand one event on; a replay at or below the last sequence is ignored. */
+  /**
+   * Hand one event on; a replay at or below the last sequence is ignored. A
+   * handler that throws ends the subscription with one internal error: it is
+   * not a connection failure, and a throw must never escape into the queue.
+   */
   const deliver = (event: RunEvent) => {
     if (stopped || event.sequence <= last) return
     last = event.sequence
-    handlers.onEvent(event)
-    if (TERMINAL.includes(event.event_type)) {
-      stop()
-      handlers.onEnd()
+    try {
+      handlers.onEvent(event)
+      if (TERMINAL.includes(event.event_type)) {
+        stop()
+        handlers.onEnd()
+      }
+    } catch {
+      internalFailure()
     }
   }
 
@@ -153,11 +167,9 @@ export function subscribeRun(
   const fillGapThen = async (event: RunEvent) => {
     if (stopped) return
     if (event.sequence > last + 1) {
+      let stored: { events: RunEvent[] }
       try {
-        const stored = await loadEvents(runId)
-        for (const missing of stored.events) {
-          if (missing.sequence < event.sequence) deliver(missing)
-        }
+        stored = await loadEvents(runId)
       } catch (error) {
         fail(
           error instanceof ApiError
@@ -165,6 +177,9 @@ export function subscribeRun(
             : new ApiError('RUN_ERROR', CONNECTION_LOST_MESSAGE, true, 0),
         )
         return
+      }
+      for (const missing of stored.events) {
+        if (missing.sequence < event.sequence) deliver(missing)
       }
     }
     deliver(event)
@@ -189,7 +204,10 @@ export function subscribeRun(
       return
     }
     queued += 1
-    tail = tail.then(() => fillGapThen(event)).finally(() => (queued -= 1))
+    tail = tail
+      .then(() => fillGapThen(event))
+      .catch(internalFailure) // never leave the chain rejected
+      .finally(() => (queued -= 1))
   }
 
   const onError = () => {

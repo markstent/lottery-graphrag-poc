@@ -45,13 +45,12 @@ function deepFreeze<T>(value: T): T {
   return value
 }
 
-function firstPayload<T extends RunEvent['event_type']>(
-  type: T,
-): Extract<RunEvent, { event_type: T }>['payload'] {
+type Payloads = { [E in RunEvent as E['event_type']]: E['payload'] }
+
+function firstPayload<T extends keyof Payloads>(type: T): Payloads[T] {
   const found = recorded.find((e) => e.event_type === type)
   if (found === undefined) throw new Error(`the fixture has no ${type}`)
-  // The find above matched the type argument, so the payload has its shape.
-  return found.payload as never
+  return found.payload as Payloads[T]
 }
 
 const count = (type: string, pipeline?: string) =>
