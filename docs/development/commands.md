@@ -1,6 +1,6 @@
 # Commands
 
-Phase 0 should implement stable commands for:
+The project provides stable commands for:
 
 ```text
 setup
