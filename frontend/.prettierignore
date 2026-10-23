@@ -7,3 +7,4 @@ src/api/schema.d.ts
 src/api/openapi.json
 dist-e2e
 src/dev/fixtures/graph-200.json
+src/run/fixtures/recorded/
