@@ -83,6 +83,13 @@
       "BenchmarkRunOut": {
         "description": "One published run in GET /api/v1/benchmarks, from its ``summary.json``:\n``selection`` is the part of the bank it scored, ``worlds`` its seeds.",
         "properties": {
+          "headlines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Headlines",
+            "type": "array"
+          },
           "label": {
             "anyOf": [
               {
@@ -125,7 +132,8 @@
           "label",
           "started_at",
           "selection",
-          "worlds"
+          "worlds",
+          "headlines"
         ],
         "title": "BenchmarkRunOut",
         "type": "object"

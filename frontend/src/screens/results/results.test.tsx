@@ -12,6 +12,7 @@ const RUNS = [
     started_at: '2026-10-20T10:00:00Z',
     selection: { strata: null, limit: null },
     worlds: [2026],
+    headlines: ['C beat A on every stratum.'],
   },
   {
     run_id: 'run-a',
@@ -20,21 +21,20 @@ const RUNS = [
     started_at: '2026-10-18T09:00:00Z',
     selection: { strata: ['depth'], limit: 3 },
     worlds: [2026],
+    headlines: ['Pilot only.'],
+  },
+  {
+    run_id: 'run-c',
+    run_kind: 'ablation',
+    label: null,
+    started_at: '2026-10-17T09:00:00Z',
+    selection: { strata: null, limit: 1 },
+    worlds: [2026],
+    headlines: [],
   },
 ]
 
-const summary = (run_id: string, headlines: string[]) => ({
-  run_id,
-  run_kind: 'official',
-  label: null,
-  summary: { headlines },
-})
-
-const ROUTES = {
-  '/api/v1/benchmarks': RUNS,
-  '/api/v1/benchmarks/run-b': summary('run-b', ['C beat A on every stratum.']),
-  '/api/v1/benchmarks/run-a': summary('run-a', ['Pilot only.']),
-}
+const ROUTES = { '/api/v1/benchmarks': RUNS }
 
 afterEach(() => vi.unstubAllGlobals())
 
@@ -49,8 +49,15 @@ describe('Results', () => {
       within(official).getByText('C beat A on every stratum.'),
     ).toBeVisible()
     expect(
-      within(official).getByRole('link', { name: 'Reproducibility details' }),
+      within(official).getByRole('link', {
+        name: 'Reproducibility record (JSON)',
+      }),
     ).toHaveAttribute('href', '/api/v1/benchmarks/run-b')
+    expect(
+      within(official).getByRole('link', {
+        name: 'Reproducibility record (JSON)',
+      }),
+    ).toHaveAttribute('rel', 'noopener')
     expect(screen.queryByText('smoke')).not.toBeInTheDocument()
     expect(within(official).queryByText(/Subset/)).not.toBeInTheDocument()
   })
@@ -68,6 +75,19 @@ describe('Results', () => {
       ),
     ).toBeVisible()
     expect(within(subset).getByText('Pilot only.')).toBeVisible()
+  })
+
+  it('reads an unknown kind as plain words and an all-strata limit as a subset', async () => {
+    stubApi(ROUTES)
+    render(<Results />)
+    const [, , other] = await screen.findAllByRole('article')
+    expect(within(other).getByText('ablation')).toBeVisible()
+    expect(
+      within(other).getByText(
+        'Subset (all strata; at most 1 instance per question)',
+      ),
+    ).toBeVisible()
+    expect(within(other).queryByRole('list')).not.toBeInTheDocument()
   })
 
   it('says so when there are no runs', async () => {

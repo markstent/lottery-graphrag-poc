@@ -7,7 +7,11 @@
 
 import type { ReactNode } from 'react'
 
-import { DESTINATIONS, type RouteName } from '../app/router'
+import { DESTINATIONS, type Destination, type RouteName } from '../app/router'
+
+const BY_NAME = Object.fromEntries(
+  DESTINATIONS.map((destination) => [destination.name, destination]),
+) as Record<RouteName, Destination>
 
 export function Screen({
   destination,
@@ -16,9 +20,7 @@ export function Screen({
   destination: RouteName
   children: ReactNode
 }) {
-  const { label, purpose } = DESTINATIONS.find(
-    ({ name }) => name === destination,
-  )!
+  const { label, purpose } = BY_NAME[destination]
   return (
     <div data-testid="screen" className="space-y-4">
       <p className="text-sm text-text-secondary">{purpose}</p>

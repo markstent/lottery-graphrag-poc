@@ -379,6 +379,7 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
                 started_at=summary["reproducibility"]["run"]["started_at"],
                 selection=summary["selection"],
                 worlds=summary["worlds"],
+                headlines=summary.get("headlines", []),
             )
             for name, summary in published_runs(runs_dir)
         ]

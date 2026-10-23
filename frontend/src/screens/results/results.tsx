@@ -5,17 +5,13 @@
  */
 
 import type { Schemas } from '../../api/client'
-import { getBenchmark, listBenchmarks } from '../../api/client'
+import { listBenchmarks } from '../../api/client'
 import { plainName } from '../../app/plain-words'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
 import { Screen } from '../screen'
 
 type Run = Schemas['BenchmarkRunOut']
-interface ListedRun {
-  run: Run
-  headlines: string[]
-}
 
 const KIND_WORDS: Record<string, string> = {
   official: 'Official run',
@@ -47,26 +43,9 @@ function selectionText({ strata, limit }: Run['selection']): string | null {
   return `Subset (${parts.join('; ')})`
 }
 
-function headlinesOf(summary: Schemas['BenchmarkSummary']): string[] {
-  const { headlines } = summary.summary
-  return Array.isArray(headlines)
-    ? headlines.filter((line): line is string => typeof line === 'string')
-    : []
-}
-
-async function loadRuns(signal: AbortSignal): Promise<ListedRun[]> {
-  const runs = await listBenchmarks(signal)
-  const summaries = await Promise.all(
-    runs.map((run) => getBenchmark(run.run_id, signal)),
-  )
-  return runs.map((run, index) => ({
-    run,
-    headlines: headlinesOf(summaries[index]),
-  }))
-}
-
-function RunCard({ run, headlines }: ListedRun) {
+function RunCard({ run }: { run: Run }) {
   const subset = selectionText(run.selection)
+  const { headlines } = run
   const headingId = `run-${run.run_id}`
   return (
     <article
@@ -85,23 +64,25 @@ function RunCard({ run, headlines }: ListedRun) {
       )}
       {headlines.length > 0 && (
         <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text-primary">
-          {headlines.map((line) => (
-            <li key={line}>{line}</li>
+          {headlines.map((line, index) => (
+            <li key={`${index}-${line}`}>{line}</li>
           ))}
         </ul>
       )}
       <a
         href={`/api/v1/benchmarks/${encodeURIComponent(run.run_id)}`}
+        target="_blank"
+        rel="noopener"
         className="mt-3 inline-block text-sm text-text-primary underline"
       >
-        Reproducibility details
+        Reproducibility record (JSON)
       </a>
     </article>
   )
 }
 
 export function Results() {
-  const load = useLoad(loadRuns, 'benchmark-runs')
+  const load = useLoad(listBenchmarks, 'benchmark-runs')
   const empty = load.status === 'ready' && load.data.length === 0
   return (
     <Screen destination="results">
@@ -114,8 +95,8 @@ export function Results() {
       >
         {load.status === 'ready' && (
           <div className="space-y-3">
-            {load.data.map((item) => (
-              <RunCard key={item.run.run_id} {...item} />
+            {load.data.map((run) => (
+              <RunCard key={run.run_id} run={run} />
             ))}
           </div>
         )}

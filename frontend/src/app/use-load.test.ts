@@ -17,7 +17,7 @@ describe('useLoad', () => {
     expect(seen?.aborted).toBe(true)
   })
 
-  it('asks again after retry, keeping the failure until the new answer lands', async () => {
+  it('asks again after retry, going back to loading until the new answer lands', async () => {
     let calls = 0
     const { result } = renderHook(() =>
       useLoad(async () => {
@@ -28,6 +28,7 @@ describe('useLoad', () => {
     )
     await waitFor(() => expect(result.current.status).toBe('error'))
     act(() => result.current.retry())
+    expect(result.current.status).toBe('loading')
     await waitFor(() => expect(result.current.status).toBe('ready'))
     expect(calls).toBe(2)
   })

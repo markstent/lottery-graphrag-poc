@@ -5,7 +5,15 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
 import App from './App'
 import { SHELL_API } from './test/api-stub'
@@ -132,6 +140,12 @@ async function runLiveQuestion() {
 }
 
 describe('App', () => {
+  // The Live Lab chunk is a dynamic import; under a loaded test run its first
+  // transform can outlast a findBy timeout, so load it once up front.
+  beforeAll(async () => {
+    await import('./views/live-lab')
+  }, 30_000)
+
   // The screens below are the v1 Live Lab, which the shell now reaches at #/live-lab.
   beforeEach(() => {
     window.history.replaceState(null, '', '/#/live-lab')

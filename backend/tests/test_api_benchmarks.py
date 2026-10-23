@@ -556,7 +556,17 @@ def test_runs_are_listed_newest_first(client: TestClient, runs_dir: Path) -> Non
         "started_at": "2026-10-02T09:00:00+00:00",
         "selection": {"strata": None, "limit": None},
         "worlds": [2026],
+        "headlines": ["new headline"],
     }
+
+
+def test_a_run_without_headlines_lists_none(client: TestClient, runs_dir: Path) -> None:
+    publish(runs_dir, "quiet", "official", "2026-10-01T09:00:00+00:00")
+    path = runs_dir / "quiet" / "summary.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    del summary["headlines"]
+    path.write_text(json.dumps(summary), encoding="utf-8")
+    assert client.get("/api/v1/benchmarks").json()[0]["headlines"] == []
 
 
 def test_a_run_is_read_by_its_id(client: TestClient, runs_dir: Path) -> None:

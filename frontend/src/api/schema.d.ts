@@ -524,6 +524,8 @@ export interface components {
          *     ``selection`` is the part of the bank it scored, ``worlds`` its seeds.
          */
         BenchmarkRunOut: {
+            /** Headlines */
+            headlines: string[];
             /** Label */
             label: string | null;
             /** Run Id */

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+import { mockApi } from './mock-api'
+
 /* The five destinations in order, with the sentence each is described by (spec 7.1). */
 const DESTINATIONS = [
   {
@@ -86,4 +88,19 @@ test('a destination whose chunk fails to load shows a message and keeps the shel
     .getByRole('link', { name: 'Data Model', exact: true })
     .click()
   await expect(page.getByRole('alert')).toHaveCount(0)
+})
+
+test.describe('Results run list', () => {
+  const RUN_LIST = [
+    ['published', 'Reproducibility record (JSON)'],
+    ['none', 'No benchmark runs yet.'],
+    ['unavailable', 'The run list is unavailable.'],
+  ] as const
+  for (const [runs, text] of RUN_LIST) {
+    test(`shows the ${runs} state`, async ({ page }) => {
+      await mockApi(page, runs)
+      await page.goto('/#/results')
+      await expect(page.getByText(text).first()).toBeVisible()
+    })
+  }
 })

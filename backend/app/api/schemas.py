@@ -221,6 +221,7 @@ class BenchmarkRunOut(BaseModel):
     started_at: str
     selection: dict[str, Any]
     worlds: list[int]
+    headlines: list[str]
 
 
 class PipelineScore(BaseModel):
