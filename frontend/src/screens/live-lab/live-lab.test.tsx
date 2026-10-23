@@ -140,6 +140,43 @@ describe('Live Lab', () => {
     expect(within(column('B · Graph')).getByText(/12 used/)).toBeVisible()
   })
 
+  it('titles evidence records in plain words with the id beside them', async () => {
+    reduceMotion()
+    api({ '/api/v1/health/ready': DOWN })
+    open(`#/live-lab?question=${h1.instance_id}`)
+    const evidence = await waitFor(() =>
+      within(column('A · Text search')).getByRole('list', { name: 'Evidence' }),
+    )
+    expect(
+      within(evidence).getByText(
+        'Incident INC_037 in United Kingdom: Identity service latency causing timeouts',
+      ),
+    ).toBeVisible()
+    expect(within(evidence).getByText('REC_incidents_INC_037')).toBeVisible()
+    expect(
+      within(column('A · Text search')).getByText(
+        '40 found · 12 used · 28 set aside',
+      ),
+    ).toBeVisible()
+  })
+
+  it('keeps Run enabled while a recording is paused and restarts it when pressed', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: false })
+    api({ '/api/v1/health/ready': DOWN })
+    open(`#/live-lab?question=${h1.instance_id}`)
+    await act(async () => {})
+    act(() => {
+      vi.advanceTimersByTime(5000)
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    expect(screen.getByText(/^Paused at /)).toBeVisible()
+    const run = screen.getByRole('button', { name: 'Run' })
+    expect(run).toBeEnabled()
+    fireEvent.click(run)
+    expect(screen.getByText('Playing the recorded run.')).toBeVisible()
+    expect(screen.getByRole('slider', { name: 'Position' })).toHaveValue('0')
+  })
+
   it('opens the recording named in the link and selects its question', async () => {
     reduceMotion()
     api({ '/api/v1/health/ready': DOWN })

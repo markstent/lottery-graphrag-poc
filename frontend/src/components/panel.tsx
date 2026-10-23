@@ -38,7 +38,13 @@ const DEFAULT_SKELETON = (
   </div>
 )
 
-function Notice({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+export function Notice({
+  icon,
+  children,
+}: {
+  icon: ReactNode
+  children: ReactNode
+}) {
   return (
     <div className="flex items-start gap-2 text-sm text-text-secondary">
       <span aria-hidden className="mt-0.5 shrink-0">

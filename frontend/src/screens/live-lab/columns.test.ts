@@ -10,10 +10,12 @@ import {
 import cancelled from '../../run/fixtures/run-cancelled.json'
 import {
   evidenceRows,
+  evidenceSummary,
   pipelineNotice,
   runStatusLine,
   stageRows,
 } from './columns'
+import type { RunPhase, Timeline as TimelineView } from './use-live-run'
 
 const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
 const finished = reduceAll(h1.events)
@@ -34,16 +36,23 @@ describe('stageRows', () => {
       'Build the context',
       'Write the answer',
     ])
-    for (const id of ['B', 'C'] as const)
-      expect(
-        stageRows(id, start.pipelines[id]).map((row) => row.label),
-      ).toEqual([
-        'Find starting points',
-        'Follow relationships',
-        'Re-order and pick',
-        'Build the context',
-        'Write the answer',
-      ])
+    expect(stageRows('B', start.pipelines.B).map((row) => row.label)).toEqual([
+      'Find starting points',
+      'Follow relationships',
+      'Re-order and pick',
+      'Build the context',
+      'Write the answer',
+    ])
+    // The order of the Overview diagram's C lane, then the shared steps.
+    expect(stageRows('C', start.pipelines.C).map((row) => row.label)).toEqual([
+      'Add ontology terms',
+      'Find starting points',
+      'Follow relationships',
+      'Add linked records',
+      'Re-order and pick',
+      'Build the context',
+      'Write the answer',
+    ])
     expect(
       stageRows('A', start.pipelines.A).every(
         (row) => row.status === 'waiting',
@@ -69,7 +78,7 @@ describe('stageRows', () => {
     for (const id of ['A', 'B', 'C'] as const)
       expect(
         stageRows(id, finished.pipelines[id]).map((row) => row.status),
-      ).toEqual(Array(5).fill('done'))
+      ).toEqual(Array(id === 'C' ? 7 : 5).fill('done'))
   })
 
   it('shows where a cancelled run stopped and that the next pipeline never began', () => {
@@ -83,7 +92,35 @@ describe('stageRows', () => {
       'not-reached',
       'not-reached',
     ])
-    expect(statuses('C')).toEqual(Array(5).fill('not-reached'))
+    expect(statuses('C')).toEqual(Array(7).fill('not-reached'))
+  })
+})
+
+describe('stageRows, a step the pipeline never ran', () => {
+  const h3 = RECORDED_RUNS.find((run) => run.stratum === 'H3')!
+  const state = reduceAll(h3.events)
+
+  it('says "Not run" for a step a completed pipeline skipped, such as C with no ontology links', () => {
+    expect(state.pipelines.C.status).toBe('completed')
+    const rows = stageRows('C', state.pipelines.C)
+    expect(rows.map((row) => [row.label, row.status])).toEqual([
+      ['Add ontology terms', 'done'],
+      ['Find starting points', 'done'],
+      ['Follow relationships', 'done'],
+      ['Add linked records', 'not-run'],
+      ['Re-order and pick', 'done'],
+      ['Build the context', 'done'],
+      ['Write the answer', 'done'],
+    ])
+  })
+
+  it('keeps "Not reached" for a pipeline that stopped early', () => {
+    const rows = stageRows('C', {
+      ...state.pipelines.C,
+      status: 'cancelled',
+      stages: {},
+    })
+    expect(rows.every((row) => row.status === 'not-reached')).toBe(true)
   })
 })
 
@@ -114,12 +151,41 @@ describe('evidenceRows', () => {
     expect(rows[0]).toMatchObject({ state: 'candidate', kind: 'passage' })
   })
 
+  it('titles records from the run results and keeps the id as well', () => {
+    const rows = evidenceRows('A', finished, h1.results)
+    const row = rows.find((r) => r.id === 'REC_incidents_INC_037')!
+    expect(row.title).toBe(
+      'Incident INC_037 in United Kingdom: Identity service latency causing timeouts',
+    )
+    expect(evidenceRows('A', finished)[0].title).toBeNull()
+  })
+
   it('names a graph node by its kind and id, and says why one was set aside', () => {
     const rows = evidenceRows('B', finished)
     const inc = rows.find((row) => row.id === 'INC_037')!
     expect(inc).toMatchObject({ kind: 'incident', state: 'selected' })
     const aside = rows.find((row) => row.state === 'discarded')!
     expect(aside.detail).toMatch(/^Set aside: /)
+  })
+})
+
+describe('evidenceSummary', () => {
+  const rows = evidenceRows('A', upTo(h1.events, 'rag.candidate.reranked'))
+
+  it('counts what was found, used and set aside', () => {
+    expect(evidenceSummary(evidenceRows('A', finished), 'completed')).toBe(
+      '40 found · 12 used · 28 set aside',
+    )
+  })
+
+  it('adds what is still being weighed only while the pipeline runs', () => {
+    expect(rows.length).toBeGreaterThan(0)
+    expect(evidenceSummary(rows, 'running')).toBe(
+      `${rows.length} found · 0 used · 0 set aside · ${rows.length} still being weighed`,
+    )
+    expect(evidenceSummary(rows, 'cancelled')).toBe(
+      `${rows.length} found · 0 used · 0 set aside`,
+    )
   })
 })
 
@@ -153,30 +219,63 @@ describe('pipelineNotice', () => {
 })
 
 describe('runStatusLine', () => {
-  it('says where the run stands in one sentence', () => {
-    const idle = initialRunState()
-    expect(runStatusLine('idle', null, idle)).toBe(
-      'Choose a question and press Run.',
-    )
-    expect(runStatusLine('starting', 'live', idle)).toBe('Starting the run.')
-    expect(runStatusLine('running', 'recorded', idle)).toBe(
-      'Playing the recorded run.',
-    )
-    expect(runStatusLine('running', 'live', idle)).toBe(
+  const idle = initialRunState()
+  const view = (
+    phase: RunPhase,
+    source: 'recorded' | 'live' | null,
+    state: RunState,
+    timeline: Partial<TimelineView> = {},
+  ) =>
+    runStatusLine({
+      phase,
+      source,
+      state,
+      timeline: {
+        cursor: 0,
+        duration: 35600,
+        playing: false,
+        speed: 1,
+        enabled: true,
+        replaying: true,
+        ...timeline,
+      },
+    })
+
+  it('says where a live run stands', () => {
+    expect(view('idle', null, idle)).toBe('Choose a question and press Run.')
+    expect(view('starting', 'live', idle)).toBe('Starting the run.')
+    expect(view('running', 'live', idle, { replaying: false })).toBe(
       'The run is in progress.',
     )
-    expect(runStatusLine('interrupted', 'live', idle)).toBe(
+    expect(view('interrupted', 'live', idle, { replaying: false })).toBe(
       'The live connection stopped before the run ended.',
-    )
-    expect(runStatusLine('finished', 'recorded', finished)).toBe(
-      'The run is complete.',
-    )
-    expect(runStatusLine('finished', 'recorded', cancelledState)).toBe(
-      'The run was cancelled.',
     )
   })
 
-  it('gives the recorded reason when a run failed', () => {
+  it('says a recording is playing, or paused at its position', () => {
+    const mid = upTo(h1.events, 'rag.vector_search.started')
+    expect(view('running', 'recorded', mid, { playing: true })).toBe(
+      'Playing the recorded run.',
+    )
+    expect(view('running', 'recorded', mid, { cursor: 19600 })).toBe(
+      'Paused at 19.6 s of 35.6 s.',
+    )
+    expect(view('running', 'recorded', idle)).toBe('Paused at 0 s of 35.6 s.')
+  })
+
+  it('says a finished live run is being replayed, and never calls a rewound one in progress', () => {
+    expect(view('finished', 'live', idle, { playing: true })).toBe(
+      'Replaying the run.',
+    )
+    expect(view('finished', 'live', idle)).toBe('Paused at 0 s of 35.6 s.')
+    expect(view('finished', 'live', idle)).not.toMatch(/in progress/)
+  })
+
+  it('says finished, cancelled or failed once the end is reached', () => {
+    expect(view('finished', 'recorded', finished)).toBe('The run is complete.')
+    expect(view('finished', 'live', cancelledState, { replaying: false })).toBe(
+      'The run was cancelled.',
+    )
     const failed: RunState = {
       ...initialRunState(),
       status: 'failed',
@@ -186,7 +285,7 @@ describe('runStatusLine', () => {
         retryable: false,
       },
     }
-    expect(runStatusLine('finished', 'live', failed)).toBe(
+    expect(view('finished', 'live', failed, { replaying: false })).toBe(
       'The run failed: The graph stopped.',
     )
   })

@@ -4,8 +4,13 @@
  * pipeline did not finish. Pure functions of the reducer's state.
  */
 
+import type { Schemas } from '../../api/client'
 import { nodeLabel } from '../../design/node-labels'
 import type { PipelineId } from '../../design/pipelines'
+import { STEP } from '../overview/lanes'
+import { formatDuration } from './format'
+import { recordTitle } from './record-title'
+import type { RunPhase, Timeline } from './use-live-run'
 import type {
   CandidateKind,
   DiscardReason,
@@ -15,7 +20,15 @@ import type {
 } from '../../run/reduce'
 
 export type StageRowStatus =
-  'waiting' | 'running' | 'done' | 'failed' | 'cancelled' | 'not-reached'
+  | 'waiting'
+  | 'running'
+  | 'done'
+  | 'failed'
+  | 'cancelled'
+  /** A step the pipeline finished without taking. */
+  | 'not-run'
+  /** A step the pipeline stopped before reaching. */
+  | 'not-reached'
 
 export interface StageRow {
   stage: Stage
@@ -27,10 +40,12 @@ export interface StageRow {
 
 export const STAGE_LABELS: Record<Stage, string> = {
   embedding: 'Embed the question',
-  search: 'Search passages',
-  resolution: 'Find starting points',
-  traversal: 'Follow relationships',
-  rerank: 'Re-order and pick',
+  search: STEP.searchPassages,
+  expansion: STEP.addOntologyTerms,
+  resolution: STEP.findStartingPoints,
+  traversal: STEP.followRelationships,
+  linking: STEP.addLinkedRecords,
+  rerank: STEP.reorderAndPick,
   context: 'Build the context',
   generation: 'Write the answer',
 }
@@ -39,10 +54,22 @@ export const STAGE_LABELS: Record<Stage, string> = {
 const STEPS: Record<PipelineId, readonly Stage[]> = {
   A: ['embedding', 'search', 'rerank', 'context', 'generation'],
   B: ['resolution', 'traversal', 'rerank', 'context', 'generation'],
-  C: ['resolution', 'traversal', 'rerank', 'context', 'generation'],
+  C: [
+    'expansion',
+    'resolution',
+    'traversal',
+    'linking',
+    'rerank',
+    'context',
+    'generation',
+  ],
 }
 
-const IN_PROGRESS: readonly PipelineState['status'][] = ['pending', 'running']
+/** What a step the reducer never saw means, by how its pipeline ended. */
+function unseen(status: PipelineState['status']): StageRowStatus {
+  if (status === 'pending' || status === 'running') return 'waiting'
+  return status === 'completed' ? 'not-run' : 'not-reached'
+}
 
 export function stageRows(id: PipelineId, pipeline: PipelineState): StageRow[] {
   return STEPS[id].map((stage) => {
@@ -52,9 +79,7 @@ export function stageRows(id: PipelineId, pipeline: PipelineState): StageRow[] {
       return {
         stage,
         label,
-        status: IN_PROGRESS.includes(pipeline.status)
-          ? 'waiting'
-          : 'not-reached',
+        status: unseen(pipeline.status),
         durationMs: null,
       }
     return {
@@ -73,6 +98,8 @@ export type EvidenceRowState = 'selected' | 'candidate' | 'discarded'
 
 export interface EvidenceRow {
   id: string
+  /** From the run's results once they exist; null before, or when they hold none. */
+  title: string | null
   /** What the record is: "passage", "incident" and so on. */
   kind: string
   state: EvidenceRowState
@@ -99,7 +126,11 @@ const ORDER: Record<EvidenceRowState, number> = {
  * Every record the pipeline has met so far: used first, then those still
  * considered, then those set aside. Within a group the order of arrival holds.
  */
-export function evidenceRows(id: PipelineId, run: RunState): EvidenceRow[] {
+export function evidenceRows(
+  id: PipelineId,
+  run: RunState,
+  results: Schemas['QueryResults'] | null = null,
+): EvidenceRow[] {
   const pipeline = run.pipelines[id]
   const nodes = id === 'A' ? [] : run.graph[id].nodes
   const rows = new Map<string, EvidenceRow>()
@@ -117,6 +148,7 @@ export function evidenceRows(id: PipelineId, run: RunState): EvidenceRow[] {
   ) =>
     rows.set(recordId, {
       id: recordId,
+      title: recordTitle(results, id, recordId),
       kind: kindOf(recordId, kind),
       state,
       detail,
@@ -149,26 +181,43 @@ export function pipelineNotice(pipeline: PipelineState): string | null {
   }
 }
 
-/** One sentence on where the run stands. */
-export function runStatusLine(
-  phase: 'idle' | 'starting' | 'running' | 'interrupted' | 'finished',
-  source: 'recorded' | 'live' | null,
-  run: RunState,
+/** "N found · M used · K set aside", with what is still being weighed while it runs. */
+export function evidenceSummary(
+  rows: EvidenceRow[],
+  status: PipelineState['status'],
 ): string {
-  if (run.status === 'failed')
-    return `The run failed: ${run.error?.message ?? 'no reason was recorded.'}`
-  if (run.status === 'cancelled') return 'The run was cancelled.'
-  if (run.status === 'completed') return 'The run is complete.'
-  switch (phase) {
-    case 'idle':
-      return 'Choose a question and press Run.'
-    case 'starting':
-      return 'Starting the run.'
-    case 'interrupted':
-      return 'The live connection stopped before the run ended.'
-    default:
-      return source === 'recorded'
-        ? 'Playing the recorded run.'
-        : 'The run is in progress.'
-  }
+  const count = (state: EvidenceRowState) =>
+    rows.filter((row) => row.state === state).length
+  const text = `${rows.length} found · ${count('selected')} used · ${count('discarded')} set aside`
+  return status === 'running'
+    ? `${text} · ${count('candidate')} still being weighed`
+    : text
+}
+
+/** One sentence on where the run stands and, for a replay, its position. */
+export function runStatusLine({
+  phase,
+  source,
+  state,
+  timeline,
+}: {
+  phase: RunPhase
+  source: 'recorded' | 'live' | null
+  state: RunState
+  timeline: Timeline
+}): string {
+  if (state.status === 'failed')
+    return `The run failed: ${state.error?.message ?? 'no reason was recorded.'}`
+  if (state.status === 'cancelled') return 'The run was cancelled.'
+  if (state.status === 'completed') return 'The run is complete.'
+  if (phase === 'idle') return 'Choose a question and press Run.'
+  if (phase === 'starting') return 'Starting the run.'
+  if (phase === 'interrupted')
+    return 'The live connection stopped before the run ended.'
+  if (!timeline.replaying) return 'The run is in progress.'
+  if (timeline.playing)
+    return source === 'recorded'
+      ? 'Playing the recorded run.'
+      : 'Replaying the run.'
+  return `Paused at ${formatDuration(timeline.cursor)} of ${formatDuration(timeline.duration)}.`
 }

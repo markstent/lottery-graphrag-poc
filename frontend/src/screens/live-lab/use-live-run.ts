@@ -8,7 +8,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { cancelRun, startQuery, type Schemas } from '../../api/client'
+import { cancelRun, getRun, startQuery, type Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
 import { subscribeRun } from '../../api/stream'
 import type { KeyedReplay } from '../../app/presentation'
@@ -38,6 +38,8 @@ export interface RunError {
 }
 
 export interface Timeline {
+  /** Whether the position comes from the replay clock rather than the live stream. */
+  replaying: boolean
   /** Milliseconds from the first event to the position shown. */
   cursor: number
   duration: number
@@ -70,6 +72,10 @@ export interface LiveRun {
   controls: TimelineControls
   /** The same controls as the presentation keys use. */
   keys: KeyedReplay
+  /** The run's stored results: a recording's at once, a live run's once it ends. */
+  results: Schemas['QueryResults'] | null
+  /** A live run is starting or arriving; a recording is never busy. */
+  busy: boolean
   cancelling: boolean
   error: RunError | null
   start: (request: RunRequest) => void
@@ -101,7 +107,7 @@ const isRetryable = (error: unknown): boolean =>
 /** What went wrong and which step to repeat. */
 interface Failure {
   message: string
-  step: 'start' | 'follow' | 'cancel'
+  step: 'start' | 'follow' | 'cancel' | 'results'
   retryable: boolean
 }
 
@@ -116,6 +122,7 @@ export function useLiveRun({
   const [replaying, setReplaying] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [failure, setFailure] = useState<Failure | null>(null)
+  const [fetched, setFetched] = useState<Schemas['QueryResults'] | null>(null)
 
   /** Identifies the current run, so a late answer from an older one is ignored. */
   const token = useRef(0)
@@ -124,13 +131,17 @@ export function useLiveRun({
   const lastRequest = useRef<RunRequest | null>(null)
   const runId = useRef<string | null>(null)
   const lastSequence = useRef(0)
+  /** The live run's stream has reached its end. */
+  const ended = useRef(false)
 
   const replayEvents =
     recording?.events ?? (live.stage === 'ended' ? live.events : NO_EVENTS)
   const replay = useReplay(replayEvents, { reducedMotion })
   const controlsRef = useRef(replay.controls)
+  const recordingRef = useRef(recording)
   useEffect(() => {
     controlsRef.current = replay.controls
+    recordingRef.current = recording
   })
 
   const stop = useCallback(() => {
@@ -142,40 +153,62 @@ export function useLiveRun({
   }, [])
   useEffect(() => stop, [stop])
 
-  /** Follows the run's stream from after `after`. */
-  const follow = useCallback((id: string, after: number, mine: number) => {
-    unsubscribe.current = subscribeRun(
-      id,
-      {
-        onEvent: (event) => {
-          if (token.current !== mine) return
-          lastSequence.current = event.sequence
-          setLive((current) => ({
-            ...current,
-            stage: 'streaming',
-            events: [...current.events, event],
-            state: reduce(current.state, event),
-          }))
-        },
-        onEnd: () => {
-          if (token.current !== mine) return
-          setCancelling(false)
-          setLive((current) => ({ ...current, stage: 'ended' }))
-        },
-        onError: (error) => {
-          if (token.current !== mine) return
-          setCancelling(false)
-          setLive((current) => ({ ...current, stage: 'interrupted' }))
-          setFailure({
-            message: error.message,
-            step: 'follow',
-            retryable: error.retryable,
-          })
-        },
+  /** Reads the stored results, which name the records the evidence list shows. */
+  const loadResults = useCallback((id: string, mine: number) => {
+    getRun(id, request.current?.signal).then(
+      (results) => {
+        if (token.current === mine) setFetched(results)
       },
-      { after },
+      (error: unknown) => {
+        if (token.current !== mine) return
+        setFailure({
+          message: errorMessage(error),
+          step: 'results',
+          retryable: isRetryable(error),
+        })
+      },
     )
   }, [])
+
+  /** Follows the run's stream from after `after`. */
+  const follow = useCallback(
+    (id: string, after: number, mine: number) => {
+      unsubscribe.current = subscribeRun(
+        id,
+        {
+          onEvent: (event) => {
+            if (token.current !== mine) return
+            lastSequence.current = event.sequence
+            setLive((current) => ({
+              ...current,
+              stage: 'streaming',
+              events: [...current.events, event],
+              state: reduce(current.state, event),
+            }))
+          },
+          onEnd: () => {
+            if (token.current !== mine) return
+            ended.current = true
+            setCancelling(false)
+            setLive((current) => ({ ...current, stage: 'ended' }))
+            loadResults(id, mine)
+          },
+          onError: (error) => {
+            if (token.current !== mine) return
+            setCancelling(false)
+            setLive((current) => ({ ...current, stage: 'interrupted' }))
+            setFailure({
+              message: error.message,
+              step: 'follow',
+              retryable: error.retryable,
+            })
+          },
+        },
+        { after },
+      )
+    },
+    [loadResults],
+  )
 
   const start = useCallback(
     (next: RunRequest) => {
@@ -183,12 +216,18 @@ export function useLiveRun({
       setFailure(null)
       setCancelling(false)
       setReplaying(false)
+      setFetched(null)
       lastSequence.current = 0
+      ended.current = false
       runId.current = null
       lastRequest.current = next
       if (next.source === 'recorded') {
         setLive(IDLE)
-        setRecording(next.recording)
+        // The same recording is already loaded, so restart it explicitly.
+        if (next.recording === recordingRef.current) {
+          controlsRef.current.reset()
+          controlsRef.current.play()
+        } else setRecording(next.recording)
         return
       }
       setRecording(null)
@@ -219,9 +258,12 @@ export function useLiveRun({
 
   const cancel = useCallback(() => {
     if (runId.current === null) return
+    const mine = token.current
     setCancelling(true)
     cancelRun(runId.current, request.current?.signal).catch(
       (error: unknown) => {
+        // An older run's answer, or one that lost the race with the run's end.
+        if (token.current !== mine || ended.current) return
         setCancelling(false)
         setFailure({
           message: errorMessage(error),
@@ -238,11 +280,13 @@ export function useLiveRun({
     if (failure.step === 'start' && lastRequest.current)
       start(lastRequest.current)
     else if (failure.step === 'cancel') cancel()
+    else if (failure.step === 'results' && runId.current !== null)
+      loadResults(runId.current, token.current)
     else if (runId.current !== null) {
       setLive((current) => ({ ...current, stage: 'streaming' }))
       follow(runId.current, lastSequence.current, token.current)
     }
-  }, [cancel, failure, follow, start])
+  }, [cancel, failure, follow, loadResults, start])
   const error: RunError | null = failure && {
     message: failure.message,
     retry: failure.retryable ? retry : null,
@@ -314,10 +358,13 @@ export function useLiveRun({
     phase,
     source: recording ? 'recorded' : live.stage === 'idle' ? null : 'live',
     state: showReplay ? replay.state : live.state,
+    results: recording?.results ?? fetched,
+    busy: live.stage === 'starting' || live.stage === 'streaming',
     originMs,
     runId: recording?.run_id ?? live.runId,
     timeline: showReplay
       ? {
+          replaying: true,
           cursor: replay.cursor,
           duration: replay.duration,
           playing: replay.playing,
@@ -325,6 +372,7 @@ export function useLiveRun({
           enabled: true,
         }
       : {
+          replaying: false,
           cursor: liveDuration,
           duration: liveDuration,
           playing: false,

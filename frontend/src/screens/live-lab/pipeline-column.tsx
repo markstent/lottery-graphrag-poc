@@ -9,11 +9,12 @@ import { TriangleAlert } from 'lucide-react'
 import { EVIDENCE_STATES } from '../../design/evidence-states'
 import { pipeline, type PipelineId } from '../../design/pipelines'
 import type { PipelineStatus, RunState } from '../../run/reduce'
+import type { Schemas } from '../../api/client'
 import {
   evidenceRows,
+  evidenceSummary,
   pipelineNotice,
   stageRows,
-  type EvidenceRowState,
 } from './columns'
 import { StageTracker } from './stage-tracker'
 
@@ -26,12 +27,19 @@ const STATUS_WORDS: Record<PipelineStatus, string> = {
   skipped: 'Not started',
 }
 
-export function PipelineColumn({ id, run }: { id: PipelineId; run: RunState }) {
+export function PipelineColumn({
+  id,
+  run,
+  results,
+}: {
+  id: PipelineId
+  run: RunState
+  /** The run's stored results, once there are any; they name the records. */
+  results: Schemas['QueryResults'] | null
+}) {
   const { label, tint, strong } = pipeline(id)
   const state = run.pipelines[id]
-  const rows = evidenceRows(id, run)
-  const count = (kind: EvidenceRowState) =>
-    rows.filter((row) => row.state === kind).length
+  const rows = evidenceRows(id, run, results)
   const notice = pipelineNotice(state)
 
   return (
@@ -64,7 +72,7 @@ export function PipelineColumn({ id, run }: { id: PipelineId; run: RunState }) {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-text-primary">Evidence</h3>
           <p className="tabular text-sm text-text-secondary">
-            {`${count('selected')} used · ${count('candidate')} considered · ${count('discarded')} set aside`}
+            {evidenceSummary(rows, state.status)}
           </p>
           {rows.length === 0 ? (
             <p className="text-sm text-text-muted">Nothing found yet.</p>
@@ -73,7 +81,7 @@ export function PipelineColumn({ id, run }: { id: PipelineId; run: RunState }) {
               aria-label="Evidence"
               // A scrolling list must be reachable by keyboard.
               tabIndex={0}
-              className="-m-1 max-h-72 space-y-1 overflow-y-auto p-1"
+              className="relative -m-1 max-h-72 space-y-1 overflow-y-auto p-1"
             >
               {rows.map((row) => {
                 const design = EVIDENCE_STATES[row.state]
@@ -87,10 +95,21 @@ export function PipelineColumn({ id, run }: { id: PipelineId; run: RunState }) {
                     />
                     <span className="min-w-0 break-words">
                       <span className="sr-only">{design.label}: </span>
-                      <span className="font-medium text-text-primary">
+                      {row.title !== null && (
+                        <span className="block font-medium text-text-primary">
+                          {row.title}
+                        </span>
+                      )}
+                      <span
+                        className={
+                          row.title === null
+                            ? 'font-medium text-text-primary'
+                            : 'text-text-muted'
+                        }
+                      >
                         {row.id}
-                      </span>{' '}
-                      <span className="text-text-muted">{row.kind}</span>
+                      </span>
+                      <span className="text-text-muted">{` · ${row.kind}`}</span>
                       {row.detail !== null && (
                         <span className="block text-text-muted">
                           {row.detail}

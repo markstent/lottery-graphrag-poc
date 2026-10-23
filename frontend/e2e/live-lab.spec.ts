@@ -94,6 +94,24 @@ test('plays a recording, pauses it and scrubs through it', async ({ page }) => {
   await shot(page, 'recorded-end')
 })
 
+test('a finished recording does not stretch the page past its content', async ({
+  page,
+}) => {
+  await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+  await page.getByRole('button', { name: 'Pause' }).click()
+  const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+  await page.getByRole('slider', { name: 'Position' }).fill(String(duration))
+  await expect(page.getByText('The run is complete.')).toBeVisible()
+  const { page: height, content } = await page.evaluate(() => ({
+    page: document.documentElement.scrollHeight,
+    content:
+      document.querySelector('[aria-label="Timeline"]')!.getBoundingClientRect()
+        .bottom + window.scrollY,
+  }))
+  // The evidence lists scroll inside their own boxes; nothing hidden may add height.
+  expect(height).toBeLessThanOrEqual(Math.ceil(content) + 64)
+})
+
 test('follows a live run and offers the timeline when it ends', async ({
   page,
 }) => {

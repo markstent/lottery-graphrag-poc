@@ -26,6 +26,8 @@ export type RunStatus =
 export type PipelineStatus = RunStatus | 'skipped'
 export type Stage =
   | 'resolution'
+  | 'expansion'
+  | 'linking'
   | 'embedding'
   | 'search'
   | 'traversal'
@@ -536,7 +538,14 @@ function apply(state: RunState, event: RunEvent): RunState {
       }))
     }
     case 'graph.query.expanded':
-      return state
+      // The expansion happens at one instant, like assembling the context.
+      return updatePipeline(state, id, (p) => ({
+        ...p,
+        stages: {
+          ...p.stages,
+          expansion: { status: 'completed', startedMs: t, endedMs: t },
+        },
+      }))
     case 'graph.seed.selected':
       return updateGraph(state, id, (g) => seeded(g, event.payload.node_id))
     case 'graph.traversal.started':
@@ -565,7 +574,18 @@ function apply(state: RunState, event: RunEvent): RunState {
     }
     case 'graph.ontology.expanded': {
       const { concept_id, bound_entities } = event.payload
-      return updateGraph(state, id, (g) => ({
+      const linked = updatePipeline(state, id, (p) => ({
+        ...p,
+        stages: {
+          ...p.stages,
+          linking: {
+            status: 'running',
+            startedMs: p.stages.linking?.startedMs ?? t,
+            endedMs: null,
+          },
+        },
+      }))
+      return updateGraph(linked, id, (g) => ({
         ...g,
         concepts: [
           ...g.concepts,
@@ -575,7 +595,7 @@ function apply(state: RunState, event: RunEvent): RunState {
     }
     case 'graph.rerank.started':
       return updatePipeline(state, id, (p) =>
-        enter(p, 'rerank', t, ['resolution', 'traversal']),
+        enter(p, 'rerank', t, ['resolution', 'traversal', 'linking']),
       )
     case 'graph.candidate.reranked': {
       const { candidate_id, kind, rank, rerank_score } = event.payload

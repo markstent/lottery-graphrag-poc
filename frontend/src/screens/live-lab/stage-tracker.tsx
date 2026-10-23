@@ -22,6 +22,7 @@ const STATUS: Record<
   done: { word: 'Done', icon: CircleCheck, tone: 'text-success' },
   failed: { word: 'Failed', icon: CircleX, tone: 'text-error' },
   cancelled: { word: 'Cancelled', icon: Ban, tone: 'text-warning' },
+  'not-run': { word: 'Not run', icon: Minus, tone: 'text-text-muted' },
   'not-reached': { word: 'Not reached', icon: Minus, tone: 'text-text-muted' },
 }
 

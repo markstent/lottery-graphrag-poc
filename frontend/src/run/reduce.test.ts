@@ -93,9 +93,19 @@ describe('the recorded run', () => {
       'context',
       'generation',
     ])
-    expect(Object.keys(state.pipelines.C.stages)).toEqual([
+    expect(Object.keys(state.pipelines.B.stages)).toEqual([
       'resolution',
       'traversal',
+      'rerank',
+      'context',
+      'generation',
+    ])
+    // C also records the query expansion and the ontology's linked records.
+    expect(Object.keys(state.pipelines.C.stages)).toEqual([
+      'resolution',
+      'expansion',
+      'traversal',
+      'linking',
       'rerank',
       'context',
       'generation',
