@@ -404,3 +404,47 @@ describe('useLiveRun, races', () => {
     expect(signal?.aborted).toBe(true)
   })
 })
+
+describe('useLiveRun, results in flight', () => {
+  const ended = async (
+    result: { current: ReturnType<typeof useLiveRun> },
+    after: () => void = () => undefined,
+  ) => {
+    await startLive(result)
+    await act(async () => {
+      for (const event of live) handlers.onEvent(event)
+      handlers.onEnd()
+    })
+    after()
+  }
+
+  it('aborts a results request still in flight when the screen unmounts', async () => {
+    let signal: AbortSignal | undefined
+    client.getRun.mockImplementationOnce((_id: string, given?: AbortSignal) => {
+      signal = given
+      return new Promise(() => undefined)
+    })
+    const { result, unmount } = renderHook(() =>
+      useLiveRun({ reducedMotion: false }),
+    )
+    await ended(result)
+    expect(signal?.aborted).toBe(false)
+    unmount()
+    expect(signal?.aborted).toBe(true)
+  })
+
+  it('ignores results that arrive after a new run has started', async () => {
+    let resolve: (value: unknown) => void = () => undefined
+    client.getRun.mockReturnValueOnce(
+      new Promise((done) => {
+        resolve = done
+      }),
+    )
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
+    await ended(result)
+    await startLive(result)
+    await act(async () => resolve(h1.results))
+    expect(result.current.results).toBeNull()
+    expect(result.current.error).toBeNull()
+  })
+})

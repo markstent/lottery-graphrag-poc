@@ -38,3 +38,23 @@ export function trackSegments(
       .sort((a, b) => a.from - b.from)
   return tracks
 }
+
+export interface PlacedSegment extends Segment {
+  /** 0 for the first row; steps that ran at the same time take further rows. */
+  row: number
+}
+
+/**
+ * Gives each step a row so that steps overlapping in time never share one.
+ * A step takes the first row whose last step has ended; no bar is changed,
+ * so the picture shows the overlap as recorded.
+ */
+export function assignRows(segments: Segment[]): PlacedSegment[] {
+  const ends: number[] = []
+  return segments.map((segment) => {
+    let row = ends.findIndex((end) => end <= segment.from)
+    if (row === -1) row = ends.length
+    ends[row] = segment.to
+    return { ...segment, row }
+  })
+}

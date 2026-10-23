@@ -214,7 +214,10 @@ export function runStatusLine({
   if (phase === 'starting') return 'Starting the run.'
   if (phase === 'interrupted')
     return 'The live connection stopped before the run ended.'
-  if (!timeline.replaying) return 'The run is in progress.'
+  if (!timeline.replaying)
+    return phase === 'finished'
+      ? 'The live connection stopped before the run ended.'
+      : 'The run is in progress.'
   if (timeline.playing)
     return source === 'recorded'
       ? 'Playing the recorded run.'

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import fixture from '../../run/fixtures/run-abc.json'
 import { createReplay } from '../../run/replay'
 import { reduceAll, type RunEvent } from '../../run/reduce'
-import { trackSegments } from './tracks'
+import { assignRows, trackSegments } from './tracks'
 
 const events = fixture.events as unknown as RunEvent[]
 const origin = events[0].t_ms
@@ -56,5 +56,41 @@ describe('trackSegments', () => {
       (segment) => segment.status === 'running',
     )
     expect(running?.to).toBe(cursor)
+  })
+})
+
+describe('assignRows', () => {
+  const state = reduceAll(events)
+  const duration = events.at(-1)!.t_ms - origin
+  const segments = trackSegments(state, origin, duration).C
+
+  it('puts steps that overlap in time on different rows and never changes a bar', () => {
+    const traversal = segments.find((s) => s.stage === 'traversal')!
+    const linking = segments.find((s) => s.stage === 'linking')!
+    // The recording really overlaps them: linking begins while traversal runs.
+    expect(linking.from).toBeGreaterThan(traversal.from)
+    expect(linking.from).toBeLessThan(traversal.to)
+
+    const placed = assignRows(segments)
+    expect(placed).toHaveLength(segments.length)
+    expect(placed.find((s) => s.stage === 'linking')!.row).not.toBe(
+      placed.find((s) => s.stage === 'traversal')!.row,
+    )
+    for (const [i, s] of placed.entries()) {
+      expect(s).toMatchObject(segments[i])
+    }
+  })
+
+  it('keeps steps that follow one another on one row', () => {
+    const a = trackSegments(state, origin, duration).A
+    expect(assignRows(a).every((s) => s.row === 0)).toBe(true)
+  })
+
+  it('never puts two overlapping steps on one row', () => {
+    const placed = assignRows(segments)
+    for (const x of placed)
+      for (const y of placed)
+        if (x !== y && x.row === y.row)
+          expect(x.to <= y.from || y.to <= x.from).toBe(true)
   })
 })

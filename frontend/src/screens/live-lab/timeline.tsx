@@ -11,7 +11,7 @@ import type { RunState } from '../../run/reduce'
 import type { Speed } from '../../run/replay'
 import { STAGE_LABELS } from './columns'
 import { formatDuration } from './format'
-import { trackSegments, type Segment } from './tracks'
+import { assignRows, trackSegments, type PlacedSegment } from './tracks'
 import type {
   Timeline as TimelineValue,
   TimelineControls,
@@ -19,10 +19,14 @@ import type {
 
 const SPEEDS: readonly Speed[] = [0.5, 1, 2, 4]
 
+/** Steps that ran together sit on thin rows under the main row, so no bar is trimmed. */
+const MAIN_ROW_PX = 16
+const EXTRA_ROW_PX = 8
+
 const BUTTON =
   'inline-flex items-center gap-1.5 rounded-chip border border-border px-3 py-1 text-sm text-text-primary hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50'
 
-function summary(label: string, segments: Segment[]): string {
+function summary(label: string, segments: PlacedSegment[]): string {
   if (segments.length === 0) return `${label}: not started`
   const end = Math.max(...segments.map((segment) => segment.to))
   return `${label}: ${segments.length} steps, from ${formatDuration(segments[0].from)} to ${formatDuration(end)}`
@@ -33,16 +37,21 @@ function Bar({
   total,
   hue,
 }: {
-  segment: Segment
+  segment: PlacedSegment
   total: number
   hue: string
 }) {
   const stopped = segment.status === 'failed' || segment.status === 'cancelled'
   return (
     <span
-      title={`${STAGE_LABELS[segment.stage]}: ${formatDuration(segment.to - segment.from)}`}
-      className="absolute inset-y-0 rounded-chip"
+      title={`${STAGE_LABELS[segment.stage]}: ${formatDuration(segment.to - segment.from)}, from ${formatDuration(segment.from)} to ${formatDuration(segment.to)}`}
+      className="absolute rounded-chip"
       style={{
+        top:
+          segment.row === 0
+            ? 0
+            : MAIN_ROW_PX + EXTRA_ROW_PX * (segment.row - 1),
+        height: segment.row === 0 ? MAIN_ROW_PX : EXTRA_ROW_PX,
         left: `${(segment.from / total) * 100}%`,
         width: `${Math.max(((segment.to - segment.from) / total) * 100, 0.4)}%`,
         backgroundColor: hue,
@@ -68,6 +77,16 @@ export function Timeline({
   const { cursor, duration, playing, speed, enabled } = timeline
   const total = Math.max(duration, 1)
   const tracks = trackSegments(state, originMs, cursor)
+  const placed = {
+    A: assignRows(tracks.A),
+    B: assignRows(tracks.B),
+    C: assignRows(tracks.C),
+  }
+  const rows = {
+    A: Math.max(1, ...placed.A.map((s) => s.row + 1)),
+    B: Math.max(1, ...placed.B.map((s) => s.row + 1)),
+    C: Math.max(1, ...placed.C.map((s) => s.row + 1)),
+  }
 
   return (
     <section
@@ -86,10 +105,11 @@ export function Timeline({
             </span>
             <div
               role="img"
-              aria-label={summary(label, tracks[id])}
-              className="relative h-4 flex-1 rounded-chip bg-surface-raised"
+              aria-label={summary(label, placed[id])}
+              className="relative flex-1 rounded-chip bg-surface-raised"
+              style={{ height: MAIN_ROW_PX + EXTRA_ROW_PX * (rows[id] - 1) }}
             >
-              {tracks[id].map((segment) => (
+              {placed[id].map((segment) => (
                 <Bar
                   key={segment.stage}
                   segment={segment}
