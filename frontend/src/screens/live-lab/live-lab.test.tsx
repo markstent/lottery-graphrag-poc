@@ -215,6 +215,56 @@ describe('Live Lab', () => {
     expect(screen.getByRole('button', { name: 'Run' })).toHaveFocus()
   })
 
+  it('says whether the bar is open on "Change question", and closes it again from the same control', async () => {
+    reduceMotion()
+    api({ '/api/v1/health/ready': DOWN })
+    const user = userEvent.setup()
+    open(`#/live-lab?question=${h1.instance_id}`)
+    const toggle = await screen.findByRole('button', {
+      name: 'Change question',
+    })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await user.click(toggle)
+    const opened = screen.getByRole('button', { name: 'Change question' })
+    expect(opened).toBeVisible()
+    expect(opened).toHaveAttribute('aria-expanded', 'true')
+    await user.click(opened)
+    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    const closed = screen.getByRole('button', { name: 'Change question' })
+    expect(closed).toHaveAttribute('aria-expanded', 'false')
+    expect(closed).toHaveFocus()
+  })
+
+  it('closes the opened bar with Escape and returns focus to "Change question"', async () => {
+    reduceMotion()
+    api({ '/api/v1/health/ready': DOWN })
+    const user = userEvent.setup()
+    open(`#/live-lab?question=${h1.instance_id}`)
+    await user.click(
+      await screen.findByRole('button', { name: 'Change question' }),
+    )
+    expect(
+      within(
+        screen.getByRole('group', { name: 'Saved questions' }),
+      ).getAllByRole('button')[0],
+    ).toHaveFocus()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Change question' }),
+    ).toHaveFocus()
+  })
+
+  it('gives the one-line question its full text as a tooltip, whatever is cut off on screen', async () => {
+    reduceMotion()
+    api({ '/api/v1/health/ready': DOWN })
+    open(`#/live-lab?question=${h1.instance_id}`)
+    const bar = await screen.findByRole('region', { name: 'Question' })
+    const question = within(bar).getByText(h1.question)
+    expect(question).toHaveAttribute('title', h1.question)
+    expect(question).toHaveTextContent(h1.question)
+  })
+
   it('keeps Run and Cancel run in the one-line form', async () => {
     api()
     const user = userEvent.setup()
@@ -656,11 +706,13 @@ describe('Live Lab, results', () => {
       expect(found).not.toBeNull()
       return found!
     })
-    fireEvent.click(group)
+    group.focus()
+    await user.keyboard('{Enter}')
     const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
     expect(within(dialog).getByText(/^Group of \d+ /)).toBeVisible()
     expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThan(1)
     await user.keyboard('{Escape}')
+    await waitFor(() => expect(group).toHaveFocus())
   })
 
   it('shows where a node sits on the evidence path in the drawer', async () => {

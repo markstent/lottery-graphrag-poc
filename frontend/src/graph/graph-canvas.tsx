@@ -56,10 +56,11 @@ import {
 } from './edge'
 import { GraphSummary } from './graph-summary'
 import { layoutGraph, type Layout, type Positions } from './layout'
-import { withClustersOf, type GraphView } from './model'
+import { withClustersOf, type GraphCluster, type GraphView } from './model'
 import {
   ClusterNode,
   EntityNode,
+  type ClusterNodeData,
   type EntityNodeData,
   type GraphFlowNode,
 } from './node'
@@ -85,8 +86,11 @@ const edgeTypes = { relationship: RelationshipEdge }
 
 interface CommonProps {
   view: GraphView
-  /** Called with a node id, or a group id for a group node. */
-  onSelectNode: (id: string) => void
+  /**
+   * Called with a node id, or for a group node with the group's id and the
+   * group as drawn, so its count is the one its label shows.
+   */
+  onSelectNode: (id: string, group?: GraphCluster) => void
   /** Dim everything off the evidence path to 25 percent. */
   focusMode: boolean
   /** Larger type and nodes for a presentation screen. */
@@ -531,6 +535,17 @@ function Canvas(props: GraphCanvasProps) {
   // end-to-end specs and for anything waiting on it) once the layout is placed
   // and the fit has been applied.
   const [settledFor, setSettledFor] = useState<Layout | null>(null)
+  // The library resolves a viewport change when its transition ends (at once
+  // with no duration), so the viewport has settled for the layout by then. A
+  // transition cut short by another never resolves; whatever cut it short
+  // settles the canvas instead: another fit, or the reader's own move.
+  const fitAndSettle = useCallback(
+    () =>
+      fit().then(() => {
+        if (alive.current) setSettledFor(layout)
+      }),
+    [fit, layout],
+  )
   // The viewport can only be framed once the library has mounted it; before
   // that a fit does nothing.
   const mounted = useStore((state) => state.panZoom !== null)
@@ -540,33 +555,16 @@ function Canvas(props: GraphCanvasProps) {
       setSettledFor(layout)
       return
     }
-    let current = true
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const frame = requestAnimationFrame(() => {
-      // The library resolves a viewport change before its animation ends, so
-      // the canvas is not ready until the animation has had its time too.
-      void fit().then(() => {
-        timer = setTimeout(
-          () => {
-            if (current) setSettledFor(layout)
-          },
-          duration > 0 ? duration + 60 : 0,
-        )
-      })
-    })
-    return () => {
-      current = false
-      clearTimeout(timer)
-      cancelAnimationFrame(frame)
-    }
-  }, [layout, laidOut, fit, duration, mounted])
+    const frame = requestAnimationFrame(() => void fitAndSettle())
+    return () => cancelAnimationFrame(frame)
+  }, [layout, laidOut, fitAndSettle, mounted])
 
   // A change in the size of the drawing area (the page around it settling, the
   // window or the presentation mode) frames the evidence again, unless the
   // reader has moved the view themselves.
-  const latestFit = useRef(fit)
+  const latestFit = useRef(fitAndSettle)
   useEffect(() => {
-    latestFit.current = fit
+    latestFit.current = fitAndSettle
   })
   useEffect(() => {
     const box = drawing.current
@@ -779,7 +777,7 @@ function Canvas(props: GraphCanvasProps) {
   // legible, not the library's, which would zoom out as far as it can.
   const refit = () => {
     autoFit.current = true
-    void fit()
+    void fitAndSettle()
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -798,7 +796,7 @@ function Canvas(props: GraphCanvasProps) {
 
   if (view.nodes.length === 0) {
     return (
-      <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-text-muted">
+      <p className="flex h-full items-center justify-center rounded-card border border-dashed border-border p-6 text-center text-sm text-text-muted">
         No graph activity has been recorded yet.
       </p>
     )
@@ -840,14 +838,16 @@ function Canvas(props: GraphCanvasProps) {
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
           onNodeClick={(_, node) =>
-            onSelectNode(
-              node.type === 'entity'
-                ? (node.data as EntityNodeData).node.id
-                : node.id,
-            )
+            node.type === 'entity'
+              ? onSelectNode((node.data as EntityNodeData).node.id)
+              : onSelectNode(node.id, (node.data as ClusterNodeData).cluster)
           }
           onMoveStart={(event) => {
             if (event) autoFit.current = false
+          }}
+          onMoveEnd={(event) => {
+            // The reader's own move has ended: the view rests where they left it.
+            if (event && laidOut) setSettledFor(layout)
           }}
         />
         {failed ? (

@@ -6,11 +6,19 @@
  *
  * Once a run has been chosen (`collapsed`) the bar is one line: the question,
  * where it runs from, "Change question" to open the whole bar again, and the
- * run controls. Opening it moves focus to the first saved question; running
- * from it closes it and keeps focus on Run.
+ * run controls. Opening it moves focus to the first saved question. Running
+ * from it closes it and keeps focus on Run; "Change question" or Escape closes
+ * it and returns focus to "Change question".
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react'
 
 import type { Schemas } from '../../api/client'
 import { useReadiness } from '../../app/use-readiness'
@@ -95,15 +103,21 @@ export function QuestionBar({
   const [opened, setOpened] = useState(false)
   const saved = useRef<HTMLDivElement>(null)
   const runButton = useRef<HTMLButtonElement>(null)
-  const refocusRun = useRef(false)
+  const toggleButton = useRef<HTMLButtonElement>(null)
+  // Where focus goes once the opened bar is one line again.
+  const refocus = useRef<RefObject<HTMLButtonElement | null> | null>(null)
   const full = !collapsed || opened
   useEffect(() => {
     if (opened) saved.current?.querySelector('button')?.focus()
   }, [opened])
   useEffect(() => {
-    if (!full && refocusRun.current) runButton.current?.focus()
-    refocusRun.current = false
+    if (!full) refocus.current?.current?.focus()
+    refocus.current = null
   }, [full])
+  const close = (then: RefObject<HTMLButtonElement | null>) => {
+    refocus.current = then
+    setOpened(false)
+  }
 
   const list = questions.status === 'ready' ? questions.data : []
   const adHoc = text.trim() !== ''
@@ -136,10 +150,7 @@ export function QuestionBar({
 
   const run = () => {
     // Running from the full bar closes it again; Run is then in the one-line form.
-    if (opened) {
-      refocusRun.current = true
-      setOpened(false)
-    }
+    if (opened) close(runButton)
     if (source === 'recorded' && recording)
       return onRun({ source: 'recorded', recording })
     onRun({
@@ -185,18 +196,41 @@ export function QuestionBar({
     </div>
   )
 
+  // The disclosure button of the one-line form; the opened bar keeps it.
+  const toggle = (
+    <button
+      ref={toggleButton}
+      type="button"
+      aria-expanded={opened}
+      onClick={() => (opened ? close(toggleButton) : setOpened(true))}
+      className={`${BUTTON} inline-flex items-center gap-1`}
+    >
+      Change question
+      {opened ? (
+        <ChevronUp aria-hidden size={16} />
+      ) : (
+        <ChevronDown aria-hidden size={16} />
+      )}
+    </button>
+  )
+  const question = adHoc
+    ? text.trim()
+    : (selected?.text ??
+      recordingFor(chosenId ?? linkedId)?.question ??
+      'No question chosen')
+
   if (!full)
     return (
       <section
         aria-label="Question"
         className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-hairline bg-surface px-4 py-2"
       >
-        <p className="min-w-0 truncate text-base font-medium text-text-primary">
-          {adHoc
-            ? text.trim()
-            : (selected?.text ??
-              recordingFor(chosenId ?? linkedId)?.question ??
-              'No question chosen')}
+        {/* Cut off on screen when long; the whole of it is the text and the tooltip. */}
+        <p
+          title={question}
+          className="min-w-0 truncate text-base font-medium text-text-primary"
+        >
+          {question}
         </p>
         <p role="status" className="min-w-0 flex-1 text-sm text-text-secondary">
           {runStatus}
@@ -204,22 +238,22 @@ export function QuestionBar({
         <p className="text-sm text-text-secondary">
           {source === 'live' ? 'Live' : 'Recorded run'}
         </p>
-        <button
-          type="button"
-          aria-expanded={false}
-          onClick={() => setOpened(true)}
-          className={BUTTON}
-        >
-          Change question
-        </button>
+        {toggle}
         {controls}
       </section>
     )
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !opened) return
+    event.preventDefault()
+    close(toggleButton)
+  }
 
   return (
     <section
       aria-label="Question"
       className="space-y-3 rounded-card border border-hairline bg-surface p-4"
+      onKeyDown={onKeyDown}
     >
       <div className="space-y-2">
         {questions.status === 'loading' && (
@@ -333,6 +367,7 @@ export function QuestionBar({
             <span className="ml-1 text-sm text-text-muted">{liveOff}</span>
           )}
         </div>
+        {opened && toggle}
         {controls}
       </div>
       {collapsed && (

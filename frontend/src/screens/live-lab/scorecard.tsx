@@ -147,7 +147,7 @@ export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
       <table className="w-full table-fixed text-left text-sm">
         <thead>
           <tr>
-            <td className="w-52 px-3 py-1 text-sm font-medium leading-tight text-text-primary">
+            <td className="w-60 px-3 py-1 text-sm font-medium leading-tight text-text-primary">
               {card.scored ? card.label : null}
             </td>
             {rows.map((row) => (

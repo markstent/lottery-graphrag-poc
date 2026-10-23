@@ -15,6 +15,7 @@ import { pipeline } from '../../design/pipelines'
 import { EvidencePathList } from '../../graph/evidence-path-list'
 import { GraphCanvas } from '../../graph/graph-canvas'
 import { GraphLegend } from '../../graph/graph-legend'
+import type { GraphCluster } from '../../graph/model'
 import { countedLabel } from '../../design/node-labels'
 import type { RunState } from '../../run/reduce'
 import { otherOf, pipelineView, type GraphPipeline } from './graph-views'
@@ -36,6 +37,25 @@ export interface FoldedGroup {
  */
 const HEIGHT = 'clamp(35rem, calc(100vh - 32.25rem), 50rem)'
 const PRESENTATION_HEIGHT = 'clamp(38rem, calc(100vh - 27.5rem), 56rem)'
+
+const heightOf = (presentation: boolean) =>
+  presentation ? PRESENTATION_HEIGHT : HEIGHT
+
+/**
+ * The canvas's place before a run, at the drawing's height, so the three
+ * panels beside it keep their size.
+ */
+export function CanvasPlaceholder() {
+  const { presentation } = useSettings()
+  return (
+    <p
+      className="flex items-center justify-center rounded-card border border-dashed border-border p-6 text-sm text-text-muted"
+      style={{ height: heightOf(presentation) }}
+    >
+      The graph appears when a run starts.
+    </p>
+  )
+}
 
 const TOGGLE =
   'rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-grey-900 aria-pressed:bg-grey-900 aria-pressed:text-surface'
@@ -116,13 +136,12 @@ export function CanvasArea({
   const settledView = mode === 'live' && settled
   const canvasProps = {
     view,
-    onSelectNode: (id: string) => {
-      const group = (finalView ?? view).clusters.find((c) => c.id === id)
+    // A group is opened as the canvas draws it: its count is its label's.
+    onSelectNode: (id: string, group?: GraphCluster) => {
       if (!group) return onOpenNode(tab, id)
-      // Only members already drawn are recorded so far in a replay.
       const present = new Map(view.nodes.map((n) => [n.id, n]))
       onOpenGroup(tab, {
-        title: `Group of ${countedLabel(group.members.filter((m) => present.has(m)).length, group.label)}`,
+        title: `Group of ${countedLabel(group.count, group.label)}`,
         members: group.members.flatMap((m) => {
           const node = present.get(m)
           return node ? [{ id: m, label: node.label }] : []
@@ -199,7 +218,7 @@ export function CanvasArea({
         id={`${ids}-panel`}
         role="tabpanel"
         aria-labelledby={`${ids}-tab-${tab}`}
-        style={{ height: presentation ? PRESENTATION_HEIGHT : HEIGHT }}
+        style={{ height: heightOf(presentation) }}
       >
         {mode === 'replay' && finalView ? (
           <GraphCanvas

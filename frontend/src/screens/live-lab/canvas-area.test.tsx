@@ -327,6 +327,42 @@ describe('CanvasArea', () => {
     expect(folded.title).toContain(String(folded.members.length))
   })
 
+  describe.each([
+    ['a recording replayed', 'replay'],
+    ['a live run replayed on its timeline', 'live'],
+  ] as const)('a group opened from %s', (_, mode) => {
+    it.each([0.4, 0.6, 0.8, 1])(
+      'has the count its label shows, with as many members, at %s of the events',
+      async (fraction) => {
+        window.localStorage.setItem('visible-node-cap', '12')
+        const events = h1.events as unknown as RunEvent[]
+        const state = reduceAll(
+          events.slice(0, Math.round(events.length * fraction)),
+        )
+        const onOpenGroup = vi.fn()
+        show(h1, { mode, state, onOpenGroup })
+        await placed()
+        const groups = await waitFor(() => {
+          const found = nodes().filter((n) =>
+            n.dataset.nodeId?.startsWith('cluster:'),
+          )
+          expect(found.length).toBeGreaterThan(0)
+          return found
+        })
+        for (const group of groups) {
+          onOpenGroup.mockClear()
+          fireEvent.click(group)
+          const [, folded] = onOpenGroup.mock.calls[0] as [string, FoldedGroup]
+          const counted = group
+            .getAttribute('aria-label')!
+            .slice('Group: '.length)
+          expect(folded.title).toBe(`Group of ${counted}`)
+          expect(counted.startsWith(`${folded.members.length} `)).toBe(true)
+        }
+      },
+    )
+  })
+
   it('draws a live run in live mode from the state so far', async () => {
     const final = finalOf(h1)
     show(h1, { mode: 'live', finalState: null, state: final })

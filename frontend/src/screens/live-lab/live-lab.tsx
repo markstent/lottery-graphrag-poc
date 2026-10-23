@@ -21,7 +21,7 @@ import { PIPELINES, type PipelineId } from '../../design/pipelines'
 import { RECORDED_RUNS } from '../../run/recorded'
 import { Screen } from '../screen'
 import { AnswerBlock } from './answer-block'
-import { CanvasArea, type FoldedGroup } from './canvas-area'
+import { CanvasArea, CanvasPlaceholder, type FoldedGroup } from './canvas-area'
 import { runStatusLine } from './columns'
 import { CoverageMatrix } from './coverage-matrix'
 import { pathPosition, sourceFor, type PathPosition } from './evidence-open'
@@ -159,9 +159,7 @@ export function LiveLab() {
             onOpenGroup={openGroup}
           />
         ) : (
-          <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-text-muted">
-            The graph appears when a run starts.
-          </p>
+          <CanvasPlaceholder />
         )}
         <div className="relative min-w-0">
           <div className="absolute inset-0 flex flex-col gap-2">

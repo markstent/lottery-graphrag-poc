@@ -121,6 +121,30 @@ describe('GraphCanvas', () => {
     expect(nodeButtons()).toHaveLength(view.nodes.length)
   })
 
+  it('flags the canvas ready only once the viewport has stopped moving', async () => {
+    const view = viewAt('B')
+    render(canvas(view))
+    const group = screen.getByRole('group', { name: 'Evidence graph' })
+    const viewport = () =>
+      group.querySelector<HTMLElement>('.react-flow__viewport')!.style.transform
+    await waitFor(
+      () => expect(group).toHaveAttribute('data-layout-ready', 'true'),
+      { interval: 5 },
+    )
+    const atReady = viewport()
+    await new Promise((resolve) => setTimeout(resolve, 400))
+    expect(viewport()).toBe(atReady)
+  })
+
+  it('flags the canvas ready under reduced motion, where the fit has no animation', async () => {
+    const view = viewAt('B')
+    render(canvas(view, { reducedMotion: true }))
+    const group = screen.getByRole('group', { name: 'Evidence graph' })
+    await waitFor(() =>
+      expect(group).toHaveAttribute('data-layout-ready', 'true'),
+    )
+  })
+
   it('draws one DOM node for each node of the view', async () => {
     const view = viewAt('B')
     expect(view.nodes).toHaveLength(41)

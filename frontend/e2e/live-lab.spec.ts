@@ -214,6 +214,25 @@ test('says why a run could not start and offers a retry', async ({ page }) => {
   await shot(page, 'error')
 })
 
+test('keeps the three panels at their size before a run, every header in full', async ({
+  page,
+}) => {
+  await page.goto('/#/live-lab')
+  await expect(page.getByText('Choose a question and press Run.')).toBeVisible()
+  for (const name of ['A · Text search', 'B · Graph', 'C · Graph + Ontology']) {
+    const panel = page.getByRole('region', { name, exact: true })
+    const { header, box } = await panel.evaluate((el) => ({
+      header: el.querySelector('header')!.getBoundingClientRect().toJSON(),
+      box: el.getBoundingClientRect().toJSON(),
+    }))
+    expect(header.top).toBeGreaterThanOrEqual(box.top)
+    expect(header.bottom).toBeLessThanOrEqual(box.bottom)
+    expect(header.bottom).toBeLessThanOrEqual(1080)
+    // Room below the header for the steps, as in a run.
+    expect(box.height).toBeGreaterThan(3 * header.height)
+  }
+})
+
 test('presentation mode hides the navigation and keeps the timeline keys', async ({
   page,
 }) => {
@@ -387,10 +406,16 @@ for (const run of RECORDED_RUNS.slice().sort((a, b) =>
       expect(before.note).toBe(before.outside.length)
       expect(before.outside.length).toBeGreaterThan(0)
       await page.getByRole('button', { name: 'Bring into view' }).click()
-      await page.waitForTimeout(500)
-      const after = await measure()
-      expect(before.outside).toContain(after.focused)
-      expect(after.outside).not.toContain(after.focused)
+      // The view moves to the focused node; poll until it is wholly inside.
+      await expect
+        .poll(async () => {
+          const after = await measure()
+          return {
+            wasOutside: before.outside.includes(after.focused ?? ''),
+            inside: !after.outside.includes(after.focused ?? ''),
+          }
+        })
+        .toEqual({ wasOutside: true, inside: true })
     })
 
 test('frames the evidence path while the recording plays (H1, mid-replay)', async ({
@@ -412,7 +437,17 @@ test('shows the verdict, the graph, the answers, the paths and the coverage at t
   page,
 }) => {
   await finishRecording(page, h1)
-  await expect(page.getByText('scored against the answer key')).toBeVisible()
+  const corner = page.getByText('scored against the answer key')
+  await expect(corner).toBeVisible()
+  // The label sits on one line: its text makes a single line box.
+  expect(
+    await corner.evaluate((el) => {
+      const range = document.createRange()
+      range.selectNodeContents(el)
+      return new Set([...range.getClientRects()].map((r) => Math.round(r.top)))
+        .size
+    }),
+  ).toBe(1)
   await expect(
     page.getByRole('table', { name: 'Market coverage' }),
   ).toBeVisible()
@@ -465,8 +500,19 @@ test('opens the evidence drawer from a panel row and from a citation, and closes
     .getByRole('button')
     .first()
     .click()
-  await expect(page.getByRole('dialog', { name: 'Evidence' })).toBeVisible()
-  await page.waitForTimeout(500)
+  const drawer = page.getByRole('dialog', { name: 'Evidence' })
+  await expect(drawer).toBeVisible()
+  // The drawer has slid in once nothing in it is still animating.
+  await expect
+    .poll(() =>
+      drawer.evaluate(
+        (el) =>
+          el
+            .getAnimations({ subtree: true })
+            .filter((a) => a.playState === 'running').length,
+      ),
+    )
+    .toBe(0)
   await shot(page, 'h1-drawer')
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)

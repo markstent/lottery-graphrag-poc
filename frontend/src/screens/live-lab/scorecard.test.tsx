@@ -147,7 +147,7 @@ describe('Scorecard', () => {
     ])
   })
 
-  it('shows the delta of a score against A in points', () => {
+  it('shows the delta of an evidence score against A as a signed difference on its 0 to 1 scale', () => {
     const changed = structuredClone(h1) as Results
     changed.score!.per_pipeline.B.evidence_f1 = 0.4
     render(<Scorecard results={changed} />)
