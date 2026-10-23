@@ -22,9 +22,35 @@ test.beforeEach(async ({ page }) => {
   await mockApi(page)
 })
 
+/** Fonts loaded, then the frames in which the last change reaches the page. */
 async function settle(page: Page) {
-  await page.evaluate(() => document.fonts.ready)
-  await page.waitForTimeout(250)
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        document.fonts.ready.then(() =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+      ),
+  )
+}
+
+/** Below this many pixels a block is small enough that a text change must show. */
+const SMALL_BLOCK_PX = 200_000
+const SMALL_BLOCK_DIFF_PIXELS = 50
+
+/**
+ * The baseline check. A block under 200,000 px allows 50 differing pixels, so
+ * a changed word cannot hide in the ratio; a whole page keeps the ratio set in
+ * the config.
+ */
+async function expectBaseline(target: Page | Locator, name: string) {
+  const box = 'boundingBox' in target ? await target.boundingBox() : null
+  if (box && box.width * box.height < SMALL_BLOCK_PX)
+    await expect(target).toHaveScreenshot(name, {
+      maxDiffPixels: SMALL_BLOCK_DIFF_PIXELS,
+      maxDiffPixelRatio: undefined,
+    })
+  else await expect(target).toHaveScreenshot(name)
 }
 
 /**
@@ -43,7 +69,7 @@ async function shellShot(page: Page, name: string) {
     content: '#main, #main * { visibility: hidden !important }',
   })
   await settle(page)
-  await expect(page).toHaveScreenshot(name)
+  await expectBaseline(page, name)
 }
 
 const DESTINATIONS = [
@@ -89,7 +115,11 @@ test.describe('shell', () => {
     await page.locator('[data-node-id]').first().click()
     await expect(page.getByRole('dialog', { name: 'Evidence' })).toBeVisible()
     await expect(page.getByText('Payment outage')).toBeVisible()
-    await shellShot(page, 'shell-evidence-drawer.png')
+    await settle(page)
+    await expectBaseline(
+      page.getByRole('dialog', { name: 'Evidence' }),
+      'shell-evidence-drawer.png',
+    )
   })
 
   test('in presentation mode', async ({ page }) => {
@@ -134,10 +164,13 @@ test.describe('gallery', () => {
       await page.goto(`/#/__gallery?section=${section}`)
       const blocks = page.locator('[data-gallery]')
       await expect(blocks.first()).toBeVisible()
-      if (section === 'graph')
-        await expect(page.locator('[data-node-id]').first()).toBeVisible()
+      if (section === 'graph') {
+        // Every canvas has placed its layout and applied its fit.
+        const canvases = page.locator('[data-layout-ready]')
+        await expect(canvases).toHaveCount(8)
+        await expect(page.locator('[data-layout-ready="true"]')).toHaveCount(8)
+      }
       await settle(page)
-      if (section === 'graph') await page.waitForTimeout(1500)
       const ids = await blocks.evaluateAll((els) =>
         els.map((el) => el.getAttribute('data-gallery')!),
       )
@@ -146,7 +179,7 @@ test.describe('gallery', () => {
         const block = page.locator(`[data-gallery="${id}"]`)
         await block.scrollIntoViewIfNeeded()
         await PREPARE[id]?.(block)
-        await expect(block).toHaveScreenshot(`gallery-${id}.png`)
+        await expectBaseline(block, `gallery-${id}.png`)
         // Move off the block so a tooltip does not carry to the next one.
         await page.mouse.move(0, 0)
       }
@@ -172,7 +205,10 @@ test.describe('gallery', () => {
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(page.getByRole('dialog').getByText(text)).toBeAttached()
       await settle(page)
-      await expect(page).toHaveScreenshot(`gallery-drawer-${id}.png`)
+      await expectBaseline(
+        id.startsWith('evidence') ? page.getByRole('dialog') : page,
+        `gallery-drawer-${id}.png`,
+      )
     })
   }
 })

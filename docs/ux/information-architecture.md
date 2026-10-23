@@ -80,6 +80,7 @@ The evidence drawer shows loading, error with a retry, and "This node has no sou
 ### 3.4 Presentation mode
 
 Presentation mode hides the sidebar and raises the type scale by one step.
+The header button shows it is on with a filled background and the word On beside a tick, as well as `aria-pressed`.
 It never changes the route.
 It lives in the address as `?present=1`, before the hash, so a reload keeps it.
 While it is on, Space plays or pauses the replay of the screen being shown, the right arrow steps it, and R resets it.
@@ -89,6 +90,9 @@ Those keys are left alone when focus is in a field, a drawer or a pressable cont
 
 The graph canvas is drawn from recorded events only.
 It has a replay mode, where the whole run is known, and a live mode, where the graph grows with the stream.
+The fit keeps type at 14 px or more on screen, so evidence can fall outside the frame.
+When it does, the strip above the drawing says how many evidence nodes are out of view and offers "Bring into view", which frames each one in turn and moves focus to it.
+The canvas carries `data-layout-ready` once its layout is placed and the fit applied, which the end-to-end specs wait on.
 Every canvas is described to a screen reader by a summary of the whole view and an ordered evidence path list.
 The canvas is reachable by keyboard: Tab enters it at one node, the arrow keys move along edges, Enter opens the node in the evidence drawer, plus and minus zoom, 0 fits, and Escape moves focus on.
 

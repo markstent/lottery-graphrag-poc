@@ -56,13 +56,13 @@ When every cluster mean is zero the p-value is 1.
 
 A test runs only for cells in the declared hypothesis family:
 
-| Stratum | evidence_f1 | answer |
-|---|---|---|
-| H1 | yes | yes |
-| H2 (by id) | yes | yes |
-| H3 | no | yes |
-| H5 | yes | yes |
-| H2_name | no | no |
+| Stratum    | evidence_f1 | answer |
+| ---------- | ----------- | ------ |
+| H1         | yes         | yes    |
+| H2 (by id) | yes         | yes    |
+| H3         | no          | yes    |
+| H5         | yes         | yes    |
+| H2_name    | no          | no     |
 
 Each family cell is tested for both comparisons, so the family holds at most 14 tests.
 Holm's step-down correction adjusts the p-values of the cells actually tested, across the whole family at once.

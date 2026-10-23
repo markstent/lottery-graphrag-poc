@@ -43,7 +43,7 @@ ADR-007: `docs/architecture/adr/ADR-007-run-persistence.md`.
   - sample rows: page size default 50, maximum 200;
   - graph neighbours: default 25, maximum 100;
   - run history: limit default 20, maximum 100.
-  A value above a maximum is a 422, never a silent clamp.
+    A value above a maximum is a 422, never a silent clamp.
 - Server-sent events:
   - heartbeat comment every 15 seconds (`SSE_HEARTBEAT_S`);
   - `id:` is the event `sequence`;
@@ -84,33 +84,34 @@ ADR-007: `docs/architecture/adr/ADR-007-run-persistence.md`.
 
 ## File Structure
 
-| Path | Responsibility |
-|---|---|
-| `backend/app/config/__init__.py` | The one settings module: retrieval, graph (moved from `app/graph/config.py`), API (CORS, DB path, retention, SSE heartbeat, benchmark dir), `REPO_ROOT`, `DEFAULT_DATASET_DIR` |
-| `backend/app/lab.py` | Composition root for A, B and C (moved from `app/retrieval/graph/lab.py`) |
-| `backend/app/traces.py` | Trace CLI (moved from `app/retrieval/graph/traces.py`), `python -m app.traces` |
-| `backend/app/observability/logging.py` | JSON log formatter, `configure_logging()`, run context variables, `stage_timer` |
-| `backend/app/persistence/store.py` | SQLite run store: schema, migrations by `user_version`, runs, events, results, retention |
-| `backend/app/api/errors.py` | Error codes, exception-to-code mapping, the error envelope and its handlers |
-| `backend/app/api/runs.py` | Run worker: recording sink, per-pipeline status, cancellation, lab start-up |
-| `backend/app/api/queries.py` | Query, history, results, replay and stream routes |
-| `backend/app/api/stream.py` | Server-sent event framing, resume and heartbeat |
-| `backend/app/api/health.py` | Liveness and readiness |
-| `backend/app/api/data_model.py` | Datasets, tables, records routes |
-| `backend/app/api/graph_model.py` | Graph schema, stats, node, neighbours routes |
-| `backend/app/api/reference.py` | Ontology, scenarios, models routes |
-| `backend/app/api/benchmarks.py` | Benchmark list, get, start, cancel, question catalogue (may import `app.evaluation`) |
-| `backend/app/api/scoring.py` | Post-run scoring of bank questions (may import `app.evaluation`) |
-| `backend/app/api/schemas.py` | Every request and response model |
-| `backend/app/graph/statements.py` | All Cypher, including the new read statements |
-| `backend/app/retrieval/graph/stages.py` | Typed stages of the graph pipeline |
-| `docs/07-api-event-spec.md`, `docs/architecture/adr/ADR-007-run-persistence.md`, `DECISIONS.md` | API reference, store schema and retention, decisions |
+| Path                                                                                            | Responsibility                                                                                                                                                                 |
+| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `backend/app/config/__init__.py`                                                                | The one settings module: retrieval, graph (moved from `app/graph/config.py`), API (CORS, DB path, retention, SSE heartbeat, benchmark dir), `REPO_ROOT`, `DEFAULT_DATASET_DIR` |
+| `backend/app/lab.py`                                                                            | Composition root for A, B and C (moved from `app/retrieval/graph/lab.py`)                                                                                                      |
+| `backend/app/traces.py`                                                                         | Trace CLI (moved from `app/retrieval/graph/traces.py`), `python -m app.traces`                                                                                                 |
+| `backend/app/observability/logging.py`                                                          | JSON log formatter, `configure_logging()`, run context variables, `stage_timer`                                                                                                |
+| `backend/app/persistence/store.py`                                                              | SQLite run store: schema, migrations by `user_version`, runs, events, results, retention                                                                                       |
+| `backend/app/api/errors.py`                                                                     | Error codes, exception-to-code mapping, the error envelope and its handlers                                                                                                    |
+| `backend/app/api/runs.py`                                                                       | Run worker: recording sink, per-pipeline status, cancellation, lab start-up                                                                                                    |
+| `backend/app/api/queries.py`                                                                    | Query, history, results, replay and stream routes                                                                                                                              |
+| `backend/app/api/stream.py`                                                                     | Server-sent event framing, resume and heartbeat                                                                                                                                |
+| `backend/app/api/health.py`                                                                     | Liveness and readiness                                                                                                                                                         |
+| `backend/app/api/data_model.py`                                                                 | Datasets, tables, records routes                                                                                                                                               |
+| `backend/app/api/graph_model.py`                                                                | Graph schema, stats, node, neighbours routes                                                                                                                                   |
+| `backend/app/api/reference.py`                                                                  | Ontology, scenarios, models routes                                                                                                                                             |
+| `backend/app/api/benchmarks.py`                                                                 | Benchmark list, get, start, cancel, question catalogue (may import `app.evaluation`)                                                                                           |
+| `backend/app/api/scoring.py`                                                                    | Post-run scoring of bank questions (may import `app.evaluation`)                                                                                                               |
+| `backend/app/api/schemas.py`                                                                    | Every request and response model                                                                                                                                               |
+| `backend/app/graph/statements.py`                                                               | All Cypher, including the new read statements                                                                                                                                  |
+| `backend/app/retrieval/graph/stages.py`                                                         | Typed stages of the graph pipeline                                                                                                                                             |
+| `docs/07-api-event-spec.md`, `docs/architecture/adr/ADR-007-run-persistence.md`, `DECISIONS.md` | API reference, store schema and retention, decisions                                                                                                                           |
 
 ---
 
 ### Task 1: One settings module, one composition root, no empty packages
 
 **Files:**
+
 - Modify: `backend/app/config/__init__.py`.
 - Delete: `backend/app/graph/config.py`.
 - Delete: `backend/app/domain/`.
@@ -124,6 +125,7 @@ ADR-007: `docs/architecture/adr/ADR-007-run-persistence.md`.
 - Test: `backend/tests/test_truth_ledger_isolation.py`.
 
 **Interfaces:**
+
 - Produces:
   - `app.config.REPO_ROOT: Path`
   - `app.config.DEFAULT_DATASET_DIR: Path`
@@ -153,6 +155,7 @@ def test_no_empty_domain_package() -> None:
 ```
 
 Extend `test_truth_ledger_isolation.py`:
+
 - `ISOLATED_NAMESPACES` becomes `("retrieval", "datasets", "graph", "ontology", "scenarios", "config", "events", "observability", "persistence", "models")`.
 - Add `lab.py` and `traces.py` as isolated top-level modules.
 - `app/api` is checked by the Task 13 rule.
@@ -184,12 +187,14 @@ git commit -am "refactor: one settings module, the lab and trace CLI at the app 
 ### Task 2: Structured JSON logging with run context and stage timings
 
 **Files:**
+
 - Create: `backend/app/observability/logging.py`.
 - Modify: `backend/app/main.py` (configure at start-up, request-id middleware).
 - Modify: `backend/app/evaluation/runner.py` and `official.py`, which use the context in place of their own `extra=` fields.
 - Test: `backend/tests/test_logging.py`.
 
 **Interfaces:**
+
 - Produces:
   - `configure_logging(level: str = "INFO") -> None`. It installs one JSON handler on the root logger, and is idempotent.
   - `JsonFormatter` writes one JSON object per line with these keys: `ts`, `level`, `logger`, `message`, then every key of the run context and every key passed in `extra`.
@@ -244,6 +249,7 @@ git commit -am "feat(observability): JSON logs with run context, stage timings a
 ### Task 3: One error model
 
 **Files:**
+
 - Create: `backend/app/api/errors.py`.
 - Modify: `backend/app/api/runs.py` (use the mapping).
 - Modify: `backend/app/main.py` (handlers).
@@ -252,6 +258,7 @@ git commit -am "feat(observability): JSON logs with run context, stage timings a
 - Test: `backend/tests/test_api_errors.py`.
 
 **Interfaces:**
+
 - Produces:
   - `ErrorCode` (a `StrEnum`) with these members: `VALIDATION_ERROR`, `NOT_FOUND`, `MODEL_ERROR`, `EMBEDDING_ERROR`, `VECTOR_RETRIEVAL_ERROR`, `GRAPH_QUERY_ERROR`, `CONTEXT_BUILD_ERROR`, `INTERRUPTED`, `CANCELLED`, `RUN_ERROR`.
   - `classify(exc: BaseException) -> tuple[ErrorCode, bool]`, which returns the code and whether the error is retryable.
@@ -315,11 +322,13 @@ git commit -am "feat(api): one error envelope, GRAPH_QUERY_ERROR and configured 
 ### Task 4: SQLite run store
 
 **Files:**
+
 - Create: `backend/app/persistence/store.py`.
 - Modify: `docs/architecture/adr/ADR-007-run-persistence.md` (append "As built": schema and retention).
 - Test: `backend/tests/test_store.py`.
 
 **Interfaces:**
+
 - Produces:
   - `SCHEMA_VERSION = 1`.
   - `RunRow(run_id: str, kind: str, status: str, question: str, market_scope: tuple[str, ...], configurations: tuple[str, ...], benchmark_instance_id: str | None, created_at: str, finished_at: str | None, pipeline_status: dict[str, str], error: dict[str, Any] | None)`.
@@ -344,7 +353,7 @@ git commit -am "feat(api): one error envelope, GRAPH_QUERY_ERROR and configured 
   - `events` (`run_id`, `sequence`, `event_json`, primary key `(run_id, sequence)`);
   - `results` (`run_id`, `pipeline`, `result_json`, primary key `(run_id, pipeline)`);
   - `scores` (`run_id` primary key, `score_json`).
-  Deleting a run cascades to the other three tables.
+    Deleting a run cascades to the other three tables.
 - `append_event` assigns `sequence = max + 1` inside one transaction, so sequences are gap-free under concurrent writers.
   One connection per thread, with `check_same_thread=False` avoided by giving each thread its own connection.
 - `mark_interrupted` runs at start-up.
@@ -404,12 +413,14 @@ git commit -am "feat(persistence): SQLite run store with gap-free event sequence
 ### Task 5: Live run worker, per-pipeline status, cancellation and history
 
 **Files:**
+
 - Modify: `backend/app/api/runs.py` (rewrite around the store).
 - Modify: `backend/app/api/queries.py` and `backend/app/api/schemas.py`.
 - Modify: `backend/app/events/__init__.py`: add `run_id` to the envelope through the recording sink, add the run-level event types, delete the unused `new_run_id`.
 - Test: `backend/tests/test_api_runs.py` (create; move the run tests out of `test_api_queries.py`).
 
 **Interfaces:**
+
 - Consumes: `RunStore` (Task 4), `classify` (Task 3), `run_context` and `stage_timer` (Task 2), `app.lab` (Task 1).
 - Produces:
   - `RecordingSink(store: RunStore, run_id: str, cancelled: threading.Event)`, an `EventSink`.
@@ -494,11 +505,13 @@ git commit -am "feat(api): persisted runs with live per-pipeline results, cooper
 ### Task 6: Server-sent event stream
 
 **Files:**
+
 - Create: `backend/app/api/stream.py`.
 - Modify: `backend/app/api/queries.py`.
 - Test: `backend/tests/test_api_stream.py`.
 
 **Interfaces:**
+
 - Consumes: `RunStore.events`, `QueryService.wait_for` (Task 5), `ApiSettings.sse_heartbeat_s`.
 - Produces:
   - `GET /api/v1/queries/{run_id}/events/stream`, with media type `text/event-stream`.
@@ -553,12 +566,14 @@ git commit -am "feat(api): server-sent event stream with resume, heartbeat and t
 ### Task 7: Readiness and embedding checks
 
 **Files:**
+
 - Modify: `backend/app/api/health.py`.
 - Modify: `backend/app/retrieval/standard/embeddings.py` (L2-normalise Ollama vectors, check dimensions).
 - Modify: `backend/app/lab.py` (check the collection's vector size against the embedder at build).
 - Test: `backend/tests/test_health.py`, `backend/tests/test_embeddings.py`.
 
 **Interfaces:**
+
 - Produces:
   - `GET /api/v1/health` (liveness) returns `{status: "ok", version}`, unchanged.
   - `GET /api/v1/health/ready` returns `Readiness(ready: bool, checks: dict[str, Check])`, with `Check(ok: bool, detail: str)`.
@@ -568,7 +583,7 @@ git commit -am "feat(api): server-sent event stream with resume, heartbeat and t
   - `index` (the collection exists, holds points, and its manifest's serialiser version matches);
   - `graph` (Neo4j answers `RETURN 1` within `NEO4J_TIMEOUT_S`);
   - `model` (the generation provider is reachable: `fake` is always ok; litellm makes one gateway call to the provider's model list or a 1-token completion with `max_tokens=1`).
-  Each check runs with its own timeout, and readiness never raises.
+    Each check runs with its own timeout, and readiness never raises.
 - `OllamaEmbedder.embed` returns unit vectors.
   A vector whose length differs from `self.dimensions` raises `EmbeddingError` naming both numbers.
 - `build_lab` raises `VectorStoreError` naming both numbers when the existing collection's size differs from the embedder's.
@@ -621,6 +636,7 @@ git commit -am "feat(api): readiness checks; unit-length, dimension-checked embe
 ### Task 8: Graph pipeline in typed stages, and table-driven seed resolution
 
 **Files:**
+
 - Create: `backend/app/retrieval/graph/stages.py`.
 - Modify: `backend/app/retrieval/graph/pipeline.py` (`run()` composes the stages).
 - Modify: `backend/app/retrieval/graph/resolution.py` (id prefixes from the schema registry).
@@ -628,6 +644,7 @@ git commit -am "feat(api): readiness checks; unit-length, dimension-checked embe
 - Test: the existing `test_graph_rag.py`, `test_lab_fairness.py` and `test_traces.py` must pass unchanged.
 
 **Interfaces:**
+
 - Produces, in `stages.py`, one function per stage with typed inputs and outputs:
   - `resolve(...) -> Resolution`
   - `traverse(...) -> Traversal`
@@ -635,8 +652,8 @@ git commit -am "feat(api): readiness checks; unit-length, dimension-checked embe
   - `select_and_attach(...) -> Selection`
   - `document_channel(...) -> DocumentCandidates`
   - `assemble_and_generate(...) -> Answer`
-  Each takes only what it needs, plus the `EventEmitter`.
-  `GraphRagPipeline.run` becomes the ordered composition, at most 40 lines.
+    Each takes only what it needs, plus the `EventEmitter`.
+    `GraphRagPipeline.run` becomes the ordered composition, at most 40 lines.
 - Seed id prefixes are derived from the registry that maps tables to graph labels (`source_lookup.RECORD_LABELS` and the dataset schema's id columns), not from the literal `_SEED_PREFIXES` tuple.
   A new table bound to a label becomes resolvable without editing `resolution.py`.
 - No behaviour change: event order, payloads, selection and answers are identical.
@@ -683,12 +700,14 @@ git commit -am "refactor(retrieval): graph pipeline as typed stages; seed prefix
 ### Task 9: Datasets, tables and records
 
 **Files:**
+
 - Create: `backend/app/api/data_model.py`.
 - Modify: `backend/app/api/schemas.py` and `backend/app/main.py`.
 - Modify: `backend/app/graph/statements.py` (record node and edge-summary read).
 - Test: `backend/tests/test_api_data_model.py`.
 
 **Interfaces:**
+
 - Consumes: `app.datasets.schema.TABLE_SCHEMAS`, the dataset `_manifest.json`, the index manifest, and `Lab.settings.dataset_dir`.
 - Routes:
   - `GET /api/v1/datasets` returns `list[DatasetSummary(dataset_id, generator_version, world_seed, scenario_seed, profile, row_counts, active: bool)]`.
@@ -752,12 +771,14 @@ git commit -am "feat(api): datasets, data dictionary, paginated rows and records
 ### Task 10: Graph schema, stats, nodes and neighbours
 
 **Files:**
+
 - Create: `backend/app/api/graph_model.py`.
 - Modify: `backend/app/graph/statements.py` (node by id, bounded neighbours).
 - Modify: `backend/app/api/schemas.py`.
 - Test: `backend/tests/test_api_graph_model.py`.
 
 **Interfaces:**
+
 - Routes:
   - `GET /api/v1/graph/schema` returns `GraphSchema(labels: list[str], relationship_types: list[RelTypeOut(type, from_label, to_label)], allow_list: dict[str, list[str]], weights: dict[str, float], caps: dict[str, int], label_version)`.
     `allow_list` is keyed by pipeline (`B`, `C`) from `bc_graph_settings`.
@@ -812,11 +833,13 @@ git commit -am "feat(api): graph schema, ingestion stats, nodes with provenance 
 ### Task 11: Ontology, scenarios and models
 
 **Files:**
+
 - Create: `backend/app/api/reference.py`.
 - Modify: `backend/app/api/schemas.py`.
 - Test: `backend/tests/test_api_reference.py`.
 
 **Interfaces:**
+
 - Routes:
   - `GET /api/v1/ontology` returns `OntologyOut(version, concepts: list[ConceptOut(concept_id, parent_id, labels: dict[str, str], synonyms: dict[str, list[str]], allowed_relationships: list[str], binding_counts: dict[str, int])])`.
     `labels` and `synonyms` are keyed by language; `binding_counts` is keyed by market.
@@ -868,6 +891,7 @@ git commit -am "feat(api): ontology tree and members, scenario catalogue with pl
 ### Task 12: Benchmarks: list, get, start, cancel and the question catalogue
 
 **Files:**
+
 - Create: `backend/app/api/benchmarks.py`.
 - Modify: `backend/app/api/queries.py` (move `/benchmarks/latest` here).
 - Modify: `backend/app/evaluation/official.py` (cooperative cancel between instances: `run_benchmark(..., cancelled: threading.Event | None = None)`).
@@ -875,6 +899,7 @@ git commit -am "feat(api): ontology tree and members, scenario catalogue with pl
 - Test: `backend/tests/test_api_benchmarks.py`.
 
 **Interfaces:**
+
 - Produces:
   - `app.evaluation.catalogue.question_catalogue(bank: FrozenBank, ledger_path: Path) -> list[QuestionCard]`.
     `QuestionCard` has these fields: `question_id`, `instance_id`, `text`, `tests`, `stratum`, `scenario_id`, `ontology_dependent`, `expected_answer`, `hidden_truth`.
@@ -945,6 +970,7 @@ git commit -am "feat(api): benchmark runs list, jobs with cancel, and the questi
 ### Task 13: Post-run scoring of bank questions and demo questions from the bank
 
 **Files:**
+
 - Create: `backend/app/api/scoring.py`.
 - Modify: `backend/app/api/runs.py` (call scoring after the run record is final).
 - Modify: `backend/app/api/queries.py` (demo questions).
@@ -952,13 +978,14 @@ git commit -am "feat(api): benchmark runs list, jobs with cancel, and the questi
 - Test: `backend/tests/test_api_scoring.py`.
 
 **Interfaces:**
+
 - Produces:
   - `score_run(run: RunRow, results: dict[str, dict[str, Any]], bank: FrozenBank) -> LiveScore`.
     `LiveScore` has three fields:
     - `instance_id`;
     - `label`, which is `"scored against the answer key"`;
     - `per_pipeline: dict[str, LivePipelineScore(answer: float | None, evidence_f1: float | None, anchor_resolution: float | None, failure_class: str | None)]`.
-    It uses the deterministic scorers only, never the judge.
+      It uses the deterministic scorers only, never the judge.
   - `DEMO_STRATA = ("H1", "H2", "H3", "H5")`.
   - `demo_questions(bank: FrozenBank) -> list[DemoQuestion]` takes the first instance in bank order of each of those strata.
     `DemoQuestion` has these fields: `instance_id`, `question_id`, `text`, `stratum`, `market_scope`.
@@ -1024,6 +1051,7 @@ git commit -am "feat(api): bank questions scored against the answer key after th
 ### Task 14: Live API end to end, documentation and decisions
 
 **Files:**
+
 - Modify: `backend/tests/test_api_live.py` (gated `VECTOR_E2E` and `GRAPH_E2E`).
 - Modify: `docs/07-api-event-spec.md` (every route, the envelope, SSE, errors, bounds).
 - Modify: `docs/architecture/event-streaming.md`.
@@ -1031,6 +1059,7 @@ git commit -am "feat(api): bank questions scored against the answer key after th
 - Modify: `HITL_STATUS.md` and `.env.example`.
 
 **Interfaces:**
+
 - Consumes: every route above.
 - Decision rows, dated 2026-10-20 and marked "Proposed (controller ruling, for owner review at CP2)" unless the owner already decided:
   - D-033: SQLite schema and retention.

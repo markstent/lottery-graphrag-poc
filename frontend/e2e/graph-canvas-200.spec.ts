@@ -108,6 +108,31 @@ const labelSizes = (page: Page) =>
     })
   })
 
+const smallestLabel = async (page: Page) =>
+  Math.min(...(await labelSizes(page)).map((n) => n.onScreen))
+
+/**
+ * Waits until the canvas has placed its layout and applied its fit
+ * (`data-layout-ready`), after the frames in which a change of input reaches
+ * the page.
+ */
+async function layoutReady(page: Page) {
+  const frames = () =>
+    page.evaluate(
+      () =>
+        new Promise((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(resolve)),
+        ),
+    )
+  await frames()
+  const flag = page.locator('[data-layout-ready]')
+  // Below the first recorded node there is no canvas to wait for.
+  if ((await flag.count()) === 0) return
+  await expect(flag).toHaveAttribute('data-layout-ready', 'true')
+  // The frames in which the placed nodes and routes reach the page.
+  await frames()
+}
+
 /** Events applied: all of them, and a cursor part way through the run. */
 const CURSORS = [
   { name: 'the full fixture', B: '', C: '' },
@@ -123,7 +148,7 @@ test.describe('graph canvas legibility', () => {
         await page.goto(`/#/__graph?config=${config}${cursor[config]}`)
         await page.reload()
         await expect(nodes(page).first()).toBeVisible()
-        await page.waitForTimeout(800)
+        await layoutReady(page)
         const sizes = await labelSizes(page)
         expect(sizes.length).toBeGreaterThan(5)
         for (const { id, onScreen, height } of sizes) {
@@ -144,7 +169,7 @@ test.describe('graph canvas toolbar', () => {
     await page.goto('/#/__graph?config=C')
     await page.reload()
     await expect(nodes(page).first()).toBeVisible()
-    await page.waitForTimeout(600)
+    await layoutReady(page)
     // The library's own controls are not used.
     await expect(page.locator('.react-flow__controls')).toHaveCount(0)
     const toolbar = page.getByRole('toolbar', { name: 'Zoom' })
@@ -156,13 +181,9 @@ test.describe('graph canvas toolbar', () => {
     // Zoom out as far as the button allows, then fit.
     for (let i = 0; i < 4; i += 1)
       await page.getByRole('button', { name: 'Zoom out' }).click()
-    await page.waitForTimeout(400)
-    const small = await labelSizes(page)
-    expect(Math.min(...small.map((n) => n.onScreen))).toBeLessThan(14)
+    await expect.poll(() => smallestLabel(page)).toBeLessThan(14)
     await page.getByRole('button', { name: 'Fit to the evidence' }).click()
-    await page.waitForTimeout(500)
-    for (const { id, onScreen } of await labelSizes(page))
-      expect(onScreen, `${id} after fit`).toBeGreaterThanOrEqual(14)
+    await expect.poll(() => smallestLabel(page)).toBeGreaterThanOrEqual(14)
   })
 })
 
@@ -174,6 +195,13 @@ test.describe('graph canvas after scrubbing', () => {
     edges: boolean,
     allowPlain = false,
   ) {
+    // The library draws an edge once both its nodes are measured, a few frames after the layout.
+    if (edges)
+      await expect
+        .poll(() => page.locator('[data-edge-id]').count(), {
+          message: `tags at ${at}`,
+        })
+        .toBeGreaterThan(0)
     const report = await page.evaluate(() => {
       const box = (el: Element) => el.getBoundingClientRect()
       const hit = (a: DOMRect, b: DOMRect) =>
@@ -210,7 +238,7 @@ test.describe('graph canvas after scrubbing', () => {
     // Scrub up, down and up again, as a person drags the cursor.
     for (const count of [120, 300, 405, 500, 650, 705, 405, 160, 705]) {
       await slider.fill(String(count))
-      await page.waitForTimeout(450)
+      await layoutReady(page)
       await expectTidy(page, `${count} events`, count >= 405)
     }
   })
@@ -224,13 +252,34 @@ test.describe('graph canvas after scrubbing', () => {
     const slider = page.getByRole('slider')
     for (const count of [405, 450, 500, 600, 650, 704]) {
       await slider.fill(String(count))
-      await page.waitForTimeout(450)
+      await layoutReady(page)
       await expectTidy(page, `${count} events (live)`, true, true)
     }
     // At the end of the stream the final graph is laid out whole.
     await slider.fill('705')
-    await page.waitForTimeout(800)
+    await layoutReady(page)
     await expectTidy(page, 'the end of the stream (live)', true)
+  })
+
+  test('in live the edges stay drawn when events arrive back to back', async ({
+    page,
+  }) => {
+    // The library measures a node's handles once; fast changes used to leave
+    // it with none measured and every edge undrawn.
+    for (let round = 0; round < 8; round += 1) {
+      await page.goto('/#/__graph?config=C&mode=live')
+      await page.reload()
+      await expect(nodes(page).first()).toBeVisible()
+      const slider = page.getByRole('slider')
+      for (const count of [405, 450, 500, 600, 650, 704]) {
+        await slider.fill(String(count))
+        await layoutReady(page)
+      }
+      await expect(
+        page.locator('.react-flow__edge'),
+        `edges after round ${round}`,
+      ).not.toHaveCount(0)
+    }
   })
 
   test('shows no evidence path before its event and the path after it', async ({
@@ -241,10 +290,10 @@ test.describe('graph canvas after scrubbing', () => {
     await expect(nodes(page).first()).toBeVisible()
     const slider = page.getByRole('slider')
     await slider.fill('405')
-    await page.waitForTimeout(400)
+    await layoutReady(page)
     expect(await page.locator('[data-on-path="true"]').count()).toBe(0)
     await slider.fill('705')
-    await page.waitForTimeout(400)
+    await layoutReady(page)
     expect(await page.locator('[data-on-path="true"]').count()).toBeGreaterThan(
       0,
     )
@@ -285,7 +334,7 @@ test.describe('graph canvas with 200 nodes', () => {
     await page.reload()
     await page.getByRole('button', { name: 'Show graph' }).click()
     await expect(nodes(page).first()).toBeVisible()
-    await page.waitForTimeout(500)
+    await layoutReady(page)
     const viewport = '.react-flow__viewport'
 
     await page.keyboard.press('Tab')
@@ -344,7 +393,7 @@ test.describe('graph canvas with 200 nodes', () => {
           ),
         ),
       )
-    await page.waitForTimeout(500)
+    await layoutReady(page)
     const before = await positions()
     expect(Object.keys(before).length).toBeGreaterThan(5)
     const last = await page.getByRole('slider').getAttribute('max')
@@ -362,7 +411,7 @@ test.describe('graph canvas with 200 nodes', () => {
     await page.reload()
     await page.getByRole('button', { name: 'Show graph' }).click()
     await expect(nodes(page).first()).toBeVisible()
-    await page.waitForTimeout(500)
+    await layoutReady(page)
 
     // Tab enters the canvas at one node.
     while (
@@ -433,33 +482,68 @@ test.describe('evidence out of view', () => {
     await page.goto('/#/__graph?config=C&present=1')
     await page.reload()
     await expect(nodes(page).first()).toBeVisible()
-    await page.waitForTimeout(800)
+    await layoutReady(page)
     const note = page.getByText(/evidence nodes? out of view/)
     await expect(note).toBeVisible()
     await expect(note).toHaveText(/^\d+ evidence nodes? out of view$/)
     await page.getByRole('button', { name: 'Bring into view' }).click()
-    await page.waitForTimeout(500)
-    // Focus moved to an evidence node, and that node is wholly in the frame.
-    const focused = await page.evaluate(() => {
-      const el = document.activeElement as HTMLElement
-      const box = el.getBoundingClientRect()
-      const frame = document
-        .querySelector('.react-flow')!
-        .getBoundingClientRect()
-      return {
-        id: el.getAttribute('data-node-id'),
-        inside:
-          box.left >= frame.left &&
-          box.top >= frame.top &&
-          box.right <= frame.right &&
-          box.bottom <= frame.bottom,
-      }
-    })
-    expect(focused.id).not.toBeNull()
-    expect(focused.inside).toBe(true)
+    // Focus moves to an evidence node, and that node is wholly in the frame.
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const el = document.activeElement as HTMLElement
+          if (!el.hasAttribute('data-node-id')) return false
+          const box = el.getBoundingClientRect()
+          const frame = document
+            .querySelector('.react-flow')!
+            .getBoundingClientRect()
+          return (
+            box.left >= frame.left &&
+            box.top >= frame.top &&
+            box.right <= frame.right &&
+            box.bottom <= frame.bottom
+          )
+        }),
+      )
+      .toBe(true)
     // The evidence is taller than the frame, so framing one can push another out.
     await expect(page.getByText(/evidence nodes? out of view/)).toBeVisible()
     for (const { id, onScreen } of await labelSizes(page))
       expect(onScreen, `${id} type size on screen`).toBeGreaterThanOrEqual(14)
   })
+})
+
+test.describe('the out-of-view count', () => {
+  const PATH = ['INC_037', 'SUP_00113', 'SUP_00121', 'SUP_00005']
+
+  for (const config of ['B', 'C'] as const) {
+    test(`on ${config} equals the evidence nodes the frame does not wholly show`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1920, height: 720 })
+      await page.goto(`/#/__graph?config=${config}`)
+      await page.reload()
+      await expect(nodes(page).first()).toBeVisible()
+      await layoutReady(page)
+      const cropped = await page.evaluate((ids) => {
+        const frame = document
+          .querySelector('.react-flow')!
+          .getBoundingClientRect()
+        return ids.filter((id) => {
+          const box = document
+            .querySelector(`[data-node-id="${id}"]`)!
+            .getBoundingClientRect()
+          return !(
+            box.left >= frame.left &&
+            box.top >= frame.top &&
+            box.right <= frame.right &&
+            box.bottom <= frame.bottom
+          )
+        }).length
+      }, PATH)
+      const note = page.getByText(/evidence nodes? out of view/)
+      if (cropped === 0) await expect(note).toHaveCount(0)
+      else await expect(note).toHaveText(new RegExp(`^${cropped} evidence`))
+    })
+  }
 })

@@ -29,6 +29,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   useStore,
+  useUpdateNodeInternals,
   useViewport,
   type Node,
 } from '@xyflow/react'
@@ -261,6 +262,8 @@ interface Job {
   height: number
   priority: Set<string>
   whole: boolean
+  /** The `structure` this job lays out. */
+  structure: string
 }
 
 function ToolButton({
@@ -366,6 +369,8 @@ function Canvas(props: GraphCanvasProps) {
   const placed = useRef<Positions>(new Map())
   const [failure, setFailure] = useState<string | null>(null)
   const [laidOut, setLaidOut] = useState(false)
+  // The structure the placed layout was made for.
+  const [laidFor, setLaidFor] = useState('')
 
   // The layout reruns when the nodes, their widths, the edges, their tags, the
   // type size or the mode change, not when the view is rebuilt with the same
@@ -398,6 +403,7 @@ function Canvas(props: GraphCanvasProps) {
       ),
       // A replay and a settled stream are laid out whole.
       whole: replay || settled,
+      structure,
     }
   })
   const pending = useRef<Job | null>(null)
@@ -444,6 +450,7 @@ function Canvas(props: GraphCanvasProps) {
           if (pending.current || !alive.current) continue
           placed.current = result.positions
           setLayout(result)
+          setLaidFor(next.structure)
           setFailure(null)
           setLaidOut(true)
         }
@@ -477,13 +484,13 @@ function Canvas(props: GraphCanvasProps) {
   }, [visible, shown.path, pipelineId])
   const startId =
     shown.path[0] ?? visible.nodes.find((n) => n.state === 'seed')?.id
-  const fit = useCallback(() => {
+  const fit = useCallback((): Promise<unknown> => {
     const box = drawing.current?.getBoundingClientRect()
     const framed = framedIds.flatMap((id) => {
       const at = positions.get(id)
       return at ? [{ at, width: widths.get(id) ?? type.minWidth }] : []
     })
-    if (!box || framed.length === 0) return
+    if (!box || framed.length === 0) return Promise.resolve()
     const left = Math.min(...framed.map((n) => n.at.x))
     const right = Math.max(...framed.map((n) => n.at.x + n.width))
     const top = Math.min(...framed.map((n) => n.at.y))
@@ -501,7 +508,7 @@ function Canvas(props: GraphCanvasProps) {
       (bottom - top) * zoom <= room.height || !start
         ? (top + bottom) / 2
         : start.y + type.height / 2
-    void flow.setViewport(
+    return flow.setViewport(
       {
         x: FIT_MARGIN - left * zoom,
         y: box.height / 2 - middle * zoom,
@@ -510,11 +517,22 @@ function Canvas(props: GraphCanvasProps) {
       { duration },
     )
   }, [flow, duration, framedIds, positions, widths, type, startId])
+  // The layout the viewport was last settled for: the canvas is ready (for the
+  // end-to-end specs and for anything waiting on it) once the layout is placed
+  // and the fit has been applied.
+  const [settledFor, setSettledFor] = useState<Layout | null>(null)
   useEffect(() => {
-    if (!laidOut || !autoFit.current) return
-    const frame = requestAnimationFrame(fit)
+    if (!laidOut) return
+    if (!autoFit.current) {
+      setSettledFor(layout)
+      return
+    }
+    const frame = requestAnimationFrame(() => {
+      void fit().then(() => setSettledFor(layout))
+    })
     return () => cancelAnimationFrame(frame)
   }, [layout, laidOut, fit])
+  const ready = laidOut && laidFor === structure && settledFor === layout
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const active =
@@ -568,70 +586,102 @@ function Canvas(props: GraphCanvasProps) {
     focusNode(next)
   }
 
-  const nodes: GraphFlowNode[] = visible.nodes.flatMap((v): GraphFlowNode[] => {
-    const at = positions.get(v.id)
-    const node = byId.get(v.nodeId)
-    const cluster = clusterById.get(v.id)
-    if (!at) return []
-    const size: NodeSize = {
-      width: widths.get(v.id) ?? type.minWidth,
-      height: type.height,
-      font: type.font,
-    }
-    const common = {
-      id: v.id,
-      position: at,
-      initialWidth: size.width,
-      initialHeight: size.height,
-      style: {
-        transition: reducedMotion ? 'none' : 'transform 240ms ease-out',
-      },
-      data: {
-        size,
-        strong,
-        ontology: ONTOLOGY,
-        dimmed: focusMode && !v.onPath,
-        active: v.id === active,
-        reducedMotion,
-        onFocusNode: setActiveId,
-      },
-    }
-    if (v.kind === 'entity' && node)
-      return [{ ...common, type: 'entity', data: { ...common.data, node } }]
-    if (cluster)
-      return [{ ...common, type: 'cluster', data: { ...common.data, cluster } }]
-    return []
-  })
-
-  const edges: RelationshipFlowEdge[] = visible.edges.flatMap((edge) => {
-    const route = routes.get(edge.id)
-    return route
-      ? [
-          {
-            id: edge.id,
-            source: edge.source,
-            target: edge.target,
-            type: 'relationship' as const,
-            focusable: false,
-            selectable: false,
-            data: {
-              label: tagText(edge),
-              state: edge.state,
-              onPath: edge.onPath,
-              addedByOntology: edge.added,
-              dimmed: focusMode && !edge.onPath,
-              points: route.points,
-              tag: route.tag,
-              route: route.kind,
-              font: type.font,
-              strong,
-              ontology: ONTOLOGY,
-              arrows,
-            },
+  // Rebuilt only when what they draw changes: the library keeps what it has
+  // measured of a node while the node object is the one it was given, and
+  // this component renders for reasons that do not touch the drawing.
+  const nodes = useMemo(
+    (): GraphFlowNode[] =>
+      visible.nodes.flatMap((v): GraphFlowNode[] => {
+        const at = positions.get(v.id)
+        const node = byId.get(v.nodeId)
+        const cluster = clusterById.get(v.id)
+        if (!at) return []
+        const size: NodeSize = {
+          width: widths.get(v.id) ?? type.minWidth,
+          height: type.height,
+          font: type.font,
+        }
+        const common = {
+          id: v.id,
+          position: at,
+          initialWidth: size.width,
+          initialHeight: size.height,
+          style: {
+            transition: reducedMotion ? 'none' : 'transform 240ms ease-out',
           },
-        ]
-      : []
-  })
+          data: {
+            size,
+            strong,
+            ontology: ONTOLOGY,
+            dimmed: focusMode && !v.onPath,
+            active: v.id === active,
+            reducedMotion,
+            onFocusNode: setActiveId,
+          },
+        }
+        if (v.kind === 'entity' && node)
+          return [{ ...common, type: 'entity', data: { ...common.data, node } }]
+        if (cluster)
+          return [
+            { ...common, type: 'cluster', data: { ...common.data, cluster } },
+          ]
+        return []
+      }),
+    [
+      visible,
+      positions,
+      byId,
+      clusterById,
+      widths,
+      type,
+      strong,
+      focusMode,
+      active,
+      reducedMotion,
+    ],
+  )
+
+  // The library draws an edge once it has measured both its nodes' handles. A
+  // run of fast changes can leave it with none measured and no size change to
+  // prompt it again, so the nodes are measured again whenever they change.
+  const updateNodeInternals = useUpdateNodeInternals()
+  useEffect(() => {
+    if (nodes.length > 0) updateNodeInternals(nodes.map((n) => n.id))
+  }, [nodes, updateNodeInternals])
+
+  const edges = useMemo(
+    (): RelationshipFlowEdge[] =>
+      visible.edges.flatMap((edge) => {
+        const route = routes.get(edge.id)
+        return route
+          ? [
+              {
+                id: edge.id,
+                source: edge.source,
+                target: edge.target,
+                type: 'relationship' as const,
+                focusable: false,
+                selectable: false,
+                data: {
+                  label: tagText(edge),
+                  state: edge.state,
+                  onPath: edge.onPath,
+                  addedByOntology: edge.added,
+                  dimmed: focusMode && !edge.onPath,
+                  points: route.points,
+                  tag: route.tag,
+                  route: route.kind,
+                  font: type.font,
+                  strong,
+                  ontology: ONTOLOGY,
+                  arrows,
+                },
+              },
+            ]
+          : []
+      }),
+    [visible, routes, focusMode, type, strong, arrows],
+  )
 
   const focusNode = (id: string) => {
     setActiveId(id)
@@ -672,7 +722,7 @@ function Canvas(props: GraphCanvasProps) {
   // legible, not the library's, which would zoom out as far as it can.
   const refit = () => {
     autoFit.current = true
-    fit()
+    void fit()
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -704,6 +754,7 @@ function Canvas(props: GraphCanvasProps) {
       aria-label={label}
       aria-describedby={pathListId ? `${summaryId} ${pathListId}` : summaryId}
       aria-busy={!laidOut && failure === null}
+      data-layout-ready={ready ? 'true' : 'false'}
       className="flex h-full min-h-64 w-full flex-col rounded-card border border-border bg-surface"
       onKeyDown={onKeyDown}
     >

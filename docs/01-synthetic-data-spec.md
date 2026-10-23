@@ -25,12 +25,12 @@ Section 7 no longer applies to business concepts.
 
 **Profiles.**
 
-| Profile | Players | Tickets | Incidents | Campaigns per market | Experiments |
-|---|---|---|---|---|---|
-| tiny | 200 | 2,000 | 25 | 3 | 6 |
-| dev | 10,000 | 250,000 | 40 | 4 | 8 |
-| demo | 100,000 | 5,000,000 | 120 | 6 | 12 |
-| stress | 1,000,000 | 50,000,000 | 400 | 8 | 16 |
+| Profile | Players   | Tickets    | Incidents | Campaigns per market | Experiments |
+| ------- | --------- | ---------- | --------- | -------------------- | ----------- |
+| tiny    | 200       | 2,000      | 25        | 3                    | 6           |
+| dev     | 10,000    | 250,000    | 40        | 4                    | 8           |
+| demo    | 100,000   | 5,000,000  | 120       | 6                    | 12          |
+| stress  | 1,000,000 | 50,000,000 | 400       | 8                    | 16          |
 
 The remaining volumes (sessions, exposures, retailers, devices, support cases, documents) are in `app/datasets/config.py`.
 The catalogue stays at 20 games for every profile.

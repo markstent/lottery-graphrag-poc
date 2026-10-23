@@ -11,6 +11,7 @@ Layers:
 7. live-model benchmark
 
 Critical logic:
+
 - deterministic generation
 - truth isolation
 - scoring

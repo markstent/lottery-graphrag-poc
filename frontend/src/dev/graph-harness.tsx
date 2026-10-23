@@ -70,8 +70,8 @@ export default function GraphHarness({ query }: { query?: string }) {
   const page = (
     <div
       className={`flex flex-col gap-3 bg-background p-4 ${
-        embedded ? 'h-[56rem]' : inShell ? 'h-[calc(100vh-8rem)]' : 'h-screen'
-      }`}
+        presentation ? 'presentation' : ''
+      } ${embedded ? 'h-[56rem]' : inShell ? 'h-[calc(100vh-8rem)]' : 'h-screen'}`}
     >
       <header className="flex flex-wrap items-center gap-4 text-sm">
         <h1 className="font-semibold">Graph canvas</h1>

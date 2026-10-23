@@ -46,37 +46,37 @@ Base path:
 Every route is under `/api/v1`.
 This table is the route list as built; it matches the application's OpenAPI schema (`create_app().openapi()`), and each route is described in the section named in the last column.
 
-| Method | Path | Response | Described in |
-|---|---|---|---|
-| GET | `/health` | `HealthResponse {status, version}` | section 20, "Health and readiness" |
-| GET | `/health/ready` | `Readiness {ready, checks}` (503 when a check fails) | section 20, "Health and readiness" |
-| POST | `/queries` | `QueryAccepted` (202) | sections 4 and 5 |
-| GET | `/queries` | `RunHistory` | section 5, "Run history and cancellation" |
-| GET | `/queries/{run_id}` | `QueryResults` | section 5 |
-| POST | `/queries/{run_id}/cancel` | `RunSummary` (202) | section 5, "Run history and cancellation" |
-| GET | `/queries/{run_id}/events` | `EventStream` | section 15 |
-| GET | `/queries/{run_id}/events/stream` | server-sent events | section 6 |
-| GET | `/demo/questions` | `list[DemoQuestion]` | section 5, "Bank questions and live scoring" |
-| GET | `/benchmarks` | `list[BenchmarkRunOut]` | section 20, "Benchmark reads" |
-| GET | `/benchmarks/latest` | `BenchmarkSummary` | section 20, "Benchmark reads" |
-| GET | `/benchmarks/questions` | `list[QuestionOut]` | section 20, "Benchmark reads" |
-| GET | `/benchmarks/{run_id}` | `BenchmarkSummary` | section 20, "Benchmark reads" |
-| POST | `/benchmarks` | `BenchmarkJob` (202) | section 20, "Benchmark jobs and the shared graph" |
-| GET | `/benchmarks/jobs/{job_id}` | `BenchmarkJob` | section 20, "Benchmark jobs and the shared graph" |
-| POST | `/benchmarks/jobs/{job_id}/cancel` | `BenchmarkJob` (202) | section 20, "Benchmark jobs and the shared graph" |
-| GET | `/datasets` | `list[DatasetSummary]` | section 20, "Data Model reads" |
-| GET | `/datasets/{dataset_id}` | `DatasetDetail` | section 20, "Data Model reads" |
-| GET | `/datasets/{dataset_id}/dictionary` | `list[TableSchemaOut]` | section 20, "Data Model reads" |
-| GET | `/datasets/{dataset_id}/tables/{table}/rows` | `RowPage` | section 20, "Data Model reads" |
-| GET | `/datasets/{dataset_id}/tables/{table}/rows/{row_id}` | `RecordOut` | section 20, "Data Model reads" |
-| GET | `/graph/schema` | `GraphSchema` | section 20, "Graph reads" |
-| GET | `/graph/stats` | `GraphStats` | section 20, "Graph reads" |
-| GET | `/graph/nodes/{node_id}` | `NodeOut` | section 20, "Graph reads" |
-| GET | `/graph/nodes/{node_id}/neighbours` | `Neighbours` | section 20, "Graph reads" |
-| GET | `/ontology` | `OntologyOut` | section 20, "Reference reads" |
-| GET | `/ontology/concepts/{concept_id}/members` | `list[MemberOut]` | section 20, "Reference reads" |
-| GET | `/scenarios` | `list[ScenarioOut]` | section 20, "Reference reads" |
-| GET | `/models` | `ModelsOut` | section 20, "Reference reads" |
+| Method | Path                                                  | Response                                             | Described in                                      |
+| ------ | ----------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------- |
+| GET    | `/health`                                             | `HealthResponse {status, version}`                   | section 20, "Health and readiness"                |
+| GET    | `/health/ready`                                       | `Readiness {ready, checks}` (503 when a check fails) | section 20, "Health and readiness"                |
+| POST   | `/queries`                                            | `QueryAccepted` (202)                                | sections 4 and 5                                  |
+| GET    | `/queries`                                            | `RunHistory`                                         | section 5, "Run history and cancellation"         |
+| GET    | `/queries/{run_id}`                                   | `QueryResults`                                       | section 5                                         |
+| POST   | `/queries/{run_id}/cancel`                            | `RunSummary` (202)                                   | section 5, "Run history and cancellation"         |
+| GET    | `/queries/{run_id}/events`                            | `EventStream`                                        | section 15                                        |
+| GET    | `/queries/{run_id}/events/stream`                     | server-sent events                                   | section 6                                         |
+| GET    | `/demo/questions`                                     | `list[DemoQuestion]`                                 | section 5, "Bank questions and live scoring"      |
+| GET    | `/benchmarks`                                         | `list[BenchmarkRunOut]`                              | section 20, "Benchmark reads"                     |
+| GET    | `/benchmarks/latest`                                  | `BenchmarkSummary`                                   | section 20, "Benchmark reads"                     |
+| GET    | `/benchmarks/questions`                               | `list[QuestionOut]`                                  | section 20, "Benchmark reads"                     |
+| GET    | `/benchmarks/{run_id}`                                | `BenchmarkSummary`                                   | section 20, "Benchmark reads"                     |
+| POST   | `/benchmarks`                                         | `BenchmarkJob` (202)                                 | section 20, "Benchmark jobs and the shared graph" |
+| GET    | `/benchmarks/jobs/{job_id}`                           | `BenchmarkJob`                                       | section 20, "Benchmark jobs and the shared graph" |
+| POST   | `/benchmarks/jobs/{job_id}/cancel`                    | `BenchmarkJob` (202)                                 | section 20, "Benchmark jobs and the shared graph" |
+| GET    | `/datasets`                                           | `list[DatasetSummary]`                               | section 20, "Data Model reads"                    |
+| GET    | `/datasets/{dataset_id}`                              | `DatasetDetail`                                      | section 20, "Data Model reads"                    |
+| GET    | `/datasets/{dataset_id}/dictionary`                   | `list[TableSchemaOut]`                               | section 20, "Data Model reads"                    |
+| GET    | `/datasets/{dataset_id}/tables/{table}/rows`          | `RowPage`                                            | section 20, "Data Model reads"                    |
+| GET    | `/datasets/{dataset_id}/tables/{table}/rows/{row_id}` | `RecordOut`                                          | section 20, "Data Model reads"                    |
+| GET    | `/graph/schema`                                       | `GraphSchema`                                        | section 20, "Graph reads"                         |
+| GET    | `/graph/stats`                                        | `GraphStats`                                         | section 20, "Graph reads"                         |
+| GET    | `/graph/nodes/{node_id}`                              | `NodeOut`                                            | section 20, "Graph reads"                         |
+| GET    | `/graph/nodes/{node_id}/neighbours`                   | `Neighbours`                                         | section 20, "Graph reads"                         |
+| GET    | `/ontology`                                           | `OntologyOut`                                        | section 20, "Reference reads"                     |
+| GET    | `/ontology/concepts/{concept_id}/members`             | `list[MemberOut]`                                    | section 20, "Reference reads"                     |
+| GET    | `/scenarios`                                          | `list[ScenarioOut]`                                  | section 20, "Reference reads"                     |
+| GET    | `/models`                                             | `ModelsOut`                                          | section 20, "Reference reads"                     |
 
 Errors, statuses and bounds common to all routes are in section 11 and section 21.
 The routes the first design listed and the build does not have are named at the end of section 20.
@@ -101,7 +101,7 @@ markets. Entries are two-letter codes (`UK`, `GR`, `AT`, `CZ`) or full ids
 (`MKT_UK`); unknown markets are rejected with 422 and an empty list means
 all markets. The scope is applied identically to every requested pipeline:
 
-- the document channel performs the vector search *within* the scope (the
+- the document channel performs the vector search _within_ the scope (the
   top-k is computed over in-scope chunks only, never cropped afterwards);
   chunks and record blocks without a market are shared evidence and stay in
   scope;
@@ -141,11 +141,11 @@ Each pipeline's result appears in `results` as soon as that pipeline finishes, s
   "status": "running",
   "configurations": ["A", "B", "C"],
   "market_scope": ["MKT_GR"],
-  "pipeline_status": {"A": "completed", "B": "running", "C": "pending"},
+  "pipeline_status": { "A": "completed", "B": "running", "C": "pending" },
   "created_at": "2026-10-20T10:00:00.000000+00:00",
   "finished_at": null,
   "error": null,
-  "results": {"A": {}}
+  "results": { "A": {} }
 }
 ```
 
@@ -177,7 +177,10 @@ Cancelling a finished run is a 409 `CONFLICT`; an unknown run is a 404 `NOT_FOUN
 ### Bank questions and live scoring (Phase 4)
 
 ```json
-{"benchmark_instance_id": "L05-2026-INC_S007_GR", "configurations": ["A", "B", "C"]}
+{
+  "benchmark_instance_id": "L05-2026-INC_S007_GR",
+  "configurations": ["A", "B", "C"]
+}
 ```
 
 `benchmark_instance_id` names an instance of the presentation world's frozen bank (`make ground-bank`; the bank is named after the dataset directory, and `make ground-demo-bank` grounds the demo world).
@@ -198,7 +201,12 @@ A bank question runs with the instance's own market scope, or unscoped when the 
     "instance_id": "L05-2026-INC_S007_GR",
     "label": "scored against the answer key",
     "per_pipeline": {
-      "A": {"answer": 1.0, "evidence_f1": 0.5, "anchor_resolution": 1.0, "failure_class": null}
+      "A": {
+        "answer": 1.0,
+        "evidence_f1": 0.5,
+        "anchor_resolution": 1.0,
+        "failure_class": null
+      }
     }
   }
 }
@@ -473,7 +481,13 @@ A failed run carries its code in the `run.failed` payload and in the run's `erro
 Any other failure is an HTTP error with the same fields in an `error` object:
 
 ```json
-{"error": {"error_code": "NOT_FOUND", "message": "unknown run_id", "retryable": false}}
+{
+  "error": {
+    "error_code": "NOT_FOUND",
+    "message": "unknown run_id",
+    "retryable": false
+  }
+}
 ```
 
 Example:
@@ -600,10 +614,10 @@ Its tiny-world companion in the same file needs only `GRAPH_E2E=1` and does wipe
 Three flags switch the live tests on.
 CI sets `GRAPH_E2E` and `VECTOR_E2E`, which have services in CI, and never `LIVE_WORLD_E2E`.
 
-| Flag | Tests it enables |
-|---|---|
-| `GRAPH_E2E=1` | tests that use Neo4j; several wipe and re-ingest it |
-| `VECTOR_E2E=1` | tests that use Qdrant |
+| Flag               | Tests it enables                                                                                                                                                                                                                                                                              |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GRAPH_E2E=1`      | tests that use Neo4j; several wipe and re-ingest it                                                                                                                                                                                                                                           |
+| `VECTOR_E2E=1`     | tests that use Qdrant                                                                                                                                                                                                                                                                         |
 | `LIVE_WORLD_E2E=1` | tests that need the presentation world (generated, ingested, indexed, grounded), its bank, its ledger or Ollama: `test_benchmark_live.py`, the presentation test in `test_api_live.py`, the live test in `test_api_graph_model.py` and the `dev_world` tests in `test_benchmark_grounding.py` |
 
 A test whose flag is unset is skipped, and CI runs pytest with `-rs` so every skip and its reason is listed.
@@ -818,17 +832,17 @@ The first design listed these routes; the application does not have them:
 Every error body is `{"error": {error_code, message, retryable}}` (section 11).
 Messages are curated sentences; library text, service addresses and stack traces go to the server log only.
 
-| Status | Code | When |
-|---|---|---|
-| 404 | `NOT_FOUND` | an unknown run, job, dataset, table row, node, concept, published benchmark run or statistics file |
-| 405 | `METHOD_NOT_ALLOWED` | a method the route does not have |
-| 409 | `CONFLICT` | cancelling a run or job that has finished; the graph is held by a benchmark job or a live run (the graph lease, retryable); the graph holds a different world than the active dataset; a record id that is not unique |
-| 4xx | `VALIDATION_ERROR` | any other client error the framework raises |
-| 422 | `VALIDATION_ERROR` | a body or parameter that fails validation, including unknown fields, a limit above its maximum, an unknown market, table, column or relationship type, a malformed cursor or resume point, and a bank question sent with other text or scope |
-| 500 | `RUN_ERROR` | an unexpected failure; the body is the generic sentence and the cause is in the log |
-| 503 | `CONFIGURATION_ERROR` | the question bank has not been grounded, or it does not match the active world (`make ground-bank`); a run of B or C while the graph holds another world (`make ingest-graph`) |
-| 503 | `GRAPH_QUERY_ERROR` | Neo4j is unreachable or busy (retryable); other Neo4j failures are 500 |
-| 503 | readiness body | `GET /health/ready` with a failed check; the body is `Readiness`, not an error object |
+| Status | Code                  | When                                                                                                                                                                                                                                         |
+| ------ | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 404    | `NOT_FOUND`           | an unknown run, job, dataset, table row, node, concept, published benchmark run or statistics file                                                                                                                                           |
+| 405    | `METHOD_NOT_ALLOWED`  | a method the route does not have                                                                                                                                                                                                             |
+| 409    | `CONFLICT`            | cancelling a run or job that has finished; the graph is held by a benchmark job or a live run (the graph lease, retryable); the graph holds a different world than the active dataset; a record id that is not unique                        |
+| 4xx    | `VALIDATION_ERROR`    | any other client error the framework raises                                                                                                                                                                                                  |
+| 422    | `VALIDATION_ERROR`    | a body or parameter that fails validation, including unknown fields, a limit above its maximum, an unknown market, table, column or relationship type, a malformed cursor or resume point, and a bank question sent with other text or scope |
+| 500    | `RUN_ERROR`           | an unexpected failure; the body is the generic sentence and the cause is in the log                                                                                                                                                          |
+| 503    | `CONFIGURATION_ERROR` | the question bank has not been grounded, or it does not match the active world (`make ground-bank`); a run of B or C while the graph holds another world (`make ingest-graph`)                                                               |
+| 503    | `GRAPH_QUERY_ERROR`   | Neo4j is unreachable or busy (retryable); other Neo4j failures are 500                                                                                                                                                                       |
+| 503    | readiness body        | `GET /health/ready` with a failed check; the body is `Readiness`, not an error object                                                                                                                                                        |
 
 `GRAPH_QUERY_ERROR` and the model, embedding and vector codes are also the codes a failed run carries (sections 6 and 11).
 Every response carries `X-Request-ID`: the client's value when it is 1 to 64 letters, digits or hyphens, else a generated one; the same id is on that request's log lines.
@@ -836,18 +850,18 @@ Cross-origin calls are allowed for `CORS_ORIGINS` with the methods GET and POST 
 
 ### Bounds
 
-| Where | Bound |
-|---|---|
-| `POST /queries` | `question` 1 to 2000 characters; `configurations` from A, B and C; `market_scope` entries are known markets |
-| `GET /queries` | `limit` 1 to 100, default 20; a larger value is a 422; `status` is one of `queued`, `running`, `completed`, `failed` or `cancelled`, otherwise a 422 |
-| `GET /queries/{run_id}/events/stream` | resume point a non-negative integer of at most 2^63 - 1; heartbeat every `SSE_HEARTBEAT_S` |
-| `GET .../tables/{table}/rows` | `limit` at most 200, default 50; `offset` 0 to 2^63 - 1, default 0; `column` and `value` together |
-| `GET /graph/nodes/{node_id}/neighbours` | `limit` 1 to 100, default 25 |
-| Graph traversal | depth, nodes per hop, edges per node type and total nodes are the `GRAPH_*` settings, shown by `GET /graph/schema` |
-| Neo4j reads | one statement each, under `NEO4J_TIMEOUT_S` |
-| Model calls | `GENERATION_TIMEOUT_S` per gateway call |
-| Run store | `RUN_RETENTION` finished live runs |
-| Graph lease | one benchmark job, or any number of live runs, at a time; never both |
+| Where                                   | Bound                                                                                                                                                |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /queries`                         | `question` 1 to 2000 characters; `configurations` from A, B and C; `market_scope` entries are known markets                                          |
+| `GET /queries`                          | `limit` 1 to 100, default 20; a larger value is a 422; `status` is one of `queued`, `running`, `completed`, `failed` or `cancelled`, otherwise a 422 |
+| `GET /queries/{run_id}/events/stream`   | resume point a non-negative integer of at most 2^63 - 1; heartbeat every `SSE_HEARTBEAT_S`                                                           |
+| `GET .../tables/{table}/rows`           | `limit` at most 200, default 50; `offset` 0 to 2^63 - 1, default 0; `column` and `value` together                                                    |
+| `GET /graph/nodes/{node_id}/neighbours` | `limit` 1 to 100, default 25                                                                                                                         |
+| Graph traversal                         | depth, nodes per hop, edges per node type and total nodes are the `GRAPH_*` settings, shown by `GET /graph/schema`                                   |
+| Neo4j reads                             | one statement each, under `NEO4J_TIMEOUT_S`                                                                                                          |
+| Model calls                             | `GENERATION_TIMEOUT_S` per gateway call                                                                                                              |
+| Run store                               | `RUN_RETENTION` finished live runs                                                                                                                   |
+| Graph lease                             | one benchmark job, or any number of live runs, at a time; never both                                                                                 |
 
 No limit is clamped silently: a value outside its bound is a 422.
 

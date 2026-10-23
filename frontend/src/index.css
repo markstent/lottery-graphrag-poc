@@ -110,8 +110,9 @@ body {
 }
 
 /* Presentation mode raises the type scale by one step: every size takes the
-   value of the next one up (the largest grows by the same ratio). */
-:root.presentation {
+   value of the next one up (the largest grows by the same ratio). The class is on
+   the root in the application and on a wrapper in the development pages. */
+.presentation {
   --text-xs: 0.875rem;
   --text-sm: 1rem;
   --text-base: 1.25rem;
@@ -189,6 +190,14 @@ body {
 
 .panel-reveal {
   animation: panel-reveal var(--duration-result) ease-out;
+}
+
+/* A chart that is updating dims its marks, never its text, so every label
+   keeps its contrast. */
+.chart-updating [data-mark='bar'],
+.chart-updating [data-mark='interval'],
+.chart-updating [data-mark='mean'] {
+  opacity: 0.5;
 }
 
 /* Chart marks: the transparent hit area of a mark lifts to a wash on hover and

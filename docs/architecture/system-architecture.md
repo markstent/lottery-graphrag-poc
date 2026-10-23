@@ -59,14 +59,14 @@ Define the component structure, data flows and storage boundaries for the POC. D
 
 ## 5. Storage layout
 
-| Concern | Store | Location |
-|---|---|---|
-| Structured facts (authoritative) | Parquet + DuckDB | `data/generated/` |
-| Document corpus and chunks | Parquet/JSON artefacts | `data/generated/` |
-| Vector index | Qdrant collection | service (Compose volume) |
-| Semantic entities, relationships, ontology, provenance | Neo4j | service (Compose volume) |
-| Runs, events, evidence, results, reproducibility | SQLite | `data/app.db` |
-| Evaluator-only scenario truth | JSON ledger | `data/truth/` (isolated, ADR-008) |
+| Concern                                                | Store                  | Location                          |
+| ------------------------------------------------------ | ---------------------- | --------------------------------- |
+| Structured facts (authoritative)                       | Parquet + DuckDB       | `data/generated/`                 |
+| Document corpus and chunks                             | Parquet/JSON artefacts | `data/generated/`                 |
+| Vector index                                           | Qdrant collection      | service (Compose volume)          |
+| Semantic entities, relationships, ontology, provenance | Neo4j                  | service (Compose volume)          |
+| Runs, events, evidence, results, reproducibility       | SQLite                 | `data/app.db`                     |
+| Evaluator-only scenario truth                          | JSON ledger            | `data/truth/` (isolated, ADR-008) |
 
 All of `data/` is gitignored; worlds are reproducible from seeds and configuration, not from checked-in artefacts.
 
@@ -89,13 +89,13 @@ One FastAPI process hosts the API, orchestrator, pipelines, recording sink, run 
 
 ## 9. Known risks and mitigations
 
-| Risk | Mitigation |
-|---|---|
+| Risk                                                             | Mitigation                                                                                                                                                 |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Demo-profile volumes (5m tickets) strain laptop generation/query | Dev profile is the default for engineering; Demo benchmark run is a deliberate, timed operation; DuckDB aggregation verified at Demo scale before Phase 10 |
-| SSE buffered by proxies kills live animation | Direct localhost/first-hop deployment for presentations; heartbeat events keep connections warm |
-| Local model quality variance across runs | Temperature 0, seeded generation, recorded model identifiers; CI uses deterministic fake adapters |
-| SQLite write contention during long runs | Single writer (recorder) with WAL; events batched per stage |
-| Evaluator/truth leakage | ADR-008 enforcement tests in CI; treat any failure as a critical defect |
+| SSE buffered by proxies kills live animation                     | Direct localhost/first-hop deployment for presentations; heartbeat events keep connections warm                                                            |
+| Local model quality variance across runs                         | Temperature 0, seeded generation, recorded model identifiers; CI uses deterministic fake adapters                                                          |
+| SQLite write contention during long runs                         | Single writer (recorder) with WAL; events batched per stage                                                                                                |
+| Evaluator/truth leakage                                          | ADR-008 enforcement tests in CI; treat any failure as a critical defect                                                                                    |
 
 ## 10. Supersessions
 

@@ -151,6 +151,19 @@ describe('header', () => {
     expect(within(header).getAllByRole('button')).toHaveLength(3)
   })
 
+  it('shows presentation mode as on with a filled button and the word On', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    const toggle = screen.getByRole('button', { name: 'Presentation mode' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'false')
+    expect(toggle).not.toHaveTextContent('On')
+    await user.click(toggle)
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    expect(toggle).toHaveTextContent('On')
+    expect(toggle).toHaveClass('bg-text-primary')
+    window.history.replaceState(null, '', '/')
+  })
+
   it('says Starting while the lab builds, and Not ready when a check fails', async () => {
     stubApi({
       ...SHELL_API,
@@ -293,6 +306,10 @@ describe('Settings', () => {
     expect(await value('Ontology version')).toHaveTextContent('2.0.0')
     expect(await value('Answer model')).toHaveTextContent('qwen3:8b')
     expect(await value('Embedding model')).toHaveTextContent('bge-m3')
+    // The status never breaks across lines.
+    expect(await within(dialog).findByText('Not checked')).toHaveClass(
+      'whitespace-nowrap',
+    )
     const labels = within(dialog)
       .getAllByRole('term')
       .map((term) => term.textContent)

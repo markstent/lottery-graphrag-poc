@@ -61,18 +61,6 @@ export function GraphLegend({
       </li>
       {id === 'C' && ontologyAdded ? (
         <li className="flex items-center gap-2">
-          <svg aria-hidden="true" width={W} height={H}>
-            <rect
-              x={1}
-              y={1}
-              width={W - 2}
-              height={H - 2}
-              rx={4}
-              fill={ontology.tint}
-              stroke={ontology.hue}
-              strokeWidth={2}
-            />
-          </svg>
           <span
             className="rounded-chip border px-1.5 font-semibold"
             style={{

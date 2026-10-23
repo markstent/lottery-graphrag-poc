@@ -5,6 +5,7 @@
 **Reason:** Runtime access is read-heavy and analytical (ticket counts, conversion rates, incident correlations, KPI questions). DuckDB answers these aggregations quickly at Dev (250k tickets), Demo (5m) and Stress (50m) scale on laptop hardware. Generation is deterministic batch output, which maps directly to Parquet files. DuckDB adds zero services to run: no extra container, server or credential surface, keeping the POC lean.
 
 **Consequences:**
+
 - Configuration A performs "SQL/API-style retrieval" as SQL over DuckDB views of the Parquet datasets.
 - Graph ingestion, vector ingestion and document generation all read the same Parquet artefacts.
 - Parquet datasets are the canonical generated artefact under `data/generated/` (gitignored); regeneration replaces files atomically.

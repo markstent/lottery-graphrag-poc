@@ -34,13 +34,13 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 
 ## How to read a trace
 
-- *selected context*: how many graph nodes, record blocks and document chunks the one selection placed in context; for A and the shared document channel, each block with its kind (`chunk` for document text, `record` for a table row), fused score, dense and sparse ranks, cross-encoder score and final rank.
-- *resolved entities* (B, C): resolver output with its origin; concept-bound entities name the concept they came through (`via_concept`).
-- *graph.query.expanded* (C): how many concept terms were added to the search text.
-- *discovered via_concept* (C): nodes reached through ontology expansion, grouped by the concept that bound them.
-- *selected node evidence*: graph nodes chosen as evidence with hop distance, relationship, graph score components, cross-encoder score and authoritative facts.
-- *events*: counts of the structured telemetry stream that drives the UI.
-- *Answer*: the parsed verdict, the prose answer and the cited context blocks.
+- _selected context_: how many graph nodes, record blocks and document chunks the one selection placed in context; for A and the shared document channel, each block with its kind (`chunk` for document text, `record` for a table row), fused score, dense and sparse ranks, cross-encoder score and final rank.
+- _resolved entities_ (B, C): resolver output with its origin; concept-bound entities name the concept they came through (`via_concept`).
+- _graph.query.expanded_ (C): how many concept terms were added to the search text.
+- _discovered via_concept_ (C): nodes reached through ontology expansion, grouped by the concept that bound them.
+- _selected node evidence_: graph nodes chosen as evidence with hop distance, relationship, graph score components, cross-encoder score and authoritative facts.
+- _events_: counts of the structured telemetry stream that drives the UI.
+- _Answer_: the parsed verdict, the prose answer and the cited context blocks.
 
 ---
 
@@ -149,7 +149,6 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 
 [fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_037, support_cases: SUP_00121 [1].
 
-
 ## L09: stratum H2
 
 **Question:** Which games in other markets belong to the same kind of game family as game GAME_AT_05?
@@ -254,7 +253,6 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 
 [fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: Post Incident Review: Authentication outage (INC_011), games: GAME_AT_05 [1].
 
-
 ## L01: stratum H3
 
 **Question:** What is the ticket price of game GAME_AT_04?
@@ -355,7 +353,6 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - cited blocks: [1] of 12 shown
 
 [fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: games: GAME_AT_04, games: GAME_GR_04 [1].
-
 
 ## L15: stratum H5
 
@@ -461,5 +458,3 @@ The evaluator truth ledger is not consulted anywhere in this pipeline.
 - cited blocks: [1] of 12 shown
 
 [fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: Incident Report: Αστάθεια εφαρμογής (INC_041), incidents: INC_041 [1].
-
-

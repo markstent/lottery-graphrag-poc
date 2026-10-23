@@ -109,6 +109,16 @@ const transformOf = (id: string) => {
 }
 
 describe('GraphCanvas', () => {
+  it('flags the canvas ready only once the layout is placed and the fit applied', async () => {
+    const view = viewAt('B')
+    render(canvas(view))
+    const group = screen.getByRole('group', { name: 'Evidence graph' })
+    await waitFor(() =>
+      expect(group).toHaveAttribute('data-layout-ready', 'true'),
+    )
+    expect(nodeButtons()).toHaveLength(view.nodes.length)
+  })
+
   it('draws one DOM node for each node of the view', async () => {
     const view = viewAt('B')
     expect(view.nodes).toHaveLength(41)

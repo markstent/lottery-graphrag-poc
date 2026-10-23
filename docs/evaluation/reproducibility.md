@@ -6,12 +6,12 @@ How answers are scored is in [scoring.md](scoring.md); how scores become compari
 
 ## Commands
 
-| Command | What it does |
-|---|---|
-| `make ground-bank` | Grounds bank 2.0.0 into the active world (`DATASET_DIR` with `TRUTH_LEDGER_PATH`) and writes `data/evaluation/bank/bank-2.0.0-<dataset directory name>.json`; `make ground-demo-bank` does the same for the demo world and `data/truth/ledger-demo.json`. |
-| `make run-smoke` | Scorer smoke test on seeds 2026, 2027 and 2028 with the fake generator and the fake judge. |
-| `make run-benchmark` | Official run on the same three seeds with three repeats; needs `GENERATION_PROVIDER=litellm` and `JUDGE_PROVIDER=litellm` with their models and families set. |
-| `make run-sweep` | The H1 depth sweep at depths 0, 1, 2 and 3 for B and C on the three seeds; needs a gateway judge. |
+| Command              | What it does                                                                                                                                                                                                                                              |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `make ground-bank`   | Grounds bank 2.0.0 into the active world (`DATASET_DIR` with `TRUTH_LEDGER_PATH`) and writes `data/evaluation/bank/bank-2.0.0-<dataset directory name>.json`; `make ground-demo-bank` does the same for the demo world and `data/truth/ledger-demo.json`. |
+| `make run-smoke`     | Scorer smoke test on seeds 2026, 2027 and 2028 with the fake generator and the fake judge.                                                                                                                                                                |
+| `make run-benchmark` | Official run on the same three seeds with three repeats; needs `GENERATION_PROVIDER=litellm` and `JUDGE_PROVIDER=litellm` with their models and families set.                                                                                             |
+| `make run-sweep`     | The H1 depth sweep at depths 0, 1, 2 and 3 for B and C on the three seeds; needs a gateway judge.                                                                                                                                                         |
 
 The Makefile targets call the CLI, which takes more options:
 
@@ -39,19 +39,19 @@ uv run python -m app.evaluation compare SMALL_RUN_DIR LARGE_RUN_DIR [--out DIR]
 An official run uses the dev profile on world seeds 2026, 2027 and 2028, one after the other, with the scenario seed equal to the world seed.
 Before each world is scored it is brought up to date:
 
-| Step | When it runs |
-|---|---|
-| Generate the world (`app.datasets`) | The world or its ledger is missing, or `_manifest.json` names another generator version, world seed or scenario seed. |
-| Ingest the graph (`app.graph --wipe`) | Every time, because Neo4j holds one world at a time. |
-| Index the vector collection (`app.retrieval.standard`) | The world was just generated, the collection is empty, or `vector-index.json` names another record serialiser version or collection. |
-| Ground and freeze the bank | The bank file is missing, fails its own hash, or names another bank version, world manifest hash, ledger hash or record serialiser version. |
+| Step                                                   | When it runs                                                                                                                                |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Generate the world (`app.datasets`)                    | The world or its ledger is missing, or `_manifest.json` names another generator version, world seed or scenario seed.                       |
+| Ingest the graph (`app.graph --wipe`)                  | Every time, because Neo4j holds one world at a time.                                                                                        |
+| Index the vector collection (`app.retrieval.standard`) | The world was just generated, the collection is empty, or `vector-index.json` names another record serialiser version or collection.        |
+| Ground and freeze the bank                             | The bank file is missing, fails its own hash, or names another bank version, world manifest hash, ledger hash or record serialiser version. |
 
 Where each seed lives:
 
-| Seed | World | Truth ledger | Frozen bank | Qdrant collection |
-|---|---|---|---|---|
+| Seed                | World                                                 | Truth ledger                                           | Frozen bank                                                     | Qdrant collection                                    |
+| ------------------- | ----------------------------------------------------- | ------------------------------------------------------ | --------------------------------------------------------------- | ---------------------------------------------------- |
 | 2026 (presentation) | `DATASET_DIR` (default `data/generated/dev-seed2026`) | `TRUTH_LEDGER_PATH` (default `data/truth/ledger.json`) | `data/evaluation/bank/bank-2.0.0-<dataset directory name>.json` | `QDRANT_COLLECTION` (default `semantic_context_lab`) |
-| 2027, 2028 | `data/generated/dev-seed{seed}` | `data/truth/dev-seed{seed}.json` | `data/evaluation/bank/bank-2.0.0-dev-seed{seed}.json` | `QDRANT_COLLECTION` plus `_seed{seed}` |
+| 2027, 2028          | `data/generated/dev-seed{seed}`                       | `data/truth/dev-seed{seed}.json`                       | `data/evaluation/bank/bank-2.0.0-dev-seed{seed}.json`           | `QDRANT_COLLECTION` plus `_seed{seed}`               |
 
 The presentation world is defined once, by `DATASET_DIR` and `TRUTH_LEDGER_PATH` (`world_paths(2026)`); the API, the post-job restore and `make ground-bank` all follow it, so the demo world is the same world with other values of the two variables.
 `TRUTH_LEDGER_PATH` is read only inside `app.evaluation`.
@@ -71,13 +71,13 @@ The run id is the start time in UTC followed by the run kind, `YYYYMMDDTHHMMSSZ-
 Its fixed-width timestamp comes first, so run ids sort in time order as plain text, and it holds only digits, letters and hyphens, so it is safe as a file name on every system.
 A run refuses a directory that already holds a run.
 
-| File | Written by | Contents |
-|---|---|---|
-| `results.json` | `run` | The selection, the record, and per world every instance, every repeat of every pipeline (answer, shown blocks, selected carriers, resolved ids, tokens, latency) and every score. |
-| `report.md` | `run`, `sweep` | The summary rendered as tables. |
-| `summary.json` | `run` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record (see [statistics.md](statistics.md)). |
-| `sweep.json` | `sweep` | Per depth: the H1 metrics per pipeline (B and C) and that depth's record; no test and no headline. |
-| `comparison.json` | `compare` | H7: large minus small per pipeline, stratum and metric, as clustered intervals. |
+| File              | Written by     | Contents                                                                                                                                                                          |
+| ----------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `results.json`    | `run`          | The selection, the record, and per world every instance, every repeat of every pipeline (answer, shown blocks, selected carriers, resolved ids, tokens, latency) and every score. |
+| `report.md`       | `run`, `sweep` | The summary rendered as tables.                                                                                                                                                   |
+| `summary.json`    | `run`          | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record (see [statistics.md](statistics.md)).                 |
+| `sweep.json`      | `sweep`        | Per depth: the H1 metrics per pipeline (B and C) and that depth's record; no test and no headline.                                                                                |
+| `comparison.json` | `compare`      | H7: large minus small per pipeline, stratum and metric, as clustered intervals.                                                                                                   |
 
 Each file is written to a temporary file in the same directory and then moved into place, so a reader never sees half a file.
 `summary.json` is written last.

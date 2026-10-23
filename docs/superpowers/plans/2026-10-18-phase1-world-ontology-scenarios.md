@@ -68,6 +68,7 @@ Deleted:
 ### Task 1: Relational contract module and named rows
 
 **Files:**
+
 - Create: `backend/app/datasets/schema.py`
 - Create: `backend/app/datasets/rows.py`
 - Modify: `backend/app/datasets/world.py` (import `TABLE_SCHEMAS`, `TABLE_PROVENANCE` from `schema`; delete the local copies)
@@ -75,6 +76,7 @@ Deleted:
 - Test: `backend/tests/test_rows.py`
 
 **Interfaces:**
+
 - Produces: `schema.TABLE_SCHEMAS: dict[str, str]`, `schema.TABLE_PROVENANCE: dict[str, tuple[str, str]]`, `schema.FOREIGN_KEYS: tuple[ForeignKey, ...]` with `ForeignKey(child_table: str, child_column: str, parent_table: str, nullable: bool)`, `schema.ID_FORMATS: dict[str, str]` mapping table to a format string such as `"INC_{n:03d}"`, `schema.column_names(table: str) -> list[str]`, `schema.column_index(table: str, column: str) -> int`.
 - Produces: `rows.<Table>Row` NamedTuple classes named in PascalCase singular (`MarketRow`, `GameRow`, `TicketRow`, `DocumentChunkRow`, ...) and `rows.ROW_TYPES: dict[str, type[tuple]]` keyed by table name.
 - New tables in `TABLE_SCHEMAS` (added here, populated in later tasks):
@@ -135,11 +137,13 @@ git commit -m "feat(datasets): relational contract module with named rows and fo
 ### Task 2: Distribution constants and profile volumes
 
 **Files:**
+
 - Create: `backend/app/datasets/distributions.py`
 - Modify: `backend/app/datasets/config.py` (`GENERATOR_VERSION = "0.2.0"`; `ProfileVolumes` gains `incidents: int`, `campaigns_per_market: int`, `experiments: int`)
 - Test: `backend/tests/test_determinism.py` (extend)
 
 **Interfaces:**
+
 - Produces: module-level constants, each with a one-line comment stating what it shapes. Exact names and values:
   - `SECOND_DEVICE_SHARE = 0.08`, `SHARED_PAYMENT_SHARE = 0.04`, `SHARED_PAYMENT_POOL_SIZE = 80`
   - `VALUE_SEGMENT_WEIGHTS = (0.10, 0.55, 0.35)`, `ENGAGEMENT_SEGMENT_WEIGHTS = (0.30, 0.45, 0.25)`
@@ -195,11 +199,13 @@ git commit -m "feat(datasets): documented distribution constants and v2 profile 
 ### Task 3: Market-local taxonomies
 
 **Files:**
+
 - Create: `backend/app/datasets/taxonomies.py`
 - Modify: `backend/app/datasets/master_data.py` (remove `GAME_FAMILIES`, `GAME_CATEGORIES`, `GAME_MECHANICS`, `PLAYER_SEGMENTS`, `INCIDENT_CATEGORIES`, `SUPPORT_CATEGORIES`, `BUSINESS_CONCEPTS`, `MARKET_SPLIT`; re-point `GAME_SPECS` to local codes)
 - Test: `backend/tests/test_taxonomies.py`
 
 **Interfaces:**
+
 - Produces, all as tuples of the `rows` NamedTuples from Task 1:
   - `GAME_FAMILIES: tuple[GameFamilyRow, ...]`
   - `GAME_CATEGORIES: tuple[GameCategoryRow, ...]`
@@ -280,10 +286,12 @@ git commit -m "feat(datasets): market-local taxonomies with local-language names
 ### Task 4: Entities generator on named rows and local taxonomies
 
 **Files:**
+
 - Modify: `backend/app/datasets/entities.py`
 - Test: `backend/tests/test_validation.py` (extend), `backend/tests/test_determinism.py`
 
 **Interfaces:**
+
 - `generate_master_rows() -> dict[str, list[tuple]]` now returns `markets, regions, currencies, languages, channels, suppliers, game_families, game_categories, game_mechanics, incident_types, support_categories, player_segments, payment_providers` built from `master_data` and `taxonomies` (no literal duplicates of market data).
 - `generate_players_and_devices(rng, players_total, devices_total) -> dict[str, list[tuple]]` unchanged signature; players get `value_segment` and `engagement_segment` from `taxonomies.segments_for(code, kind)` with `distributions.VALUE_SEGMENT_WEIGHTS` and `ENGAGEMENT_SEGMENT_WEIGHTS`; every payment method row has a `provider_id` drawn from `distributions.PROVIDER_MIX[code]`; the shared pool (`PAY_SHARED_000` to `PAY_SHARED_079`) is emitted as real `payment_methods` rows with `provider_id = "PP_BLUEHARBOR"`, `payment_type = "WALLET"`, `created_at = WINDOW_START` midnight.
 - All rows are `rows.*Row` instances.
@@ -331,10 +339,12 @@ git commit -m "feat(datasets): entities on named rows, local segments, real paym
 ### Task 5: Activity, operations and marketing generators on named rows
 
 **Files:**
+
 - Modify: `backend/app/datasets/activity.py`, `operations.py`, `marketing.py`, `validation.py`
 - Test: `backend/tests/test_validation.py`
 
 **Interfaces:**
+
 - `activity.generate_draws(rng, games: list[GameRow]) -> list[DrawRow]`; base jackpot chosen by `game.jackpot_type_code` (`PROGRESSIVE` and multinational families keep today's amounts) rather than by family string matching; `activity._weighted_players` reads `distributions.ENGAGEMENT_ACTIVITY_BOOST[kind]` where kind comes from the segment's position in `segments_for(market, "ENGAGEMENT")` (index 0 engaged, 1 casual, 2 dormant); prize tiers use `master_data.PRIZE_TYPES` weights and multipliers (delete the duplicated tuple in `activity`).
 - `operations.generate_incidents(rng, platforms, platform_versions, app_versions, games, total) -> tuple[list[IncidentRow], list[IncidentGameMapRow]]`; `incident_type` is `taxonomies.incident_type_for(market_id, canonical)` with the canonical kind from a `_CANONICAL_TYPE_BY_PLATFORM` map (`PLT_PAYMENTS -> PAYMENT`, app platforms -> `APPLICATION`, `PLT_WEB`/`PLT_IDENTITY` -> `IDENTITY`, `PLT_DRAW -> DRAW`, `PLT_RETAIL -> RETAIL`, `PLT_ANALYTICS -> APPLICATION`).
 - `operations.generate_support_cases(...)` uses `taxonomies.support_category_for(market_id, canonical)` with canonical drawn uniformly from the four kinds.
@@ -384,10 +394,12 @@ git commit -m "feat(datasets): activity, operations and marketing on named rows 
 ### Task 6: Sentence-safe chunker
 
 **Files:**
+
 - Modify: `backend/app/datasets/util.py:17-24`
 - Test: `backend/tests/test_chunking.py`
 
 **Interfaces:**
+
 - `split_sentences(body: str) -> list[str]`: splits on `.`, `!` or `?` followed by whitespace and an uppercase letter (Latin, Greek or Latin-extended) or a digit; never splits inside `1.50`, `5.3.0`, `e.g.`, `v2.1`.
 - `chunk_text(body: str, max_words: int = 160, overlap_sentences: int = 1) -> list[str]`: packs whole sentences into windows of at most `max_words` words; consecutive windows share `overlap_sentences` trailing sentences; a single sentence longer than `max_words` becomes its own chunk; returns `[body]` for an empty split.
 - Constants `CHUNK_MAX_WORDS = 160`, `CHUNK_OVERLAP_SENTENCES = 1` in `distributions.py`.
@@ -436,10 +448,12 @@ git commit -m "feat(datasets): sentence-safe overlapping chunker"
 ### Task 7: Coherent multilingual documents with local names
 
 **Files:**
+
 - Modify: `backend/app/datasets/documents.py` (rewrite)
 - Test: `backend/tests/test_documents.py`
 
 **Interfaces:**
+
 - `class WorldIndex`: built from the generated tables; `games_by_market: dict[str, list[GameRow]]`, `incidents_by_market: dict[str | None, list[IncidentRow]]`, `campaigns_by_market`, `app_versions_by_market`, `experiments_by_market`, `family_name: dict[str, str]`, `mechanic_names: dict[str, list[str]]` (per game), `incident_type_name: dict[str, str]`, `segment_name: dict[str, str]`, `games_of_incident: dict[str, list[GameRow]]`, `incidents_of_game`, `campaigns_of_game`, `games_of_campaign`.
 - `generate_documents(rng: random.Random, total: int, index: WorldIndex) -> tuple[list[DocumentRow], list[DocumentChunkRow]]`.
 - Rules, each pinned by a test below:
@@ -506,10 +520,12 @@ git commit -m "feat(datasets): coherent multilingual documents with local produc
 ### Task 8: World assembly, data dictionary and CLI on v2
 
 **Files:**
+
 - Modify: `backend/app/datasets/world.py`, `backend/app/datasets/__main__.py`, `backend/app/datasets/parquet.py` (accept NamedTuple rows; no change expected beyond typing)
 - Test: `backend/tests/test_validation.py`, `backend/tests/test_determinism.py`, `backend/tests/test_truth_ledger_isolation.py`
 
 **Interfaces:**
+
 - `build_world(config) -> World` wires the new generators with the profile's `incidents`, `campaigns_per_market`, `experiments`; passes a `WorldIndex` to documents; `kpi_daily` derivation moves to `derive_kpis(world: World) -> None` (public, called at the end of `build_world` and again by the scenario engine after planting, Task 13).
 - `build_data_dictionary() -> dict[str, Any]` returns `{"tables": [...existing per-field entries...], "foreign_keys": [{"child_table", "child_column", "parent_table", "nullable"}], "id_formats": {...}}`.
 - Manifest gains `"generator_version": "0.2.0"` (automatic) and `"taxonomy": {"families": 20, "categories": 13, "mechanics": 16, "incident_types": 25, "support_categories": 16, "segments": 24, "providers": 6}` computed from the tables.
@@ -553,12 +569,14 @@ git commit -m "feat(datasets): world v2 assembly, dictionary with foreign keys, 
 ### Task 9: Ontology model and loader
 
 **Files:**
+
 - Create: `backend/app/ontology/__init__.py` (`ONTOLOGY_VERSION = "2.0.0"`), `model.py`, `loader.py`
 - Replace: `schemas/ontology/ontology.yaml`
 - Modify: `backend/pyproject.toml` (add `pyyaml>=6.0.2` to dependencies and `types-pyyaml` to dev)
 - Test: `backend/tests/test_ontology.py`
 
 **Interfaces:**
+
 - `model.Concept(concept_id: str, parent_id: str | None, concept_type: str, labels: dict[str, str], synonyms: dict[str, tuple[str, ...]], definition: str)` frozen dataclass; `labels` has keys `en, el, de, cs`.
 - `model.Binding(kind: str, code: str, market_id: str | None, concept_id: str)` with `kind` in `family, category, mechanic, incident_type, support_category, segment, channel`.
 - `model.Ontology(version: str, concepts: tuple[Concept, ...], bindings: tuple[Binding, ...])` with methods `concept(concept_id) -> Concept`, `children(concept_id) -> tuple[Concept, ...]`, `ancestors(concept_id) -> tuple[str, ...]` (nearest first), `concept_for(kind, code) -> str | None`, `codes_for(concept_id, kind=None) -> tuple[Binding, ...]`, `roots() -> tuple[Concept, ...]`.
@@ -573,11 +591,28 @@ concepts:
   - id: CONCEPT_LOTTERY_PRODUCT
     parent: null
     type: Product
-    labels: {en: Lottery product, el: Λαχειοφόρο προϊόν, de: Lotterieprodukt, cs: Loterijní produkt}
-    synonyms: {en: [lottery game], el: [παιχνίδι λαχείου], de: [Lotteriespiel], cs: [loterijní hra]}
+    labels:
+      {
+        en: Lottery product,
+        el: Λαχειοφόρο προϊόν,
+        de: Lotterieprodukt,
+        cs: Loterijní produkt,
+      }
+    synonyms:
+      {
+        en: [lottery game],
+        el: [παιχνίδι λαχείου],
+        de: [Lotteriespiel],
+        cs: [loterijní hra],
+      }
     definition: Any product sold by the operator whose outcome is decided by chance.
 bindings:
-  - {kind: family, code: FAM_GR_ARITHMOLACHEIO, market: MKT_GR, concept: CONCEPT_NATIONAL_DRAW}
+  - {
+      kind: family,
+      code: FAM_GR_ARITHMOLACHEIO,
+      market: MKT_GR,
+      concept: CONCEPT_NATIONAL_DRAW,
+    }
 ```
 
 - Exact concept tree (id, parent, type); labels, synonyms and definitions are written by the implementer in all four languages, at least one synonym per language per leaf:
@@ -679,10 +714,12 @@ git commit -m "feat(ontology): v2 ontology with hierarchy, four-language labels 
 ### Task 10: Term table and concept similarity
 
 **Files:**
+
 - Create: `backend/app/ontology/terms.py`, `backend/app/ontology/similarity.py`
 - Test: `backend/tests/test_ontology.py` (extend)
 
 **Interfaces:**
+
 - `terms.Term(text: str, language: str, concept_id: str, source: str)` with `source` in `label, synonym, local_name`.
 - `terms.build_term_table(ontology: Ontology, local_names: Mapping[tuple[str, str], str]) -> tuple[Term, ...]`: one term per label and synonym per language, plus one `local_name` term per binding whose `(kind, code)` has an entry in `local_names` (the generator's taxonomy display names, passed in by the caller; the function never imports `app.datasets`). Terms are lower-cased, deduplicated on `(text, concept_id)`, sorted.
 - `terms.TermMatcher(terms: Sequence[Term])` with `match(text: str) -> tuple[TermMatch, ...]` where `TermMatch(term: Term, start: int, end: int)`; whole-word, case-insensitive, longest match wins at a position, no overlapping matches; Unicode-aware word boundaries.
@@ -736,6 +773,7 @@ git commit -m "feat(ontology): multilingual term matcher and concept-based simil
 ### Task 11: Binding completeness between taxonomies and ontology
 
 **Files:**
+
 - Test: `backend/tests/test_ontology.py` (extend)
 - Modify: `backend/app/datasets/taxonomies.py` (add `local_names() -> dict[tuple[str, str], str]` returning `(kind, code) -> name` for every local code)
 
@@ -776,12 +814,14 @@ git commit -m "test(ontology): every local code binds to exactly one concept"
 ### Task 12: Scenario planter with id allocator and non-encoding ids
 
 **Files:**
+
 - Create: `backend/app/scenarios/planter.py` (move `ScenarioPlanter` here, extended)
 - Create: `backend/app/scenarios/inject_topology.py` (SCN-002, SCN-003 moved and converted), `inject_operations.py` (SCN-007 moved and converted), `inject_documents.py` (SCN-015 moved and converted)
 - Modify: `backend/app/scenarios/plant.py` (becomes the registry only: `PLANTERS: dict[str, Callable[[ScenarioPlanter], None]]`)
 - Test: `backend/tests/test_scenarios_v2.py` (new; delete `test_scenarios.py` at the end of this task)
 
 **Interfaces:**
+
 - `ScenarioPlanter.next_id(table: str) -> str`: returns the next id for the table from `schema.ID_FORMATS`, continuing after the current maximum numeric suffix in that table (computed once per table, cached, incremented on each call); for per-market formats (`devices`, `players`, `accounts`) the signature is `next_id(table, market_code=...)`.
 - `ScenarioPlanter.chunk_rows(document: DocumentRow) -> list[DocumentChunkRow]` using `chunk_text`.
 - `ScenarioPlanter.daily_mean(table: str, market_id: str) -> float`: mean rows per day over the window for the market (sessions, support_cases, tickets).
@@ -852,6 +892,7 @@ git commit -m "refactor(scenarios): planter module, id allocator, sequence-conti
 ### Task 13: Derive KPIs after planting
 
 **Files:**
+
 - Modify: `backend/app/scenarios/engine.py` (`apply_scenarios` calls `derive_kpis(world)` after all injectors), `backend/app/scenarios/ledger.py` (`LEDGER_VERSION = "2"`)
 - Test: `backend/tests/test_scenarios_v2.py`
 
@@ -896,10 +937,12 @@ git commit -m "feat(scenarios): derive KPIs after planting so planted facts prod
 ### Task 14: Injectors SCN-001 and SCN-009
 
 **Files:**
+
 - Modify: `backend/app/scenarios/inject_operations.py`, `backend/app/scenarios/plant.py` (register), `backend/app/scenarios/catalogue.py` (enable `SCN-001`, `SCN-009`)
 - Test: `backend/tests/test_scenarios_v2.py`
 
 **Interfaces and rules:**
+
 - `plant_app_release_conversion_failure(plan)` (SCN-001), market drawn by `plan.rng` from the four markets, app version drawn from that market's versions released between day 20 and day 250 (so a 10-day window plus documents fit), cohort `device_family` drawn from `("ANDROID", "IOS")`; the rules below are written for the AT/5.3.1/Android case and apply to whichever is drawn:
   - window starts the day after the app version's `released_at`, lasts 10 days;
   - failing sessions: `signal_count(12, daily_mean("sessions", "MKT_AT"), 0.4)` rows per day for the first 6 days, outcome `ABANDONED` (70 percent) or `FAIL_PAYMENT` (30 percent), channel `APP`, `app_version_id = APPV_AT_531`, device chosen from the player's Android devices (players without one get a planted Android device link);
@@ -974,11 +1017,13 @@ git commit -m "feat(scenarios): plant SCN-001 app release failure and SCN-009 pr
 ### Task 15: Injectors SCN-010 and SCN-011 (ontology-dependent)
 
 **Files:**
+
 - Create: `backend/app/scenarios/inject_ontology.py`
 - Modify: `backend/app/scenarios/plant.py` (register), `catalogue.py` (enable `SCN-010`, `SCN-011`)
 - Test: `backend/tests/test_scenarios_v2.py`
 
 **Interfaces and rules:**
+
 - `plant_game_mechanic_affinity(plan)` (SCN-010): mechanic meaning drawn by `plan.rng` from `("symbol reveal", "quick pick")` (local codes resolved through `taxonomies`, for symbol reveal `MECH_GR_XYSIMO`, `MECH_AT_RUBBELN`, `MECH_CZ_STIRANI`, `MECH_UK_SCRATCH`), segment meaning "engaged" (`segments_for(code, "ENGAGEMENT")[0]` per market), markets = three markets drawn from those that have a game with that mechanic (the fourth market is the control and gets nothing):
   - per market: the one game whose mechanics include the local symbol-reveal code (raise if none); planted tickets for `n = signal_count(10, daily_mean("tickets", market), 0.2)` engaged-segment players, 3 tickets each over days 60 to 240 on that game, channel per the game's flags;
   - one `MONTHLY_MARKET_REVIEW` document per market in the market language, created on day 250, stating that the engaged segment (local segment name) over-indexes on the symbol-reveal product (local game name and local mechanic description), mentioning the game by name only (no id);
@@ -1052,12 +1097,14 @@ git commit -m "feat(scenarios): plant SCN-010 mechanic affinity and SCN-011 tran
 ### Task 16: Graph mapping and statements for the v2 model
 
 **Files:**
+
 - Modify: `backend/app/graph/mapping.py` (delete `FAMILY_TO_CONCEPT`, `MECHANIC_TO_CONCEPT`, `SEGMENT_TO_CONCEPT`, `CHANNEL_TO_CONCEPT`, `INCIDENT_TYPE_TO_CONCEPT`, `CONCEPT_CANONICAL_NAMES`, `similarity_score`, `cross_market_similar_games`, `METHOD_SIMILARITY`; add `game_concepts(game, mechanics, ontology) -> GameConcepts`, `concept_node_rows(ontology) -> list[dict]`, `is_a_rows(ontology) -> list[dict]`, `maps_to_rows(ontology, kind, label) -> list[dict]`, `similar_to_rows(games, mechanic_map, ontology) -> list[dict]`)
 - Modify: `backend/app/graph/statements.py` (`NODE_LABELS` adds `IncidentType`, `SupportCategory`, `PaymentProvider`; `RELATIONSHIP_TYPES` adds `IS_A`, `OF_TYPE`, `CATEGORISED_AS`, `PROVIDED_BY`; add statements `SCHEMA_LABEL_COUNTS`, `SCHEMA_RELATIONSHIP_COUNTS`, `ONTOLOGY_TREE`, `ONTOLOGY_BINDING_COUNTS`; add `ORDER BY` to `RETRIEVAL_CONCEPTS` and `RETRIEVAL_MARKETS`; `RETRIEVAL_CONCEPTS` returns `id, canonical_name, labels_en, labels_el, labels_de, labels_cs, synonyms, parent_id`)
 - Modify: `schemas/graph/graph-schema.yaml` (as built: labels, relationship types, removed `Rule`, `PREFERS`, `DESCRIBES`, `DEFINES`, `ABOUT`, `EQUIVALENT_TO`)
 - Test: `backend/tests/test_graph_mapping.py` (rewrite), `backend/tests/test_graph_statements.py`
 
 **Interfaces:**
+
 - `BusinessConcept` node properties: `id, canonical_name (labels.en), concept_type, parent_id, definition, label_en, label_el, label_de, label_cs, synonyms (list[str], all languages, prefixed "el:" etc.), ontology_version, source_system="ontology", source_table="ontology.yaml", source_record_id=id`.
 - Edge model (type, from, to): `IS_A (BusinessConcept -> BusinessConcept)`; `MAPS_TO (GameFamily|GameCategory|GameMechanic|IncidentType|SupportCategory|PlayerSegment|Channel -> BusinessConcept)` with props `{ontology_version}`; `SIMILAR_TO (Game -> Game)` with props `{score, method, ontology_version}`; `OF_TYPE (Incident -> IncidentType)`; `CATEGORISED_AS (SupportCase -> SupportCategory)`; `PROVIDED_BY (PaymentMethod -> PaymentProvider)`; `Game -INSTANCE_OF-> BusinessConcept` is removed; `Incident -MAPS_TO-> BusinessConcept` is removed (replaced by `OF_TYPE` then `MAPS_TO`).
 - `ONTOLOGY_RELATIONSHIP_TYPES: tuple[str, ...] = ("MAPS_TO", "SIMILAR_TO", "IS_A")` exported from `statements.py` (single source for the B/C split in Task 19).
@@ -1116,12 +1163,14 @@ git commit -m "feat(graph): v2 mapping with ontology-derived concepts, bindings 
 ### Task 17: Ingestion v2 with validity windows, new labels and linear row building
 
 **Files:**
+
 - Modify: `backend/app/graph/ingest.py` (split `build_relationship_rows` into `app/graph/relationship_rows.py` and `build_node_rows` into `app/graph/node_rows.py`; `ingest.py` keeps the driver loop, verification and `IngestStats`)
 - Modify: `backend/app/graph/__main__.py` (write `_graph_stats.json` beside the dataset: `{ingestion_version, label_version, ontology_version, nodes: {label: count}, relationships: [{type, from, to, count}]}`)
 - Modify: `backend/app/graph/config.py` (`LABEL_VERSION = "v2"`)
 - Test: `backend/tests/test_graph_ingestion.py` (live, `GRAPH_E2E`), plus offline tests in `tests/test_graph_mapping.py` for row builders
 
 **Interfaces:**
+
 - `node_rows.build_node_rows(tables, ontology) -> dict[str, list[dict]]`: adds `IncidentType`, `SupportCategory`, `PaymentProvider`, `PlayerSegment` (from the table, not master data), `GameFamily/GameCategory/GameMechanic` with `market_id`, `name`, `language_code`; `BusinessConcept` from `mapping.concept_node_rows`; validity: `Game.valid_from = launch_date`, `Game.valid_to = retirement_date`, `PlatformVersion.valid_from = released_at`, `valid_to = retired_at`, `AppVersion.valid_from = released_at`, `Incident.valid_from = started_at`, `valid_to = resolved_at`, `Campaign.valid_from = start_at`, `valid_to = end_at`, `Document.valid_from`, `valid_to` from the row, `Experiment.valid_from/valid_to`; `source_timestamp` set from `created_at`, `started_at`, `opened_at`, `released_at`, `registration_date` or `first_seen_at` where the table has one.
 - `relationship_rows.build_relationship_rows(tables, ontology) -> dict[RelationshipKey, list[dict]]`: linear accumulation (`rels.setdefault(key, []).append(row)`), the new edges from Task 16, `HAS_MECHANIC` props gain `valid_to`.
 - `_verify_counts` compares against distinct `(a_id, b_id)` pairs per key so MERGE-collapsed duplicates do not fail verification.
@@ -1180,6 +1229,7 @@ git commit -m "feat(graph): ingestion v2 with validity windows, taxonomy labels 
 ### Task 18: Source lookup, demo question and bank 1.0 grounding kept honest
 
 **Files:**
+
 - Modify: `backend/app/retrieval/graph/source_lookup.py` (`NODE_SOURCES` adds `PaymentProvider -> payment_providers`, `IncidentType -> incident_types`, `GameFamily -> game_families`; `SNIPPET_COLUMNS` for them; `games` snippet adds `game_family_id` local name through a join is out of scope; keep ids)
 - Modify: `backend/app/evaluation/grounding.py:131-147` (family codes `FAM_UK_NATIONAL_DRAW`, `FAM_UK_ANNUITY`, `FAM_GR_SYCHNES_KLIROSEIS`), `ground()` (a missing `_ground_qNN` returns `status="not_grounded"` with note `"bank 1.0 has no grounding rule for {question_id}; replaced by bank 2.0.0 in Phase 3"`), `_ground_q25/_q28/_q30` read planted ids from `truth["planted_ids"]` instead of literal `INC_S007_*` / `DOC_S015_UK`
 - Modify: `backend/app/api/queries.py` (DEMO-02 and DEMO-03 texts reference the entity by description plus the id resolved from the demo world is not possible offline; replace the literal `INC_S007_GR` with `the Greek payment checkout incident on platform version PLV_PAYMENTS_3` and keep `PLV_PAYMENTS_3`; DEMO-03 keeps `PLAYER_GR_001283` only if that player exists in the dev world, otherwise use the first GR player id; add a comment that Phase 3 replaces these with bank 2.0.0 questions)
@@ -1209,6 +1259,7 @@ git commit -m "chore: keep bank 1.0 grounding and demo questions reporting corre
 ### Task 19: Clean B/C split in configuration
 
 **Files:**
+
 - Modify: `backend/app/config/__init__.py` (`DEFAULT_RELATIONSHIP_TYPES` adds `OF_TYPE`, `CATEGORISED_AS`, `PROVIDED_BY`, `RELATED_TO_APP_VERSION`, `IS_A`, `USES`, `USES_PAYMENT`, keeps `MAPS_TO`, `SIMILAR_TO`; `GraphRagSettings.without_ontology()` removes every type in `statements.ONTOLOGY_RELATIONSHIP_TYPES`)
 - Modify: `backend/app/retrieval/graph/lab.py` (`bc_graph_settings(base)` loses the `profile` parameter and uses `ONTOLOGY_RELATIONSHIP_TYPES`; delete `FRAUD_RELATIONSHIP_TYPES` and `graph_relationships`; update callers in `traces.py`, `evaluation/runner.py`, `api/runs.py`; `BankQuestion.profile` stays unused until Phase 3 removes it)
 - Modify: `backend/app/retrieval/graph/traversal.py:RELATIONSHIP_WEIGHTS` (add `OF_TYPE 0.7`, `CATEGORISED_AS 0.6`, `PROVIDED_BY 0.8`, `RELATED_TO_APP_VERSION 0.9`, `IS_A 0.4`)
@@ -1248,11 +1299,13 @@ git commit -m "feat(retrieval): pipeline B excludes every ontology relationship 
 ### Task 20: Golden-hash determinism across processes
 
 **Files:**
+
 - Create: `backend/tests/fixtures/golden/tiny-seed7.json` (`{"generator_version": "0.2.0", "ontology_version": "2.0.0", "ledger_version": "2", "tables": {table: sha256}, "ledger": sha256}`)
 - Create: `backend/tests/test_golden_world.py`
 - Create: `backend/scripts/golden.py` (writes the fixture; run deliberately when the generator version changes)
 
 **Interfaces:**
+
 - `scripts/golden.py --profile tiny --world-seed 7 --scenario-seed 7 --out tests/fixtures/golden/tiny-seed7.json` generates in a subprocess (`python -m app.datasets ... --output-dir <tmp> --truth-path <tmp>/ledger.json`) and hashes each Parquet file's bytes and the ledger bytes.
 
 - [ ] **Step 1: Write the failing test**
@@ -1294,6 +1347,7 @@ git commit -m "test(datasets): golden hashes pin cross-process determinism of wo
 ### Task 21: Isolation test covers the ontology package
 
 **Files:**
+
 - Modify: `backend/tests/test_truth_ledger_isolation.py` (`ISOLATED_NAMESPACES` adds `"ontology"`; new test that `app/ontology` imports nothing from `app.scenarios`, `app.evaluation` or `app.datasets` except `app.datasets.config` for `REPO_ROOT`)
 
 - [ ] **Step 1: Write the test and run it**
@@ -1322,6 +1376,7 @@ git commit -m "test: truth-ledger isolation covers the ontology package"
 ### Task 22: Regenerate the development world and record the ingestion
 
 **Files:**
+
 - Modify: `Makefile` (no change expected; verify `generate-dev-data`, `ingest-graph` still work)
 - Modify: `backend/app/graph/__main__.py` (prints the stats path)
 
@@ -1353,6 +1408,7 @@ git commit -m "chore: regenerate development world on generator 0.2.0"
 ### Task 23: Specification and decision updates
 
 **Files:**
+
 - Modify: `docs/01-synthetic-data-spec.md` (section 5 adds "each market owns its reference data and codes"; section 6 lists the new tables; section 7 notes `business_concepts` removed; profile table shows the operational volumes)
 - Modify: `docs/02-graph-schema-spec.md` (as-built label and relationship list; `ONTOLOGY_RELATIONSHIP_TYPES`; validity properties)
 - Modify: `docs/03-ontology-spec.md` (section "As built, v2.0.0": tree, binding kinds, four languages, term table, similarity method, YAML as single source)

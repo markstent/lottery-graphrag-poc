@@ -88,7 +88,9 @@ export function ChartFigure({
         </button>
       </figcaption>
       <div
-        className={status === 'loading' && !empty ? 'opacity-60' : undefined}
+        className={
+          status === 'loading' && !empty ? 'chart-updating' : undefined
+        }
       >
         {body}
       </div>

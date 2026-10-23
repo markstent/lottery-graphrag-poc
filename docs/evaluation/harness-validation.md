@@ -63,12 +63,12 @@ full-table `EXCEPT ALL` comparison against the existing parquet set.
 
 After the fix, from scratch on the development machine:
 
-| stage | rows | elapsed |
-|---|---|---|
-| tickets + prizes | 6,750,899 | 19.2s |
-| campaign exposures | 3,000,000 | 25.2s |
-| sessions | 2,000,014 | 31.3s |
-| total: build, scenarios, validation, write | 242 MB | ~100s |
+| stage                                      | rows      | elapsed |
+| ------------------------------------------ | --------- | ------- |
+| tickets + prizes                           | 6,750,899 | 19.2s   |
+| campaign exposures                         | 3,000,000 | 25.2s   |
+| sessions                                   | 2,000,014 | 31.3s   |
+| total: build, scenarios, validation, write | 242 MB    | ~100s   |
 
 The demo world (`data/generated/demo-seed2026`) plants all four enabled
 scenarios (SCN-002/003/007/015) and writes its ledger to a separate
@@ -107,53 +107,53 @@ Scored questions: 20 of 30
 
 ## Per-pipeline summary (means over scored questions)
 
-| pipeline | n | answer | evidence recall | evidence precision | latency ms | context tokens |
-|---|---|---|---|---|---|---|
-| A | 20 | 0.03 | 0.02 | 0.02 | 59 | 209 |
-| B | 20 | 0.03 | 0.62 | 0.11 | 1242 | 898 |
-| C | 20 | 0.03 | 0.62 | 0.10 | 1604 | 973 |
+| pipeline | n   | answer | evidence recall | evidence precision | latency ms | context tokens |
+| -------- | --- | ------ | --------------- | ------------------ | ---------- | -------------- |
+| A        | 20  | 0.03   | 0.02            | 0.02               | 59         | 209            |
+| B        | 20  | 0.03   | 0.62            | 0.11               | 1242       | 898            |
+| C        | 20  | 0.03   | 0.62            | 0.10               | 1604       | 973            |
 
 Answer score and evidence metrics are deterministic (docs/evaluation/scoring.md). Latency and context tokens are reported separately and never folded into quality.
 
 ## Per-category means (answer score / evidence recall)
 
-| category | difficulty | n | A | B | C |
-|---|---|---|---|---|---|
-| CROSS_DOMAIN | 5 | 1 | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| CROSS_MARKET | 6 | 1 | 0.00 / 0.17 | 0.00 / 0.83 | 0.00 / 0.83 |
-| FACT | 1 | 4 | 0.00 / 0.00 | 0.00 / 0.81 | 0.00 / 0.81 |
-| MULTI_HOP | 4 | 1 | 0.00 / 0.00 | 0.00 / 0.22 | 0.00 / 0.28 |
-| ONTOLOGY | 6 | 2 | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| PATTERN | 6 | 1 | 0.00 / 0.00 | 0.00 / 0.29 | 0.00 / 0.29 |
-| RELATIONSHIP | 3 | 4 | 0.01 / 0.00 | 0.01 / 0.49 | 0.01 / 0.49 |
-| SEMANTIC | 2 | 3 | 0.00 / 0.05 | 0.00 / 0.38 | 0.00 / 0.38 |
-| TEMPORAL_ONTOLOGY | 6 | 1 | 0.50 / 0.00 | 0.50 / 0.50 | 0.50 / 0.50 |
-| TWO_HOP | 4 | 2 | 0.00 / 0.00 | 0.00 / 0.59 | 0.00 / 0.56 |
+| category          | difficulty | n   | A           | B           | C           |
+| ----------------- | ---------- | --- | ----------- | ----------- | ----------- |
+| CROSS_DOMAIN      | 5          | 1   | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| CROSS_MARKET      | 6          | 1   | 0.00 / 0.17 | 0.00 / 0.83 | 0.00 / 0.83 |
+| FACT              | 1          | 4   | 0.00 / 0.00 | 0.00 / 0.81 | 0.00 / 0.81 |
+| MULTI_HOP         | 4          | 1   | 0.00 / 0.00 | 0.00 / 0.22 | 0.00 / 0.28 |
+| ONTOLOGY          | 6          | 2   | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| PATTERN           | 6          | 1   | 0.00 / 0.00 | 0.00 / 0.29 | 0.00 / 0.29 |
+| RELATIONSHIP      | 3          | 4   | 0.01 / 0.00 | 0.01 / 0.49 | 0.01 / 0.49 |
+| SEMANTIC          | 2          | 3   | 0.00 / 0.05 | 0.00 / 0.38 | 0.00 / 0.38 |
+| TEMPORAL_ONTOLOGY | 6          | 1   | 0.50 / 0.00 | 0.50 / 0.50 | 0.50 / 0.50 |
+| TWO_HOP           | 4          | 2   | 0.00 / 0.00 | 0.00 / 0.59 | 0.00 / 0.56 |
 
 ## Per-question results
 
-| id | category | binding key | A ans/rec | B ans/rec | C ans/rec |
-|---|---|---|---|---|---|
-| Q01 | FACT | game_price | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| Q02 | FACT | game_channels | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| Q03 | FACT | platform_version | 0.00 / 0.00 | 0.00 / 0.25 | 0.00 / 0.25 |
-| Q04 | FACT | support_count | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| Q05 | SEMANTIC | product_mechanics | - / 0.00 | - / 1.00 | - / 1.00 |
-| Q07 | SEMANTIC | release_retrieval | 0.00 / 0.14 | 0.00 / 0.14 | 0.00 / 0.14 |
-| Q08 | SEMANTIC | experiment_retrieval | 0.00 / 0.00 | 0.00 / 0.00 | 0.00 / 0.00 |
-| Q09 | RELATIONSHIP | segment_mechanic | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| Q10 | RELATIONSHIP | game_platform | 0.00 / 0.00 | 0.00 / 0.71 | 0.00 / 0.71 |
-| Q11 | RELATIONSHIP | campaign_game | 0.00 / 0.00 | 0.00 / 0.25 | 0.00 / 0.25 |
-| Q12 | RELATIONSHIP | platform_incident | 0.04 / 0.00 | 0.04 / 0.00 | 0.04 / 0.00 |
-| Q13 | TWO_HOP | incident_platform_games | 0.00 / 0.00 | 0.00 / 0.18 | 0.00 / 0.12 |
-| Q16 | TWO_HOP | game_incident_support | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| Q18 | MULTI_HOP | shared_platform_issue | 0.00 / 0.00 | 0.00 / 0.22 | 0.00 / 0.28 |
-| Q21 | CROSS_DOMAIN | support_precursor | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| Q25 | CROSS_MARKET | cross_market_platform_incident | 0.00 / 0.17 | 0.00 / 0.83 | 0.00 / 0.83 |
-| Q26 | ONTOLOGY | cross_market_product_similarity | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| Q27 | ONTOLOGY | ontology_equivalence | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
-| Q28 | PATTERN | shared_identity_cluster | 0.00 / 0.00 | 0.00 / 0.29 | 0.00 / 0.29 |
-| Q30 | TEMPORAL_ONTOLOGY | document_structured_conflict | 0.50 / 0.00 | 0.50 / 0.50 | 0.50 / 0.50 |
+| id  | category          | binding key                     | A ans/rec   | B ans/rec   | C ans/rec   |
+| --- | ----------------- | ------------------------------- | ----------- | ----------- | ----------- |
+| Q01 | FACT              | game_price                      | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| Q02 | FACT              | game_channels                   | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| Q03 | FACT              | platform_version                | 0.00 / 0.00 | 0.00 / 0.25 | 0.00 / 0.25 |
+| Q04 | FACT              | support_count                   | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| Q05 | SEMANTIC          | product_mechanics               | - / 0.00    | - / 1.00    | - / 1.00    |
+| Q07 | SEMANTIC          | release_retrieval               | 0.00 / 0.14 | 0.00 / 0.14 | 0.00 / 0.14 |
+| Q08 | SEMANTIC          | experiment_retrieval            | 0.00 / 0.00 | 0.00 / 0.00 | 0.00 / 0.00 |
+| Q09 | RELATIONSHIP      | segment_mechanic                | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| Q10 | RELATIONSHIP      | game_platform                   | 0.00 / 0.00 | 0.00 / 0.71 | 0.00 / 0.71 |
+| Q11 | RELATIONSHIP      | campaign_game                   | 0.00 / 0.00 | 0.00 / 0.25 | 0.00 / 0.25 |
+| Q12 | RELATIONSHIP      | platform_incident               | 0.04 / 0.00 | 0.04 / 0.00 | 0.04 / 0.00 |
+| Q13 | TWO_HOP           | incident_platform_games         | 0.00 / 0.00 | 0.00 / 0.18 | 0.00 / 0.12 |
+| Q16 | TWO_HOP           | game_incident_support           | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| Q18 | MULTI_HOP         | shared_platform_issue           | 0.00 / 0.00 | 0.00 / 0.22 | 0.00 / 0.28 |
+| Q21 | CROSS_DOMAIN      | support_precursor               | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| Q25 | CROSS_MARKET      | cross_market_platform_incident  | 0.00 / 0.17 | 0.00 / 0.83 | 0.00 / 0.83 |
+| Q26 | ONTOLOGY          | cross_market_product_similarity | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| Q27 | ONTOLOGY          | ontology_equivalence            | 0.00 / 0.00 | 0.00 / 1.00 | 0.00 / 1.00 |
+| Q28 | PATTERN           | shared_identity_cluster         | 0.00 / 0.00 | 0.00 / 0.29 | 0.00 / 0.29 |
+| Q30 | TEMPORAL_ONTOLOGY | document_structured_conflict    | 0.50 / 0.00 | 0.50 / 0.50 | 0.50 / 0.50 |
 
 ## Failure classes (docs/05 section 14)
 
@@ -204,31 +204,31 @@ Scored questions: 4 of 4
 
 ## Per-pipeline summary (means over scored questions)
 
-| pipeline | n | answer | evidence recall | evidence precision | latency ms | context tokens |
-|---|---|---|---|---|---|---|
-| A | 4 | 0.41 | 0.04 | 0.06 | 27583 | 187 |
-| B | 4 | 0.66 | 0.65 | 0.15 | 51258 | 946 |
-| C | 4 | 0.66 | 0.65 | 0.14 | 48676 | 986 |
+| pipeline | n   | answer | evidence recall | evidence precision | latency ms | context tokens |
+| -------- | --- | ------ | --------------- | ------------------ | ---------- | -------------- |
+| A        | 4   | 0.41   | 0.04            | 0.06               | 27583      | 187            |
+| B        | 4   | 0.66   | 0.65            | 0.15               | 51258      | 946            |
+| C        | 4   | 0.66   | 0.65            | 0.14               | 48676      | 986            |
 
 Answer score and evidence metrics are deterministic (docs/evaluation/scoring.md). Latency and context tokens are reported separately and never folded into quality.
 
 ## Per-category means (answer score / evidence recall)
 
-| category | difficulty | n | A | B | C |
-|---|---|---|---|---|---|
-| CROSS_MARKET | 6 | 1 | 1.00 / 0.17 | 1.00 / 0.83 | 1.00 / 0.83 |
-| FACT | 1 | 1 | 0.00 / 0.00 | 1.00 / 1.00 | 1.00 / 1.00 |
-| PATTERN | 6 | 1 | 0.14 / 0.00 | 0.14 / 0.29 | 0.14 / 0.29 |
-| TEMPORAL_ONTOLOGY | 6 | 1 | 0.50 / 0.00 | 0.50 / 0.50 | 0.50 / 0.50 |
+| category          | difficulty | n   | A           | B           | C           |
+| ----------------- | ---------- | --- | ----------- | ----------- | ----------- |
+| CROSS_MARKET      | 6          | 1   | 1.00 / 0.17 | 1.00 / 0.83 | 1.00 / 0.83 |
+| FACT              | 1          | 1   | 0.00 / 0.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| PATTERN           | 6          | 1   | 0.14 / 0.00 | 0.14 / 0.29 | 0.14 / 0.29 |
+| TEMPORAL_ONTOLOGY | 6          | 1   | 0.50 / 0.00 | 0.50 / 0.50 | 0.50 / 0.50 |
 
 ## Per-question results
 
-| id | category | binding key | A ans/rec | B ans/rec | C ans/rec |
-|---|---|---|---|---|---|
-| Q01 | FACT | game_price | 0.00 / 0.00 | 1.00 / 1.00 | 1.00 / 1.00 |
-| Q25 | CROSS_MARKET | cross_market_platform_incident | 1.00 / 0.17 | 1.00 / 0.83 | 1.00 / 0.83 |
-| Q28 | PATTERN | shared_identity_cluster | 0.14 / 0.00 | 0.14 / 0.29 | 0.14 / 0.29 |
-| Q30 | TEMPORAL_ONTOLOGY | document_structured_conflict | 0.50 / 0.00 | 0.50 / 0.50 | 0.50 / 0.50 |
+| id  | category          | binding key                    | A ans/rec   | B ans/rec   | C ans/rec   |
+| --- | ----------------- | ------------------------------ | ----------- | ----------- | ----------- |
+| Q01 | FACT              | game_price                     | 0.00 / 0.00 | 1.00 / 1.00 | 1.00 / 1.00 |
+| Q25 | CROSS_MARKET      | cross_market_platform_incident | 1.00 / 0.17 | 1.00 / 0.83 | 1.00 / 0.83 |
+| Q28 | PATTERN           | shared_identity_cluster        | 0.14 / 0.00 | 0.14 / 0.29 | 0.14 / 0.29 |
+| Q30 | TEMPORAL_ONTOLOGY | document_structured_conflict   | 0.50 / 0.00 | 0.50 / 0.50 | 0.50 / 0.50 |
 
 ## Failure classes (docs/05 section 14)
 

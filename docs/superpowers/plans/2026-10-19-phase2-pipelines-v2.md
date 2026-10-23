@@ -56,12 +56,14 @@ Modified:
 ### Task 1: Deferred generator defect: incidents reference released, same-market app versions
 
 **Files:**
+
 - Modify: `backend/app/datasets/operations.py:generate_incidents`
 - Modify: `backend/app/datasets/validation.py:_time_errors`
 - Modify: `backend/tests/fixtures/golden/tiny-seed7.json` (regenerated)
 - Test: `backend/tests/test_validation.py`
 
 **Interfaces:**
+
 - Rule: an incident on an app platform gets `app_version_id` drawn from the versions of its own market (corporate incidents with `market_id None` draw from the version's market and record nothing further) released on or before `started_at`; if none qualifies, `app_version_id` is `None`.
 - Validation: `incidents.app_version_id` must belong to the incident's market when the incident has one, and must be released on or before `started_at`.
 
@@ -103,12 +105,14 @@ git commit -m "fix(datasets): incidents reference released app versions of their
 ### Task 2: Record serialiser
 
 **Files:**
+
 - Create: `backend/app/retrieval/standard/records.py`
 - Modify: `backend/app/retrieval/standard/corpus.py` (`CorpusChunk` gains `kind: str = "chunk"` and `record_table: str | None = None`; `load_corpus` unchanged)
 - Modify: `backend/app/evidence/__init__.py` (`EvidenceChunk` gains `kind: str = "chunk"`, `record_table: str | None = None`)
 - Test: `backend/tests/test_records.py`
 
 **Interfaces:**
+
 - `RecordBlock(record_id: str, table: str, market_id: str | None, text: str, source_system: str, valid_from: str | None, valid_to: str | None)` frozen dataclass with `to_corpus_chunk() -> CorpusChunk` (`chunk_id = f"REC_{table}_{record_id}"`, `document_id = record_id`, `chunk_index = 0`, `title = f"{table}: {record_id}"`, `document_type = table.upper()`, `language_code = "en"`, `kind = "record"`, `record_table = table`).
 - `serialise_records(dataset_dir: Path) -> list[RecordBlock]`: one block per row of `games`, `platform_versions`, `incidents`, `campaigns`, `player_segments`, `payment_providers`, `app_versions`, `game_families`, `game_mechanics`, `incident_types`, `support_categories`; plus the planted-pattern carriers from design 10a.2: every `devices` row used by more than one player (with its player ids), every `payment_methods` row used by more than one player (with its player ids), and every `players` row that takes part in such a share. Read with DuckDB, deterministic order by table then id.
 - Serialisation template per table is one f-string in a `SERIALISERS: dict[str, Callable[[dict], str]]` registry; the game template reads: `"{game_name} ({game_id}) is a {family_name} game in {market_name}. Ticket price {ticket_price} {currency_code}. Category {category_name}. Mechanics: {mechanic_names}. Channels: {channels}. Launched {launch_date}. Status {status}."` with local names joined from the taxonomy tables; the other templates follow the same shape (name, id, market, the record's facts, dates). Shared device: `"Device {device_id} ({device_family}) is used by {n} player accounts: {player_ids}."`; shared payment method likewise.
@@ -160,11 +164,13 @@ git commit -m "feat(retrieval): serialised structured records for the shared vec
 ### Task 3: Sparse embeddings and reciprocal rank fusion
 
 **Files:**
+
 - Create: `backend/app/retrieval/standard/sparse.py`, `backend/app/retrieval/standard/fusion.py`
 - Modify: `backend/pyproject.toml` (add `fastembed>=0.9.0`), `backend/app/config/__init__.py` (`EmbeddingSettings` gains `sparse_provider: str` ("fastembed" | "hashing") and `sparse_model: str` default `"Qdrant/bm25"`; env `SPARSE_PROVIDER`, `SPARSE_MODEL`), `.env.example`
 - Test: `backend/tests/test_sparse_and_fusion.py`
 
 **Interfaces:**
+
 - `SparseVector(indices: tuple[int, ...], values: tuple[float, ...])` frozen dataclass.
 - `SparseEmbedder` protocol: `model_name: str`; `embed_documents(texts: list[str]) -> list[SparseVector]`; `embed_query(text: str) -> SparseVector`.
 - `FastembedBm25Embedder(model: str = "Qdrant/bm25")` wrapping `fastembed.SparseTextEmbedding` (lazy import; `cache_dir` from env `FASTEMBED_CACHE` default `~/.cache/fastembed`).
@@ -217,11 +223,13 @@ git commit -m "feat(retrieval): sparse BM25 embeddings and reciprocal rank fusio
 ### Task 4: Hybrid vector store and index builder v2
 
 **Files:**
+
 - Modify: `backend/app/retrieval/standard/vector_store.py`, `backend/app/retrieval/standard/index.py`, `backend/app/retrieval/standard/__main__.py`
 - Modify: `backend/app/config/__init__.py` (`top_k` default 40; env `RAG_TOP_K`)
 - Test: `backend/tests/test_standard_rag.py` (store tests), `backend/tests/test_vector_store_qdrant.py` (live)
 
 **Interfaces:**
+
 - `VectorStore.upsert(ids, dense: list[list[float]], sparse: list[SparseVector], payloads)`.
 - `VectorStore.search(dense: list[float], sparse: SparseVector, limit: int, markets: Sequence[str] | None = None, kinds: Sequence[str] | None = None) -> list[SearchHit]` with `SearchHit(id: str, score: float, dense_rank: int | None, sparse_rank: int | None, payload: dict)`; the store runs a dense top-`limit` and a sparse top-`limit` within the same filter and fuses with `reciprocal_rank_fusion`; `score` is the fused score.
 - `QdrantVectorStore` uses named vectors `dense` (cosine, `dimensions`) and `sparse` (Qdrant `SparseVectorParams`); `ensure_collection` creates both; `search` uses `query_points` with two `Prefetch` entries and `FusionQuery(fusion=Fusion.RRF)`; `collection_info() -> dict` reports vector names, so `build_index` can refuse a dense-only collection.
@@ -270,12 +278,14 @@ git commit -m "feat(retrieval): hybrid dense plus sparse vector store and index 
 ### Task 5: Cross-encoder reranker
 
 **Files:**
+
 - Modify: `backend/app/retrieval/standard/reranking.py`
 - Modify: `backend/app/config/__init__.py` (`RerankSettings` becomes `provider: str` ("lexical" | "cross_encoder"), `model: str` default `"jinaai/jina-reranker-v2-base-multilingual"`, `lexical_weight: float`, `candidates: int` default 40; env `RERANK_PROVIDER`, `RERANK_MODEL`, `RERANK_CANDIDATES`), `.env.example`
 - Modify: `backend/app/retrieval/standard/index.py:build_reranker(settings) -> Reranker`
 - Test: `backend/tests/test_rerank_cross_encoder.py`
 
 **Interfaces:**
+
 - `Reranker` protocol moves to `reranking.py`: `model_name: str`; `rerank(question: str, candidates: list[EvidenceChunk]) -> list[EvidenceChunk]` setting `rerank_score` and `rank`.
 - `CrossEncoderReranker(model: str)` wrapping `fastembed.TextCrossEncoder` (lazy import); scores all candidates in one call; ties broken by `chunk_id`; `model_name = model`.
 - `LexicalReranker` keeps its behaviour and gains `model_name = f"lexical(w={weight})"`.
@@ -320,11 +330,13 @@ git commit -m "feat(retrieval): cross-encoder reranker shared by every pipeline"
 ### Task 6: One total context budget and record deduplication
 
 **Files:**
+
 - Modify: `backend/app/retrieval/standard/context.py`, `backend/app/retrieval/standard/pipeline.py`, `backend/app/retrieval/graph/pipeline.py`
 - Modify: `backend/app/config/__init__.py` (`ContextSettings` gains `evidence_slots: int` default 12, env `RAG_EVIDENCE_SLOTS`; `GraphRagSettings.max_evidence_nodes` is removed in favour of it)
 - Test: `backend/tests/test_context_budget_v2.py`
 
 **Interfaces:**
+
 - `select_context(candidates, budget_tokens, dedupe_threshold, max_items) -> (selected, discarded)` gains `max_items` (the evidence-slot cap) and a discard reason `"slot_limit"`.
 - `assemble_context(structured: list[EvidenceChunk], documents: list[EvidenceChunk], settings: ContextSettings) -> ContextAssembly` in `context.py`: runs `select_context` over `structured` first, then over `documents` with the remaining budget and slots; `ContextAssembly(structured_selected, document_selected, discarded, context_tokens)`.
 - Deduplication (design 10a.8): before assembly the graph pipeline drops any document candidate with `kind == "record"` whose `document_id` equals a selected structured node id, recording `discard_reason = "superseded_by_structured_fact"`.
@@ -371,12 +383,14 @@ git commit -m "feat(retrieval): one total context budget and evidence-slot cap f
 ### Task 7: Entity resolution v2 and query expansion
 
 **Files:**
+
 - Create: `backend/app/retrieval/graph/resolution.py`
 - Delete: `backend/app/retrieval/graph/entities.py`
 - Modify: `backend/app/retrieval/graph/neo4j_adapter.py` (`build_resolvers(reader, ontology) -> tuple[IdEntityResolver, TermEntityResolver]`), `backend/app/retrieval/graph/lab.py`, `backend/app/retrieval/graph/pipeline.py`
 - Test: `backend/tests/test_resolution.py`, `backend/tests/test_graph_rag.py`
 
 **Interfaces:**
+
 - `ResolvedEntity(entity_id, node_label, matched_text, origin, confidence, via_concept: str | None = None)`.
 - `IdEntityResolver(lookup_node, market_aliases)`: ids by the existing regex and prefixes, market aliases whole-word; no concepts.
 - `TermEntityResolver(inner: IdEntityResolver, matcher: TermMatcher, bindings: Ontology, market_hint: Callable[[str], str | None])`: runs `inner`, then `matcher.match(question)`; each `TermMatch` yields the concept (`origin="term"`, `confidence=0.8`) and, when the term is a `local_name` term or the question resolves a market, the bound local code node of that market via `ontology.codes_for(concept_id)` (`origin="concept_binding"`, `via_concept=concept_id`, `confidence=0.7`); duplicates removed, order stable.
@@ -431,11 +445,13 @@ git commit -m "feat(retrieval): id resolver for B, ontology term resolver and qu
 ### Task 8: Temporal validity from real validity windows
 
 **Files:**
+
 - Modify: `backend/app/retrieval/graph/ranking.py`, `backend/app/retrieval/graph/source_lookup.py`, `backend/app/retrieval/graph/pipeline.py`
 - Modify: `backend/app/config/__init__.py` (`GraphRagSettings.reference_date: date` default `WINDOW_START + WINDOW_DAYS`, env `GRAPH_REFERENCE_DATE`)
 - Test: `backend/tests/test_graph_rag.py`
 
 **Interfaces:**
+
 - `source_lookup.VALID_TO_COLUMNS: dict[str, str]` (`Game: retirement_date`, `PlatformVersion: retired_at`, `Incident: resolved_at` is NOT a validity end (an incident record stays valid), `Campaign: end_at`, `Experiment: end_at`, `Document: valid_to`); `AuthoritativeFacts.valid_to -> date | None`.
 - `ranking.temporal_validity(valid_to: date | None, reference: date) -> float`: `1.0` when `valid_to is None or valid_to >= reference`, else `0.3`; `score_nodes(..., validity: dict[str, date | None], reference: date)`.
 - The pipeline passes `validity` from the facts it already fetches for `_node_texts`.
@@ -475,10 +491,12 @@ git commit -m "feat(retrieval): temporal validity ranks superseded records from 
 ### Task 9: Structured answers with parsed citations
 
 **Files:**
+
 - Modify: `backend/app/retrieval/standard/generation.py`, `backend/app/evidence/__init__.py` (`RagAnswer` gains `verdict: str`, `cited_blocks: list[int]`, `raw_text: str`), `backend/app/config/__init__.py` (`GenerationSettings.max_tokens: int` default 600, env `GENERATION_MAX_TOKENS`; `PROMPT_VERSION = "2.0.0"` constant in `generation.py`)
 - Test: `backend/tests/test_generation_v2.py`
 
 **Interfaces:**
+
 - `_SYSTEM_PROMPT` v2 asks for a JSON object `{"verdict": "<one line, or 'unknown' when the sources do not answer>", "answer": "<prose with [n] citations>"}`; `parse_answer(raw: str, block_count: int) -> ParsedAnswer(verdict, answer, cited_blocks)`: strict JSON first, then a fenced-JSON fallback, then plain text (`verdict=""`, `answer=raw`); `cited_blocks` are the `[n]` integers in `answer` within `1..block_count`, deduplicated in order.
 - `AnswerGenerator.generate(...) -> GenerationOutput(raw_text, latency_ms)`; pipelines call `parse_answer` and fill `RagAnswer`.
 - `LiteLLMAnswerGenerator` passes `max_tokens`, `temperature`, and records `response.usage` tokens when present (`RagAnswer.usage: dict[str, int] | None`).
@@ -522,10 +540,12 @@ git commit -m "feat(retrieval): structured answers with verdict and parsed citat
 ### Task 10: Event envelope v2
 
 **Files:**
+
 - Modify: `backend/app/events/__init__.py`, `backend/app/api/schemas.py`, `backend/app/api/runs.py`
 - Test: `backend/tests/test_api_queries.py`, `backend/tests/test_standard_rag.py`
 
 **Interfaces:**
+
 - `RetrievalEvent` gains `event_id: str` (uuid4 hex) and `timestamp: str` (ISO 8601 UTC) set by the emitter; `RecordedEvent` carries both; the API attaches events unchanged.
 
 - [ ] **Step 1: Write the failing test**
@@ -561,6 +581,7 @@ git commit -m "feat(events): event ids and timestamps on every recorded event"
 ### Task 11: Lab fairness v2
 
 **Files:**
+
 - Modify: `backend/app/retrieval/graph/lab.py` (`Lab` holds `dense`, `sparse`, `reranker`, `store`, `corpus` (chunks plus records), `source_lookup`, `generator`, `ontology`, `resolvers`; `pipeline_a()`, `wired_pipelines()`)
 - Test: `backend/tests/test_lab_fairness.py`
 
@@ -588,6 +609,7 @@ git commit -m "test(retrieval): fairness contract pins shared components across 
 ### Task 12: Live index and trace run
 
 **Files:**
+
 - Modify: `backend/app/retrieval/graph/traces.py` (questions become the four saved demo questions from `app/api/queries.py`, imported, with the stale ids removed from DEMO-02 and DEMO-03 replaced by descriptions plus the ids that exist in the dev world: read `data/generated/dev-seed2026/_manifest.json` scenarios and pick ids by querying Parquet, never the ledger), `Makefile` (`index-vector` unchanged; add `pull-models: ollama pull bge-m3`)
 - Docs: `docs/retrieval/example-traces.md` regenerated from the trace CLI (fake generator) and committed
 
@@ -606,6 +628,7 @@ git commit -m "chore(retrieval): v2 trace run against the live index and graph"
 ### Task 13: Documentation and decisions
 
 **Files:**
+
 - Modify: `docs/retrieval/standard-rag.md`, `graph-rag.md`, `evidence-ranking.md`, `context-budgeting.md`, `retrieval-fairness.md`, `reranking.md`, `embeddings.md` (as-built v2 sections), `DECISIONS.md` (D-021 fastembed; D-022 hybrid RRF; D-023 one total budget and slot cap; D-024 structured answer prompt v2), `HITL_STATUS.md` (CP1 part 2 presented), `.env.example` verified complete
 
 - [ ] **Step 1: Write; grep for `max_evidence_nodes`, `lexical(w=`, `entities.py` in docs and fix**

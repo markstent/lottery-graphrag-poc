@@ -5,6 +5,7 @@
 **Reason:** The POC must persist every execution event for replay (`GET /queries/{run_id}/events`) and every pipeline result and live score of a run, without adding a database service. SQLite covers this in-process: ordered events by `sequence`, results and scores per run, run history, all transactional and file-backed. One storage engine serves both the event stream and the results, which keeps replay and scoring consistent (same rows the UI streamed). Benchmark results are not stored here: they are the run directories the harness writes.
 
 **Consequences:**
+
 - Replay reads persisted events by sequence; it never re-runs retrieval.
 - The SSE stream and the replay endpoint are fed from the same stored events, so what the audience saw live is exactly what replay shows.
 - Evidence objects are stored inside each pipeline's result, for the Evidence Explorer and for scoring after the run.
@@ -20,12 +21,12 @@ The store never reads the environment and never references the truth ledger.
 
 ### Schema (version 1)
 
-| Table | Columns | Key |
-|---|---|---|
-| `runs` | `run_id`, `kind`, `status`, `question`, `market_scope_json`, `configurations_json`, `benchmark_instance_id`, `created_at`, `finished_at`, `pipeline_status_json`, `error_json` | `run_id` |
-| `events` | `run_id`, `sequence`, `event_json` | `(run_id, sequence)` |
-| `results` | `run_id`, `pipeline`, `result_json` | `(run_id, pipeline)` |
-| `scores` | `run_id`, `score_json` | `run_id` |
+| Table     | Columns                                                                                                                                                                        | Key                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------- |
+| `runs`    | `run_id`, `kind`, `status`, `question`, `market_scope_json`, `configurations_json`, `benchmark_instance_id`, `created_at`, `finished_at`, `pipeline_status_json`, `error_json` | `run_id`             |
+| `events`  | `run_id`, `sequence`, `event_json`                                                                                                                                             | `(run_id, sequence)` |
+| `results` | `run_id`, `pipeline`, `result_json`                                                                                                                                            | `(run_id, pipeline)` |
+| `scores`  | `run_id`, `score_json`                                                                                                                                                         | `run_id`             |
 
 `kind` is checked to be `live` or `recorded`.
 `status` is checked to be `queued`, `running`, `completed`, `failed` or `cancelled`.

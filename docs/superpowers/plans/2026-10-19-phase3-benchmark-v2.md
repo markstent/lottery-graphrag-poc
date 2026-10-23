@@ -43,20 +43,20 @@ Phase 2 decisions D-021 to D-028 in `DECISIONS.md` are binding; this plan does n
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| `backend/app/models/gateway.py` (create) | One completion call through LiteLLM with typed request, result and error |
-| `backend/app/evaluation/checks.py` (create) | Answer checks (number, set, token, verdict), answer score, citation metrics |
-| `backend/app/evaluation/claims.py` (create) | `Claim`, carrier computation over record blocks and chunks, anchor exclusion |
-| `backend/app/evaluation/scoring.py` (rewrite) | Evidence metrics over claims, anchor resolution, efficiency, failure class |
-| `backend/app/evaluation/bank.py` (rewrite) | The 22 logical questions of bank 2.0.0 and stratum constants |
-| `backend/app/evaluation/grounding.py` (rewrite) | Per-question grounders, anchor eligibility and sampling, frozen bank file |
-| `backend/app/evaluation/runner.py` (rewrite) | Run kinds, repeats, per-repeat scoring, reproducibility record |
-| `backend/app/evaluation/judge.py` (create) | Judge prompt, blinding, parsing, fake and gateway judges, agreement |
-| `backend/app/evaluation/statistics.py` (create) | Clustered paired bootstrap, Wilcoxon, Holm, headline sentence |
-| `backend/app/evaluation/report.py` (rewrite) | `summary.json` v2 and `report.md` |
-| `backend/app/evaluation/official.py` (create) | Three-seed orchestration, depth sweep, model comparison |
-| `backend/app/evaluation/__main__.py` (rewrite) | CLI: `ground`, `run`, `sweep`, `compare`, `bank-doc` |
+| File                                            | Responsibility                                                               |
+| ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| `backend/app/models/gateway.py` (create)        | One completion call through LiteLLM with typed request, result and error     |
+| `backend/app/evaluation/checks.py` (create)     | Answer checks (number, set, token, verdict), answer score, citation metrics  |
+| `backend/app/evaluation/claims.py` (create)     | `Claim`, carrier computation over record blocks and chunks, anchor exclusion |
+| `backend/app/evaluation/scoring.py` (rewrite)   | Evidence metrics over claims, anchor resolution, efficiency, failure class   |
+| `backend/app/evaluation/bank.py` (rewrite)      | The 22 logical questions of bank 2.0.0 and stratum constants                 |
+| `backend/app/evaluation/grounding.py` (rewrite) | Per-question grounders, anchor eligibility and sampling, frozen bank file    |
+| `backend/app/evaluation/runner.py` (rewrite)    | Run kinds, repeats, per-repeat scoring, reproducibility record               |
+| `backend/app/evaluation/judge.py` (create)      | Judge prompt, blinding, parsing, fake and gateway judges, agreement          |
+| `backend/app/evaluation/statistics.py` (create) | Clustered paired bootstrap, Wilcoxon, Holm, headline sentence                |
+| `backend/app/evaluation/report.py` (rewrite)    | `summary.json` v2 and `report.md`                                            |
+| `backend/app/evaluation/official.py` (create)   | Three-seed orchestration, depth sweep, model comparison                      |
+| `backend/app/evaluation/__main__.py` (rewrite)  | CLI: `ground`, `run`, `sweep`, `compare`, `bank-doc`                         |
 
 `truth_ledger.py` keeps its shape and gains nothing.
 
@@ -65,11 +65,13 @@ Phase 2 decisions D-021 to D-028 in `DECISIONS.md` are binding; this plan does n
 ### Task 1: One model gateway
 
 **Files:**
+
 - Create: `backend/app/models/gateway.py`
 - Modify: `backend/app/retrieval/standard/generation.py` (`LiteLLMAnswerGenerator` uses the gateway)
 - Test: `backend/tests/test_gateway.py`, `backend/tests/test_generation_v2.py`
 
 **Interfaces:**
+
 - Produces: `CompletionRequest(model: str, system: str, user: str, temperature: float, max_tokens: int, api_base: str | None, timeout_s: float)` frozen dataclass; `Completion(text: str, latency_ms: float, usage: dict[str, int] | None)`; `class GatewayError(RuntimeError)`; `complete(request: CompletionRequest) -> Completion` (lazy `import litellm`, raises `GatewayError` on any provider exception or empty content).
 - `LiteLLMAnswerGenerator.generate` builds a `CompletionRequest`, calls `complete`, and maps `GatewayError` to `GenerationError` with the original as cause; behaviour and tests of Task 9 of Phase 2 are otherwise unchanged.
 
@@ -116,10 +118,12 @@ git commit -m "refactor(models): one completion gateway shared by generation and
 ### Task 2: Answer checks and citation metrics
 
 **Files:**
+
 - Create: `backend/app/evaluation/checks.py`
 - Test: `backend/tests/test_checks.py`
 
 **Interfaces:**
+
 - Produces:
   - `NumberCheck(value: str, unit: str | None)`; `SetCheck(expected: frozenset[str], universe: Mapping[str, tuple[str, ...]])`; `TokenCheck(expected: str, aliases: tuple[str, ...] = ())`; `VerdictCheck(expected: Literal["yes", "no"])`; `Check = NumberCheck | SetCheck | TokenCheck | VerdictCheck`; all frozen dataclasses with `to_payload() -> dict[str, object]` and `check_from_payload(payload) -> Check`.
   - `check_score(check: Check, verdict: str, answer: str) -> float` and `answer_score(checks: Sequence[Check], verdict: str, answer: str) -> float | None` (mean; None when no checks).
@@ -127,6 +131,7 @@ git commit -m "refactor(models): one completion gateway shared by generation and
   - `citation_metrics(answer: str, cited_blocks: Sequence[int], block_carriers: Sequence[frozenset[str]], claims: Sequence[Claim]) -> CitationMetrics(accuracy: float | None, numeric_citation_rate: float | None)` (Claim from Task 3; import under `TYPE_CHECKING` only if Task 3 lands later, otherwise import directly).
 
 Rules the tests pin:
+
 - Number, set and token checks read `verdict + "\n" + answer` (a fact stated only in the verdict counts); `VerdictCheck` reads the verdict only: it passes when the casefolded verdict starts with the expected word.
 - `scored_numbers` removes `\[\d+(?:\s*,\s*\d+)*\]`, identifiers `\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b` and dates `\d{4}-\d{2}-\d{2}(?:[T ][0-9:.]+)?` before extracting `\d+(?:[.,]\d+)?`; normalisation is the v1 `_normalise_number`.
 - `NumberCheck`: candidates are numbers adjacent (immediately before or after, ignoring one space) to the unit code or its symbol (`GBP` "£", `EUR` "€", `CZK` "Kč", `%` "%"); when no unit-adjacent number exists, every scored number is a candidate. Score 1.0 when the expected value is a candidate and no other distinct candidate exists, 0.5 when the expected value and another distinct candidate both appear, 0.0 otherwise.
@@ -193,11 +198,13 @@ git commit -m "feat(evaluation): number, set, token and verdict checks with cita
 ### Task 3: Claims, carriers and evidence metrics
 
 **Files:**
+
 - Create: `backend/app/evaluation/claims.py`
 - Rewrite: `backend/app/evaluation/scoring.py`
 - Test: `backend/tests/test_claims.py`, `backend/tests/test_benchmark_scoring.py`
 
 **Interfaces:**
+
 - Produces:
   - `Claim(claim_id: str, statement: str, carriers: frozenset[str])` with `to_payload()` and `claim_from_payload()`.
   - `ClaimSpec(claim_id: str, statement: str, record_ids: tuple[str, ...], markers: tuple[tuple[str, ...], ...], document_ids: tuple[str, ...] = ())`: what a grounder declares.
@@ -208,6 +215,7 @@ git commit -m "feat(evaluation): number, set, token and verdict checks with cita
   - `classify_failure(answer: float | None, evidence: EvidenceScore, seeded: bool) -> str | None` (v1 classes: `entity_resolution_failure`, `retrieval_failure`, `generation_failure`; threshold 0.5).
 
 Rules the tests pin:
+
 - `selected` is the pipeline's selected carriers in selection order; the anchor id is removed from it before precision.
 - recall = found / total; precision = selected items carrying at least one claim / selected items; f1 = harmonic mean (0.0 when both are 0); all evidence fields None when no claim survives anchor exclusion.
 - efficiency = claims found per 1,000 context tokens (None when `context_tokens` is 0).
@@ -263,10 +271,12 @@ git commit -m "feat(evaluation): claim carriers, anchor exclusion and evidence m
 ### Task 4: Bank 2.0.0 logical questions
 
 **Files:**
+
 - Rewrite: `backend/app/evaluation/bank.py`
 - Test: `backend/tests/test_benchmark_bank.py`
 
 **Interfaces:**
+
 - Produces:
   - `BANK_VERSION = "2.0.0"`, `ANCHORS_PER_QUESTION = 3`.
   - `STRATA: dict[str, str]` = `{"H1": "multi-hop questions", "H2": "ontology-dependent questions", "H3": "single facts", "H5": "planted patterns"}`; `NAME_ANCHORED = "entity resolution through the ontology"` (the H2 name-anchored sub-stratum label).
@@ -276,30 +286,30 @@ git commit -m "feat(evaluation): claim carriers, anchor exclusion and evidence m
 
 The bank (template placeholders: `{anchor}` for an id, `{anchor_name}` for a local-language name):
 
-| Id | Stratum | Template | Tests (one sentence) | Anchor kind | Scenario | Ontology |
-|---|---|---|---|---|---|---|
-| L01 | H3 | What is the ticket price of game {anchor}? | Reads one price from one record. | game | | no |
-| L02 | H3 | Which platform version was incident {anchor} seen on? | Reads one link from one record. | incident | | no |
-| L03 | H3 | When does campaign {anchor} end? | Reads one date from one record. | campaign | | no |
-| L04 | H3 | Is game {anchor} available on digital channels? | Reads one flag and answers yes or no. | game | | no |
-| L05 | H1 | Which other markets had incidents on the same platform version as incident {anchor}? | Follows incident to version to other incidents. | incident | | no |
-| L06 | H1 | Which game mechanics do the games affected by incident {anchor} use? | Follows incident to games to mechanics. | incident | | no |
-| L07 | H1 | Which platform version is behind the incident linked to support case {anchor}? | Follows case to incident to version. | support_case | | no |
-| L08 | H1 | Which games were affected by incidents on platform version {anchor}? | Follows version to incidents to games. | platform_version | | no |
-| L09 | H2 id | Which games in other markets belong to the same kind of game family as game {anchor}? | Needs family equivalence across markets. | game | | yes |
-| L10 | H2 id | Which incidents in other markets are the same kind of incident as incident {anchor}? | Needs incident-type equivalence across markets. | incident | | yes |
-| L11 | H2 id | Which player segments in other markets correspond to segment {anchor}? | Needs segment equivalence across markets. | segment | | yes |
-| L12 | H2 id | Which games in other markets use the same kind of mechanic as the main mechanic of game {anchor}? | Needs mechanic equivalence across markets. | game | | yes |
-| L13 | H2 name | Which games, in any market, belong to the kind of game family called "{anchor_name}"? | Needs a local-language family name resolved to a concept. | family | | yes |
-| L14 | H2 name | Which games, in any market, use the kind of mechanic called "{anchor_name}"? | Needs a local-language mechanic name resolved to a concept. | mechanic | | yes |
-| L15 | H5 | What caused incident {anchor}? | Finds the app release behind a checkout failure. | incident | SCN-001 | no |
-| L16 | H5 | Which other players share a device with player {anchor}? | Finds a shared-device cluster. | player | SCN-002 | no |
-| L17 | H5 | Which other accounts share a payment instrument with player {anchor}? | Finds a shared-payment cluster. | player | SCN-003 | no |
-| L18 | H5 | Which other markets saw incidents on the same platform version as incident {anchor}, and which market was unaffected? | Finds a cross-market incident and its exception. | incident | SCN-007 | no |
-| L19 | H5 | Which payment provider is behind support case {anchor}, and which markets are affected? | Finds a degraded provider behind support cases. | support_case | SCN-009 | no |
-| L20 | H5 | Which games in other markets show the same mechanic affinity as game {anchor}? | Finds a planted cross-market mechanic affinity. | game | SCN-010 | yes |
-| L21 | H5 | Which game in another market is the best transfer target for campaign {anchor}? | Finds a planted transferable campaign. | campaign | SCN-011 | yes |
-| L22 | H5 | What is the current ticket price of game {anchor}, and is the rules document that states a different price still valid? | Prefers the record over a stale document. | game | SCN-015 | no |
+| Id  | Stratum | Template                                                                                                                | Tests (one sentence)                                        | Anchor kind      | Scenario | Ontology |
+| --- | ------- | ----------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ---------------- | -------- | -------- |
+| L01 | H3      | What is the ticket price of game {anchor}?                                                                              | Reads one price from one record.                            | game             |          | no       |
+| L02 | H3      | Which platform version was incident {anchor} seen on?                                                                   | Reads one link from one record.                             | incident         |          | no       |
+| L03 | H3      | When does campaign {anchor} end?                                                                                        | Reads one date from one record.                             | campaign         |          | no       |
+| L04 | H3      | Is game {anchor} available on digital channels?                                                                         | Reads one flag and answers yes or no.                       | game             |          | no       |
+| L05 | H1      | Which other markets had incidents on the same platform version as incident {anchor}?                                    | Follows incident to version to other incidents.             | incident         |          | no       |
+| L06 | H1      | Which game mechanics do the games affected by incident {anchor} use?                                                    | Follows incident to games to mechanics.                     | incident         |          | no       |
+| L07 | H1      | Which platform version is behind the incident linked to support case {anchor}?                                          | Follows case to incident to version.                        | support_case     |          | no       |
+| L08 | H1      | Which games were affected by incidents on platform version {anchor}?                                                    | Follows version to incidents to games.                      | platform_version |          | no       |
+| L09 | H2 id   | Which games in other markets belong to the same kind of game family as game {anchor}?                                   | Needs family equivalence across markets.                    | game             |          | yes      |
+| L10 | H2 id   | Which incidents in other markets are the same kind of incident as incident {anchor}?                                    | Needs incident-type equivalence across markets.             | incident         |          | yes      |
+| L11 | H2 id   | Which player segments in other markets correspond to segment {anchor}?                                                  | Needs segment equivalence across markets.                   | segment          |          | yes      |
+| L12 | H2 id   | Which games in other markets use the same kind of mechanic as the main mechanic of game {anchor}?                       | Needs mechanic equivalence across markets.                  | game             |          | yes      |
+| L13 | H2 name | Which games, in any market, belong to the kind of game family called "{anchor_name}"?                                   | Needs a local-language family name resolved to a concept.   | family           |          | yes      |
+| L14 | H2 name | Which games, in any market, use the kind of mechanic called "{anchor_name}"?                                            | Needs a local-language mechanic name resolved to a concept. | mechanic         |          | yes      |
+| L15 | H5      | What caused incident {anchor}?                                                                                          | Finds the app release behind a checkout failure.            | incident         | SCN-001  | no       |
+| L16 | H5      | Which other players share a device with player {anchor}?                                                                | Finds a shared-device cluster.                              | player           | SCN-002  | no       |
+| L17 | H5      | Which other accounts share a payment instrument with player {anchor}?                                                   | Finds a shared-payment cluster.                             | player           | SCN-003  | no       |
+| L18 | H5      | Which other markets saw incidents on the same platform version as incident {anchor}, and which market was unaffected?   | Finds a cross-market incident and its exception.            | incident         | SCN-007  | no       |
+| L19 | H5      | Which payment provider is behind support case {anchor}, and which markets are affected?                                 | Finds a degraded provider behind support cases.             | support_case     | SCN-009  | no       |
+| L20 | H5      | Which games in other markets show the same mechanic affinity as game {anchor}?                                          | Finds a planted cross-market mechanic affinity.             | game             | SCN-010  | yes      |
+| L21 | H5      | Which game in another market is the best transfer target for campaign {anchor}?                                         | Finds a planted transferable campaign.                      | campaign         | SCN-011  | yes      |
+| L22 | H5      | What is the current ticket price of game {anchor}, and is the rules document that states a different price still valid? | Prefers the record over a stale document.                   | game             | SCN-015  | no       |
 
 Observation count at three anchors per structural question and one per planted question per world: H3 36, H1 36, H2 id-anchored 36, H2 name-anchored 18, H5 24, total 150.
 
@@ -349,10 +359,12 @@ git commit -m "feat(evaluation): bank 2.0.0 logical questions in four strata"
 ### Task 5: Grounding the structural questions (H1, H2, H3)
 
 **Files:**
+
 - Create: `backend/app/evaluation/grounding.py` (v2)
 - Test: `backend/tests/test_benchmark_grounding.py`
 
 **Interfaces:**
+
 - Consumes: `LogicalQuestion` (Task 4), `ClaimSpec`, `CarrierIndex`, `exclude_anchor` (Task 3), the checks (Task 2), `load_ontology()`, `local_name_variants()`.
 - Produces:
   - `BankInstance(instance_id: str, question_id: str, stratum: str, sub_stratum: str | None, ontology_dependent: bool, world_seed: int, anchor_id: str, text: str, expected_answer: str, checks: tuple[Check, ...], claims: tuple[Claim, ...])` with `to_payload()` / `instance_from_payload()`; `instance_id = f"{question_id}-{world_seed}-{anchor_id}"`.
@@ -361,6 +373,7 @@ git commit -m "feat(evaluation): bank 2.0.0 logical questions in four strata"
   - `class GroundingError(RuntimeError)`.
 
 Grounding rules (eligibility before sampling; every set must have between 1 and 6 members after excluding the anchor unless stated):
+
 - L01: games; `NumberCheck(price, currency_code)`; claim "price of {game} is {price} {currency}" with markers `((game_id, game_name), price variants)` where price variants are the two-decimal and the shortest forms ("2.50", "2.5").
 - L02: incidents with a platform version; `TokenCheck(platform_version_id)`; claim markers `((incident_id,), (platform_version_id,))`, record ids `(incident_id,)`.
 - L03: campaigns with an `end_at`; `TokenCheck(end date as YYYY-MM-DD)`; claim markers `((campaign_id, campaign_name), (date,))`.
@@ -432,11 +445,13 @@ git commit -m "feat(evaluation): ground structural bank questions with hashed an
 ### Task 6: Grounding the planted questions and the frozen bank
 
 **Files:**
+
 - Modify: `backend/app/evaluation/grounding.py`
 - Create: `backend/app/evaluation/__main__.py` (v2) (subcommands `ground` and `bank-doc`)
 - Test: `backend/tests/test_benchmark_grounding.py`
 
 **Interfaces:**
+
 - Produces:
   - Planted grounders for L15 to L22, one instance per world, anchors and answers from the ledger only.
   - `FrozenBank(bank_version: str, world_seed: int, world_manifest_hash: str, record_serialiser_version: str, ledger_hash: str, instances: tuple[BankInstance, ...], unavailable: tuple[Unavailable, ...], bank_hash: str)`; `Unavailable(question_id: str, reason: str)`.
@@ -445,6 +460,7 @@ git commit -m "feat(evaluation): ground structural bank questions with hashed an
   - CLI: `python -m app.evaluation ground --world DIR --ledger PATH --out PATH`; `python -m app.evaluation bank-doc --bank PATH --out ../docs/evaluation/question-bank.md`.
 
 Planted rules (truth keys are those the v2 ledger already writes):
+
 - Claims for every planted question: one per ledger `required_evidence` item that is not the anchor and does not start with `kpi:`; a `DOC_` item's carriers are that document's chunks; every other item's carriers are the record id plus records and chunks matching markers `((item,),)`; then `exclude_anchor`.
 - L15: anchor `truth.incident_id`; `TokenCheck(truth.app_version_id)`.
 - L16: anchor = first of sorted `truth.cluster_players`; `SetCheck(other cluster players, universe = cluster players plus every player id in the shared devices' links)`.
@@ -514,11 +530,13 @@ git commit -m "feat(evaluation): planted bank questions from the ledger and a ha
 ### Task 7: Runner v2 with repeats and per-repeat scoring
 
 **Files:**
+
 - Create: `backend/app/evaluation/runner.py` (v2)
 - Modify: `backend/app/config/__init__.py` (`GenerationSettings.model_family: str | None`, env `GENERATION_MODEL_FAMILY`; `GenerationSettings.quantisation: str | None`, env `GENERATION_MODEL_QUANTISATION`), `.env.example`
 - Test: `backend/tests/test_benchmark_runner.py` (create; move runner tests out of `test_benchmark_scoring.py`)
 
 **Interfaces:**
+
 - Consumes: `FrozenBank` and `load_frozen_bank` (Task 6), `evidence_score`, `classify_failure`, `selection_carrier` (Task 3), `answer_score`, `citation_metrics` (Task 2), `Lab`, `wired_pipelines`, `graph_pipelines`.
 - Produces:
   - `RUN_KINDS = ("smoke", "official", "sweep")`; `SMOKE_LABEL = "scorer smoke test"`; `SCORER_VERSION = "2.0.0"`.
@@ -532,6 +550,7 @@ git commit -m "feat(evaluation): planted bank questions from the ledger and a ha
 - `ReproducibilityRecord` keeps every Phase 2 field and adds `bank_version`, `bank_hash`, `scorer_version`, `prompt_hash` (sha256 of the v2 system prompt), `relationship_types_b`, `relationship_types_c`, `dedupe_threshold`, `generation_quantisation`, `generation_model_family`, `repeats`, `run_kind`, `judge_model`, `judge_model_family`, `judge_prompt_version`, `judge_prompt_hash` (judge fields None until Task 8 wires them).
 
 Rules the tests pin:
+
 - The runner refuses before any question runs when the frozen bank's `world_manifest_hash` differs from the world directory's manifest, its `bank_version` differs from `BANK_VERSION`, or its `record_serialiser_version` differs from the lab's index manifest (`GroundingError` with a message naming the mismatch).
 - Each pipeline runs `repeats` times per instance; the selected carriers must be identical across repeats, otherwise the runner raises `RuntimeError("retrieval is not deterministic: ...")`.
 - A `GenerationError` in one repeat is recorded (`generation_failed=True`, empty answer, scores None) and the run continues; any other exception fails the run.
@@ -593,12 +612,14 @@ git commit -m "feat(evaluation): runner v2 with repeats, per-repeat scoring and 
 ### Task 8: The blinded LLM judge
 
 **Files:**
+
 - Create: `backend/app/evaluation/judge.py`
 - Modify: `backend/app/evaluation/runner.py` (judge each successful repeat), `.env.example`
 - Judge settings live in `judge.py`, not `app/config`, because only the evaluator reads them.
 - Test: `backend/tests/test_judge.py`
 
 **Interfaces:**
+
 - Produces:
   - `JUDGE_PROMPT_VERSION = "1.0.0"`; `JUDGE_DIMENSIONS = ("correctness", "completeness", "faithfulness", "citation_accuracy", "abstention")`; `ANSWER_CHAR_CAP = 2400`; `JUDGE_MAX_TOKENS = 300`.
   - `JudgeSettings(provider: str, model: str, model_family: str | None, api_base: str | None, temperature: float)`; `judge_settings_from_env() -> JudgeSettings` (env `JUDGE_PROVIDER` default "fake", `JUDGE_MODEL` default "fake-judge-v1", `JUDGE_MODEL_FAMILY`, `JUDGE_API_BASE`, `JUDGE_TEMPERATURE` default 0).
@@ -679,11 +700,13 @@ git commit -m "feat(evaluation): versioned blinded LLM judge beside the determin
 ### Task 9: Statistics
 
 **Files:**
+
 - Create: `backend/app/evaluation/statistics.py`
 - Modify: `backend/pyproject.toml`, `backend/uv.lock` (add `scipy`)
 - Test: `backend/tests/test_statistics.py`
 
 **Interfaces:**
+
 - Produces:
   - `BOOTSTRAP_RESAMPLES = 10_000`, `BOOTSTRAP_SEED = 2026`, `CONFIDENCE = 0.95`, `MIN_PAIRS_FOR_CLAIM = 10`, `ALPHA = 0.05`.
   - `Interval(mean: float, low: float, high: float, n: int, clusters: int)`.
@@ -759,15 +782,18 @@ git commit -m "feat(evaluation): clustered paired bootstrap, Wilcoxon with Holm,
 ### Task 10: `summary.json` v2 and the report
 
 **Files:**
+
 - Create: `backend/app/evaluation/report.py` (v2)
 - Modify: `backend/app/api/queries.py` (latest benchmark selection), `backend/app/api/schemas.py` (`BenchmarkSummary`)
 - Test: `backend/tests/test_benchmark_report.py` (create), `backend/tests/test_api_queries.py`
 
 **Interfaces:**
+
 - Consumes: `BenchmarkRun` (Task 7), `JudgeVerdict`, `agreement` (Task 8), the statistics (Task 9).
 - Produces: `SUMMARY_SCHEMA_VERSION = "2"`; `summarize(run: BenchmarkRun) -> dict[str, Any]`; `render_report(run: BenchmarkRun) -> str`.
 
 Aggregation rules:
+
 - An observation is one bank instance; its per-pipeline value for a metric is the mean over that pipeline's repeats where the metric is defined (failed generations excluded), with the repeat count kept.
 - A pair exists for a comparison when both pipelines have a value; the cluster key is `f"{question_id}:{world_seed}"`.
 - Metrics per pipeline per stratum (H1, H2 id-anchored as "H2", H2 name-anchored as "H2_name", H3, H5) and overall: `evidence_f1`, `evidence_recall`, `evidence_precision`, `efficiency_per_1k`, `anchor_resolution`, `answer`, `citation_accuracy`, `numeric_citation_rate`, `latency_ms`, `context_tokens`, and each judge dimension (mean of 0 to 2 scores, judged repeats only).
@@ -832,12 +858,14 @@ git commit -m "feat(evaluation): summary v2 with strata, clustered comparisons, 
 ### Task 11: Three-seed orchestration, sweep, model comparison and documentation
 
 **Files:**
+
 - Create: `backend/app/evaluation/official.py`
 - Modify: `backend/app/evaluation/__main__.py` (subcommands `run`, `sweep`, `compare`), `Makefile`, `.env.example`
 - Docs: `docs/evaluation/scoring.md`, `docs/evaluation/reproducibility.md`, `docs/evaluation/statistics.md` (create), `docs/05-benchmark-spec.md` (as-built v2 section at the top), `DECISIONS.md`, `HITL_STATUS.md`
 - Test: `backend/tests/test_official.py`
 
 **Interfaces:**
+
 - Produces:
   - `PRESENTATION_SEED = 2026`; `OFFICIAL_SEEDS = (2026, 2027, 2028)`.
   - `world_paths(seed: int) -> WorldPaths(world_dir, ledger_path, bank_path, collection)`: world `data/generated/dev-seed{seed}`, ledger `data/truth/ledger.json` for the presentation seed and `data/truth/dev-seed{seed}.json` otherwise, bank `data/evaluation/bank/bank-2.0.0-seed{seed}.json`, collection = `QDRANT_COLLECTION` for the presentation seed and `f"{QDRANT_COLLECTION}_seed{seed}"` otherwise.
@@ -899,6 +927,7 @@ git commit -m "feat(evaluation): three-seed harness, depth sweep, model comparis
 ### Task 12: Smoke run, pilot and the generated question bank
 
 **Files:**
+
 - Generated: `docs/evaluation/question-bank.md` (via `bank-doc` over the seed 2026 frozen bank)
 - Modify: `HITL_STATUS.md` (CP1 part 3 row notes), `backend/tests/test_benchmark_live.py` (rewrite for v2: one gated test that runs two instances of each stratum through `run_benchmark("smoke", (2026,), repeats=1, limit=...)` against the live services and asserts the summary schema and the label)
 

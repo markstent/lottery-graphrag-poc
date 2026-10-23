@@ -83,11 +83,11 @@ The audits found three layered problems.
 The owner approves this document once as gate HITL-12.
 Work then proceeds through four workstreams with three checkpoints where the agent stops and reports with artefacts and screenshots.
 
-| Checkpoint | After | Owner sees |
-|---|---|---|
-| CP1 Experiment | World v2, ontology v2, eight planted scenarios, pipelines v2, bank 2.0.0, harness v2, a small real-model smoke run | Data model inventory, ontology tree, bank with strata, smoke numbers with intervals, fairness tests |
-| CP2 Product | Overview, Live Lab, Data Model, Help built against the live API | Screenshots of every screen and state, a recorded real run replaying in Live Lab |
-| CP3 Official run | Results screen, model and cost choice for the official run | Model choice, estimated cost and duration, dry-run on four questions; after approval the full run and final Results |
+| Checkpoint       | After                                                                                                              | Owner sees                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| CP1 Experiment   | World v2, ontology v2, eight planted scenarios, pipelines v2, bank 2.0.0, harness v2, a small real-model smoke run | Data model inventory, ontology tree, bank with strata, smoke numbers with intervals, fairness tests                 |
+| CP2 Product      | Overview, Live Lab, Data Model, Help built against the live API                                                    | Screenshots of every screen and state, a recorded real run replaying in Live Lab                                    |
+| CP3 Official run | Results screen, model and cost choice for the official run                                                         | Model choice, estimated cost and duration, dry-run on four questions; after approval the full run and final Results |
 
 `HITL_STATUS.md` records HITL-12 and each checkpoint.
 Gates HITL-03 to HITL-09 are marked "superseded by HITL-12" rather than reopened one by one.
@@ -139,12 +139,12 @@ Eight planted scenarios.
 The four existing ones (SCN-002 shared device cluster, SCN-003 shared payment cluster, SCN-007 cross-market platform incident, SCN-015 document and structured conflict) stay.
 Four are added.
 
-| Scenario | Why |
-|---|---|
+| Scenario                               | Why                                                                                                             |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | SCN-010 cross-market mechanic affinity | Requires the ontology: local mechanic names in each market, affinity only visible through the canonical concept |
-| SCN-011 transferable campaign | Requires the ontology: segment equivalence across local segment taxonomies |
-| SCN-001 app release conversion failure | The primary demonstration story in the catalogue; two bank questions already wait for it; strong graph signal |
-| SCN-009 payment provider degradation | Cheap, visual, one provider explains symptoms in several markets; adds a providers table |
+| SCN-011 transferable campaign          | Requires the ontology: segment equivalence across local segment taxonomies                                      |
+| SCN-001 app release conversion failure | The primary demonstration story in the catalogue; two bank questions already wait for it; strong graph signal   |
+| SCN-009 payment provider degradation   | Cheap, visual, one provider explains symptoms in several markets; adds a providers table                        |
 
 Every published bank question maps to a planted scenario or a base fact of the world.
 The published bank contains no "not planted" questions.
@@ -286,13 +286,13 @@ The run is executed from the CLI, persisted, and published through the API.
 
 Left sidebar with icons and five destinations.
 
-| Destination | Purpose in one sentence |
-|---|---|
-| Overview | The verdict from the latest official run, how the three approaches differ, and a button to run a question |
-| Live Lab | Run one question through all three approaches and watch them work |
-| Results | Every official run, every question, every score, with intervals |
-| Data Model | What the warehouse, the graph and the ontology look like, with live counts and sample rows |
-| Help | How it works in plain language, every benchmark question with its answer key, glossary, how to run it |
+| Destination | Purpose in one sentence                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------- |
+| Overview    | The verdict from the latest official run, how the three approaches differ, and a button to run a question |
+| Live Lab    | Run one question through all three approaches and watch them work                                         |
+| Results     | Every official run, every question, every score, with intervals                                           |
+| Data Model  | What the warehouse, the graph and the ontology look like, with live counts and sample rows                |
+| Help        | How it works in plain language, every benchmark question with its answer key, glossary, how to run it     |
 
 Setup, Scenario Lab, Benchmark Runner and Evidence Explorer stop being pages.
 Setup becomes a Settings drawer plus the Overview configuration strip.
@@ -427,23 +427,23 @@ Workstream 4 runs alongside 3.
 
 ## 10. Decisions already taken
 
-| Decision | By |
-|---|---|
-| Show the truth; the outcome of the experiment is not predetermined | Owner |
-| Mixed business and technical audience; plain language by default | Owner |
-| Rebuild the world with market-local vocabularies and languages | Owner |
-| LiteLLM with OpenRouter for official runs; Ollama locally; both by configuration | Owner |
-| Light theme, projector friendly | Owner |
-| No fixed date; sequence for quality | Owner |
-| Help shows every question with its answer key and the hidden truth of each story | Owner |
-| One design approval, three checkpoints | Owner |
-| Pipeline names "Text search", "Graph", "Graph + Ontology" | Agent |
-| A indexes serialised structured records; hybrid retrieval; cross-encoder rerank shared by all pipelines | Agent, from the methodology audit |
-| `SIMILAR_TO` becomes an ontology artefact available to C only | Agent, from the data audit |
+| Decision                                                                                                    | By                                    |
+| ----------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| Show the truth; the outcome of the experiment is not predetermined                                          | Owner                                 |
+| Mixed business and technical audience; plain language by default                                            | Owner                                 |
+| Rebuild the world with market-local vocabularies and languages                                              | Owner                                 |
+| LiteLLM with OpenRouter for official runs; Ollama locally; both by configuration                            | Owner                                 |
+| Light theme, projector friendly                                                                             | Owner                                 |
+| No fixed date; sequence for quality                                                                         | Owner                                 |
+| Help shows every question with its answer key and the hidden truth of each story                            | Owner                                 |
+| One design approval, three checkpoints                                                                      | Owner                                 |
+| Pipeline names "Text search", "Graph", "Graph + Ontology"                                                   | Agent                                 |
+| A indexes serialised structured records; hybrid retrieval; cross-encoder rerank shared by all pipelines     | Agent, from the methodology audit     |
+| `SIMILAR_TO` becomes an ontology artefact available to C only                                               | Agent, from the data audit            |
 | Five navigation destinations; Setup, Scenario Lab, Benchmark Runner and Evidence Explorer cease to be pages | Agent, from the UX and wording audits |
-| Graph canvas on `@xyflow/react` with `elkjs` | Agent |
-| SQLite persistence per ADR-007 | Agent |
-| Branch `overhaul/v2`, merge at each checkpoint | Agent |
+| Graph canvas on `@xyflow/react` with `elkjs`                                                                | Agent                                 |
+| SQLite persistence per ADR-007                                                                              | Agent                                 |
+| Branch `overhaul/v2`, merge at each checkpoint                                                              | Agent                                 |
 
 ---
 
@@ -496,12 +496,12 @@ The answers below are the agent's calls under the owner's approval of this docum
 
 ## 12. Risks
 
-| Risk | Mitigation |
-|---|---|
-| After a fair comparison, graph or ontology shows little value on some strata | The product reports it per stratum with intervals; the Overview headline sentences are generated from the data, not written |
-| New questions accidentally favour C | Every question must be answerable in principle by A from indexed text; the carriers are recorded per question and reviewed at CP1 |
-| Term table or serialiser tuned to the bank | Both are built and frozen before grounding; isolation tests cover them |
-| Judge bias | Blinded, randomised, length-capped, calibrated against deterministic checks, agreement published |
-| Official run cost and duration | Estimated at CP3; the demo replays recorded runs and never depends on the run |
-| Graph library performance at 200 nodes | Visible-node cap with clustering; measured in E2E |
-| Scope | Checkpoints are the places to cut; nothing in 5.5 is cut, because it is the proof |
+| Risk                                                                         | Mitigation                                                                                                                        |
+| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| After a fair comparison, graph or ontology shows little value on some strata | The product reports it per stratum with intervals; the Overview headline sentences are generated from the data, not written       |
+| New questions accidentally favour C                                          | Every question must be answerable in principle by A from indexed text; the carriers are recorded per question and reviewed at CP1 |
+| Term table or serialiser tuned to the bank                                   | Both are built and frozen before grounding; isolation tests cover them                                                            |
+| Judge bias                                                                   | Blinded, randomised, length-capped, calibrated against deterministic checks, agreement published                                  |
+| Official run cost and duration                                               | Estimated at CP3; the demo replays recorded runs and never depends on the run                                                     |
+| Graph library performance at 200 nodes                                       | Visible-node cap with clustering; measured in E2E                                                                                 |
+| Scope                                                                        | Checkpoints are the places to cut; nothing in 5.5 is cut, because it is the proof                                                 |

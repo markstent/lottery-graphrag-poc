@@ -43,15 +43,15 @@ Initial suite: 30 questions.
 
 Recommended category allocation:
 
-| Category | Count |
-|---|---:|
-| Simple factual retrieval | 4 |
-| Semantic retrieval | 4 |
-| Relationship lookup | 4 |
-| Two-hop reasoning | 4 |
-| Multi-hop reasoning | 4 |
-| Cross-domain causal reasoning | 4 |
-| Cross-market / ontology / hidden-pattern | 6 |
+| Category                                 | Count |
+| ---------------------------------------- | ----: |
+| Simple factual retrieval                 |     4 |
+| Semantic retrieval                       |     4 |
+| Relationship lookup                      |     4 |
+| Two-hop reasoning                        |     4 |
+| Multi-hop reasoning                      |     4 |
+| Cross-domain causal reasoning            |     4 |
+| Cross-market / ontology / hidden-pattern |     6 |
 
 ---
 

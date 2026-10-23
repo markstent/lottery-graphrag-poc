@@ -9,6 +9,7 @@
 **Reason:** The Vite 8 template ships `oxlint` as its linter; it is ESLint-compatible for our rule needs, materially faster, and removes a config surface the POC does not need. `mypy` over `pyright` avoids a Node dependency in Python tooling. The single `app/` package keeps the POC cohesive: the "synthetic, graph, retrieval, evaluation" boundaries exist as modules inside `app/`, which is the leanest structure that still preserves the required isolation (evaluator, truth ledger) and matches `backend-architecture.md`.
 
 **Consequences:**
+
 - `docs/development/commands.md` is implemented as the Makefile's stable command surface.
 - If linting requirements later outgrow oxlint, migrating to ESLint is mechanical and does not affect contracts.
 - The master-specification §8 structure is superseded by this ADR for implementation layout; documentation structure under `docs/` is unchanged.

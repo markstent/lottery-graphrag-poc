@@ -48,10 +48,10 @@ The default `make test` runs offline.
 Three flags switch on the live tests, which need running services.
 `make services-up` starts Neo4j and Qdrant; Ollama runs on the host.
 
-| Flag | Needs | Enables |
-|---|---|---|
-| `GRAPH_E2E=1` | Neo4j | the live graph tests; several wipe and re-ingest Neo4j |
-| `VECTOR_E2E=1` | Qdrant | the live vector store tests |
+| Flag               | Needs                                                                                                                    | Enables                                                                                                                     |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `GRAPH_E2E=1`      | Neo4j                                                                                                                    | the live graph tests; several wipe and re-ingest Neo4j                                                                      |
+| `VECTOR_E2E=1`     | Qdrant                                                                                                                   | the live vector store tests                                                                                                 |
 | `LIVE_WORLD_E2E=1` | the presentation world (`make generate-dev-data ingest-graph index-vector ground-bank`), its ledger and bank, and Ollama | the live benchmark, the live API test on the presentation world, the live graph read test and the dev-world grounding tests |
 
 Run the whole live suite from `backend/`:

@@ -8,6 +8,7 @@
 import {
   BookOpen,
   ChartColumn,
+  Check,
   CircleCheck,
   CircleX,
   Database,
@@ -233,11 +234,22 @@ function Header() {
         <button
           type="button"
           aria-pressed={presentation}
+          aria-label="Presentation mode"
           onClick={togglePresentation}
-          className={`${BUTTON} ${presentation ? 'border-text-primary bg-surface-raised text-text-primary' : ''}`}
+          className={
+            presentation
+              ? 'flex items-center gap-2 rounded-chip border border-text-primary bg-text-primary px-3 py-1.5 text-sm font-medium text-surface'
+              : BUTTON
+          }
         >
           <Presentation aria-hidden size={16} />
           Presentation mode
+          {presentation ? (
+            <span className="flex items-center gap-1 border-l border-surface/40 pl-2">
+              <Check aria-hidden size={14} />
+              On
+            </span>
+          ) : null}
         </button>
         <button
           type="button"

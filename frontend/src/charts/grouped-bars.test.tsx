@@ -313,6 +313,13 @@ describe('GroupedBars', () => {
     expect(container.querySelectorAll('[data-mark="bar"]')).toHaveLength(5)
   })
 
+  it('dims the marks while updating and leaves every piece of text undimmed', () => {
+    const { container } = render(<GroupedBars {...props} status="loading" />)
+    expect(container.querySelector('.chart-updating')).not.toBeNull()
+    // No ancestor of any text carries an opacity class.
+    expect(container.querySelector('[class*="opacity-"]')).toBeNull()
+  })
+
   it('says Updating beside the title while loading with data, and not otherwise', () => {
     const { rerender } = render(<GroupedBars {...props} status="loading" />)
     expect(screen.getByText('Updating')).toBeInTheDocument()

@@ -3,6 +3,7 @@
 Implementation should support a local Neo4j service.
 
 Required:
+
 - credentials via environment
 - schema migration/bootstrap command
 - health check

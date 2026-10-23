@@ -8,12 +8,12 @@ Semantic Context Lab, with the recovery procedures that back it.
 The presentation state is separate from the development state and never
 overwrites it:
 
-| Artefact | Development | Demo |
-|---|---|---|
-| Dataset | `data/generated/dev-seed2026` (250k tickets) | `data/generated/demo-seed2026` (5M tickets) |
-| Truth ledger (evaluator only) | `data/truth/ledger.json` | `data/truth/ledger-demo.json` |
-| Neo4j graph | `ingest-graph` | `ingest-demo-graph` |
-| Qdrant collection | `semantic_context_lab` | `semantic_context_lab_demo` |
+| Artefact                      | Development                                  | Demo                                        |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------- |
+| Dataset                       | `data/generated/dev-seed2026` (250k tickets) | `data/generated/demo-seed2026` (5M tickets) |
+| Truth ledger (evaluator only) | `data/truth/ledger.json`                     | `data/truth/ledger-demo.json`               |
+| Neo4j graph                   | `ingest-graph`                               | `ingest-demo-graph`                         |
+| Qdrant collection             | `semantic_context_lab`                       | `semantic_context_lab_demo`                 |
 
 Both worlds share one generator version and world seed 2026; every planted
 pattern comes from the scenario engine (SCN-002/003/007/015).
@@ -79,14 +79,14 @@ pane event still streams from real recorded telemetry.
 
 ## 5. Failure modes and recovery
 
-| Symptom | Cause | Recovery |
-|---|---|---|
-| "Saved questions unavailable" in Live Lab | API not running or wrong world | start `make serve-demo-api`; check `curl :8000/api/v1/health` |
-| Backend run fails with MODEL_ERROR | gateway/model down | switch the composer back to Demo story, or restart the model server; the run is recorded as failed, nothing fake is shown |
-| Traversal returns no seeds for a question | question names no graph-resolvable entity | use a saved demo question (they name real ids) |
-| Graph/world looks wrong after live tests | a GRAPH_E2E test wiped Neo4j | `make demo-reset` (re-ingests demo state in ~2 min) |
-| Need the development world back | demo/dev share Neo4j | `make ingest-graph` then `make index-vector` |
-| Answer generation too slow on stage | 35B local model | fall back to the deterministic fake generator (default) |
+| Symptom                                   | Cause                                     | Recovery                                                                                                                  |
+| ----------------------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| "Saved questions unavailable" in Live Lab | API not running or wrong world            | start `make serve-demo-api`; check `curl :8000/api/v1/health`                                                             |
+| Backend run fails with MODEL_ERROR        | gateway/model down                        | switch the composer back to Demo story, or restart the model server; the run is recorded as failed, nothing fake is shown |
+| Traversal returns no seeds for a question | question names no graph-resolvable entity | use a saved demo question (they name real ids)                                                                            |
+| Graph/world looks wrong after live tests  | a GRAPH_E2E test wiped Neo4j              | `make demo-reset` (re-ingests demo state in ~2 min)                                                                       |
+| Need the development world back           | demo/dev share Neo4j                      | `make ingest-graph` then `make index-vector`                                                                              |
+| Answer generation too slow on stage       | 35B local model                           | fall back to the deterministic fake generator (default)                                                                   |
 
 In-memory run state (replayable runs) lives in the API process: restarting
 `serve-demo-api` clears it. The committed datasets and ledgers are

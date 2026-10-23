@@ -58,7 +58,10 @@ The same selected evidence therefore gives the same prompt string in A, B and C,
 The system prompt tells the model to use only those numbered sources, to cite every claim as `[n]`, and to reply with exactly one JSON object:
 
 ```json
-{"verdict": "<one line, or 'unknown' when the sources do not answer>", "answer": "<prose with [n] citations>"}
+{
+  "verdict": "<one line, or 'unknown' when the sources do not answer>",
+  "answer": "<prose with [n] citations>"
+}
 ```
 
 When the sources do not answer the question, the model must set `verdict` to `unknown` and say so in the answer.

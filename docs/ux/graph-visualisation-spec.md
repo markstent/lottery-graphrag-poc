@@ -1,6 +1,7 @@
 # Graph Visualisation Specification
 
 ## Node states
+
 - seed
 - active
 - candidate
@@ -11,12 +12,14 @@
 - source_record
 
 ## Edge states
+
 - candidate
 - active
 - traversed
 - evidence_path
 
 ## Behaviour
+
 - progressive expansion
 - stable existing node positions where practical
 - maximum visible nodes configurable

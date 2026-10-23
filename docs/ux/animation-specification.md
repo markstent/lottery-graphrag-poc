@@ -3,6 +3,7 @@
 Motion communicates system state.
 
 Suggested:
+
 - micro transitions: 120-180ms
 - node reveal: 180-300ms
 - edge traversal: 220-400ms

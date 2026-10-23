@@ -547,3 +547,44 @@ describe('withClustersOf', () => {
     expect(done.nodes.some((n) => n.slot !== undefined)).toBe(false)
   })
 })
+
+describe('evidence path nodes are never grouped', () => {
+  for (const config of ['B', 'C'] as const) {
+    for (const [cap, focus] of [
+      [DEFAULT_VISIBLE_NODE_CAP, false],
+      [12, false],
+      [60, true],
+    ] as const) {
+      it(`on ${config} at cap ${cap}${focus ? ' with focus' : ''}, once the path is recorded`, () => {
+        const events = full.graph[config]
+        const view = graphView(events, {
+          cap,
+          focus,
+          paths: pathsFromResult(resultOf(config)),
+        })
+        expect(view.path.length).toBeGreaterThan(0)
+        const grouped = new Set(view.clusters.flatMap((c) => c.members))
+        for (const id of view.path) expect(grouped.has(id), id).toBe(false)
+        for (const node of view.nodes.filter((n) => n.onPath)) {
+          expect(node.clusterId, node.id).toBeUndefined()
+          expect(node.slot, node.id).toBeUndefined()
+        }
+      })
+    }
+  }
+
+  it('also holds in a replay drawn with the final grouping, before and after the path event', () => {
+    const paths = pathsFromResult(resultOf('B'))
+    const finalView = graphView(full.graph.B, { ...options, paths })
+    for (const upTo of [200, 600, recorded.length]) {
+      const part = reduceAll(recorded.slice(0, upTo)).graph.B
+      const shown = withClustersOf(
+        graphView(part, { ...options, paths }),
+        finalView,
+      )
+      const grouped = new Set(shown.clusters.flatMap((c) => c.members))
+      for (const id of finalView.path)
+        expect(grouped.has(id), `${id} at ${upTo}`).toBe(false)
+    }
+  })
+})

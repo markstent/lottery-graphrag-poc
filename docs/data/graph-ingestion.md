@@ -33,8 +33,10 @@ accumulate per key with `setdefault(key, []).append(row)`.
   "ingestion_version": "ing-20261018T120000Z",
   "label_version": "v2",
   "ontology_version": "2.0.0",
-  "nodes": {"Game": 20},
-  "relationships": [{"type": "PLAYS", "from": "Player", "to": "Game", "count": 1234}]
+  "nodes": { "Game": 20 },
+  "relationships": [
+    { "type": "PLAYS", "from": "Player", "to": "Game", "count": 1234 }
+  ]
 }
 ```
 
@@ -52,16 +54,16 @@ Connection settings come from the environment (`NEO4J_URI`, `NEO4J_USER`,
 
 ## Graph vs source-layer boundary
 
-| In Neo4j | Stays in the structured layer |
-|---|---|
-| Market, Region, Language, Currency, Channel, Supplier | reference data used for traversal |
-| Game, GameFamily, GameCategory, GameMechanic, Draw, PrizeType | product catalogue and draw schedule |
-| IncidentType, SupportCategory, PlayerSegment | market-local taxonomies (one node per local code) |
-| Platform, PlatformVersion, AppVersion | release history |
-| Player, Device, PaymentMethod, PaymentProvider | player entities (dev profile) |
-| Campaign, Experiment, Incident, SupportCase | commercial and operational entities |
-| Document, DocumentChunk, BusinessConcept | knowledge layer |
-| - | **Ticket, Prize, Session, Exposure, kpi_daily rows** |
+| In Neo4j                                                      | Stays in the structured layer                        |
+| ------------------------------------------------------------- | ---------------------------------------------------- |
+| Market, Region, Language, Currency, Channel, Supplier         | reference data used for traversal                    |
+| Game, GameFamily, GameCategory, GameMechanic, Draw, PrizeType | product catalogue and draw schedule                  |
+| IncidentType, SupportCategory, PlayerSegment                  | market-local taxonomies (one node per local code)    |
+| Platform, PlatformVersion, AppVersion                         | release history                                      |
+| Player, Device, PaymentMethod, PaymentProvider                | player entities (dev profile)                        |
+| Campaign, Experiment, Incident, SupportCase                   | commercial and operational entities                  |
+| Document, DocumentChunk, BusinessConcept                      | knowledge layer                                      |
+| -                                                             | **Ticket, Prize, Session, Exposure, kpi_daily rows** |
 
 High-volume transactional facts are never copied into the graph
 (docs/02-graph-schema-spec.md section 8). They appear only as aggregated
@@ -89,14 +91,14 @@ carries `source_timestamp`, taken from the first present column of
 Time-bounded entities carry a validity window (`valid_to` is omitted while
 the entity is still current):
 
-| Label | `valid_from` | `valid_to` |
-|---|---|---|
-| Game | `launch_date` | `retirement_date` |
-| PlatformVersion | `released_at` | `retired_at` |
-| AppVersion | `released_at` | - |
-| Incident | `started_at` | `resolved_at` |
-| Campaign, Experiment | `start_at` | `end_at` |
-| Document | `valid_from` | `valid_to` |
+| Label                | `valid_from`  | `valid_to`        |
+| -------------------- | ------------- | ----------------- |
+| Game                 | `launch_date` | `retirement_date` |
+| PlatformVersion      | `released_at` | `retired_at`      |
+| AppVersion           | `released_at` | -                 |
+| Incident             | `started_at`  | `resolved_at`     |
+| Campaign, Experiment | `start_at`    | `end_at`          |
+| Document             | `valid_from`  | `valid_to`        |
 
 `HAS_MECHANIC` edges carry the mapping's own `valid_from` / `valid_to`.
 The label version is `v2` (`app/config/__init__.py`).
@@ -108,16 +110,16 @@ Every derived relationship names its method, for example
 
 ## Derived relationships
 
-| Relationship | Derivation |
-|---|---|
-| `SIMILAR_TO` | cross-market similarity scored on ontology concepts (`app/ontology/similarity.py`) |
-| `MAPS_TO` | ontology bindings for all seven binding kinds (family, category, mechanic, incident type, support category, segment, channel) |
-| `IS_A` | ontology concept hierarchy |
-| `RUNS_ON` | operational dependency from digital/retail catalogue flags |
-| `AVAILABLE_VIA` | channel flags |
-| `PLAYS`, `EXPOSED_TO` | aggregation over source facts (identified, non-void tickets; all exposures) |
-| `TARGETS` | most-engaged behavioural segment per campaign (share of engaged exposures) |
-| `REFERENCES` | stable entity ids parsed from document titles/bodies (capped at 5 per document) |
+| Relationship          | Derivation                                                                                                                    |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `SIMILAR_TO`          | cross-market similarity scored on ontology concepts (`app/ontology/similarity.py`)                                            |
+| `MAPS_TO`             | ontology bindings for all seven binding kinds (family, category, mechanic, incident type, support category, segment, channel) |
+| `IS_A`                | ontology concept hierarchy                                                                                                    |
+| `RUNS_ON`             | operational dependency from digital/retail catalogue flags                                                                    |
+| `AVAILABLE_VIA`       | channel flags                                                                                                                 |
+| `PLAYS`, `EXPOSED_TO` | aggregation over source facts (identified, non-void tickets; all exposures)                                                   |
+| `TARGETS`             | most-engaged behavioural segment per campaign (share of engaged exposures)                                                    |
+| `REFERENCES`          | stable entity ids parsed from document titles/bodies (capped at 5 per document)                                               |
 
 ## Cypher organisation
 

@@ -3,7 +3,7 @@
  * shown as data, and the two preferences kept in this browser.
  */
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
 import { getDataset, getModels, getOntology, listDatasets } from '../api/client'
 import { Drawer } from '../components/drawer'
@@ -22,7 +22,7 @@ async function loadSettings(signal: AbortSignal) {
   return { detail, models, ontology }
 }
 
-function Row({ term, children }: { term: string; children: string | number }) {
+function Row({ term, children }: { term: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[10rem_1fr] gap-x-4 text-sm">
       <dt className="text-text-muted">{term}</dt>
@@ -74,7 +74,14 @@ function Values() {
                 const model = load.data.models[role]
                 return (
                   <Row key={role} term={MODEL_LABELS[role]}>
-                    {`${model.model} (${model.provider}), ${REACHABLE[String(model.reachable) as keyof typeof REACHABLE]}`}
+                    {`${model.model} (${model.provider}), `}
+                    <span className="whitespace-nowrap">
+                      {
+                        REACHABLE[
+                          String(model.reachable) as keyof typeof REACHABLE
+                        ]
+                      }
+                    </span>
                   </Row>
                 )
               },

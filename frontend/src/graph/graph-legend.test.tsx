@@ -24,6 +24,13 @@ describe('GraphLegend', () => {
     expect(screen.queryByText('Added by the ontology')).toBeNull()
   })
 
+  it('keys what the ontology added by its badge and its dotted line, with no bare swatch', () => {
+    render(<GraphLegend pipeline="C" ontologyAdded />)
+    const item = screen.getByText('Added by the ontology').closest('li')!
+    expect(item.querySelectorAll('svg')).toHaveLength(1)
+    expect(item.querySelector('rect')).toBeNull()
+  })
+
   it('uses none of the banned words', () => {
     const { container } = render(<GraphLegend pipeline="C" ontologyAdded />)
     expect(container.textContent).not.toMatch(

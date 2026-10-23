@@ -3,6 +3,7 @@
 Desktop/laptop first.
 
 On narrower widths:
+
 - comparison panes stack
 - evidence remains accessible
 - graph supports local pan/zoom

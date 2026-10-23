@@ -21,15 +21,15 @@ Each concept has a parent, a type, a definition, a label in each language and sy
 117 bindings map a market-local code to a concept.
 Binding kinds and counts:
 
-| Kind | Count |
-|---|---|
-| family | 20 |
-| category | 13 |
-| mechanic | 16 |
-| incident_type | 25 |
-| support_category | 16 |
-| segment | 24 |
-| channel | 3 |
+| Kind             | Count |
+| ---------------- | ----- |
+| family           | 20    |
+| category         | 13    |
+| mechanic         | 16    |
+| incident_type    | 25    |
+| support_category | 16    |
+| segment          | 24    |
+| channel          | 3     |
 
 Channel bindings are shared across markets (D-013); every other binding names its market.
 `CONCEPT_PROGRESSIVE_JACKPOT` is intentionally unbound (D-019).

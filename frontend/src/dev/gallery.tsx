@@ -5,7 +5,7 @@
  * graph canvases from all laying out at once. Left out of the production build.
  */
 
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 
 import { ApiError } from '../api/http'
 import { SettingsDrawer } from '../app/settings-drawer'
@@ -43,16 +43,26 @@ function Block({
   id,
   title,
   width = 'w-[68rem]',
+  sample = false,
   children,
 }: {
   id: string
   title: string
   width?: string
+  /** True for a chart: its numbers are for looking at, not results. */
+  sample?: boolean
   children: ReactNode
 }) {
   return (
     <div data-gallery={id} className={`${width} bg-background p-4`}>
-      <h3 className="mb-2 text-sm font-medium text-text-muted">{title}</h3>
+      <h3 className="mb-2 flex items-baseline gap-3 text-sm font-medium text-text-muted">
+        {title}
+        {sample ? (
+          <span className="rounded-chip border border-border px-2 py-0.5 text-xs font-semibold text-text-primary">
+            Sample values, not results
+          </span>
+        ) : null}
+      </h3>
       {children}
     </div>
   )
@@ -115,18 +125,22 @@ function Tokens() {
       <Block id="tokens-text" title="Text">
         <Card>
           <p className="text-2xl font-semibold text-text-primary">
-            2xl primary 62.5
+            40 px · 2xl · primary 62.5
           </p>
           <p className="text-xl font-semibold text-text-primary">
-            xl primary 62.5
+            28 px · xl · primary 62.5
           </p>
-          <p className="text-lg text-text-primary">lg primary text</p>
-          <p className="text-base text-text-primary">base primary text</p>
-          <p className="text-sm text-text-secondary">sm secondary text</p>
-          <p className="text-sm text-text-muted">sm muted text</p>
-          <p className="text-xs text-text-muted">xs muted text</p>
+          <p className="text-lg text-text-primary">20 px · lg · primary text</p>
+          <p className="text-base text-text-primary">
+            16 px · base · primary text
+          </p>
+          <p className="text-sm text-text-secondary">
+            14 px · sm · secondary text
+          </p>
+          <p className="text-sm text-text-muted">14 px · sm · muted text</p>
+          <p className="text-xs text-text-muted">12 px · xs · muted text</p>
           <p className="tabular text-sm text-text-primary">
-            tabular 111.1 / 888.8
+            14 px · sm · tabular 111.1 / 888.8
           </p>
         </Card>
       </Block>
@@ -263,7 +277,11 @@ const STATUSES = [
 function Charts() {
   return (
     <>
-      <Block id="chart-stat-tile" title="Stat tile: normal, interval and pairs">
+      <Block
+        sample
+        id="chart-stat-tile"
+        title="Stat tile: normal, interval and pairs"
+      >
         <Card>
           <div className="flex gap-12">
             <StatTile
@@ -297,6 +315,7 @@ function Charts() {
         </Card>
       </Block>
       <Block
+        sample
         id="chart-legend"
         title="Legend: three series, and with a row not tested"
       >
@@ -307,7 +326,7 @@ function Charts() {
           </div>
         </Card>
       </Block>
-      <Block id="chart-data-table" title="Data table">
+      <Block sample id="chart-data-table" title="Data table">
         <Card>
           <DataTable
             caption="Evidence by question type"
@@ -325,6 +344,7 @@ function Charts() {
       </Block>
       {STATUSES.map(([name, state]) => (
         <Block
+          sample
           key={`bars-${name}`}
           id={`chart-grouped-bars-${name}`}
           title={`Grouped bars: ${name}`}
@@ -343,7 +363,11 @@ function Charts() {
           </Card>
         </Block>
       ))}
-      <Block id="chart-grouped-bars-table" title="Grouped bars: table twin">
+      <Block
+        sample
+        id="chart-grouped-bars-table"
+        title="Grouped bars: table twin"
+      >
         <Card>
           <GroupedBars
             title="Evidence found by question type"
@@ -355,7 +379,11 @@ function Charts() {
           />
         </Card>
       </Block>
-      <Block id="chart-grouped-bars-nulls" title="Grouped bars: nulls are gaps">
+      <Block
+        sample
+        id="chart-grouped-bars-nulls"
+        title="Grouped bars: nulls are gaps"
+      >
         <Card>
           <GroupedBars
             title="Evidence found by question type"
@@ -366,6 +394,7 @@ function Charts() {
         </Card>
       </Block>
       <Block
+        sample
         id="chart-grouped-bars-negative"
         title="Grouped bars: negative values"
       >
@@ -379,6 +408,7 @@ function Charts() {
         </Card>
       </Block>
       <Block
+        sample
         id="chart-grouped-bars-tooltip"
         title="Grouped bars: tooltip on hover"
       >
@@ -394,6 +424,7 @@ function Charts() {
       </Block>
       {STATUSES.map(([name, state]) => (
         <Block
+          sample
           key={`interval-${name}`}
           id={`chart-interval-plot-${name}`}
           title={`Interval plot: ${name}`}
@@ -410,7 +441,11 @@ function Charts() {
           </Card>
         </Block>
       ))}
-      <Block id="chart-interval-plot-table" title="Interval plot: table twin">
+      <Block
+        sample
+        id="chart-interval-plot-table"
+        title="Interval plot: table twin"
+      >
         <Card>
           <IntervalPlot
             title="What each layer adds"
@@ -421,6 +456,7 @@ function Charts() {
         </Card>
       </Block>
       <Block
+        sample
         id="chart-interval-plot-nulls"
         title="Interval plot: nulls are gaps"
       >
@@ -434,6 +470,7 @@ function Charts() {
         </Card>
       </Block>
       <Block
+        sample
         id="chart-interval-plot-negative"
         title="Interval plot: negative values"
       >
@@ -447,6 +484,7 @@ function Charts() {
         </Card>
       </Block>
       <Block
+        sample
         id="chart-interval-plot-tooltip"
         title="Interval plot: tooltip on hover"
       >
@@ -593,6 +631,7 @@ function Graphs() {
 /** Shows the text a screen reader is given, which the summary itself hides. */
 function SummaryText({ view }: { view: ReturnType<typeof fixtureView> }) {
   const host = useRef<HTMLDivElement>(null)
+  const id = useId()
   const [text, setText] = useState('')
   useEffect(() => {
     setText(host.current?.innerText ?? '')
@@ -600,7 +639,7 @@ function SummaryText({ view }: { view: ReturnType<typeof fixtureView> }) {
   return (
     <>
       <div ref={host}>
-        <GraphSummary id={`summary-${view.nodes.length}`} view={view} />
+        <GraphSummary id={id} view={view} />
       </div>
       <pre className="whitespace-pre-wrap font-sans text-sm text-text-primary">
         {text}
@@ -637,6 +676,30 @@ function Paths() {
           </div>
         )
       })}
+      <Block
+        id="paths-c-presentation"
+        title="Evidence path list, configuration C, presentation mode"
+        width="w-[56rem]"
+      >
+        <div className="presentation">
+          <Card>
+            <EvidencePathList
+              view={fixtureView({ source: 'abc', config: 'C' })}
+            />
+          </Card>
+        </div>
+      </Block>
+      <Block
+        id="summary-c-presentation"
+        title="Canvas summary for screen readers, configuration C, presentation mode"
+        width="w-[72rem]"
+      >
+        <div className="presentation">
+          <Card>
+            <SummaryText view={fixtureView({ source: 'abc', config: 'C' })} />
+          </Card>
+        </div>
+      </Block>
       <Block
         id="paths-pending"
         title="Evidence path list: before the path event"
