@@ -146,6 +146,13 @@ def no_ingested_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return path
 
 
+@pytest.fixture(autouse=True)
+def litellm_offline(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A test that loads the real LiteLLM (the API does at start-up when
+    GENERATION_PROVIDER=litellm) reads its bundled cost map, never the network."""
+    monkeypatch.setenv("LITELLM_LOCAL_MODEL_COST_MAP", "True")
+
+
 OLLAMA_PORT = 11434
 
 
