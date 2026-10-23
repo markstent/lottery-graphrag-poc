@@ -16,7 +16,7 @@
  * per state, passing the parameters as `query`.
  */
 
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 
 import { Shell } from '../app/shell'
 import { useSettings } from '../app/use-settings'
@@ -26,11 +26,35 @@ import { GraphCanvas } from '../graph/graph-canvas'
 import { GraphLegend } from '../graph/graph-legend'
 import { DEFAULT_VISIBLE_NODE_CAP } from '../graph/model'
 import { type RunEvent } from '../run/reduce'
-import recordedRun from '../run/fixtures/run-abc.json'
-import { fixtureView } from './fixture-view'
-import generated from './fixtures/graph-200.json'
+import {
+  RECORDED_RUN,
+  fixtureView,
+  loadGeneratedRun,
+  type FixtureRun,
+} from './fixture-view'
 
 export default function GraphHarness({ query }: { query?: string }) {
+  const params = new URLSearchParams(
+    query ?? window.location.hash.split('?')[1] ?? '',
+  )
+  const generatedRun = params.get('source') === '200'
+  const [generated, setGenerated] = useState<FixtureRun | null>(null)
+  useEffect(() => {
+    if (!generatedRun) return
+    let current = true
+    void loadGeneratedRun().then((run) => {
+      if (current) setGenerated(run)
+    })
+    return () => {
+      current = false
+    }
+  }, [generatedRun])
+  const run = generatedRun ? generated : RECORDED_RUN
+  // The generated run is fetched on demand, so the page is empty until it is here.
+  return run ? <Harness run={run} query={query} /> : null
+}
+
+function Harness({ run, query }: { run: FixtureRun; query?: string }) {
   // Without a query the page is the whole screen and reads the hash.
   const embedded = query !== undefined
   const { reducedMotion } = useSettings()
@@ -40,8 +64,7 @@ export default function GraphHarness({ query }: { query?: string }) {
   const generatedRun = params.get('source') === '200'
   // The generated run holds configuration C only.
   const config = generatedRun || params.get('config') !== 'B' ? 'C' : 'B'
-  const events = (generatedRun ? generated : recordedRun)
-    .events as unknown as RunEvent[]
+  const events = run.events as unknown as RunEvent[]
   const pathListId = useId()
   const [count, setCount] = useState(
     Number(params.get('count') ?? events.length),
@@ -55,13 +78,13 @@ export default function GraphHarness({ query }: { query?: string }) {
   const viewAt = useMemo(
     () => (upTo: number) =>
       fixtureView({
-        source: generatedRun ? '200' : 'abc',
+        run,
         config,
         upTo,
         cap,
         focus,
       }),
-    [cap, focus, config, generatedRun],
+    [run, cap, focus, config],
   )
   const view = useMemo(() => viewAt(count), [viewAt, count])
   const finalView = useMemo(() => viewAt(events.length), [viewAt, events])

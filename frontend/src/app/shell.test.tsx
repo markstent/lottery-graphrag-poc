@@ -397,7 +397,9 @@ describe('storage failures', () => {
       screen.getByRole('spinbutton', { name: 'Visible nodes' }),
     ).toHaveValue(24)
   })
+})
 
+describe('skip link', () => {
   it('keeps the route when the skip link is used, and focuses the main area', async () => {
     const user = userEvent.setup()
     window.history.replaceState(null, '', '/#/help')
@@ -406,7 +408,9 @@ describe('storage failures', () => {
     expect(window.location.hash).toBe('#/help')
     expect(document.getElementById('main')).toHaveFocus()
   })
+})
 
+describe('reduced motion', () => {
   it('applies reduced motion to the whole document, drawers included', async () => {
     const user = userEvent.setup()
     render(<App />)

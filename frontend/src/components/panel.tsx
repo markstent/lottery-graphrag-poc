@@ -20,6 +20,8 @@ interface PanelProps {
   message?: string
   error?: Error
   onRetry?: () => void
+  /** A further button in the error state, such as reloading the page. */
+  action?: { label: string; onClick: () => void }
   skeleton?: ReactNode
   children?: ReactNode
 }
@@ -54,6 +56,7 @@ export function Panel({
   message,
   error,
   onRetry,
+  action,
   skeleton = DEFAULT_SKELETON,
   children,
 }: PanelProps) {
@@ -98,6 +101,15 @@ export function Panel({
                   className="rounded-chip border border-border px-3 py-1 text-text-primary hover:bg-surface-raised"
                 >
                   Retry
+                </button>
+              )}
+              {action && (
+                <button
+                  type="button"
+                  onClick={action.onClick}
+                  className="rounded-chip border border-border px-3 py-1 text-text-primary hover:bg-surface-raised"
+                >
+                  {action.label}
                 </button>
               )}
             </Notice>

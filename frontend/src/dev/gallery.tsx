@@ -652,7 +652,7 @@ function Paths() {
   return (
     <>
       {(['B', 'C'] as const).map((config) => {
-        const view = fixtureView({ source: 'abc', config })
+        const view = fixtureView({ config })
         return (
           <div key={config} className="contents">
             <Block
@@ -683,9 +683,7 @@ function Paths() {
       >
         <div className="presentation">
           <Card>
-            <EvidencePathList
-              view={fixtureView({ source: 'abc', config: 'C' })}
-            />
+            <EvidencePathList view={fixtureView({ config: 'C' })} />
           </Card>
         </div>
       </Block>
@@ -696,7 +694,7 @@ function Paths() {
       >
         <div className="presentation">
           <Card>
-            <SummaryText view={fixtureView({ source: 'abc', config: 'C' })} />
+            <SummaryText view={fixtureView({ config: 'C' })} />
           </Card>
         </div>
       </Block>
@@ -706,9 +704,7 @@ function Paths() {
         width="w-[40rem]"
       >
         <Card>
-          <EvidencePathList
-            view={fixtureView({ source: 'abc', config: 'C', upTo: 5 })}
-          />
+          <EvidencePathList view={fixtureView({ config: 'C', upTo: 5 })} />
         </Card>
       </Block>
       <Block
@@ -718,7 +714,7 @@ function Paths() {
       >
         <Card>
           <EvidencePathList
-            view={fixtureView({ source: 'abc', config: 'C', upTo: 5 })}
+            view={fixtureView({ config: 'C', upTo: 5 })}
             ended
           />
         </Card>

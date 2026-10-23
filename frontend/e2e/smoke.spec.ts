@@ -65,3 +65,25 @@ for (const { name, hash, purpose } of DESTINATIONS) {
     await expect(link).toHaveAttribute('aria-current', 'page')
   })
 }
+
+test('a destination whose chunk fails to load shows a message and keeps the shell', async ({
+  page,
+}) => {
+  await page.route('**/assets/help-*.js', (route) => route.abort())
+  await page.goto('/')
+  await page
+    .getByRole('navigation', { name: 'Primary' })
+    .getByRole('link', { name: 'Help', exact: true })
+    .click()
+  await expect(page.getByRole('alert')).toContainText(
+    'This page could not be loaded.',
+  )
+  await expect(page.getByRole('button', { name: 'Reload page' })).toBeVisible()
+  await expect(page.getByText('Semantic Context Lab')).toBeVisible()
+  // Another destination still opens.
+  await page
+    .getByRole('navigation', { name: 'Primary' })
+    .getByRole('link', { name: 'Data Model', exact: true })
+    .click()
+  await expect(page.getByRole('alert')).toHaveCount(0)
+})
