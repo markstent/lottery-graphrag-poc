@@ -3,11 +3,30 @@ import { lazy, Suspense } from 'react'
 import { SettingsProvider } from './app/settings'
 import { Shell } from './app/shell'
 import { useRoute } from './app/router'
-import { DataDictionary } from './views/data-dictionary'
-import { ExperimentHome } from './views/experiment-home'
-import { Help } from './views/help'
-import { LiveLab } from './views/live-lab'
-import { ResultsDashboard } from './views/results-dashboard'
+import { Panel } from './components/panel'
+
+// One chunk per destination, fetched when its route is first shown.
+const ExperimentHome = lazy(() =>
+  import('./views/experiment-home').then((m) => ({
+    default: m.ExperimentHome,
+  })),
+)
+const LiveLab = lazy(() =>
+  import('./views/live-lab').then((m) => ({ default: m.LiveLab })),
+)
+const ResultsDashboard = lazy(() =>
+  import('./views/results-dashboard').then((m) => ({
+    default: m.ResultsDashboard,
+  })),
+)
+const DataDictionary = lazy(() =>
+  import('./views/data-dictionary').then((m) => ({
+    default: m.DataDictionary,
+  })),
+)
+const Help = lazy(() =>
+  import('./views/help').then((m) => ({ default: m.Help })),
+)
 
 function Routes() {
   const route = useRoute()
@@ -40,7 +59,9 @@ function ThemedApp() {
         </Suspense>
       ) : (
         <Shell>
-          <Routes />
+          <Suspense fallback={<Panel state="loading" title="This page" />}>
+            <Routes />
+          </Suspense>
         </Shell>
       )}
     </>

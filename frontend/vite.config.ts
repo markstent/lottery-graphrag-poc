@@ -8,6 +8,8 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // The elk worker is code-split by the build, which an IIFE worker cannot be.
+  worker: { format: 'es' },
   test: {
     // jsdom has no Worker: elk's in-process worker stands in for the real one.
     alias: {

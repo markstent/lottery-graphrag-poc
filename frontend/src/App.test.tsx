@@ -113,8 +113,14 @@ function stubLiveBackend(
   )
 }
 
-async function runLiveQuestion() {
+/** The Live Lab is its own chunk, so it appears a moment after the shell. */
+async function renderLiveLab() {
   render(<App />)
+  await screen.findByRole('region', { name: 'Question composer' })
+}
+
+async function runLiveQuestion() {
+  await renderLiveLab()
   fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
   fireEvent.click(screen.getByLabelText('Reduce motion'))
   fireEvent.click(screen.getByRole('button', { name: 'Close' }))
@@ -147,8 +153,8 @@ describe('App', () => {
     )
   })
 
-  it('lands on Live Lab by default', () => {
-    render(<App />)
+  it('lands on Live Lab by default', async () => {
+    await renderLiveLab()
 
     expect(
       screen.getByRole('region', { name: 'Question composer' }),
@@ -165,8 +171,8 @@ describe('App', () => {
     )
   })
 
-  it('opens the inline Evidence Inspector drawer when a citation is clicked in Live Lab', () => {
-    render(<App />)
+  it('opens the inline Evidence Inspector drawer when a citation is clicked in Live Lab', async () => {
+    await renderLiveLab()
 
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     fireEvent.click(screen.getByLabelText('Reduce motion'))
@@ -198,8 +204,8 @@ describe('App', () => {
     expect(screen.getByText('Q-001')).toBeInTheDocument()
   })
 
-  it('never replays the story for a question it does not contain', () => {
-    render(<App />)
+  it('never replays the story for a question it does not contain', async () => {
+    await renderLiveLab()
 
     expect(screen.getByRole('button', { name: /dq-2/ })).toBeDisabled()
     expect(screen.getByRole('button', { name: /dq-3/ })).toBeDisabled()
@@ -212,8 +218,8 @@ describe('App', () => {
     expect(run).toBeDisabled()
   })
 
-  it('offers a market scope selector that only activates in Live backend mode', () => {
-    render(<App />)
+  it('offers a market scope selector that only activates in Live backend mode', async () => {
+    await renderLiveLab()
 
     const group = screen.getByRole('group', { name: 'Market scope' })
     expect(group).toBeVisible()
