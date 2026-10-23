@@ -326,6 +326,89 @@ describe('useLiveRun, results', () => {
   })
 })
 
+describe('useLiveRun, the finished run', () => {
+  it('gives the state at the end of a recording, whatever the cursor shows', () => {
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
+    expect(result.current.finalState).toBeNull()
+    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    expect(result.current.state).toEqual(initialRunState())
+    expect(result.current.finalState).toEqual(reduceAll(h1.events))
+  })
+
+  it('has none for a live run until its stream has ended', async () => {
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
+    await startLive(result)
+    await act(async () => {
+      for (const event of live) handlers.onEvent(event)
+    })
+    expect(result.current.finalState).toBeNull()
+    await act(async () => handlers.onEnd())
+    expect(result.current.finalState).toEqual(reduceAll(live))
+  })
+})
+
+describe('useLiveRun, a score still being written', () => {
+  const pending = { ...h1.results, score_status: 'pending', score: null }
+
+  it('reads the results again until the score is there', async () => {
+    client.getRun
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce(h1.results)
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
+    await startLive(result)
+    await act(async () => {
+      for (const event of live) handlers.onEvent(event)
+      handlers.onEnd()
+    })
+    expect(result.current.results).toBe(pending)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(client.getRun).toHaveBeenCalledTimes(2)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000)
+    })
+    expect(client.getRun).toHaveBeenCalledTimes(3)
+    expect(result.current.results).toBe(h1.results)
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+    expect(client.getRun).toHaveBeenCalledTimes(3)
+  })
+
+  it('stops after a few tries and keeps the pending results', async () => {
+    client.getRun.mockResolvedValue(pending)
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
+    await startLive(result)
+    await act(async () => {
+      for (const event of live) handlers.onEvent(event)
+      handlers.onEnd()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000)
+    })
+    expect(client.getRun.mock.calls.length).toBeLessThanOrEqual(6)
+    expect(result.current.results).toBe(pending)
+  })
+
+  it('stops reading when a new run starts', async () => {
+    client.getRun.mockResolvedValue(pending)
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
+    await startLive(result)
+    await act(async () => {
+      for (const event of live) handlers.onEvent(event)
+      handlers.onEnd()
+    })
+    const calls = client.getRun.mock.calls.length
+    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10000)
+    })
+    expect(client.getRun.mock.calls.length).toBe(calls)
+  })
+})
+
 describe('useLiveRun, races', () => {
   it('ignores the stream of an earlier run once a new one has started', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))

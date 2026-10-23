@@ -2,6 +2,8 @@ import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { EVIDENCE_STATES } from '../design/evidence-states'
+import { TOKENS } from '../design/tokens'
+import { OTHER_PATH_DASH } from './edge-path'
 import { GraphLegend } from './graph-legend'
 
 describe('GraphLegend', () => {
@@ -22,6 +24,16 @@ describe('GraphLegend', () => {
     expect(screen.queryByText('Added by the ontology')).toBeNull()
     rerender(<GraphLegend pipeline="B" ontologyAdded />)
     expect(screen.queryByText('Added by the ontology')).toBeNull()
+  })
+
+  it("keys the other pipeline's evidence path with its own colour and a dashed line, only when it is shown", () => {
+    const { rerender } = render(<GraphLegend pipeline="B" otherPath="C" />)
+    const item = screen.getByText("C's evidence path").closest('li')!
+    const line = item.querySelector('line')!
+    expect(line.getAttribute('stroke')).toBe(TOKENS['color-pipeline-c-strong'])
+    expect(line.getAttribute('stroke-dasharray')).toBe(OTHER_PATH_DASH)
+    rerender(<GraphLegend pipeline="B" />)
+    expect(screen.queryByText("C's evidence path")).toBeNull()
   })
 
   it('keys what the ontology added by its badge and its dotted line, with no bare swatch', () => {

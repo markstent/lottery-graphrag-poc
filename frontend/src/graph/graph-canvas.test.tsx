@@ -61,6 +61,7 @@ interface Extra {
   reducedMotion?: boolean
   label?: string
   pathListId?: string
+  otherPipeline?: 'B' | 'C'
   onSelectNode?: (id: string) => void
   /** Draw as a replay of this final view; otherwise as a live stream. */
   replayOf?: GraphView
@@ -743,13 +744,20 @@ describe('what a screen reader is given', () => {
   })
 
   it('names what the ontology added in the node, the summary and the path list', async () => {
-    // Take a node on the path out of B, so it reads as added by the ontology.
+    // Take a node on the path out of B and record it in C as reached through a
+    // concept, so it reads as added by the ontology.
     const state = reduceAll(recorded)
     const withoutOnPath = {
       ...state.graph.B,
       nodes: state.graph.B.nodes.filter((n) => n.id !== 'SUP_00005'),
     }
-    const v = graphView(state.graph.C, {
+    const viaConcept = {
+      ...state.graph.C,
+      nodes: state.graph.C.nodes.map((n) =>
+        n.id === 'SUP_00005' ? { ...n, viaConcept: 'CONCEPT_INCIDENT' } : n,
+      ),
+    }
+    const v = graphView(viaConcept, {
       cap: 1000,
       focus: false,
       overlay: withoutOnPath,
@@ -787,5 +795,66 @@ describe('what a screen reader is given', () => {
     expect(pathList?.textContent).not.toContain(
       'support case (SUP_00113), added by the ontology',
     )
+  })
+})
+
+describe('the other pipeline path', () => {
+  const state = reduceAll(recorded)
+  // B's graph with a path of C's marked that runs through nodes B's own path
+  // does not reach (the recorded B and C paths happen to be the same).
+  const own = recordedPathsFromResult(resultOf('B'))
+  const onOwn = new Set(own.flatMap((p) => p.ids))
+  const hop = state.graph.B.relationships.find(
+    (r) => onOwn.has(r.from) && !onOwn.has(r.to),
+  )!
+  const view = graphView(state.graph.B, {
+    cap: 1000,
+    focus: false,
+    paths: own,
+    otherPaths: [[hop.from, hop.to]],
+  })
+
+  it('rings its nodes in the other pipeline colour with a text cue, and says so aloud', async () => {
+    const marked = view.nodes.filter((n) => n.onOtherPath)
+    expect(marked.length).toBeGreaterThan(0)
+    render(canvas(view, { pipeline: 'B', otherPipeline: 'C' }))
+    await placed(view.nodes.length)
+    for (const node of view.nodes) {
+      const button = nodeButton(node.id)
+      expect(
+        button.getAttribute('data-on-other-path') === 'true',
+        node.id,
+      ).toBe(node.onOtherPath)
+      expect(within(button).queryByText('C path') !== null, node.id).toBe(
+        node.onOtherPath,
+      )
+    }
+    const button = nodeButton(marked[0].id)
+    expect(button).toHaveAccessibleDescription(/on pipeline C's evidence path/)
+    expect(button.querySelector('svg')?.innerHTML).toContain(
+      TOKENS['color-pipeline-c-strong'],
+    )
+  })
+
+  it('draws its edges dashed in the other pipeline colour', async () => {
+    render(canvas(view, { pipeline: 'B', otherPipeline: 'C' }))
+    await placed(view.nodes.length)
+    expect(view.edges.some((e) => e.onOtherPath && !e.onPath)).toBe(true)
+    await waitFor(() =>
+      expect(
+        document.querySelectorAll('[data-edge-id][data-on-other-path="true"]')
+          .length,
+      ).toBe(
+        new Set(
+          view.edges.filter((e) => e.onOtherPath && !e.onPath).map((e) => e.id),
+        ).size,
+      ),
+    )
+  })
+
+  it('draws nothing of it without another pipeline', async () => {
+    render(canvas(view, { pipeline: 'B' }))
+    await placed(view.nodes.length)
+    expect(document.querySelector('[data-on-other-path="true"]')).toBeNull()
   })
 })

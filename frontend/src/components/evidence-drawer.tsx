@@ -15,6 +15,13 @@ import { Panel } from './panel'
 export type EvidenceSource =
   | { kind: 'record'; datasetId: string; table: string; rowId: string }
   | { kind: 'node'; nodeId: string }
+  /** A passage the run's results carry in full: shown as is, with no request. */
+  | {
+      kind: 'passage'
+      title: string
+      text: string
+      facts: readonly (readonly [string, string])[]
+    }
 
 interface EvidenceDrawerProps {
   /** What to show; `null` keeps the drawer closed. */
@@ -60,7 +67,9 @@ const GRAPH_ERRORS: Record<string, string> = {
 const graphErrorWords = (code: string): string =>
   GRAPH_ERRORS[code] ?? 'The graph could not be read for this record.'
 
-function loaded(source: EvidenceSource) {
+type Fetched = Exclude<EvidenceSource, { kind: 'passage' }>
+
+function loaded(source: Fetched) {
   return source.kind === 'record'
     ? async (signal: AbortSignal) => {
         const record = await getRecord(
@@ -116,11 +125,51 @@ function loaded(source: EvidenceSource) {
       }
 }
 
+function PathPositionLine({
+  position,
+}: {
+  position: EvidenceDrawerProps['pathPosition']
+}) {
+  return position ? (
+    <p className="text-sm text-text-secondary">
+      {`Step ${position.step} of ${position.of} on evidence path ${position.path}`}
+    </p>
+  ) : null
+}
+
+function PassageBody({
+  source,
+}: {
+  source: Extract<EvidenceSource, { kind: 'passage' }>
+}) {
+  return (
+    <>
+      <Panel title="Record" state="ready">
+        <div className="space-y-3">
+          <p className="text-sm font-medium">{source.title}</p>
+          <p className="text-sm whitespace-pre-line text-text-primary">
+            {source.text}
+          </p>
+        </div>
+      </Panel>
+      <Panel title="Provenance" state="ready">
+        <dl className="space-y-2">
+          {source.facts.map(([term, value]) => (
+            <Fact key={term} term={term}>
+              {value}
+            </Fact>
+          ))}
+        </dl>
+      </Panel>
+    </>
+  )
+}
+
 function EvidenceBody({
   source,
   pathPosition,
 }: {
-  source: EvidenceSource
+  source: Fetched
   pathPosition?: EvidenceDrawerProps['pathPosition']
 }) {
   const key =
@@ -131,11 +180,7 @@ function EvidenceBody({
 
   return (
     <>
-      {pathPosition && (
-        <p className="text-sm text-text-secondary">
-          {`Step ${pathPosition.step} of ${pathPosition.of} on evidence path ${pathPosition.path}`}
-        </p>
-      )}
+      <PathPositionLine position={pathPosition} />
       <Panel
         title="Record"
         state={load.status}
@@ -169,7 +214,11 @@ export function EvidenceDrawer({
 }: EvidenceDrawerProps) {
   return (
     <Drawer open={source !== null} title="Evidence" onClose={onClose}>
-      {source && <EvidenceBody source={source} pathPosition={pathPosition} />}
+      {source?.kind === 'passage' ? (
+        <PassageBody source={source} />
+      ) : (
+        source && <EvidenceBody source={source} pathPosition={pathPosition} />
+      )}
     </Drawer>
   )
 }

@@ -286,14 +286,45 @@ describe('evidence paths', () => {
 })
 
 describe('added by the ontology', () => {
-  it('is true for the nodes C found that B never did, with B as the overlay', () => {
+  const sourcedByOntology = (n: GraphEvents['nodes'][number]) =>
+    n.viaConcept !== null ||
+    full.graph.C.concepts.some((concept) => concept.id === n.id)
+
+  it('is true for the nodes C found that B did not, when C records them as ontology-sourced', () => {
     const b = new Set(full.graph.B.nodes.map((n) => n.id))
     const view = graphView(full.graph.C, { ...options, overlay: full.graph.B })
     const added = view.nodes.filter((n) => n.addedByOntology)
     expect(full.graph.B.nodes).toHaveLength(41)
     expect(full.graph.C.nodes).toHaveLength(61)
-    expect(added).toHaveLength(20)
-    for (const n of view.nodes) expect(n.addedByOntology).toBe(!b.has(n.id))
+    // 20 nodes are new to B; 15 of them are concepts or were reached through one.
+    expect(full.graph.C.nodes.filter((n) => !b.has(n.id))).toHaveLength(20)
+    expect(added).toHaveLength(15)
+    for (const node of full.graph.C.nodes)
+      expect(
+        view.nodes.find((n) => n.id === node.id)?.addedByOntology,
+        node.id,
+      ).toBe(!b.has(node.id) && sourcedByOntology(node))
+  })
+
+  it('is false for a node new to B that no ontology event accounts for', () => {
+    const plain = full.graph.C.nodes.find(
+      (n) =>
+        !full.graph.B.nodes.some((b) => b.id === n.id) && !sourcedByOntology(n),
+    )!
+    const view = graphView(full.graph.C, { ...options, overlay: full.graph.B })
+    expect(view.nodes.find((n) => n.id === plain.id)?.addedByOntology).toBe(
+      false,
+    )
+  })
+
+  it('marks nothing when C records no ontology expansion', () => {
+    const none = {
+      ...full.graph.C,
+      concepts: [],
+      nodes: full.graph.C.nodes.map((n) => ({ ...n, viaConcept: null })),
+    }
+    const view = graphView(none, { ...options, overlay: full.graph.B })
+    expect(view.nodes.some((n) => n.addedByOntology)).toBe(false)
   })
 
   it('is false without an overlay and for B against itself', () => {
@@ -302,6 +333,47 @@ describe('added by the ontology', () => {
     ).toBe(false)
     const own = graphView(full.graph.B, { ...options, overlay: full.graph.B })
     expect(own.nodes.some((n) => n.addedByOntology)).toBe(false)
+  })
+})
+
+describe('the other pipeline path', () => {
+  const bPaths = pathsOf('B')
+  const options2 = { ...options, otherPaths: bPaths }
+
+  it('marks the nodes and edges of the other pipeline path that this graph holds', () => {
+    const view = graphView(full.graph.C, options2)
+    const known = new Set(full.graph.C.nodes.map((n) => n.id))
+    const wanted = new Set(bPaths.flat().filter((id) => known.has(id)))
+    expect(wanted.size).toBeGreaterThan(1)
+    expect(
+      new Set(view.nodes.filter((n) => n.onOtherPath).map((n) => n.id)),
+    ).toEqual(wanted)
+    expect(view.edges.some((e) => e.onOtherPath)).toBe(true)
+    for (const edge of view.edges.filter((e) => e.onOtherPath))
+      expect(wanted.has(edge.source) && wanted.has(edge.target)).toBe(true)
+  })
+
+  it('counts the steps of the other path that this graph does not hold', () => {
+    const only = graphView(full.graph.B, {
+      ...options,
+      otherPaths: [['INC_037', 'NOT_IN_THIS_GRAPH']],
+    })
+    expect(only.otherPathMissing).toEqual(['NOT_IN_THIS_GRAPH'])
+    expect(only.nodes.some((n) => n.id === 'NOT_IN_THIS_GRAPH')).toBe(false)
+  })
+
+  it('leaves a node on both paths drawn as on its own path', () => {
+    const view = graphView(full.graph.C, {
+      ...options2,
+      paths: pathsOf('C'),
+    })
+    expect(view.nodes.some((n) => n.onPath && n.onOtherPath)).toBe(false)
+  })
+
+  it('marks nothing without other paths', () => {
+    const view = graphView(full.graph.C, options)
+    expect(view.nodes.some((n) => n.onOtherPath)).toBe(false)
+    expect(view.otherPathMissing).toEqual([])
   })
 })
 

@@ -1,0 +1,197 @@
+/**
+ * The verdict across the top when a run completes: for each pipeline, whether
+ * it answered correctly, how much of the needed evidence it found, which
+ * markets it reached, how long it took and how much context it used, with the
+ * change against A and, for a bank question, the one-line reason. Every value
+ * comes from the run's stored results (score.ts). A question with no answer
+ * key shows the measurable items only.
+ */
+
+import type { ReactNode } from 'react'
+
+import type { Schemas } from '../../api/client'
+import { PIPELINES, type PipelineId } from '../../design/pipelines'
+import { MARKETS } from '../../run/coverage'
+import { formatDuration } from './format'
+import {
+  answerWords,
+  delta,
+  deltaWords,
+  scorecard,
+  type DeltaKind,
+  type ScoreColumn,
+} from './score'
+
+const MISSING = 'Missing'
+const percent = (value: number | null) =>
+  value === null ? MISSING : `${Math.round(value * 100)}%`
+const yesNo = (value: number | null) =>
+  value === null
+    ? MISSING
+    : value >= 1
+      ? 'Yes'
+      : value <= 0
+        ? 'No'
+        : percent(value)
+const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
+
+interface Row {
+  name: string
+  /** Rows of the score itself are left out of an unscored card. */
+  scoreOnly: boolean
+  show: (column: ScoreColumn) => string
+  /** The number the delta against A is taken from, with how to say it. */
+  measure?: { kind: DeltaKind; value: (column: ScoreColumn) => number | null }
+}
+
+const ROWS: Row[] = [
+  {
+    name: 'Answer',
+    scoreOnly: true,
+    show: (c) => answerWords(c.answer),
+  },
+  {
+    name: 'Evidence found',
+    scoreOnly: true,
+    show: (c) => percent(c.evidenceF1),
+    measure: { kind: 'score', value: (c) => c.evidenceF1 },
+  },
+  {
+    name: 'Starting record found',
+    scoreOnly: true,
+    show: (c) => yesNo(c.anchorResolution),
+  },
+  {
+    name: 'Markets reached',
+    scoreOnly: false,
+    show: (c) => `${c.markets} of ${MARKETS.length}`,
+    measure: { kind: 'markets', value: (c) => c.markets },
+  },
+  {
+    name: 'Latency',
+    scoreOnly: false,
+    show: (c) => formatDuration(c.latencyMs),
+    measure: { kind: 'latency', value: (c) => c.latencyMs },
+  },
+  {
+    name: 'Context size',
+    scoreOnly: false,
+    show: (c) => `${c.contextTokens.toLocaleString('en-GB')} tokens`,
+    measure: { kind: 'tokens', value: (c) => c.contextTokens },
+  },
+  {
+    name: 'Reason',
+    scoreOnly: true,
+    show: (c) =>
+      c.failure === null ? 'No failure recorded' : sentence(c.failure),
+  },
+]
+
+function Cell({
+  row,
+  id,
+  column,
+  base,
+}: {
+  row: Row
+  id: PipelineId
+  column: ScoreColumn | null
+  base: ScoreColumn | null
+}) {
+  if (column === null)
+    return (
+      <td className="px-4 py-2">
+        <span className="text-text-muted">No result</span>
+      </td>
+    )
+  const change =
+    id === 'A' || !row.measure || base === null
+      ? null
+      : deltaWords(
+          row.measure.kind,
+          delta(row.measure.value(column), row.measure.value(base)),
+        )
+  const missing = row.show(column) === MISSING
+  return (
+    <td className="px-4 py-2 align-top">
+      <span
+        className={`tabular ${missing ? 'text-text-muted' : 'font-medium text-text-primary'}`}
+      >
+        {row.show(column)}
+      </span>
+      {change !== null && (
+        <span className="block text-sm text-text-secondary">{change}</span>
+      )}
+    </td>
+  )
+}
+
+function Note({ children }: { children: ReactNode }) {
+  return <p className="px-4 py-2 text-sm text-text-secondary">{children}</p>
+}
+
+export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
+  const card = scorecard(results)
+  const rows = ROWS.filter((row) => card.scored || !row.scoreOnly)
+  return (
+    <section
+      aria-label="Scorecard"
+      className="overflow-hidden rounded-card border border-hairline bg-surface"
+    >
+      {card.scored && (
+        <p className="border-b border-hairline px-4 py-2 text-sm font-medium text-text-primary">
+          {card.label}
+        </p>
+      )}
+      <table className="w-full table-fixed text-left text-sm">
+        <thead>
+          <tr>
+            <td className="w-48" />
+            {PIPELINES.map(({ id, label, tint, strong }) => (
+              <th
+                key={id}
+                scope="col"
+                className="px-4 py-2 text-base font-semibold"
+                style={{ backgroundColor: tint, color: strong }}
+              >
+                {label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-hairline">
+          {rows.map((row) => (
+            <tr key={row.name}>
+              <th
+                scope="row"
+                className="px-4 py-2 align-top font-medium text-text-secondary"
+              >
+                {row.name}
+              </th>
+              {PIPELINES.map(({ id }) => (
+                <Cell
+                  key={id}
+                  row={row}
+                  id={id}
+                  column={card.columns[id]}
+                  base={card.columns.A}
+                />
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {!card.scored && <Note>{unscoredNote(results)}</Note>}
+    </section>
+  )
+}
+
+function unscoredNote({
+  answer_key,
+  score_status,
+}: Schemas['QueryResults']): string {
+  if (answer_key === 'none') return 'No answer key exists for this question.'
+  return score_status === 'failed'
+    ? 'Scoring failed for this run.'
+    : 'Scoring has not finished.'
+}

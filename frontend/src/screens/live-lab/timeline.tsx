@@ -163,7 +163,7 @@ export function Timeline({
           aria-label="Position"
           aria-valuetext={`${formatDuration(cursor)} of ${formatDuration(duration)}`}
           min={0}
-          max={Math.max(Math.round(duration), 1)}
+          max={Math.max(Math.ceil(duration), 1)}
           step={1}
           value={Math.round(cursor)}
           disabled={!enabled}

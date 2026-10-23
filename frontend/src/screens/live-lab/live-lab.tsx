@@ -5,22 +5,37 @@
  */
 
 import { TriangleAlert } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
-import { getDemoQuestions } from '../../api/client'
+import { getDemoQuestions, listDatasets } from '../../api/client'
 import { useRegisterReplay } from '../../app/presentation'
 import { useRoute } from '../../app/router'
 import { useSettings } from '../../app/use-settings'
 import { useLoad } from '../../app/use-load'
+import {
+  EvidenceDrawer,
+  type EvidenceSource,
+} from '../../components/evidence-drawer'
 import { Notice } from '../../components/panel'
-import { PIPELINES } from '../../design/pipelines'
+import { PIPELINES, type PipelineId } from '../../design/pipelines'
 import { RECORDED_RUNS } from '../../run/recorded'
 import { Screen } from '../screen'
+import { AnswerBlock } from './answer-block'
+import { CanvasArea } from './canvas-area'
 import { runStatusLine } from './columns'
+import { CoverageMatrix } from './coverage-matrix'
+import { pathPosition, sourceFor, type PathPosition } from './evidence-open'
+import { PathStrip } from './path-strip'
 import { PipelineColumn } from './pipeline-column'
 import { QuestionBar } from './question-bar'
+import { Scorecard } from './scorecard'
 import { Timeline } from './timeline'
 import { useLiveRun } from './use-live-run'
+
+interface Opened {
+  source: EvidenceSource
+  position: PathPosition | null
+}
 
 export function LiveLab() {
   const { reducedMotion } = useSettings()
@@ -39,7 +54,39 @@ export function LiveLab() {
     start({ source: 'recorded', recording })
   }, [linkedId, start])
 
+  // The evidence drawer: one for every opener on the screen.
+  const datasets = useLoad(listDatasets, 'live-lab-datasets')
+  const datasetId =
+    datasets.status === 'ready'
+      ? (datasets.data.find((d) => d.active)?.dataset_id ?? null)
+      : null
+  const [inDrawer, setInDrawer] = useState<Opened | null>(null)
+  const { results, state } = run
+  const sourceOf = (pipeline: PipelineId, id: string): EvidenceSource | null =>
+    sourceFor(results, pipeline, id, datasetId) ??
+    (pipeline !== 'A' && state.graph[pipeline].nodes.some((n) => n.id === id)
+      ? { kind: 'node', nodeId: id }
+      : null)
+  const open = (
+    pipeline: PipelineId,
+    id: string,
+    source = sourceOf(pipeline, id),
+  ) => {
+    if (source === null) return
+    const recorded =
+      pipeline !== 'A' && state.graph[pipeline].evidencePath !== null
+    setInDrawer({
+      source,
+      position: pathPosition(results, pipeline, id, recorded),
+    })
+  }
+  const openNode = (pipeline: 'B' | 'C', nodeId: string) =>
+    open(pipeline, nodeId, { kind: 'node', nodeId })
+
   const { error } = run
+  // What each approach found is shown once the run has ended.
+  const ended = ['completed', 'failed', 'cancelled'].includes(state.status)
+  const stored = ended ? results : null
   return (
     <Screen destination="live-lab">
       <QuestionBar
@@ -73,13 +120,18 @@ export function LiveLab() {
       <p role="status" className="text-sm text-text-secondary">
         {runStatusLine(run)}
       </p>
+      {stored !== null && state.status === 'completed' && (
+        <Scorecard results={stored} />
+      )}
       <div className="grid grid-cols-3 gap-4">
         {PIPELINES.map(({ id }) => (
           <PipelineColumn
             key={id}
             id={id}
-            run={run.state}
-            results={run.results}
+            run={state}
+            results={results}
+            canOpen={(recordId) => sourceOf(id, recordId) !== null}
+            onOpen={(recordId) => open(id, recordId)}
           />
         ))}
       </div>
@@ -88,6 +140,49 @@ export function LiveLab() {
         originMs={run.originMs}
         timeline={run.timeline}
         controls={run.controls}
+      />
+      {run.phase !== 'idle' && (
+        <CanvasArea
+          state={state}
+          finalState={run.finalState}
+          results={results}
+          mode={run.source === 'recorded' ? 'replay' : 'live'}
+          settled={
+            run.phase === 'finished' &&
+            (!run.timeline.replaying ||
+              run.timeline.cursor >= run.timeline.duration)
+          }
+          onOpenNode={openNode}
+        />
+      )}
+      {stored !== null && (
+        <>
+          <div className="grid grid-cols-3 gap-4">
+            {PIPELINES.map(({ id }) => (
+              <AnswerBlock key={id} id={id} results={stored} onOpen={open} />
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <PathStrip
+              id="B"
+              state={state}
+              results={stored}
+              onOpen={openNode}
+            />
+            <PathStrip
+              id="C"
+              state={state}
+              results={stored}
+              onOpen={openNode}
+            />
+          </div>
+          <CoverageMatrix results={stored} />
+        </>
+      )}
+      <EvidenceDrawer
+        source={inDrawer?.source ?? null}
+        pathPosition={inDrawer?.position}
+        onClose={() => setInDrawer(null)}
       />
     </Screen>
   )

@@ -54,6 +54,7 @@ function toGraphView(state: GraphPaneState): GraphView {
     hop: 0,
     onPath: path.includes(node.id),
     addedByOntology: false,
+    onOtherPath: false,
   }))
   const stateOf = new Map(nodes.map((node) => [node.id, node.state]))
   const edges: GraphEdgeView[] = [...state.edges.values()].map((edge) => ({
@@ -63,6 +64,7 @@ function toGraphView(state: GraphPaneState): GraphView {
     relationship: edge.label,
     state: stateOf.get(edge.to) ?? 'traversed',
     onPath: edge.state === 'evidence_path',
+    onOtherPath: false,
   }))
   return {
     nodes,
@@ -72,6 +74,7 @@ function toGraphView(state: GraphPaneState): GraphView {
     recordedPaths: path.length > 0 ? [path] : [],
     pathRecorded: path.length > 0,
     droppedPathIds: [],
+    otherPathMissing: [],
     pathSteps: path.length > 1 ? [path.slice(1).map(() => null)] : [],
     path,
   }

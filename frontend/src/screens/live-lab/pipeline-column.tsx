@@ -31,11 +31,16 @@ export function PipelineColumn({
   id,
   run,
   results,
+  canOpen,
+  onOpen,
 }: {
   id: PipelineId
   run: RunState
   /** The run's stored results, once there are any; they name the records. */
   results: Schemas['QueryResults'] | null
+  /** Whether a row's record can be shown in the evidence drawer yet. */
+  canOpen: (recordId: string) => boolean
+  onOpen: (recordId: string) => void
 }) {
   const { label, tint, strong } = pipeline(id)
   const state = run.pipelines[id]
@@ -79,15 +84,16 @@ export function PipelineColumn({
           ) : (
             <ul
               aria-label="Evidence"
-              // A scrolling list must be reachable by keyboard.
-              tabIndex={0}
+              // A scrolling list must be reachable by keyboard: by its rows when
+              // they open, else by the list itself.
+              tabIndex={rows.some((row) => canOpen(row.id)) ? undefined : 0}
               className="relative -m-1 max-h-72 space-y-1 overflow-y-auto p-1"
             >
               {rows.map((row) => {
                 const design = EVIDENCE_STATES[row.state]
                 const Icon = design.icon
-                return (
-                  <li key={row.id} className="flex items-start gap-2 text-sm">
+                const body = (
+                  <>
                     <Icon
                       aria-hidden
                       size={16}
@@ -116,6 +122,21 @@ export function PipelineColumn({
                         </span>
                       )}
                     </span>
+                  </>
+                )
+                return (
+                  <li key={row.id} className="text-sm">
+                    {canOpen(row.id) ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpen(row.id)}
+                        className="flex w-full items-start gap-2 rounded-chip text-left hover:bg-surface-raised"
+                      >
+                        {body}
+                      </button>
+                    ) : (
+                      <div className="flex items-start gap-2">{body}</div>
+                    )}
                   </li>
                 )
               })}

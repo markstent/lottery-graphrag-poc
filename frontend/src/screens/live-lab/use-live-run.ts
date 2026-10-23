@@ -16,6 +16,7 @@ import type { RecordedRun } from '../../run/recorded'
 import {
   initialRunState,
   reduce,
+  reduceAll,
   type RunEvent,
   type RunState,
 } from '../../run/reduce'
@@ -74,6 +75,11 @@ export interface LiveRun {
   keys: KeyedReplay
   /** The run's stored results: a recording's at once, a live run's once it ends. */
   results: Schemas['QueryResults'] | null
+  /**
+   * The run state at its end, once every event is known (a recording, or a
+   * live run whose stream has ended); `state` is only as far as the replay has got.
+   */
+  finalState: RunState | null
   /** A live run is starting or arriving; a recording is never busy. */
   busy: boolean
   cancelling: boolean
@@ -97,6 +103,14 @@ const IDLE: LiveState = {
   stage: 'idle',
 }
 const NO_EVENTS: RunEvent[] = []
+
+/**
+ * A bank question's score is written just after the run's final status, so
+ * results read at once can say "pending". They are read again this often, up
+ * to this many times, then left as they are.
+ */
+const SCORE_POLL_MS = 1000
+const SCORE_POLL_TRIES = 5
 
 const errorMessage = (error: unknown): string =>
   error instanceof Error ? error.message : 'Something went wrong.'
@@ -128,6 +142,7 @@ export function useLiveRun({
   const token = useRef(0)
   const unsubscribe = useRef<(() => void) | null>(null)
   const request = useRef<AbortController | null>(null)
+  const scorePoll = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastRequest = useRef<RunRequest | null>(null)
   const runId = useRef<string | null>(null)
   const lastSequence = useRef(0)
@@ -137,6 +152,10 @@ export function useLiveRun({
   const replayEvents =
     recording?.events ?? (live.stage === 'ended' ? live.events : NO_EVENTS)
   const replay = useReplay(replayEvents, { reducedMotion })
+  const finalState = useMemo(
+    () => (replayEvents.length > 0 ? reduceAll(replayEvents) : null),
+    [replayEvents],
+  )
   const controlsRef = useRef(replay.controls)
   const recordingRef = useRef(recording)
   useEffect(() => {
@@ -150,14 +169,29 @@ export function useLiveRun({
     unsubscribe.current = null
     request.current?.abort()
     request.current = null
+    if (scorePoll.current !== null) clearTimeout(scorePoll.current)
+    scorePoll.current = null
   }, [])
   useEffect(() => stop, [stop])
 
-  /** Reads the stored results, which name the records the evidence list shows. */
-  const loadResults = useCallback((id: string, mine: number) => {
+  /**
+   * Reads the stored results, which name the records the evidence list shows,
+   * and again while the score is still being written.
+   */
+  const loadResults = useCallback(function loadResults(
+    id: string,
+    mine: number,
+    tries = 0,
+  ) {
     getRun(id, request.current?.signal).then(
       (results) => {
-        if (token.current === mine) setFetched(results)
+        if (token.current !== mine) return
+        setFetched(results)
+        if (results.score_status === 'pending' && tries < SCORE_POLL_TRIES)
+          scorePoll.current = setTimeout(
+            () => loadResults(id, mine, tries + 1),
+            SCORE_POLL_MS,
+          )
       },
       (error: unknown) => {
         if (token.current !== mine) return
@@ -359,6 +393,7 @@ export function useLiveRun({
     source: recording ? 'recorded' : live.stage === 'idle' ? null : 'live',
     state: showReplay ? replay.state : live.state,
     results: recording?.results ?? fetched,
+    finalState,
     busy: live.stage === 'starting' || live.stage === 'streaming',
     originMs,
     runId: recording?.run_id ?? live.runId,

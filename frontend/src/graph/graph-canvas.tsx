@@ -95,6 +95,11 @@ interface CommonProps {
   reducedMotion: boolean
   /** The pipeline the view belongs to; sets the colour of evidence paths. */
   pipeline: Exclude<PipelineId, 'A'>
+  /**
+   * The other pipeline, when its evidence path is marked on the view
+   * (`graphView`'s `otherPaths`): its nodes and edges are drawn in its colour.
+   */
+  otherPipeline?: Exclude<PipelineId, 'A'>
   /** The accessible name of the canvas. */
   label?: string
   /** The id of the evidence-path list, which the canvas is described by with its summary. */
@@ -135,6 +140,7 @@ interface VisibleEdge {
   phrases: Set<string>
   count: number
   onPath: boolean
+  onOtherPath: boolean
   added: boolean
   state: EvidenceState
 }
@@ -185,12 +191,14 @@ function visibleGraph(view: GraphView) {
       phrases: new Set<string>(),
       count: 0,
       onPath: false,
+      onOtherPath: false,
       added: false,
       state: clusters.has(target) ? ('traversed' as const) : edge.state,
     }
     folded.phrases.add(relationshipPhrase(edge.relationship))
     folded.count += 1
     folded.onPath ||= edge.onPath
+    folded.onOtherPath ||= edge.onOtherPath
     folded.added ||= !!(added.get(edge.source) || added.get(edge.target))
     edges.set(key, folded)
   }
@@ -294,6 +302,7 @@ function Canvas(props: GraphCanvasProps) {
     presentation,
     reducedMotion,
     pipeline: pipelineId,
+    otherPipeline,
     label = 'Evidence graph',
     pathListId,
   } = props
@@ -302,6 +311,13 @@ function Canvas(props: GraphCanvasProps) {
   const summaryId = useId()
   const type = presentation ? PRESENTATION_TYPE_SIZE : TYPE_SIZE
   const strong = pipeline(pipelineId).strong
+  const other = useMemo(
+    () =>
+      otherPipeline
+        ? { id: otherPipeline, strong: pipeline(otherPipeline).strong }
+        : null,
+    [otherPipeline],
+  )
   const arrows = `arrow-${useId().replaceAll(':', '')}`
   const flow = useReactFlow()
   const container = useRef<HTMLDivElement>(null)
@@ -612,6 +628,7 @@ function Canvas(props: GraphCanvasProps) {
             size,
             strong,
             ontology: ONTOLOGY,
+            other,
             dimmed: focusMode && !v.onPath,
             active: v.id === active,
             reducedMotion,
@@ -637,6 +654,7 @@ function Canvas(props: GraphCanvasProps) {
       focusMode,
       active,
       reducedMotion,
+      other,
     ],
   )
 
@@ -665,6 +683,8 @@ function Canvas(props: GraphCanvasProps) {
                   label: tagText(edge),
                   state: edge.state,
                   onPath: edge.onPath,
+                  onOtherPath:
+                    other !== null && edge.onOtherPath && !edge.onPath,
                   addedByOntology: edge.added,
                   dimmed: focusMode && !edge.onPath,
                   points: route.points,
@@ -673,13 +693,14 @@ function Canvas(props: GraphCanvasProps) {
                   font: type.font,
                   strong,
                   ontology: ONTOLOGY,
+                  otherStrong: other?.strong ?? null,
                   arrows,
                 },
               },
             ]
           : []
       }),
-    [visible, routes, focusMode, type, strong, arrows],
+    [visible, routes, focusMode, type, strong, arrows, other],
   )
 
   const focusNode = (id: string) => {
@@ -762,6 +783,7 @@ function Canvas(props: GraphCanvasProps) {
           prefix={arrows}
           pathColor={strong}
           ontologyColor={ONTOLOGY.hue}
+          otherColor={other?.strong ?? null}
         />
         <ReactFlow<Node, RelationshipFlowEdge>
           nodes={nodes}

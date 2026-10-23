@@ -423,6 +423,21 @@ describe('Live Lab, timeline', () => {
     ).toHaveTextContent('Done')
   })
 
+  it('completes the run when the slider is moved to its far end, whatever the fraction of a millisecond', async () => {
+    // H3 lasts 20 987.4 ms: a slider that stops at 20 987 would never apply the last event.
+    const h3 = RECORDED_RUNS.find((run) => run.stratum === 'H3')!
+    const exact = h3.events.at(-1)!.t_ms - h3.events[0].t_ms
+    expect(exact % 1).toBeGreaterThan(0)
+    expect(exact % 1).toBeLessThan(0.5)
+    api({ '/api/v1/health/ready': DOWN })
+    open(`#/live-lab?question=${h3.instance_id}`)
+    const slider = await screen.findByRole('slider', { name: 'Position' })
+    fireEvent.change(slider, {
+      target: { value: (slider as HTMLInputElement).max },
+    })
+    expect(screen.getByText('The run is complete.')).toBeVisible()
+  })
+
   it('draws three tracks, one per pipeline', async () => {
     await playRecording()
     const timeline = screen.getByRole('region', { name: 'Timeline' })
@@ -430,5 +445,203 @@ describe('Live Lab, timeline', () => {
       expect(
         within(timeline).getByRole('img', { name: new RegExp(`^${id} · `) }),
       ).toBeVisible()
+  })
+})
+
+describe('Live Lab, results', () => {
+  const DATASETS = [
+    { dataset_id: 'dev-seed2026', active: true, name: 'dev', seed: 2026 },
+  ]
+  const NODE = {
+    node_id: 'INC_037',
+    labels: ['Incident'],
+    properties: { severity: 'MEDIUM' },
+    provenance: {
+      dataset_id: 'dev-seed2026',
+      table: 'incidents',
+      row_id: 'INC_037',
+    },
+  }
+  const RECORD = {
+    table: 'incidents',
+    row: { incident_id: 'INC_017' },
+    graph_node_id: 'INC_017',
+    edges: [],
+    graph_error: null,
+  }
+  const resultsApi = () =>
+    api({
+      '/api/v1/health/ready': DOWN,
+      '/api/v1/datasets': DATASETS,
+      '/api/v1/graph/nodes/INC_037': NODE,
+      '/api/v1/graph/nodes/SUP_00113': { ...NODE, node_id: 'SUP_00113' },
+      '/api/v1/datasets/dev-seed2026/tables/incidents/rows/INC_017': RECORD,
+    })
+
+  async function finishRecording(user: ReturnType<typeof userEvent.setup>) {
+    reduceMotion()
+    resultsApi()
+    open(`#/live-lab?question=${h1.instance_id}`)
+    await screen.findByRole('region', { name: 'Scorecard' })
+    return user
+  }
+
+  it('shows the scorecard, three answers, the path strips and the coverage matrix once the run completes', async () => {
+    await finishRecording(userEvent.setup())
+    const card = screen.getByRole('region', { name: 'Scorecard' })
+    expect(
+      within(card).getByText('scored against the answer key'),
+    ).toBeVisible()
+    for (const label of [
+      'A · Text search answer',
+      'B · Graph answer',
+      'C · Graph + Ontology answer',
+      'B · Graph evidence path',
+      'C · Graph + Ontology evidence path',
+    ])
+      expect(screen.getByRole('region', { name: label })).toBeVisible()
+    expect(screen.getByRole('table', { name: 'Market coverage' })).toBeVisible()
+    expect(screen.getByRole('region', { name: 'Graph canvas' })).toBeVisible()
+  })
+
+  it('shows none of them before the run has ended', async () => {
+    resultsApi()
+    open()
+    expect(screen.queryByRole('region', { name: 'Scorecard' })).toBeNull()
+    expect(screen.queryByRole('table', { name: 'Market coverage' })).toBeNull()
+    expect(screen.queryByRole('region', { name: /answer$/ })).toBeNull()
+  })
+
+  it('opens the evidence drawer from a citation by keyboard and returns focus on close', async () => {
+    const user = await finishRecording(userEvent.setup())
+    const answer = screen.getByRole('region', { name: 'B · Graph answer' })
+    const citation = within(answer).getByRole('button', {
+      name: /^Open source 1/,
+    })
+    citation.focus()
+    await user.keyboard('{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    await within(dialog).findByText('severity')
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(citation).toHaveFocus()
+  })
+
+  it('opens a table record cited by pipeline A from its row in the dataset', async () => {
+    const user = await finishRecording(userEvent.setup())
+    const answer = screen.getByRole('region', {
+      name: 'A · Text search answer',
+    })
+    const citations = within(answer).getAllByRole('button')
+    expect(citations.length).toBeGreaterThan(0)
+    // The recorded A answer cites its first context block, the record INC_037's.
+    api({
+      '/api/v1/datasets': DATASETS,
+      '/api/v1/datasets/dev-seed2026/tables/incidents/rows/INC_037': {
+        ...RECORD,
+        row: { incident_id: 'INC_037' },
+      },
+    })
+    citations[0].focus()
+    await user.keyboard('{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    expect(
+      await within(dialog).findByText('INC_037', { selector: 'dd' }),
+    ).toBeVisible()
+  })
+
+  it('opens the drawer from an evidence row in a column, by keyboard, and returns focus', async () => {
+    const user = await finishRecording(userEvent.setup())
+    const list = within(column('B · Graph')).getByRole('list', {
+      name: 'Evidence',
+    })
+    const row = within(list).getAllByRole('button')[0]
+    row.focus()
+    await user.keyboard('{Enter}')
+    await screen.findByRole('dialog', { name: 'Evidence' })
+    await user.keyboard('{Escape}')
+    expect(row).toHaveFocus()
+  })
+
+  it('opens a passage from its row with the text the results carry', async () => {
+    const user = await finishRecording(userEvent.setup())
+    const list = within(column('A · Text search')).getByRole('list', {
+      name: 'Evidence',
+    })
+    const row = within(list).getAllByRole('button')[0]
+    row.focus()
+    await user.keyboard('{Enter}')
+    expect(
+      await screen.findByRole('dialog', { name: 'Evidence' }),
+    ).toBeVisible()
+  })
+
+  it('shows where a node sits on the evidence path in the drawer', async () => {
+    const user = await finishRecording(userEvent.setup())
+    const strip = screen.getByRole('region', {
+      name: 'B · Graph evidence path',
+    })
+    const node = within(strip)
+      .getAllByRole('button')
+      .find((b) => b.getAttribute('data-node-id') === 'SUP_00113')!
+    node.focus()
+    await user.keyboard('{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    expect(
+      within(dialog).getByText(/^Step 2 of 2 on evidence path 2$/),
+    ).toBeVisible()
+    await user.keyboard('{Escape}')
+    expect(node).toHaveFocus()
+  })
+
+  it('opens the drawer from a graph node by keyboard and returns focus to the node', async () => {
+    const user = await finishRecording(userEvent.setup())
+    const canvas = await screen.findByRole('group', {
+      name: 'Graph for B · Graph',
+    })
+    const node = await waitFor(() => {
+      const found = canvas.querySelector<HTMLElement>(
+        '[data-node-id="INC_037"]',
+      )
+      expect(found).not.toBeNull()
+      return found!
+    })
+    node.focus()
+    await user.keyboard('{Enter}')
+    await screen.findByRole('dialog', { name: 'Evidence' })
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(node).toHaveFocus())
+  })
+
+  it('shows measurable items only, and no key, for a typed question', async () => {
+    const adHoc = structuredClone(h1.results) as typeof h1.results
+    Object.assign(adHoc, {
+      benchmark_instance_id: null,
+      answer_key: 'none',
+      score_status: 'not_applicable',
+      score: null,
+    })
+    api({
+      '/api/v1/datasets': DATASETS,
+      '/api/v1/queries/RUN-T': adHoc,
+    })
+    const user = userEvent.setup()
+    open()
+    await user.click(await screen.findByRole('button', { name: h1.question }))
+    const liveButton = screen.getByRole('button', { name: 'Live' })
+    await waitFor(() => expect(liveButton).toBeEnabled())
+    await user.click(liveButton)
+    await user.click(screen.getByRole('button', { name: 'Run' }))
+    await waitFor(() => expect(stream.subscribeRun).toHaveBeenCalled())
+    act(() => {
+      for (const event of live) handlers.onEvent(event)
+      handlers.onEnd()
+    })
+    const card = await screen.findByRole('region', { name: 'Scorecard' })
+    expect(
+      within(card).getByText('No answer key exists for this question.'),
+    ).toBeVisible()
+    expect(within(card).queryByText('scored against the answer key')).toBeNull()
+    expect(within(card).queryByText('Answer')).toBeNull()
   })
 })

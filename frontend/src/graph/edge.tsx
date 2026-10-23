@@ -15,7 +15,7 @@ import {
 
 import type { EvidenceState } from '../design/evidence-states'
 import { TOKENS } from '../design/tokens'
-import { ONTOLOGY_DASH, roundedPath } from './edge-path'
+import { ONTOLOGY_DASH, OTHER_PATH_DASH, roundedPath } from './edge-path'
 import type { Point } from './layout'
 
 export interface RelationshipEdgeData extends Record<string, unknown> {
@@ -23,6 +23,8 @@ export interface RelationshipEdgeData extends Record<string, unknown> {
   label: string
   state: EvidenceState
   onPath: boolean
+  /** A hop of the other pipeline's evidence path (not of this one's own). */
+  onOtherPath: boolean
   /** True for an edge the ontology added (configuration C only). */
   addedByOntology: boolean
   dimmed: boolean
@@ -38,6 +40,8 @@ export interface RelationshipEdgeData extends Record<string, unknown> {
   strong: string
   /** The pipeline colours of the ontology, for edges it added. */
   ontology: { hue: string; tint: string; strong: string }
+  /** The strong tone of the other pipeline whose path is marked, or null. */
+  otherStrong: string | null
   /** Prefix of this canvas's arrow head ids, so two canvases never share one. */
   arrows: string
 }
@@ -50,6 +54,8 @@ function look(data: RelationshipEdgeData): {
   dash?: string
 } {
   if (data.onPath) return { color: data.strong, width: 4 }
+  if (data.onOtherPath && data.otherStrong)
+    return { color: data.otherStrong, width: 4, dash: OTHER_PATH_DASH }
   if (data.addedByOntology)
     return { color: data.ontology.hue, width: 3, dash: ONTOLOGY_DASH }
   if (data.state === 'discarded')
@@ -68,9 +74,11 @@ export function RelationshipEdge({
   const opacity = data.dimmed ? 0.25 : 1
   const marker = data.onPath
     ? 'path'
-    : data.addedByOntology
-      ? 'ontology'
-      : 'plain'
+    : data.onOtherPath && data.otherStrong
+      ? 'other'
+      : data.addedByOntology
+        ? 'ontology'
+        : 'plain'
   return (
     <>
       <BaseEdge
@@ -91,6 +99,7 @@ export function RelationshipEdge({
           data-edge-id={id}
           data-route={data.route}
           data-on-path={data.onPath}
+          data-on-other-path={data.onOtherPath && !data.onPath}
           style={{
             transform: `translate(-50%, -50%) translate(${data.tag.x}px, ${data.tag.y}px)`,
             fontSize: data.font,
@@ -119,10 +128,12 @@ export function ArrowDefinitions({
   prefix,
   pathColor,
   ontologyColor,
+  otherColor,
 }: {
   prefix: string
   pathColor: string
   ontologyColor: string
+  otherColor: string | null
 }) {
   const arrow = (name: string, color: string) => (
     <marker
@@ -144,6 +155,7 @@ export function ArrowDefinitions({
         {arrow('plain', TOKENS['color-grey-600'])}
         {arrow('path', pathColor)}
         {arrow('ontology', ontologyColor)}
+        {otherColor ? arrow('other', otherColor) : null}
       </defs>
     </svg>
   )

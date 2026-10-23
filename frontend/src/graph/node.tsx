@@ -23,6 +23,8 @@ interface CommonData extends Record<string, unknown> {
   strong: string
   /** The ontology pipeline's colours, for nodes it added. */
   ontology: { hue: string; tint: string; strong: string }
+  /** The other pipeline whose evidence path is marked, if any. */
+  other: { id: string; strong: string } | null
   /** Dimmed to 25 percent by focus mode. */
   dimmed: boolean
   /** The node that takes Tab; every other node is reached with the arrow keys. */
@@ -227,7 +229,8 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
       : null
   const showVerdict = verdict !== null && node.state !== verdict
   const verdictText = verdict === 'selected' ? 'Used as evidence' : 'Set aside'
-  const description = `${node.id}${showVerdict ? `, ${verdictText.toLowerCase()}` : ''}${node.onPath ? ', on an evidence path' : ''}${added ? ', added by the ontology' : ''}`
+  const otherMark = node.onOtherPath && data.other !== null
+  const description = `${node.id}${showVerdict ? `, ${verdictText.toLowerCase()}` : ''}${node.onPath ? ', on an evidence path' : ''}${otherMark && data.other ? `, on pipeline ${data.other.id}'s evidence path` : ''}${added ? ', added by the ontology' : ''}`
   const words = nodeLabel(node.label)
   return (
     <>
@@ -242,6 +245,7 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
         data-node-id={node.id}
         data-state={node.state}
         data-on-path={node.onPath}
+        data-on-other-path={otherMark}
         data-dimmed={data.dimmed}
         onFocus={() => data.onFocusNode(node.id)}
         title={`${words} ${node.id}`}
@@ -261,9 +265,11 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
             stroke={
               node.onPath || node.state === 'selected'
                 ? data.strong
-                : design.stroke
+                : otherMark && data.other
+                  ? data.other.strong
+                  : design.stroke
             }
-            strokeWidth={node.onPath ? PATH_STROKE : STROKE}
+            strokeWidth={node.onPath || otherMark ? PATH_STROKE : STROKE}
             dashed={design.shape === 'dashed-circle'}
           />
         </svg>
@@ -300,6 +306,19 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
             }}
           >
             + ontology
+          </span>
+        ) : null}
+        {otherMark && data.other ? (
+          <span
+            className="absolute -bottom-3 left-4 rounded-chip border px-1.5 leading-tight font-semibold whitespace-nowrap"
+            style={{
+              fontSize: size.font,
+              background: TOKENS['color-surface'],
+              borderColor: data.other.strong,
+              color: data.other.strong,
+            }}
+          >
+            {data.other.id} path
           </span>
         ) : null}
         {showVerdict ? (

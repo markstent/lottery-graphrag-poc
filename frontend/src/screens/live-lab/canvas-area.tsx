@@ -1,0 +1,213 @@
+/**
+ * The large graph canvas of Live Lab: B or C by tab, drawn from the run state
+ * as far as the replay or the stream has got. C marks what its own events
+ * record as added by the ontology, compared with B at the same point; the
+ * other approach's evidence path can be laid over either graph; focus mode
+ * dims what is off the evidence path. A recorded run is drawn as a replay (its
+ * final graph sets the layout); a live run grows with its stream.
+ */
+
+import { useId, useMemo, useState, type KeyboardEvent } from 'react'
+
+import type { Schemas } from '../../api/client'
+import { useSettings } from '../../app/use-settings'
+import { pipeline } from '../../design/pipelines'
+import { EvidencePathList } from '../../graph/evidence-path-list'
+import { GraphCanvas } from '../../graph/graph-canvas'
+import { GraphLegend } from '../../graph/graph-legend'
+import { countedLabel } from '../../design/node-labels'
+import type { RunState } from '../../run/reduce'
+import { otherOf, pipelineView, type GraphPipeline } from './graph-views'
+
+const TABS: readonly GraphPipeline[] = ['B', 'C']
+
+const TOGGLE =
+  'rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-grey-900 aria-pressed:bg-grey-900 aria-pressed:text-surface'
+
+export function CanvasArea({
+  state,
+  finalState,
+  results,
+  mode,
+  settled,
+  onOpenNode,
+}: {
+  /** The run as far as the replay or stream has got. */
+  state: RunState
+  /** The run at its end, for a replay's layout; null while a live run is still arriving. */
+  finalState: RunState | null
+  results: Schemas['QueryResults'] | null
+  mode: 'replay' | 'live'
+  /** A live stream has ended, so the final graph is laid out whole. */
+  settled: boolean
+  onOpenNode: (pipeline: GraphPipeline, nodeId: string) => void
+}) {
+  const { nodeCap, presentation, reducedMotion } = useSettings()
+  const [tab, setTab] = useState<GraphPipeline>('B')
+  const [focus, setFocus] = useState(false)
+  const [overlay, setOverlay] = useState(false)
+  const ids = useId()
+  const pathListId = `${ids}-paths`
+  const other = otherOf(tab)
+  const { label } = pipeline(tab)
+
+  // The other path can be shown once both pipelines have recorded theirs.
+  const canOverlay =
+    results !== null &&
+    state.graph[tab].evidencePath !== null &&
+    state.graph[other].evidencePath !== null
+  const showOther = overlay && canOverlay
+
+  const view = useMemo(
+    () =>
+      pipelineView({
+        state,
+        results,
+        id: tab,
+        cap: nodeCap,
+        focus,
+        showOther,
+      }),
+    [state, results, tab, nodeCap, focus, showOther],
+  )
+  const finalView = useMemo(
+    () =>
+      finalState &&
+      pipelineView({
+        state: finalState,
+        results,
+        id: tab,
+        cap: nodeCap,
+        focus,
+        showOther,
+      }),
+    [finalState, results, tab, nodeCap, focus, showOther],
+  )
+
+  const move = (event: KeyboardEvent) => {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
+    event.preventDefault()
+    const next = tab === 'B' ? 'C' : 'B'
+    setTab(next)
+    document.getElementById(`${ids}-tab-${next}`)?.focus()
+  }
+
+  const marksOntology = tab === 'C' && view.nodes.some((n) => n.addedByOntology)
+  const settledView = mode === 'live' && settled
+  const canvasProps = {
+    view,
+    onSelectNode: (id: string) => {
+      // A folded group stands for several nodes; none of them is opened by it.
+      if (!view.clusters.some((c) => c.id === id)) onOpenNode(tab, id)
+    },
+    focusMode: focus,
+    presentation,
+    reducedMotion,
+    pipeline: tab,
+    otherPipeline: showOther ? other : undefined,
+    label: `Graph for ${label}`,
+    pathListId,
+  }
+
+  return (
+    <section aria-label="Graph canvas" className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          role="tablist"
+          aria-label="Graph of"
+          className="flex gap-1"
+          onKeyDown={move}
+        >
+          {TABS.map((id) => {
+            const selected = id === tab
+            const { label: name, tint, strong } = pipeline(id)
+            return (
+              <button
+                key={id}
+                id={`${ids}-tab-${id}`}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                aria-controls={`${ids}-panel`}
+                tabIndex={selected ? 0 : -1}
+                onClick={() => setTab(id)}
+                className="rounded-chip border px-3 py-1 text-base font-semibold"
+                style={{
+                  backgroundColor: selected ? tint : undefined,
+                  borderColor: selected ? strong : 'var(--color-border)',
+                  color: strong,
+                }}
+              >
+                {name}
+              </button>
+            )
+          })}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            aria-pressed={showOther}
+            disabled={!canOverlay}
+            title={
+              canOverlay
+                ? undefined
+                : 'Available when both approaches have recorded their evidence path.'
+            }
+            onClick={() => setOverlay(!overlay)}
+            className={TOGGLE}
+          >
+            {`Show ${other}'s evidence path`}
+          </button>
+          <button
+            type="button"
+            aria-pressed={focus}
+            onClick={() => setFocus(!focus)}
+            className={TOGGLE}
+          >
+            Focus on the evidence path
+          </button>
+        </div>
+      </div>
+      <div
+        id={`${ids}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${ids}-tab-${tab}`}
+        className={presentation ? 'h-[44rem]' : 'h-[34rem]'}
+      >
+        {mode === 'replay' && finalView ? (
+          <GraphCanvas
+            key={tab}
+            {...canvasProps}
+            mode="replay"
+            finalView={finalView}
+          />
+        ) : (
+          <GraphCanvas
+            key={tab}
+            {...canvasProps}
+            mode="live"
+            settled={settledView}
+          />
+        )}
+      </div>
+      {showOther && view.otherPathMissing.length > 0 && (
+        <p className="text-sm text-text-secondary">
+          {`${countedLabel(view.otherPathMissing.length, 'step')} of ${other}'s evidence path ${view.otherPathMissing.length === 1 ? 'is' : 'are'} not in this graph.`}
+        </p>
+      )}
+      <GraphLegend
+        pipeline={tab}
+        ontologyAdded={marksOntology}
+        otherPath={showOther ? other : undefined}
+      />
+      {/* The text alternative to the picture; the path strip below shows the same paths. */}
+      <div className="sr-only">
+        <EvidencePathList
+          id={pathListId}
+          view={view}
+          ended={state.pipelines[tab].status !== 'running'}
+        />
+      </div>
+    </section>
+  )
+}

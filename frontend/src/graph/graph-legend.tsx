@@ -6,7 +6,7 @@
 import { EVIDENCE_STATES, type EvidenceState } from '../design/evidence-states'
 import { pipeline, type PipelineId } from '../design/pipelines'
 import { TOKENS } from '../design/tokens'
-import { ONTOLOGY_DASH } from './edge-path'
+import { ONTOLOGY_DASH, OTHER_PATH_DASH } from './edge-path'
 import { Outline } from './node'
 
 const STATES = Object.keys(EVIDENCE_STATES) as EvidenceState[]
@@ -16,8 +16,11 @@ const H = 18
 export function GraphLegend({
   pipeline: id,
   ontologyAdded = false,
+  otherPath,
 }: {
   pipeline: Exclude<PipelineId, 'A'>
+  /** The other pipeline, when the canvas marks its evidence path as well. */
+  otherPath?: Exclude<PipelineId, 'A'>
   /** True when the canvas marks what the ontology added (it has a B to compare with). */
   ontologyAdded?: boolean
 }) {
@@ -59,6 +62,22 @@ export function GraphLegend({
         </svg>
         Evidence path
       </li>
+      {otherPath ? (
+        <li className="flex items-center gap-2">
+          <svg aria-hidden="true" width={W} height={4}>
+            <line
+              x1={0}
+              x2={W}
+              y1={2}
+              y2={2}
+              stroke={pipeline(otherPath).strong}
+              strokeWidth={4}
+              strokeDasharray={OTHER_PATH_DASH}
+            />
+          </svg>
+          {otherPath}&apos;s evidence path
+        </li>
+      ) : null}
       {id === 'C' && ontologyAdded ? (
         <li className="flex items-center gap-2">
           <span

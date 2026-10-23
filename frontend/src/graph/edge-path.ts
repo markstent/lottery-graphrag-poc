@@ -5,6 +5,8 @@ const RADIUS = 10
 
 /** Dots, set apart from the long dashes of a set-aside edge. */
 export const ONTOLOGY_DASH = '1 6'
+/** The dash of the other pipeline's evidence path: long, apart from the ontology's dots. */
+export const OTHER_PATH_DASH = '12 5'
 
 /** An SVG path through `points` with each corner rounded. */
 export function roundedPath(route: Point[]): string {

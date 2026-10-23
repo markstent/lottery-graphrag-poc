@@ -31,11 +31,17 @@
  * was recorded (`graph.evidence_path.completed` sets `events.evidencePath`),
  * so a replay never shows a path before its event.
  *
- * The ontology overlay (`addedByOntology`) compares C with the events of B it
- * is given. A caller replaying a run gives B's events up to the same cursor,
- * so mid-replay a node reads as "added by the ontology" when C has found it
- * and B has not found it yet, which is not the same as B never finding it.
- * Phase 6 should decide whether the overlay waits for B's final graph.
+ * The ontology overlay (`addedByOntology`) is true for a node that C's events
+ * record as ontology-sourced (a concept from graph.ontology.expanded, or a
+ * node discovered via a concept) and that B's events, as given, do not hold.
+ * A node C found by plain traversal is never marked, even if B did not find
+ * it. A caller replaying a run gives B's events up to the same cursor, so
+ * mid-replay a node reads as added when B has not found it yet, which is not
+ * the same as B never finding it.
+ *
+ * The other pipeline's evidence path (`otherPaths`) marks the nodes and edges
+ * of that path which this graph also holds (`onOtherPath`); a node on this
+ * view's own path stays drawn as on its own path.
  */
 
 import type { EvidenceState } from '../design/evidence-states'
@@ -59,8 +65,10 @@ export interface GraphNodeView {
   /** Steps from a seed; null when no discovery recorded it. */
   hop: number | null
   onPath: boolean
-  /** True for a node the overlay (configuration B) never discovered. */
+  /** True for a node C records as ontology-sourced that B has not found. */
   addedByOntology: boolean
+  /** On the other pipeline's evidence path, and not on this view's own. */
+  onOtherPath: boolean
   clusterId?: string
   /**
    * The id of the group whose place the canvas draws this node in, when it
@@ -79,6 +87,8 @@ export interface GraphEdgeView {
   /** The state of the node the edge reaches. */
   state: EvidenceState
   onPath: boolean
+  /** A hop of the other pipeline's evidence path, not of this view's own. */
+  onOtherPath: boolean
 }
 
 export interface GraphCluster {
@@ -116,6 +126,8 @@ export interface GraphView {
   pathSteps: (string | null)[][]
   /** The ids on any path, in path order, each once. */
   path: string[]
+  /** Ids on the other pipeline's path that this graph has no node for. */
+  otherPathMissing: string[]
 }
 
 /** A path as the run's results carry it: node ids and how the last node was reached. */
@@ -134,6 +146,11 @@ export interface GraphViewOptions {
   focus: boolean
   /** Configuration B's events when `events` are C's. */
   overlay?: GraphEvents
+  /**
+   * The other pipeline's recorded evidence paths as node ids, to mark on this
+   * graph; give them only once that pipeline has recorded its path.
+   */
+  otherPaths?: string[][]
   /**
    * The evidence paths the backend recorded, used only once
    * `events.evidencePath` is set. A bare id list matches every
@@ -235,6 +252,11 @@ export function graphView(
   const path = [...new Set(paths.flat())]
   const concepts = new Set(events.concepts.map((concept) => concept.id))
   const overlayIds = overlay && new Set(overlay.nodes.map((node) => node.id))
+  const otherPaths = options.otherPaths ?? []
+  const otherPath = new Set(otherPaths.flat().filter((id) => known.has(id)))
+  const otherPathMissing = [
+    ...new Set(otherPaths.flat().filter((id) => !known.has(id))),
+  ]
 
   const nodes: GraphNodeView[] = events.nodes.map((node) => ({
     id: node.id,
@@ -244,7 +266,11 @@ export function graphView(
     outcome: node.outcome,
     hop: node.hop,
     onPath: path.includes(node.id),
-    addedByOntology: overlayIds !== undefined && !overlayIds.has(node.id),
+    addedByOntology:
+      overlayIds !== undefined &&
+      !overlayIds.has(node.id) &&
+      (concepts.has(node.id) || node.viaConcept !== null),
+    onOtherPath: otherPath.has(node.id) && !path.includes(node.id),
   }))
   const stateOf = new Map(nodes.map((node) => [node.id, node.state]))
 
@@ -260,8 +286,14 @@ export function graphView(
       relationship: edge.type,
       state: stateOf.get(edge.to) ?? 'traversed',
       onPath: false,
+      onOtherPath: false,
     }
   })
+  for (const ids of otherPaths)
+    ids.slice(1).forEach((id, i) => {
+      for (const edge of stepEdges(edges, ids[i], id, undefined))
+        edge.onOtherPath = true
+    })
   const pathSteps = given
     .filter((p) => p.ids.length > 0)
     .map((p) =>
@@ -300,6 +332,7 @@ export function graphView(
     droppedPathIds,
     pathSteps,
     path,
+    otherPathMissing,
   }
 }
 

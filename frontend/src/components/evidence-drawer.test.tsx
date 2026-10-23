@@ -212,4 +212,31 @@ describe('EvidenceDrawer', () => {
     await screen.findByText('Payment outage')
     expect(screen.queryByText(/on evidence path/)).toBeNull()
   })
+
+  it('shows a passage as the text the results carry, then its source, with no request', async () => {
+    const fetchSpy = stubApi({})
+    render(
+      <EvidenceDrawer
+        source={{
+          kind: 'passage',
+          title: 'Runbook',
+          text: 'Restart the service. Then check.',
+          facts: [
+            ['Document', 'DOC_1'],
+            ['Market', 'Greece'],
+          ],
+        }}
+        onClose={() => undefined}
+      />,
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    const record = within(dialog).getByRole('region', { name: 'Record' })
+    expect(record).toHaveTextContent('Runbook')
+    expect(record).toHaveTextContent('Restart the service. Then check.')
+    const provenance = within(dialog).getByRole('region', {
+      name: 'Provenance',
+    })
+    expect(within(provenance).getByText('Greece')).toBeVisible()
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
 })
