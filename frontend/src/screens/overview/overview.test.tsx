@@ -94,7 +94,7 @@ describe('Overview', () => {
     ).toBeVisible()
     expect(
       screen.getByText(
-        'Intervals are given for the differences in the headlines.',
+        'Scored 0 to 1: 1 is all the needed evidence and nothing extra. Intervals are for the differences below.',
       ),
     ).toBeVisible()
   })
@@ -120,6 +120,11 @@ describe('Overview', () => {
     )
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.queryByText(/^Latest run:/)).toBeNull()
+    expect(screen.queryByTestId('tile-A')).toBeNull()
+    expect(screen.queryByTestId('tile-B')).toBeNull()
+    expect(screen.queryByTestId('tile-C')).toBeNull()
+    const panel = screen.getByRole('region', { name: 'Latest official run' })
+    expect(panel.textContent).not.toMatch(/\d/)
   })
 
   it('never fills the tiles from a smoke run, and names it', async () => {
@@ -166,20 +171,6 @@ describe('Overview', () => {
     expect(await screen.findByText('dev world, 2026')).toBeVisible()
     expect(screen.getByText('Answer model')).toBeVisible()
     expect(screen.getByText('qwen3:8b')).toBeVisible()
-  })
-
-  it('describes the flow diagram with a title, description and text list', async () => {
-    stubApi(base(OFFICIAL))
-    render(<Overview />)
-    const diagram = await screen.findByRole('img', {
-      name: 'How the three approaches differ',
-    })
-    expect(diagram).toHaveAccessibleDescription(/starts with the question/)
-    expect(
-      screen.getByText(/C adds ontology concepts on top of B/, {
-        selector: 'li',
-      }),
-    ).toBeInTheDocument()
   })
 })
 

@@ -39,7 +39,7 @@ export function StatTile({
             {fmt(value)}
           </span>
         )}
-        {value === null ? null : (
+        {value === null || unit === '' ? null : (
           <span className="text-sm text-text-secondary">{unit}</span>
         )}
       </div>

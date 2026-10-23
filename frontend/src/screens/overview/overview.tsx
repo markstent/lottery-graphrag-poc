@@ -67,7 +67,7 @@ function Tile({ figures }: { figures: TileFigures }) {
       <StatTile
         label="Evidence found, all questions"
         value={figures.mean}
-        unit="of 1"
+        unit=""
         decimals={2}
       />
       <div className="tabular mt-1 text-sm text-text-muted">
@@ -102,7 +102,8 @@ function LatestRun() {
             ))}
           </div>
           <p className="text-sm text-text-muted">
-            Intervals are given for the differences in the headlines.
+            Scored 0 to 1: 1 is all the needed evidence and nothing extra.
+            Intervals are for the differences below.
           </p>
           <ul className="list-disc space-y-1 pl-5 text-base text-text-primary">
             {verdict.headlines.map((line, index) => (

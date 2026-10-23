@@ -107,7 +107,7 @@ test.describe('Results run list', () => {
 
 test.describe('Overview latest run', () => {
   const LATEST = [
-    ['official', 'Intervals are given for the differences in the headlines.'],
+    ['official', 'Intervals are for the differences below.'],
     ['smoke', 'Latest run: scorer smoke test'],
     ['none', 'No official run yet'],
     ['unavailable', 'The latest run is unavailable.'],

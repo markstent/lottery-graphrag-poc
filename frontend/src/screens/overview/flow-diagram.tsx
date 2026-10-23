@@ -4,50 +4,28 @@
  * The same steps are given as an ordered list for screen readers.
  */
 
-import { GLOSSARY } from '../../copy/glossary'
-import { PIPELINES, type PipelineId } from '../../design/pipelines'
-
-const LANES: Record<PipelineId, string[]> = {
-  A: [`Search ${GLOSSARY.chunk}s`],
-  B: [
-    `Search ${GLOSSARY.chunk}s`,
-    `Find ${GLOSSARY.seed}s`,
-    'Follow relationships',
-  ],
-  C: [
-    `Search ${GLOSSARY.chunk}s`,
-    `Find ${GLOSSARY.seed}s`,
-    'Follow relationships',
-    'Use ontology concepts',
-  ],
-}
-
-const SHARED_BEFORE = 'Question'
-const SHARED_AFTER = ['Re-order and pick', 'Answer with sources']
+import { PIPELINES } from '../../design/pipelines'
+import { LANES, SHARED_AFTER, SHARED_BEFORE, STEP_LINES } from './lanes'
 
 const BOX_H = 40
 const LANE_H = 72
 const LABEL_H = 24
-const STEP_W = 168
-const STEP_GAP = 24
-const SHARED_W = 152
+const STEP_W = 152
+const STEP_GAP = 20
 const TOP = 8
 const QUESTION_X = 8
-const QUESTION_W = 104
-const BUS_X = QUESTION_X + QUESTION_W + 24
+const QUESTION_W = 88
+const BUS_X = QUESTION_X + QUESTION_W + 16
 const STEPS_X = BUS_X + 24
 const STEPS_END = STEPS_X + 4 * STEP_W + 3 * STEP_GAP
-const RIGHT_BUS_X = STEPS_END + 24
-const AFTER_X = RIGHT_BUS_X + 24
-const WIDTH = AFTER_X + 2 * SHARED_W + 24 + 8
+const RIGHT_BUS_X = STEPS_END + 20
+const AFTER_X = RIGHT_BUS_X + 20
+const AFTER_W = [136, 156]
+const AFTER_GAP = 18
+const WIDTH = AFTER_X + AFTER_W[0] + AFTER_GAP + AFTER_W[1] + 8
 const HEIGHT = TOP * 2 + LANE_H * 3
-
-const STEP_LINES = [
-  `Every approach starts with the ${SHARED_BEFORE.toLowerCase()} and searches ${GLOSSARY.chunk}s.`,
-  `B adds ${GLOSSARY.seed}s and relationships from the graph.`,
-  'C adds ontology concepts on top of B.',
-  `All three then ${SHARED_AFTER[0].toLowerCase()} and ${SHARED_AFTER[1].toLowerCase()}.`,
-]
+/** The size of a pixel of text on the page: the figure is sized in em, so it grows with the screen's text. */
+const BASE_PX = 14
 
 const centre = (lane: number) => TOP + lane * LANE_H + LABEL_H + BOX_H / 2
 const MIDDLE = centre(1)
@@ -130,13 +108,14 @@ export function FlowDiagram() {
     color: 'var(--color-text-primary)',
   }
   return (
-    <figure>
+    <figure className="text-sm">
       <svg
         role="img"
         aria-labelledby="flow-title"
         aria-describedby="flow-desc"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-        className="h-auto w-full"
+        style={{ width: `${WIDTH / BASE_PX}em`, maxWidth: '100%' }}
+        className="h-auto"
       >
         <title id="flow-title">How the three approaches differ</title>
         <desc id="flow-desc">{STEP_LINES.join(' ')}</desc>
@@ -168,41 +147,36 @@ export function FlowDiagram() {
             stroke="var(--color-border)"
             strokeWidth={2}
           />
-          {PIPELINES.map((pipeline, lane) => {
-            const steps = LANES[pipeline.id]
+          {LANES.map(({ label, steps, pipeline: id }, lane) => {
+            const colours = id ? PIPELINES.find((p) => p.id === id)! : null
+            const stroke = colours?.hue ?? shared.stroke
             const y = centre(lane)
             const lastX =
               STEPS_X + (steps.length - 1) * (STEP_W + STEP_GAP) + STEP_W
             return (
-              <g key={pipeline.id}>
+              <g key={label} data-lane={label}>
                 <text
                   x={STEPS_X}
                   y={y - BOX_H / 2 - 8}
                   fontSize={12}
                   fontWeight={600}
-                  fill={pipeline.strong}
+                  fill={colours?.strong ?? shared.color}
                 >
-                  {pipeline.label}
+                  {label}
                 </text>
-                <Link
-                  x1={BUS_X}
-                  y1={y}
-                  x2={STEPS_X}
-                  y2={y}
-                  stroke={pipeline.hue}
-                />
+                <Link x1={BUS_X} y1={y} x2={STEPS_X} y2={y} stroke={stroke} />
                 {steps.map((step, index) => {
                   const x = STEPS_X + index * (STEP_W + STEP_GAP)
                   return (
-                    <g key={step}>
+                    <g key={step} data-step>
                       <Box
                         x={x}
                         y={y - BOX_H / 2}
                         w={STEP_W}
                         text={step}
-                        fill={pipeline.tint}
-                        stroke={pipeline.hue}
-                        color={pipeline.strong}
+                        fill={colours?.tint ?? shared.fill}
+                        stroke={stroke}
+                        color={colours?.strong ?? shared.color}
                       />
                       {index > 0 && (
                         <Link
@@ -210,7 +184,7 @@ export function FlowDiagram() {
                           y1={y}
                           x2={x}
                           y2={y}
-                          stroke={pipeline.hue}
+                          stroke={stroke}
                         />
                       )}
                     </g>
@@ -222,7 +196,7 @@ export function FlowDiagram() {
                   x2={AFTER_X}
                   y2={MIDDLE}
                   bendX={RIGHT_BUS_X}
-                  stroke={pipeline.hue}
+                  stroke={stroke}
                 />
               </g>
             )
@@ -230,19 +204,19 @@ export function FlowDiagram() {
           {SHARED_AFTER.map((text, index) => (
             <Box
               key={text}
-              x={AFTER_X + index * (SHARED_W + 24)}
+              x={AFTER_X + (index === 0 ? 0 : AFTER_W[0] + AFTER_GAP)}
               y={MIDDLE - BOX_H / 2}
-              w={SHARED_W}
+              w={AFTER_W[index]}
               text={text}
               {...shared}
             />
           ))}
           <Link
-            x1={AFTER_X + SHARED_W}
+            x1={AFTER_X + AFTER_W[0]}
             y1={MIDDLE}
-            x2={AFTER_X + SHARED_W + 24}
+            x2={AFTER_X + AFTER_W[0] + AFTER_GAP}
             y2={MIDDLE}
-            stroke="var(--color-border)"
+            stroke={shared.stroke}
           />
         </g>
       </svg>
