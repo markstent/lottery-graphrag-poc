@@ -13,6 +13,7 @@ one graph lease, so a benchmark never re-ingests the graph under a live run.
 """
 
 import logging
+import os
 import re
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -30,6 +31,7 @@ from app.api.runs import QueryService, end_unfinished_run, start_lab
 from app.api.scoring import interrupted_record
 from app.config import GraphConfig, api_from_env, from_env
 from app.lab import Lab
+from app.models.gateway import load_litellm
 from app.observability.logging import configure_logging, run_context
 from app.persistence.store import RunStore
 
@@ -78,6 +80,10 @@ def create_app(
             logger.warning("runs interrupted by a server stop", extra={"runs": interrupted})
         if unscored:
             logger.warning("scoring interrupted by a server stop", extra={"runs": unscored})
+        # Only the provider is read: an invalid configuration is readiness's to
+        # report, not start-up's to raise.
+        if os.environ.get("GENERATION_PROVIDER") == "litellm":
+            load_litellm()  # before any run thread exists; see load_litellm
         factory = lab_factory if lab_factory is not None else default_lab
         service = QueryService(store, factory, graph, lease, graph_world=graph_world)
         application.state.query_service = service

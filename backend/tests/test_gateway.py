@@ -4,6 +4,10 @@ the reachability probe."""
 from __future__ import annotations
 
 import logging
+import sys
+import threading
+import time
+import types
 
 import httpx
 import pytest
@@ -17,6 +21,7 @@ from app.models.gateway import (
     ProbeResult,
     complete,
     generation_api_base,
+    load_litellm,
     parse_reasoning,
     probe,
     probe_timeout_s,
@@ -200,3 +205,34 @@ def test_a_configured_api_base_is_used_unchanged() -> None:
     settings = generation("openai/gpt-test", api_base="http://gateway.internal:4000")
     assert generation_api_base(settings) == "http://gateway.internal:4000"
     assert generation_api_base(generation("openai/gpt-test")) is None
+
+
+class _SlowLazyLiteLLM(types.ModuleType):
+    """A litellm whose first attribute use takes a while, like its lazy imports."""
+
+    def __init__(self) -> None:
+        super().__init__("litellm")
+        self.inside = 0
+        self.most_inside = 0
+        self._count = threading.Lock()
+
+    @property
+    def completion(self) -> None:
+        with self._count:
+            self.inside += 1
+            self.most_inside = max(self.most_inside, self.inside)
+        time.sleep(0.05)
+        with self._count:
+            self.inside -= 1
+
+
+def test_litellm_is_loaded_by_one_thread_at_a_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Two threads resolving LiteLLM's lazy imports at once deadlocked a live run.
+    stub = _SlowLazyLiteLLM()
+    monkeypatch.setitem(sys.modules, "litellm", stub)
+    threads = [threading.Thread(target=load_litellm) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert stub.most_inside == 1

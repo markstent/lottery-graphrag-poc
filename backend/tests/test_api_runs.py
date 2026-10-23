@@ -24,6 +24,7 @@ from typing import Any, ClassVar
 
 import app.api.runs as runs_module
 import app.lab as lab_module
+import app.main as main_module
 import pytest
 from app.api.errors import ApiError
 from app.api.graph_world import GraphWorldCheck
@@ -383,6 +384,19 @@ def test_a_slow_cold_start_does_not_block_history(
 
 
 # -- start-up -----------------------------------------------------------------
+
+
+@pytest.mark.parametrize(("provider", "loads"), [("litellm", 1), ("fake", 0)])
+def test_litellm_is_loaded_at_start_up_only_when_generating_with_it(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch, provider: str, loads: int
+) -> None:
+    # Loading it at start-up, before any run thread exists, keeps a run's first
+    # model call from racing another import (a live run deadlocked that way).
+    calls: list[None] = []
+    monkeypatch.setattr(main_module, "load_litellm", lambda: calls.append(None))
+    monkeypatch.setenv("GENERATION_PROVIDER", provider)
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)):
+        assert len(calls) == loads
 
 
 def test_runs_left_running_are_marked_interrupted_at_start_up(lab: Lab, run_database: Path) -> None:

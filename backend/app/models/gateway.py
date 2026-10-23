@@ -10,8 +10,10 @@ for readiness and the models endpoint.
 from __future__ import annotations
 
 import logging
+import threading
 import time
 from dataclasses import dataclass
+from types import ModuleType
 from typing import TYPE_CHECKING
 
 import httpx
@@ -70,9 +72,23 @@ class Completion:
     usage: dict[str, int] | None
 
 
-def complete(request: CompletionRequest) -> Completion:
-    import litellm  # imported lazily: heavy import, not needed in CI
+# LiteLLM imports much of itself on first attribute use. Two threads doing that
+# at once deadlocked a live run on Python's per-module import locks, so every
+# load goes through one lock, and the API loads it at start-up (`load_litellm`).
+_LITELLM_LOCK = threading.Lock()
 
+
+def load_litellm() -> ModuleType:
+    """LiteLLM, fully imported, under one lock. Imported lazily: heavy, not needed in CI."""
+    with _LITELLM_LOCK:
+        import litellm
+
+        litellm.completion  # noqa: B018 - resolves LiteLLM's lazy imports now
+        return litellm
+
+
+def complete(request: CompletionRequest) -> Completion:
+    litellm = load_litellm()
     started = time.perf_counter()
     try:
         response = litellm.completion(
