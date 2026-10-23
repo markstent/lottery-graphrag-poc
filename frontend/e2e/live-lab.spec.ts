@@ -293,29 +293,25 @@ const TAB_NAMES = {
 } as const
 
 /**
- * Cases whose evidence path cannot fit in the canvas at the 14 px type floor.
- * The path box is its size in layout px; the canvas frames 1043 by 522 at the
- * floor (977 by 521 px drawing, 0.875 zoom, 32 px margins). These are expected
- * to fail, and the spec fails if one starts to fit, so the entry is removed.
+ * The canvas fits the evidence path at the floor scale (14 px type, 0.875
+ * zoom, 32 px margins) and starts from the seed. A path that fits is wholly
+ * inside; a larger one is framed from the seed, says how many path nodes are
+ * out of view, and "Bring into view" steps to the next. Path boxes seen at
+ * 1920 by 1080 (layout px; the frame at the floor is 1043 by 522):
+ * H1 B 772 by 364 and H1 C 819 by 462 fit; H2 B 1370 by 910, H2 C 1500 by
+ * 1164, H3 B 1440 by 766, H3 C 1542 by 916, H5 B 1407 by 462 and H5 C 1572 by
+ * 496 do not.
  */
-const PATH_TOO_BIG: Record<string, string> = {
-  'H2 B': 'path box 1370 by 910',
-  'H2 C': 'path box 1500 by 1164',
-  'H3 B': 'path box 1440 by 766',
-  'H3 C': 'path box 1542 by 916',
-  'H5 B': 'path box 1407 by 462 (too wide)',
-  'H5 C': 'path box 1572 by 496 (too wide)',
-}
+const FLOOR_ZOOM = 14 / 16
+const FIT_MARGIN = 32
 
 for (const run of RECORDED_RUNS.slice().sort((a, b) =>
   a.stratum.localeCompare(b.stratum),
 ))
   for (const tab of ['B', 'C'] as const)
-    test(`frames the whole evidence path at the end of ${run.stratum} on ${tab}`, async ({
+    test(`frames the evidence path at the end of ${run.stratum} on ${tab}`, async ({
       page,
     }) => {
-      const tooBig = PATH_TOO_BIG[`${run.stratum} ${tab}`]
-      test.fail(tooBig !== undefined, tooBig)
       await finishRecording(page, run)
       if (tab === 'C')
         await page.getByRole('tab', { name: TAB_NAMES.C }).click()
@@ -328,33 +324,73 @@ for (const run of RECORDED_RUNS.slice().sort((a, b) =>
         `${run.stratum.toLowerCase()}-end-${tab.toLowerCase()}-canvas`,
         page.getByRole('region', { name: 'Graph canvas' }),
       )
-      const { outside, count, note, frame } = await canvas.evaluate((el) => {
-        const box = el.querySelector('.react-flow')!.getBoundingClientRect()
-        const nodes = [
-          ...el.querySelectorAll<HTMLElement>(
-            '[data-on-path="true"][data-node-id]',
-          ),
-        ]
-        const cut = nodes.filter((n) => {
-          const b = n.getBoundingClientRect()
-          return (
-            b.left < box.left ||
-            b.top < box.top ||
-            b.right > box.right ||
-            b.bottom > box.bottom
+      /** The path nodes, which of them are not fully inside, and the numbers around it. */
+      const measure = () =>
+        canvas.evaluate((el) => {
+          const box = el.querySelector('.react-flow')!.getBoundingClientRect()
+          const zoom = Number(
+            /scale\(([\d.]+)\)/.exec(
+              (el.querySelector('.react-flow__viewport') as HTMLElement).style
+                .transform,
+            )![1],
           )
+          const nodes = [
+            ...el.querySelectorAll<HTMLElement>(
+              '[data-on-path="true"][data-node-id]',
+            ),
+          ].map((n) => ({
+            id: n.dataset.nodeId!,
+            seed: n.dataset.state === 'seed',
+            rect: n.getBoundingClientRect(),
+          }))
+          const inside = (r: DOMRect) =>
+            r.left >= box.left &&
+            r.top >= box.top &&
+            r.right <= box.right &&
+            r.bottom <= box.bottom
+          const left = Math.min(...nodes.map((n) => n.rect.left))
+          const right = Math.max(...nodes.map((n) => n.rect.right))
+          const top = Math.min(...nodes.map((n) => n.rect.top))
+          const bottom = Math.max(...nodes.map((n) => n.rect.bottom))
+          return {
+            frame: { width: box.width, height: box.height },
+            zoom,
+            pathSize: {
+              width: (right - left) / zoom,
+              height: (bottom - top) / zoom,
+            },
+            outside: nodes.filter((n) => !inside(n.rect)).map((n) => n.id),
+            seedInside: nodes.some((n) => n.seed && inside(n.rect)),
+            note: Number(
+              /^(\d+) evidence/.exec(
+                el.querySelector('[aria-live]')?.textContent ?? '',
+              )?.[1] ?? 0,
+            ),
+            focused: (document.activeElement as HTMLElement | null)?.dataset
+              ?.nodeId,
+          }
         })
-        return {
-          count: nodes.length,
-          outside: cut.map((n) => n.dataset.nodeId),
-          note: el.querySelector('[aria-live]')?.textContent ?? '',
-          frame: [Math.round(box.width), Math.round(box.height)],
-        }
-      })
-      expect(count).toBeGreaterThan(0)
-      expect(outside, `frame ${frame}`).toEqual([])
-      expect(note).toBe('')
-      expect(frame[1]).toBeGreaterThanOrEqual(520)
+      const before = await measure()
+      expect(before.frame.height).toBeGreaterThanOrEqual(520)
+      const fits =
+        before.pathSize.width * FLOOR_ZOOM + 2 * FIT_MARGIN <=
+          before.frame.width &&
+        before.pathSize.height * FLOOR_ZOOM + 2 * FIT_MARGIN <=
+          before.frame.height
+      if (fits) {
+        expect(before.outside).toEqual([])
+        expect(before.note).toBe(0)
+        return
+      }
+      expect(before.seedInside).toBe(true)
+      expect(before.zoom).toBeCloseTo(FLOOR_ZOOM, 3)
+      expect(before.note).toBe(before.outside.length)
+      expect(before.outside.length).toBeGreaterThan(0)
+      await page.getByRole('button', { name: 'Bring into view' }).click()
+      await page.waitForTimeout(500)
+      const after = await measure()
+      expect(before.outside).toContain(after.focused)
+      expect(after.outside).not.toContain(after.focused)
     })
 
 test('frames the evidence path while the recording plays (H1, mid-replay)', async ({
