@@ -12,7 +12,7 @@ import type { Schemas } from '../../api/client'
 import { SettingsProvider } from '../../app/settings'
 import { RECORDED_RUNS } from '../../run/recorded'
 import { initialRunState, reduceAll, type RunEvent } from '../../run/reduce'
-import { CanvasArea } from './canvas-area'
+import { CanvasArea, type FoldedGroup } from './canvas-area'
 
 type Results = Schemas['QueryResults']
 type Recording = (typeof RECORDED_RUNS)[number]
@@ -27,6 +27,7 @@ const finalOf = (run: Recording) =>
 interface Options {
   results?: Results | null
   onOpenNode?: (pipeline: 'B' | 'C', id: string) => void
+  onOpenGroup?: (pipeline: 'B' | 'C', group: FoldedGroup) => void
   mode?: 'replay' | 'live'
   state?: ReturnType<typeof finalOf>
   finalState?: ReturnType<typeof finalOf> | null
@@ -45,6 +46,7 @@ function show(run: Recording, options: Options = {}) {
         mode={options.mode ?? 'replay'}
         settled
         onOpenNode={options.onOpenNode ?? vi.fn()}
+        onOpenGroup={options.onOpenGroup ?? vi.fn()}
       />
     </SettingsProvider>,
   )
@@ -215,16 +217,45 @@ describe('CanvasArea', () => {
       ).toBeVisible()
     })
 
-    it('is disabled until the other approach has recorded its path', async () => {
-      show(h1, {
-        state: initialRunState(),
-        finalState: null,
-        mode: 'live',
-        results: null,
-      })
+    it('is disabled with a visible reason until the run has ended', () => {
+      show(h1, { results: null })
       expect(
         screen.getByRole('button', { name: "Show C's evidence path" }),
       ).toBeDisabled()
+      expect(
+        screen.getByText('Available when the run has ended.'),
+      ).toBeVisible()
+    })
+
+    it("is disabled with a visible reason until the other approach's path is recorded", () => {
+      show(h1, { state: initialRunState(), finalState: null, mode: 'live' })
+      expect(
+        screen.getByRole('button', { name: "Show C's evidence path" }),
+      ).toBeDisabled()
+      expect(
+        screen.getByText("C's evidence path is not recorded yet."),
+      ).toBeVisible()
+    })
+
+    it("offers B's path on C while C has not recorded its own", async () => {
+      const final = finalOf(h1)
+      const inFlight = {
+        ...final,
+        graph: {
+          ...final.graph,
+          C: { ...final.graph.C, evidencePath: null },
+        },
+      }
+      const user = userEvent.setup()
+      show(h1, { state: inFlight, mode: 'live', finalState: null })
+      await user.click(
+        screen.getByRole('tab', { name: 'C · Graph + Ontology' }),
+      )
+      const toggle = await screen.findByRole('button', {
+        name: "Show B's evidence path",
+      })
+      expect(toggle).toBeEnabled()
+      expect(screen.queryByText(/not recorded yet/)).toBeNull()
     })
   })
 
@@ -259,6 +290,7 @@ describe('CanvasArea', () => {
           mode="replay"
           settled
           onOpenNode={vi.fn()}
+          onOpenGroup={vi.fn()}
         />
       </SettingsProvider>,
     )
@@ -283,14 +315,26 @@ describe('CanvasArea', () => {
     expect(onOpenNode).toHaveBeenCalledWith('B', 'INC_037')
   })
 
-  it('does not open anything for a group of folded nodes', async () => {
+  it('opens a group of folded nodes with its recorded members, not as a node', async () => {
     window.localStorage.setItem('visible-node-cap', '12')
     const onOpenNode = vi.fn()
-    show(h1, { onOpenNode })
+    const onOpenGroup = vi.fn()
+    show(h1, { onOpenNode, onOpenGroup })
     await placed()
     const group = nodes().find((n) => n.dataset.nodeId?.startsWith('cluster:'))!
     fireEvent.click(group)
     expect(onOpenNode).not.toHaveBeenCalled()
+    expect(onOpenGroup).toHaveBeenCalledTimes(1)
+    const [pipeline, folded] = onOpenGroup.mock.calls[0]
+    expect(pipeline).toBe('B')
+    expect(folded.title).toMatch(/^Group of \d+ /)
+    expect(folded.members.length).toBeGreaterThan(1)
+    const known = new Set(finalOf(h1).graph.B.nodes.map((n) => n.id))
+    for (const m of folded.members) {
+      expect(known.has(m.id)).toBe(true)
+      expect(m.label).toBeTruthy()
+    }
+    expect(folded.title).toContain(String(folded.members.length))
   })
 
   it('draws a live run in live mode from the state so far', async () => {

@@ -21,12 +21,13 @@ import { PIPELINES, type PipelineId } from '../../design/pipelines'
 import { RECORDED_RUNS } from '../../run/recorded'
 import { Screen } from '../screen'
 import { AnswerBlock } from './answer-block'
-import { CanvasArea } from './canvas-area'
+import { CanvasArea, type FoldedGroup } from './canvas-area'
 import { runStatusLine } from './columns'
 import { CoverageMatrix } from './coverage-matrix'
 import { pathPosition, sourceFor, type PathPosition } from './evidence-open'
 import { PathStrip } from './path-strip'
 import { PipelineColumn } from './pipeline-column'
+import { recordTitle } from './record-title'
 import { QuestionBar } from './question-bar'
 import { Scorecard } from './scorecard'
 import { Timeline } from './timeline'
@@ -83,6 +84,20 @@ export function LiveLab() {
   const openNode = (pipeline: 'B' | 'C', nodeId: string) =>
     open(pipeline, nodeId, { kind: 'node', nodeId })
 
+  const openGroup = (pipeline: 'B' | 'C', group: FoldedGroup) =>
+    setInDrawer({
+      source: {
+        kind: 'group',
+        title: group.title,
+        members: group.members.map((m) => ({
+          id: m.id,
+          label: m.label,
+          title: recordTitle(results, pipeline, m.id),
+        })),
+      },
+      position: null,
+    })
+
   const { error } = run
   // What each approach found is shown once the run has ended.
   const ended = ['completed', 'failed', 'cancelled'].includes(state.status)
@@ -123,38 +138,48 @@ export function LiveLab() {
       {stored !== null && state.status === 'completed' && (
         <Scorecard results={stored} />
       )}
-      <div className="grid grid-cols-3 gap-4">
-        {PIPELINES.map(({ id }) => (
-          <PipelineColumn
-            key={id}
-            id={id}
-            run={state}
+      <div className="grid grid-cols-[3fr_2fr] gap-4">
+        {/* Canvas first, as it is on screen; the three panels follow it. */}
+        {run.phase !== 'idle' ? (
+          <CanvasArea
+            state={state}
+            finalState={run.finalState}
             results={results}
-            canOpen={(recordId) => sourceOf(id, recordId) !== null}
-            onOpen={(recordId) => open(id, recordId)}
+            mode={run.source === 'recorded' ? 'replay' : 'live'}
+            settled={
+              run.phase === 'finished' &&
+              (!run.timeline.replaying ||
+                run.timeline.cursor >= run.timeline.duration)
+            }
+            onOpenNode={openNode}
+            onOpenGroup={openGroup}
           />
-        ))}
+        ) : (
+          <p className="rounded-card border border-dashed border-border p-6 text-center text-sm text-text-muted">
+            The graph appears when a run starts.
+          </p>
+        )}
+        <div className="relative min-w-0">
+          <div className="absolute inset-0 flex flex-col gap-2">
+            {PIPELINES.map(({ id }) => (
+              <PipelineColumn
+                key={id}
+                id={id}
+                run={state}
+                results={results}
+                canOpen={(recordId) => sourceOf(id, recordId) !== null}
+                onOpen={(recordId) => open(id, recordId)}
+              />
+            ))}
+          </div>
+        </div>
       </div>
       <Timeline
-        state={run.state}
+        state={state}
         originMs={run.originMs}
         timeline={run.timeline}
         controls={run.controls}
       />
-      {run.phase !== 'idle' && (
-        <CanvasArea
-          state={state}
-          finalState={run.finalState}
-          results={results}
-          mode={run.source === 'recorded' ? 'replay' : 'live'}
-          settled={
-            run.phase === 'finished' &&
-            (!run.timeline.replaying ||
-              run.timeline.cursor >= run.timeline.duration)
-          }
-          onOpenNode={openNode}
-        />
-      )}
       {stored !== null && (
         <>
           <div className="grid grid-cols-3 gap-4">

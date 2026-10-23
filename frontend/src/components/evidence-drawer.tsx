@@ -15,6 +15,12 @@ import { Panel } from './panel'
 export type EvidenceSource =
   | { kind: 'record'; datasetId: string; table: string; rowId: string }
   | { kind: 'node'; nodeId: string }
+  /** Nodes the graph canvas folded into one group: their recorded members, listed. */
+  | {
+      kind: 'group'
+      title: string
+      members: readonly { id: string; label: string; title: string | null }[]
+    }
   /** A passage the run's results carry in full: shown as is, with no request. */
   | {
       kind: 'passage'
@@ -67,7 +73,7 @@ const GRAPH_ERRORS: Record<string, string> = {
 const graphErrorWords = (code: string): string =>
   GRAPH_ERRORS[code] ?? 'The graph could not be read for this record.'
 
-type Fetched = Exclude<EvidenceSource, { kind: 'passage' }>
+type Fetched = Exclude<EvidenceSource, { kind: 'passage' | 'group' }>
 
 function loaded(source: Fetched) {
   return source.kind === 'record'
@@ -135,6 +141,31 @@ function PathPositionLine({
       {`Step ${position.step} of ${position.of} on evidence path ${position.path}`}
     </p>
   ) : null
+}
+
+function GroupBody({
+  source,
+}: {
+  source: Extract<EvidenceSource, { kind: 'group' }>
+}) {
+  return (
+    <Panel title="Folded nodes" state="ready">
+      <div className="space-y-3">
+        <p className="text-sm font-medium">{source.title}</p>
+        <ul className="space-y-2 text-sm">
+          {source.members.map((m) => (
+            <li key={m.id}>
+              <span className="font-medium">{nodeLabel(m.label)}</span>{' '}
+              <span className="text-text-secondary">{m.id}</span>
+              {m.title !== null && (
+                <span className="block text-text-secondary">{m.title}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </Panel>
+  )
 }
 
 function PassageBody({
@@ -216,6 +247,8 @@ export function EvidenceDrawer({
     <Drawer open={source !== null} title="Evidence" onClose={onClose}>
       {source?.kind === 'passage' ? (
         <PassageBody source={source} />
+      ) : source?.kind === 'group' ? (
+        <GroupBody source={source} />
       ) : (
         source && <EvidenceBody source={source} pathPosition={pathPosition} />
       )}

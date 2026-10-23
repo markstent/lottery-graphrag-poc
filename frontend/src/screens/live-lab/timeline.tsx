@@ -91,10 +91,10 @@ export function Timeline({
   return (
     <section
       aria-label="Timeline"
-      className="space-y-3 rounded-card border border-hairline bg-surface p-4"
+      className="space-y-2 rounded-card border border-hairline bg-surface px-4 py-3"
     >
       <h2 className="text-base font-semibold text-text-primary">Timeline</h2>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {PIPELINES.map(({ id, label, strong, hue }) => (
           <div key={id} className="flex items-center gap-3">
             <span

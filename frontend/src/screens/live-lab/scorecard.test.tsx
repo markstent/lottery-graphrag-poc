@@ -18,13 +18,17 @@ const adHoc = {
   score: null,
 } as unknown as Results
 
-const row = (name: string) => {
-  const table = screen.getByRole('table')
-  return within(table).getByRole('row', { name: new RegExp(`^${name}`) })
-}
+const columnIndex = (name: string) =>
+  within(screen.getByRole('table'))
+    .getAllByRole('columnheader')
+    .findIndex((head) => head.textContent === name)
+const hasColumn = (name: string) => columnIndex(name) >= 0
+/** One measure for A, B and C: the cell of each pipeline row under the column. */
 const cells = (name: string) =>
-  within(row(name))
-    .getAllByRole('cell')
+  within(screen.getByRole('table'))
+    .getAllByRole('row')
+    .slice(1)
+    .map((row) => within(row).getAllByRole('cell')[columnIndex(name)])
     .map((cell) =>
       Array.from(cell.children)
         .map((part) => part.textContent)
@@ -44,15 +48,27 @@ const measured = (
 }
 
 describe('Scorecard', () => {
-  it('is a labelled region with a column per pipeline', () => {
+  it('is a labelled region with a row per pipeline and a column per measure', () => {
     render(<Scorecard results={h1} />)
     const region = screen.getByRole('region', { name: 'Scorecard' })
     expect(region).toBeVisible()
-    const heads = within(region).getAllByRole('columnheader')
-    expect(heads.map((h) => h.textContent)).toEqual([
-      'A · Text search',
-      'B · Graph',
-      'C · Graph + Ontology',
+    expect(
+      within(region)
+        .getAllByRole('rowheader')
+        .map((h) => h.textContent),
+    ).toEqual(['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
+    expect(
+      within(region)
+        .getAllByRole('columnheader')
+        .map((h) => h.textContent),
+    ).toEqual([
+      'Answer',
+      'Evidence score',
+      'Starting record found',
+      'Markets reached',
+      'Latency',
+      'Context size',
+      'Reason',
     ])
   })
 
@@ -69,10 +85,10 @@ describe('Scorecard', () => {
       'Not correct',
       'Not correct',
     ])
-    expect(cells('Evidence found')).toEqual([
-      '0%',
-      '0% | same as A',
-      '0% | same as A',
+    expect(cells('Evidence score')).toEqual([
+      '0.00',
+      '0.00 | same as A',
+      '0.00 | same as A',
     ])
     expect(cells('Starting record found')).toEqual(['Yes', 'Yes', 'Yes'])
   })
@@ -100,7 +116,7 @@ describe('Scorecard', () => {
 
   it('shows a null measure as missing, never as 0', () => {
     render(<Scorecard results={h3} />)
-    expect(cells('Evidence found')).toEqual(['Missing', 'Missing', 'Missing'])
+    expect(cells('Evidence score')).toEqual(['Missing', 'Missing', 'Missing'])
     expect(cells('Answer')).toEqual(['Correct', 'Correct', 'Correct'])
     expect(cells('Reason')).toEqual([
       'No failure recorded',
@@ -135,10 +151,10 @@ describe('Scorecard', () => {
     const changed = structuredClone(h1) as Results
     changed.score!.per_pipeline.B.evidence_f1 = 0.4
     render(<Scorecard results={changed} />)
-    expect(cells('Evidence found')).toEqual([
-      '0%',
-      '40% | 40 points above A',
-      '0% | same as A',
+    expect(cells('Evidence score')).toEqual([
+      '0.00',
+      '0.40 | +0.40 vs A',
+      '0.00 | same as A',
     ])
   })
 
@@ -147,10 +163,10 @@ describe('Scorecard', () => {
     changed.score!.per_pipeline.B.evidence_f1 = null
     changed.score!.per_pipeline.C.evidence_f1 = 0.2
     render(<Scorecard results={changed} />)
-    expect(cells('Evidence found')).toEqual([
-      '0%',
+    expect(cells('Evidence score')).toEqual([
+      '0.00',
       'Missing',
-      '20% | 20 points above A',
+      '0.20 | +0.20 vs A',
     ])
   })
 
@@ -168,18 +184,14 @@ describe('Scorecard', () => {
     ).toBeVisible()
     expect(screen.queryByText('scored against the answer key')).toBeNull()
     for (const name of ['Latency', 'Context size', 'Markets reached'])
-      expect(row(name)).toBeVisible()
+      expect(hasColumn(name)).toBe(true)
     for (const name of [
       'Answer',
-      'Evidence found',
+      'Evidence score',
       'Starting record found',
       'Reason',
     ])
-      expect(
-        within(screen.getByRole('table')).queryByRole('row', {
-          name: new RegExp(`^${name}`),
-        }),
-      ).toBeNull()
+      expect(hasColumn(name)).toBe(false)
   })
 
   it('says scoring has not finished while the score is pending', () => {

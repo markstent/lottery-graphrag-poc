@@ -239,4 +239,33 @@ describe('EvidenceDrawer', () => {
     expect(within(provenance).getByText('Greece')).toBeVisible()
     expect(fetchSpy).not.toHaveBeenCalled()
   })
+
+  it('lists the members of a group of folded nodes in plain words, with titles where known', async () => {
+    const fetchSpy = stubApi({})
+    render(
+      <EvidenceDrawer
+        source={{
+          kind: 'group',
+          title: 'Group of 2 incident types',
+          members: [
+            {
+              id: 'ITYPE_A',
+              label: 'IncidentType',
+              title: 'Application crashes',
+            },
+            { id: 'ITYPE_B', label: 'IncidentType', title: null },
+          ],
+        }}
+        onClose={() => undefined}
+      />,
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    expect(within(dialog).getByText('Group of 2 incident types')).toBeVisible()
+    const items = within(dialog).getAllByRole('listitem')
+    expect(items).toHaveLength(2)
+    expect(items[0]).toHaveTextContent('incident type ITYPE_A')
+    expect(items[0]).toHaveTextContent('Application crashes')
+    expect(items[1]).toHaveTextContent('incident type ITYPE_B')
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
 })

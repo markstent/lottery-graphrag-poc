@@ -87,13 +87,16 @@ export type DeltaKind = 'score' | 'latency' | 'tokens' | 'markets'
 
 const SAME = 'same as A'
 
-/** How a pipeline moved against A, in words; null when there is no delta. */
+/**
+ * How a pipeline moved against A; null when there is no delta. A score moves
+ * as a signed figure on its 0 to 1 scale ("+0.40 vs A"), the rest in words.
+ */
 export function deltaWords(kind: DeltaKind, d: number | null): string | null {
   if (d === null) return null
   if (kind === 'score') {
-    const points = Math.round(Math.abs(d) * 100)
-    if (points === 0) return SAME
-    return `${points} points ${d > 0 ? 'above' : 'below'} A`
+    const size = Math.abs(d).toFixed(2)
+    if (size === '0.00') return SAME
+    return `${d > 0 ? '+' : '-'}${size} vs A`
   }
   if (kind === 'latency') {
     if (Math.abs(d) < 1) return SAME
@@ -102,6 +105,10 @@ export function deltaWords(kind: DeltaKind, d: number | null): string | null {
   if (d === 0) return SAME
   return `${Math.abs(d).toLocaleString('en-GB')} ${d > 0 ? 'more' : 'fewer'} than A`
 }
+
+/** An evidence score on its 0 to 1 scale with two decimals; "Missing" for none. */
+export const evidenceScore = (value: number | null): string =>
+  value === null ? 'Missing' : value.toFixed(2)
 
 /** "Correct", "Not correct", or a percentage between; "Missing" for no score. */
 export function answerWords(answer: number | null): string {

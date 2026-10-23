@@ -7,6 +7,7 @@ import {
   answerWords,
   delta,
   deltaWords,
+  evidenceScore,
   failureWords,
   scorecard,
 } from './score'
@@ -99,9 +100,9 @@ describe('delta', () => {
 })
 
 describe('deltaWords', () => {
-  it('says how a score moved against A in points', () => {
-    expect(deltaWords('score', 0.25)).toBe('25 points above A')
-    expect(deltaWords('score', -0.5)).toBe('50 points below A')
+  it('says how a score moved against A as a signed figure', () => {
+    expect(deltaWords('score', 0.4)).toBe('+0.40 vs A')
+    expect(deltaWords('score', -0.5)).toBe('-0.50 vs A')
     expect(deltaWords('score', 0)).toBe('same as A')
   })
   it('says how latency moved', () => {
@@ -117,9 +118,19 @@ describe('deltaWords', () => {
   it('calls a move too small to show the same', () => {
     expect(deltaWords('latency', 0.2)).toBe('same as A')
     expect(deltaWords('score', 0.001)).toBe('same as A')
+    expect(deltaWords('score', -0.004)).toBe('same as A')
   })
   it('says nothing for a missing delta', () => {
     expect(deltaWords('score', null)).toBeNull()
+  })
+})
+
+describe('evidenceScore', () => {
+  it('has two decimals on a 0 to 1 scale and shows no score as missing', () => {
+    expect(evidenceScore(0.4)).toBe('0.40')
+    expect(evidenceScore(1)).toBe('1.00')
+    expect(evidenceScore(0)).toBe('0.00')
+    expect(evidenceScore(null)).toBe('Missing')
   })
 })
 

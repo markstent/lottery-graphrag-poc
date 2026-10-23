@@ -83,6 +83,7 @@ describe('Overview', () => {
     render(<Overview />)
     const a = await screen.findByTestId('tile-A')
     expect(within(a).getByText('A · Text search')).toBeVisible()
+    expect(within(a).getByText('Evidence score, all questions')).toBeVisible()
     expect(within(a).getByText('0.25')).toBeVisible()
     expect(within(a).getByText('114 questions, 342 runs')).toBeVisible()
     const b = screen.getByTestId('tile-B')
@@ -94,7 +95,7 @@ describe('Overview', () => {
     ).toBeVisible()
     expect(
       screen.getByText(
-        'Scored 0 to 1: 1 is all the needed evidence and nothing extra. Intervals are for the differences below.',
+        'Evidence score runs from 0 to 1: 1 is all the needed evidence and nothing extra. Intervals are for the differences below.',
       ),
     ).toBeVisible()
   })

@@ -50,10 +50,10 @@ export function PipelineColumn({
   return (
     <section
       aria-label={label}
-      className="min-w-0 overflow-hidden rounded-card border border-hairline bg-surface"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-hairline bg-surface"
     >
       <header
-        className="flex items-baseline justify-between gap-2 px-4 py-2"
+        className="flex shrink-0 items-baseline justify-between gap-2 px-4 py-2"
         style={{ backgroundColor: tint }}
       >
         <h2 className="text-base font-semibold" style={{ color: strong }}>
@@ -63,7 +63,13 @@ export function PipelineColumn({
           {STATUS_WORDS[state.status]}
         </span>
       </header>
-      <div className="space-y-4 p-4">
+      {/* The panel scrolls inside itself, so it is reachable by keyboard. */}
+      <div
+        role="group"
+        aria-label={`${label} progress`}
+        tabIndex={0}
+        className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4"
+      >
         <StageTracker rows={stageRows(id, state)} />
         {notice !== null && (
           <p
@@ -82,13 +88,7 @@ export function PipelineColumn({
           {rows.length === 0 ? (
             <p className="text-sm text-text-muted">Nothing found yet.</p>
           ) : (
-            <ul
-              aria-label="Evidence"
-              // A scrolling list must be reachable by keyboard: by its rows when
-              // they open, else by the list itself.
-              tabIndex={rows.some((row) => canOpen(row.id)) ? undefined : 0}
-              className="relative -m-1 max-h-72 space-y-1 overflow-y-auto p-1"
-            >
+            <ul aria-label="Evidence" className="space-y-1">
               {rows.map((row) => {
                 const design = EVIDENCE_STATES[row.state]
                 const Icon = design.icon

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import { mkdirSync, readdirSync, readFileSync } from 'node:fs'
 
 import cancelled from '../src/run/fixtures/run-cancelled.json' with { type: 'json' }
@@ -28,11 +28,30 @@ const QUESTIONS = RECORDED_RUNS.map((run) => ({
   market_scope: [],
 }))
 
-async function shot(page: Page, name: string) {
+/** A viewport picture at the scroll position of `from` (the top by default); never the whole page. */
+async function shot(page: Page, name: string, from?: Locator) {
   const dir = process.env.SHOTS
   if (!dir) return
   mkdirSync(dir, { recursive: true })
-  await page.screenshot({ path: `${dir}/${name}.png`, fullPage: true })
+  if (from) await from.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  else await page.evaluate(() => window.scrollTo(0, 0))
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: `${dir}/${name}.png` })
+}
+
+/** Stored results whose answers carry plain text, so pictures show no fixture tokens. */
+function plainAnswers<T extends { results?: Record<string, unknown> }>(
+  results: T,
+): T {
+  const copy = structuredClone(results)
+  for (const result of Object.values(copy.results ?? {})) {
+    const answer = (result as { answer: { text: string; raw_text: string } })
+      .answer
+    answer.text =
+      'Incident INC_037 runs on platform version 2024.2.0 [1]. No other market is named in the sources.'
+    answer.raw_text = answer.text
+  }
+  return copy
 }
 
 /** The captured events as one finished event stream. */
@@ -143,7 +162,7 @@ test('shows a cancelled run as it was recorded, with no score', async ({
   await serveLiveRun(
     page,
     cancelled.events as unknown as typeof live.events,
-    cancelled.results,
+    plainAnswers(cancelled.results),
   )
   await page.goto('/#/live-lab')
   await page.getByRole('button', { name: h1.question }).click()
@@ -164,6 +183,11 @@ test('shows a cancelled run as it was recorded, with no score', async ({
     page.getByRole('region', { name: 'B · Graph answer' }),
   ).toContainText('No answer was recorded.')
   await shot(page, 'cancelled')
+  await shot(
+    page,
+    'cancelled-canvas',
+    page.getByRole('region', { name: 'Graph canvas' }),
+  )
 })
 
 test('says why a run could not start and offers a retry', async ({ page }) => {
@@ -221,6 +245,63 @@ async function finishRecording(
   ).toHaveAttribute('data-layout-ready', 'true')
 }
 
+/** Every evidence-path node of the canvas is inside it, or counted in its out-of-view note. */
+async function expectPathNodesInViewOrCounted(page: Page, name: string) {
+  const canvas = page.getByRole('group', { name })
+  await expect(canvas).toHaveAttribute('data-layout-ready', 'true')
+  const { outside, onPath, startVisible, counted } = await canvas.evaluate(
+    (el) => {
+      const frame = el.querySelector('.react-flow')!.getBoundingClientRect()
+      const nodes = [
+        ...el.querySelectorAll<HTMLElement>(
+          '[data-on-path="true"][data-node-id]',
+        ),
+      ].map((n) => ({
+        id: n.dataset.nodeId!,
+        seed: n.dataset.state === 'seed',
+        box: n.getBoundingClientRect(),
+      }))
+      const inside = (b: DOMRect) =>
+        b.left >= frame.left &&
+        b.top >= frame.top &&
+        b.right <= frame.right &&
+        b.bottom <= frame.bottom
+      const note = el.querySelector('[aria-live]')?.textContent ?? ''
+      return {
+        onPath: nodes.length,
+        outside: nodes.filter((n) => !inside(n.box)).length,
+        // The framing starts from the seed the path leaves.
+        startVisible: nodes.some((n) => n.seed && inside(n.box)),
+        counted: Number(/^(\d+) evidence/.exec(note)?.[1] ?? 0),
+      }
+    },
+  )
+  expect(onPath).toBeGreaterThan(0)
+  expect(outside).toBe(counted)
+  expect(startVisible).toBe(true)
+}
+
+/** Moves the position slider to its far end. */
+async function toEnd(page: Page) {
+  const slider = page.getByRole('slider', { name: 'Position' })
+  await slider.fill((await slider.getAttribute('max'))!)
+}
+
+test('frames the evidence path while the recording plays (H1, mid-replay)', async ({
+  page,
+}) => {
+  await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+  await page.getByRole('button', { name: 'Pause' }).click()
+  const slider = page.getByRole('slider', { name: 'Position' })
+  await slider.fill(
+    String(Math.round(Number(await slider.getAttribute('max')) * 0.9)),
+  )
+  await expect(
+    page.getByRole('group', { name: 'Graph for B · Graph' }),
+  ).toHaveAttribute('data-layout-ready', 'true')
+  await shot(page, 'h1-running-mid')
+})
+
 test('shows the verdict, the graph, the answers, the paths and the coverage at the end of H1', async ({
   page,
 }) => {
@@ -229,17 +310,18 @@ test('shows the verdict, the graph, the answers, the paths and the coverage at t
   await expect(
     page.getByRole('table', { name: 'Market coverage' }),
   ).toBeVisible()
+  await expectPathNodesInViewOrCounted(page, 'Graph for B · Graph')
+  const canvas = page.getByRole('region', { name: 'Graph canvas' })
   await shot(page, 'h1-end-b')
+  await shot(page, 'h1-end-b-canvas', canvas)
   await page.getByRole('tab', { name: 'C · Graph + Ontology' }).click()
-  await expect(
-    page.getByRole('group', { name: 'Graph for C · Graph + Ontology' }),
-  ).toHaveAttribute('data-layout-ready', 'true')
   await expect(
     page
       .getByRole('list', { name: 'Key to the graph' })
       .getByText('Added by the ontology'),
   ).toBeVisible()
-  await shot(page, 'h1-end-c')
+  await expectPathNodesInViewOrCounted(page, 'Graph for C · Graph + Ontology')
+  await shot(page, 'h1-end-c-canvas', canvas)
 })
 
 test('draws no ontology highlight on C when the recording has no ontology expansion (H3)', async ({
@@ -248,15 +330,18 @@ test('draws no ontology highlight on C when the recording has no ontology expans
   const h3 = RECORDED_RUNS.find((run) => run.stratum === 'H3')!
   await finishRecording(page, h3)
   await page.getByRole('tab', { name: 'C · Graph + Ontology' }).click()
-  await expect(
-    page.getByRole('group', { name: 'Graph for C · Graph + Ontology' }),
-  ).toHaveAttribute('data-layout-ready', 'true')
+  await expectPathNodesInViewOrCounted(page, 'Graph for C · Graph + Ontology')
   await expect(page.getByText('+ ontology', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: "Show B's evidence path" }).click()
-  await shot(page, 'h3-end-c-overlay')
+  await expectPathNodesInViewOrCounted(page, 'Graph for C · Graph + Ontology')
+  await shot(
+    page,
+    'h3-end-c-overlay',
+    page.getByRole('region', { name: 'Graph canvas' }),
+  )
 })
 
-test('opens the evidence drawer from a citation and keeps the page readable', async ({
+test('opens the evidence drawer from a panel row and from a citation, and closes it by keyboard', async ({
   page,
 }) => {
   await finishRecording(page, h1)
@@ -266,6 +351,16 @@ test('opens the evidence drawer from a citation and keeps the page readable', as
     .first()
     .click()
   await expect(page.getByRole('dialog', { name: 'Evidence' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page
+    .getByRole('region', { name: 'B · Graph', exact: true })
+    .getByRole('list', { name: 'Evidence' })
+    .getByRole('button')
+    .first()
+    .click()
+  await expect(page.getByRole('dialog', { name: 'Evidence' })).toBeVisible()
+  await page.waitForTimeout(500)
   await shot(page, 'h1-drawer')
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -275,7 +370,7 @@ test('shows only what can be measured for a question with no answer key', async 
   page,
 }) => {
   const adHoc = {
-    ...live.results,
+    ...plainAnswers(live.results),
     benchmark_instance_id: null,
     answer_key: 'none',
     score_status: 'not_applicable',
@@ -290,7 +385,13 @@ test('shows only what can be measured for a question with no answer key', async 
     page.getByText('No answer key exists for this question.'),
   ).toBeVisible()
   await expect(page.getByText('scored against the answer key')).toHaveCount(0)
+  await expectPathNodesInViewOrCounted(page, 'Graph for B · Graph')
   await shot(page, 'adhoc')
+  await shot(
+    page,
+    'adhoc-canvas',
+    page.getByRole('region', { name: 'Graph canvas' }),
+  )
 })
 
 test('presentation mode keeps the finished screen readable', async ({
@@ -298,11 +399,13 @@ test('presentation mode keeps the finished screen readable', async ({
 }) => {
   await page.goto(`/?present=1#/live-lab?question=${h1.instance_id}`)
   await page.getByRole('button', { name: 'Pause' }).click()
-  const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
-  await page.getByRole('slider', { name: 'Position' }).fill(String(duration))
+  await toEnd(page)
   await expect(page.getByRole('region', { name: 'Scorecard' })).toBeVisible()
-  await expect(
-    page.getByRole('group', { name: 'Graph for B · Graph' }),
-  ).toHaveAttribute('data-layout-ready', 'true')
+  await expectPathNodesInViewOrCounted(page, 'Graph for B · Graph')
   await shot(page, 'presentation-end')
+  await shot(
+    page,
+    'presentation-end-canvas',
+    page.getByRole('region', { name: 'Graph canvas' }),
+  )
 })

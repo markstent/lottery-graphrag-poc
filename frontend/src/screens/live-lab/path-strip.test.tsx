@@ -75,6 +75,27 @@ describe('PathStrip', () => {
     for (const r of hops) expect(path.textContent).not.toContain(r.type)
   })
 
+  it('keeps each path on one row that scrolls sideways, never wrapping a hop', () => {
+    render(
+      <PathStrip
+        id="B"
+        state={stateThrough(h3)}
+        results={h3.results}
+        onOpen={vi.fn()}
+      />,
+    )
+    const strip = screen.getByRole('region', {
+      name: 'B · Graph evidence path',
+    })
+    for (const path of within(strip).getAllByRole('list', {
+      name: /^Path \d+$/,
+    })) {
+      expect(path).toHaveClass('flex-nowrap', 'overflow-x-auto')
+      for (const hop of within(path).getAllByRole('listitem'))
+        expect(hop).toHaveClass('shrink-0', 'whitespace-nowrap')
+    }
+  })
+
   it('opens a node from the keyboard', async () => {
     const onOpen = vi.fn()
     const user = userEvent.setup()

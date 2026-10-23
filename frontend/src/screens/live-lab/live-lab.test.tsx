@@ -558,22 +558,66 @@ describe('Live Lab, results', () => {
     const row = within(list).getAllByRole('button')[0]
     row.focus()
     await user.keyboard('{Enter}')
-    await screen.findByRole('dialog', { name: 'Evidence' })
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    // The row is the node INC_037: its properties are the record shown first.
+    expect(await within(dialog).findByText('severity')).toBeVisible()
+    expect(within(dialog).getByText('MEDIUM')).toBeVisible()
     await user.keyboard('{Escape}')
     expect(row).toHaveFocus()
   })
 
-  it('opens a passage from its row with the text the results carry', async () => {
-    const user = await finishRecording(userEvent.setup())
+  it('opens a passage from its row with the text the results carry, and returns focus', async () => {
+    reduceMotion()
+    resultsApi()
+    const h2 = RECORDED_RUNS.find((run) => run.stratum === 'H2')!
+    const passage = (
+      h2.results.results!.A as {
+        evidence: {
+          chunk_id: string
+          kind: string
+          text: string
+          selected: boolean
+        }[]
+      }
+    ).evidence.find((c) => c.kind === 'chunk' && c.selected)!
+    const user = userEvent.setup()
+    open(`#/live-lab?question=${h2.instance_id}`)
+    await screen.findByRole('region', { name: 'Scorecard' })
     const list = within(column('A · Text search')).getByRole('list', {
       name: 'Evidence',
     })
-    const row = within(list).getAllByRole('button')[0]
+    const row = within(list)
+      .getAllByRole('button')
+      .find((b) => b.textContent?.includes(passage.chunk_id))!
     row.focus()
     await user.keyboard('{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    expect(dialog).toHaveTextContent(passage.text.replace(/\s+/g, ' ').trim())
     expect(
-      await screen.findByRole('dialog', { name: 'Evidence' }),
+      within(dialog).getByRole('region', { name: 'Provenance' }),
     ).toBeVisible()
+    await user.keyboard('{Escape}')
+    expect(row).toHaveFocus()
+  })
+
+  it('opens a group of folded graph nodes in the drawer with its members listed', async () => {
+    window.localStorage.setItem('visible-node-cap', '12')
+    const user = await finishRecording(userEvent.setup())
+    const canvas = await screen.findByRole('group', {
+      name: 'Graph for B · Graph',
+    })
+    const group = await waitFor(() => {
+      const found = canvas.querySelector<HTMLElement>(
+        '[data-node-id^="cluster:"]',
+      )
+      expect(found).not.toBeNull()
+      return found!
+    })
+    fireEvent.click(group)
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    expect(within(dialog).getByText(/^Group of \d+ /)).toBeVisible()
+    expect(within(dialog).getAllByRole('listitem').length).toBeGreaterThan(1)
+    await user.keyboard('{Escape}')
   })
 
   it('shows where a node sits on the evidence path in the drawer', async () => {
@@ -608,7 +652,9 @@ describe('Live Lab, results', () => {
     })
     node.focus()
     await user.keyboard('{Enter}')
-    await screen.findByRole('dialog', { name: 'Evidence' })
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    expect(await within(dialog).findByText('severity')).toBeVisible()
+    expect(within(dialog).getByText('MEDIUM')).toBeVisible()
     await user.keyboard('{Escape}')
     await waitFor(() => expect(node).toHaveFocus())
   })

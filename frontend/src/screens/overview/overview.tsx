@@ -65,7 +65,7 @@ function Tile({ figures }: { figures: TileFigures }) {
         {pipeline.label}
       </h3>
       <StatTile
-        label="Evidence found, all questions"
+        label="Evidence score, all questions"
         value={figures.mean}
         unit=""
         decimals={2}
@@ -102,8 +102,8 @@ function LatestRun() {
             ))}
           </div>
           <p className="text-sm text-text-muted">
-            Scored 0 to 1: 1 is all the needed evidence and nothing extra.
-            Intervals are for the differences below.
+            Evidence score runs from 0 to 1: 1 is all the needed evidence and
+            nothing extra. Intervals are for the differences below.
           </p>
           <ul className="list-disc space-y-1 pl-5 text-base text-text-primary">
             {verdict.headlines.map((line, index) => (

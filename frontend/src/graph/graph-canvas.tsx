@@ -479,8 +479,9 @@ function Canvas(props: GraphCanvasProps) {
   }, [structure, type.font])
 
   const duration = reducedMotion ? 0 : 240
-  // Fit frames what matters: the evidence path, every seed and, on C, what the
-  // ontology added; until a path is recorded, every node. It never zooms out far
+  // Fit frames what matters: the evidence path and every seed; until a path is
+  // recorded, every node. What the ontology added is reached by panning and the
+  // out-of-view strip. It never zooms out far
   // enough to take the type below `type.minPx` on screen, so a framed set that
   // is taller than the screen is framed from its start (the first node of the
   // path, else the first seed) and the rest is reached by panning or by
@@ -490,13 +491,10 @@ function Canvas(props: GraphCanvasProps) {
     // Until a path is recorded the graph is still growing: frame all of it.
     const important =
       shown.path.length > 0
-        ? visible.nodes.filter(
-            (n) =>
-              n.onPath || n.state === 'seed' || (pipelineId === 'C' && n.added),
-          )
+        ? visible.nodes.filter((n) => n.onPath || n.state === 'seed')
         : visible.nodes
     return important.map((n) => n.id)
-  }, [visible, shown.path, pipelineId])
+  }, [visible, shown.path])
   const startId =
     shown.path[0] ?? visible.nodes.find((n) => n.state === 'seed')?.id
   const fit = useCallback((): Promise<unknown> => {
@@ -536,18 +534,60 @@ function Canvas(props: GraphCanvasProps) {
   // end-to-end specs and for anything waiting on it) once the layout is placed
   // and the fit has been applied.
   const [settledFor, setSettledFor] = useState<Layout | null>(null)
+  // The viewport can only be framed once the library has mounted it; before
+  // that a fit does nothing.
+  const mounted = useStore((state) => state.panZoom !== null)
   useEffect(() => {
-    if (!laidOut) return
+    if (!laidOut || !mounted) return
     if (!autoFit.current) {
       setSettledFor(layout)
       return
     }
+    let current = true
+    let timer: ReturnType<typeof setTimeout> | undefined
     const frame = requestAnimationFrame(() => {
-      void fit().then(() => setSettledFor(layout))
+      // The library resolves a viewport change before its animation ends, so
+      // the canvas is not ready until the animation has had its time too.
+      void fit().then(() => {
+        timer = setTimeout(
+          () => {
+            if (current) setSettledFor(layout)
+          },
+          duration > 0 ? duration + 60 : 0,
+        )
+      })
     })
-    return () => cancelAnimationFrame(frame)
-  }, [layout, laidOut, fit])
-  const ready = laidOut && laidFor === structure && settledFor === layout
+    return () => {
+      current = false
+      clearTimeout(timer)
+      cancelAnimationFrame(frame)
+    }
+  }, [layout, laidOut, fit, duration, mounted])
+
+  // A change in the size of the drawing area (the page around it settling, the
+  // window or the presentation mode) frames the evidence again, unless the
+  // reader has moved the view themselves.
+  const latestFit = useRef(fit)
+  useEffect(() => {
+    latestFit.current = fit
+  })
+  useEffect(() => {
+    const box = drawing.current
+    if (!box || typeof ResizeObserver === 'undefined') return
+    let first = true
+    const watcher = new ResizeObserver(() => {
+      // The observer reports once on observe; that is not a change.
+      if (first) {
+        first = false
+        return
+      }
+      if (autoFit.current) void latestFit.current()
+    })
+    watcher.observe(box)
+    return () => watcher.disconnect()
+  }, [])
+  const ready =
+    laidOut && mounted && laidFor === structure && settledFor === layout
 
   const [activeId, setActiveId] = useState<string | null>(null)
   const active =

@@ -17,6 +17,7 @@ import {
   answerWords,
   delta,
   deltaWords,
+  evidenceScore,
   scorecard,
   type DeltaKind,
   type ScoreColumn,
@@ -37,7 +38,9 @@ const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
 interface Row {
   name: string
-  /** Rows of the score itself are left out of an unscored card. */
+  /** A column that needs room for a sentence. */
+  wide?: boolean
+  /** Columns of the score itself are left out of an unscored card. */
   scoreOnly: boolean
   show: (column: ScoreColumn) => string
   /** The number the delta against A is taken from, with how to say it. */
@@ -51,9 +54,9 @@ const ROWS: Row[] = [
     show: (c) => answerWords(c.answer),
   },
   {
-    name: 'Evidence found',
+    name: 'Evidence score',
     scoreOnly: true,
-    show: (c) => percent(c.evidenceF1),
+    show: (c) => evidenceScore(c.evidenceF1),
     measure: { kind: 'score', value: (c) => c.evidenceF1 },
   },
   {
@@ -81,6 +84,7 @@ const ROWS: Row[] = [
   },
   {
     name: 'Reason',
+    wide: true,
     scoreOnly: true,
     show: (c) =>
       c.failure === null ? 'No failure recorded' : sentence(c.failure),
@@ -100,7 +104,7 @@ function Cell({
 }) {
   if (column === null)
     return (
-      <td className="px-4 py-2">
+      <td className="px-3 py-2">
         <span className="text-text-muted">No result</span>
       </td>
     )
@@ -113,14 +117,16 @@ function Cell({
         )
   const missing = row.show(column) === MISSING
   return (
-    <td className="px-4 py-2 align-top">
+    <td className="px-3 py-2 align-top">
       <span
         className={`tabular ${missing ? 'text-text-muted' : 'font-medium text-text-primary'}`}
       >
         {row.show(column)}
       </span>
       {change !== null && (
-        <span className="block text-sm text-text-secondary">{change}</span>
+        <span className="block text-sm whitespace-nowrap text-text-secondary">
+          {change}
+        </span>
       )}
     </td>
   )
@@ -138,39 +144,36 @@ export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
       aria-label="Scorecard"
       className="overflow-hidden rounded-card border border-hairline bg-surface"
     >
-      {card.scored && (
-        <p className="border-b border-hairline px-4 py-2 text-sm font-medium text-text-primary">
-          {card.label}
-        </p>
-      )}
       <table className="w-full table-fixed text-left text-sm">
         <thead>
           <tr>
-            <td className="w-48" />
-            {PIPELINES.map(({ id, label, tint, strong }) => (
+            <td className="w-44 px-3 py-2 text-sm font-medium text-text-primary">
+              {card.scored ? card.label : null}
+            </td>
+            {rows.map((row) => (
               <th
-                key={id}
+                key={row.name}
                 scope="col"
-                className="px-4 py-2 text-base font-semibold"
-                style={{ backgroundColor: tint, color: strong }}
+                className={`px-3 py-2 font-medium text-text-secondary ${row.wide ? 'w-[22%]' : ''}`}
               >
-                {label}
+                {row.name}
               </th>
             ))}
           </tr>
         </thead>
         <tbody className="divide-y divide-hairline">
-          {rows.map((row) => (
-            <tr key={row.name}>
+          {PIPELINES.map(({ id, label, tint, strong }) => (
+            <tr key={id}>
               <th
                 scope="row"
-                className="px-4 py-2 align-top font-medium text-text-secondary"
+                className="px-3 py-2 align-top text-base font-semibold"
+                style={{ backgroundColor: tint, color: strong }}
               >
-                {row.name}
+                {label}
               </th>
-              {PIPELINES.map(({ id }) => (
+              {rows.map((row) => (
                 <Cell
-                  key={id}
+                  key={row.name}
                   row={row}
                   id={id}
                   column={card.columns[id]}

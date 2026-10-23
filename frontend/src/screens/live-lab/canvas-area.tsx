@@ -21,6 +21,21 @@ import { otherOf, pipelineView, type GraphPipeline } from './graph-views'
 
 const TABS: readonly GraphPipeline[] = ['B', 'C']
 
+export interface FoldedGroup {
+  /** "Group of 12 incident types". */
+  title: string
+  members: { id: string; label: string }[]
+}
+
+/**
+ * The drawing's height: what is left of the window once the question bar,
+ * the legend and the timeline have their room. It grows with a taller window
+ * up to a limit and never drops below a readable floor. At 1920 by 1080 the
+ * floor applies, so the timeline's controls sit a little below the first screen.
+ */
+const HEIGHT = 'clamp(26rem, calc(100vh - 46rem), 46rem)'
+const PRESENTATION_HEIGHT = 'clamp(30rem, calc(100vh - 42rem), 54rem)'
+
 const TOGGLE =
   'rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-grey-900 aria-pressed:bg-grey-900 aria-pressed:text-surface'
 
@@ -31,6 +46,7 @@ export function CanvasArea({
   mode,
   settled,
   onOpenNode,
+  onOpenGroup,
 }: {
   /** The run as far as the replay or stream has got. */
   state: RunState
@@ -41,6 +57,8 @@ export function CanvasArea({
   /** A live stream has ended, so the final graph is laid out whole. */
   settled: boolean
   onOpenNode: (pipeline: GraphPipeline, nodeId: string) => void
+  /** A group of folded nodes was opened: its recorded members, by id and kind. */
+  onOpenGroup: (pipeline: GraphPipeline, group: FoldedGroup) => void
 }) {
   const { nodeCap, presentation, reducedMotion } = useSettings()
   const [tab, setTab] = useState<GraphPipeline>('B')
@@ -51,11 +69,14 @@ export function CanvasArea({
   const other = otherOf(tab)
   const { label } = pipeline(tab)
 
-  // The other path can be shown once both pipelines have recorded theirs.
+  // The other path can be shown once its pipeline has recorded it and the
+  // run's results, which hold the paths, have been read.
   const canOverlay =
-    results !== null &&
-    state.graph[tab].evidencePath !== null &&
-    state.graph[other].evidencePath !== null
+    results !== null && state.graph[other].evidencePath !== null
+  const whyNot =
+    results === null
+      ? 'Available when the run has ended.'
+      : `${other}'s evidence path is not recorded yet.`
   const showOther = overlay && canOverlay
 
   const view = useMemo(
@@ -97,8 +118,17 @@ export function CanvasArea({
   const canvasProps = {
     view,
     onSelectNode: (id: string) => {
-      // A folded group stands for several nodes; none of them is opened by it.
-      if (!view.clusters.some((c) => c.id === id)) onOpenNode(tab, id)
+      const group = (finalView ?? view).clusters.find((c) => c.id === id)
+      if (!group) return onOpenNode(tab, id)
+      // Only members already drawn are recorded so far in a replay.
+      const present = new Map(view.nodes.map((n) => [n.id, n]))
+      onOpenGroup(tab, {
+        title: `Group of ${countedLabel(group.members.filter((m) => present.has(m)).length, group.label)}`,
+        members: group.members.flatMap((m) => {
+          const node = present.get(m)
+          return node ? [{ id: m, label: node.label }] : []
+        }),
+      })
     },
     focusMode: focus,
     presentation,
@@ -110,7 +140,7 @@ export function CanvasArea({
   }
 
   return (
-    <section aria-label="Graph canvas" className="space-y-3">
+    <section aria-label="Graph canvas" className="min-w-0 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           role="tablist"
@@ -148,16 +178,14 @@ export function CanvasArea({
             type="button"
             aria-pressed={showOther}
             disabled={!canOverlay}
-            title={
-              canOverlay
-                ? undefined
-                : 'Available when both approaches have recorded their evidence path.'
-            }
             onClick={() => setOverlay(!overlay)}
             className={TOGGLE}
           >
             {`Show ${other}'s evidence path`}
           </button>
+          {!canOverlay && (
+            <span className="text-sm text-text-secondary">{whyNot}</span>
+          )}
           <button
             type="button"
             aria-pressed={focus}
@@ -172,7 +200,7 @@ export function CanvasArea({
         id={`${ids}-panel`}
         role="tabpanel"
         aria-labelledby={`${ids}-tab-${tab}`}
-        className={presentation ? 'h-[44rem]' : 'h-[34rem]'}
+        style={{ height: presentation ? PRESENTATION_HEIGHT : HEIGHT }}
       >
         {mode === 'replay' && finalView ? (
           <GraphCanvas
