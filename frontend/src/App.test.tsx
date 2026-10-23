@@ -16,7 +16,10 @@ import {
 } from 'vitest'
 
 import App from './App'
+import { SettingsProvider } from './app/settings'
+import { Shell } from './app/shell'
 import { SHELL_API } from './test/api-stub'
+import { LiveLab as V1LiveLab } from './views/live-lab'
 import { ResultsDashboard } from './views/results-dashboard'
 
 function jsonResponse(body: unknown): Response {
@@ -121,9 +124,15 @@ function stubLiveBackend(
   )
 }
 
-/** The Live Lab is its own chunk, so it appears a moment after the shell. */
+/** The v1 Live Lab view, which Task 9 deletes; the shell now routes to the new one. */
 async function renderLiveLab() {
-  render(<App />)
+  render(
+    <SettingsProvider>
+      <Shell>
+        <V1LiveLab />
+      </Shell>
+    </SettingsProvider>,
+  )
   await screen.findByRole('region', { name: 'Question composer' })
 }
 
@@ -143,10 +152,9 @@ describe('App', () => {
   // The Live Lab chunk is a dynamic import; under a loaded test run its first
   // transform can outlast a findBy timeout, so load it once up front.
   beforeAll(async () => {
-    await import('./views/live-lab')
+    await import('./screens/live-lab/live-lab')
   }, 30_000)
 
-  // The screens below are the v1 Live Lab, which the shell now reaches at #/live-lab.
   beforeEach(() => {
     window.history.replaceState(null, '', '/#/live-lab')
   })
@@ -167,7 +175,7 @@ describe('App', () => {
     )
   })
 
-  it('lands on Live Lab by default', async () => {
+  it('shows the v1 question composer', async () => {
     await renderLiveLab()
 
     expect(

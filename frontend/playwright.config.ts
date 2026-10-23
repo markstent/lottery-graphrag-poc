@@ -6,7 +6,7 @@ import { BASE_URL, webServer } from './playwright.shared'
 // playwright.visual.config.ts and run locally via `pnpm e2e:visual`.
 export default defineConfig({
   testDir: './e2e',
-  testMatch: /(smoke|graph-canvas-200)\.spec\.ts$/,
+  testMatch: /(smoke|graph-canvas-200|live-lab)\.spec\.ts$/,
   webServer,
   use: { baseURL: BASE_URL },
 })

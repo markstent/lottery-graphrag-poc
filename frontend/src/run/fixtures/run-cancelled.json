@@ -1,0 +1,4383 @@
+{
+  "run_id": "RUN-53BB15DD2B37",
+  "instance_id": "L05-2026-INC_037",
+  "question": "Which other markets had incidents on the same platform version as incident INC_037?",
+  "market_scope": [],
+  "configurations": ["A", "B", "C"],
+  "results": {
+    "run_id": "RUN-53BB15DD2B37",
+    "kind": "live",
+    "question": "Which other markets had incidents on the same platform version as incident INC_037?",
+    "status": "cancelled",
+    "configurations": ["A", "B", "C"],
+    "market_scope": [],
+    "pipeline_status": {
+      "A": "completed",
+      "B": "cancelled",
+      "C": "skipped"
+    },
+    "created_at": "2026-10-23T21:04:35.628909+00:00",
+    "finished_at": "2026-10-23T21:04:46.244981+00:00",
+    "error": {
+      "error_code": "CANCELLED",
+      "message": "The run was cancelled.",
+      "retryable": true
+    },
+    "results": {
+      "A": {
+        "run_id": "RUN-20261023-210440-dc4bbd33",
+        "question": "Which other markets had incidents on the same platform version as incident INC_037?",
+        "answer": {
+          "text": "[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_037, incidents: INC_017 [1].",
+          "verdict": "[fake-model] answered from the retrieved sources",
+          "cited_blocks": [1],
+          "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_037, incidents: INC_017 [1].\"}",
+          "model": "fake-answer-v1",
+          "latency_ms": 0,
+          "context_tokens": 1444,
+          "citations": [
+            {
+              "chunk_id": "REC_incidents_INC_037",
+              "document_id": "INC_037",
+              "title": "incidents: INC_037",
+              "source_system": "incident_management",
+              "source_record_id": "INC_037",
+              "record_table": "incidents",
+              "market_id": "MKT_UK",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_017",
+              "document_id": "INC_017",
+              "title": "incidents: INC_017",
+              "source_system": "incident_management",
+              "source_record_id": "INC_017",
+              "record_table": "incidents",
+              "market_id": "MKT_UK",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_027",
+              "document_id": "INC_027",
+              "title": "incidents: INC_027",
+              "source_system": "incident_management",
+              "source_record_id": "INC_027",
+              "record_table": "incidents",
+              "market_id": "MKT_AT",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_030",
+              "document_id": "INC_030",
+              "title": "incidents: INC_030",
+              "source_system": "incident_management",
+              "source_record_id": "INC_030",
+              "record_table": "incidents",
+              "market_id": "",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_032",
+              "document_id": "INC_032",
+              "title": "incidents: INC_032",
+              "source_system": "incident_management",
+              "source_record_id": "INC_032",
+              "record_table": "incidents",
+              "market_id": "MKT_CZ",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_003",
+              "document_id": "INC_003",
+              "title": "incidents: INC_003",
+              "source_system": "incident_management",
+              "source_record_id": "INC_003",
+              "record_table": "incidents",
+              "market_id": "MKT_AT",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_038",
+              "document_id": "INC_038",
+              "title": "incidents: INC_038",
+              "source_system": "incident_management",
+              "source_record_id": "INC_038",
+              "record_table": "incidents",
+              "market_id": "MKT_GR",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_036",
+              "document_id": "INC_036",
+              "title": "incidents: INC_036",
+              "source_system": "incident_management",
+              "source_record_id": "INC_036",
+              "record_table": "incidents",
+              "market_id": "MKT_CZ",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_031",
+              "document_id": "INC_031",
+              "title": "incidents: INC_031",
+              "source_system": "incident_management",
+              "source_record_id": "INC_031",
+              "record_table": "incidents",
+              "market_id": "MKT_AT",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_010",
+              "document_id": "INC_010",
+              "title": "incidents: INC_010",
+              "source_system": "incident_management",
+              "source_record_id": "INC_010",
+              "record_table": "incidents",
+              "market_id": "MKT_GR",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_042",
+              "document_id": "INC_042",
+              "title": "incidents: INC_042",
+              "source_system": "incident_management",
+              "source_record_id": "INC_042",
+              "record_table": "incidents",
+              "market_id": "MKT_GR",
+              "language_code": "en"
+            },
+            {
+              "chunk_id": "REC_incidents_INC_040",
+              "document_id": "INC_040",
+              "title": "incidents: INC_040",
+              "source_system": "incident_management",
+              "source_record_id": "INC_040",
+              "record_table": "incidents",
+              "market_id": "MKT_CZ",
+              "language_code": "en"
+            }
+          ],
+          "usage": null
+        },
+        "evidence": [
+          {
+            "chunk_id": "REC_incidents_INC_037",
+            "document_id": "INC_037",
+            "chunk_index": 0,
+            "text": "Incident INC_037 in United Kingdom: Identity service latency causing timeouts. Seen on platform version 2024.2.0 (PLV_IDENTITY_2). Type Sign-in outage (ITYPE_UK_SIGN_IN). Severity MEDIUM. Platform Identity Service (PLT_IDENTITY). Platform version 2024.2.0 (PLV_IDENTITY_2). Affected games: SwiftSix (GAME_UK_06). Started 2025-02-07T01:59:28. Resolved 2025-02-07T02:51:28. Root cause RC_27. Source: incident_management table incidents, record INC_037.",
+            "title": "incidents: INC_037",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-02-07T01:59:28",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.028589,
+            "dense_rank": 22,
+            "sparse_rank": 1,
+            "rank": 1,
+            "discovered_via": "vector",
+            "rerank_score": 2.8286728858947754,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_017",
+            "document_id": "INC_017",
+            "chunk_index": 0,
+            "text": "Incident INC_017 in United Kingdom: Payment provider degraded; transactions failing. Seen on platform version 2024.3.0 (PLV_PAYMENTS_3). Type Payment failure (ITYPE_UK_PAYMENT_FAILURE). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Kingsport Draw (GAME_UK_02), Thames Cash (GAME_UK_03). Started 2025-03-24T20:50:16. Resolved 2025-03-25T22:05:16. Root cause RC_23. Source: incident_management table incidents, record INC_017.",
+            "title": "incidents: INC_017",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-03-24T20:50:16",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.015873,
+            "dense_rank": 3,
+            "sparse_rank": null,
+            "rank": 2,
+            "discovered_via": "vector",
+            "rerank_score": -0.35987547039985657,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_027",
+            "document_id": "INC_027",
+            "chunk_index": 0,
+            "text": "Incident INC_027 in Austria: Application crashes reported on launch. Seen on platform version 2024.3.0 (PLV_APP_IOS_3). Type App-Instabilität (ITYPE_AT_APP). Severity LOW. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.3.0 (PLV_APP_IOS_3). App version 5.4.0 (APPV_CZ_540). Affected games: Danube Classic (GAME_AT_01), Wiener Zahlen (GAME_AT_03). Started 2025-12-20T20:23:13. Resolved 2025-12-23T18:46:13. Source: incident_management table incidents, record INC_027.",
+            "title": "incidents: INC_027",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_AT",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-12-20T20:23:13",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.02938,
+            "dense_rank": 1,
+            "sparse_rank": 17,
+            "rank": 3,
+            "discovered_via": "vector",
+            "rerank_score": -0.6008373498916626,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_030",
+            "document_id": "INC_030",
+            "chunk_index": 0,
+            "text": "Incident INC_030: Application crashes reported on launch. Seen on platform version 2024.2.0 (PLV_APP_IOS_2). Type Application stability (ITYPE_CORP_APPLICATION). Severity HIGH. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.2.0 (PLV_APP_IOS_2). App version 5.3.1 (APPV_CZ_531). Affected games: Peloponnesus Pull (GAME_GR_05). Started 2025-07-21T19:10:11. Resolved 2025-07-22T08:04:11. Source: incident_management table incidents, record INC_030.",
+            "title": "incidents: INC_030",
+            "document_type": "INCIDENTS",
+            "market_id": "",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-07-21T19:10:11",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.02837,
+            "dense_rank": 10,
+            "sparse_rank": 11,
+            "rank": 4,
+            "discovered_via": "vector",
+            "rerank_score": -0.6655066609382629,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_032",
+            "document_id": "INC_032",
+            "chunk_index": 0,
+            "text": "Incident INC_032 in Czech Republic: Application crashes reported on launch. Seen on platform version 2024.3.0 (PLV_APP_IOS_3). Type Nestabilita aplikace (ITYPE_CZ_APLIKACE). Severity LOW. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.3.0 (PLV_APP_IOS_3). App version 5.3.0 (APPV_CZ_530). Affected games: Stastny Kupon (GAME_CZ_04). Started 2025-01-25T09:54:38. Resolved 2025-01-25T18:40:38. Source: incident_management table incidents, record INC_032.",
+            "title": "incidents: INC_032",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-01-25T09:54:38",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.02885,
+            "dense_rank": 6,
+            "sparse_rank": 13,
+            "rank": 5,
+            "discovered_via": "vector",
+            "rerank_score": -1.160125494003296,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_003",
+            "document_id": "INC_003",
+            "chunk_index": 0,
+            "text": "Incident INC_003 in Austria: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.2.0 (PLV_ANALYTICS_2). Type App-Instabilität (ITYPE_AT_APP). Severity HIGH. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.2.0 (PLV_ANALYTICS_2). Affected games: Wiener Zahlen (GAME_AT_03), Alpen Star (GAME_AT_04), Edelweiss Instant (GAME_AT_05). Started 2025-07-20T17:37:32. Resolved 2025-07-21T00:39:32. Source: incident_management table incidents, record INC_003.",
+            "title": "incidents: INC_003",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_AT",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-07-20T17:37:32",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.027584,
+            "dense_rank": 19,
+            "sparse_rank": 7,
+            "rank": 6,
+            "discovered_via": "vector",
+            "rerank_score": -1.231774091720581,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_038",
+            "document_id": "INC_038",
+            "chunk_index": 0,
+            "text": "Incident INC_038 in Greece: Application crashes reported on launch. Seen on platform version 2024.1.0 (PLV_APP_IOS_1). Type Αστάθεια εφαρμογής (ITYPE_GR_EFARMOGI). Severity HIGH. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.1.0 (PLV_APP_IOS_1). App version 5.3.0 (APPV_GR_530). Affected games: Aegean Gold (GAME_GR_01), Olympia Numbers (GAME_GR_03). Started 2025-03-08T00:39:10. Resolved 2025-03-08T21:40:10. Root cause RC_15. Source: incident_management table incidents, record INC_038.",
+            "title": "incidents: INC_038",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-03-08T00:39:10",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.024322,
+            "dense_rank": 15,
+            "sparse_rank": 31,
+            "rank": 7,
+            "discovered_via": "vector",
+            "rerank_score": -1.5663037300109863,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_036",
+            "document_id": "INC_036",
+            "chunk_index": 0,
+            "text": "Incident INC_036 in Czech Republic: Application crashes reported during checkout. Seen on platform version 2024.3.0 (PLV_APP_ANDROID_3). Type Nestabilita aplikace (ITYPE_CZ_APLIKACE). Severity MEDIUM. Platform Mobile Android Application (PLT_APP_ANDROID). Platform version 2024.3.0 (PLV_APP_ANDROID_3). App version 5.4.0 (APPV_GR_540). Affected games: Rychle Cisla (GAME_CZ_03). Started 2025-07-07T08:07:19. Source: incident_management table incidents, record INC_036.",
+            "title": "incidents: INC_036",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-07-07T08:07:19",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.029211,
+            "dense_rank": 7,
+            "sparse_rank": 10,
+            "rank": 8,
+            "discovered_via": "vector",
+            "rerank_score": -1.6224852800369263,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_031",
+            "document_id": "INC_031",
+            "chunk_index": 0,
+            "text": "Incident INC_031 in Austria: Retail terminals offline in one region. Seen on platform version 2024.2.0 (PLV_RETAIL_2). Type Terminalausfall (ITYPE_AT_TERMINAL). Severity LOW. Platform Retail Terminal Network (PLT_RETAIL). Platform version 2024.2.0 (PLV_RETAIL_2). Affected games: Alpen Jackpot (GAME_AT_02), Alpen Star (GAME_AT_04), Edelweiss Instant (GAME_AT_05). Started 2025-01-27T12:51:22. Resolved 2025-01-30T03:51:22. Root cause RC_65. Source: incident_management table incidents, record INC_031.",
+            "title": "incidents: INC_031",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_AT",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-01-27T12:51:22",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.013158,
+            "dense_rank": 16,
+            "sparse_rank": null,
+            "rank": 9,
+            "discovered_via": "vector",
+            "rerank_score": -1.6517456769943237,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_010",
+            "document_id": "INC_010",
+            "chunk_index": 0,
+            "text": "Incident INC_010 in Greece: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.2.0 (PLV_ANALYTICS_2). Type Αστάθεια εφαρμογής (ITYPE_GR_EFARMOGI). Severity CRITICAL. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.2.0 (PLV_ANALYTICS_2). Affected games: Aegean Gold (GAME_GR_01), Olympia Numbers (GAME_GR_03), Athena Express (GAME_GR_04). Started 2025-10-31T03:35:53. Resolved 2025-10-31T16:24:53. Source: incident_management table incidents, record INC_010.",
+            "title": "incidents: INC_010",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-10-31T03:35:53",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.027052,
+            "dense_rank": 21,
+            "sparse_rank": 8,
+            "rank": 10,
+            "discovered_via": "vector",
+            "rerank_score": -2.0176804065704346,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_042",
+            "document_id": "INC_042",
+            "chunk_index": 0,
+            "text": "Incident INC_042 in Greece: Payment checkout failures on platform version PLV_PAYMENTS_3 affecting digital checkout. Type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES). Severity HIGH. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Ellas Jackpot (GAME_GR_02), Athena Express (GAME_GR_04). Started 2025-05-21T11:00:00. Resolved 2025-05-23T11:00:00. Root cause RC_77. Source: incident_management table incidents, record INC_042.",
+            "title": "incidents: INC_042",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-05-21T11:00:00",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.025008,
+            "dense_rank": 14,
+            "sparse_rank": 27,
+            "rank": 11,
+            "discovered_via": "vector",
+            "rerank_score": -2.0203421115875244,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_040",
+            "document_id": "INC_040",
+            "chunk_index": 0,
+            "text": "Incident INC_040 in Czech Republic: Payment provider degraded; transactions failing. Seen on platform version 2024.2.0 (PLV_PAYMENTS_2). Type Selhání plateb (ITYPE_CZ_PLATBY). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.2.0 (PLV_PAYMENTS_2). Affected games: Moravia Multi (GAME_CZ_02). Started 2025-08-29T17:50:36. Resolved 2025-08-31T09:06:36. Source: incident_management table incidents, record INC_040.",
+            "title": "incidents: INC_040",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-08-29T17:50:36",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.02425,
+            "dense_rank": 24,
+            "sparse_rank": 21,
+            "rank": 12,
+            "discovered_via": "vector",
+            "rerank_score": -2.0573856830596924,
+            "selected": true,
+            "discard_reason": null
+          },
+          {
+            "chunk_id": "REC_incidents_INC_005",
+            "document_id": "INC_005",
+            "chunk_index": 0,
+            "text": "Incident INC_005 in United Kingdom: Application crashes reported on launch. Seen on platform version 2024.2.0 (PLV_APP_IOS_2). Type App stability (ITYPE_UK_APP_STABILITY). Severity HIGH. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.2.0 (PLV_APP_IOS_2). App version 5.3.0 (APPV_GR_530). Affected games: Union Raffle (GAME_UK_04), Lioness Instant (GAME_UK_05), SwiftSix (GAME_UK_06). Started 2025-03-24T07:00:33. Resolved 2025-03-25T14:25:33. Source: incident_management table incidents, record INC_005.",
+            "title": "incidents: INC_005",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-03-24T07:00:33",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.026621,
+            "dense_rank": 5,
+            "sparse_rank": 29,
+            "rank": 13,
+            "discovered_via": "vector",
+            "rerank_score": -2.1698050498962402,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_008",
+            "document_id": "INC_008",
+            "chunk_index": 0,
+            "text": "Incident INC_008 in Czech Republic: Draw result publication delayed. Seen on platform version 2024.3.0 (PLV_DRAW_3). Type Zpoždění losování (ITYPE_CZ_LOSOVANI). Severity HIGH. Platform Draw Engine (PLT_DRAW). Platform version 2024.3.0 (PLV_DRAW_3). Affected games: Vltava Výhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02), Rychle Cisla (GAME_CZ_03). Started 2025-06-12T07:26:31. Resolved 2025-06-15T01:31:31. Source: incident_management table incidents, record INC_008.",
+            "title": "incidents: INC_008",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-06-12T07:26:31",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.020202,
+            "dense_rank": 39,
+            "sparse_rank": 39,
+            "rank": 14,
+            "discovered_via": "vector",
+            "rerank_score": -2.184744119644165,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_006",
+            "document_id": "INC_006",
+            "chunk_index": 0,
+            "text": "Incident INC_006 in Greece: Retail terminals offline in one region. Seen on platform version 2024.3.0 (PLV_RETAIL_3). Type Διακοπή τερματικών (ITYPE_GR_TERMATIKA). Severity LOW. Platform Retail Terminal Network (PLT_RETAIL). Platform version 2024.3.0 (PLV_RETAIL_3). Affected games: Peloponnesus Pull (GAME_GR_05). Started 2025-09-12T07:30:23. Resolved 2025-09-14T08:30:23. Source: incident_management table incidents, record INC_006.",
+            "title": "incidents: INC_006",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-09-12T07:30:23",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.027313,
+            "dense_rank": 9,
+            "sparse_rank": 18,
+            "rank": 15,
+            "discovered_via": "vector",
+            "rerank_score": -2.191836357116699,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_001",
+            "document_id": "INC_001",
+            "chunk_index": 0,
+            "text": "Incident INC_001 in United Kingdom: Application crashes reported during checkout. Seen on platform version 2024.2.0 (PLV_APP_ANDROID_2). Type App stability (ITYPE_UK_APP_STABILITY). Severity LOW. Platform Mobile Android Application (PLT_APP_ANDROID). Platform version 2024.2.0 (PLV_APP_ANDROID_2). App version 5.4.0 (APPV_AT_540). Affected games: Kingsport Draw (GAME_UK_02), Thames Cash (GAME_UK_03), SwiftSix (GAME_UK_06). Started 2025-11-10T23:30:31. Resolved 2025-11-13T19:40:31. Source: incident_management table incidents, record INC_001.",
+            "title": "incidents: INC_001",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-11-10T23:30:31",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.027493,
+            "dense_rank": 2,
+            "sparse_rank": 28,
+            "rank": 16,
+            "discovered_via": "vector",
+            "rerank_score": -2.2272298336029053,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_023",
+            "document_id": "INC_023",
+            "chunk_index": 0,
+            "text": "Incident INC_023 in Austria: Application crashes reported on launch. Seen on platform version 2024.3.0 (PLV_APP_IOS_3). Type App-Instabilität (ITYPE_AT_APP). Severity MEDIUM. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.3.0 (PLV_APP_IOS_3). App version 5.3.0 (APPV_GR_530). Affected games: Alpen Jackpot (GAME_AT_02), Wiener Zahlen (GAME_AT_03). Started 2025-08-06T12:34:51. Resolved 2025-08-08T22:11:51. Root cause RC_79. Source: incident_management table incidents, record INC_023.",
+            "title": "incidents: INC_023",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_AT",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-08-06T12:34:51",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.025817,
+            "dense_rank": 8,
+            "sparse_rank": 30,
+            "rank": 17,
+            "discovered_via": "vector",
+            "rerank_score": -2.230646848678589,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_002",
+            "document_id": "INC_002",
+            "chunk_index": 0,
+            "text": "Incident INC_002 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.3.0 (PLV_PAYMENTS_3). Type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Ellas Jackpot (GAME_GR_02), Athena Express (GAME_GR_04), Peloponnesus Pull (GAME_GR_05). Started 2025-02-05T08:29:43. Resolved 2025-02-05T16:24:43. Source: incident_management table incidents, record INC_002.",
+            "title": "incidents: INC_002",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-02-05T08:29:43",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.025829,
+            "dense_rank": 4,
+            "sparse_rank": 38,
+            "rank": 18,
+            "discovered_via": "vector",
+            "rerank_score": -2.2502057552337646,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_018",
+            "document_id": "INC_018",
+            "chunk_index": 0,
+            "text": "Incident INC_018 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.2.0 (PLV_PAYMENTS_2). Type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.2.0 (PLV_PAYMENTS_2). Affected games: Olympia Numbers (GAME_GR_03). Started 2025-08-19T23:46:27. Resolved 2025-08-20T17:07:27. Source: incident_management table incidents, record INC_018.",
+            "title": "incidents: INC_018",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-08-19T23:46:27",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.024923,
+            "dense_rank": 25,
+            "sparse_rank": 16,
+            "rank": 19,
+            "discovered_via": "vector",
+            "rerank_score": -2.260680913925171,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_026",
+            "document_id": "INC_026",
+            "chunk_index": 0,
+            "text": "Incident INC_026 in Greece: Retail terminals offline in one region. Seen on platform version 2024.1.0 (PLV_RETAIL_1). Type Διακοπή τερματικών (ITYPE_GR_TERMATIKA). Severity LOW. Platform Retail Terminal Network (PLT_RETAIL). Platform version 2024.1.0 (PLV_RETAIL_1). Affected games: Ellas Jackpot (GAME_GR_02), Olympia Numbers (GAME_GR_03), Athena Express (GAME_GR_04). Started 2025-10-13T22:15:37. Resolved 2025-10-13T23:36:37. Root cause RC_18. Source: incident_management table incidents, record INC_026.",
+            "title": "incidents: INC_026",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-10-13T22:15:37",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.013889,
+            "dense_rank": 12,
+            "sparse_rank": null,
+            "rank": 20,
+            "discovered_via": "vector",
+            "rerank_score": -2.26168155670166,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_014",
+            "document_id": "INC_014",
+            "chunk_index": 0,
+            "text": "Incident INC_014 in Greece: Sign-in failures for a subset of accounts. Seen on platform version 2024.2.0 (PLV_WEB_2). Type Διακοπή σύνδεσης (ITYPE_GR_SYNDESI). Severity HIGH. Platform Web Portal (PLT_WEB). Platform version 2024.2.0 (PLV_WEB_2). Affected games: Ellas Jackpot (GAME_GR_02). Started 2025-11-24T20:51:37. Resolved 2025-11-25T21:50:37. Source: incident_management table incidents, record INC_014.",
+            "title": "incidents: INC_014",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-11-24T20:51:37",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.025562,
+            "dense_rank": 23,
+            "sparse_rank": 14,
+            "rank": 21,
+            "discovered_via": "vector",
+            "rerank_score": -2.268922805786133,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_039",
+            "document_id": "INC_039",
+            "chunk_index": 0,
+            "text": "Incident INC_039 in Austria: Sign-in failures for a subset of accounts. Seen on platform version 2024.2.0 (PLV_WEB_2). Type Anmeldestörung (ITYPE_AT_ANMELDUNG). Severity LOW. Platform Web Portal (PLT_WEB). Platform version 2024.2.0 (PLV_WEB_2). Affected games: Wiener Zahlen (GAME_AT_03). Started 2025-11-26T02:39:44. Resolved 2025-11-27T12:31:44. Root cause RC_56. Source: incident_management table incidents, record INC_039.",
+            "title": "incidents: INC_039",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_AT",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-11-26T02:39:44",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.023138,
+            "dense_rank": 34,
+            "sparse_rank": 20,
+            "rank": 22,
+            "discovered_via": "vector",
+            "rerank_score": -2.270662784576416,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_043",
+            "document_id": "INC_043",
+            "chunk_index": 0,
+            "text": "Incident INC_043 in Austria: Payment checkout failures on platform version PLV_PAYMENTS_3 affecting digital checkout. Type Zahlungsausfall (ITYPE_AT_ZAHLUNG). Severity MEDIUM. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Danube Classic (GAME_AT_01), Alpen Jackpot (GAME_AT_02). Started 2025-05-22T12:00:00. Resolved 2025-05-23T12:00:00. Root cause RC_77. Source: incident_management table incidents, record INC_043.",
+            "title": "incidents: INC_043",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_AT",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-05-22T12:00:00",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.024869,
+            "dense_rank": 18,
+            "sparse_rank": 23,
+            "rank": 23,
+            "discovered_via": "vector",
+            "rerank_score": -2.3057985305786133,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_029",
+            "document_id": "INC_029",
+            "chunk_index": 0,
+            "text": "Incident INC_029 in United Kingdom: Identity service latency causing timeouts. Seen on platform version 2024.2.0 (PLV_IDENTITY_2). Type Sign-in outage (ITYPE_UK_SIGN_IN). Severity MEDIUM. Platform Identity Service (PLT_IDENTITY). Platform version 2024.2.0 (PLV_IDENTITY_2). Affected games: Union Raffle (GAME_UK_04), Lioness Instant (GAME_UK_05). Started 2025-05-05T15:40:53. Resolved 2025-05-06T06:08:53. Source: incident_management table incidents, record INC_029.",
+            "title": "incidents: INC_029",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-05-05T15:40:53",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.020943,
+            "dense_rank": 36,
+            "sparse_rank": 35,
+            "rank": 24,
+            "discovered_via": "vector",
+            "rerank_score": -2.3793084621429443,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_034",
+            "document_id": "INC_034",
+            "chunk_index": 0,
+            "text": "Incident INC_034 in Greece: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.1.0 (PLV_ANALYTICS_1). Type Αστάθεια εφαρμογής (ITYPE_GR_EFARMOGI). Severity LOW. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.1.0 (PLV_ANALYTICS_1). Affected games: Olympia Numbers (GAME_GR_03). Started 2025-06-27T16:24:49. Resolved 2025-06-29T00:06:49. Root cause RC_32. Source: incident_management table incidents, record INC_034.",
+            "title": "incidents: INC_034",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-06-27T16:24:49",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.026378,
+            "dense_rank": 33,
+            "sparse_rank": 4,
+            "rank": 25,
+            "discovered_via": "vector",
+            "rerank_score": -2.4339375495910645,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_033",
+            "document_id": "INC_033",
+            "chunk_index": 0,
+            "text": "Incident INC_033 in United Kingdom: Sign-in failures for a subset of accounts. Seen on platform version 2024.2.0 (PLV_WEB_2). Type Sign-in outage (ITYPE_UK_SIGN_IN). Severity HIGH. Platform Web Portal (PLT_WEB). Platform version 2024.2.0 (PLV_WEB_2). Affected games: Kingsport Draw (GAME_UK_02). Started 2025-09-12T21:16:47. Resolved 2025-09-15T09:07:47. Root cause RC_65. Source: incident_management table incidents, record INC_033.",
+            "title": "incidents: INC_033",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-09-12T21:16:47",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.024615,
+            "dense_rank": 17,
+            "sparse_rank": 26,
+            "rank": 26,
+            "discovered_via": "vector",
+            "rerank_score": -2.45701265335083,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_044",
+            "document_id": "INC_044",
+            "chunk_index": 0,
+            "text": "Incident INC_044 in Czech Republic: Payment checkout failures on platform version PLV_PAYMENTS_3 affecting digital checkout. Type Selhání plateb (ITYPE_CZ_PLATBY). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Vltava Výhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02). Started 2025-05-23T13:00:00. Resolved 2025-05-24T01:00:00. Root cause RC_77. Source: incident_management table incidents, record INC_044.",
+            "title": "incidents: INC_044",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-05-23T13:00:00",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.024501,
+            "dense_rank": 11,
+            "sparse_rank": 36,
+            "rank": 27,
+            "discovered_via": "vector",
+            "rerank_score": -2.4571826457977295,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_022",
+            "document_id": "INC_022",
+            "chunk_index": 0,
+            "text": "Incident INC_022 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.3.0 (PLV_PAYMENTS_3). Type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Athena Express (GAME_GR_04). Started 2025-11-29T01:54:04. Resolved 2025-11-29T14:58:04. Root cause RC_26. Source: incident_management table incidents, record INC_022.",
+            "title": "incidents: INC_022",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_GR",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-11-29T01:54:04",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.024265,
+            "dense_rank": 20,
+            "sparse_rank": 25,
+            "rank": 28,
+            "discovered_via": "vector",
+            "rerank_score": -2.5136678218841553,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_013",
+            "document_id": "INC_013",
+            "chunk_index": 0,
+            "text": "Incident INC_013 in United Kingdom: Draw result publication delayed. Seen on platform version 2024.2.0 (PLV_DRAW_2). Type Draw delay (ITYPE_UK_DRAW_DELAY). Severity MEDIUM. Platform Draw Engine (PLT_DRAW). Platform version 2024.2.0 (PLV_DRAW_2). Affected games: Union Raffle (GAME_UK_04), SwiftSix (GAME_UK_06). Started 2025-11-10T19:38:24. Resolved 2025-11-12T03:17:24. Root cause RC_47. Source: incident_management table incidents, record INC_013.",
+            "title": "incidents: INC_013",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-11-10T19:38:24",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.020836,
+            "dense_rank": 35,
+            "sparse_rank": 37,
+            "rank": 29,
+            "discovered_via": "vector",
+            "rerank_score": -2.549111843109131,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_004",
+            "document_id": "INC_004",
+            "chunk_index": 0,
+            "text": "Incident INC_004 in Czech Republic: Draw result publication delayed. Seen on platform version 2024.3.0 (PLV_DRAW_3). Type Zpoždění losování (ITYPE_CZ_LOSOVANI). Severity LOW. Platform Draw Engine (PLT_DRAW). Platform version 2024.3.0 (PLV_DRAW_3). Affected games: Rychle Cisla (GAME_CZ_03). Started 2025-05-22T11:28:04. Resolved 2025-05-22T20:45:04. Root cause RC_20. Source: incident_management table incidents, record INC_004.",
+            "title": "incidents: INC_004",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-05-22T11:28:04",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.021905,
+            "dense_rank": 40,
+            "sparse_rank": 24,
+            "rank": 30,
+            "discovered_via": "vector",
+            "rerank_score": -2.601217031478882,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_021",
+            "document_id": "INC_021",
+            "chunk_index": 0,
+            "text": "Incident INC_021 in United Kingdom: Application crashes reported on launch. Seen on platform version 2024.3.0 (PLV_APP_IOS_3). Type App stability (ITYPE_UK_APP_STABILITY). Severity MEDIUM. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.3.0 (PLV_APP_IOS_3). App version 5.3.1 (APPV_CZ_531). Affected games: Kingsport Draw (GAME_UK_02), Thames Cash (GAME_UK_03), Union Raffle (GAME_UK_04). Started 2025-08-15T16:19:48. Resolved 2025-08-17T16:10:48. Root cause RC_98. Source: incident_management table incidents, record INC_021.",
+            "title": "incidents: INC_021",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-08-15T16:19:48",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.023699,
+            "dense_rank": 13,
+            "sparse_rank": 40,
+            "rank": 31,
+            "discovered_via": "vector",
+            "rerank_score": -2.6168408393859863,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_028",
+            "document_id": "INC_028",
+            "chunk_index": 0,
+            "text": "Incident INC_028 in Czech Republic: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.1.0 (PLV_ANALYTICS_1). Type Nestabilita aplikace (ITYPE_CZ_APLIKACE). Severity CRITICAL. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.1.0 (PLV_ANALYTICS_1). Affected games: Rychle Cisla (GAME_CZ_03), Stastny Kupon (GAME_CZ_04). Started 2025-06-04T13:43:26. Resolved 2025-06-06T17:13:26. Source: incident_management table incidents, record INC_028.",
+            "title": "incidents: INC_028",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-06-04T13:43:26",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.026779,
+            "dense_rank": 26,
+            "sparse_rank": 6,
+            "rank": 32,
+            "discovered_via": "vector",
+            "rerank_score": -2.7078897953033447,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_016",
+            "document_id": "INC_016",
+            "chunk_index": 0,
+            "text": "Incident INC_016 in Czech Republic: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.1.0 (PLV_ANALYTICS_1). Type Nestabilita aplikace (ITYPE_CZ_APLIKACE). Severity MEDIUM. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.1.0 (PLV_ANALYTICS_1). Affected games: Vltava Výhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02), Rychle Cisla (GAME_CZ_03). Started 2025-04-13T20:00:37. Resolved 2025-04-14T12:41:37. Source: incident_management table incidents, record INC_016.",
+            "title": "incidents: INC_016",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-04-13T20:00:37",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.025856,
+            "dense_rank": 28,
+            "sparse_rank": 9,
+            "rank": 33,
+            "discovered_via": "vector",
+            "rerank_score": -2.711827039718628,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_019",
+            "document_id": "INC_019",
+            "chunk_index": 0,
+            "text": "Incident INC_019: Sign-in failures for a subset of accounts. Seen on platform version 2024.3.0 (PLV_WEB_3). Type Authentication outage (ITYPE_CORP_IDENTITY). Severity MEDIUM. Platform Web Portal (PLT_WEB). Platform version 2024.3.0 (PLV_WEB_3). Affected games: Edelweiss Instant (GAME_AT_05). Started 2025-10-23T03:38:50. Resolved 2025-10-24T19:01:50. Source: incident_management table incidents, record INC_019.",
+            "title": "incidents: INC_019",
+            "document_type": "INCIDENTS",
+            "market_id": "",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-10-23T03:38:50",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.024878,
+            "dense_rank": 31,
+            "sparse_rank": 12,
+            "rank": 34,
+            "discovered_via": "vector",
+            "rerank_score": -2.717299461364746,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_025",
+            "document_id": "INC_025",
+            "chunk_index": 0,
+            "text": "Incident INC_025 in United Kingdom: Retail terminals offline in one region. Seen on platform version 2024.1.0 (PLV_RETAIL_1). Type Terminal outage (ITYPE_UK_TERMINAL). Severity MEDIUM. Platform Retail Terminal Network (PLT_RETAIL). Platform version 2024.1.0 (PLV_RETAIL_1). Affected games: Albion Millions (GAME_UK_01). Started 2025-07-16T17:16:32. Root cause RC_28. Source: incident_management table incidents, record INC_025.",
+            "title": "incidents: INC_025",
+            "document_type": "INCIDENTS",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-07-16T17:16:32",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.024828,
+            "dense_rank": 27,
+            "sparse_rank": 15,
+            "rank": 35,
+            "discovered_via": "vector",
+            "rerank_score": -2.785050630569458,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_015",
+            "document_id": "INC_015",
+            "chunk_index": 0,
+            "text": "Incident INC_015: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.1.0 (PLV_ANALYTICS_1). Type Application stability (ITYPE_CORP_APPLICATION). Severity LOW. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.1.0 (PLV_ANALYTICS_1). Affected games: Danube Classic (GAME_AT_01), Alpen Jackpot (GAME_AT_02). Started 2025-09-25T02:32:35. Resolved 2025-09-27T23:38:35. Source: incident_management table incidents, record INC_015.",
+            "title": "incidents: INC_015",
+            "document_type": "INCIDENTS",
+            "market_id": "",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-09-25T02:32:35",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.026743,
+            "dense_rank": 32,
+            "sparse_rank": 3,
+            "rank": 36,
+            "discovered_via": "vector",
+            "rerank_score": -2.7959744930267334,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_011",
+            "document_id": "INC_011",
+            "chunk_index": 0,
+            "text": "Incident INC_011: Sign-in failures for a subset of accounts. Seen on platform version 2024.1.0 (PLV_WEB_1). Type Authentication outage (ITYPE_CORP_IDENTITY). Severity HIGH. Platform Web Portal (PLT_WEB). Platform version 2024.1.0 (PLV_WEB_1). Affected games: Danube Classic (GAME_AT_01), Edelweiss Instant (GAME_AT_05). Started 2025-08-27T08:02:54. Resolved 2025-08-29T07:53:54. Root cause RC_74. Source: incident_management table incidents, record INC_011.",
+            "title": "incidents: INC_011",
+            "document_type": "INCIDENTS",
+            "market_id": "",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-08-27T08:02:54",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.021179,
+            "dense_rank": 37,
+            "sparse_rank": 32,
+            "rank": 37,
+            "discovered_via": "vector",
+            "rerank_score": -2.824755907058716,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "REC_incidents_INC_020",
+            "document_id": "INC_020",
+            "chunk_index": 0,
+            "text": "Incident INC_020: Sign-in failures for a subset of accounts. Seen on platform version 2024.3.0 (PLV_WEB_3). Type Authentication outage (ITYPE_CORP_IDENTITY). Severity LOW. Platform Web Portal (PLT_WEB). Platform version 2024.3.0 (PLV_WEB_3). Affected games: Moravia Multi (GAME_CZ_02), Stastny Kupon (GAME_CZ_04). Started 2025-12-06T23:42:33. Resolved 2025-12-07T03:34:33. Root cause RC_82. Source: incident_management table incidents, record INC_020.",
+            "title": "incidents: INC_020",
+            "document_type": "INCIDENTS",
+            "market_id": "",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "valid_from": "2025-12-06T23:42:33",
+            "valid_to": null,
+            "kind": "record",
+            "record_table": "incidents",
+            "similarity": 0.021989,
+            "dense_rank": 29,
+            "sparse_rank": 33,
+            "rank": 38,
+            "discovered_via": "vector",
+            "rerank_score": -2.90854811668396,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "CHNK_0256_00",
+            "document_id": "DOC_0256",
+            "chunk_index": 0,
+            "text": "Release APPV_UK_530 defers the platform version PLV_PAYMENTS_3 update for the UK. The checkout component update is rescheduled after stability reports from other markets. UK checkout is unaffected.",
+            "title": "Release Note: APPV_UK_530 (Deferred Update)",
+            "document_type": "RELEASE_NOTE",
+            "market_id": "MKT_UK",
+            "language_code": "en",
+            "source_system": "document_store",
+            "valid_from": "2025-05-18 09:00:00",
+            "valid_to": null,
+            "kind": "chunk",
+            "record_table": null,
+            "similarity": 0.015385,
+            "dense_rank": null,
+            "sparse_rank": 5,
+            "rank": 39,
+            "discovered_via": "vector",
+            "rerank_score": -5.173148155212402,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          },
+          {
+            "chunk_id": "CHNK_0053_00",
+            "document_id": "DOC_0053",
+            "chunk_index": 0,
+            "text": "Scope of this document: Authentication outage. Root cause analysis was completed together with the platform team. The incident was classified as Authentication outage. Figures in this document are taken from the central reporting warehouse. The next review is scheduled with the market operations team.",
+            "title": "Post Incident Review: Authentication outage (INC_012)",
+            "document_type": "POST_INCIDENT_REVIEW",
+            "market_id": "",
+            "language_code": "en",
+            "source_system": "document_store",
+            "valid_from": "2025-03-04 00:31:19",
+            "valid_to": null,
+            "kind": "chunk",
+            "record_table": null,
+            "similarity": 0.016129,
+            "dense_rank": null,
+            "sparse_rank": 2,
+            "rank": 40,
+            "discovered_via": "vector",
+            "rerank_score": -6.117222785949707,
+            "selected": false,
+            "discard_reason": "slot_limit"
+          }
+        ],
+        "embedding_model": "bge-m3",
+        "generation_model": "fake-answer-v1"
+      }
+    },
+    "benchmark_instance_id": "L05-2026-INC_037",
+    "answer_key": "available",
+    "score_status": "not_applicable",
+    "score_failure": null,
+    "score": null
+  },
+  "events": [
+    {
+      "event_id": "d32a1d058ac64d89b0880d501e2679a1",
+      "timestamp": "2026-10-23T21:04:35.633572+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "run",
+      "t_ms": 361395230.2,
+      "sequence": 1,
+      "event_type": "run.started",
+      "payload": {}
+    },
+    {
+      "event_id": "f53b9ecb1dc74d51901b7f425150f61a",
+      "timestamp": "2026-10-23T21:04:35.634249+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361395230.9,
+      "sequence": 2,
+      "event_type": "pipeline.started",
+      "payload": {}
+    },
+    {
+      "event_id": "05dcd10093f8419ba5bf3792a30c9c59",
+      "timestamp": "2026-10-23T21:04:35.634436+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361395231,
+      "sequence": 3,
+      "event_type": "rag.query.received",
+      "payload": {
+        "question": "Which other markets had incidents on the same platform version as incident INC_037?",
+        "markets": ""
+      }
+    },
+    {
+      "event_id": "062fc8f453844cb0b236699fd83116b9",
+      "timestamp": "2026-10-23T21:04:35.634560+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361395231.2,
+      "sequence": 4,
+      "event_type": "rag.embedding.started",
+      "payload": {
+        "model": "bge-m3"
+      }
+    },
+    {
+      "event_id": "e0a3eb7db4d146daae8d194e6c19f502",
+      "timestamp": "2026-10-23T21:04:37.757379+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397353.9,
+      "sequence": 5,
+      "event_type": "rag.embedding.completed",
+      "payload": {
+        "model": "bge-m3",
+        "dimensions": 1024
+      }
+    },
+    {
+      "event_id": "d582cf1c85c345839afc6a0a7e2f10e2",
+      "timestamp": "2026-10-23T21:04:37.758544+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397355.1,
+      "sequence": 6,
+      "event_type": "rag.vector_search.started",
+      "payload": {
+        "top_k": 40
+      }
+    },
+    {
+      "event_id": "ca26f9c0492a46e59c670c848085c163",
+      "timestamp": "2026-10-23T21:04:37.782670+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397379.2,
+      "sequence": 7,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_027",
+        "document_id": "INC_027",
+        "similarity": 0.02938,
+        "dense_rank": 1,
+        "sparse_rank": 17,
+        "rank": 1
+      }
+    },
+    {
+      "event_id": "a6e313b571a24b30830b7ea940197ac6",
+      "timestamp": "2026-10-23T21:04:37.783645+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397380.2,
+      "sequence": 8,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_036",
+        "document_id": "INC_036",
+        "similarity": 0.029211,
+        "dense_rank": 7,
+        "sparse_rank": 10,
+        "rank": 2
+      }
+    },
+    {
+      "event_id": "470ce019c5ea4c03b5c9fa99b05e9857",
+      "timestamp": "2026-10-23T21:04:37.784229+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397380.8,
+      "sequence": 9,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_032",
+        "document_id": "INC_032",
+        "similarity": 0.02885,
+        "dense_rank": 6,
+        "sparse_rank": 13,
+        "rank": 3
+      }
+    },
+    {
+      "event_id": "f9650bcb7a9847da8f3c360eba6bf303",
+      "timestamp": "2026-10-23T21:04:37.784718+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397381.3,
+      "sequence": 10,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_037",
+        "document_id": "INC_037",
+        "similarity": 0.028589,
+        "dense_rank": 22,
+        "sparse_rank": 1,
+        "rank": 4
+      }
+    },
+    {
+      "event_id": "fc2c4aa315434a5dbf18934284c0bef3",
+      "timestamp": "2026-10-23T21:04:37.785094+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397381.7,
+      "sequence": 11,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_030",
+        "document_id": "INC_030",
+        "similarity": 0.02837,
+        "dense_rank": 10,
+        "sparse_rank": 11,
+        "rank": 5
+      }
+    },
+    {
+      "event_id": "5d5841a0aed74afa910e3c55affd74ae",
+      "timestamp": "2026-10-23T21:04:37.785575+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397382.2,
+      "sequence": 12,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_003",
+        "document_id": "INC_003",
+        "similarity": 0.027584,
+        "dense_rank": 19,
+        "sparse_rank": 7,
+        "rank": 6
+      }
+    },
+    {
+      "event_id": "3a5254a07b3f4d41b0335057118b73d3",
+      "timestamp": "2026-10-23T21:04:37.785915+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397382.5,
+      "sequence": 13,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_001",
+        "document_id": "INC_001",
+        "similarity": 0.027493,
+        "dense_rank": 2,
+        "sparse_rank": 28,
+        "rank": 7
+      }
+    },
+    {
+      "event_id": "97c52a0fcc4f40218c7beb6f34509964",
+      "timestamp": "2026-10-23T21:04:37.786242+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397382.8,
+      "sequence": 14,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_006",
+        "document_id": "INC_006",
+        "similarity": 0.027313,
+        "dense_rank": 9,
+        "sparse_rank": 18,
+        "rank": 8
+      }
+    },
+    {
+      "event_id": "731efb4ca1ed40e99c5c68d1efacc88f",
+      "timestamp": "2026-10-23T21:04:37.786578+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397383.2,
+      "sequence": 15,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_010",
+        "document_id": "INC_010",
+        "similarity": 0.027052,
+        "dense_rank": 21,
+        "sparse_rank": 8,
+        "rank": 9
+      }
+    },
+    {
+      "event_id": "bc4346687d0a4384ab49e165e8a13b76",
+      "timestamp": "2026-10-23T21:04:37.786991+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397383.6,
+      "sequence": 16,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_028",
+        "document_id": "INC_028",
+        "similarity": 0.026779,
+        "dense_rank": 26,
+        "sparse_rank": 6,
+        "rank": 10
+      }
+    },
+    {
+      "event_id": "cd29e8d6d518408ca3e1423a509e7562",
+      "timestamp": "2026-10-23T21:04:37.787360+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397384,
+      "sequence": 17,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_015",
+        "document_id": "INC_015",
+        "similarity": 0.026743,
+        "dense_rank": 32,
+        "sparse_rank": 3,
+        "rank": 11
+      }
+    },
+    {
+      "event_id": "4ce7e9d0188743adaf0953b5535f37e0",
+      "timestamp": "2026-10-23T21:04:37.787691+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397384.3,
+      "sequence": 18,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_005",
+        "document_id": "INC_005",
+        "similarity": 0.026621,
+        "dense_rank": 5,
+        "sparse_rank": 29,
+        "rank": 12
+      }
+    },
+    {
+      "event_id": "295734b316824f8db2bfc2c9c57be30a",
+      "timestamp": "2026-10-23T21:04:37.788017+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397384.6,
+      "sequence": 19,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_034",
+        "document_id": "INC_034",
+        "similarity": 0.026378,
+        "dense_rank": 33,
+        "sparse_rank": 4,
+        "rank": 13
+      }
+    },
+    {
+      "event_id": "305a65ca6fa74c43866e0ffd2d9fb670",
+      "timestamp": "2026-10-23T21:04:37.788349+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397385,
+      "sequence": 20,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_016",
+        "document_id": "INC_016",
+        "similarity": 0.025856,
+        "dense_rank": 28,
+        "sparse_rank": 9,
+        "rank": 14
+      }
+    },
+    {
+      "event_id": "b202f69e45e1483aa1c40d36a49801e4",
+      "timestamp": "2026-10-23T21:04:37.788834+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397385.4,
+      "sequence": 21,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_002",
+        "document_id": "INC_002",
+        "similarity": 0.025829,
+        "dense_rank": 4,
+        "sparse_rank": 38,
+        "rank": 15
+      }
+    },
+    {
+      "event_id": "3fa1d38ab151416b951e3d201f2da094",
+      "timestamp": "2026-10-23T21:04:37.789269+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397385.9,
+      "sequence": 22,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_023",
+        "document_id": "INC_023",
+        "similarity": 0.025817,
+        "dense_rank": 8,
+        "sparse_rank": 30,
+        "rank": 16
+      }
+    },
+    {
+      "event_id": "306e78be4b5e42be8fbd4e07b2219277",
+      "timestamp": "2026-10-23T21:04:37.789658+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397386.3,
+      "sequence": 23,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_014",
+        "document_id": "INC_014",
+        "similarity": 0.025562,
+        "dense_rank": 23,
+        "sparse_rank": 14,
+        "rank": 17
+      }
+    },
+    {
+      "event_id": "169078f346864a799927ba727b956e56",
+      "timestamp": "2026-10-23T21:04:37.789905+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397386.5,
+      "sequence": 24,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_042",
+        "document_id": "INC_042",
+        "similarity": 0.025008,
+        "dense_rank": 14,
+        "sparse_rank": 27,
+        "rank": 18
+      }
+    },
+    {
+      "event_id": "0f214f9d35574ca086d42e829c96e927",
+      "timestamp": "2026-10-23T21:04:37.790165+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397386.8,
+      "sequence": 25,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_018",
+        "document_id": "INC_018",
+        "similarity": 0.024923,
+        "dense_rank": 25,
+        "sparse_rank": 16,
+        "rank": 19
+      }
+    },
+    {
+      "event_id": "585beaef34864b13a56fbd056452d1fc",
+      "timestamp": "2026-10-23T21:04:37.790417+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397387,
+      "sequence": 26,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_019",
+        "document_id": "INC_019",
+        "similarity": 0.024878,
+        "dense_rank": 31,
+        "sparse_rank": 12,
+        "rank": 20
+      }
+    },
+    {
+      "event_id": "5b79134919494b3ebde30a2aa3a40c7e",
+      "timestamp": "2026-10-23T21:04:37.790668+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397387.3,
+      "sequence": 27,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_043",
+        "document_id": "INC_043",
+        "similarity": 0.024869,
+        "dense_rank": 18,
+        "sparse_rank": 23,
+        "rank": 21
+      }
+    },
+    {
+      "event_id": "ac32efde184e4515b5ef5e5005652297",
+      "timestamp": "2026-10-23T21:04:37.790916+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397387.5,
+      "sequence": 28,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_025",
+        "document_id": "INC_025",
+        "similarity": 0.024828,
+        "dense_rank": 27,
+        "sparse_rank": 15,
+        "rank": 22
+      }
+    },
+    {
+      "event_id": "7717e1f1e7ab4dda8dbc66267cf0d458",
+      "timestamp": "2026-10-23T21:04:37.791249+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397387.9,
+      "sequence": 29,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_033",
+        "document_id": "INC_033",
+        "similarity": 0.024615,
+        "dense_rank": 17,
+        "sparse_rank": 26,
+        "rank": 23
+      }
+    },
+    {
+      "event_id": "9bc39bfe835745f0add2b3d66b1db721",
+      "timestamp": "2026-10-23T21:04:37.791502+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397388.1,
+      "sequence": 30,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_044",
+        "document_id": "INC_044",
+        "similarity": 0.024501,
+        "dense_rank": 11,
+        "sparse_rank": 36,
+        "rank": 24
+      }
+    },
+    {
+      "event_id": "f638aa4a86f54dbba57e5e13e36cec75",
+      "timestamp": "2026-10-23T21:04:37.791920+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397388.5,
+      "sequence": 31,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_038",
+        "document_id": "INC_038",
+        "similarity": 0.024322,
+        "dense_rank": 15,
+        "sparse_rank": 31,
+        "rank": 25
+      }
+    },
+    {
+      "event_id": "7a3a6461327d49e4b3b21d3ba81b5892",
+      "timestamp": "2026-10-23T21:04:37.792166+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397388.8,
+      "sequence": 32,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_022",
+        "document_id": "INC_022",
+        "similarity": 0.024265,
+        "dense_rank": 20,
+        "sparse_rank": 25,
+        "rank": 26
+      }
+    },
+    {
+      "event_id": "94f9cd205e9e4608a5b3f215e0624e91",
+      "timestamp": "2026-10-23T21:04:37.792409+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397389,
+      "sequence": 33,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_040",
+        "document_id": "INC_040",
+        "similarity": 0.02425,
+        "dense_rank": 24,
+        "sparse_rank": 21,
+        "rank": 27
+      }
+    },
+    {
+      "event_id": "b9be66dd65eb487c9ce417837d2cdc29",
+      "timestamp": "2026-10-23T21:04:37.792765+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397389.4,
+      "sequence": 34,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_021",
+        "document_id": "INC_021",
+        "similarity": 0.023699,
+        "dense_rank": 13,
+        "sparse_rank": 40,
+        "rank": 28
+      }
+    },
+    {
+      "event_id": "6b78d15b3d8643e6bcbfb036510cd997",
+      "timestamp": "2026-10-23T21:04:37.793044+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397389.7,
+      "sequence": 35,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_039",
+        "document_id": "INC_039",
+        "similarity": 0.023138,
+        "dense_rank": 34,
+        "sparse_rank": 20,
+        "rank": 29
+      }
+    },
+    {
+      "event_id": "7c09b4f43ab54013a09a96b075e928f3",
+      "timestamp": "2026-10-23T21:04:37.793267+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397389.9,
+      "sequence": 36,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_020",
+        "document_id": "INC_020",
+        "similarity": 0.021989,
+        "dense_rank": 29,
+        "sparse_rank": 33,
+        "rank": 30
+      }
+    },
+    {
+      "event_id": "104f211fa8c647e0a541dfb3407cce55",
+      "timestamp": "2026-10-23T21:04:37.793462+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397390.1,
+      "sequence": 37,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_004",
+        "document_id": "INC_004",
+        "similarity": 0.021905,
+        "dense_rank": 40,
+        "sparse_rank": 24,
+        "rank": 31
+      }
+    },
+    {
+      "event_id": "98bc27ecc1e7467cac473590ef820aca",
+      "timestamp": "2026-10-23T21:04:37.793772+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397390.4,
+      "sequence": 38,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_011",
+        "document_id": "INC_011",
+        "similarity": 0.021179,
+        "dense_rank": 37,
+        "sparse_rank": 32,
+        "rank": 32
+      }
+    },
+    {
+      "event_id": "be44d38161b240468d00417683d42838",
+      "timestamp": "2026-10-23T21:04:37.793974+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397390.6,
+      "sequence": 39,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_029",
+        "document_id": "INC_029",
+        "similarity": 0.020943,
+        "dense_rank": 36,
+        "sparse_rank": 35,
+        "rank": 33
+      }
+    },
+    {
+      "event_id": "5ebca20fd21c42f4a69413edbeec7b9f",
+      "timestamp": "2026-10-23T21:04:37.794174+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397390.8,
+      "sequence": 40,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_013",
+        "document_id": "INC_013",
+        "similarity": 0.020836,
+        "dense_rank": 35,
+        "sparse_rank": 37,
+        "rank": 34
+      }
+    },
+    {
+      "event_id": "42cfe947c1df46db8589f757b4210b9f",
+      "timestamp": "2026-10-23T21:04:37.794427+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397391,
+      "sequence": 41,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_008",
+        "document_id": "INC_008",
+        "similarity": 0.020202,
+        "dense_rank": 39,
+        "sparse_rank": 39,
+        "rank": 35
+      }
+    },
+    {
+      "event_id": "d7e2d5fe2946418dbcbb51312b8573d5",
+      "timestamp": "2026-10-23T21:04:37.794629+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397391.2,
+      "sequence": 42,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "CHNK_0053_00",
+        "document_id": "DOC_0053",
+        "similarity": 0.016129,
+        "dense_rank": null,
+        "sparse_rank": 2,
+        "rank": 36
+      }
+    },
+    {
+      "event_id": "15213680bd604644981aa6e13fd93863",
+      "timestamp": "2026-10-23T21:04:37.794828+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397391.4,
+      "sequence": 43,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_017",
+        "document_id": "INC_017",
+        "similarity": 0.015873,
+        "dense_rank": 3,
+        "sparse_rank": null,
+        "rank": 37
+      }
+    },
+    {
+      "event_id": "6958d8725ca642afaec2e4510bc990e3",
+      "timestamp": "2026-10-23T21:04:37.795144+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397391.8,
+      "sequence": 44,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "CHNK_0256_00",
+        "document_id": "DOC_0256",
+        "similarity": 0.015385,
+        "dense_rank": null,
+        "sparse_rank": 5,
+        "rank": 38
+      }
+    },
+    {
+      "event_id": "a8dc60df1e884e5daa8af73085effdbb",
+      "timestamp": "2026-10-23T21:04:37.795444+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397392.1,
+      "sequence": 45,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_026",
+        "document_id": "INC_026",
+        "similarity": 0.013889,
+        "dense_rank": 12,
+        "sparse_rank": null,
+        "rank": 39
+      }
+    },
+    {
+      "event_id": "b43c38a0803f4a969c0bc3a90690c4ec",
+      "timestamp": "2026-10-23T21:04:37.795646+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397392.3,
+      "sequence": 46,
+      "event_type": "rag.candidate.retrieved",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_031",
+        "document_id": "INC_031",
+        "similarity": 0.013158,
+        "dense_rank": 16,
+        "sparse_rank": null,
+        "rank": 40
+      }
+    },
+    {
+      "event_id": "55fcaae4eb544cc3b2d301ab6d6b80b3",
+      "timestamp": "2026-10-23T21:04:37.795891+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361397392.5,
+      "sequence": 47,
+      "event_type": "rag.rerank.started",
+      "payload": {
+        "candidates": 40,
+        "model": "BAAI/bge-reranker-v2-m3"
+      }
+    },
+    {
+      "event_id": "80cac3a1425345118ecffa343ab3a017",
+      "timestamp": "2026-10-23T21:04:40.424946+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400021.5,
+      "sequence": 48,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_037",
+        "similarity": 0.028589,
+        "rerank_score": 2.8286728858947754,
+        "rank": 1
+      }
+    },
+    {
+      "event_id": "3c5a6680d4684160805a8cd79beab416",
+      "timestamp": "2026-10-23T21:04:40.425453+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.1,
+      "sequence": 49,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_017",
+        "similarity": 0.015873,
+        "rerank_score": -0.35987547039985657,
+        "rank": 2
+      }
+    },
+    {
+      "event_id": "d3e396a9265646028e716575250b3968",
+      "timestamp": "2026-10-23T21:04:40.425558+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.2,
+      "sequence": 50,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_027",
+        "similarity": 0.02938,
+        "rerank_score": -0.6008373498916626,
+        "rank": 3
+      }
+    },
+    {
+      "event_id": "0d91749a0555493d891339e8c8af6b8c",
+      "timestamp": "2026-10-23T21:04:40.425684+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.3,
+      "sequence": 51,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_030",
+        "similarity": 0.02837,
+        "rerank_score": -0.6655066609382629,
+        "rank": 4
+      }
+    },
+    {
+      "event_id": "cf149fdd672241c1a6f2598ebd4ee4fe",
+      "timestamp": "2026-10-23T21:04:40.425810+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.4,
+      "sequence": 52,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_032",
+        "similarity": 0.02885,
+        "rerank_score": -1.160125494003296,
+        "rank": 5
+      }
+    },
+    {
+      "event_id": "3532ab37fa7f438d8b0e54842664d1a7",
+      "timestamp": "2026-10-23T21:04:40.425923+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.5,
+      "sequence": 53,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_003",
+        "similarity": 0.027584,
+        "rerank_score": -1.231774091720581,
+        "rank": 6
+      }
+    },
+    {
+      "event_id": "3c0e57000644419fb2a2cc08148aed96",
+      "timestamp": "2026-10-23T21:04:40.426009+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.6,
+      "sequence": 54,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_038",
+        "similarity": 0.024322,
+        "rerank_score": -1.5663037300109863,
+        "rank": 7
+      }
+    },
+    {
+      "event_id": "bc4c35fa229d4f61a5b3d49d8fae3759",
+      "timestamp": "2026-10-23T21:04:40.426091+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.7,
+      "sequence": 55,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_036",
+        "similarity": 0.029211,
+        "rerank_score": -1.6224852800369263,
+        "rank": 8
+      }
+    },
+    {
+      "event_id": "c667ed7d759e46baaa48b959f70ac4ac",
+      "timestamp": "2026-10-23T21:04:40.426203+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.8,
+      "sequence": 56,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_031",
+        "similarity": 0.013158,
+        "rerank_score": -1.6517456769943237,
+        "rank": 9
+      }
+    },
+    {
+      "event_id": "d559a09cd389495eb20f650a9c90aae6",
+      "timestamp": "2026-10-23T21:04:40.426315+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400022.9,
+      "sequence": 57,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_010",
+        "similarity": 0.027052,
+        "rerank_score": -2.0176804065704346,
+        "rank": 10
+      }
+    },
+    {
+      "event_id": "bb650e72c8154d6abef365016ece6135",
+      "timestamp": "2026-10-23T21:04:40.426426+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023,
+      "sequence": 58,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_042",
+        "similarity": 0.025008,
+        "rerank_score": -2.0203421115875244,
+        "rank": 11
+      }
+    },
+    {
+      "event_id": "da539dd0dc964c17be132c67f6ea6403",
+      "timestamp": "2026-10-23T21:04:40.426556+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.2,
+      "sequence": 59,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_040",
+        "similarity": 0.02425,
+        "rerank_score": -2.0573856830596924,
+        "rank": 12
+      }
+    },
+    {
+      "event_id": "09088d0298354e6592ed2d2209724aeb",
+      "timestamp": "2026-10-23T21:04:40.426658+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.3,
+      "sequence": 60,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_005",
+        "similarity": 0.026621,
+        "rerank_score": -2.1698050498962402,
+        "rank": 13
+      }
+    },
+    {
+      "event_id": "38580ae94d91426583de8fedcafa76d2",
+      "timestamp": "2026-10-23T21:04:40.426739+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.4,
+      "sequence": 61,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_008",
+        "similarity": 0.020202,
+        "rerank_score": -2.184744119644165,
+        "rank": 14
+      }
+    },
+    {
+      "event_id": "2d3e550134ab404a8aa0cdfcbbcf547a",
+      "timestamp": "2026-10-23T21:04:40.426818+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.4,
+      "sequence": 62,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_006",
+        "similarity": 0.027313,
+        "rerank_score": -2.191836357116699,
+        "rank": 15
+      }
+    },
+    {
+      "event_id": "db5020c3025045f09a15b80a6d0a1e9f",
+      "timestamp": "2026-10-23T21:04:40.426900+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.5,
+      "sequence": 63,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_001",
+        "similarity": 0.027493,
+        "rerank_score": -2.2272298336029053,
+        "rank": 16
+      }
+    },
+    {
+      "event_id": "20ec0c3525c54e7195ce9785a1eff367",
+      "timestamp": "2026-10-23T21:04:40.426979+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.6,
+      "sequence": 64,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_023",
+        "similarity": 0.025817,
+        "rerank_score": -2.230646848678589,
+        "rank": 17
+      }
+    },
+    {
+      "event_id": "304ebf92bae34918b7026705b75edd19",
+      "timestamp": "2026-10-23T21:04:40.427061+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.7,
+      "sequence": 65,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_002",
+        "similarity": 0.025829,
+        "rerank_score": -2.2502057552337646,
+        "rank": 18
+      }
+    },
+    {
+      "event_id": "4575d8a28949493bb86f2ab671752585",
+      "timestamp": "2026-10-23T21:04:40.427140+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.8,
+      "sequence": 66,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_018",
+        "similarity": 0.024923,
+        "rerank_score": -2.260680913925171,
+        "rank": 19
+      }
+    },
+    {
+      "event_id": "919a3db9935f487c875548d8154b5a1a",
+      "timestamp": "2026-10-23T21:04:40.427240+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.9,
+      "sequence": 67,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_026",
+        "similarity": 0.013889,
+        "rerank_score": -2.26168155670166,
+        "rank": 20
+      }
+    },
+    {
+      "event_id": "3d69e5ad643547e9a82c1624b35af065",
+      "timestamp": "2026-10-23T21:04:40.427319+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400023.9,
+      "sequence": 68,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_014",
+        "similarity": 0.025562,
+        "rerank_score": -2.268922805786133,
+        "rank": 21
+      }
+    },
+    {
+      "event_id": "89b5f7d010084e449ee608a551f5ef7f",
+      "timestamp": "2026-10-23T21:04:40.427427+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024,
+      "sequence": 69,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_039",
+        "similarity": 0.023138,
+        "rerank_score": -2.270662784576416,
+        "rank": 22
+      }
+    },
+    {
+      "event_id": "bc023de78fbc425888ed955512bacf08",
+      "timestamp": "2026-10-23T21:04:40.427495+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.1,
+      "sequence": 70,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_043",
+        "similarity": 0.024869,
+        "rerank_score": -2.3057985305786133,
+        "rank": 23
+      }
+    },
+    {
+      "event_id": "a169f39b731043b2b9b2341744b4416f",
+      "timestamp": "2026-10-23T21:04:40.427559+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.2,
+      "sequence": 71,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_029",
+        "similarity": 0.020943,
+        "rerank_score": -2.3793084621429443,
+        "rank": 24
+      }
+    },
+    {
+      "event_id": "ab513f5b2ced4390a77638f9a40d6584",
+      "timestamp": "2026-10-23T21:04:40.427626+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.2,
+      "sequence": 72,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_034",
+        "similarity": 0.026378,
+        "rerank_score": -2.4339375495910645,
+        "rank": 25
+      }
+    },
+    {
+      "event_id": "f93627d47d15403fa4f6d74d47ce774c",
+      "timestamp": "2026-10-23T21:04:40.427690+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.3,
+      "sequence": 73,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_033",
+        "similarity": 0.024615,
+        "rerank_score": -2.45701265335083,
+        "rank": 26
+      }
+    },
+    {
+      "event_id": "2e1e7feae7784c5c889e3e05fb83b71e",
+      "timestamp": "2026-10-23T21:04:40.427777+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.4,
+      "sequence": 74,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_044",
+        "similarity": 0.024501,
+        "rerank_score": -2.4571826457977295,
+        "rank": 27
+      }
+    },
+    {
+      "event_id": "447262f1fedc430c93a0d150c0810f54",
+      "timestamp": "2026-10-23T21:04:40.427840+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.5,
+      "sequence": 75,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_022",
+        "similarity": 0.024265,
+        "rerank_score": -2.5136678218841553,
+        "rank": 28
+      }
+    },
+    {
+      "event_id": "80dcb9ab224a4041af24e43af3ed0136",
+      "timestamp": "2026-10-23T21:04:40.427904+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.5,
+      "sequence": 76,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_013",
+        "similarity": 0.020836,
+        "rerank_score": -2.549111843109131,
+        "rank": 29
+      }
+    },
+    {
+      "event_id": "13c52322317d43258d311c976e6a79cf",
+      "timestamp": "2026-10-23T21:04:40.427968+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.6,
+      "sequence": 77,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_004",
+        "similarity": 0.021905,
+        "rerank_score": -2.601217031478882,
+        "rank": 30
+      }
+    },
+    {
+      "event_id": "845f5fa05bd94ff2bef573dfb4c29211",
+      "timestamp": "2026-10-23T21:04:40.428034+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.6,
+      "sequence": 78,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_021",
+        "similarity": 0.023699,
+        "rerank_score": -2.6168408393859863,
+        "rank": 31
+      }
+    },
+    {
+      "event_id": "87c1fd78931547748a318aa5bee8cfb3",
+      "timestamp": "2026-10-23T21:04:40.428097+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.7,
+      "sequence": 79,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_028",
+        "similarity": 0.026779,
+        "rerank_score": -2.7078897953033447,
+        "rank": 32
+      }
+    },
+    {
+      "event_id": "85ce54dfa4704ac1bb45300e1d89d484",
+      "timestamp": "2026-10-23T21:04:40.428192+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.8,
+      "sequence": 80,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_016",
+        "similarity": 0.025856,
+        "rerank_score": -2.711827039718628,
+        "rank": 33
+      }
+    },
+    {
+      "event_id": "839d35d281814e849e712ae2de5bc3eb",
+      "timestamp": "2026-10-23T21:04:40.428291+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400024.9,
+      "sequence": 81,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_019",
+        "similarity": 0.024878,
+        "rerank_score": -2.717299461364746,
+        "rank": 34
+      }
+    },
+    {
+      "event_id": "74b40e756e1e4f0a91d386c549669e1c",
+      "timestamp": "2026-10-23T21:04:40.428355+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025,
+      "sequence": 82,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_025",
+        "similarity": 0.024828,
+        "rerank_score": -2.785050630569458,
+        "rank": 35
+      }
+    },
+    {
+      "event_id": "2537efbd3e48411b96e7dcf2e258d61c",
+      "timestamp": "2026-10-23T21:04:40.428421+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025,
+      "sequence": 83,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_015",
+        "similarity": 0.026743,
+        "rerank_score": -2.7959744930267334,
+        "rank": 36
+      }
+    },
+    {
+      "event_id": "7d6587851a5f4a828d9f060d4baa931e",
+      "timestamp": "2026-10-23T21:04:40.428485+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.1,
+      "sequence": 84,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_011",
+        "similarity": 0.021179,
+        "rerank_score": -2.824755907058716,
+        "rank": 37
+      }
+    },
+    {
+      "event_id": "4aad9e6b8aff4289af2d521a0523497b",
+      "timestamp": "2026-10-23T21:04:40.428551+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.2,
+      "sequence": 85,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_020",
+        "similarity": 0.021989,
+        "rerank_score": -2.90854811668396,
+        "rank": 38
+      }
+    },
+    {
+      "event_id": "3293c2800e32441eabe756299b9b4e33",
+      "timestamp": "2026-10-23T21:04:40.428616+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.2,
+      "sequence": 86,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "CHNK_0256_00",
+        "similarity": 0.015385,
+        "rerank_score": -5.173148155212402,
+        "rank": 39
+      }
+    },
+    {
+      "event_id": "57c75d8cc6df409a93451a8c7b12e201",
+      "timestamp": "2026-10-23T21:04:40.428681+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.3,
+      "sequence": 87,
+      "event_type": "rag.candidate.reranked",
+      "payload": {
+        "chunk_id": "CHNK_0053_00",
+        "similarity": 0.016129,
+        "rerank_score": -6.117222785949707,
+        "rank": 40
+      }
+    },
+    {
+      "event_id": "79c084f7a6d343aba5f958dd00a1fe48",
+      "timestamp": "2026-10-23T21:04:40.428821+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.4,
+      "sequence": 88,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_037",
+        "rank": 1
+      }
+    },
+    {
+      "event_id": "d3e329a8756147f49954f9ccd5c2948f",
+      "timestamp": "2026-10-23T21:04:40.428892+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.5,
+      "sequence": 89,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_017",
+        "rank": 2
+      }
+    },
+    {
+      "event_id": "aff99df70245417e986cb264f4f18a7a",
+      "timestamp": "2026-10-23T21:04:40.428956+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.6,
+      "sequence": 90,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_027",
+        "rank": 3
+      }
+    },
+    {
+      "event_id": "6837c8688d0549aa987e8610d500aaf0",
+      "timestamp": "2026-10-23T21:04:40.429022+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.6,
+      "sequence": 91,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_030",
+        "rank": 4
+      }
+    },
+    {
+      "event_id": "991696f207af4fcbb63f11acd3d92907",
+      "timestamp": "2026-10-23T21:04:40.429086+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.7,
+      "sequence": 92,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_032",
+        "rank": 5
+      }
+    },
+    {
+      "event_id": "d4ac6f10cfc54e78a64ad80a23e3b33c",
+      "timestamp": "2026-10-23T21:04:40.429174+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.8,
+      "sequence": 93,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_003",
+        "rank": 6
+      }
+    },
+    {
+      "event_id": "23a9ea80ee224eda8a435ca4d00743ec",
+      "timestamp": "2026-10-23T21:04:40.429316+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400025.9,
+      "sequence": 94,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_038",
+        "rank": 7
+      }
+    },
+    {
+      "event_id": "70d39a455d6b4855b3e4818d12a28247",
+      "timestamp": "2026-10-23T21:04:40.429455+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.1,
+      "sequence": 95,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_036",
+        "rank": 8
+      }
+    },
+    {
+      "event_id": "cfe52bcdf0954809b6ef376085ae94e3",
+      "timestamp": "2026-10-23T21:04:40.429528+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.1,
+      "sequence": 96,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_031",
+        "rank": 9
+      }
+    },
+    {
+      "event_id": "4e83ecf3ef374e2a8dd987b67b7c3648",
+      "timestamp": "2026-10-23T21:04:40.429597+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.2,
+      "sequence": 97,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_010",
+        "rank": 10
+      }
+    },
+    {
+      "event_id": "2c25233a8b23446eafe3bbcbe2aca49d",
+      "timestamp": "2026-10-23T21:04:40.429663+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.3,
+      "sequence": 98,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_042",
+        "rank": 11
+      }
+    },
+    {
+      "event_id": "94e86ed82aac4901918a40ec4c8c0f97",
+      "timestamp": "2026-10-23T21:04:40.429731+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.3,
+      "sequence": 99,
+      "event_type": "rag.evidence.selected",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_040",
+        "rank": 12
+      }
+    },
+    {
+      "event_id": "143809d632e74c48ba68e2c5d30e961f",
+      "timestamp": "2026-10-23T21:04:40.429798+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.4,
+      "sequence": 100,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_005",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "f89e672db16045cbb35b57f24e5087f1",
+      "timestamp": "2026-10-23T21:04:40.429895+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.5,
+      "sequence": 101,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_008",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "0ca7f8ec46664659bb96243f833aeb1d",
+      "timestamp": "2026-10-23T21:04:40.429961+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.6,
+      "sequence": 102,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_006",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "7129a69acf144059b666c42fe628723e",
+      "timestamp": "2026-10-23T21:04:40.430026+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.6,
+      "sequence": 103,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_001",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "be577db2cb2f4bc4b83063c667d72c9c",
+      "timestamp": "2026-10-23T21:04:40.430090+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.7,
+      "sequence": 104,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_023",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "82f072df526a4bbea02c1bf200ffa2ec",
+      "timestamp": "2026-10-23T21:04:40.430157+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.8,
+      "sequence": 105,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_002",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "d57328fc21204fdd83e66c4f2484448c",
+      "timestamp": "2026-10-23T21:04:40.430220+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.8,
+      "sequence": 106,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_018",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "689da5debca9409e9898348f2a575eb6",
+      "timestamp": "2026-10-23T21:04:40.430319+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400026.9,
+      "sequence": 107,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_026",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "fd093eb216c545bab7cfb92f890a193b",
+      "timestamp": "2026-10-23T21:04:40.430404+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027,
+      "sequence": 108,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_014",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "efb44c8865494419814eb29b83d6074e",
+      "timestamp": "2026-10-23T21:04:40.430468+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.1,
+      "sequence": 109,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_039",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "6e037345f0444073bfe152e96cece4bd",
+      "timestamp": "2026-10-23T21:04:40.430533+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.1,
+      "sequence": 110,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_043",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "aad957fb023b4bc7bb569f13fbdf4d37",
+      "timestamp": "2026-10-23T21:04:40.430596+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.2,
+      "sequence": 111,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_029",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "a6fd680ade214a86b378da7eeebc1341",
+      "timestamp": "2026-10-23T21:04:40.430662+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.3,
+      "sequence": 112,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_034",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "37dd2d084c4048a69cbe9df57ad9b6e5",
+      "timestamp": "2026-10-23T21:04:40.430724+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.3,
+      "sequence": 113,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_033",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "3abb073374974062b8a89cabc3115b82",
+      "timestamp": "2026-10-23T21:04:40.430790+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.4,
+      "sequence": 114,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_044",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "e8629928d5ce4cd498339d00d2d82a07",
+      "timestamp": "2026-10-23T21:04:40.430882+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.5,
+      "sequence": 115,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_022",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "90e34836be4c4e6184065d1a630a5820",
+      "timestamp": "2026-10-23T21:04:40.430943+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.6,
+      "sequence": 116,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_013",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "77872478af1c4e76802509f47ee5661c",
+      "timestamp": "2026-10-23T21:04:40.431010+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.6,
+      "sequence": 117,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_004",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "453749a8de6945b0a5f3af70afd6bd6b",
+      "timestamp": "2026-10-23T21:04:40.431070+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.7,
+      "sequence": 118,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_021",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "191b97bd507a409a9ccea437c047ff53",
+      "timestamp": "2026-10-23T21:04:40.431135+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.7,
+      "sequence": 119,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_028",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "a060d3a9394842ebba825ff4779a7e01",
+      "timestamp": "2026-10-23T21:04:40.431196+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.8,
+      "sequence": 120,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_016",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "774e2ef0c99c4a7bb27c946876b39953",
+      "timestamp": "2026-10-23T21:04:40.431290+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400027.9,
+      "sequence": 121,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_019",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "32e4f19ff3c64ec1b6816fbfaecc65d5",
+      "timestamp": "2026-10-23T21:04:40.431374+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400028,
+      "sequence": 122,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_025",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "50873273fc7d4d1ea37cc80cc941d248",
+      "timestamp": "2026-10-23T21:04:40.431437+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400028,
+      "sequence": 123,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_015",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "435a039b64b744e89b53b49ecf78d4bd",
+      "timestamp": "2026-10-23T21:04:40.431502+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400028.1,
+      "sequence": 124,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_011",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "466fcd4538da48dfbba069654095d21d",
+      "timestamp": "2026-10-23T21:04:40.431564+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400028.2,
+      "sequence": 125,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "REC_incidents_INC_020",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "d889b248b57641cb9a0ff2c2b32d27ff",
+      "timestamp": "2026-10-23T21:04:40.431655+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400028.3,
+      "sequence": 126,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "CHNK_0256_00",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "fef721ddf0cf446abb61fe9b3183152d",
+      "timestamp": "2026-10-23T21:04:40.431721+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400028.3,
+      "sequence": 127,
+      "event_type": "rag.evidence.discarded",
+      "payload": {
+        "chunk_id": "CHNK_0053_00",
+        "reason": "slot_limit"
+      }
+    },
+    {
+      "event_id": "6d286e9f75fc495e8950e52e10c14e6d",
+      "timestamp": "2026-10-23T21:04:40.431785+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400028.4,
+      "sequence": 128,
+      "event_type": "rag.context.assembled",
+      "payload": {
+        "selected": 12,
+        "discarded": 28,
+        "context_tokens": 1444,
+        "evidence_slots": 12
+      }
+    },
+    {
+      "event_id": "f3a200a962c44fa9a2afc47477a17934",
+      "timestamp": "2026-10-23T21:04:40.432188+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400028.8,
+      "sequence": 129,
+      "event_type": "rag.generation.started",
+      "payload": {
+        "model": "fake-answer-v1"
+      }
+    },
+    {
+      "event_id": "e48f7102bcc84a85b441615f0b7548eb",
+      "timestamp": "2026-10-23T21:04:40.432535+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400029.1,
+      "sequence": 130,
+      "event_type": "rag.generation.completed",
+      "payload": {
+        "model": "fake-answer-v1",
+        "latency_ms": 0,
+        "context_tokens": 1444,
+        "verdict": "[fake-model] answered from the retrieved sources",
+        "cited_blocks": 1
+      }
+    },
+    {
+      "event_id": "b64021c327ba4a7986725909e75c0ad0",
+      "timestamp": "2026-10-23T21:04:40.434244+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "A",
+      "t_ms": 361400030.8,
+      "sequence": 131,
+      "event_type": "pipeline.completed",
+      "payload": {}
+    },
+    {
+      "event_id": "4b6116097d5e4010b68f9eed2034971d",
+      "timestamp": "2026-10-23T21:04:40.434558+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400031.2,
+      "sequence": 132,
+      "event_type": "pipeline.started",
+      "payload": {}
+    },
+    {
+      "event_id": "686df98f052e4623b13ab771a54113e0",
+      "timestamp": "2026-10-23T21:04:40.445836+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400042.4,
+      "sequence": 133,
+      "event_type": "graph.entity_resolution.started",
+      "payload": {
+        "question": "Which other markets had incidents on the same platform version as incident INC_037?",
+        "markets": ""
+      }
+    },
+    {
+      "event_id": "933b32e9f84e4c49802f1dac71a0d660",
+      "timestamp": "2026-10-23T21:04:40.501565+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400098.2,
+      "sequence": 134,
+      "event_type": "graph.entity.resolved",
+      "payload": {
+        "entity_id": "INC_037",
+        "node_label": "Incident",
+        "origin": "id",
+        "matched_text": "INC_037",
+        "via_concept": null,
+        "confidence": 1,
+        "fused_score": null
+      }
+    },
+    {
+      "event_id": "3d2051abbe124118a8475b7d72dadd6e",
+      "timestamp": "2026-10-23T21:04:40.501835+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400098.4,
+      "sequence": 135,
+      "event_type": "graph.seed.selected",
+      "payload": {
+        "node_id": "INC_037"
+      }
+    },
+    {
+      "event_id": "b02e363ddfb14a5da1894f1efc6eeebf",
+      "timestamp": "2026-10-23T21:04:40.501987+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400098.6,
+      "sequence": 136,
+      "event_type": "graph.traversal.started",
+      "payload": {
+        "max_depth": 2,
+        "max_nodes_per_hop": 100,
+        "max_edges_per_node_type": 4,
+        "max_total_nodes": 200,
+        "relationship_types": 19,
+        "ontology_expansion": false
+      }
+    },
+    {
+      "event_id": "c486575913ab443a9d055776b2bd6d94",
+      "timestamp": "2026-10-23T21:04:40.638959+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400235.5,
+      "sequence": 137,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "PLV_IDENTITY_2",
+        "node_label": "PlatformVersion",
+        "hop": 1,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "b69a122f40874dec80ec7802202246f8",
+      "timestamp": "2026-10-23T21:04:40.639472+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400236.1,
+      "sequence": 138,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "INC_037",
+        "relationship_type": "RELATED_TO_VERSION",
+        "to_id": "PLV_IDENTITY_2",
+        "to_label": "PlatformVersion",
+        "hop": 1
+      }
+    },
+    {
+      "event_id": "20bb62ba2d7c421aa2a793b78bd49677",
+      "timestamp": "2026-10-23T21:04:40.639832+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400236.4,
+      "sequence": 139,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_UK_06",
+        "node_label": "Game",
+        "hop": 1,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "47350f4a9c814a2496bca25ec3bc4ae4",
+      "timestamp": "2026-10-23T21:04:40.640104+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400236.7,
+      "sequence": 140,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "INC_037",
+        "relationship_type": "AFFECTS",
+        "to_id": "GAME_UK_06",
+        "to_label": "Game",
+        "hop": 1
+      }
+    },
+    {
+      "event_id": "6a23d042818946faabb67cb1b95d5fe6",
+      "timestamp": "2026-10-23T21:04:40.640452+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400237.1,
+      "sequence": 141,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "ITYPE_UK_SIGN_IN",
+        "node_label": "IncidentType",
+        "hop": 1,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "51c1211e6c8c4afc86a45047ea647c48",
+      "timestamp": "2026-10-23T21:04:40.640746+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400237.3,
+      "sequence": 142,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "INC_037",
+        "relationship_type": "OF_TYPE",
+        "to_id": "ITYPE_UK_SIGN_IN",
+        "to_label": "IncidentType",
+        "hop": 1
+      }
+    },
+    {
+      "event_id": "8c341354045a4799834faf5ba68ada3c",
+      "timestamp": "2026-10-23T21:04:40.640976+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400237.6,
+      "sequence": 143,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "MKT_UK",
+        "node_label": "Market",
+        "hop": 1,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "a2bdfee2891449c69d819b815dcc4502",
+      "timestamp": "2026-10-23T21:04:40.641187+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400237.8,
+      "sequence": 144,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "INC_037",
+        "relationship_type": "AFFECTS_MARKET",
+        "to_id": "MKT_UK",
+        "to_label": "Market",
+        "hop": 1
+      }
+    },
+    {
+      "event_id": "7c4c72b43cc54ad4b081f20f57f91d75",
+      "timestamp": "2026-10-23T21:04:40.641397+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400238,
+      "sequence": 145,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "PLT_IDENTITY",
+        "node_label": "Platform",
+        "hop": 1,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "ba7582e9efb2474d9b84b8343657c902",
+      "timestamp": "2026-10-23T21:04:40.641648+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400238.2,
+      "sequence": 146,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "INC_037",
+        "relationship_type": "RELATED_TO",
+        "to_id": "PLT_IDENTITY",
+        "to_label": "Platform",
+        "hop": 1
+      }
+    },
+    {
+      "event_id": "006cd5d6ee4948bfac4d7db14d811e40",
+      "timestamp": "2026-10-23T21:04:40.641977+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400238.6,
+      "sequence": 147,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00005",
+        "node_label": "SupportCase",
+        "hop": 1,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "b025d62ea9de4be9a46d5c8ed39816c1",
+      "timestamp": "2026-10-23T21:04:40.642184+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400238.8,
+      "sequence": 148,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "INC_037",
+        "relationship_type": "RELATED_TO",
+        "to_id": "SUP_00005",
+        "to_label": "SupportCase",
+        "hop": 1
+      }
+    },
+    {
+      "event_id": "54b773083fbb4c78b16a4c3ef45a8008",
+      "timestamp": "2026-10-23T21:04:40.642375+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400239,
+      "sequence": 149,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00113",
+        "node_label": "SupportCase",
+        "hop": 1,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "eca3e1b6001b4789a7e704585453cd54",
+      "timestamp": "2026-10-23T21:04:40.642574+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400239.2,
+      "sequence": 150,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "INC_037",
+        "relationship_type": "RELATED_TO",
+        "to_id": "SUP_00113",
+        "to_label": "SupportCase",
+        "hop": 1
+      }
+    },
+    {
+      "event_id": "06928491b0a547078ce6b9d67a97d37a",
+      "timestamp": "2026-10-23T21:04:40.642764+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400239.4,
+      "sequence": 151,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00121",
+        "node_label": "SupportCase",
+        "hop": 1,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "d6531f31250349299f4663cbe4b19c31",
+      "timestamp": "2026-10-23T21:04:40.642987+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400239.6,
+      "sequence": 152,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "INC_037",
+        "relationship_type": "RELATED_TO",
+        "to_id": "SUP_00121",
+        "to_label": "SupportCase",
+        "hop": 1
+      }
+    },
+    {
+      "event_id": "3f9cf2b87650436197b9f0293d6e797e",
+      "timestamp": "2026-10-23T21:04:40.643227+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400239.8,
+      "sequence": 153,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "INC_024",
+        "node_label": "Incident",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "9400c877d49346969ac000e459433dbd",
+      "timestamp": "2026-10-23T21:04:40.643516+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400240.1,
+      "sequence": 154,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "PLV_IDENTITY_2",
+        "relationship_type": "RELATED_TO_VERSION",
+        "to_id": "INC_024",
+        "to_label": "Incident",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "e42ae0980ec64d4e9c6364d0d67de56a",
+      "timestamp": "2026-10-23T21:04:40.643711+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400240.3,
+      "sequence": 155,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "INC_029",
+        "node_label": "Incident",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "7e6d23684a9a41548b5f2a2e6a176494",
+      "timestamp": "2026-10-23T21:04:40.643902+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400240.5,
+      "sequence": 156,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "PLV_IDENTITY_2",
+        "relationship_type": "RELATED_TO_VERSION",
+        "to_id": "INC_029",
+        "to_label": "Incident",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "103bbc35e28b49d682e232ff5a1f5fd8",
+      "timestamp": "2026-10-23T21:04:40.644094+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400240.7,
+      "sequence": 157,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "INC_001",
+        "node_label": "Incident",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "3f48c56e53f749e2b77b2cf6f6f342e2",
+      "timestamp": "2026-10-23T21:04:40.644282+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400240.9,
+      "sequence": 158,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "AFFECTS",
+        "to_id": "INC_001",
+        "to_label": "Incident",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "889e66ff31a84930a1d2fdef544f8ab0",
+      "timestamp": "2026-10-23T21:04:40.644650+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400241.3,
+      "sequence": 159,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "INC_005",
+        "node_label": "Incident",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "367b3efe38854a4bbadb7478b5a76614",
+      "timestamp": "2026-10-23T21:04:40.644952+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400241.6,
+      "sequence": 160,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "AFFECTS",
+        "to_id": "INC_005",
+        "to_label": "Incident",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "b01040689d274599be7c7814d65ff67b",
+      "timestamp": "2026-10-23T21:04:40.645198+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400241.8,
+      "sequence": 161,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "INC_013",
+        "node_label": "Incident",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "70d3023cbc6c40939233c1ae10a02fdd",
+      "timestamp": "2026-10-23T21:04:40.645378+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400242,
+      "sequence": 162,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "AFFECTS",
+        "to_id": "INC_013",
+        "to_label": "Incident",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "ed7957cf0c0b4ac8a1dc1ffb837aa444",
+      "timestamp": "2026-10-23T21:04:40.645550+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400242.2,
+      "sequence": 163,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_UK_01",
+        "node_label": "Game",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "4ef1d7ea0c9b43aab719b8d6f54228e7",
+      "timestamp": "2026-10-23T21:04:40.645714+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400242.3,
+      "sequence": 164,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "SUP_00121",
+        "relationship_type": "CONCERNS",
+        "to_id": "GAME_UK_01",
+        "to_label": "Game",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "243a82ed347045f1b9947b37d6df3175",
+      "timestamp": "2026-10-23T21:04:40.645884+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400242.5,
+      "sequence": 165,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_UK_02",
+        "node_label": "Game",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "8dd26a44944448c5beafd896d4e4671f",
+      "timestamp": "2026-10-23T21:04:40.646048+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400242.7,
+      "sequence": 166,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "SUP_00005",
+        "relationship_type": "CONCERNS",
+        "to_id": "GAME_UK_02",
+        "to_label": "Game",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "bb2ac605dfe047c994c9accc99850684",
+      "timestamp": "2026-10-23T21:04:40.646283+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400242.9,
+      "sequence": 167,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "INC_009",
+        "node_label": "Incident",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "e14de7d3740d4513ab9348f089a32bcb",
+      "timestamp": "2026-10-23T21:04:40.646501+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400243.1,
+      "sequence": 168,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "ITYPE_UK_SIGN_IN",
+        "relationship_type": "OF_TYPE",
+        "to_id": "INC_009",
+        "to_label": "Incident",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "b066c233024d46ab83c28f7434f2cca8",
+      "timestamp": "2026-10-23T21:04:40.646674+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400243.3,
+      "sequence": 169,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "INC_033",
+        "node_label": "Incident",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "d351c16a0a60426d9452e516e249e6ba",
+      "timestamp": "2026-10-23T21:04:40.646831+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400243.4,
+      "sequence": 170,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "ITYPE_UK_SIGN_IN",
+        "relationship_type": "OF_TYPE",
+        "to_id": "INC_033",
+        "to_label": "Incident",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "3e494165fec94c66aab85c96d0cea716",
+      "timestamp": "2026-10-23T21:04:40.647076+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400243.7,
+      "sequence": 171,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00065",
+        "node_label": "SupportCase",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "198ae4977dc041d9bcc9f9511e74dac1",
+      "timestamp": "2026-10-23T21:04:40.647250+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400243.9,
+      "sequence": 172,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "CONCERNS",
+        "to_id": "SUP_00065",
+        "to_label": "SupportCase",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "0d6b146b739c485bbc8996e4d5a45677",
+      "timestamp": "2026-10-23T21:04:40.647412+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400244,
+      "sequence": 173,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00169",
+        "node_label": "SupportCase",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "8a5618878eda47c6a7fa9c8050c1bb76",
+      "timestamp": "2026-10-23T21:04:40.647581+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400244.2,
+      "sequence": 174,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "CONCERNS",
+        "to_id": "SUP_00169",
+        "to_label": "SupportCase",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "993df011d14c4efea6f37bd05f9ac1e2",
+      "timestamp": "2026-10-23T21:04:40.647777+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400244.4,
+      "sequence": 175,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00173",
+        "node_label": "SupportCase",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "69633b8871934eed9b6e3f803b9b5e46",
+      "timestamp": "2026-10-23T21:04:40.648107+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400244.7,
+      "sequence": 176,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "CONCERNS",
+        "to_id": "SUP_00173",
+        "to_label": "SupportCase",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "336fe39af7654c9d9f8d0cdded1e048a",
+      "timestamp": "2026-10-23T21:04:40.648273+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400244.9,
+      "sequence": 177,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00205",
+        "node_label": "SupportCase",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "87848f83d971475aa7cb339fdecbb10a",
+      "timestamp": "2026-10-23T21:04:40.648438+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400245,
+      "sequence": 178,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "CONCERNS",
+        "to_id": "SUP_00205",
+        "to_label": "SupportCase",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "5e2ec5aea64843a99f79f2ff5fea9435",
+      "timestamp": "2026-10-23T21:04:40.648608+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400245.2,
+      "sequence": 179,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_AT_01",
+        "node_label": "Game",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "0e01e4ddf7bb4b21bb1b52954ec6a201",
+      "timestamp": "2026-10-23T21:04:40.648770+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400245.4,
+      "sequence": 180,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "PLT_IDENTITY",
+        "relationship_type": "RUNS_ON",
+        "to_id": "GAME_AT_01",
+        "to_label": "Game",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "54c24e511f3c4d3da52d29bc3beb816b",
+      "timestamp": "2026-10-23T21:04:40.648938+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400245.5,
+      "sequence": 181,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_AT_02",
+        "node_label": "Game",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "79c8c2e36ccb4b899e76ed5e2f352b59",
+      "timestamp": "2026-10-23T21:04:40.649124+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400245.7,
+      "sequence": 182,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "PLT_IDENTITY",
+        "relationship_type": "RUNS_ON",
+        "to_id": "GAME_AT_02",
+        "to_label": "Game",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "b8974b77968f400dadbe8acd95ff48d7",
+      "timestamp": "2026-10-23T21:04:40.649399+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400246,
+      "sequence": 183,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_AT_03",
+        "node_label": "Game",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "35f779c57857448fb4ba675b092c4bc6",
+      "timestamp": "2026-10-23T21:04:40.649555+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400246.2,
+      "sequence": 184,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "PLT_IDENTITY",
+        "relationship_type": "RUNS_ON",
+        "to_id": "GAME_AT_03",
+        "to_label": "Game",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "8935263f0d1e4043939a321a6126524c",
+      "timestamp": "2026-10-23T21:04:40.649712+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400246.3,
+      "sequence": 185,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_AT_04",
+        "node_label": "Game",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "e1001dc25ad74365b8194fd83ff3679c",
+      "timestamp": "2026-10-23T21:04:40.649870+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400246.5,
+      "sequence": 186,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "PLT_IDENTITY",
+        "relationship_type": "RUNS_ON",
+        "to_id": "GAME_AT_04",
+        "to_label": "Game",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "96bc22c1b4a14149b30044dbe1cdb2fe",
+      "timestamp": "2026-10-23T21:04:40.650020+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400246.6,
+      "sequence": 187,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "MECH_UK_INSTANT_ROUNDS",
+        "node_label": "GameMechanic",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "a95bc316e4bc4d008202fbc359df7026",
+      "timestamp": "2026-10-23T21:04:40.650181+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400246.8,
+      "sequence": 188,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "HAS_MECHANIC",
+        "to_id": "MECH_UK_INSTANT_ROUNDS",
+        "to_label": "GameMechanic",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "1a61b91c7b94401daf1ed2b09324700a",
+      "timestamp": "2026-10-23T21:04:40.650334+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400246.9,
+      "sequence": 189,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "PLT_APP_ANDROID",
+        "node_label": "Platform",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "6767cd38c8bd4c4d916472fc49c39a4d",
+      "timestamp": "2026-10-23T21:04:40.650499+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400247.1,
+      "sequence": 190,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "RUNS_ON",
+        "to_id": "PLT_APP_ANDROID",
+        "to_label": "Platform",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "aecf4e232e9f4554860888b0d7613829",
+      "timestamp": "2026-10-23T21:04:40.650668+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400247.3,
+      "sequence": 191,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "PLT_APP_IOS",
+        "node_label": "Platform",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "66a145321faa4dfab3dbbde5bfb847bc",
+      "timestamp": "2026-10-23T21:04:40.650834+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400247.4,
+      "sequence": 192,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "RUNS_ON",
+        "to_id": "PLT_APP_IOS",
+        "to_label": "Platform",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "3af7a334599041f6b82e8bbd5a18d764",
+      "timestamp": "2026-10-23T21:04:40.651005+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400247.6,
+      "sequence": 193,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "PLT_DRAW",
+        "node_label": "Platform",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "94aaf8f2af2b41bfa5cc2e058fcfb4c5",
+      "timestamp": "2026-10-23T21:04:40.651184+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400247.8,
+      "sequence": 194,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "RUNS_ON",
+        "to_id": "PLT_DRAW",
+        "to_label": "Platform",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "f8465ccd1a714da4b2fccfcc26808770",
+      "timestamp": "2026-10-23T21:04:40.651544+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400248.1,
+      "sequence": 195,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "PLV_IDENTITY_1",
+        "node_label": "PlatformVersion",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "b9c81fd18e034fb2ac6e5f02316068cd",
+      "timestamp": "2026-10-23T21:04:40.651725+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400248.3,
+      "sequence": 196,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "PLT_IDENTITY",
+        "relationship_type": "VERSION_OF",
+        "to_id": "PLV_IDENTITY_1",
+        "to_label": "PlatformVersion",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "dd6b1d8b271f4d48aa63398898e8ad1c",
+      "timestamp": "2026-10-23T21:04:40.651880+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400248.5,
+      "sequence": 197,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "PLV_IDENTITY_3",
+        "node_label": "PlatformVersion",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "760fef51359444a6be2cd2ee9223bbaf",
+      "timestamp": "2026-10-23T21:04:40.652042+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400248.7,
+      "sequence": 198,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "PLT_IDENTITY",
+        "relationship_type": "VERSION_OF",
+        "to_id": "PLV_IDENTITY_3",
+        "to_label": "PlatformVersion",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "e8cd89dfb13847adbdf169b63414db1c",
+      "timestamp": "2026-10-23T21:04:40.652194+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400248.8,
+      "sequence": 199,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUPC_UK_GAME",
+        "node_label": "SupportCategory",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "c001c06614204834bfc235e520b4dd08",
+      "timestamp": "2026-10-23T21:04:40.652411+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400249,
+      "sequence": 200,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "SUP_00005",
+        "relationship_type": "CATEGORISED_AS",
+        "to_id": "SUPC_UK_GAME",
+        "to_label": "SupportCategory",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "f8e8d24557b5447d922c51be3889220a",
+      "timestamp": "2026-10-23T21:04:40.652743+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400249.3,
+      "sequence": 201,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUPC_UK_TECHNICAL",
+        "node_label": "SupportCategory",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "7d97a9137872445a9baf4864275d975d",
+      "timestamp": "2026-10-23T21:04:40.652950+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400249.6,
+      "sequence": 202,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "SUP_00113",
+        "relationship_type": "CATEGORISED_AS",
+        "to_id": "SUPC_UK_TECHNICAL",
+        "to_label": "SupportCategory",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "fda369b665834672915d567de45fb970",
+      "timestamp": "2026-10-23T21:04:40.653111+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400249.7,
+      "sequence": 203,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "CAT_UK_INSTANT",
+        "node_label": "GameCategory",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "29f94d5172894772ab40340426a939e2",
+      "timestamp": "2026-10-23T21:04:40.653258+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400249.9,
+      "sequence": 204,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "INSTANCE_OF",
+        "to_id": "CAT_UK_INSTANT",
+        "to_label": "GameCategory",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "57b3b08b267e4a3abf10d8ae662286ea",
+      "timestamp": "2026-10-23T21:04:40.653419+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250,
+      "sequence": 205,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00001",
+        "node_label": "SupportCase",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "cfbda4aac84e45f382672f977d170b6c",
+      "timestamp": "2026-10-23T21:04:40.653623+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250.2,
+      "sequence": 206,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "MKT_UK",
+        "relationship_type": "FROM_MARKET",
+        "to_id": "SUP_00001",
+        "to_label": "SupportCase",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "57ff149407f54354858a8839377f56ba",
+      "timestamp": "2026-10-23T21:04:40.653818+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250.4,
+      "sequence": 207,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00009",
+        "node_label": "SupportCase",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "9ee4f53b88df4e7cbbea739b3dd08465",
+      "timestamp": "2026-10-23T21:04:40.653940+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250.6,
+      "sequence": 208,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "MKT_UK",
+        "relationship_type": "FROM_MARKET",
+        "to_id": "SUP_00009",
+        "to_label": "SupportCase",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "67204a4763d349efb9894618a3b36cd3",
+      "timestamp": "2026-10-23T21:04:40.654029+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250.6,
+      "sequence": 209,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "SUP_00013",
+        "node_label": "SupportCase",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "428229599aac4a6ba2d50dc02bb1423e",
+      "timestamp": "2026-10-23T21:04:40.654111+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250.7,
+      "sequence": 210,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "MKT_UK",
+        "relationship_type": "FROM_MARKET",
+        "to_id": "SUP_00013",
+        "to_label": "SupportCase",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "977991bebdcb43a5b0331beabcb01ae2",
+      "timestamp": "2026-10-23T21:04:40.654187+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250.8,
+      "sequence": 211,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "FAM_UK_ONLINE_INSTANT",
+        "node_label": "GameFamily",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "f765f4686d8c4bcf90dde8bc0238afa5",
+      "timestamp": "2026-10-23T21:04:40.654262+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250.9,
+      "sequence": 212,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "GAME_UK_06",
+        "relationship_type": "BELONGS_TO",
+        "to_id": "FAM_UK_ONLINE_INSTANT",
+        "to_label": "GameFamily",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "26cb48fb8ca649049c2d86110d63bc4b",
+      "timestamp": "2026-10-23T21:04:40.654335+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400250.9,
+      "sequence": 213,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_UK_03",
+        "node_label": "Game",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "2d04d26cfd1f40cfa03b4e9de141f21f",
+      "timestamp": "2026-10-23T21:04:40.654413+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400251,
+      "sequence": 214,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "MKT_UK",
+        "relationship_type": "AVAILABLE_IN",
+        "to_id": "GAME_UK_03",
+        "to_label": "Game",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "efaa8d7ecb02430984070f8ebeb277f4",
+      "timestamp": "2026-10-23T21:04:40.654486+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400251.1,
+      "sequence": 215,
+      "event_type": "graph.node.discovered",
+      "payload": {
+        "node_id": "GAME_UK_04",
+        "node_label": "Game",
+        "hop": 2,
+        "via_concept": null
+      }
+    },
+    {
+      "event_id": "b4a311d3cb324a19a2602f613d08d8cd",
+      "timestamp": "2026-10-23T21:04:40.654562+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400251.2,
+      "sequence": 216,
+      "event_type": "graph.relationship.traversed",
+      "payload": {
+        "from_id": "MKT_UK",
+        "relationship_type": "AVAILABLE_IN",
+        "to_id": "GAME_UK_04",
+        "to_label": "Game",
+        "hop": 2
+      }
+    },
+    {
+      "event_id": "7a7385f754184c178f912cb6917ef2b0",
+      "timestamp": "2026-10-23T21:04:41.607769+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361401204.3,
+      "sequence": 217,
+      "event_type": "graph.rerank.started",
+      "payload": {
+        "candidates": 75,
+        "model": "BAAI/bge-reranker-v2-m3"
+      }
+    },
+    {
+      "event_id": "abf9a1358daa4affa239622122dd7d15",
+      "timestamp": "2026-10-23T21:04:46.244391+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361405841,
+      "sequence": 218,
+      "event_type": "pipeline.cancelled",
+      "payload": {
+        "error_code": "CANCELLED",
+        "message": "The run was cancelled.",
+        "retryable": true
+      }
+    },
+    {
+      "event_id": "db520e84271744ae97b6bff50ce96ac3",
+      "timestamp": "2026-10-23T21:04:46.244883+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "run",
+      "t_ms": 361405841.5,
+      "sequence": 219,
+      "event_type": "run.cancelled",
+      "payload": {
+        "error_code": "CANCELLED",
+        "message": "The run was cancelled.",
+        "retryable": true
+      }
+    }
+  ]
+}

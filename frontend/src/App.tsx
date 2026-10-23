@@ -13,7 +13,7 @@ const Overview = lazy(() =>
   })),
 )
 const LiveLab = lazy(() =>
-  import('./views/live-lab').then((m) => ({ default: m.LiveLab })),
+  import('./screens/live-lab/live-lab').then((m) => ({ default: m.LiveLab })),
 )
 const Results = lazy(() =>
   import('./screens/results/results').then((m) => ({ default: m.Results })),
