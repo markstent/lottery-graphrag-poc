@@ -15,6 +15,7 @@ import {
 } from '../run/reduce'
 import {
   DEFAULT_VISIBLE_NODE_CAP,
+  hopWords,
   graphView,
   withClustersOf,
   type GraphView,
@@ -304,6 +305,15 @@ describe('added by the ontology', () => {
   })
 })
 
+describe('hopWords', () => {
+  it('says where a node sits, including when no hop was recorded', () => {
+    expect(hopWords(0)).toBe('at the starting point')
+    expect(hopWords(1)).toBe('1 step from the starting point')
+    expect(hopWords(3)).toBe('3 steps from the starting point')
+    expect(hopWords(null)).toBe('distance from the starting point not recorded')
+  })
+})
+
 describe('clustering', () => {
   it('does nothing at or below the cap', () => {
     const view = graphView(full.graph.B, { ...options, cap: 41 })
@@ -409,6 +419,25 @@ describe('clustering', () => {
     ]
     const view = graphView(graphOf(nodes), { cap: 3, focus: false })
     expect(view.clusters.map((c) => c.id)).toEqual(['cluster:2:Zeta'])
+  })
+
+  it('groups nodes of unknown hop on their own, apart from every known hop', () => {
+    const unknown = (id: string): GraphNode => ({
+      ...node(id, 'Game'),
+      hop: null,
+    })
+    const nodes = [
+      node('k1', 'Game', 1),
+      node('k2', 'Game', 1),
+      unknown('u1'),
+      unknown('u2'),
+      unknown('u3'),
+    ]
+    const view = graphView(graphOf(nodes), { cap: 3, focus: false })
+    expect(view.nodes.find((n) => n.id === 'u1')?.hop).toBeNull()
+    expect(view.clusters).toMatchObject([
+      { id: 'cluster:unknown:Game', hop: null, count: 3 },
+    ])
   })
 
   it('gives the same view for the same events', () => {

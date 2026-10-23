@@ -9,12 +9,7 @@
 import { EVIDENCE_STATES } from '../design/evidence-states'
 import { countedLabel, nodeLabel } from '../design/node-labels'
 import type { EvidenceState } from '../design/evidence-states'
-import type { GraphNodeView, GraphView } from './model'
-
-const steps = (hop: number) =>
-  hop === 0
-    ? 'at the starting point'
-    : `${hop} ${hop === 1 ? 'step' : 'steps'} from the starting point`
+import { hopWords, type GraphNodeView, type GraphView } from './model'
 
 export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
   const onPath = new Set(view.path)
@@ -53,7 +48,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
               <ul>
                 {single.map((node) => (
                   <li key={node.id}>
-                    {nodeLabel(node.label)} ({node.id}), {steps(node.hop)}
+                    {nodeLabel(node.label)} ({node.id}), {hopWords(node.hop)}
                     {node.addedByOntology ? ', added by the ontology' : ''}
                   </li>
                 ))}
@@ -66,7 +61,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
                     : [
                         <li key={cluster.id}>
                           Group of {countedLabel(members.length, cluster.label)}
-                          , {steps(cluster.hop)}:{' '}
+                          , {hopWords(cluster.hop)}:{' '}
                           {members.map((n) => n.id).join(', ')}
                           {members.some((n) => n.addedByOntology)
                             ? `, ${members.filter((n) => n.addedByOntology).length} added by the ontology`

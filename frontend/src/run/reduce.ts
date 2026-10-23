@@ -96,7 +96,8 @@ export interface GraphNode {
   id: string
   /** Null only for a node an outcome event names before any discovery. */
   label: string | null
-  hop: number
+  /** Null for a node an outcome event names before any discovery: its distance is unknown. */
+  hop: number | null
   seed: boolean
   viaConcept: string | null
   /** `discovered` until the reranker has judged the node. */
@@ -360,7 +361,7 @@ function discovered(
   graph: GraphEvents,
   id: string,
   label: string | null,
-  hop: number,
+  hop: number | null,
   viaConcept: string | null,
 ): GraphEvents {
   if (graph.nodes.some((node) => node.id === id)) return graph
@@ -384,7 +385,7 @@ function changeNode(
   change: Partial<GraphNode>,
 ): GraphEvents {
   if (!graph.nodes.some((node) => node.id === id)) {
-    return changeNode(discovered(graph, id, null, 0, null), id, change)
+    return changeNode(discovered(graph, id, null, null, null), id, change)
   }
   return {
     ...graph,

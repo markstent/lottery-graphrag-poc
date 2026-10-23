@@ -439,6 +439,43 @@ describe('graph outcomes', () => {
   })
 })
 
+describe('a node an outcome event names before any discovery', () => {
+  it('has no known hop and no label, not hop 0', () => {
+    const state = reduceAll([
+      event(1, 'graph.candidate.discarded', 'B', {
+        node_id: 'GHOST',
+        score: 0.2,
+        rerank_score: null,
+        hops: 1,
+        seed: false,
+        reason: 'context_budget',
+      }),
+    ])
+    expect(state.graph.B.nodes).toMatchObject([
+      { id: 'GHOST', label: null, hop: null, outcome: 'discarded' },
+    ])
+  })
+
+  it('keeps the hop of a node discovered first', () => {
+    const state = reduceAll([
+      event(1, 'graph.node.discovered', 'B', {
+        node_id: 'PLT_1',
+        node_label: 'Platform',
+        hop: 2,
+      }),
+      event(2, 'graph.candidate.discarded', 'B', {
+        node_id: 'PLT_1',
+        score: 0.2,
+        rerank_score: null,
+        hops: 2,
+        seed: false,
+        reason: 'context_budget',
+      }),
+    ])
+    expect(state.graph.B.nodes[0].hop).toBe(2)
+  })
+})
+
 describe('graph node outcome before the verdict', () => {
   const stream = (withRerank: boolean): RunEvent[] => [
     event(1, 'graph.node.discovered', 'B', {

@@ -11,7 +11,7 @@ import type { ReactElement } from 'react'
 import { EVIDENCE_STATES, type EvidenceShape } from '../design/evidence-states'
 import { countedLabel, nodeLabel } from '../design/node-labels'
 import { TOKENS } from '../design/tokens'
-import type { GraphCluster, GraphNodeView } from './model'
+import { hopWords, type GraphCluster, type GraphNodeView } from './model'
 import { TEXT_SPAN, type NodeSize } from './node-size'
 
 const STROKE = 2
@@ -347,7 +347,7 @@ export function ClusterNode({ data }: NodeProps<ClusterFlowNode>) {
         style={buttonStyle(data)}
         tabIndex={data.active ? 0 : -1}
         aria-label={`Group: ${counted}`}
-        aria-description={`${cluster.count} nodes folded into one, ${cluster.hop} ${cluster.hop === 1 ? 'step' : 'steps'} from the starting point`}
+        aria-description={`${cluster.count} nodes folded into one, ${hopWords(cluster.hop)}`}
         data-node-id={cluster.id}
         data-state="cluster"
         data-dimmed={data.dimmed}

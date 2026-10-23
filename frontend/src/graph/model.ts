@@ -56,7 +56,8 @@ export interface GraphNodeView {
   state: EvidenceState
   /** The verdict the events gave, whatever the role. */
   outcome: GraphNode['outcome']
-  hop: number
+  /** Steps from a seed; null when no discovery recorded it. */
+  hop: number | null
   onPath: boolean
   /** True for a node the overlay (configuration B) never discovered. */
   addedByOntology: boolean
@@ -83,7 +84,8 @@ export interface GraphEdgeView {
 export interface GraphCluster {
   id: string
   label: string
-  hop: number
+  /** Null for the group of nodes whose hop is unknown. */
+  hop: number | null
   count: number
   members: string[]
 }
@@ -178,11 +180,18 @@ function stepEdges(
   return along.length > 0 ? along : typed
 }
 
+/** Where a node or group sits, in words; a hop that was never recorded says so. */
+export function hopWords(hop: number | null): string {
+  if (hop === null) return 'distance from the starting point not recorded'
+  if (hop === 0) return 'at the starting point'
+  return `${hop} ${hop === 1 ? 'step' : 'steps'} from the starting point`
+}
+
 /** The (hop, label) groups of `nodes`, largest first, ties by label then first event. */
 function groupsOf(nodes: GraphNodeView[]): GraphCluster[] {
   const groups = new Map<string, GraphCluster>()
   for (const node of nodes) {
-    const id = `cluster:${node.hop}:${node.label}`
+    const id = `cluster:${node.hop ?? 'unknown'}:${node.label}`
     const group = groups.get(id) ?? {
       id,
       label: node.label,
