@@ -59,8 +59,70 @@ const RUNS = [
   },
 ]
 
+const cell = (mean: number, n: number, repeats: number) => ({
+  mean,
+  n,
+  repeats,
+})
+
+const FULL_BANK = { strata: null, limit: null }
+
+const LATEST_SUMMARY = {
+  selection: FULL_BANK,
+  headlines: [
+    'Graph found 0.12 more evidence than text search on multi-hop questions (95% interval 0.05 to 0.19, 36 pairs in 12 groups).',
+    'Graph + Ontology found 0.03 more evidence than Graph on questions anchored by id (95% interval -0.02 to 0.08, 36 pairs in 12 groups).',
+  ],
+  metrics: {
+    overall: {
+      evidence_f1: {
+        A: cell(0.31, 114, 342),
+        B: cell(0.43, 114, 342),
+        C: cell(0.46, 114, 342),
+      },
+    },
+  },
+}
+
+/** What GET /benchmarks/latest answers: the official run, a smoke-only state, or a 404. */
+const LATEST = {
+  official: {
+    run_id: 'official-2026-10-20',
+    run_kind: 'official',
+    label: null,
+    summary: LATEST_SUMMARY,
+  },
+  smoke: {
+    run_id: 'smoke-2026-10-18',
+    run_kind: 'smoke',
+    label: 'scorer smoke test',
+    summary: { ...LATEST_SUMMARY, headlines: ['Scorer smoke test.'] },
+  },
+} as const
+
+export type LatestRun = keyof typeof LATEST | 'none' | 'unavailable' | 'pending'
+
+const DEMO_QUESTIONS = [
+  [
+    'L05-2026-INC_S007_GR',
+    'L05',
+    'Why did digital conversion fall in Greece?',
+    'H1',
+  ],
+  ['L07-2026-X', 'L07', 'Which markets share a payment provider?', 'H2'],
+  ['L11-2026-X', 'L11', 'Which incidents touched the checkout system?', 'H1'],
+  ['L14-2026-X', 'L14', 'What was the weekly sales total in Austria?', 'H3'],
+].map(([instance_id, question_id, text, stratum]) => ({
+  instance_id,
+  question_id,
+  text,
+  stratum,
+  market_scope: [],
+}))
+
 const ROUTES: Record<string, unknown> = {
   '/api/v1/benchmarks': RUNS,
+  '/api/v1/demo/questions': DEMO_QUESTIONS,
   '/api/v1/health/ready': READY,
   '/api/v1/datasets': [SUMMARY],
   '/api/v1/datasets/dev-seed2026': {
@@ -115,6 +177,8 @@ export async function mockApi(
   page: Page,
   /** The run list the Results screen sees: as published, none, or failing. */
   runs: 'published' | 'none' | 'unavailable' = 'published',
+  /** The newest run Overview sees: official, smoke only, none (404), failing or never answering. */
+  latest: LatestRun = 'official',
 ) {
   await page.clock.setFixedTime(new Date('2026-10-20T10:00:00Z'))
   await page.route('**/api/v1/**', async (route) => {
@@ -125,6 +189,25 @@ export async function mockApi(
           ? json([])
           : envelope('The run list is unavailable.', 503),
       )
+    if (path === '/api/v1/benchmarks/latest') {
+      if (latest === 'pending') return new Promise<void>(() => undefined)
+      if (latest === 'none')
+        return route.fulfill(
+          json(
+            {
+              error: {
+                error_code: 'NOT_FOUND',
+                message: 'no published benchmark run',
+                retryable: false,
+              },
+            },
+            404,
+          ),
+        )
+      if (latest === 'unavailable')
+        return route.fulfill(envelope('The latest run is unavailable.', 503))
+      return route.fulfill(json(LATEST[latest]))
+    }
     if (path in ROUTES) return route.fulfill(json(ROUTES[path]))
     if (path.startsWith(NODE_PREFIX)) {
       const id = decodeURIComponent(path.slice(NODE_PREFIX.length))

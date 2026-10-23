@@ -318,6 +318,8 @@ describe('Settings', () => {
 
   it('shows an error panel with Retry when the values do not load', async () => {
     const user = userEvent.setup()
+    // Help loads nothing, so only Settings asks for the models.
+    window.history.replaceState(null, '', '/#/help')
     let answers = 0
     stubApi({
       ...SHELL_API,

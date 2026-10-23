@@ -7,9 +7,9 @@ import { ErrorBoundary } from './components/error-boundary'
 import { Panel } from './components/panel'
 
 // One chunk per destination, fetched when its route is first shown.
-const ExperimentHome = lazy(() =>
-  import('./views/experiment-home').then((m) => ({
-    default: m.ExperimentHome,
+const Overview = lazy(() =>
+  import('./screens/overview/overview').then((m) => ({
+    default: m.Overview,
   })),
 )
 const LiveLab = lazy(() =>
@@ -30,7 +30,7 @@ const Help = lazy(() =>
 function Page({ name }: { name: RouteName }) {
   switch (name) {
     case 'overview':
-      return <ExperimentHome />
+      return <Overview />
     case 'live-lab':
       return <LiveLab />
     case 'results':

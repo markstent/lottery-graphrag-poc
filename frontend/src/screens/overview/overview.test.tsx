@@ -1,0 +1,230 @@
+import { render, screen, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+import { DATASETS, failure, json, MODELS, stubApi } from '../../test/api-stub'
+import { Overview } from './overview'
+
+const cell = (mean: number | null, n: number, repeats: number) => ({
+  mean,
+  n,
+  repeats,
+})
+
+const OFFICIAL = {
+  run_id: 'official-1',
+  run_kind: 'official',
+  label: null,
+  summary: {
+    selection: { strata: null, limit: null },
+    headlines: [
+      'Graph found 0.12 more evidence than text search (95% interval 0.05 to 0.19).',
+      'Graph + Ontology found 0.03 more than Graph (95% interval -0.02 to 0.08).',
+    ],
+    metrics: {
+      overall: {
+        evidence_f1: {
+          A: cell(0.25, 114, 342),
+          B: cell(null, 0, 0),
+          C: cell(0.5, 114, 342),
+        },
+      },
+    },
+  },
+}
+
+const SMOKE = {
+  run_id: 'smoke-1',
+  run_kind: 'smoke',
+  label: 'scorer smoke test',
+  summary: {
+    ...OFFICIAL.summary,
+    selection: { strata: null, limit: null },
+  },
+}
+
+const QUESTIONS = [
+  {
+    instance_id: 'L05-2026-INC_S007_GR',
+    question_id: 'L05',
+    text: 'Why did digital conversion fall in Greece?',
+    stratum: 'H1',
+    market_scope: [],
+  },
+  {
+    instance_id: 'L07-2026-X',
+    question_id: 'L07',
+    text: 'Which markets share a payment provider?',
+    stratum: 'H2',
+    market_scope: [],
+  },
+]
+
+const base = (latest: unknown) => ({
+  '/api/v1/benchmarks/latest': latest,
+  '/api/v1/demo/questions': QUESTIONS,
+  '/api/v1/datasets': DATASETS,
+  '/api/v1/models': MODELS,
+})
+
+afterEach(() => vi.unstubAllGlobals())
+
+describe('Overview', () => {
+  it('opens with its purpose sentence and heading', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Overview' }),
+    ).toBeVisible()
+    await screen.findByTestId('tile-A')
+  })
+
+  it('fills one tile per pipeline from a full official run', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    const a = await screen.findByTestId('tile-A')
+    expect(within(a).getByText('A · Text search')).toBeVisible()
+    expect(within(a).getByText('0.25')).toBeVisible()
+    expect(within(a).getByText('114 questions, 342 runs')).toBeVisible()
+    const b = screen.getByTestId('tile-B')
+    expect(within(b).getByText('B · Graph')).toBeVisible()
+    expect(within(b).getByText('no value')).toBeVisible()
+    expect(within(b).queryByText('0.00')).toBeNull()
+    expect(
+      within(screen.getByTestId('tile-C')).getByText('C · Graph + Ontology'),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        'Intervals are given for the differences in the headlines.',
+      ),
+    ).toBeVisible()
+  })
+
+  it('renders the headline sentences verbatim', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    for (const line of OFFICIAL.summary.headlines)
+      expect(await screen.findByText(line)).toBeVisible()
+  })
+
+  it('shows the plain no-run state, with a link to Results, on a 404', async () => {
+    stubApi({
+      ...base(null),
+      '/api/v1/benchmarks/latest': () =>
+        failure('no published benchmark run', false, 404),
+    })
+    render(<Overview />)
+    expect(await screen.findByText('No official run yet')).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Go to Results' })).toHaveAttribute(
+      'href',
+      '#/results',
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByText(/^Latest run:/)).toBeNull()
+  })
+
+  it('never fills the tiles from a smoke run, and names it', async () => {
+    stubApi(base(SMOKE))
+    render(<Overview />)
+    expect(await screen.findByText('No official run yet')).toBeVisible()
+    expect(screen.getByText('Latest run: scorer smoke test')).toBeVisible()
+    expect(screen.queryByTestId('tile-A')).toBeNull()
+    expect(screen.queryByText('0.25')).toBeNull()
+    expect(screen.queryByText(OFFICIAL.summary.headlines[0])).toBeNull()
+  })
+
+  it('never fills the tiles from a subset official run', async () => {
+    stubApi(
+      base({
+        ...OFFICIAL,
+        label: 'subset run',
+        summary: { ...OFFICIAL.summary, selection: { strata: null, limit: 1 } },
+      }),
+    )
+    render(<Overview />)
+    expect(await screen.findByText('Latest run: subset run')).toBeVisible()
+    expect(screen.queryByTestId('tile-A')).toBeNull()
+  })
+
+  it('links each demo question into Live Lab by its instance id', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    const link = await screen.findByRole('link', {
+      name: 'Why did digital conversion fall in Greece?',
+    })
+    expect(link).toHaveAttribute(
+      'href',
+      '#/live-lab?question=L05-2026-INC_S007_GR',
+    )
+    expect(
+      screen.getByRole('link', { name: 'Run a question' }),
+    ).toHaveAttribute('href', '#/live-lab')
+  })
+
+  it('shows the active dataset in plain words and the models', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    expect(await screen.findByText('dev world, 2026')).toBeVisible()
+    expect(screen.getByText('Answer model')).toBeVisible()
+    expect(screen.getByText('qwen3:8b')).toBeVisible()
+  })
+
+  it('describes the flow diagram with a title, description and text list', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    const diagram = await screen.findByRole('img', {
+      name: 'How the three approaches differ',
+    })
+    expect(diagram).toHaveAccessibleDescription(/starts with the question/)
+    expect(
+      screen.getByText(/C adds ontology concepts on top of B/, {
+        selector: 'li',
+      }),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('Overview panel states', () => {
+  it('shows each panel loading, then ready', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    expect(screen.getAllByRole('status').length).toBeGreaterThanOrEqual(3)
+    await screen.findByTestId('tile-A')
+  })
+
+  it('shows an error with a retry for a failing latest run, and the rest still loads', async () => {
+    stubApi({
+      ...base(OFFICIAL),
+      '/api/v1/benchmarks/latest': () =>
+        failure('The run is unavailable.', true),
+    })
+    render(<Overview />)
+    expect(await screen.findByText('The run is unavailable.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeVisible()
+    expect(
+      await screen.findByRole('link', {
+        name: 'Why did digital conversion fall in Greece?',
+      }),
+    ).toBeVisible()
+  })
+
+  it('shows an empty state when there are no demo questions', async () => {
+    stubApi({ ...base(OFFICIAL), '/api/v1/demo/questions': [] })
+    render(<Overview />)
+    expect(
+      await screen.findByText('No demo questions are available.'),
+    ).toBeVisible()
+  })
+
+  it('shows an error for the questions and for the configuration', async () => {
+    stubApi({
+      ...base(OFFICIAL),
+      '/api/v1/demo/questions': () =>
+        failure('Questions are unavailable.', false),
+      '/api/v1/models': () => failure('Models are unavailable.', false),
+      '/api/v1/datasets': () => json(DATASETS),
+    })
+    render(<Overview />)
+    expect(await screen.findByText('Questions are unavailable.')).toBeVisible()
+    expect(await screen.findByText('Models are unavailable.')).toBeVisible()
+  })
+})
