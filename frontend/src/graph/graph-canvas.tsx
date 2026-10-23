@@ -365,7 +365,7 @@ function Canvas(props: GraphCanvasProps) {
   })
   const { positions, routes } = layout
   const placed = useRef<Positions>(new Map())
-  const [failure, setFailure] = useState<string | null>(null)
+  const [failed, setFailed] = useState(false)
   const [laidOut, setLaidOut] = useState(false)
   // The structure the placed layout was made for.
   const [laidFor, setLaidFor] = useState('')
@@ -449,12 +449,13 @@ function Canvas(props: GraphCanvasProps) {
           placed.current = result.positions
           setLayout(result)
           setLaidFor(next.structure)
-          setFailure(null)
+          setFailed(false)
           setLaidOut(true)
         }
       } catch (error: unknown) {
-        if (alive.current)
-          setFailure(error instanceof Error ? error.message : String(error))
+        // The reader gets a sentence; the detail is for whoever debugs it.
+        console.error('Graph layout failed', error)
+        if (alive.current) setFailed(true)
       } finally {
         busy.current = false
       }
@@ -751,7 +752,7 @@ function Canvas(props: GraphCanvasProps) {
       role="group"
       aria-label={label}
       aria-describedby={pathListId ? `${summaryId} ${pathListId}` : summaryId}
-      aria-busy={!laidOut && failure === null}
+      aria-busy={!laidOut && !failed}
       data-layout-ready={ready ? 'true' : 'false'}
       className="flex h-full min-h-64 w-full flex-col rounded-card border border-border bg-surface"
       onKeyDown={onKeyDown}
@@ -790,12 +791,12 @@ function Canvas(props: GraphCanvasProps) {
             if (event) autoFit.current = false
           }}
         />
-        {failure !== null ? (
+        {failed ? (
           <p
             role="alert"
             className="absolute inset-x-4 top-4 rounded-card border border-error bg-surface p-3 text-sm text-error"
           >
-            The graph could not be laid out: {failure}
+            The graph could not be drawn. Reload the page to try again.
           </p>
         ) : null}
       </div>
