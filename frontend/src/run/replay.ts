@@ -16,10 +16,18 @@
  * The position is `count`, the number of events applied, with `cursor` as its
  * time in ms. Events that share an offset are applied together by `seek` and
  * playback, but `step` moves one event, so the cursor can stay put for a step.
- * `state(cursor)` is always `reduceAll` of the events at or before `cursor`.
+ * `state(cursor)` is always `reduceAll` of the events at or before `cursor`,
+ * and the snapshot's state is the same, carried forward from the last one
+ * while the position only grows.
  */
 
-import { reduceAll, type RunEvent, type RunState } from './reduce'
+import {
+  initialRunState,
+  reduce,
+  reduceAll,
+  type RunEvent,
+  type RunState,
+} from './reduce'
 
 export type Speed = 0.5 | 1 | 2 | 4
 
@@ -102,8 +110,21 @@ export function createReplay(
   let anchorCursor = 0
   const listeners = new Set<() => void>()
 
+  // The state after `reduced.count` events, carried forward while the
+  // position only grows; a move back starts again from the first event.
+  let reduced = { count: 0, state: initialRunState() }
+  const stateAfter = (applied: number): RunState => {
+    if (applied < reduced.count)
+      reduced = { count: 0, state: initialRunState() }
+    let { state } = reduced
+    for (let i = reduced.count; i < applied; i += 1)
+      state = reduce(state, events[i])
+    reduced = { count: applied, state }
+    return state
+  }
+
   const build = (): ReplaySnapshot => ({
-    state: reduceAll(events.slice(0, count)),
+    state: stateAfter(count),
     count,
     cursor,
     playing,
