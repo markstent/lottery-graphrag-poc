@@ -399,6 +399,18 @@ describe('clustering', () => {
     expect(first.clusters.map((c) => c.id)).toEqual(['cluster:3:Alpha'])
   })
 
+  it('orders tied labels by code point, whatever the locale', () => {
+    // A locale-aware sort puts 'alpha' before 'Zeta'; code points do not.
+    const nodes = [
+      node('a1', 'alpha'),
+      node('a2', 'alpha'),
+      node('z1', 'Zeta'),
+      node('z2', 'Zeta'),
+    ]
+    const view = graphView(graphOf(nodes), { cap: 3, focus: false })
+    expect(view.clusters.map((c) => c.id)).toEqual(['cluster:2:Zeta'])
+  })
+
   it('gives the same view for the same events', () => {
     const paths = pathsOf('C')
     const once = graphView(full.graph.C, { ...options, cap: 30, paths })

@@ -46,6 +46,7 @@ import {
 import { Maximize, ZoomIn, ZoomOut, type LucideIcon } from 'lucide-react'
 
 import type { EvidenceState } from '../design/evidence-states'
+import { focusableIn } from '../dom/focusable'
 import { pipeline, type PipelineId } from '../design/pipelines'
 import { relationshipPhrase } from '../design/relationships'
 import {
@@ -236,12 +237,9 @@ function neighbourToward(
   return best?.id ?? null
 }
 
-const TABBABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-
 /** Moves focus to the first tabbable element after `container`, or off the page. */
 function leave(container: HTMLElement): void {
-  const after = [...document.querySelectorAll<HTMLElement>(TABBABLE)].filter(
+  const after = focusableIn(document).filter(
     (el) =>
       !container.contains(el) &&
       container.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING,

@@ -8,15 +8,14 @@ import { X } from 'lucide-react'
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 
+import { focusableIn } from '../dom/focusable'
+
 interface DrawerProps {
   open: boolean
   title: string
   onClose: () => void
   children: ReactNode
 }
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 /**
  * Back to what opened the drawer. If that has gone (the screen redrew while
@@ -43,8 +42,7 @@ export function Drawer({ open, title, onClose, children }: DrawerProps) {
   useEffect(() => {
     if (!open) return
     const opener = document.activeElement
-    const focusable = () =>
-      Array.from(dialog.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])
+    const focusable = () => (dialog.current ? focusableIn(dialog.current) : [])
     focusable()[0]?.focus()
 
     const onKey = (event: KeyboardEvent) => {

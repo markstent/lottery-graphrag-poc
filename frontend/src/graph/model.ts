@@ -197,7 +197,8 @@ function groupsOf(nodes: GraphNodeView[]): GraphCluster[] {
   // The sort is stable and the map keeps first-seen order, so equal groups
   // stay in the order of their first event.
   return [...groups.values()].sort(
-    (a, b) => b.count - a.count || a.label.localeCompare(b.label),
+    (a, b) =>
+      b.count - a.count || (a.label < b.label ? -1 : a.label > b.label ? 1 : 0),
   )
 }
 

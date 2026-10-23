@@ -7,6 +7,8 @@
 import { getNode, getRecord, type Schemas } from '../api/client'
 import { datasetName, plainName, plainValue } from '../app/plain-words'
 import { useLoad } from '../app/use-load'
+import { nodeLabel } from '../design/node-labels'
+import { relationshipPhrase } from '../design/relationships'
 import { Drawer } from './drawer'
 import { Panel } from './panel'
 
@@ -18,8 +20,8 @@ interface EvidenceDrawerProps {
   /** What to show; `null` keeps the drawer closed. */
   source: EvidenceSource | null
   onClose: () => void
-  /** Where the record sits on the evidence path (step 2 of 5). Shown from Phase 6. */
-  pathPosition?: { step: number; of: number } | null
+  /** Where the record sits on the evidence path (step 2 of 3 on path 2). */
+  pathPosition?: { path: number; step: number; of: number } | null
 }
 
 type JsonValue = Schemas['JsonValue']
@@ -54,6 +56,10 @@ const GRAPH_ERRORS: Record<string, string> = {
   OTHER_WORLD: 'The graph holds a different world than this record.',
 }
 
+/** Words for a graph error code; a code from a newer server still reads as a sentence. */
+const graphErrorWords = (code: string): string =>
+  GRAPH_ERRORS[code] ?? 'The graph could not be read for this record.'
+
 function loaded(source: EvidenceSource) {
   return source.kind === 'record'
     ? async (signal: AbortSignal) => {
@@ -78,11 +84,11 @@ function loaded(source: EvidenceSource) {
                   key={`${edge.type}-${edge.direction}`}
                   term="Relationship"
                 >
-                  {`${edge.type} (${edge.direction}) x ${edge.count}`}
+                  {`${relationshipPhrase(edge.type)} (${edge.direction === 'out' ? 'outgoing' : 'incoming'}) × ${edge.count}`}
                 </Fact>
               ))}
               {record.graph_error && (
-                <Fact term="Graph">{GRAPH_ERRORS[record.graph_error]}</Fact>
+                <Fact term="Graph">{graphErrorWords(record.graph_error)}</Fact>
               )}
             </dl>
           ),
@@ -110,7 +116,13 @@ function loaded(source: EvidenceSource) {
       }
 }
 
-function EvidenceBody({ source }: { source: EvidenceSource }) {
+function EvidenceBody({
+  source,
+  pathPosition,
+}: {
+  source: EvidenceSource
+  pathPosition?: EvidenceDrawerProps['pathPosition']
+}) {
   const key =
     source.kind === 'record'
       ? `record/${source.datasetId}/${source.table}/${source.rowId}`
@@ -119,6 +131,11 @@ function EvidenceBody({ source }: { source: EvidenceSource }) {
 
   return (
     <>
+      {pathPosition && (
+        <p className="text-sm text-text-secondary">
+          {`Step ${pathPosition.step} of ${pathPosition.of} on evidence path ${pathPosition.path}`}
+        </p>
+      )}
       <Panel
         title="Record"
         state={load.status}
@@ -129,7 +146,7 @@ function EvidenceBody({ source }: { source: EvidenceSource }) {
           <div className="space-y-3">
             {load.data.labels.length > 0 && (
               <p className="text-sm font-medium">
-                {load.data.labels.join(', ')}
+                {load.data.labels.map(nodeLabel).join(', ')}
               </p>
             )}
             <Facts fields={load.data.fields} />
@@ -145,10 +162,14 @@ function EvidenceBody({ source }: { source: EvidenceSource }) {
   )
 }
 
-export function EvidenceDrawer({ source, onClose }: EvidenceDrawerProps) {
+export function EvidenceDrawer({
+  source,
+  onClose,
+  pathPosition,
+}: EvidenceDrawerProps) {
   return (
     <Drawer open={source !== null} title="Evidence" onClose={onClose}>
-      {source && <EvidenceBody source={source} />}
+      {source && <EvidenceBody source={source} pathPosition={pathPosition} />}
     </Drawer>
   )
 }

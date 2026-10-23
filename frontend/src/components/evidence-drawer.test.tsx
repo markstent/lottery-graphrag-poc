@@ -85,7 +85,7 @@ describe('EvidenceDrawer', () => {
     )
     const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
     await screen.findByText('Payment outage')
-    expect(dialog).toHaveTextContent('Incident')
+    expect(dialog).toHaveTextContent('incident')
     expect(
       within(dialog).getByRole('region', { name: 'Provenance' }),
     ).toHaveTextContent('INC_S007_GR')
@@ -114,5 +114,102 @@ describe('EvidenceDrawer', () => {
     await waitFor(() =>
       expect(screen.getByText('Payment outage')).toBeVisible(),
     )
+  })
+
+  it('shows relationships and node kinds in plain words', async () => {
+    stubApi({
+      '/api/v1/datasets/dev-seed2026/tables/incidents/rows/INC_S007_GR': {
+        ...RECORD,
+        edges: [{ type: 'HAS_CHUNK', direction: 'out', count: 2 }],
+      },
+      '/api/v1/graph/nodes/INC_S007_GR': {
+        ...NODE,
+        labels: ['IncidentType', 'DocumentChunk'],
+      },
+    })
+    const record = render(
+      <EvidenceDrawer
+        source={{
+          kind: 'record',
+          datasetId: 'dev-seed2026',
+          table: 'incidents',
+          rowId: 'INC_S007_GR',
+        }}
+        onClose={() => undefined}
+      />,
+    )
+    const provenance = await screen.findByRole('region', {
+      name: 'Provenance',
+    })
+    expect(provenance).toHaveTextContent('contains passage (outgoing) × 2')
+    expect(provenance).not.toHaveTextContent('HAS_CHUNK')
+    expect(provenance).not.toHaveTextContent(' x 2')
+    record.unmount()
+
+    render(
+      <EvidenceDrawer
+        source={{ kind: 'node', nodeId: 'INC_S007_GR' }}
+        onClose={() => undefined}
+      />,
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    await screen.findByText('Payment outage')
+    expect(dialog).toHaveTextContent('incident type, passage')
+    expect(dialog).not.toHaveTextContent('IncidentType')
+  })
+
+  it.each([
+    ['GRAPH_QUERY_ERROR', 'The graph could not be queried for this record.'],
+    ['OTHER_WORLD', 'The graph holds a different world than this record.'],
+    ['SOMETHING_NEW', 'The graph could not be read for this record.'],
+  ])('says in words why the graph is missing (%s)', async (code, words) => {
+    stubApi({
+      '/api/v1/datasets/dev-seed2026/tables/incidents/rows/INC_S007_GR': {
+        ...RECORD,
+        edges: null,
+        graph_error: code,
+      },
+    })
+    render(
+      <EvidenceDrawer
+        source={{
+          kind: 'record',
+          datasetId: 'dev-seed2026',
+          table: 'incidents',
+          rowId: 'INC_S007_GR',
+        }}
+        onClose={() => undefined}
+      />,
+    )
+    const provenance = await screen.findByRole('region', {
+      name: 'Provenance',
+    })
+    expect(within(provenance).getByText(words)).toBeVisible()
+  })
+
+  it('says where the record sits on the evidence path when it is given', async () => {
+    stubApi({ '/api/v1/graph/nodes/INC_S007_GR': NODE })
+    render(
+      <EvidenceDrawer
+        source={{ kind: 'node', nodeId: 'INC_S007_GR' }}
+        onClose={() => undefined}
+        pathPosition={{ path: 2, step: 2, of: 3 }}
+      />,
+    )
+    expect(
+      await screen.findByText('Step 2 of 3 on evidence path 2'),
+    ).toBeVisible()
+  })
+
+  it('shows no path position when none is given', async () => {
+    stubApi({ '/api/v1/graph/nodes/INC_S007_GR': NODE })
+    render(
+      <EvidenceDrawer
+        source={{ kind: 'node', nodeId: 'INC_S007_GR' }}
+        onClose={() => undefined}
+      />,
+    )
+    await screen.findByText('Payment outage')
+    expect(screen.queryByText(/on evidence path/)).toBeNull()
   })
 })
