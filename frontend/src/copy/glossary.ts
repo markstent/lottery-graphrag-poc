@@ -6,14 +6,9 @@
 export const GLOSSARY = {
   seed: 'starting point',
   chunk: 'passage',
-  rerank: 'judge',
-  reranked: 'judged',
+  rerank: 're-ordering',
+  reranked: 're-ordered',
   telemetry: 'activity record',
   MAPS_TO: 'is an instance of concept',
   prototype: 'early version',
 } as const satisfies Record<string, string>
-
-export type BannedTerm = keyof typeof GLOSSARY
-
-/** The plain words for a banned term. */
-export const plainTerm = (term: BannedTerm): string => GLOSSARY[term]

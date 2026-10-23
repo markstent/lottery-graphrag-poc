@@ -184,6 +184,9 @@ describe('banned word list', () => {
   it('has a plain replacement for every term the glossary covers', () => {
     expect(GLOSSARY.seed).toBe('starting point')
     expect(GLOSSARY.chunk).toBe('passage')
+    // Matches Settings' "Re-ordering model"; "judge" is for the scoring judge only.
+    expect(GLOSSARY.rerank).toBe('re-ordering')
+    expect(GLOSSARY.reranked).toBe('re-ordered')
     for (const plain of Object.values(GLOSSARY))
       expect(violation(plain)).toBeUndefined()
   })
