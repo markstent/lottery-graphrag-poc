@@ -64,7 +64,7 @@ describe('Scorecard', () => {
     ).toEqual([
       'Answer',
       'Evidence score',
-      'Starting record found',
+      'Starting record',
       'Markets reached',
       'Latency',
       'Context size',
@@ -90,7 +90,7 @@ describe('Scorecard', () => {
       '0.00 | same as A',
       '0.00 | same as A',
     ])
-    expect(cells('Starting record found')).toEqual(['Yes', 'Yes', 'Yes'])
+    expect(cells('Starting record')).toEqual(['Yes', 'Yes', 'Yes'])
   })
 
   it('takes the answer from the score, so a changed score changes the card', () => {
@@ -137,12 +137,12 @@ describe('Scorecard', () => {
     )
     expect(cells('Latency')).toEqual([
       '10.0 s',
-      '4.0 s | 6.0 s faster than A',
+      '4.0 s | -6.0 s vs A',
       '10.0 s | same as A',
     ])
     expect(cells('Context size')).toEqual([
       '1,400 tokens',
-      '1,500 tokens | 100 more than A',
+      '1,500 tokens | +100 vs A',
       '1,400 tokens | same as A',
     ])
   })
@@ -188,7 +188,7 @@ describe('Scorecard', () => {
     for (const name of [
       'Answer',
       'Evidence score',
-      'Starting record found',
+      'Starting record',
       'Reason',
     ])
       expect(hasColumn(name)).toBe(false)

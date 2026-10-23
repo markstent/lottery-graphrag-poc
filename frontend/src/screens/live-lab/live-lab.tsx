@@ -107,6 +107,8 @@ export function LiveLab() {
       <QuestionBar
         questions={questions}
         linkedId={linkedId}
+        collapsed={run.phase !== 'idle'}
+        runStatus={runStatusLine(run)}
         busy={run.busy}
         canCancel={run.source === 'live' && run.phase === 'running'}
         cancelling={run.cancelling}
@@ -132,9 +134,11 @@ export function LiveLab() {
           </Notice>
         </div>
       )}
-      <p role="status" className="text-sm text-text-secondary">
-        {runStatusLine(run)}
-      </p>
+      {run.phase === 'idle' && (
+        <p role="status" className="text-sm text-text-secondary">
+          {runStatusLine(run)}
+        </p>
+      )}
       {stored !== null && state.status === 'completed' && (
         <Scorecard results={stored} />
       )}

@@ -287,6 +287,76 @@ async function toEnd(page: Page) {
   await slider.fill((await slider.getAttribute('max'))!)
 }
 
+const TAB_NAMES = {
+  B: 'B · Graph',
+  C: 'C · Graph + Ontology',
+} as const
+
+/**
+ * Cases whose evidence path cannot fit in the canvas at the 14 px type floor.
+ * The path box is its size in layout px; the canvas frames 1043 by 522 at the
+ * floor (977 by 521 px drawing, 0.875 zoom, 32 px margins). These are expected
+ * to fail, and the spec fails if one starts to fit, so the entry is removed.
+ */
+const PATH_TOO_BIG: Record<string, string> = {
+  'H2 B': 'path box 1370 by 910',
+  'H2 C': 'path box 1500 by 1164',
+  'H3 B': 'path box 1440 by 766',
+  'H3 C': 'path box 1542 by 916',
+  'H5 B': 'path box 1407 by 462 (too wide)',
+  'H5 C': 'path box 1572 by 496 (too wide)',
+}
+
+for (const run of RECORDED_RUNS.slice().sort((a, b) =>
+  a.stratum.localeCompare(b.stratum),
+))
+  for (const tab of ['B', 'C'] as const)
+    test(`frames the whole evidence path at the end of ${run.stratum} on ${tab}`, async ({
+      page,
+    }) => {
+      const tooBig = PATH_TOO_BIG[`${run.stratum} ${tab}`]
+      test.fail(tooBig !== undefined, tooBig)
+      await finishRecording(page, run)
+      if (tab === 'C')
+        await page.getByRole('tab', { name: TAB_NAMES.C }).click()
+      const canvas = page.getByRole('group', {
+        name: `Graph for ${TAB_NAMES[tab]}`,
+      })
+      await expect(canvas).toHaveAttribute('data-layout-ready', 'true')
+      await shot(
+        page,
+        `${run.stratum.toLowerCase()}-end-${tab.toLowerCase()}-canvas`,
+        page.getByRole('region', { name: 'Graph canvas' }),
+      )
+      const { outside, count, note, frame } = await canvas.evaluate((el) => {
+        const box = el.querySelector('.react-flow')!.getBoundingClientRect()
+        const nodes = [
+          ...el.querySelectorAll<HTMLElement>(
+            '[data-on-path="true"][data-node-id]',
+          ),
+        ]
+        const cut = nodes.filter((n) => {
+          const b = n.getBoundingClientRect()
+          return (
+            b.left < box.left ||
+            b.top < box.top ||
+            b.right > box.right ||
+            b.bottom > box.bottom
+          )
+        })
+        return {
+          count: nodes.length,
+          outside: cut.map((n) => n.dataset.nodeId),
+          note: el.querySelector('[aria-live]')?.textContent ?? '',
+          frame: [Math.round(box.width), Math.round(box.height)],
+        }
+      })
+      expect(count).toBeGreaterThan(0)
+      expect(outside, `frame ${frame}`).toEqual([])
+      expect(note).toBe('')
+      expect(frame[1]).toBeGreaterThanOrEqual(520)
+    })
+
 test('frames the evidence path while the recording plays (H1, mid-replay)', async ({
   page,
 }) => {
@@ -321,7 +391,7 @@ test('shows the verdict, the graph, the answers, the paths and the coverage at t
       .getByText('Added by the ontology'),
   ).toBeVisible()
   await expectPathNodesInViewOrCounted(page, 'Graph for C · Graph + Ontology')
-  await shot(page, 'h1-end-c-canvas', canvas)
+  await shot(page, 'h1-end-c')
 })
 
 test('draws no ontology highlight on C when the recording has no ontology expansion (H3)', async ({
@@ -332,7 +402,7 @@ test('draws no ontology highlight on C when the recording has no ontology expans
   await page.getByRole('tab', { name: 'C · Graph + Ontology' }).click()
   await expectPathNodesInViewOrCounted(page, 'Graph for C · Graph + Ontology')
   await expect(page.getByText('+ ontology', { exact: true })).toHaveCount(0)
-  await page.getByRole('button', { name: "Show B's evidence path" }).click()
+  await page.getByRole('button', { name: "Show B's path" }).click()
   await expectPathNodesInViewOrCounted(page, 'Graph for C · Graph + Ontology')
   await shot(
     page,

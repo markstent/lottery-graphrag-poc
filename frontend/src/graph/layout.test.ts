@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   layoutGraph,
+  orderForLayout,
   tidyRoute,
   type LayoutEdge,
   type LayoutNode,
@@ -384,5 +385,62 @@ describe('tidyRoute', () => {
       { x: 0, y: 0 },
       { x: 100, y: 0 },
     ])
+  })
+})
+
+describe('orderForLayout', () => {
+  const ids = (items: { id: string }[]) => items.map((i) => i.id)
+  const { nodes, edges } = star(8)
+
+  it('lists the priority nodes, then their neighbours, then the rest, each in given order', () => {
+    // n0 is the seed; n6 and n3 are on the path.
+    const ordered = orderForLayout(nodes, edges, new Set(['n0', 'n6', 'n3']))
+    // n0 and the path first, then the other neighbours of the seed (all of them here).
+    expect(ids(ordered.nodes)).toEqual([
+      'n0',
+      'n3',
+      'n6',
+      'n1',
+      'n2',
+      'n4',
+      'n5',
+      'n7',
+    ])
+  })
+
+  it('puts the neighbours of a priority node ahead of nodes further away', () => {
+    const chain = [node('a'), node('b'), node('c'), node('d')]
+    const links = [
+      { id: 'a>b', source: 'a', target: 'b', tag },
+      { id: 'b>c', source: 'b', target: 'c', tag },
+      { id: 'c>d', source: 'c', target: 'd', tag },
+    ]
+    const ordered = orderForLayout(chain, links, new Set(['b']))
+    expect(ids(ordered.nodes)).toEqual(['b', 'a', 'c', 'd'])
+  })
+
+  it('ranks an edge with its better-ranked end and keeps given order within a rank', () => {
+    const ordered = orderForLayout(nodes, edges, new Set(['n6']))
+    expect(ids(ordered.edges)).toEqual([
+      'n0>n6',
+      'n0>n1',
+      'n0>n2',
+      'n0>n3',
+      'n0>n4',
+      'n0>n5',
+      'n0>n7',
+    ])
+  })
+
+  it('changes nothing without priority nodes', () => {
+    const ordered = orderForLayout(nodes, edges, new Set())
+    expect(ids(ordered.nodes)).toEqual(ids(nodes))
+    expect(ids(ordered.edges)).toEqual(ids(edges))
+  })
+
+  it('does not change the lists it is given', () => {
+    const before = ids(nodes)
+    orderForLayout(nodes, edges, new Set(['n5']))
+    expect(ids(nodes)).toEqual(before)
   })
 })

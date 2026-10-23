@@ -19,9 +19,11 @@
  * no other edge shares, clear of every node and every other tag. A tag on a
  * shared vertical or horizontal run could belong to any of the edges on it.
  *
- * `priority` nodes (the evidence path, the seeds, what the ontology added) are
- * kept together at the top of their layers in a whole layout, by giving elk
- * its nodes and edges priority-first (`considerModelOrder`).
+ * `priority` nodes (the evidence path and the seeds) are kept together at the
+ * top of their layers in a whole layout, with the seed's other neighbours next,
+ * by giving elk its nodes and edges in that order (`orderForLayout`,
+ * `considerModelOrder`). A replay is laid out from the final graph, so it
+ * knows the path before the path event; nothing is drawn as path until then.
  *
  * elk runs in a web worker, so a large layout never blocks input. Vite
  * bundles the worker script from the `?worker` import with no configuration.
@@ -65,7 +67,7 @@ export interface Layout {
 /** Space between neighbouring nodes in a layer. */
 const NODE_GAP = 28
 /** Space between layers, beyond what the tags on the edges between them need. */
-const LAYER_GAP = 90
+const LAYER_GAP = 40
 /** Space between parallel edge segments, and between an edge and a node. */
 const EDGE_GAP = 14
 const EDGE_NODE_GAP = 24
@@ -301,6 +303,9 @@ async function runElk(
       'elk.edgeLabels.placement': 'CENTER',
       'elk.layered.edgeLabels.centerLabelPlacementStrategy': 'MEDIAN_LAYER',
       'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+      ...(!interactive && {
+        'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
+      }),
       'elk.layered.nodePlacement.strategy': interactive
         ? 'INTERACTIVE'
         : 'NETWORK_SIMPLEX',
@@ -354,6 +359,38 @@ async function runElk(
 }
 
 /**
+ * The order elk is given its nodes and edges in a whole layout. elk keeps that
+ * order where nothing else decides, so it sets who sits nearest the top of each
+ * layer: first the priority nodes (the evidence path and the seeds), then the
+ * nodes next to them (the seed's other neighbours), then the rest. Within a
+ * group the given order holds. An edge ranks with its better-ranked end.
+ */
+export function orderForLayout<
+  N extends { id: string },
+  E extends { source: string; target: string },
+>(
+  nodes: N[],
+  edges: E[],
+  priority: ReadonlySet<string>,
+): { nodes: N[]; edges: E[] } {
+  const next = new Set<string>()
+  for (const { source, target } of edges) {
+    if (priority.has(source) && !priority.has(target)) next.add(target)
+    if (priority.has(target) && !priority.has(source)) next.add(source)
+  }
+  const rank = (id: string) => (priority.has(id) ? 0 : next.has(id) ? 1 : 2)
+  const byRank = <T>(items: T[], of: (item: T) => number) =>
+    items
+      .map((item, index) => ({ item, index, rank: of(item) }))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .map(({ item }) => item)
+  return {
+    nodes: byRank(nodes, (n) => rank(n.id)),
+    edges: byRank(edges, (e) => Math.min(rank(e.source), rank(e.target))),
+  }
+}
+
+/**
  * Positions for `nodes` (the position in `placed` where there is one, else a
  * fresh one) and a route for each edge. Every node has the same `height`. An
  * edge with an end outside `nodes` is ignored. With nothing placed and some
@@ -373,17 +410,12 @@ export async function layoutGraph(
   )
   const growing = nodes.some((n) => placed.has(n.id))
 
-  // elk keeps the order it is given where nothing else decides, so listing the
-  // priority nodes (and the edges into them) first keeps them together.
-  const first = <T>(items: T[], isFirst: (item: T) => boolean) => [
-    ...items.filter(isFirst),
-    ...items.filter((item) => !isFirst(item)),
-  ]
+  const ordered = growing
+    ? { nodes, edges: usable }
+    : orderForLayout(nodes, usable, priority)
   const result = await runElk(
-    growing ? nodes : first(nodes, (n) => priority.has(n.id)),
-    growing
-      ? usable
-      : first(usable, (e) => priority.has(e.source) || priority.has(e.target)),
+    ordered.nodes,
+    ordered.edges,
     height,
     placed,
     growing,

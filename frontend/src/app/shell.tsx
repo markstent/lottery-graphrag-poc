@@ -267,6 +267,9 @@ function Header() {
 
 export function Shell({ children }: { children: ReactNode }) {
   const { presentation } = useSettings()
+  // Live Lab draws a graph beside three panels and wants the room; the other
+  // destinations are read in a column.
+  const wide = useRoute().name === 'live-lab'
 
   return (
     <div className="flex min-h-screen">
@@ -287,7 +290,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <main
           id="main"
           tabIndex={-1}
-          className="mx-auto w-full max-w-7xl flex-1 px-4 py-6"
+          className={`mx-auto w-full flex-1 px-4 py-6 ${wide ? 'max-w-[110rem]' : 'max-w-7xl'}`}
         >
           {children}
         </main>

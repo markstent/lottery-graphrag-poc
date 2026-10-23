@@ -402,17 +402,14 @@ function Canvas(props: GraphCanvasProps) {
         tag: tagSize(e.text, type.font),
       })),
       height: type.height,
-      // The seeds are kept together at the top in every whole layout. The
-      // evidence path and what the ontology added are kept together too,
-      // except in a replay: its layout is made before the path is recorded
-      // and must not show where the path will be.
+      // The seeds and the evidence path are kept together at the top of their
+      // layers in every whole layout, a replay's included: its layout is made
+      // from the final graph, which knows the path, though nothing is drawn as
+      // path until the path event. What the ontology added is not kept up
+      // there; it is reached by panning.
       priority: new Set(
         forLayout.nodes
-          .filter(
-            (n) =>
-              n.state === 'seed' ||
-              (!replay && (n.onPath || (pipelineId === 'C' && n.added))),
-          )
+          .filter((n) => n.state === 'seed' || n.onPath)
           .map((n) => n.id),
       ),
       // A replay and a settled stream are laid out whole.
@@ -479,7 +476,7 @@ function Canvas(props: GraphCanvasProps) {
   }, [structure, type.font])
 
   const duration = reducedMotion ? 0 : 240
-  // Fit frames what matters: the evidence path and every seed; until a path is
+  // Fit frames what matters: the evidence path and the seed it starts from; until a path is
   // recorded, every node. What the ontology added is reached by panning and the
   // out-of-view strip. It never zooms out far
   // enough to take the type below `type.minPx` on screen, so a framed set that
@@ -487,16 +484,16 @@ function Canvas(props: GraphCanvasProps) {
   // path, else the first seed) and the rest is reached by panning or by
   // zooming out. The framed set sits against the left edge so the graph it
   // leads into shows beside it.
+  const startId =
+    shown.path[0] ?? visible.nodes.find((n) => n.state === 'seed')?.id
   const framedIds = useMemo(() => {
     // Until a path is recorded the graph is still growing: frame all of it.
     const important =
       shown.path.length > 0
-        ? visible.nodes.filter((n) => n.onPath || n.state === 'seed')
+        ? visible.nodes.filter((n) => n.onPath || n.nodeId === startId)
         : visible.nodes
     return important.map((n) => n.id)
-  }, [visible, shown.path])
-  const startId =
-    shown.path[0] ?? visible.nodes.find((n) => n.state === 'seed')?.id
+  }, [visible, shown.path, startId])
   const fit = useCallback((): Promise<unknown> => {
     const box = drawing.current?.getBoundingClientRect()
     const framed = framedIds.flatMap((id) => {

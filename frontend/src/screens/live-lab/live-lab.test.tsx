@@ -177,18 +177,61 @@ describe('Live Lab', () => {
     expect(screen.getByRole('slider', { name: 'Position' })).toHaveValue('0')
   })
 
-  it('opens the recording named in the link and selects its question', async () => {
+  it('opens the recording named in the link and shows its question on one line', async () => {
     reduceMotion()
     api({ '/api/v1/health/ready': DOWN })
     open(`#/live-lab?question=${h1.instance_id}`)
+    const bar = await screen.findByRole('region', { name: 'Question' })
+    expect(within(bar).getByText(h1.question)).toBeVisible()
+    expect(within(bar).getByText('Recorded run')).toBeVisible()
     expect(
-      await screen.findByRole('button', { name: h1.question }),
-    ).toHaveAttribute('aria-pressed', 'true')
+      within(bar).getByRole('button', { name: 'Change question' }),
+    ).toBeVisible()
+    expect(
+      within(bar).queryByRole('group', { name: 'Saved questions' }),
+    ).toBeNull()
     await waitFor(() =>
       expect(
         steps('A · Text search').getAllByRole('listitem')[4],
       ).toHaveTextContent('Done'),
     )
+  })
+
+  it('opens the whole bar from "Change question", moves focus into it, and closes it when a run starts', async () => {
+    reduceMotion()
+    api({ '/api/v1/health/ready': DOWN })
+    const user = userEvent.setup()
+    open(`#/live-lab?question=${h1.instance_id}`)
+    await user.click(
+      await screen.findByRole('button', { name: 'Change question' }),
+    )
+    const saved = screen.getByRole('group', { name: 'Saved questions' })
+    expect(within(saved).getAllByRole('button')[0]).toHaveFocus()
+    expect(
+      within(saved).getByRole('button', { name: h1.question }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: 'Run' }))
+    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Run' })).toHaveFocus()
+  })
+
+  it('keeps Run and Cancel run in the one-line form', async () => {
+    api()
+    const user = userEvent.setup()
+    open()
+    await user.click(await screen.findByRole('button', { name: h1.question }))
+    const liveButton = screen.getByRole('button', { name: 'Live' })
+    await waitFor(() => expect(liveButton).toBeEnabled())
+    await user.click(liveButton)
+    await user.click(screen.getByRole('button', { name: 'Run' }))
+    await waitFor(() => expect(stream.subscribeRun).toHaveBeenCalled())
+    act(() => handlers.onEvent(live[0]))
+    const bar = screen.getByRole('region', { name: 'Question' })
+    expect(within(bar).getByText('Live')).toBeVisible()
+    expect(
+      within(bar).getByRole('button', { name: 'Cancel run' }),
+    ).toBeVisible()
+    expect(within(bar).getByRole('button', { name: 'Run' })).toBeDisabled()
   })
 
   it('locks the market scope to the saved question and frees it for a typed one', async () => {

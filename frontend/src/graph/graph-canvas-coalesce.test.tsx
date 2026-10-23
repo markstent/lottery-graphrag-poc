@@ -62,7 +62,7 @@ describe('GraphCanvas layout requests', () => {
     expect(calls.at(-1)).toBe(latest)
   })
 
-  it('gives elk the seeds as priority in a replay, and the path and ontology additions too once a live stream settles', async () => {
+  it('gives elk the seeds and the evidence path as priority, in a replay (laid out from the final graph) and in a settled stream, and not what the ontology added', async () => {
     calls.length = 0
     priorities.length = 0
     const final = graphView(reduceAll(recorded).graph.C, {
@@ -86,7 +86,7 @@ describe('GraphCanvas layout requests', () => {
       <GraphCanvas {...common} mode="replay" finalView={final} />,
     )
     await waitFor(() => expect(priorities.length).toBeGreaterThan(0))
-    expect(priorities.at(-1)).toEqual(seeds)
+    expect(priorities.at(-1)).toEqual(new Set([...seeds, ...final.path]))
     replay.unmount()
     priorities.length = 0
     render(<GraphCanvas {...common} mode="live" settled />)

@@ -165,7 +165,7 @@ describe('CanvasArea', () => {
       show(h1, { results })
       await placed()
       const toggle = screen.getByRole('button', {
-        name: "Show C's evidence path",
+        name: "Show C's path",
       })
       expect(toggle).toHaveAttribute('aria-pressed', 'false')
       expect(document.querySelector('[data-on-other-path="true"]')).toBeNull()
@@ -175,9 +175,7 @@ describe('CanvasArea', () => {
       const user = userEvent.setup()
       show(h1, { results })
       await placed()
-      await user.click(
-        screen.getByRole('button', { name: "Show C's evidence path" }),
-      )
+      await user.click(screen.getByRole('button', { name: "Show C's path" }))
       const marked = () =>
         Array.from(
           document.querySelectorAll(
@@ -186,9 +184,7 @@ describe('CanvasArea', () => {
         ).map((el) => el.getAttribute('data-node-id'))
       await waitFor(() => expect(marked()).toEqual(['SUP_00005']))
       expect(screen.getByText('C path')).toBeVisible()
-      await user.click(
-        screen.getByRole('button', { name: "Show C's evidence path" }),
-      )
+      await user.click(screen.getByRole('button', { name: "Show C's path" }))
       await waitFor(() => expect(marked()).toEqual([]))
     })
 
@@ -199,7 +195,7 @@ describe('CanvasArea', () => {
         screen.getByRole('tab', { name: 'C · Graph + Ontology' }),
       )
       expect(
-        await screen.findByRole('button', { name: "Show B's evidence path" }),
+        await screen.findByRole('button', { name: "Show B's path" }),
       ).toBeVisible()
     })
 
@@ -207,9 +203,7 @@ describe('CanvasArea', () => {
       const user = userEvent.setup()
       show(h3)
       await placed()
-      await user.click(
-        screen.getByRole('button', { name: "Show C's evidence path" }),
-      )
+      await user.click(screen.getByRole('button', { name: "Show C's path" }))
       expect(
         await screen.findByText(
           "1 step of C's evidence path is not in this graph.",
@@ -220,21 +214,17 @@ describe('CanvasArea', () => {
     it('is disabled with a visible reason until the run has ended', () => {
       show(h1, { results: null })
       expect(
-        screen.getByRole('button', { name: "Show C's evidence path" }),
+        screen.getByRole('button', { name: "Show C's path" }),
       ).toBeDisabled()
-      expect(
-        screen.getByText('Available when the run has ended.'),
-      ).toBeVisible()
+      expect(screen.getByText('Available once the run ends.')).toBeVisible()
     })
 
     it("is disabled with a visible reason until the other approach's path is recorded", () => {
       show(h1, { state: initialRunState(), finalState: null, mode: 'live' })
       expect(
-        screen.getByRole('button', { name: "Show C's evidence path" }),
+        screen.getByRole('button', { name: "Show C's path" }),
       ).toBeDisabled()
-      expect(
-        screen.getByText("C's evidence path is not recorded yet."),
-      ).toBeVisible()
+      expect(screen.getByText('Not recorded yet.')).toBeVisible()
     })
 
     it("offers B's path on C while C has not recorded its own", async () => {
@@ -252,7 +242,7 @@ describe('CanvasArea', () => {
         screen.getByRole('tab', { name: 'C · Graph + Ontology' }),
       )
       const toggle = await screen.findByRole('button', {
-        name: "Show B's evidence path",
+        name: "Show B's path",
       })
       expect(toggle).toBeEnabled()
       expect(screen.queryByText(/not recorded yet/)).toBeNull()
@@ -264,7 +254,7 @@ describe('CanvasArea', () => {
     show(h1)
     await placed()
     const focus = screen.getByRole('button', {
-      name: 'Focus on the evidence path',
+      name: 'Focus on the path',
     })
     expect(focus).toHaveAttribute('aria-pressed', 'false')
     expect(nodes().some((n) => n.getAttribute('data-dimmed') === 'true')).toBe(

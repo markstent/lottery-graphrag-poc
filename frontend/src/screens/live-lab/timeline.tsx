@@ -93,40 +93,10 @@ export function Timeline({
       aria-label="Timeline"
       className="space-y-2 rounded-card border border-hairline bg-surface px-4 py-3"
     >
-      <h2 className="text-base font-semibold text-text-primary">Timeline</h2>
-      <div className="space-y-1.5">
-        {PIPELINES.map(({ id, label, strong, hue }) => (
-          <div key={id} className="flex items-center gap-3">
-            <span
-              className="w-8 text-base font-semibold"
-              style={{ color: strong }}
-            >
-              {id}
-            </span>
-            <div
-              role="img"
-              aria-label={summary(label, placed[id])}
-              className="relative flex-1 rounded-chip bg-surface-raised"
-              style={{ height: MAIN_ROW_PX + EXTRA_ROW_PX * (rows[id] - 1) }}
-            >
-              {placed[id].map((segment) => (
-                <Bar
-                  key={segment.stage}
-                  segment={segment}
-                  total={total}
-                  hue={hue}
-                />
-              ))}
-              <span
-                aria-hidden
-                className="absolute -inset-y-1 w-0.5 bg-text-primary"
-                style={{ left: `${(cursor / total) * 100}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
       <div className="flex flex-wrap items-center gap-3">
+        <h2 className="mr-2 text-base font-semibold text-text-primary">
+          Timeline
+        </h2>
         <button
           type="button"
           className={BUTTON}
@@ -186,6 +156,38 @@ export function Timeline({
             </button>
           ))}
         </div>
+      </div>
+      <div className="space-y-1.5">
+        {PIPELINES.map(({ id, label, strong, hue }) => (
+          <div key={id} className="flex items-center gap-3">
+            <span
+              className="w-8 text-base font-semibold"
+              style={{ color: strong }}
+            >
+              {id}
+            </span>
+            <div
+              role="img"
+              aria-label={summary(label, placed[id])}
+              className="relative flex-1 rounded-chip bg-surface-raised"
+              style={{ height: MAIN_ROW_PX + EXTRA_ROW_PX * (rows[id] - 1) }}
+            >
+              {placed[id].map((segment) => (
+                <Bar
+                  key={segment.stage}
+                  segment={segment}
+                  total={total}
+                  hue={hue}
+                />
+              ))}
+              <span
+                aria-hidden
+                className="absolute -inset-y-1 w-0.5 bg-text-primary"
+                style={{ left: `${(cursor / total) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   )

@@ -60,7 +60,7 @@ const ROWS: Row[] = [
     measure: { kind: 'score', value: (c) => c.evidenceF1 },
   },
   {
-    name: 'Starting record found',
+    name: 'Starting record',
     scoreOnly: true,
     show: (c) => yesNo(c.anchorResolution),
   },
@@ -104,7 +104,7 @@ function Cell({
 }) {
   if (column === null)
     return (
-      <td className="px-3 py-2">
+      <td className="px-3 py-1">
         <span className="text-text-muted">No result</span>
       </td>
     )
@@ -117,7 +117,7 @@ function Cell({
         )
   const missing = row.show(column) === MISSING
   return (
-    <td className="px-3 py-2 align-top">
+    <td className="px-3 py-1 align-top leading-tight">
       <span
         className={`tabular ${missing ? 'text-text-muted' : 'font-medium text-text-primary'}`}
       >
@@ -147,14 +147,14 @@ export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
       <table className="w-full table-fixed text-left text-sm">
         <thead>
           <tr>
-            <td className="w-44 px-3 py-2 text-sm font-medium text-text-primary">
+            <td className="w-52 px-3 py-1 text-sm font-medium leading-tight text-text-primary">
               {card.scored ? card.label : null}
             </td>
             {rows.map((row) => (
               <th
                 key={row.name}
                 scope="col"
-                className={`px-3 py-2 font-medium text-text-secondary ${row.wide ? 'w-[22%]' : ''}`}
+                className={`px-3 py-1 font-medium leading-tight text-text-secondary ${row.wide ? 'w-[26%]' : ''}`}
               >
                 {row.name}
               </th>
@@ -166,7 +166,7 @@ export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
             <tr key={id}>
               <th
                 scope="row"
-                className="px-3 py-2 align-top text-base font-semibold"
+                className="px-3 py-1 align-top text-base font-semibold leading-tight"
                 style={{ backgroundColor: tint, color: strong }}
               >
                 {label}

@@ -3,9 +3,14 @@
  * secondary row with the market scope and where the run comes from. A saved
  * question carries its own market scope, which the API enforces, so the scope
  * is shown locked. A question you type can only run live.
+ *
+ * Once a run has been chosen (`collapsed`) the bar is one line: the question,
+ * where it runs from, "Change question" to open the whole bar again, and the
+ * run controls. Opening it moves focus to the first saved question; running
+ * from it closes it and keeps focus on Run.
  */
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import type { Schemas } from '../../api/client'
 import { useReadiness } from '../../app/use-readiness'
@@ -60,6 +65,8 @@ function Choice({
 export function QuestionBar({
   questions,
   linkedId,
+  collapsed,
+  runStatus,
   busy,
   canCancel,
   cancelling,
@@ -69,6 +76,10 @@ export function QuestionBar({
   questions: Load<Question[]>
   /** The question the link named, selected until another is chosen. */
   linkedId: string | null
+  /** A run has been chosen: show the one-line form. */
+  collapsed: boolean
+  /** Where the run stands, shown in the bar once it is collapsed. */
+  runStatus: string
   /** A run is starting or in progress. */
   busy: boolean
   canCancel: boolean
@@ -81,6 +92,18 @@ export function QuestionBar({
   const [text, setText] = useState('')
   const [chosenSource, setChosenSource] = useState<Source | null>(null)
   const [scope, setScope] = useState<string[]>([])
+  const [opened, setOpened] = useState(false)
+  const saved = useRef<HTMLDivElement>(null)
+  const runButton = useRef<HTMLButtonElement>(null)
+  const refocusRun = useRef(false)
+  const full = !collapsed || opened
+  useEffect(() => {
+    if (opened) saved.current?.querySelector('button')?.focus()
+  }, [opened])
+  useEffect(() => {
+    if (!full && refocusRun.current) runButton.current?.focus()
+    refocusRun.current = false
+  }, [full])
 
   const list = questions.status === 'ready' ? questions.data : []
   const adHoc = text.trim() !== ''
@@ -112,6 +135,11 @@ export function QuestionBar({
             : null
 
   const run = () => {
+    // Running from the full bar closes it again; Run is then in the one-line form.
+    if (opened) {
+      refocusRun.current = true
+      setOpened(false)
+    }
     if (source === 'recorded' && recording)
       return onRun({ source: 'recorded', recording })
     onRun({
@@ -129,6 +157,64 @@ export function QuestionBar({
           },
     })
   }
+
+  const controls = (
+    <div className="ml-auto flex items-center gap-3">
+      {blocker !== null && blocker !== liveOff && (
+        <span className="text-sm text-text-muted">{blocker}</span>
+      )}
+      {canCancel && (
+        <button
+          type="button"
+          disabled={cancelling}
+          onClick={onCancel}
+          className={BUTTON}
+        >
+          Cancel run
+        </button>
+      )}
+      <button
+        ref={runButton}
+        type="button"
+        disabled={busy || blocker !== null}
+        onClick={run}
+        className="rounded-chip bg-text-primary px-5 py-2 text-sm font-semibold text-surface disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Run
+      </button>
+    </div>
+  )
+
+  if (!full)
+    return (
+      <section
+        aria-label="Question"
+        className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-card border border-hairline bg-surface px-4 py-2"
+      >
+        <p className="min-w-0 truncate text-base font-medium text-text-primary">
+          {adHoc
+            ? text.trim()
+            : (selected?.text ??
+              recordingFor(chosenId ?? linkedId)?.question ??
+              'No question chosen')}
+        </p>
+        <p role="status" className="min-w-0 flex-1 text-sm text-text-secondary">
+          {runStatus}
+        </p>
+        <p className="text-sm text-text-secondary">
+          {source === 'live' ? 'Live' : 'Recorded run'}
+        </p>
+        <button
+          type="button"
+          aria-expanded={false}
+          onClick={() => setOpened(true)}
+          className={BUTTON}
+        >
+          Change question
+        </button>
+        {controls}
+      </section>
+    )
 
   return (
     <section
@@ -157,6 +243,7 @@ export function QuestionBar({
           <div
             role="group"
             aria-label="Saved questions"
+            ref={saved}
             className="flex flex-wrap gap-2"
           >
             {list.map((question) => (
@@ -246,30 +333,13 @@ export function QuestionBar({
             <span className="ml-1 text-sm text-text-muted">{liveOff}</span>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-3">
-          {blocker !== null && blocker !== liveOff && (
-            <span className="text-sm text-text-muted">{blocker}</span>
-          )}
-          {canCancel && (
-            <button
-              type="button"
-              disabled={cancelling}
-              onClick={onCancel}
-              className={BUTTON}
-            >
-              Cancel run
-            </button>
-          )}
-          <button
-            type="button"
-            disabled={busy || blocker !== null}
-            onClick={run}
-            className="rounded-chip bg-text-primary px-5 py-2 text-sm font-semibold text-surface disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Run
-          </button>
-        </div>
+        {controls}
       </div>
+      {collapsed && (
+        <p role="status" className="text-sm text-text-secondary">
+          {runStatus}
+        </p>
+      )}
     </section>
   )
 }

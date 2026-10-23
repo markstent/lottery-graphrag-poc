@@ -30,11 +30,12 @@ export interface FoldedGroup {
 /**
  * The drawing's height: what is left of the window once the question bar,
  * the legend and the timeline have their room. It grows with a taller window
- * up to a limit and never drops below a readable floor. At 1920 by 1080 the
- * floor applies, so the timeline's controls sit a little below the first screen.
+ * up to a limit and never drops below a readable floor. At 1920 by 1080 it is
+ * 564 px with the question bar collapsed, which leaves the timeline's bottom
+ * edge at the bottom of the window.
  */
-const HEIGHT = 'clamp(26rem, calc(100vh - 46rem), 46rem)'
-const PRESENTATION_HEIGHT = 'clamp(30rem, calc(100vh - 42rem), 54rem)'
+const HEIGHT = 'clamp(35rem, calc(100vh - 32.25rem), 50rem)'
+const PRESENTATION_HEIGHT = 'clamp(38rem, calc(100vh - 27.5rem), 56rem)'
 
 const TOGGLE =
   'rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50 aria-pressed:border-grey-900 aria-pressed:bg-grey-900 aria-pressed:text-surface'
@@ -74,9 +75,7 @@ export function CanvasArea({
   const canOverlay =
     results !== null && state.graph[other].evidencePath !== null
   const whyNot =
-    results === null
-      ? 'Available when the run has ended.'
-      : `${other}'s evidence path is not recorded yet.`
+    results === null ? 'Available once the run ends.' : `Not recorded yet.`
   const showOther = overlay && canOverlay
 
   const view = useMemo(
@@ -140,7 +139,7 @@ export function CanvasArea({
   }
 
   return (
-    <section aria-label="Graph canvas" className="min-w-0 space-y-3">
+    <section aria-label="Graph canvas" className="min-w-0 space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           role="tablist"
@@ -181,7 +180,7 @@ export function CanvasArea({
             onClick={() => setOverlay(!overlay)}
             className={TOGGLE}
           >
-            {`Show ${other}'s evidence path`}
+            {`Show ${other}'s path`}
           </button>
           {!canOverlay && (
             <span className="text-sm text-text-secondary">{whyNot}</span>
@@ -192,7 +191,7 @@ export function CanvasArea({
             onClick={() => setFocus(!focus)}
             className={TOGGLE}
           >
-            Focus on the evidence path
+            Focus on the path
           </button>
         </div>
       </div>
