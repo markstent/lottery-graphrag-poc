@@ -397,4 +397,53 @@ describe('storage failures', () => {
       screen.getByRole('spinbutton', { name: 'Visible nodes' }),
     ).toHaveValue(24)
   })
+
+  it('keeps the route when the skip link is used, and focuses the main area', async () => {
+    const user = userEvent.setup()
+    window.history.replaceState(null, '', '/#/help')
+    render(<App />)
+    await user.click(screen.getByRole('link', { name: 'Skip to content' }))
+    expect(window.location.hash).toBe('#/help')
+    expect(document.getElementById('main')).toHaveFocus()
+  })
+
+  it('applies reduced motion to the whole document, drawers included', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Reduce motion' }))
+    const root = document.documentElement
+    expect(root).toHaveClass('reduced-motion')
+    // The portalled drawer sits under the root class, so the stylesheet's
+    // `.reduced-motion *` rule reaches it.
+    expect(screen.getByRole('dialog').closest('.reduced-motion')).toBe(root)
+    await user.click(screen.getByRole('checkbox', { name: 'Reduce motion' }))
+    expect(root).not.toHaveClass('reduced-motion')
+  })
+
+  it('shows the manual reduce-motion value, and says when the system asks for it', async () => {
+    const user = userEvent.setup()
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }))
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(
+      screen.getByRole('checkbox', { name: 'Reduce motion' }),
+    ).not.toBeChecked()
+    expect(
+      screen.getByText('On because your system asks for reduced motion'),
+    ).toBeVisible()
+    expect(document.documentElement).toHaveClass('reduced-motion')
+  })
+
+  it('shows no system note when the system does not ask', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(screen.queryByText(/your system asks/)).toBeNull()
+  })
 })

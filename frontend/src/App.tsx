@@ -1,7 +1,6 @@
 import { lazy, Suspense } from 'react'
 
 import { SettingsProvider } from './app/settings'
-import { useSettings } from './app/use-settings'
 import { Shell } from './app/shell'
 import { useRoute } from './app/router'
 import { DataDictionary } from './views/data-dictionary'
@@ -32,11 +31,9 @@ const DevPage =
 
 const DEV_HASH = /^#\/__(graph|gallery)/
 
-/** Applies the reduced-motion class around the whole tree (docs/ux/accessibility.md). */
 function ThemedApp() {
-  const { reducedMotion } = useSettings()
   return (
-    <div className={reducedMotion ? 'reduced-motion' : ''}>
+    <>
       {DevPage && DEV_HASH.test(window.location.hash) ? (
         <Suspense fallback={null}>
           <DevPage />
@@ -46,7 +43,7 @@ function ThemedApp() {
           <Routes />
         </Shell>
       )}
-    </div>
+    </>
   )
 }
 

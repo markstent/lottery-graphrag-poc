@@ -94,22 +94,34 @@ function Values() {
 }
 
 function Preferences() {
-  const { reducedMotion, toggleReducedMotion, nodeCap, setNodeCap } =
-    useSettings()
+  const {
+    manualReducedMotion,
+    systemReducedMotion,
+    toggleReducedMotion,
+    nodeCap,
+    setNodeCap,
+  } = useSettings()
   // What is typed, until the field is left: the stored cap is always in range.
   const [draft, setDraft] = useState<string | null>(null)
 
   return (
     <Panel title="Preferences" state="ready">
       <div className="space-y-4 text-sm">
-        <label className="flex items-center gap-2 text-text-primary">
-          <input
-            type="checkbox"
-            checked={reducedMotion}
-            onChange={toggleReducedMotion}
-          />
-          Reduce motion
-        </label>
+        <div>
+          <label className="flex items-center gap-2 text-text-primary">
+            <input
+              type="checkbox"
+              checked={manualReducedMotion}
+              onChange={toggleReducedMotion}
+            />
+            Reduce motion
+          </label>
+          {systemReducedMotion && (
+            <p className="mt-1 text-text-secondary">
+              On because your system asks for reduced motion
+            </p>
+          )}
+        </div>
         <div>
           <label className="flex items-center gap-2 text-text-primary">
             Visible nodes

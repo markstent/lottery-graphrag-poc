@@ -272,6 +272,11 @@ export function Shell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen">
       <a
         href="#main"
+        onClick={(event) => {
+          // The hash is the route, so the link must not change it.
+          event.preventDefault()
+          document.getElementById('main')?.focus()
+        }}
         className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-chip focus:bg-surface-raised focus:px-3 focus:py-1.5"
       >
         Skip to content

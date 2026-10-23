@@ -43,6 +43,7 @@ describe('GraphCanvas layout requests', () => {
         onSelectNode={() => undefined}
         focusMode={false}
         presentation={false}
+        reducedMotion={false}
         pipeline="C"
       />
     )
@@ -78,6 +79,7 @@ describe('GraphCanvas layout requests', () => {
       onSelectNode: () => undefined,
       focusMode: false,
       presentation: false,
+      reducedMotion: false,
       pipeline: 'C' as const,
     }
     const replay = render(

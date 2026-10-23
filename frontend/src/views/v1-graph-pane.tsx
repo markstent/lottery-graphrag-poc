@@ -4,6 +4,7 @@
  * `GraphView`. Phase 6 replaces both views and this file with them.
  */
 
+import { useSettings } from '../app/use-settings'
 import { AnswerBlock } from '../components/answer-block'
 import type { EvidenceState } from '../design/evidence-states'
 import { GraphCanvas } from '../graph/graph-canvas'
@@ -89,6 +90,7 @@ export function EvidenceGraph({
   settled: boolean
   onSelect: (id: string) => void
 }) {
+  const { reducedMotion } = useSettings()
   return (
     <>
       <div className={height}>
@@ -97,6 +99,7 @@ export function EvidenceGraph({
           onSelectNode={onSelect}
           focusMode={false}
           presentation={false}
+          reducedMotion={reducedMotion}
           pipeline="C"
           mode="live"
           settled={settled}

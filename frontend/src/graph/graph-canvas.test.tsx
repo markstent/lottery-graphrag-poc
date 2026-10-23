@@ -9,7 +9,6 @@ import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 
-import { SettingsContext, type Settings } from '../app/use-settings'
 import type { components } from '../api/schema'
 import { EvidenceDrawer } from '../components/evidence-drawer'
 import { stubApi } from '../test/api-stub'
@@ -59,6 +58,7 @@ interface Extra {
   pipeline?: 'B' | 'C'
   focusMode?: boolean
   presentation?: boolean
+  reducedMotion?: boolean
   label?: string
   pathListId?: string
   onSelectNode?: (id: string) => void
@@ -74,6 +74,7 @@ const canvas = (view: GraphView, extra: Extra = {}) => {
     onSelectNode: noop,
     focusMode: false,
     presentation: false,
+    reducedMotion: false,
     pipeline: 'C' as const,
     ...rest,
   }
@@ -405,24 +406,8 @@ describe('GraphCanvas', () => {
   })
 
   it('draws no transition under reduced motion', async () => {
-    const settings: Settings = {
-      presentation: false,
-      togglePresentation: noop,
-      reducedMotion: true,
-      toggleReducedMotion: noop,
-      nodeCap: 24,
-      setNodeCap: noop,
-      sidebarCollapsed: false,
-      toggleSidebar: noop,
-      settingsOpen: false,
-      setSettingsOpen: noop,
-    }
     const view = viewAt('B', { sequence: sequenceWithNodes('B', 12) })
-    render(
-      <SettingsContext.Provider value={settings}>
-        {canvas(view)}
-      </SettingsContext.Provider>,
-    )
+    render(canvas(view, { reducedMotion: true }))
     await placed(view.nodes.length)
     const wrapper = document.querySelector('.react-flow__node') as HTMLElement
     expect(wrapper.style.transition).toBe('none')

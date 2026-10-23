@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 
@@ -82,5 +83,13 @@ describe('Panel', () => {
     expect(
       screen.queryByRole('button', { name: 'Retry' }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('reduced-motion stylesheet', () => {
+  it('stops the skeleton pulse and collapses transitions under the root class', () => {
+    const css = readFileSync('src/index.css', 'utf8').replace(/\s+/g, ' ')
+    expect(css).toContain('.reduced-motion .skeleton-bar { animation: none; }')
+    expect(css).toContain('.reduced-motion *, .reduced-motion *::before')
   })
 })

@@ -19,6 +19,7 @@
 import { useId, useMemo, useState } from 'react'
 
 import { Shell } from '../app/shell'
+import { useSettings } from '../app/use-settings'
 import { EvidenceDrawer } from '../components/evidence-drawer'
 import { EvidencePathList } from '../graph/evidence-path-list'
 import { GraphCanvas } from '../graph/graph-canvas'
@@ -32,6 +33,7 @@ import generated from './fixtures/graph-200.json'
 export default function GraphHarness({ query }: { query?: string }) {
   // Without a query the page is the whole screen and reads the hash.
   const embedded = query !== undefined
+  const { reducedMotion } = useSettings()
   const params = new URLSearchParams(
     query ?? window.location.hash.split('?')[1] ?? '',
   )
@@ -116,6 +118,7 @@ export default function GraphHarness({ query }: { query?: string }) {
               onSelectNode={setOpened}
               focusMode={focus}
               presentation={presentation}
+              reducedMotion={reducedMotion}
               pipeline={config}
               label={`Graph for configuration ${config}`}
               pathListId={pathListId}

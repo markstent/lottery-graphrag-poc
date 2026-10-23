@@ -35,7 +35,6 @@ import {
 } from '@xyflow/react'
 import {
   useCallback,
-  useContext,
   useEffect,
   useId,
   useMemo,
@@ -46,7 +45,6 @@ import {
 
 import { Maximize, ZoomIn, ZoomOut, type LucideIcon } from 'lucide-react'
 
-import { SettingsContext } from '../app/use-settings'
 import type { EvidenceState } from '../design/evidence-states'
 import { pipeline, type PipelineId } from '../design/pipelines'
 import { relationshipPhrase } from '../design/relationships'
@@ -92,6 +90,8 @@ interface CommonProps {
   focusMode: boolean
   /** Larger type and nodes for a presentation screen. */
   presentation: boolean
+  /** No motion: nodes appear and move at once. */
+  reducedMotion: boolean
   /** The pipeline the view belongs to; sets the colour of evidence paths. */
   pipeline: Exclude<PipelineId, 'A'>
   /** The accessible name of the canvas. */
@@ -294,13 +294,13 @@ function Canvas(props: GraphCanvasProps) {
     onSelectNode,
     focusMode,
     presentation,
+    reducedMotion,
     pipeline: pipelineId,
     label = 'Evidence graph',
     pathListId,
   } = props
   const replay = props.mode === 'replay'
   const settled = props.mode === 'live' && props.settled === true
-  const reducedMotion = useContext(SettingsContext)?.reducedMotion ?? false
   const summaryId = useId()
   const type = presentation ? PRESENTATION_TYPE_SIZE : TYPE_SIZE
   const strong = pipeline(pipelineId).strong

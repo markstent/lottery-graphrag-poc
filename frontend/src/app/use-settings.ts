@@ -5,15 +5,19 @@
 
 import { createContext, useContext } from 'react'
 
-/** The visible-node cap the graph canvas folds above, and its limits. */
-export const NODE_CAP_DEFAULT = 24
+/** The limits of the visible-node cap; its default is the graph model's. */
 export const NODE_CAP_MIN = 12
 export const NODE_CAP_MAX = 60
 
 export interface Settings {
   presentation: boolean
   togglePresentation: () => void
+  /** Whether motion is off: the manual setting or the system's. */
   reducedMotion: boolean
+  /** The manual setting alone, which the Settings checkbox shows. */
+  manualReducedMotion: boolean
+  /** The system asks for reduced motion (`prefers-reduced-motion`). */
+  systemReducedMotion: boolean
   toggleReducedMotion: () => void
   /** Graph nodes shown before the canvas groups the rest. */
   nodeCap: number

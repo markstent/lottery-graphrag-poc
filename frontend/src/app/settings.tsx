@@ -12,9 +12,9 @@ import {
   useActiveReplayRegistry,
   writePresentationToUrl,
 } from './presentation'
+import { DEFAULT_VISIBLE_NODE_CAP } from '../graph/model'
 import { parseBoolean, usePersisted } from './persisted'
 import {
-  NODE_CAP_DEFAULT,
   NODE_CAP_MAX,
   NODE_CAP_MIN,
   SettingsContext,
@@ -40,7 +40,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   )
   const [nodeCap, storeNodeCap] = usePersisted(
     'visible-node-cap',
-    NODE_CAP_DEFAULT,
+    DEFAULT_VISIBLE_NODE_CAP,
     parseCap,
   )
   const [sidebarCollapsed, setSidebarCollapsed] = usePersisted(
@@ -67,13 +67,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     return () => document.documentElement.classList.remove('presentation')
   }, [presentation])
 
+  const reducedMotion = manualReducedMotion || mediaReducedMotion
+  // On the root, not a wrapper, so portalled drawers are under it too.
+  useEffect(() => {
+    document.documentElement.classList.toggle('reduced-motion', reducedMotion)
+    return () => document.documentElement.classList.remove('reduced-motion')
+  }, [reducedMotion])
+
   const value: Settings = {
     presentation,
     togglePresentation: () => {
       writePresentationToUrl(!presentation)
       setPresentation(!presentation)
     },
-    reducedMotion: manualReducedMotion || mediaReducedMotion,
+    reducedMotion,
+    manualReducedMotion,
+    systemReducedMotion: mediaReducedMotion,
     toggleReducedMotion: () => setManualReducedMotion(!manualReducedMotion),
     nodeCap,
     setNodeCap: (cap) => storeNodeCap(clampCap(cap)),
