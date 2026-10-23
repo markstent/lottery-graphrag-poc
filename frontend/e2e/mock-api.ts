@@ -36,7 +36,40 @@ const READY = {
   },
 }
 
+const RUNS = [
+  {
+    run_id: 'official-2026-10-20',
+    run_kind: 'official',
+    label: null,
+    started_at: '2026-10-20T09:00:00Z',
+    selection: { strata: null, limit: null },
+    worlds: [2026],
+  },
+  {
+    run_id: 'smoke-2026-10-18',
+    run_kind: 'smoke',
+    label: 'Pilot check',
+    started_at: '2026-10-18T09:00:00Z',
+    selection: { strata: ['depth'], limit: 3 },
+    worlds: [2026],
+  },
+]
+
+const runSummary = (run: (typeof RUNS)[number], headlines: string[]) => ({
+  run_id: run.run_id,
+  run_kind: run.run_kind,
+  label: run.label,
+  summary: { headlines },
+})
+
 const ROUTES: Record<string, unknown> = {
+  '/api/v1/benchmarks': RUNS,
+  [`/api/v1/benchmarks/${RUNS[0].run_id}`]: runSummary(RUNS[0], [
+    'Graph and ontology answered more questions correctly than the current approach.',
+  ]),
+  [`/api/v1/benchmarks/${RUNS[1].run_id}`]: runSummary(RUNS[1], [
+    'Three instances per question on the depth stratum only.',
+  ]),
   '/api/v1/health/ready': READY,
   '/api/v1/datasets': [SUMMARY],
   '/api/v1/datasets/dev-seed2026': {

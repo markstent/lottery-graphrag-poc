@@ -15,10 +15,8 @@ const ExperimentHome = lazy(() =>
 const LiveLab = lazy(() =>
   import('./views/live-lab').then((m) => ({ default: m.LiveLab })),
 )
-const ResultsDashboard = lazy(() =>
-  import('./views/results-dashboard').then((m) => ({
-    default: m.ResultsDashboard,
-  })),
+const Results = lazy(() =>
+  import('./screens/results/results').then((m) => ({ default: m.Results })),
 )
 const DataDictionary = lazy(() =>
   import('./views/data-dictionary').then((m) => ({
@@ -36,7 +34,7 @@ function Page({ name }: { name: RouteName }) {
     case 'live-lab':
       return <LiveLab />
     case 'results':
-      return <ResultsDashboard />
+      return <Results />
     case 'data-model':
       return <DataDictionary />
     case 'help':
