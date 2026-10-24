@@ -15,6 +15,7 @@ import {
   mockApi,
   type DataModelState,
   type LatestRun,
+  type RunsMode,
 } from './mock-api'
 
 /**
@@ -253,7 +254,7 @@ async function openScreen(
   page: Page,
   hash: string,
   options: {
-    runs?: 'published' | 'none' | 'unavailable' | 'pending'
+    runs?: RunsMode
     latest?: LatestRun
     dataModel?: DataModelState
   } = {},
@@ -318,7 +319,11 @@ test.describe('Overview', () => {
 
 test.describe('Results', () => {
   const STATES = [
-    ['results-list', 'published', 'Reproducibility record (JSON)'],
+    [
+      'results-official',
+      'official',
+      'Descriptive: not part of the tested family.',
+    ],
     ['results-empty', 'none', 'No benchmark runs yet.'],
     ['results-error', 'unavailable', 'The run list is unavailable.'],
   ] as const
@@ -760,7 +765,7 @@ test.describe('presentation mode', () => {
       '#/overview',
       'Intervals are for the differences below.',
     ],
-    ['results', '#/results', 'Reproducibility record (JSON)'],
+    ['results', '#/results', 'This run predates the split.'],
     ['data-model', '#/data-model', 'Incident management'],
     ['help-fixture-official', '#/help', 'What we are testing'],
   ] as const

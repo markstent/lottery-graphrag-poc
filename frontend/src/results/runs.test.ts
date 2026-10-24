@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../api/client'
 import { RUNS } from './results.fixtures'
-import { defaultRun, standing } from './runs'
+import { defaultRun, selectionText, standing } from './runs'
 
 type Run = Schemas['BenchmarkRunOut']
 
@@ -68,4 +68,17 @@ describe('defaultRun', () => {
         run('new', 'official', '2026-10-02T00:00:00Z'),
       ]),
     ).toBe('new'))
+})
+
+describe('selectionText', () => {
+  it('is null for a whole-bank selection', () =>
+    expect(selectionText({ strata: null, limit: null })).toBeNull())
+  it('names strata and limit', () =>
+    expect(selectionText({ strata: ['depth'], limit: 3 })).toBe(
+      'Subset (strata: depth; at most 3 instances per question)',
+    ))
+  it('reads a limit alone as all strata', () =>
+    expect(selectionText({ strata: null, limit: 1 })).toBe(
+      'Subset (all strata; at most 1 instance per question)',
+    ))
 })

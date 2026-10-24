@@ -138,6 +138,7 @@ const intervalRow = (
   n: cell.n,
   groups: cell.clusters,
   inFamily: cell.in_family,
+  ...(cell.in_family ? { pHolm: cell.p_holm } : {}),
   pipeline: COMPARISON_PIPELINES[cell.comparison],
 })
 

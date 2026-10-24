@@ -96,7 +96,8 @@ test('a destination whose chunk fails to load shows a message and keeps the shel
 
 test.describe('Results run list', () => {
   const RUN_LIST = [
-    ['published', 'Reproducibility record (JSON)'],
+    ['published', 'All runs'],
+    ['official', 'Descriptive: not part of the tested family.'],
     ['none', 'No benchmark runs yet.'],
     ['unavailable', 'The run list is unavailable.'],
   ] as const

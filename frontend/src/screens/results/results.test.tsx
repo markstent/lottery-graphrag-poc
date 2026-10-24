@@ -1,96 +1,263 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { Schemas } from '../../api/client'
+import {
+  OFFICIAL,
+  PILOT,
+  RUNS as CAPTURED_RUNS,
+  SMOKE,
+} from '../../results/results.fixtures'
 import { failure, json, stubApi } from '../../test/api-stub'
 import { Results } from './results'
 
-const RUNS = [
-  {
-    run_id: 'run-b',
-    run_kind: 'official',
-    label: null,
-    started_at: '2026-10-20T10:00:00Z',
-    selection: { strata: null, limit: null },
-    worlds: [2026],
-    headlines: ['C beat A on every stratum.'],
-  },
-  {
-    run_id: 'run-a',
-    run_kind: 'smoke',
-    label: 'Pilot check',
-    started_at: '2026-10-18T09:00:00Z',
-    selection: { strata: ['depth'], limit: 3 },
-    worlds: [2026],
-    headlines: ['Pilot only.'],
-  },
-  {
-    run_id: 'run-c',
-    run_kind: 'ablation',
-    label: null,
-    started_at: '2026-10-17T09:00:00Z',
-    selection: { strata: null, limit: 1 },
-    worlds: [2026],
-    headlines: [],
-  },
-]
+const OFFICIAL_RUN: Schemas['BenchmarkRunOut'] = {
+  run_id: 'fixture-official',
+  run_kind: 'official',
+  label: 'Fixture run (test values)',
+  started_at: '2026-10-20T09:00:00Z',
+  selection: { strata: null, limit: null },
+  worlds: [2026],
+  headlines: OFFICIAL.headlines,
+}
+const RUNS = [OFFICIAL_RUN, ...CAPTURED_RUNS]
 
-const ROUTES = { '/api/v1/benchmarks': RUNS }
+const summaryOf = (
+  run_id: string,
+  run_kind: string,
+  summary: Schemas['SummaryOut'],
+) => ({ run_id, run_kind, label: null, summary })
 
+const ROUTES = {
+  '/api/v1/benchmarks': RUNS,
+  '/api/v1/benchmarks/fixture-official': summaryOf(
+    'fixture-official',
+    'official',
+    OFFICIAL,
+  ),
+  '/api/v1/benchmarks/pilot-2026-nothink': summaryOf(
+    'pilot-2026-nothink',
+    'official',
+    PILOT,
+  ),
+  '/api/v1/benchmarks/20261019T164733Z-smoke': summaryOf(
+    '20261019T164733Z-smoke',
+    'smoke',
+    SMOKE,
+  ),
+}
+
+const figureOf = (title: RegExp) =>
+  screen.getByText(title).closest('figure') as HTMLElement
+
+const verdict = () => screen.findByRole('region', { name: 'Verdict' })
+
+const open = (run?: string) => {
+  window.location.hash = run ? `#/results?run=${run}` : '#/results'
+  return render(<Results />)
+}
+
+beforeEach(() => {
+  window.location.hash = ''
+})
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Results', () => {
-  it('lists each run plainly with its headlines and a summary link', async () => {
+  it('picks the full official run by default', async () => {
     stubApi(ROUTES)
-    render(<Results />)
-    const [official] = await screen.findAllByRole('article')
-    expect(within(official).getByText('Official run')).toBeVisible()
-    expect(within(official).getByText('20 October 2026')).toBeVisible()
+    open()
+    expect(await screen.findByRole('group', { name: 'Metric' })).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Run' })).toHaveValue(
+      'fixture-official',
+    )
+    expect(screen.getByText(OFFICIAL.headlines[0])).toBeVisible()
     expect(
-      within(official).getByText('C beat A on every stratum.'),
-    ).toBeVisible()
-    expect(
-      within(official).getByRole('link', {
-        name: 'Reproducibility record (JSON)',
-      }),
-    ).toHaveAttribute('href', '/api/v1/benchmarks/run-b')
-    expect(
-      within(official).getByRole('link', {
-        name: 'Reproducibility record (JSON)',
-      }),
-    ).toHaveAttribute('rel', 'noopener')
-    expect(screen.queryByText('smoke')).not.toBeInTheDocument()
-    expect(within(official).queryByText(/Subset/)).not.toBeInTheDocument()
+      screen.getAllByRole('group', { name: /evidence score$/ }),
+    ).toHaveLength(3)
   })
 
-  it('labels a subset run as a subset', async () => {
+  it('lists the runs newest first as date - kind - label with the standing', async () => {
     stubApi(ROUTES)
-    render(<Results />)
-    const [, subset] = await screen.findAllByRole('article')
-    expect(within(subset).getByText('Quick check - Pilot check')).toBeVisible()
+    open()
+    const picker = await screen.findByRole('combobox', { name: 'Run' })
+    const options = within(picker).getAllByRole('option')
+    expect(options.map((o) => o.textContent)).toEqual([
+      '20 October 2026 - Official run - Fixture run (test values)',
+      '19 October 2026 - Official run - subset run (at most 2 instances per question)',
+      '19 October 2026 - Official run - subset run (at most 1 instance per question)',
+      '19 October 2026 - Quick check - scorer smoke test',
+    ])
     expect(
-      within(subset).getByText(
-        'Subset (strata: depth; at most 3 instances per question)',
-      ),
+      within(picker.parentElement as HTMLElement).getByText('Result'),
     ).toBeVisible()
-    expect(within(subset).getByText('Pilot only.')).toBeVisible()
   })
 
-  it('reads an unknown kind as plain words and an all-strata limit as a subset', async () => {
+  it('keeps the run history collapsed and each row opens its run', async () => {
     stubApi(ROUTES)
-    render(<Results />)
-    const [, , other] = await screen.findAllByRole('article')
-    expect(within(other).getByText('ablation')).toBeVisible()
+    open()
+    const history = (await screen.findByText('All runs')).closest('details')
+    expect(history).not.toHaveAttribute('open')
+    const link = within(history as HTMLElement).getAllByRole('link')[3]
+    expect(link).toHaveAttribute('href', '#/results?run=20261019T164733Z-smoke')
+  })
+
+  it('run param selects a run', async () => {
+    stubApi(ROUTES)
+    open('pilot-2026-nothink')
+    expect(await within(await verdict()).findByText('Subset run')).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Run' })).toHaveValue(
+      'pilot-2026-nothink',
+    )
+  })
+
+  it('choosing a run in the picker puts it in the address', async () => {
+    stubApi(ROUTES)
+    open()
+    const picker = await screen.findByRole('combobox', { name: 'Run' })
+    fireEvent.change(picker, { target: { value: '20261019T164733Z-smoke' } })
+    expect(window.location.hash).toBe('#/results?run=20261019T164733Z-smoke')
+  })
+
+  it('an unknown run says so and keeps the picker', async () => {
+    stubApi(ROUTES)
+    open('nope')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This run is not published.',
+    )
+    expect(screen.getByRole('combobox', { name: 'Run' })).toBeVisible()
+  })
+
+  it('quick check shows no results', async () => {
+    stubApi(ROUTES)
+    open('20261019T164733Z-smoke')
+    expect(await screen.findByText(SMOKE.headlines[0])).toBeVisible()
     expect(
-      within(other).getByText(
-        'Subset (all strata; at most 1 instance per question)',
+      screen.getByText(
+        'A quick check tests the scoring code with a stand-in model. Its numbers are not results.',
       ),
     ).toBeVisible()
-    expect(within(other).queryByRole('list')).not.toBeInTheDocument()
+    expect(screen.queryByRole('figure')).not.toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    expect(screen.queryByText(/evidence score/i)).not.toBeInTheDocument()
+  })
+
+  it('subset run is labelled beside its numbers', async () => {
+    stubApi(ROUTES)
+    open('pilot-2026-nothink')
+    expect(await within(await verdict()).findByText('Subset run')).toBeVisible()
+    expect(
+      screen.getByText('Subset (all strata; at most 2 instances per question)'),
+    ).toBeVisible()
+    expect(
+      screen.getAllByRole('group', { name: /evidence score$/ }),
+    ).toHaveLength(3)
+  })
+
+  it('tiles show evidence to two places and the answer score as a percentage', async () => {
+    stubApi(ROUTES)
+    open('pilot-2026-nothink')
+    await verdict()
+    await screen.findAllByRole('figure')
+    const tile = screen.getByRole('group', {
+      name: 'A · Text search evidence score',
+    })
+    expect(within(tile).getByText(/^\d\.\d\d$/)).toBeVisible()
+    expect(within(tile).getByText(/^Answer score \d+%$/)).toBeVisible()
+    expect(within(tile).queryByText(/interval/)).not.toBeInTheDocument()
+  })
+
+  it('too few pairs draws no interval', async () => {
+    stubApi(ROUTES)
+    open('pilot-2026-nothink')
+    await verdict()
+    await screen.findAllByRole('figure')
+    const figure = figureOf(/Paired differences/)
+    fireEvent.click(
+      within(figure).getByRole('button', { name: 'Show as table' }),
+    )
+    const row = within(figure)
+      .getByRole('rowheader', {
+        name: /Multi-hop questions: Graph against text search/,
+      })
+      .closest('tr') as HTMLElement
+    const cells = within(row).getAllByRole('cell')
+    expect(cells.map((c) => c.textContent)).toEqual([
+      'no value',
+      'no value',
+      'no value',
+      '8 pairs in 4 groups',
+      'Too few pairs',
+    ])
+  })
+
+  it('shows the Holm-adjusted p in the table of a tested row', async () => {
+    stubApi(ROUTES)
+    open()
+    await screen.findAllByRole('figure')
+    const figure = figureOf(/Paired differences/)
+    fireEvent.click(
+      within(figure).getByRole('button', { name: 'Show as table' }),
+    )
+    expect(
+      within(figure).getByRole('columnheader', { name: 'Adjusted p (Holm)' }),
+    ).toBeVisible()
+    expect(within(figure).getAllByText('1.00').length).toBeGreaterThan(0)
+  })
+
+  it('shows the split with its descriptive line', async () => {
+    stubApi(ROUTES)
+    open()
+    expect(
+      await screen.findByText('Descriptive: not part of the tested family.'),
+    ).toBeVisible()
+    expect(figureOf(/Ontology-dependent split/)).toBeVisible()
+  })
+
+  it('split absent says the run predates it', async () => {
+    stubApi(ROUTES)
+    open('pilot-2026-nothink')
+    expect(
+      await screen.findByText('This run predates the split.'),
+    ).toBeVisible()
+    expect(
+      screen.queryByText('Descriptive: not part of the tested family.'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('metric switch by keyboard', async () => {
+    stubApi(ROUTES)
+    const user = userEvent.setup()
+    open()
+    const evidence = await screen.findByRole('button', {
+      name: 'Evidence score',
+    })
+    const answer = screen.getByRole('button', { name: 'Answer score' })
+    expect(evidence).toHaveAttribute('aria-pressed', 'true')
+    answer.focus()
+    await user.keyboard('{Enter}')
+    expect(answer).toHaveAttribute('aria-pressed', 'true')
+    expect(evidence).toHaveAttribute('aria-pressed', 'false')
+    expect(figureOf(/Answer score by kind of question/)).toBeVisible()
+    evidence.focus()
+    await user.keyboard(' ')
+    expect(evidence).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('shows the loading state of the summary', async () => {
+    stubApi({
+      ...ROUTES,
+      '/api/v1/benchmarks/fixture-official': () =>
+        new Promise<Response>(() => undefined),
+    })
+    open()
+    expect(await screen.findByRole('combobox', { name: 'Run' })).toBeVisible()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading Verdict')
   })
 
   it('says so when there are no runs', async () => {
     stubApi({ '/api/v1/benchmarks': [] })
-    render(<Results />)
+    open()
     expect(await screen.findByText('No benchmark runs yet.')).toBeVisible()
   })
 
@@ -101,12 +268,30 @@ describe('Results', () => {
       '/api/v1/benchmarks': () =>
         up ? json(RUNS) : failure('The run list is unavailable.', true),
     })
-    render(<Results />)
+    open()
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The run list is unavailable.',
     )
     up = true
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
-    expect(await screen.findByText('20 October 2026')).toBeVisible()
+    expect(await screen.findByRole('combobox', { name: 'Run' })).toBeVisible()
+  })
+
+  it('shows the summary error and tries again on retry', async () => {
+    let up = false
+    stubApi({
+      ...ROUTES,
+      '/api/v1/benchmarks/fixture-official': () =>
+        up
+          ? json(summaryOf('fixture-official', 'official', OFFICIAL))
+          : failure('The summary is unavailable.', true),
+    })
+    open()
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The summary is unavailable.',
+    )
+    up = true
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText(OFFICIAL.headlines[0])).toBeVisible()
   })
 })

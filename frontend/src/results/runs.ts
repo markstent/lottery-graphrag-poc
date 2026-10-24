@@ -1,6 +1,8 @@
 /** What each published run stands for, and which one the Results screen opens first. */
 
 import type { Schemas } from '../api/client'
+import { plainName } from '../app/plain-words'
+import { plural } from '../charts/scale'
 
 type Run = Schemas['BenchmarkRunOut']
 
@@ -14,6 +16,14 @@ export function standing(run: Run): RunStanding {
     ? 'subset'
     : 'result'
 }
+
+const STANDING_WORDS: Record<RunStanding, string> = {
+  result: 'Result',
+  subset: 'Subset run',
+  'quick-check': 'Quick check',
+}
+
+export const standingWord = (run: Run): string => STANDING_WORDS[standing(run)]
 
 const startedAt = (run: Run) => Date.parse(run.started_at)
 
@@ -30,4 +40,20 @@ export function defaultRun(runs: readonly Run[]): string | null {
     (newest(of('result')) ?? newest(of('subset')) ?? newest(runs))?.run_id ??
     null
   )
+}
+
+/** What a subset run covers in words; null for a run of the whole bank. */
+export function selectionText({
+  strata,
+  limit,
+}: Run['selection']): string | null {
+  if (strata == null && limit == null) return null
+  const parts = [
+    Array.isArray(strata)
+      ? `strata: ${strata.map((name) => plainName(String(name))).join(', ')}`
+      : 'all strata',
+  ]
+  if (typeof limit === 'number')
+    parts.push(`at most ${plural(limit, 'instance')} per question`)
+  return `Subset (${parts.join('; ')})`
 }

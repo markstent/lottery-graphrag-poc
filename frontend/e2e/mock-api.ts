@@ -91,6 +91,10 @@ const LATEST = {
   none: world.latest,
 } as const
 
+/** The run list Results sees: as published, with the generated whole-bank run too, none, or failing. */
+export type RunsMode =
+  'published' | 'official' | 'none' | 'unavailable' | 'pending'
+
 export type LatestRun = keyof typeof LATEST | 'unavailable' | 'pending'
 
 /**
@@ -107,6 +111,17 @@ const RUN_SUMMARIES: Record<string, unknown> = {
 const RUN_INSTANCES: Record<string, unknown> = {
   'pilot-2026-nothink': pilotInstances,
   [officialSummary.run_id]: officialInstances,
+}
+
+/** The generated whole-bank run as the run list shows it, newest of all. */
+const OFFICIAL_RUN = {
+  run_id: officialSummary.run_id,
+  run_kind: officialSummary.run_kind,
+  label: officialSummary.label,
+  started_at: '2026-10-20T09:00:00+00:00',
+  selection: officialSummary.summary.selection,
+  worlds: [2026],
+  headlines: officialSummary.summary.headlines,
 }
 
 /** The models as captured, with a judge, which the capture ran without. */
@@ -197,8 +212,8 @@ export function expectNoUnmockedRequests(page: Page) {
 /** Fixes the clock and answers the API from the data above. */
 export async function mockApi(
   page: Page,
-  /** The run list the Results screen sees: as published, none, or failing. */
-  runs: 'published' | 'none' | 'unavailable' | 'pending' = 'published',
+  /** The run list the Results screen sees. */
+  runs: RunsMode = 'published',
   /** The newest run Overview sees: official, smoke only, none (404), failing or never answering. */
   latest: LatestRun = 'official',
   dataModel: DataModelState = 'normal',
@@ -210,6 +225,8 @@ export async function mockApi(
     const path = new URL(route.request().url()).pathname
     if (path === '/api/v1/benchmarks' && runs === 'pending')
       return new Promise<void>(() => undefined)
+    if (path === '/api/v1/benchmarks' && runs === 'official')
+      return route.fulfill(json([OFFICIAL_RUN, ...RUNS]))
     if (path === '/api/v1/benchmarks' && runs !== 'published')
       return route.fulfill(
         runs === 'none'

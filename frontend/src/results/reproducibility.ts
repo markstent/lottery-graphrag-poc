@@ -1,7 +1,10 @@
 /** A run's reproducibility record as labelled rows, for runs old and new. */
 
+import type { Schemas } from '../api/client'
 import { plainName, plainValue } from '../app/plain-words'
 import { yesNo } from '../app/score-words'
+
+type JsonValue = Schemas['JsonValue']
 
 const NOT_RECORDED = 'Not recorded'
 
@@ -55,16 +58,16 @@ export const REPRO_LABELS: Record<string, string> = {
   judge_prompt_hash: 'Judge prompt fingerprint',
 }
 
-function show(value: unknown): string {
+function show(value: JsonValue | undefined): string {
   if (value === null || value === undefined) return NOT_RECORDED
   if (typeof value === 'boolean') return yesNo(value ? 1 : 0)
-  const text = plainValue(value as Parameters<typeof plainValue>[0])
+  const text = plainValue(value)
   return text === '' ? 'None' : text
 }
 
 /** Every labelled field in label order, then any other key; a field the run did not record reads "Not recorded". */
 export function reproFields(
-  record: Record<string, unknown>,
+  record: Record<string, JsonValue>,
 ): { key: string; label: string; value: string }[] {
   const known = Object.entries(REPRO_LABELS).map(([key, label]) => ({
     key,

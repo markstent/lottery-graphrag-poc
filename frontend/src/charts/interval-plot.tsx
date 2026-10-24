@@ -37,6 +37,8 @@ export interface IntervalRow {
   inFamily: boolean
   /** Why a row is outside the tested family, in the words the summary gives. */
   note?: string
+  /** The Holm-adjusted p of a tested row; any row given one adds a column to the table. */
+  pHolm?: number | null
   /** The pipeline the row is about, for its colour and letter. */
   pipeline?: PipelineId
 }
@@ -51,6 +53,8 @@ export interface IntervalPlotProps extends ChartStateProps {
   domain?: Domain
   decimals?: number
 }
+
+const formatP = (p: number) => formatNumber(p, { decimals: 2 })
 
 const FALLBACK_WIDTH = 880
 const ROW = 56
@@ -145,11 +149,19 @@ export function IntervalPlot({
     }
   }
 
+  const withP = rows.some((r) => r.pHolm !== undefined)
   const table = (
     <DataTable
       caption={`${title}, ${unit}`}
       rowHeader="Comparison"
-      columns={['Mean', 'Low', 'High', 'Pairs', 'Status']}
+      columns={[
+        'Mean',
+        'Low',
+        'High',
+        'Pairs',
+        'Status',
+        ...(withP ? ['Adjusted p (Holm)'] : []),
+      ]}
       rows={rows.map((r) => ({
         key: r.key,
         label: r.label,
@@ -159,6 +171,7 @@ export function IntervalPlot({
           formatOrGap(r.high, fmt),
           pairsInGroups(r.n, r.groups),
           r.inFamily ? 'tested' : (r.note ?? 'not tested'),
+          ...(withP ? [formatOrGap(r.pHolm, formatP)] : []),
         ],
       }))}
     />

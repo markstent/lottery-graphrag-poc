@@ -164,7 +164,7 @@ test('the warehouse map is grouped by source system, and a row follows into the 
 }) => {
   await open(page, '#/data-model')
   await expect(
-    page.getByRole('region', { name: 'Incident management' }),
+    page.getByRole('region', { name: 'Incident management', exact: true }),
   ).toBeVisible()
   const games = page.getByRole('button', {
     name: `games, ${total(ROW_COUNTS.games)} rows`,

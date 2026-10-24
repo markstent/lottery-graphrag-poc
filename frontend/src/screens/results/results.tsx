@@ -1,81 +1,60 @@
 /**
- * Results: the published benchmark runs, newest first. A stopgap list until
- * the full dashboard: each run's kind, label, date, selection and headlines,
- * with a link to its summary (the reproducibility fields).
+ * Results: pick a published run, read its verdict, then its scores per kind of
+ * question. `#/results?run=<id>` names the run; none opens the newest result.
  */
 
-import type { Schemas } from '../../api/client'
-import { listBenchmarks } from '../../api/client'
-import { plainName } from '../../app/plain-words'
-import { kindWord } from '../../app/run-kinds'
+import { getBenchmark, listBenchmarks, type Schemas } from '../../api/client'
+import { useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
-import { plural } from '../../charts/scale'
 import { Panel } from '../../components/panel'
+import { defaultRun, standing } from '../../results/runs'
 import { Screen } from '../screen'
+import { RunPicker } from './run-picker'
+import { StrataCharts } from './strata-charts'
+import { Verdict } from './verdict'
 
 type Run = Schemas['BenchmarkRunOut']
 
-const date = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
+const NOT_PUBLISHED = new Error('This run is not published.')
 
-function selectionText({ strata, limit }: Run['selection']): string | null {
-  if (strata == null && limit == null) return null
-  const parts = [
-    Array.isArray(strata)
-      ? `strata: ${strata.map((name) => plainName(String(name))).join(', ')}`
-      : 'all strata',
-  ]
-  if (typeof limit === 'number')
-    parts.push(`at most ${plural(limit, 'instance')} per question`)
-  return `Subset (${parts.join('; ')})`
-}
-
-function RunCard({ run }: { run: Run }) {
-  const subset = selectionText(run.selection)
-  const { headlines } = run
-  const headingId = `run-${run.run_id}`
+function RunView({ run }: { run: Run }) {
+  const load = useLoad(
+    (signal) => getBenchmark(run.run_id, signal),
+    `run:${run.run_id}`,
+  )
+  const kind = standing(run)
+  const ready = load.status === 'ready'
   return (
-    <article
-      aria-labelledby={headingId}
-      className="rounded-card border border-hairline bg-surface p-4"
-    >
-      <h3 id={headingId} className="text-base font-semibold text-text-primary">
-        {date(run.started_at)}
-      </h3>
-      <p className="mt-1 text-sm text-text-secondary">
-        {kindWord(run.run_kind)}
-        {run.label && ` - ${run.label}`}
-      </p>
-      {subset && (
-        <p className="mt-1 text-sm font-medium text-text-primary">{subset}</p>
-      )}
-      {headlines.length > 0 && (
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-text-primary">
-          {headlines.map((line, index) => (
-            <li key={`${index}-${line}`}>{line}</li>
-          ))}
-        </ul>
-      )}
-      <a
-        href={`/api/v1/benchmarks/${encodeURIComponent(run.run_id)}`}
-        target="_blank"
-        rel="noopener"
-        className="mt-3 inline-block text-sm text-text-primary underline"
+    <>
+      <Panel
+        title="Verdict"
+        state={load.status}
+        error={load.status === 'error' ? load.error : undefined}
+        onRetry={load.retry}
       >
-        Reproducibility record (JSON)
-      </a>
-    </article>
+        {ready && <Verdict run={run} summary={load.data.summary} kind={kind} />}
+      </Panel>
+      {ready && kind !== 'quick-check' && (
+        <Panel title="Scores by kind of question" state="ready">
+          <StrataCharts summary={load.data.summary} />
+        </Panel>
+      )}
+    </>
   )
 }
 
 export function Results() {
+  const requested = useRoute().params.get('run')
   const load = useLoad(listBenchmarks, 'benchmark-runs')
-  const empty = load.status === 'ready' && load.data.length === 0
+  const runs =
+    load.status === 'ready'
+      ? [...load.data].sort(
+          (a, b) => Date.parse(b.started_at) - Date.parse(a.started_at),
+        )
+      : []
+  const empty = load.status === 'ready' && runs.length === 0
+  const id = requested ?? defaultRun(runs)
+  const run = runs.find((candidate) => candidate.run_id === id)
   return (
     <Screen destination="results">
       <Panel
@@ -86,13 +65,13 @@ export function Results() {
         onRetry={load.retry}
       >
         {load.status === 'ready' && (
-          <div className="space-y-3">
-            {load.data.map((run) => (
-              <RunCard key={run.run_id} run={run} />
-            ))}
-          </div>
+          <RunPicker runs={runs} selected={run?.run_id ?? null} />
         )}
       </Panel>
+      {load.status === 'ready' && !empty && !run && (
+        <Panel title="Run" state="error" error={NOT_PUBLISHED} />
+      )}
+      {run && <RunView key={run.run_id} run={run} />}
     </Screen>
   )
 }

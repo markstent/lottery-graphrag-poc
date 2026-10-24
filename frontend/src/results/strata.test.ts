@@ -287,3 +287,11 @@ describe('failureTotals', () => {
       }),
     ).toEqual([]))
 })
+
+describe('units', () => {
+  it('interval rows are x100, bar delta is raw', () => {
+    const summary = withComparisons(cell({ mean: 0.1, low: 0.05, high: 0.15 }))
+    expect(comparisonRows(summary, 'evidence_f1')[0].mean).toBeCloseTo(10)
+    expect(strataBars(summary, 'evidence_f1').delta?.values.H1).toBe(0.1)
+  })
+})
