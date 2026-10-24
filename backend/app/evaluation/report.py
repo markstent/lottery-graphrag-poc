@@ -233,22 +233,28 @@ def _defined_values(result: InstanceResult) -> dict[str, dict[str, list[float]]]
     }
 
 
-def instance_means(result: InstanceResult) -> dict[str, dict[str, float | None]]:
-    """Per pipeline, the mean over its successful repeats of every metric
-    (None where no repeat defines it). This is the value a pair is made of."""
+def _means(
+    defined: dict[str, dict[str, list[float]]],
+) -> dict[str, dict[str, float | None]]:
     return {
         tag: {
-            metric: statistics.mean(defined) if defined else None
-            for metric, defined in metrics.items()
+            metric: statistics.mean(values) if values else None
+            for metric, values in metrics.items()
         }
-        for tag, metrics in _defined_values(result).items()
+        for tag, metrics in defined.items()
     }
 
 
+def instance_means(result: InstanceResult) -> dict[str, dict[str, float | None]]:
+    """Per pipeline, the mean over its successful repeats of every metric
+    (None where no repeat defines it). This is the value a pair is made of."""
+    return _means(_defined_values(result))
+
+
 def _observe(result: InstanceResult) -> _Observation:
-    means, defined = instance_means(result), _defined_values(result)
+    defined = _defined_values(result)
     values: dict[str, dict[str, tuple[float, int]]] = {metric: {} for metric in METRICS}
-    for tag, per_metric in means.items():
+    for tag, per_metric in _means(defined).items():
         for metric, mean in per_metric.items():
             if mean is not None:
                 values[metric][tag] = (mean, len(defined[tag][metric]))
@@ -282,13 +288,21 @@ def _metric_table(
     return table
 
 
-def _pairs(
-    observations: Sequence[_Observation],
-    metric: str,
-    x: str,
-    y: str,
-) -> tuple[list[float], list[str]]:
-    """The paired differences x minus y of the observations, and their clusters."""
+@dataclass(frozen=True, slots=True)
+class _Paired:
+    """The paired differences of one cell, with the numbers every output reads."""
+
+    diffs: list[float]
+    clusters: list[str]
+    n: int
+    groups: int
+    interval: Interval | None
+    too_few: bool
+
+
+def _pairs(observations: Sequence[_Observation], metric: str, x: str, y: str) -> _Paired:
+    """The paired differences x minus y, their clusters, the bootstrap interval
+    (whenever there is a pair) and the pairs and groups gate."""
     diffs: list[float] = []
     clusters: list[str] = []
     for o in observations:
@@ -296,7 +310,15 @@ def _pairs(
         if x in value and y in value:
             diffs.append(value[x][0] - value[y][0])
             clusters.append(o.cluster)
-    return diffs, clusters
+    n, groups = len(diffs), len(set(clusters))
+    return _Paired(
+        diffs,
+        clusters,
+        n,
+        groups,
+        cluster_bootstrap(diffs, clusters) if diffs else None,
+        n < MIN_PAIRS_FOR_CLAIM or groups < MIN_CLUSTERS_FOR_CLAIM,
+    )
 
 
 def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
@@ -307,11 +329,10 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
         members = [o for o in observations if o.stratum == stratum]
         for metric in COMPARED_METRICS:
             for comparison, (x, y) in COMPARISONS.items():
-                diffs, clusters = _pairs(members, metric, x, y)
-                n, groups = len(diffs), len(set(clusters))
+                paired = _pairs(members, metric, x, y)
                 if (stratum, metric) not in HOLM_FAMILY:
                     reason = "not_in_family"
-                elif n < MIN_PAIRS_FOR_CLAIM or groups < MIN_CLUSTERS_FOR_CLAIM:
+                elif paired.too_few:
                     reason = "too_few"
                 else:
                     reason = "tested"
@@ -321,10 +342,10 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
                         stratum=stratum,
                         metric=metric,
                         comparison=comparison,
-                        interval=cluster_bootstrap(diffs, clusters) if diffs else None,
-                        n=n,
-                        clusters=groups,
-                        p=wilcoxon_p(diffs, clusters) if in_family else None,
+                        interval=paired.interval,
+                        n=paired.n,
+                        clusters=paired.groups,
+                        p=wilcoxon_p(paired.diffs, paired.clusters) if in_family else None,
                         p_holm=None,
                         in_family=in_family,
                         reason=reason,
@@ -345,24 +366,22 @@ def _ontology_split(observations: Sequence[_Observation]) -> list[dict[str, Any]
         members = [o for o in observations if o.ontology_dependent is flag]
         for metric in COMPARED_METRICS:
             for comparison, (x, y) in COMPARISONS.items():
-                diffs, clusters = _pairs(members, metric, x, y)
-                n, groups = len(diffs), len(set(clusters))
-                interval = cluster_bootstrap(diffs, clusters) if diffs else None
-                too_few = n < MIN_PAIRS_FOR_CLAIM or groups < MIN_CLUSTERS_FOR_CLAIM
+                paired = _pairs(members, metric, x, y)
+                interval = paired.interval
                 cells.append(
                     {
                         "group": group,
                         "metric": metric,
                         "comparison": comparison,
-                        "n": n,
-                        "clusters": groups,
+                        "n": paired.n,
+                        "clusters": paired.groups,
                         "mean": None if interval is None else interval.mean,
                         "low": None if interval is None else interval.low,
                         "high": None if interval is None else interval.high,
                         "p": None,
                         "p_holm": None,
                         "in_family": False,
-                        "reason": "too_few" if too_few else "not_in_family",
+                        "reason": "too_few" if paired.too_few else "not_in_family",
                     }
                 )
     return cells

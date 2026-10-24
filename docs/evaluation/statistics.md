@@ -98,7 +98,7 @@ A smoke run keeps every statistic in `summary.json`, but its only headline says 
 That is eight cells, each with `group`, `metric`, `comparison`, `n`, `clusters`, `mean`, `low` and `high`.
 The split exists because the spec asks how B and C compare on the questions that need the ontology and on the rest.
 Membership comes from the per-instance `ontology_dependent` flag, across every stratum, never from the stratum.
-This is why it differs from H2: in the pilot two H5 instances are ontology-dependent, and the name-anchored H2 sub-group is in H2 whatever its flag.
+The split therefore differs from H2: it pools the id-anchored H2 cell, the name-anchored H2_name sub-group and any ontology-dependent instance of another stratum (in the pilot, two H5 instances).
 The interval is the same cluster bootstrap as for a stratum, computed whenever there is at least one pair.
 The split is descriptive.
 It is outside the Holm family, so `p` and `p_holm` are always null and `in_family` is false, and it never appears in a headline.

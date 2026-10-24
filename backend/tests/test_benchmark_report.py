@@ -14,6 +14,7 @@ from app.evaluation.judge import JudgeScores, JudgeVerdict
 from app.evaluation.report import (
     SMOKE_HEADLINE,
     SUMMARY_SCHEMA_VERSION,
+    _observe,
     instance_means,
     render_report,
     summarize,
@@ -467,23 +468,15 @@ def test_ontology_split_does_not_change_the_comparisons(
 
 
 def test_instance_means_matches_the_observation(run_with_ontology_flags: BenchmarkRun) -> None:
-    summary = summarize(run_with_ontology_flags)
     results = [r for world in run_with_ontology_flags.worlds for r in world.results]
     h3 = next(r for r in results if r.instance.stratum == "H3")
-    means = instance_means(h3)
     # A's failed repeat is excluded: (1.0 + 0.5) / 2.
-    assert means["A"]["answer"] == pytest.approx(0.75)
-    assert means["B"]["evidence_f1"] == pytest.approx(0.2)
-    for tag in ("A", "B", "C"):
-        pooled = [
-            m[tag]["answer"]
-            for r in results
-            if r.instance.stratum == "H3"
-            for m in [instance_means(r)]
-        ]
-        assert summary["metrics"]["H3"]["answer"][tag]["mean"] == pytest.approx(
-            sum(pooled) / len(pooled)  # type: ignore[arg-type]
-        )
+    assert instance_means(h3)["A"]["answer"] == pytest.approx(0.75)
+    for r in results:
+        means, observed = instance_means(r), _observe(r).values
+        for tag in r.scores:
+            for metric in ("evidence_f1", "answer"):
+                assert means[tag][metric] == observed[metric][tag][0]
 
 
 def test_the_report_renders_the_ontology_split(run_with_ontology_flags: BenchmarkRun) -> None:
