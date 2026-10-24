@@ -44,6 +44,18 @@ export const SMOKE = {
   summary: summary({ strata: null, limit: null }),
 }
 
+/** An official run of part of the bank, as the backend publishes today. */
+export const OFFICIAL_SUBSET = {
+  ...OFFICIAL,
+  run_id: 'official-subset',
+  summary: summary({ strata: null, limit: 2 }),
+}
+export const OFFICIAL_STRATA = {
+  ...OFFICIAL,
+  run_id: 'official-strata',
+  summary: summary({ strata: ['H1'], limit: null }),
+}
+
 export const NOT_FOUND = () =>
   json(
     { error: { error_code: 'NOT_FOUND', message: 'none', retryable: false } },
@@ -54,6 +66,7 @@ export interface BankStub {
   questions?: Schemas['QuestionOut'][]
   latest?: unknown
   failQuestions?: boolean
+  failLatest?: boolean
 }
 
 /** A fetch stand-in for everything Help loads; the shell's routes are included. */
@@ -61,6 +74,7 @@ export function stubBank({
   questions = SCORED,
   latest = OFFICIAL,
   failQuestions = false,
+  failLatest = false,
 }: BankStub = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const path = new URL(String(input), 'http://localhost').pathname
@@ -80,6 +94,19 @@ export function stubBank({
           : json(questions),
       )
     if (path === '/api/v1/scenarios') return Promise.resolve(json(SCENARIOS))
+    if (path === '/api/v1/benchmarks/latest' && failLatest)
+      return Promise.resolve(
+        json(
+          {
+            error: {
+              error_code: 'RUN_ERROR',
+              message: 'The latest run is unavailable.',
+              retryable: true,
+            },
+          },
+          503,
+        ),
+      )
     if (path === '/api/v1/benchmarks/latest')
       return Promise.resolve(latest === null ? NOT_FOUND() : json(latest))
     if (path in SHELL_API)

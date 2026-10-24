@@ -1,11 +1,6 @@
-import { PIPELINES, type PipelineId } from '../../design/pipelines'
+import { PIPELINES } from '../../design/pipelines'
+import { APPROACH_LINES } from './approach-lines'
 import { Section } from './section'
-
-const DEFINITIONS: Record<PipelineId, string> = {
-  A: 'Finds the passages of documents that best match the words of the question.',
-  B: 'Adds records linked to the question by relationships, such as an incident and its platform version.',
-  C: 'Also uses the ontology, which ties each market’s local terms to one concept, so a question can cross markets.',
-}
 
 export function Approaches() {
   return (
@@ -25,7 +20,7 @@ export function Approaches() {
             >
               {pipeline.label}
             </h3>
-            <p className="text-text-primary">{DEFINITIONS[pipeline.id]}</p>
+            <p className="text-text-primary">{APPROACH_LINES[pipeline.id]}</p>
           </article>
         ))}
       </div>

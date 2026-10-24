@@ -1,32 +1,62 @@
 /**
  * Every benchmark question with its answer key and, when a whole-bank
- * official run backs them, each approach's scores. The two filters live in
- * the route, so a filtered table is a link. Scores are shown as the run
- * published them: a metric the question does not define reads "n/a".
+ * official run backs them, each approach's scores. A question is a header
+ * row, with one row below it for each instance (its anchor): scores are
+ * those of the instance and are never averaged here. The two filters live in
+ * the route, so a filtered table is a link. Scores read as on Live Lab.
  */
 
+import { answerWords, evidenceScore } from '../../app/score-words'
 import { hrefFor, useRoute } from '../../app/router'
 import type { Load } from '../../app/use-load'
 import { plural } from '../../charts/scale'
 import { PIPELINES, type PipelineId } from '../../design/pipelines'
-import { STRATUM_NAMES, type Bank, type Question } from './bank'
+import {
+  STRATUM_NAMES,
+  type Bank,
+  type Question,
+  type ScoreState,
+} from './bank'
 import { Section } from './section'
 
 const LINK = 'text-text-primary underline'
 const SELECT =
   'rounded-chip border border-border bg-surface px-2 py-1 text-sm text-text-primary'
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
+const NO_RUN = 'No official run yet'
 
-const format = (value: number | null) =>
-  value === null ? 'n/a' : value.toFixed(2)
+const LABELS = {
+  none: NO_RUN,
+  unreadable: 'Scores could not be read',
+  loading: 'Scores are loading',
+}
 
-function ScoreCell({ question, id }: { question: Question; id: PipelineId }) {
+const counted = (questions: number, instances: number) =>
+  `${plural(questions, 'question')}, ${plural(instances, 'instance')}`
+
+function ScoreCell({
+  question,
+  id,
+  state,
+}: {
+  question: Question
+  id: PipelineId
+  state: ScoreState
+}) {
+  if (state !== 'shown')
+    return (
+      <td className={CELL}>
+        <span className="sr-only">
+          {LABELS[state as Exclude<ScoreState, 'shown'>]}
+        </span>
+      </td>
+    )
   const score = question.scores?.[id]
   if (!score) return <td className={CELL}>Not scored in this run</td>
   return (
     <td className={`${CELL} whitespace-nowrap tabular-nums`}>
-      <div>Answer {format(score.answer)}</div>
-      <div>Evidence score {format(score.evidence_f1)}</div>
+      <div>Answer: {answerWords(score.answer)}</div>
+      <div>Evidence score: {evidenceScore(score.evidence_f1)}</div>
     </td>
   )
 }
@@ -35,12 +65,12 @@ function Filters({
   bank,
   stratum,
   story,
-  shown,
+  summary,
 }: {
   bank: Bank
   stratum: string
   story: string
-  shown: number
+  summary: string
 }) {
   const strata = [...new Set(bank.questions.map((q) => q.stratum))].sort()
   const go = (next: { stratum: string; story: string }) => {
@@ -81,20 +111,25 @@ function Filters({
           ))}
         </select>
       </label>
-      <span className="text-text-muted">
-        Showing {shown} of {plural(bank.questions.length, 'question')}
-      </span>
+      <span className="text-text-muted">{summary}</span>
     </div>
   )
 }
 
-export function Questions({ load }: { load: Load<Bank> }) {
+export function Questions({
+  load,
+  scores,
+}: {
+  load: Load<Bank>
+  scores: ScoreState
+}) {
   const { params } = useRoute()
   return (
     <Section id="questions" load={load}>
       {load.status === 'ready' && (
         <QuestionTable
           bank={load.data}
+          scores={scores}
           stratum={params.get('stratum') ?? ''}
           story={params.get('story') ?? ''}
         />
@@ -105,10 +140,12 @@ export function Questions({ load }: { load: Load<Bank> }) {
 
 function QuestionTable({
   bank,
+  scores,
   stratum: wantedStratum,
   story: wantedStory,
 }: {
   bank: Bank
+  scores: ScoreState
   stratum: string
   story: string
 }) {
@@ -120,97 +157,123 @@ function QuestionTable({
     ? wantedStory
     : ''
   const titles = new Map(bank.scenarios.map((s) => [s.scenario_id, s.title]))
-  const rows = bank.questions.filter(
-    (q) =>
-      (stratum === '' || q.stratum === stratum) &&
-      (story === '' || q.scenario_id === story),
+  const groups = (list: Question[]) => {
+    const byId = new Map<string, Question[]>()
+    for (const q of list)
+      byId.set(q.question_id, [...(byId.get(q.question_id) ?? []), q])
+    return [...byId.values()]
+  }
+  const shown = groups(
+    bank.questions.filter(
+      (q) =>
+        (stratum === '' || q.stratum === stratum) &&
+        (story === '' || q.scenario_id === story),
+    ),
   )
+  const total = counted(groups(bank.questions).length, bank.questions.length)
+  const shownCount = counted(
+    shown.length,
+    shown.reduce((sum, group) => sum + group.length, 0),
+  )
+  const columns = 2 + PIPELINES.length
   return (
     <>
       <p>
         The answer key is the correct answer written for each question.
-        {bank.scored && ' Scores come from the latest official run.'}
+        {scores === 'shown' && ' Scores come from the latest official run.'}
       </p>
-      {!bank.scored && (
+      {(scores === 'none' || scores === 'unreadable') && (
         <p>
+          {scores === 'none'
+            ? `${NO_RUN}. Scores appear after a full official run. `
+            : 'The latest run could not be read, so scores are hidden. '}
           <a href={hrefFor('results')} className={LINK}>
             Go to Results
-          </a>{' '}
-          for the runs that have been made.
+          </a>
         </p>
       )}
       <Filters
         bank={bank}
         stratum={stratum}
         story={story}
-        shown={rows.length}
+        summary={
+          shownCount === total ? total : `Showing ${shownCount} of ${total}`
+        }
       />
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Benchmark questions</caption>
           <thead className="text-text-muted">
             <tr>
-              {['Question', 'What it tests', 'Story', 'Answer key'].map(
-                (name) => (
-                  <th key={name} scope="col" className={CELL}>
-                    {name}
-                  </th>
-                ),
-              )}
-              {bank.scored ? (
-                PIPELINES.map(({ id, label }) => (
-                  <th key={id} scope="col" className={CELL}>
-                    {label}
-                  </th>
-                ))
-              ) : (
-                <th scope="col" className={CELL}>
-                  Scores
+              <th scope="col" className={CELL}>
+                Instance
+              </th>
+              <th scope="col" className={CELL}>
+                Answer key
+              </th>
+              {PIPELINES.map(({ id, label }) => (
+                <th key={id} scope="col" className={CELL}>
+                  {label}
                 </th>
-              )}
+              ))}
             </tr>
           </thead>
-          <tbody data-api className="text-text-primary">
-            {rows.map((question) => (
-              <tr key={question.instance_id}>
-                <td className={CELL}>
-                  <div>{question.text}</div>
-                  <div className="text-text-muted">
-                    {STRATUM_NAMES[question.stratum] ?? question.stratum}
-                  </div>
-                </td>
-                <td className={CELL}>{question.tests}</td>
-                <td className={CELL}>
-                  {question.scenario_id ? (
-                    <a
-                      className={LINK}
-                      href={hrefFor('help', {
-                        section: 'stories',
-                        story: question.scenario_id,
-                      })}
-                    >
-                      {titles.get(question.scenario_id) ?? question.scenario_id}
-                    </a>
-                  ) : (
-                    'None'
-                  )}
-                </td>
-                <td className={CELL}>{question.expected_answer}</td>
-                {bank.scored ? (
-                  PIPELINES.map(({ id }) => (
-                    <ScoreCell key={id} question={question} id={id} />
-                  ))
-                ) : (
-                  <td className={`${CELL} whitespace-nowrap`}>
-                    No official run yet
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
+          {shown.map((group) => {
+            const head = group[0]
+            return (
+              <tbody
+                key={head.question_id}
+                data-api
+                className="text-text-primary"
+              >
+                <tr className="bg-surface-raised">
+                  <th
+                    scope="rowgroup"
+                    colSpan={columns}
+                    className={`${CELL} font-normal`}
+                  >
+                    <span className="font-semibold">{head.question_id}</span>
+                    {' · '}
+                    {STRATUM_NAMES[head.stratum] ?? head.stratum}
+                    {' · '}
+                    {head.tests}
+                    {head.scenario_id && (
+                      <>
+                        {' · Story: '}
+                        <a
+                          className={LINK}
+                          href={hrefFor('help', {
+                            section: 'stories',
+                            story: head.scenario_id,
+                            ...(stratum && { stratum }),
+                          })}
+                        >
+                          {titles.get(head.scenario_id) ?? head.scenario_id}
+                        </a>
+                      </>
+                    )}
+                  </th>
+                </tr>
+                {group.map((question) => (
+                  <tr key={question.instance_id}>
+                    <td className={CELL}>{question.text}</td>
+                    <td className={CELL}>{question.expected_answer}</td>
+                    {PIPELINES.map(({ id }) => (
+                      <ScoreCell
+                        key={id}
+                        question={question}
+                        id={id}
+                        state={scores}
+                      />
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            )
+          })}
         </table>
       </div>
-      {rows.length === 0 && (
+      {shown.length === 0 && (
         <p>
           No question matches these filters.{' '}
           <a href={hrefFor('help', { section: 'questions' })} className={LINK}>

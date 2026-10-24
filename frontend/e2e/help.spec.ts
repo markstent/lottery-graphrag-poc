@@ -62,7 +62,7 @@ test('the questions table filters by story, and the filter is in the address', a
 }) => {
   await open(page, '#/help?section=questions&story=SCN-009')
   const table = page.getByRole('table', { name: 'Benchmark questions' })
-  await expect(table.getByRole('row')).toHaveCount(2)
+  await expect(table.getByRole('row')).toHaveCount(3)
   await expect(table).toContainText('SUP_02027')
   await expect(table).toContainText('Evidence score')
   await page

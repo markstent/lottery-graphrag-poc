@@ -10,9 +10,10 @@ import { useEffect, useRef } from 'react'
 
 import { hrefFor, useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
+import { loadLatest } from '../overview/latest-run'
 import { Screen } from '../screen'
 import { Approaches } from './approaches'
-import { loadBank } from './bank'
+import { loadBank, scoreState } from './bank'
 import { Data } from './data'
 import { Glossary } from './glossary'
 import { Questions } from './questions'
@@ -25,12 +26,13 @@ import { What } from './what'
 export function Help() {
   const { params } = useRoute()
   const bank = useLoad(loadBank, 'help-bank')
+  const latest = useLoad(loadLatest, 'help-latest')
   const section = params.get('section')
   const story = params.get('story')
   const target = section === 'stories' && story ? `story-${story}` : section
-  const ready = bank.status !== 'loading'
+  const ready = bank.status !== 'loading' && latest.status !== 'loading'
 
-  // Scroll once per target, after the bank has drawn the stories and rows.
+  // Scroll once per target, after the bank and the newest run have drawn the stories and rows.
   const scrolled = useRef<string | null>(null)
   useEffect(() => {
     if (target === null || !ready || scrolled.current === target) return
@@ -62,7 +64,7 @@ export function Help() {
       <Approaches />
       <Data />
       <Stories load={bank} story={section === 'stories' ? story : null} />
-      <Questions load={bank} />
+      <Questions load={bank} scores={scoreState(latest, bank)} />
       <Scoring />
       <Glossary />
       <Running />

@@ -13,7 +13,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SettingsProvider } from '../../app/settings'
 import { Help } from './help'
+import { BRING_UP, MODELS, RECOVERY } from './running-data'
 import {
+  OFFICIAL_STRATA,
+  OFFICIAL_SUBSET,
   SCENARIOS,
   SCORED,
   SMOKE,
@@ -33,8 +36,24 @@ const SECTIONS = [
   '8. Running it',
 ]
 
-const VENDOR_AND_ENGINEERING =
-  /Neo4j|Qdrant|Ollama|qwen|bge-|litellm|make [a-z]/i
+/** Names only Running it may use: its own commands and settings, and the vendors and models it names. */
+const KNOWN_VENDOR_NAMES = [
+  'Neo4j',
+  'Qdrant',
+  'Ollama',
+  'Docker',
+  'qwen',
+  'bge-',
+  'litellm',
+  'localhost',
+  '.env',
+]
+const RUNNING_ONLY = [
+  ...BRING_UP.map(([command]) => command),
+  ...RECOVERY.map(([, command]) => command),
+  ...MODELS.flatMap(([, settings]) => settings.split(', ')),
+  ...KNOWN_VENDOR_NAMES,
+]
 
 async function renderHelp(hash = '#/help', stub: BankStub = {}) {
   window.history.replaceState(null, '', `/${hash}`)
@@ -176,17 +195,32 @@ describe('the planted stories', () => {
 })
 
 describe('the questions table', () => {
-  const rows = () => within(questionTable()).getAllByRole('row').slice(1)
+  const rows = () =>
+    [...questionTable().querySelectorAll('tbody tr')].filter((row) =>
+      row.querySelector('td'),
+    ) as HTMLElement[]
+  const groups = () => questionTable().querySelectorAll('tbody')
 
-  it('lists every question with its text, what it tests, story and answer key', async () => {
+  it('groups instances under their question, with what it tests', async () => {
     await renderHelp()
+    expect(groups()).toHaveLength(22)
     expect(rows()).toHaveLength(SCORED.length)
     const first = SCORED[0]
-    const row = rows()[0]
-    expect(row).toHaveTextContent(first.text)
-    expect(row).toHaveTextContent(first.tests)
-    expect(row).toHaveTextContent(first.expected_answer)
-    expect(questionTable().querySelectorAll('thead th')).toHaveLength(7)
+    expect(groups()[0]).toHaveTextContent(first.question_id)
+    expect(groups()[0]).toHaveTextContent(first.tests)
+    expect(rows()[0]).toHaveTextContent(first.text)
+    expect(rows()[0]).toHaveTextContent(first.expected_answer)
+    expect(questionTable().querySelectorAll('thead th')).toHaveLength(5)
+    expect(screen.getByText('22 questions, 50 instances')).toBeVisible()
+  })
+
+  it('names the ontology-dependent kind in full', async () => {
+    await renderHelp()
+    expect(
+      within(
+        screen.getByRole('combobox', { name: 'Kind of question' }),
+      ).getByRole('option', { name: 'Ontology-dependent' }),
+    ).toHaveValue('H2')
   })
 
   it('filters by kind of question and keeps the filter in the URL', async () => {
@@ -198,7 +232,11 @@ describe('the questions table', () => {
     )
     expect(rows()).toHaveLength(8)
     expect(window.location.hash).toBe('#/help?section=questions&stratum=H5')
-    expect(screen.getByText('Showing 8 of 50 questions')).toBeVisible()
+    expect(
+      screen.getByText(
+        'Showing 8 questions, 8 instances of 22 questions, 50 instances',
+      ),
+    ).toBeVisible()
   })
 
   it('filters by story, and the link from Data Model preselects it', async () => {
@@ -208,6 +246,15 @@ describe('the questions table', () => {
     )
     expect(rows()).toHaveLength(1)
     expect(rows()[0]).toHaveTextContent('INC_042')
+  })
+
+  it('keeps the kind filter on a story link in the table', async () => {
+    await renderHelp('#/help?section=questions&stratum=H5')
+    expect(
+      within(groups()[0]).getByRole('link', {
+        name: 'App release conversion failure',
+      }),
+    ).toHaveAttribute('href', '#/help?section=stories&story=SCN-001&stratum=H5')
   })
 
   it('says so when no question matches both filters, and clears them', async () => {
@@ -223,26 +270,29 @@ describe('the questions table', () => {
     expect(rows()).toHaveLength(SCORED.length)
   })
 
-  it('shows each approach its answer and evidence scores from a full official run', async () => {
+  it('shows each instance its own answer and evidence scores, worded as in Live Lab', async () => {
     await renderHelp('#/help?section=questions&story=SCN-007')
     const row = rows()[0]
     // A: answer 0.33, evidence 0.45; B and C: answer 0.33, evidence 0.37.
-    expect(within(row).getAllByText(/Answer 0\.33/)).toHaveLength(3)
-    expect(within(row).getByText(/Evidence score 0\.45/)).toBeVisible()
-    expect(within(row).getAllByText(/Evidence score 0\.37/)).toHaveLength(2)
+    expect(
+      within(row).getAllByText('Answer: Partly correct (33%)'),
+    ).toHaveLength(3)
+    expect(within(row).getByText('Evidence score: 0.45')).toBeVisible()
+    expect(within(row).getAllByText('Evidence score: 0.37')).toHaveLength(2)
   })
 
-  it('shows n/a where the question has no evidence score, and says why', async () => {
+  it('shows Missing where the instance has no evidence score, and says why', async () => {
     await renderHelp('#/help?section=questions&stratum=H3')
-    expect(within(rows()[0]).getAllByText(/Evidence score n\/a/)).toHaveLength(
-      3,
-    )
     expect(
-      within(section('6. How scoring works')).getByText(/n\/a/),
+      within(rows()[0]).getAllByText('Evidence score: Missing'),
+    ).toHaveLength(3)
+    expect(within(rows()[0]).getAllByText('Answer: Correct')).toHaveLength(3)
+    expect(
+      within(section('6. How scoring works')).getByText(/reads Missing/),
     ).toBeVisible()
   })
 
-  it('says a question was not part of the run when it has no scores', async () => {
+  it('says an instance was not part of the run when it has no scores', async () => {
     await renderHelp()
     const unscored = SCORED.findIndex((q) => q.scores === null)
     expect(unscored).toBeGreaterThan(-1)
@@ -256,27 +306,56 @@ describe('the questions table', () => {
       'scores the newest run does not stand behind',
       { questions: SCORED, latest: SMOKE },
     ],
+    [
+      'an official run of part of the bank, limited in size',
+      { questions: SCORED, latest: OFFICIAL_SUBSET },
+    ],
+    [
+      'an official run of some kinds of question only',
+      { questions: SCORED, latest: OFFICIAL_STRATA },
+    ],
   ])(
-    'reads "No official run yet" with a link to Results for %s',
+    'says "No official run yet" once, above the table, for %s',
     async (_, stub) => {
       await renderHelp('#/help?section=questions', stub)
-      const table = questionTable()
-      expect(within(table).getAllByText('No official run yet')).toHaveLength(
-        SCORED.length,
-      )
-      expect(table.querySelectorAll('thead th')).toHaveLength(5)
-      expect(table).not.toHaveTextContent(/Answer \d|Evidence score/)
+      const questions = section('5. The questions')
       expect(
-        within(section('5. The questions')).getByRole('link', {
-          name: 'Go to Results',
-        }),
+        within(questions).getByText(
+          /^No official run yet\. Scores appear after a full official run\./,
+        ),
+      ).toBeVisible()
+      expect(
+        within(questions).getByRole('link', { name: 'Go to Results' }),
       ).toHaveAttribute('href', '#/results')
+      const table = questionTable()
+      expect(table).not.toHaveTextContent(/Answer:|Evidence score/)
+      // The cells are visibly empty and carry the words for a screen reader.
+      const labels = within(table).getAllByText('No official run yet')
+      expect(labels).toHaveLength(SCORED.length * 3)
+      for (const label of labels) expect(label).toHaveClass('sr-only')
     },
   )
 
   it('still has the question text and answer keys with no official run', async () => {
     await renderHelp('#/help', { questions: UNSCORED, latest: null })
     expect(rows()[0]).toHaveTextContent(UNSCORED[0].expected_answer)
+  })
+
+  it('keeps the stories and questions when the newest run cannot be read, and hides scores', async () => {
+    await renderHelp('#/help?section=questions', {
+      questions: SCORED,
+      failLatest: true,
+    })
+    expect(
+      within(section('4. The planted stories')).getAllByRole('article'),
+    ).toHaveLength(SCENARIOS.length)
+    expect(
+      screen.getByText(
+        /The latest run could not be read, so scores are hidden\./,
+      ),
+    ).toBeVisible()
+    expect(rows()).toHaveLength(SCORED.length)
+    expect(questionTable()).not.toHaveTextContent(/Answer:|Evidence score/)
   })
 })
 
@@ -342,15 +421,27 @@ describe('scoring and glossary', () => {
 
 describe('section 8 and the vendor names', () => {
   it('names vendors and engineering commands in Running it and nowhere else', async () => {
-    await renderHelp()
+    const { container } = await renderHelp()
     const running = section('8. Running it')
-    expect(running).toHaveTextContent(VENDOR_AND_ENGINEERING)
-    for (const name of SECTIONS.slice(0, 7)) {
-      expect(section(name).textContent).not.toMatch(VENDOR_AND_ENGINEERING)
-    }
-    expect(
-      screen.getByRole('navigation', { name: 'Help sections' }).textContent,
-    ).not.toMatch(VENDOR_AND_ENGINEERING)
+    for (const name of RUNNING_ONLY)
+      expect(running.textContent, name).toContain(name)
+    // Everything else: the purpose sentence, the section links and sections 1 to 7.
+    const rest = container.cloneNode(true) as HTMLElement
+    rest.querySelector('#running')!.remove()
+    for (const name of RUNNING_ONLY)
+      expect(rest.textContent!.toLowerCase(), name).not.toContain(
+        name.toLowerCase(),
+      )
+    expect(rest.querySelectorAll('code')).toHaveLength(0)
+    expect(rest.textContent).toContain('How it works in plain language')
+  })
+
+  it('gives a real remedy for a model the server does not list', async () => {
+    await renderHelp()
+    const table = within(section('8. Running it')).getByRole('table', {
+      name: 'Recovery',
+    })
+    expect(within(table).getByText('ollama pull <model>')).toBeVisible()
   })
 
   it('has a recovery table with the graph ingest command and the world note', async () => {

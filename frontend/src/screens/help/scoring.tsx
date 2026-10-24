@@ -24,16 +24,17 @@ export function Scoring() {
           share of claims found against the share of items used that carry a
           claim. All three approaches get the same limits, 12 items and 2,000
           tokens by default. The anchor is left out, so finding it earns
-          nothing. When no claim is left, the score reads n/a and the question
-          counts for the answer only.
+          nothing. When no claim is left, the score reads Missing and the
+          question counts for the answer only.
         </p>
       </Part>
       <Part title="Correct answer">
         <p>
           The answer score runs from 0 to 1. It is the mean of the checks
-          written from the answer key: the expected value, number, yes or no, or
-          set of ids must appear in the answer. The same checks apply to all
-          three approaches.
+          written from the answer key. A name, a yes or no and a number are
+          right or wrong, a set of ids earns partial credit, and a number earns
+          half credit when the answer also states a contradicting number. The
+          same checks apply to all three approaches.
         </p>
       </Part>
       <Part title="Judge">

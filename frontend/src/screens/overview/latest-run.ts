@@ -24,7 +24,7 @@ export type Verdict =
 
 const PIPELINE_IDS: readonly PipelineId[] = ['A', 'B', 'C']
 
-const KIND_WORDS: Record<string, string> = {
+export const KIND_WORDS: Record<string, string> = {
   smoke: 'quick check',
   sweep: 'depth sweep',
   official: 'official run',

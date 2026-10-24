@@ -10,7 +10,8 @@ import {
   getScenarios,
   type Schemas,
 } from '../../api/client'
-import { isFullOfficial, loadLatest } from '../overview/latest-run'
+import type { Load } from '../../app/use-load'
+import { isFullOfficial } from '../overview/latest-run'
 
 export type Question = Schemas['QuestionOut']
 export type Scenario = Schemas['ScenarioOut']
@@ -18,30 +19,41 @@ export type Scenario = Schemas['ScenarioOut']
 export interface Bank {
   questions: Question[]
   scenarios: Scenario[]
-  /** Whether the scores belong to a whole-bank official run. */
-  scored: boolean
 }
 
 export async function loadBank(signal: AbortSignal): Promise<Bank> {
-  const [questions, scenarios, latest] = await Promise.all([
+  const [questions, scenarios] = await Promise.all([
     getBenchmarkQuestions(undefined, signal),
     getScenarios(signal),
-    loadLatest(signal),
   ])
-  return {
-    questions,
-    scenarios,
-    scored:
-      latest !== null &&
-      isFullOfficial(latest) &&
-      questions.some((question) => question.scores !== null),
-  }
+  return { questions, scenarios }
+}
+
+/**
+ * Whether the questions' scores may be shown: only when the newest run is a
+ * whole-bank official run and scored some question. `unreadable` is a newest
+ * run that could not be read, which hides scores but not the questions.
+ */
+export type ScoreState = 'shown' | 'none' | 'unreadable' | 'loading'
+
+export function scoreState(
+  latest: Load<Schemas['BenchmarkSummary'] | null>,
+  bank: Load<Bank>,
+): ScoreState {
+  if (latest.status === 'error') return 'unreadable'
+  if (latest.status === 'loading') return 'loading'
+  if (bank.status !== 'ready') return 'none'
+  return latest.data !== null &&
+    isFullOfficial(latest.data) &&
+    bank.data.questions.some((question) => question.scores !== null)
+    ? 'shown'
+    : 'none'
 }
 
 /** The kinds of question, in the words of the statistics page. */
 export const STRATUM_NAMES: Record<string, string> = {
   H1: 'Multi-hop',
-  H2: 'Ontology',
+  H2: 'Ontology-dependent',
   H3: 'Single fact',
   H5: 'Planted pattern',
 }

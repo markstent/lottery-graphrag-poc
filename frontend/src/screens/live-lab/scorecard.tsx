@@ -10,14 +10,13 @@
 import type { ReactNode } from 'react'
 
 import type { Schemas } from '../../api/client'
+import { answerWords, evidenceScore } from '../../app/score-words'
 import { PIPELINES, type PipelineId } from '../../design/pipelines'
 import { MARKETS } from '../../run/coverage'
 import { formatDuration } from './format'
 import {
-  answerWords,
   delta,
   deltaWords,
-  evidenceScore,
   scorecard,
   type DeltaKind,
   type ScoreColumn,

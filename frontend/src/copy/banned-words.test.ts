@@ -13,6 +13,9 @@ import { EVIDENCE_STATES } from '../design/evidence-states'
 import { NODE_LABELS, countedLabel, nodeLabel } from '../design/node-labels'
 import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
+import { APPROACH_LINES } from '../screens/help/approach-lines'
+import { STRATUM_NAMES } from '../screens/help/bank'
+import { KIND_WORDS } from '../screens/overview/latest-run'
 import {
   RELATIONSHIP_PHRASES,
   relationshipPhrase,
@@ -308,6 +311,10 @@ describe('generated copy', () => {
     ...PIPELINES.flatMap((pipeline) => [pipeline.name, pipeline.label]),
     ...['dev-seed2026', 'dev-seed2027', 'dev-seed2028'].map(datasetName),
     ...Object.values(MODEL_LABELS),
+    // Display maps in screens: a bare "Ontology" as a value is caught here.
+    ...Object.values(STRATUM_NAMES),
+    ...Object.values(APPROACH_LINES),
+    ...Object.values(KIND_WORDS),
     ...GLOSSARY_TERMS.flatMap(({ term, meaning }) => [term, meaning]),
     ...Object.values(REACHABLE),
     plainName('affected_systems'),

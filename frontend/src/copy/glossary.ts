@@ -53,7 +53,7 @@ export const GLOSSARY_TERMS: readonly { term: string; meaning: string }[] = [
   {
     term: 'Official run',
     meaning:
-      'One run of every question in the bank, scored the same way for all three approaches.',
+      'Every question run on three worlds, three times each, scored identically for all approaches.',
   },
   {
     term: 'Passage',
