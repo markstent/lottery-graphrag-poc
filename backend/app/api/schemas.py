@@ -424,6 +424,9 @@ class GraphSchema(BaseModel):
 
     labels: list[str]
     relationship_types: list[RelTypeOut]
+    # The source table of each label built from one (not PrizeType or
+    # BusinessConcept), so a label can be followed to its rows.
+    node_tables: dict[str, str]
     # Relationship types each graph pipeline may traverse, keyed B and C.
     allow_list: dict[str, list[str]]
     # Evidence-ranking weights, the same for B and C.

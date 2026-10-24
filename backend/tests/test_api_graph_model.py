@@ -175,6 +175,14 @@ def test_schema_shows_the_b_and_c_allow_lists(client: TestClient) -> None:
     )
 
 
+def test_schema_names_the_source_table_of_each_label_built_from_one(client: TestClient) -> None:
+    tables = client.get("/api/v1/graph/schema").json()["node_tables"]
+    assert tables["Game"] == "games"
+    assert tables["DocumentChunk"] == "document_chunks"
+    assert "BusinessConcept" not in tables
+    assert "PrizeType" not in tables
+
+
 def test_schema_names_labels_typed_relationships_weights_and_caps(client: TestClient) -> None:
     schema = client.get("/api/v1/graph/schema").json()
     assert schema["labels"] == list(statements.NODE_LABELS)

@@ -122,6 +122,9 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
                 RelTypeOut(type=kind, from_label=start, to_label=end)
                 for kind, start, end in RELATIONSHIP_ENDPOINTS
             ],
+            node_tables={
+                label: table for label in NODE_LABELS if (table := node_table(label)) is not None
+            },
             allow_list={
                 "B": list(settings_b.graph.relationship_types),
                 "C": list(traversal.relationship_types),

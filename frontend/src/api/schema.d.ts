@@ -1463,6 +1463,10 @@ export interface components {
             label_version: string;
             /** Labels */
             labels: string[];
+            /** Node Tables */
+            node_tables: {
+                [key: string]: string;
+            };
             /** Relationship Types */
             relationship_types: components["schemas"]["RelTypeOut"][];
             /** Weights */

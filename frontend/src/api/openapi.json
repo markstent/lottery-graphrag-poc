@@ -2306,6 +2306,13 @@
             "title": "Labels",
             "type": "array"
           },
+          "node_tables": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Node Tables",
+            "type": "object"
+          },
           "relationship_types": {
             "items": {
               "$ref": "#/components/schemas/RelTypeOut"
@@ -2324,6 +2331,7 @@
         "required": [
           "labels",
           "relationship_types",
+          "node_tables",
           "allow_list",
           "weights",
           "caps",
