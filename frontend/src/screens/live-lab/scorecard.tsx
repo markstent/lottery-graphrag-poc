@@ -13,7 +13,7 @@ import type { Schemas } from '../../api/client'
 import { answerWords, evidenceScore } from '../../app/score-words'
 import { PIPELINES, type PipelineId } from '../../design/pipelines'
 import { MARKETS } from '../../run/coverage'
-import { formatDuration } from './format'
+import { formatWorkTime } from './format'
 import {
   delta,
   deltaWords,
@@ -70,10 +70,11 @@ const ROWS: Row[] = [
     measure: { kind: 'markets', value: (c) => c.markets },
   },
   {
-    name: 'Latency',
+    // The model's time to write the answer, not the pipeline's wall-clock time.
+    name: 'Answer writing time',
     scoreOnly: false,
-    show: (c) => formatDuration(c.latencyMs),
-    measure: { kind: 'latency', value: (c) => c.latencyMs },
+    show: (c) => formatWorkTime(c.latencyMs),
+    measure: { kind: 'time', value: (c) => c.latencyMs },
   },
   {
     name: 'Context size',

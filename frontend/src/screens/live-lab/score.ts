@@ -10,7 +10,7 @@ import type { Schemas } from '../../api/client'
 import { plainName } from '../../app/plain-words'
 import type { PipelineId } from '../../design/pipelines'
 import { coverage } from '../../run/coverage'
-import { formatDuration } from './format'
+import { formatWorkTime } from './format'
 
 type Results = Schemas['QueryResults']
 
@@ -83,7 +83,7 @@ export function delta(value: number | null, base: number | null) {
   return value === null || base === null ? null : value - base
 }
 
-export type DeltaKind = 'score' | 'latency' | 'tokens' | 'markets'
+export type DeltaKind = 'score' | 'time' | 'tokens' | 'markets'
 
 const SAME = 'same as A'
 
@@ -98,9 +98,9 @@ export function deltaWords(kind: DeltaKind, d: number | null): string | null {
     if (size === '0.00') return SAME
     return `${d > 0 ? '+' : '-'}${size} vs A`
   }
-  if (kind === 'latency') {
+  if (kind === 'time') {
     if (Math.abs(d) < 1) return SAME
-    return `${d > 0 ? '+' : '-'}${formatDuration(Math.abs(d))} vs A`
+    return `${d > 0 ? '+' : '-'}${formatWorkTime(Math.abs(d))} vs A`
   }
   if (d === 0) return SAME
   return `${d > 0 ? '+' : '-'}${Math.abs(d).toLocaleString('en-GB')} vs A`

@@ -103,10 +103,10 @@ describe('deltaWords', () => {
     expect(deltaWords('score', -0.5)).toBe('-0.50 vs A')
     expect(deltaWords('score', 0)).toBe('same as A')
   })
-  it('says how latency moved, signed', () => {
-    expect(deltaWords('latency', -2100)).toBe('-2.1 s vs A')
-    expect(deltaWords('latency', 450)).toBe('+450 ms vs A')
-    expect(deltaWords('latency', 0)).toBe('same as A')
+  it('says how the answer writing time moved, signed', () => {
+    expect(deltaWords('time', -2100)).toBe('-2.1 s vs A')
+    expect(deltaWords('time', 450)).toBe('+450 ms vs A')
+    expect(deltaWords('time', 0)).toBe('same as A')
   })
   it('says how counts moved, signed', () => {
     expect(deltaWords('tokens', -87)).toBe('-87 vs A')
@@ -114,7 +114,7 @@ describe('deltaWords', () => {
     expect(deltaWords('markets', 1)).toBe('+1 vs A')
   })
   it('calls a move too small to show the same', () => {
-    expect(deltaWords('latency', 0.2)).toBe('same as A')
+    expect(deltaWords('time', 0.2)).toBe('same as A')
     expect(deltaWords('score', 0.001)).toBe('same as A')
     expect(deltaWords('score', -0.004)).toBe('same as A')
   })

@@ -35,7 +35,7 @@ const cells = (name: string) =>
         .join(' | '),
     )
 
-/** Results with chosen latency and context size per pipeline. */
+/** Results with chosen answer writing time and context size per pipeline. */
 const measured = (
   values: Record<'A' | 'B' | 'C', [number, number]>,
 ): Results => {
@@ -66,7 +66,7 @@ describe('Scorecard', () => {
       'Evidence score',
       'Starting record',
       'Markets reached',
-      'Latency',
+      'Answer writing time',
       'Context size',
       'Reason',
     ])
@@ -125,7 +125,7 @@ describe('Scorecard', () => {
     ])
   })
 
-  it('shows latency and context size, with deltas against A for B and C only', () => {
+  it('shows answer writing time and context size, with deltas against A for B and C only', () => {
     render(
       <Scorecard
         results={measured({
@@ -135,7 +135,7 @@ describe('Scorecard', () => {
         })}
       />,
     )
-    expect(cells('Latency')).toEqual([
+    expect(cells('Answer writing time')).toEqual([
       '10.0 s',
       '4.0 s | -6.0 s vs A',
       '10.0 s | same as A',
@@ -144,6 +144,19 @@ describe('Scorecard', () => {
       '1,400 tokens',
       '1,500 tokens | +100 vs A',
       '1,400 tokens | same as A',
+    ])
+  })
+
+  it('shows an answer writing time of none as "<1 ms", never "0 s"', () => {
+    render(
+      <Scorecard
+        results={measured({ A: [0, 1400], B: [0, 1500], C: [250, 1400] })}
+      />,
+    )
+    expect(cells('Answer writing time')).toEqual([
+      '<1 ms',
+      '<1 ms | same as A',
+      '250 ms | +250 ms vs A',
     ])
   })
 
@@ -183,7 +196,11 @@ describe('Scorecard', () => {
       screen.getByText('No answer key exists for this question.'),
     ).toBeVisible()
     expect(screen.queryByText('scored against the answer key')).toBeNull()
-    for (const name of ['Latency', 'Context size', 'Markets reached'])
+    for (const name of [
+      'Answer writing time',
+      'Context size',
+      'Markets reached',
+    ])
       expect(hasColumn(name)).toBe(true)
     for (const name of [
       'Answer',
@@ -217,6 +234,6 @@ describe('Scorecard', () => {
     const partial = structuredClone(h1) as Results
     delete partial.results!.C
     render(<Scorecard results={partial} />)
-    expect(cells('Latency')[2]).toBe('No result')
+    expect(cells('Answer writing time')[2]).toBe('No result')
   })
 })
