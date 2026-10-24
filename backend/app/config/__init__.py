@@ -256,7 +256,9 @@ def judge_settings_from_env() -> JudgeSettings:
         model=os.environ.get("JUDGE_MODEL", FAKE_JUDGE_MODEL),
         model_family=os.environ.get("JUDGE_MODEL_FAMILY") or None,
         api_base=os.environ.get("JUDGE_API_BASE") or None,
-        temperature=float(os.environ.get("JUDGE_TEMPERATURE") or 0),
+        temperature=_env_float("JUDGE_TEMPERATURE", 0.0)
+        if os.environ.get("JUDGE_TEMPERATURE")
+        else 0.0,
         reasoning=parse_reasoning(
             os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING"
         ),

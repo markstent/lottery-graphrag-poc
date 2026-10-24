@@ -1733,8 +1733,6 @@ export interface components {
             failure_classes: {
                 [key: string]: number;
             };
-            /** Generation Failures */
-            generation_failures: number;
             /** Judge Abstention */
             judge_abstention: number | null;
             /** Judge Citation Accuracy */
@@ -1749,6 +1747,8 @@ export interface components {
             latency_ms: number | null;
             /** Repeats */
             repeats: number;
+            /** Unscored Repeats */
+            unscored_repeats: number;
         };
         /**
          * InstanceResultOut

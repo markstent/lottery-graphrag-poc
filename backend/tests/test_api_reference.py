@@ -216,6 +216,19 @@ def test_loaded_in_process_models_are_reachable(client: TestClient) -> None:
     assert body["sparse"]["reachable"] is True and body["rerank"]["reachable"] is True
 
 
+def test_an_invalid_judge_setting_is_reported_not_a_server_error(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JUDGE_REASONING", "on")
+    response = client.get("/api/v1/models")
+    assert response.status_code == 200
+    judge = response.json()["judge"]
+    assert judge["reachable"] is False and "JUDGE_REASONING" in judge["detail"]
+    monkeypatch.setenv("JUDGE_REASONING", "default")
+    monkeypatch.setenv("JUDGE_TEMPERATURE", "hot")
+    assert client.get("/api/v1/models").json()["judge"]["detail"].find("JUDGE_TEMPERATURE") >= 0
+
+
 # -- reachability -------------------------------------------------------------
 
 

@@ -1081,7 +1081,7 @@ def test_instances_route_returns_means_and_failure_counts(client_with_runs: Test
     assert (h3["stratum"], h3["sub_stratum"], h3["ontology_dependent"]) == ("H3", None, False)
     assert h3["text"] == "question?" and h3["world_seed"] == 2026
     a = h3["pipelines"]["A"]
-    assert (a["repeats"], a["generation_failures"]) == (3, 1)
+    assert (a["repeats"], a["unscored_repeats"]) == (3, 1)
     assert a["answer"] == pytest.approx(0.75) and a["evidence_f1"] == pytest.approx(0.2)
     assert a["latency_ms"] == pytest.approx(150.0) and a["context_tokens"] == 1000
     assert a["judge_correctness"] == 2.0 and a["failure_classes"] == {"retrieval_failure": 2}

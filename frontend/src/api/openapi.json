@@ -2892,10 +2892,6 @@
             "title": "Failure Classes",
             "type": "object"
           },
-          "generation_failures": {
-            "title": "Generation Failures",
-            "type": "integer"
-          },
           "judge_abstention": {
             "anyOf": [
               {
@@ -2965,11 +2961,15 @@
           "repeats": {
             "title": "Repeats",
             "type": "integer"
+          },
+          "unscored_repeats": {
+            "title": "Unscored Repeats",
+            "type": "integer"
           }
         },
         "required": [
           "repeats",
-          "generation_failures",
+          "unscored_repeats",
           "answer",
           "evidence_f1",
           "evidence_recall",

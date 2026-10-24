@@ -19,8 +19,8 @@ a verdict without scores.
 
 `GatewayJudge` calls the model through the one model gateway; `FakeJudge`
 is deterministic plumbing for smoke runs and CI and measures nothing.
-The judge settings live here, not in `app.config`, because only the
-evaluator reads them.
+The judge settings (`JudgeSettings`, `judge_settings_from_env`) live in
+`app.config`, because the models route reports the judge model too.
 """
 
 from __future__ import annotations

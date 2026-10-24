@@ -162,7 +162,7 @@ def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
                     pipelines={
                         tag: InstancePipelineOut(
                             repeats=len(scores),
-                            generation_failures=sum(score is None for score in scores),
+                            unscored_repeats=sum(score is None for score in scores),
                             failure_classes=dict(
                                 sorted(
                                     Counter(

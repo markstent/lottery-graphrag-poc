@@ -381,7 +381,8 @@ class InstancePipelineOut(BaseModel):
     successful repeats (None where none defines it), from the run's results."""
 
     repeats: int
-    generation_failures: int
+    # Repeats whose generation failed, so no score exists; not the "generation_failure" class.
+    unscored_repeats: int
     answer: float | None
     evidence_f1: float | None
     evidence_recall: float | None

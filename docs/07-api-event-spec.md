@@ -650,7 +650,8 @@ A malformed `summary.json` is a server error, never silently skipped; reading on
   `{run_id}` is looked up among the published runs, never as a path, so a name that is not one is a 404 `NOT_FOUND`.
 - `GET /benchmarks/{run_id}/instances` is declared before `GET /benchmarks/{run_id}`.
   It reads the run's `results.json` and returns, per scored instance, `instance_id`, `question_id`, `world_seed`, `stratum`, `sub_stratum`, `ontology_dependent`, `text` and `pipelines`.
-  Each pipeline entry has `repeats`, `generation_failures`, the means of `answer`, `evidence_f1`, `evidence_recall`, `evidence_precision`, `efficiency_per_1k`, `citation_accuracy`, `latency_ms`, `context_tokens` and the five `judge_*` scores (null where no successful repeat defines one), and `failure_classes`, the repeats per class.
+  Each pipeline entry has `repeats`, `unscored_repeats`, the means of `answer`, `evidence_f1`, `evidence_recall`, `evidence_precision`, `efficiency_per_1k`, `citation_accuracy`, `latency_ms`, `context_tokens` and the five `judge_*` scores (null where no successful repeat defines one), and `failure_classes`, the scored repeats per class.
+  `unscored_repeats` counts the repeats whose generation failed, so they have no score and no class; it is not the `generation_failure` class, which labels a scored repeat whose answer was weak.
   Instances the world could not ground are not listed; they are in `summary.unavailable`.
   An unknown run is a 404 `NOT_FOUND`, and so is a run without `results.json`: "This run has no per-question results."
 - `GET /benchmarks/questions` lists the questions of the presentation world's frozen bank for the Help screen.
@@ -685,6 +686,7 @@ None of these queries Neo4j.
 - `models` reports the embedding, sparse, rerank and generation models, and the benchmark judge, each as `provider`, `model`, `reachable` and `detail`.
   `judge` reads the `JUDGE_*` settings the official preflight reads, is probed like the generation model, and is null while `JUDGE_PROVIDER` is `fake` (the offline judge of a smoke run is not a model).
   It is not part of readiness.
+  An invalid `JUDGE_*` setting does not fail the route: `judge` is then `{provider: "invalid", model: "", reachable: false}` with a `detail` naming the setting.
   The embedding model is checked by listing the models of its Ollama server.
   The generation model is probed as readiness probes it (section 20, "Health and readiness").
   Each result is cached per configuration for 30 s, failures included, and concurrent calls share one probe.

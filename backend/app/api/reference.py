@@ -87,6 +87,29 @@ def _in_process(provider: str, model: str, loaded: bool) -> ModelOut:
     return _model_out(provider, model, True if loaded else None, "loaded" if loaded else IN_PROCESS)
 
 
+def _judge_model(checks: ReadinessChecks, settings: RetrievalSettings) -> ModelOut | None:
+    """The benchmark judge, null while the offline judge is set; an invalid
+    JUDGE_* setting is reported in the entry, not as a failure of the route."""
+    try:
+        judge = judge_settings_from_env()
+    except ValueError as error:
+        return _model_out("invalid", "", False, str(error))
+    if judge.provider == "fake":
+        return None
+    probed = checks.model.check(
+        GenerationSettings(
+            provider=judge.provider,
+            model=judge.model,
+            temperature=judge.temperature,
+            api_base=judge.api_base,
+            model_family=judge.model_family,
+            reasoning=judge.reasoning,
+        ),
+        settings.embedding.host or None,
+    )
+    return _model_out(judge.provider, judge.model, probed.ok, probed.detail)
+
+
 def build_reference_router() -> APIRouter:
     router = APIRouter()
 
@@ -152,21 +175,7 @@ def build_reference_router() -> APIRouter:
         embedding = checks.model.check_embedding(settings.embedding)
         generation = checks.model.check(settings.generation, settings.embedding.host or None)
         loaded = lab is not None
-        judge = judge_settings_from_env()
-        judge_model = None
-        if judge.provider != "fake":
-            probed = checks.model.check(
-                GenerationSettings(
-                    provider=judge.provider,
-                    model=judge.model,
-                    temperature=judge.temperature,
-                    api_base=judge.api_base,
-                    model_family=judge.model_family,
-                    reasoning=judge.reasoning,
-                ),
-                settings.embedding.host or None,
-            )
-            judge_model = _model_out(judge.provider, judge.model, probed.ok, probed.detail)
+        judge_model = _judge_model(checks, settings)
         return ModelsOut(
             embedding=_model_out(
                 settings.embedding.provider,
