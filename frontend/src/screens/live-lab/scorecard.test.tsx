@@ -2,13 +2,13 @@ import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../../api/client'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import { Scorecard } from './scorecard'
 
 type Results = Schemas['QueryResults']
 
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!.results
-const h3 = RECORDED_RUNS.find((run) => run.stratum === 'H3')!.results
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!.results
+const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!.results
 
 const adHoc = {
   ...h1,

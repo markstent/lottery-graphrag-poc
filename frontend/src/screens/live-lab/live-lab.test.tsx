@@ -12,17 +12,23 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RunStreamHandlers } from '../../api/stream'
 import { SettingsProvider } from '../../app/settings'
 import fixture from '../../run/fixtures/run-abc.json'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { loadRecording } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import type { RunEvent } from '../../run/reduce'
 import { DOWN, failure, json, READY, stubApi } from '../../test/api-stub'
 import { LiveLab } from './live-lab'
 
 const stream = vi.hoisted(() => ({ subscribeRun: vi.fn() }))
 vi.mock('../../api/stream', () => stream)
+// Real loading, unless a test makes the load fail.
+vi.mock('../../run/recorded', async (original) => {
+  const actual = await original<typeof import('../../run/recorded')>()
+  return { ...actual, loadRecording: vi.fn(actual.loadRecording) }
+})
 
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const QUESTIONS = [
-  ...RECORDED_RUNS.map((run) => ({
+  ...RECORDINGS.map((run) => ({
     instance_id: run.instance_id,
     question_id: run.instance_id.slice(0, 3),
     text: run.question,
@@ -126,6 +132,9 @@ describe('Live Lab', () => {
     await user.click(await screen.findByRole('button', { name: h1.question }))
     await user.click(screen.getByRole('button', { name: 'Run' }))
 
+    await waitFor(() =>
+      expect(screen.getByText('The run is complete.')).toBeVisible(),
+    )
     for (const label of [
       'A · Text search',
       'B · Graph',
@@ -442,6 +451,23 @@ describe('Live Lab, live run', () => {
   })
 })
 
+describe('Live Lab, loading a recording', () => {
+  it('says it is loading, then shows an error with a retry when the file cannot be fetched', async () => {
+    reduceMotion()
+    vi.mocked(loadRecording).mockRejectedValueOnce(new Error('offline'))
+    api({ '/api/v1/health/ready': DOWN })
+    const user = userEvent.setup()
+    open(`#/live-lab?question=${h1.instance_id}`)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The recorded run could not be loaded: offline',
+    )
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('The run is complete.')).toBeVisible()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})
+
 describe('Live Lab, timeline', () => {
   async function playRecording() {
     vi.useFakeTimers({ shouldAdvanceTime: false })
@@ -450,6 +476,9 @@ describe('Live Lab, timeline', () => {
     await act(async () => {})
     fireEvent.click(screen.getByRole('button', { name: h1.question }))
     fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    await act(async () => {
+      await loadRecording(h1.instance_id)
+    })
     const duration = h1.events.at(-1)!.t_ms - h1.events[0].t_ms
     act(() => {
       vi.advanceTimersByTime(duration + 1000)
@@ -518,16 +547,16 @@ describe('Live Lab, timeline', () => {
 
   it('completes the run when the slider is moved to its far end, whatever the fraction of a millisecond', async () => {
     // H3 lasts 20 987.4 ms: a slider that stops at 20 987 would never apply the last event.
-    const h3 = RECORDED_RUNS.find((run) => run.stratum === 'H3')!
+    const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!
     const exact = h3.events.at(-1)!.t_ms - h3.events[0].t_ms
     expect(exact % 1).toBeGreaterThan(0)
     expect(exact % 1).toBeLessThan(0.5)
     api({ '/api/v1/health/ready': DOWN })
     open(`#/live-lab?question=${h3.instance_id}`)
-    const slider = await screen.findByRole('slider', { name: 'Position' })
-    fireEvent.change(slider, {
-      target: { value: (slider as HTMLInputElement).max },
-    })
+    const position = () =>
+      screen.getByRole('slider', { name: 'Position' }) as HTMLInputElement
+    await screen.findByText('Playing the recorded run.')
+    fireEvent.change(position(), { target: { value: position().max } })
     expect(screen.getByText('The run is complete.')).toBeVisible()
   })
 
@@ -662,7 +691,7 @@ describe('Live Lab, results', () => {
   it('opens a passage from its row with the text the results carry, and returns focus', async () => {
     reduceMotion()
     resultsApi()
-    const h2 = RECORDED_RUNS.find((run) => run.stratum === 'H2')!
+    const h2 = RECORDINGS.find((run) => run.stratum === 'H2')!
     const passage = (
       h2.results.results!.A as {
         evidence: {

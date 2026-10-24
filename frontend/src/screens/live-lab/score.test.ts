@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../../api/client'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import {
   FAILURE_WORDS,
   delta,
@@ -12,8 +12,8 @@ import {
 
 type Results = Schemas['QueryResults']
 
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!.results
-const h3 = RECORDED_RUNS.find((run) => run.stratum === 'H3')!.results
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!.results
+const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!.results
 
 describe('scorecard', () => {
   it('takes the score from the run score and the measures from the results', () => {

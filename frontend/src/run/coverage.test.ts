@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../api/client'
-import { RECORDED_RUNS } from './recorded'
+import { RECORDINGS } from '../test/recordings'
 import { coverage, MARKETS } from './coverage'
 
 type Results = Schemas['QueryResults']
@@ -112,7 +112,7 @@ describe('coverage', () => {
   })
 
   it('matches the markets of the used evidence in a recorded run', () => {
-    const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
+    const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
     const found = coverage(h1.results)
     // B's used passages and records name these markets; no node carries one that they do not.
     for (const id of ['A', 'B', 'C'] as const) {

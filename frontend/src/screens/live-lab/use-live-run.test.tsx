@@ -5,7 +5,8 @@ import { ApiError } from '../../api/http'
 import type { RunStreamHandlers } from '../../api/stream'
 import cancelledFixture from '../../run/fixtures/run-cancelled.json'
 import fixture from '../../run/fixtures/run-abc.json'
-import { RECORDED_RUNS, type RecordedRun } from '../../run/recorded'
+import { loadRecording, type RecordedRun } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import { initialRunState, reduceAll, type RunEvent } from '../../run/reduce'
 import { useLiveRun } from './use-live-run'
 
@@ -17,8 +18,13 @@ const client = vi.hoisted(() => ({
 const stream = vi.hoisted(() => ({ subscribeRun: vi.fn() }))
 vi.mock('../../api/client', () => client)
 vi.mock('../../api/stream', () => stream)
+// Real loading, unless a test hands a run in or makes the load fail.
+vi.mock('../../run/recorded', async (original) => {
+  const actual = await original<typeof import('../../run/recorded')>()
+  return { ...actual, loadRecording: vi.fn(actual.loadRecording) }
+})
 
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const live = fixture.events as unknown as RunEvent[]
 const BODY = {
   benchmark_instance_id: 'L05-2026-INC_037',
@@ -46,6 +52,18 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
+/** Starts a recorded run and waits for its file to load. */
+async function startRecorded(
+  result: { current: ReturnType<typeof useLiveRun> },
+  instanceId: string,
+) {
+  await act(async () => {
+    result.current.start({ source: 'recorded', instanceId })
+    // The hook's own request was made first, so it settles no later than this one.
+    await loadRecording(instanceId)
+  })
+}
+
 /** Starts a live run and waits for the stream to be opened. */
 async function startLive(result: { current: ReturnType<typeof useLiveRun> }) {
   await act(async () => {
@@ -54,13 +72,13 @@ async function startLive(result: { current: ReturnType<typeof useLiveRun> }) {
 }
 
 describe('useLiveRun, recorded source', () => {
-  it('plays a recording to its end and matches reduceAll of its events', () => {
+  it('plays a recording to its end and matches reduceAll of its events', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
     expect(result.current.phase).toBe('idle')
     expect(result.current.source).toBeNull()
     expect(result.current.state).toEqual(initialRunState())
 
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     expect(result.current.phase).toBe('running')
     expect(result.current.source).toBe('recorded')
     act(() => {
@@ -70,21 +88,27 @@ describe('useLiveRun, recorded source', () => {
     expect(result.current.state).toEqual(reduceAll(h1.events))
   })
 
-  it('jumps to the end state under reduced motion', () => {
+  it('jumps to the end state under reduced motion', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: true }))
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     expect(result.current.phase).toBe('finished')
     expect(result.current.state).toEqual(reduceAll(h1.events))
   })
 
-  it('cancelled run replays as recorded', () => {
+  it('cancelled run replays as recorded', async () => {
     const recording = {
       ...h1,
       run_id: cancelledFixture.run_id,
       events: cancelledFixture.events as unknown as RunEvent[],
     } satisfies RecordedRun
+    vi.mocked(loadRecording).mockResolvedValueOnce(recording)
     const { result } = renderHook(() => useLiveRun({ reducedMotion: true }))
-    act(() => result.current.start({ source: 'recorded', recording }))
+    await act(async () => {
+      result.current.start({
+        source: 'recorded',
+        instanceId: recording.instance_id,
+      })
+    })
     const { state } = result.current
     expect(state.status).toBe('cancelled')
     expect(state.pipelines.A.status).toBe('completed')
@@ -94,9 +118,9 @@ describe('useLiveRun, recorded source', () => {
     expect(cancelledFixture.results.score).toBeNull()
   })
 
-  it('rewinds to the start and plays again', () => {
+  it('rewinds to the start and plays again', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     act(() => {
       vi.advanceTimersByTime(result.current.timeline.duration + 1000)
     })
@@ -237,11 +261,64 @@ describe('useLiveRun, live source', () => {
   })
 })
 
+describe('useLiveRun, loading a recording', () => {
+  it('is starting and busy while the file loads, then plays it', async () => {
+    let finish: (run: RecordedRun) => void = () => undefined
+    vi.mocked(loadRecording).mockReturnValueOnce(
+      new Promise((resolve) => (finish = resolve)),
+    )
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: true }))
+    act(() =>
+      result.current.start({ source: 'recorded', instanceId: h1.instance_id }),
+    )
+    expect(result.current.phase).toBe('starting')
+    expect(result.current.busy).toBe(true)
+    expect(result.current.source).toBeNull()
+    await act(async () => finish(h1))
+    expect(result.current.busy).toBe(false)
+    expect(result.current.phase).toBe('finished')
+    expect(result.current.source).toBe('recorded')
+  })
+
+  it('shows an error that retries the load when the file cannot be fetched', async () => {
+    vi.mocked(loadRecording).mockRejectedValueOnce(new Error('offline'))
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: true }))
+    await act(async () => {
+      result.current.start({ source: 'recorded', instanceId: h1.instance_id })
+    })
+    expect(result.current.phase).toBe('idle')
+    expect(result.current.busy).toBe(false)
+    expect(result.current.error?.message).toBe(
+      'The recorded run could not be loaded: offline',
+    )
+    await act(async () => {
+      result.current.error?.retry?.()
+      await loadRecording(h1.instance_id)
+    })
+    expect(result.current.error).toBeNull()
+    expect(result.current.source).toBe('recorded')
+  })
+
+  it('ignores a file that arrives after another run was chosen', async () => {
+    let finish: (run: RecordedRun) => void = () => undefined
+    vi.mocked(loadRecording).mockReturnValueOnce(
+      new Promise((resolve) => (finish = resolve)),
+    )
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: true }))
+    act(() =>
+      result.current.start({ source: 'recorded', instanceId: h1.instance_id }),
+    )
+    await startLive(result)
+    await act(async () => finish(h1))
+    expect(result.current.source).toBe('live')
+  })
+})
+
 describe('useLiveRun, busy and re-run', () => {
   it('is not busy for a paused or rewound recording, and is for a live run in progress', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
     expect(result.current.busy).toBe(false)
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     act(() => result.current.controls.pause())
     expect(result.current.busy).toBe(false)
     act(() => result.current.controls.rewind())
@@ -256,15 +333,15 @@ describe('useLiveRun, busy and re-run', () => {
     expect(result.current.busy).toBe(false)
   })
 
-  it('starting the same recording again resets it and plays it from the start', () => {
+  it('starting the same recording again resets it and plays it from the start', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     act(() => {
       vi.advanceTimersByTime(result.current.timeline.duration + 1000)
     })
     expect(result.current.phase).toBe('finished')
 
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     expect(result.current.phase).toBe('running')
     expect(result.current.state).toEqual(initialRunState())
     expect(result.current.timeline.playing).toBe(true)
@@ -274,24 +351,24 @@ describe('useLiveRun, busy and re-run', () => {
     expect(result.current.state).toEqual(reduceAll(h1.events))
   })
 
-  it('starting the same recording again while paused restarts it too', () => {
+  it('starting the same recording again while paused restarts it too', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     act(() => {
       vi.advanceTimersByTime(5000)
     })
     act(() => result.current.controls.pause())
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     expect(result.current.timeline.cursor).toBe(0)
     expect(result.current.timeline.playing).toBe(true)
   })
 })
 
 describe('useLiveRun, results', () => {
-  it('has the recording results at once', () => {
+  it('has the recording results at once', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: true }))
     expect(result.current.results).toBeNull()
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     expect(result.current.results).toBe(h1.results)
   })
 
@@ -327,10 +404,10 @@ describe('useLiveRun, results', () => {
 })
 
 describe('useLiveRun, the finished run', () => {
-  it('gives the state at the end of a recording, whatever the cursor shows', () => {
+  it('gives the state at the end of a recording, whatever the cursor shows', async () => {
     const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
     expect(result.current.finalState).toBeNull()
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     expect(result.current.state).toEqual(initialRunState())
     expect(result.current.finalState).toEqual(reduceAll(h1.events))
   })
@@ -401,7 +478,7 @@ describe('useLiveRun, a score still being written', () => {
       handlers.onEnd()
     })
     const calls = client.getRun.mock.calls.length
-    act(() => result.current.start({ source: 'recorded', recording: h1 }))
+    await startRecorded(result, h1.instance_id)
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10000)
     })

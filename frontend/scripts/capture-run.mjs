@@ -19,7 +19,7 @@
 // The run id and timestamps are kept as the API gave them. The final results
 // (GET /queries/{id}) are stored beside the events, so the evidence paths and
 // source records the pipelines returned are part of the fixture.
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 
 const { values, positionals } = parseArgs({
@@ -152,6 +152,19 @@ if (values['cancel-on']) {
     writeFileSync(path, `${JSON.stringify(fixture, null, 2)}\n`)
     console.log(`${path}: ${runId}, ${events.length} events`)
   }
+  // The index lets Live Lab list recordings without loading their events.
+  const index = readdirSync(OUT_DIR)
+    .filter((file) => file !== 'index.json')
+    .sort()
+    .map((file) => {
+      const fixture = JSON.parse(readFileSync(`${OUT_DIR}/${file}`, 'utf8'))
+      return Object.fromEntries(
+        Object.entries(fixture).filter(
+          ([key]) => key !== 'results' && key !== 'events',
+        ),
+      )
+    })
+  writeFileSync(`${OUT_DIR}/index.json`, `${JSON.stringify(index, null, 2)}\n`)
 } else {
   const question = find('H1')
   const { runId, run, events } = await capture(question, false)

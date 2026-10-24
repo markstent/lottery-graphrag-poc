@@ -211,7 +211,8 @@ export function runStatusLine({
   if (state.status === 'cancelled') return 'The run was cancelled.'
   if (state.status === 'completed') return 'The run is complete.'
   if (phase === 'idle') return 'Choose a question and press Run.'
-  if (phase === 'starting') return 'Starting the run.'
+  if (phase === 'starting')
+    return source === null ? 'Loading the recorded run.' : 'Starting the run.'
   if (phase === 'interrupted')
     return 'The live connection stopped before the run ended.'
   if (!timeline.replaying)

@@ -18,7 +18,7 @@ import {
 } from '../../components/evidence-drawer'
 import { Notice } from '../../components/panel'
 import { PIPELINES, type PipelineId } from '../../design/pipelines'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDED_INDEX } from '../../run/recorded'
 import { Screen } from '../screen'
 import { AnswerBlock } from './answer-block'
 import { CanvasArea, CanvasPlaceholder, type FoldedGroup } from './canvas-area'
@@ -49,10 +49,14 @@ export function LiveLab() {
   const opened = useRef<string | null>(null)
   const { start } = run
   useEffect(() => {
-    const recording = RECORDED_RUNS.find((r) => r.instance_id === linkedId)
-    if (!recording || opened.current === linkedId) return
+    if (
+      linkedId === null ||
+      opened.current === linkedId ||
+      !RECORDED_INDEX.some((r) => r.instance_id === linkedId)
+    )
+      return
     opened.current = linkedId
-    start({ source: 'recorded', recording })
+    start({ source: 'recorded', instanceId: linkedId })
   }, [linkedId, start])
 
   // The evidence drawer: one for every opener on the screen.

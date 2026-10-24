@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../../api/client'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import { pathPosition, sourceFor } from './evidence-open'
 
 type Results = Schemas['QueryResults']
 
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!.results
-const h2 = RECORDED_RUNS.find((run) => run.stratum === 'H2')!.results
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!.results
+const h2 = RECORDINGS.find((run) => run.stratum === 'H2')!.results
 
 const withResults = (pipelines: Record<string, unknown>): Results =>
   ({ results: pipelines }) as unknown as Results

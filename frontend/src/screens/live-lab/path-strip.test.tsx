@@ -3,12 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import { relationshipPhrase } from '../../design/relationships'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import { reduceAll, type RunEvent } from '../../run/reduce'
 import { PathStrip } from './path-strip'
 
-const h3 = RECORDED_RUNS.find((run) => run.stratum === 'H3')!
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
+const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const events = (run: typeof h3) => run.events as unknown as RunEvent[]
 
 /** The run state after the events up to and including the one of `type`, or all of them. */

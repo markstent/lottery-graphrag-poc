@@ -3,12 +3,12 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 
 import type { Schemas } from '../../api/client'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import { AnswerBlock } from './answer-block'
 
 type Results = Schemas['QueryResults']
 
-const h2 = RECORDED_RUNS.find((run) => run.stratum === 'H2')!.results
+const h2 = RECORDINGS.find((run) => run.stratum === 'H2')!.results
 
 /** Results whose pipeline B answers with `text` over the first citations of H2's B. */
 const answering = (text: string): Results => {

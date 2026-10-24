@@ -12,7 +12,7 @@ import { cancelRun, getRun, startQuery, type Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
 import { subscribeRun } from '../../api/stream'
 import type { KeyedReplay } from '../../app/presentation'
-import type { RecordedRun } from '../../run/recorded'
+import { loadRecording, type RecordedRun } from '../../run/recorded'
 import {
   initialRunState,
   reduce,
@@ -25,7 +25,7 @@ import { useReplay } from '../../run/use-replay'
 import type { Source } from './source'
 
 export type RunRequest =
-  | { source: 'recorded'; recording: RecordedRun }
+  | { source: 'recorded'; instanceId: string }
   | { source: 'live'; body: Schemas['QueryRequest'] }
 
 /** `interrupted` is a live run whose connection was lost before its end. */
@@ -80,7 +80,7 @@ export interface LiveRun {
    * live run whose stream has ended); `state` is only as far as the replay has got.
    */
   finalState: RunState | null
-  /** A live run is starting or arriving; a recording is never busy. */
+  /** A live run is starting or arriving, or a recording is loading. */
   busy: boolean
   cancelling: boolean
   error: RunError | null
@@ -132,6 +132,7 @@ export function useLiveRun({
 }): LiveRun {
   const [live, setLive] = useState<LiveState>(IDLE)
   const [recording, setRecording] = useState<RecordedRun | null>(null)
+  const [loading, setLoading] = useState(false)
   // A finished live run shows its own state until the reader uses the timeline.
   const [replaying, setReplaying] = useState(false)
   const [cancelling, setCancelling] = useState(false)
@@ -258,12 +259,34 @@ export function useLiveRun({
       if (next.source === 'recorded') {
         setLive(IDLE)
         // The same recording is already loaded, so restart it explicitly.
-        if (next.recording === recordingRef.current) {
+        if (next.instanceId === recordingRef.current?.instance_id) {
+          setLoading(false)
           controlsRef.current.reset()
           controlsRef.current.play()
-        } else setRecording(next.recording)
+          return
+        }
+        setRecording(null)
+        setLoading(true)
+        const mine = token.current
+        loadRecording(next.instanceId).then(
+          (loaded) => {
+            if (token.current !== mine) return
+            setLoading(false)
+            setRecording(loaded)
+          },
+          (error: unknown) => {
+            if (token.current !== mine) return
+            setLoading(false)
+            setFailure({
+              message: `The recorded run could not be loaded: ${errorMessage(error)}`,
+              step: 'start',
+              retryable: true,
+            })
+          },
+        )
         return
       }
+      setLoading(false)
       setRecording(null)
       const mine = token.current
       const controller = new AbortController()
@@ -374,19 +397,21 @@ export function useLiveRun({
   const originMs = events[0]?.t_ms ?? 0
   const liveDuration = (live.events.at(-1)?.t_ms ?? originMs) - originMs
 
-  const phase: RunPhase = recording
-    ? replay.count >= recording.events.length
-      ? 'finished'
-      : 'running'
-    : live.stage === 'idle'
-      ? 'idle'
-      : live.stage === 'starting'
-        ? 'starting'
-        : live.stage === 'ended'
-          ? 'finished'
-          : live.stage === 'interrupted'
-            ? 'interrupted'
-            : 'running'
+  const phase: RunPhase = loading
+    ? 'starting'
+    : recording
+      ? replay.count >= recording.events.length
+        ? 'finished'
+        : 'running'
+      : live.stage === 'idle'
+        ? 'idle'
+        : live.stage === 'starting'
+          ? 'starting'
+          : live.stage === 'ended'
+            ? 'finished'
+            : live.stage === 'interrupted'
+              ? 'interrupted'
+              : 'running'
 
   return {
     phase,
@@ -394,7 +419,7 @@ export function useLiveRun({
     state: showReplay ? replay.state : live.state,
     results: recording?.results ?? fetched,
     finalState,
-    busy: live.stage === 'starting' || live.stage === 'streaming',
+    busy: loading || live.stage === 'starting' || live.stage === 'streaming',
     originMs,
     runId: recording?.run_id ?? live.runId,
     timeline: showReplay

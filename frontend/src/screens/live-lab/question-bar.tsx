@@ -23,7 +23,7 @@ import {
 import type { Schemas } from '../../api/client'
 import { useReadiness } from '../../app/use-readiness'
 import type { Load } from '../../app/use-load'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDED_INDEX } from '../../run/recorded'
 import { liveUnavailableReason, type Source } from './source'
 import type { RunRequest } from './use-live-run'
 
@@ -43,8 +43,8 @@ const BUTTON =
   'rounded-chip border border-border px-3 py-1 text-sm text-text-primary hover:bg-surface-raised disabled:cursor-not-allowed disabled:opacity-50'
 const PRESSED = 'bg-surface-raised font-semibold'
 
-const recordingFor = (instanceId: string | null) =>
-  RECORDED_RUNS.find((run) => run.instance_id === instanceId)
+const hasRecording = (instanceId: string | null) =>
+  RECORDED_INDEX.some((run) => run.instance_id === instanceId)
 
 function Choice({
   pressed,
@@ -126,15 +126,13 @@ export function QuestionBar({
     : (list.find(
         (question) => question.instance_id === (chosenId ?? linkedId),
       ) ?? (chosenId === null && linkedId === null ? (list[0] ?? null) : null))
-  const recording = recordingFor(selected?.instance_id ?? null)
+  const recorded = hasRecording(selected?.instance_id ?? null)
 
   const liveOff = liveUnavailableReason(status, checks)
   const source: Source = adHoc
     ? 'live'
     : (chosenSource ??
-      (liveOff === null && recordingFor(linkedId) === undefined
-        ? 'live'
-        : 'recorded'))
+      (liveOff === null && !hasRecording(linkedId) ? 'live' : 'recorded'))
   const shownScope = selected ? selected.market_scope : scope
 
   const blocker =
@@ -144,15 +142,15 @@ export function QuestionBar({
         ? liveOff
         : selected === null && !adHoc
           ? 'Pick a question or type one.'
-          : source === 'recorded' && recording === undefined
+          : source === 'recorded' && !recorded
             ? 'No recorded run for this question.'
             : null
 
   const run = () => {
     // Running from the full bar closes it again; Run is then in the one-line form.
     if (opened) close(runButton)
-    if (source === 'recorded' && recording)
-      return onRun({ source: 'recorded', recording })
+    if (source === 'recorded' && selected && recorded)
+      return onRun({ source: 'recorded', instanceId: selected.instance_id })
     onRun({
       source: 'live',
       body: selected
@@ -216,7 +214,8 @@ export function QuestionBar({
   const question = adHoc
     ? text.trim()
     : (selected?.text ??
-      recordingFor(chosenId ?? linkedId)?.question ??
+      RECORDED_INDEX.find((run) => run.instance_id === (chosenId ?? linkedId))
+        ?.question ??
       'No question chosen')
 
   if (!full)

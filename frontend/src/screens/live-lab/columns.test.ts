@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import {
   initialRunState,
   reduceAll,
@@ -17,7 +17,7 @@ import {
 } from './columns'
 import type { RunPhase, Timeline as TimelineView } from './use-live-run'
 
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const finished = reduceAll(h1.events)
 const cancelledState = reduceAll(cancelled.events as unknown as RunEvent[])
 
@@ -97,7 +97,7 @@ describe('stageRows', () => {
 })
 
 describe('stageRows, a step the pipeline never ran', () => {
-  const h3 = RECORDED_RUNS.find((run) => run.stratum === 'H3')!
+  const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!
   const state = reduceAll(h3.events)
 
   it('says "Not run" for a step a completed pipeline skipped, such as C with no ontology links', () => {

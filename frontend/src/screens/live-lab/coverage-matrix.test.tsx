@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { coverage } from '../../run/coverage'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import { CoverageMatrix } from './coverage-matrix'
 
 type Results = Schemas['QueryResults']
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!.results
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!.results
 
 const cell = (market: string, pipeline: string) => {
   const table = screen.getByRole('table', { name: 'Market coverage' })

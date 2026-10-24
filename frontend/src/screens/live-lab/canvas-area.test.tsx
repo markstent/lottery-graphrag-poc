@@ -10,15 +10,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { SettingsProvider } from '../../app/settings'
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import { initialRunState, reduceAll, type RunEvent } from '../../run/reduce'
 import { CanvasArea, type FoldedGroup } from './canvas-area'
 
 type Results = Schemas['QueryResults']
-type Recording = (typeof RECORDED_RUNS)[number]
+type Recording = (typeof RECORDINGS)[number]
 
 const byStratum = (stratum: string) =>
-  RECORDED_RUNS.find((run) => run.stratum === stratum)!
+  RECORDINGS.find((run) => run.stratum === stratum)!
 const h1 = byStratum('H1')
 const h3 = byStratum('H3')
 const finalOf = (run: Recording) =>

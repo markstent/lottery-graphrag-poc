@@ -16,9 +16,9 @@ const RECORDED_RUNS: {
   question: string
   stratum: string
   events: { t_ms: number }[]
-}[] = readdirSync(RECORDED_DIR).map((file) =>
-  JSON.parse(readFileSync(`${RECORDED_DIR}/${file}`, 'utf8')),
-)
+}[] = readdirSync(RECORDED_DIR)
+  .filter((file) => file !== 'index.json')
+  .map((file) => JSON.parse(readFileSync(`${RECORDED_DIR}/${file}`, 'utf8')))
 const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
 const QUESTIONS = RECORDED_RUNS.map((run) => ({
   instance_id: run.instance_id,

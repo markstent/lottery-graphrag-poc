@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { RECORDED_RUNS } from '../../run/recorded'
+import { RECORDINGS } from '../../test/recordings'
 import { recordTitle } from './record-title'
 
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
+const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 
 describe('recordTitle', () => {
   it('is null while the run has no results', () => {
