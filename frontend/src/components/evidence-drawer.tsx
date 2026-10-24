@@ -35,6 +35,8 @@ interface EvidenceDrawerProps {
   onClose: () => void
   /** Where the record sits on the evidence path (step 2 of 3 on path 2). */
   pathPosition?: { path: number; step: number; of: number } | null
+  /** The address of a graph node, to offer "Follow into the graph" on a record that has one. */
+  followInto?: (nodeId: string) => string
 }
 
 type JsonValue = Schemas['JsonValue']
@@ -75,7 +77,7 @@ const graphErrorWords = (code: string): string =>
 
 type Fetched = Exclude<EvidenceSource, { kind: 'passage' | 'group' }>
 
-function loaded(source: Fetched) {
+function loaded(source: Fetched, followInto?: (nodeId: string) => string) {
   return source.kind === 'record'
     ? async (signal: AbortSignal) => {
         const record = await getRecord(
@@ -88,24 +90,36 @@ function loaded(source: Fetched) {
           labels: [] as string[],
           fields: record.row as Fields,
           provenance: (
-            <dl className="space-y-2">
-              <Fact term="Table">{record.table}</Fact>
-              <Fact term="Dataset">{datasetName(source.datasetId)}</Fact>
-              <Fact term="Graph node">
-                {record.graph_node_id ?? 'Not in the graph'}
-              </Fact>
-              {(record.edges ?? []).map((edge) => (
-                <Fact
-                  key={`${edge.type}-${edge.direction}`}
-                  term="Relationship"
-                >
-                  {`${relationshipPhrase(edge.type)} (${edge.direction === 'out' ? 'outgoing' : 'incoming'}) × ${edge.count}`}
+            <>
+              <dl className="space-y-2">
+                <Fact term="Table">{record.table}</Fact>
+                <Fact term="Dataset">{datasetName(source.datasetId)}</Fact>
+                <Fact term="Graph node">
+                  {record.graph_node_id ?? 'This row has no node in the graph.'}
                 </Fact>
-              ))}
-              {record.graph_error && (
-                <Fact term="Graph">{graphErrorWords(record.graph_error)}</Fact>
+                {(record.edges ?? []).map((edge) => (
+                  <Fact
+                    key={`${edge.type}-${edge.direction}`}
+                    term="Relationship"
+                  >
+                    {`${relationshipPhrase(edge.type)} (${edge.direction === 'out' ? 'outgoing' : 'incoming'}) × ${edge.count}`}
+                  </Fact>
+                ))}
+                {record.graph_error && (
+                  <Fact term="Graph">
+                    {graphErrorWords(record.graph_error)}
+                  </Fact>
+                )}
+              </dl>
+              {followInto && record.graph_node_id && (
+                <a
+                  href={followInto(record.graph_node_id)}
+                  className="mt-3 block text-sm font-medium text-text-primary underline"
+                >
+                  Follow into the graph
+                </a>
               )}
-            </dl>
+            </>
           ),
         }
       }
@@ -199,15 +213,17 @@ function PassageBody({
 function EvidenceBody({
   source,
   pathPosition,
+  followInto,
 }: {
   source: Fetched
   pathPosition?: EvidenceDrawerProps['pathPosition']
+  followInto?: EvidenceDrawerProps['followInto']
 }) {
   const key =
     source.kind === 'record'
       ? `record/${source.datasetId}/${source.table}/${source.rowId}`
       : `node/${source.nodeId}`
-  const load = useLoad(loaded(source), key)
+  const load = useLoad(loaded(source, followInto), key)
 
   return (
     <>
@@ -242,6 +258,7 @@ export function EvidenceDrawer({
   source,
   onClose,
   pathPosition,
+  followInto,
 }: EvidenceDrawerProps) {
   return (
     <Drawer open={source !== null} title="Evidence" onClose={onClose}>
@@ -250,7 +267,13 @@ export function EvidenceDrawer({
       ) : source?.kind === 'group' ? (
         <GroupBody source={source} />
       ) : (
-        source && <EvidenceBody source={source} pathPosition={pathPosition} />
+        source && (
+          <EvidenceBody
+            source={source}
+            pathPosition={pathPosition}
+            followInto={followInto}
+          />
+        )
       )}
     </Drawer>
   )

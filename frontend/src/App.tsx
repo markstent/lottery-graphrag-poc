@@ -18,9 +18,9 @@ const LiveLab = lazy(() =>
 const Results = lazy(() =>
   import('./screens/results/results').then((m) => ({ default: m.Results })),
 )
-const DataDictionary = lazy(() =>
-  import('./views/data-dictionary').then((m) => ({
-    default: m.DataDictionary,
+const DataModel = lazy(() =>
+  import('./screens/data-model/data-model').then((m) => ({
+    default: m.DataModel,
   })),
 )
 const Help = lazy(() =>
@@ -36,7 +36,7 @@ function Page({ name }: { name: RouteName }) {
     case 'results':
       return <Results />
     case 'data-model':
-      return <DataDictionary />
+      return <DataModel />
     case 'help':
       return <Help />
   }

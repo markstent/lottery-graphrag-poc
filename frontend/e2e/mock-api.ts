@@ -8,13 +8,25 @@
 
 import type { Page } from '@playwright/test'
 
+import {
+  DATASET_ID,
+  DICTIONARY,
+  GRAPH_SCHEMA,
+  GRAPH_STATS,
+  graphNode,
+  neighboursOf,
+  recordOf,
+  ROW_COUNTS,
+  rowsOf,
+} from './mock-data-model'
+
 const SUMMARY = {
   dataset_id: 'dev-seed2026',
   generator_version: '0.2.0',
   world_seed: 2026,
   scenario_seed: 7,
   profile: 'dev',
-  row_counts: { players: 1200 },
+  row_counts: ROW_COUNTS,
   active: true,
 }
 
@@ -142,7 +154,15 @@ const ROUTES: Record<string, unknown> = {
     sparse: model('local', 'bm25', true),
   },
   '/api/v1/ontology': { version: '2.0.0', concepts: [] },
+  [`/api/v1/datasets/${DATASET_ID}/dictionary`]: DICTIONARY,
+  '/api/v1/graph/schema': GRAPH_SCHEMA,
+  '/api/v1/graph/stats': GRAPH_STATS,
 }
+
+const TABLES_PREFIX = `/api/v1/datasets/${DATASET_ID}/tables/`
+
+/** What the Data Model screen sees: its data, no tables or kinds, a failing server, or never an answer. */
+export type DataModelState = 'normal' | 'empty' | 'error' | 'pending'
 
 const json = (body: unknown, status = 200) => ({
   status,
@@ -154,6 +174,12 @@ const envelope = (message: string, status: number) =>
   json({ error: { error_code: 'RUN_ERROR', message, retryable: true } }, status)
 
 const NODE_PREFIX = '/api/v1/graph/nodes/'
+
+/** The routes whose answer the Data Model states replace (not the dataset list the header reads). */
+const DATA_MODEL_PATHS = [
+  `/api/v1/datasets/${DATASET_ID}/dictionary`,
+  '/api/v1/graph/schema',
+]
 
 function node(id: string) {
   return {
@@ -179,6 +205,7 @@ export async function mockApi(
   runs: 'published' | 'none' | 'unavailable' = 'published',
   /** The newest run Overview sees: official, smoke only, none (404), failing or never answering. */
   latest: LatestRun = 'official',
+  dataModel: DataModelState = 'normal',
 ) {
   await page.clock.setFixedTime(new Date('2026-10-20T10:00:00Z'))
   await page.route('**/api/v1/**', async (route) => {
@@ -208,14 +235,40 @@ export async function mockApi(
         return route.fulfill(envelope('The latest run is unavailable.', 503))
       return route.fulfill(json(LATEST[latest]))
     }
+    if (dataModel !== 'normal' && DATA_MODEL_PATHS.includes(path)) {
+      if (dataModel === 'pending') return new Promise<void>(() => undefined)
+      if (dataModel === 'error')
+        return route.fulfill(envelope('The data is unavailable.', 503))
+      return route.fulfill(
+        json(path.endsWith('/schema') ? { ...GRAPH_SCHEMA, labels: [] } : []),
+      )
+    }
     if (path in ROUTES) return route.fulfill(json(ROUTES[path]))
+    if (path.startsWith(TABLES_PREFIX)) {
+      const [table, , id] = path.slice(TABLES_PREFIX.length).split('/')
+      const answer =
+        id === undefined
+          ? rowsOf(table, new URL(route.request().url()).searchParams)
+          : recordOf(table, decodeURIComponent(id))
+      return route.fulfill(json(answer.body, answer.status))
+    }
+    if (path.startsWith(NODE_PREFIX) && path.endsWith('/neighbours')) {
+      const id = decodeURIComponent(
+        path.slice(NODE_PREFIX.length, -'/neighbours'.length),
+      )
+      const limit = Number(
+        new URL(route.request().url()).searchParams.get('limit') ?? 25,
+      )
+      const answer = neighboursOf(id, limit)
+      return route.fulfill(json(answer.body, answer.status))
+    }
     if (path.startsWith(NODE_PREFIX)) {
       const id = decodeURIComponent(path.slice(NODE_PREFIX.length))
       // Never answers, so the drawer stays in its loading state.
       if (id === 'node-loading') return new Promise<void>(() => undefined)
       if (id === 'node-error')
         return route.fulfill(envelope('The graph is not answering.', 503))
-      return route.fulfill(json(node(id)))
+      return route.fulfill(json(graphNode(id) ?? node(id)))
     }
     return route.fulfill(envelope(`no mock for ${path}`, 404))
   })

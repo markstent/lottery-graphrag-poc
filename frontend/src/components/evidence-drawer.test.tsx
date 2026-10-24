@@ -268,4 +268,61 @@ describe('EvidenceDrawer', () => {
     expect(items[1]).toHaveTextContent('incident type ITYPE_B')
     expect(fetchSpy).not.toHaveBeenCalled()
   })
+
+  describe('following a record into the graph', () => {
+    const SOURCE = {
+      kind: 'record',
+      datasetId: 'dev-seed2026',
+      table: 'incidents',
+      rowId: 'INC_S007_GR',
+    } as const
+    const ROUTE = {
+      '/api/v1/datasets/dev-seed2026/tables/incidents/rows/INC_S007_GR': RECORD,
+    }
+    const followInto = (nodeId: string) =>
+      `#/data-model?tab=graph&node=${nodeId}`
+
+    it('offers a link to the node of the record when the opener asks for one', async () => {
+      stubApi(ROUTE)
+      render(
+        <EvidenceDrawer
+          source={SOURCE}
+          onClose={() => undefined}
+          followInto={followInto}
+        />,
+      )
+      expect(
+        await screen.findByRole('link', { name: 'Follow into the graph' }),
+      ).toHaveAttribute('href', '#/data-model?tab=graph&node=INC_S007_GR')
+    })
+
+    it('offers no link unless asked', async () => {
+      stubApi(ROUTE)
+      render(<EvidenceDrawer source={SOURCE} onClose={() => undefined} />)
+      await screen.findByText('severity')
+      expect(screen.queryByRole('link')).toBeNull()
+    })
+
+    it('says plainly that a row with no node has none, and offers no link', async () => {
+      stubApi({
+        '/api/v1/datasets/dev-seed2026/tables/incidents/rows/INC_S007_GR': {
+          ...RECORD,
+          graph_node_id: null,
+          edges: [],
+        },
+      })
+      render(
+        <EvidenceDrawer
+          source={SOURCE}
+          onClose={() => undefined}
+          followInto={followInto}
+        />,
+      )
+      const provenance = await screen.findByRole('region', {
+        name: 'Provenance',
+      })
+      expect(provenance).toHaveTextContent('This row has no node in the graph.')
+      expect(screen.queryByRole('link')).toBeNull()
+    })
+  })
 })
