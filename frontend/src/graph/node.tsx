@@ -8,7 +8,11 @@ import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
 import { Check, CircleMinus, Layers } from 'lucide-react'
 import type { ReactElement } from 'react'
 
-import { EVIDENCE_STATES, type EvidenceShape } from '../design/evidence-states'
+import {
+  ADDED_BY_ONTOLOGY,
+  EVIDENCE_STATES,
+  type EvidenceShape,
+} from '../design/evidence-states'
 import { countedLabel, nodeLabel } from '../design/node-labels'
 import { TOKENS } from '../design/tokens'
 import { hopWords, type GraphCluster, type GraphNodeView } from './model'
@@ -228,9 +232,12 @@ export function EntityNode({ data }: NodeProps<EntityFlowNode>) {
       ? node.outcome
       : null
   const showVerdict = verdict !== null && node.state !== verdict
-  const verdictText = verdict === 'selected' ? 'Used as evidence' : 'Set aside'
+  const verdictText =
+    verdict === 'selected'
+      ? EVIDENCE_STATES.selected.label
+      : EVIDENCE_STATES.discarded.label
   const otherMark = node.onOtherPath && data.other !== null
-  const description = `${node.id}${showVerdict ? `, ${verdictText.toLowerCase()}` : ''}${node.onPath ? ', on an evidence path' : ''}${otherMark && data.other ? `, on pipeline ${data.other.id}'s evidence path` : ''}${added ? ', added by the ontology' : ''}`
+  const description = `${node.id}${showVerdict ? `, ${verdictText.toLowerCase()}` : ''}${node.onPath ? ', on an evidence path' : ''}${otherMark && data.other ? `, on pipeline ${data.other.id}'s evidence path` : ''}${added ? `, ${ADDED_BY_ONTOLOGY}` : ''}`
   const words = nodeLabel(node.label)
   return (
     <>

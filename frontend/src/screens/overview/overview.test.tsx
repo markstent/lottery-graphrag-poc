@@ -93,11 +93,6 @@ describe('Overview', () => {
     expect(
       within(screen.getByTestId('tile-C')).getByText('C · Graph + Ontology'),
     ).toBeVisible()
-    expect(
-      screen.getByText(
-        'Evidence score: 1 is all the needed evidence and nothing extra. Intervals are for the differences below.',
-      ),
-    ).toBeVisible()
   })
 
   it('renders the headline sentences verbatim', async () => {

@@ -40,14 +40,6 @@ describe('ScenariosTab', () => {
     expect(card).not.toHaveTextContent('SCN-001-')
   })
 
-  it('explains strength and noise once, at the top', async () => {
-    stubOntology()
-    render(<ScenariosTab />)
-    expect(
-      await screen.findByText(/Strength is how obvious the signal is/),
-    ).toBeVisible()
-  })
-
   it('says when a story is not planted and has no rows', async () => {
     stubApi({
       '/api/v1/scenarios': [
@@ -82,7 +74,7 @@ describe('ScenariosTab', () => {
       )
       expect(
         within(card).getByRole('link', {
-          name: 'See the questions that test it',
+          name: 'See its questions',
         }),
       ).toHaveAttribute(
         'href',

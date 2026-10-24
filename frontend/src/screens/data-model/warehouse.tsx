@@ -196,9 +196,7 @@ export function Warehouse({
   }
   return (
     <div className="space-y-4">
-      <p className="text-sm text-text-secondary">
-        Select a table to see its rows.
-      </p>
+      <p className="text-sm text-text-secondary">Select a table.</p>
       <div className="flex flex-wrap items-start gap-4">
         {groupBySystem(dictionary).map(({ system, tables }) => (
           <SystemMap

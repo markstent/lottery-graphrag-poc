@@ -202,8 +202,7 @@ function KindsMap({
           : `${MODES.find((m) => m.id === mode)?.label} follows ${followed} of the ${typeCount.size} relationship types.`}
       </p>
       <p className="text-sm text-text-secondary">
-        Choose a kind of record to see its properties, a sample and its
-        relationships.
+        Choose a kind of record.
         {label !== null && (
           <button
             type="button"
@@ -217,7 +216,7 @@ function KindsMap({
       <Diagram
         nodes={nodes}
         edges={edges}
-        label="Kinds of record and their relationships"
+        label="Kinds of record"
         selected={label}
         onSelect={choose}
         scale={scale}
@@ -244,9 +243,9 @@ function KindsMap({
           ))}
         </section>
       )}
-      <section aria-label="Relationships and their counts">
+      <section aria-label="Relationships">
         <h2 className="text-base font-semibold text-text-primary">
-          Relationships and their counts
+          Relationships
         </h2>
         <ul className="mt-2 columns-3 gap-6 text-sm text-text-primary">
           {types.map((line) => (
@@ -336,7 +335,7 @@ function FocusedNode({ nodeId, scale }: { nodeId: string; scale: number }) {
           />
           {neighbours.truncated && (
             <p className="text-sm text-text-secondary">
-              {`Showing the first ${NEIGHBOUR_LIMIT} neighbours. This node has more.`}
+              {`Showing the first ${NEIGHBOUR_LIMIT}.`}
             </p>
           )}
         </div>

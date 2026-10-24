@@ -117,9 +117,7 @@ function Preferences() {
             Reduce motion
           </label>
           {systemReducedMotion && (
-            <p className="mt-1 text-text-secondary">
-              On because your system asks for reduced motion
-            </p>
+            <p className="mt-1 text-text-secondary">Set by your system</p>
           )}
         </div>
         <div>

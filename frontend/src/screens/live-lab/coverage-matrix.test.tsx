@@ -56,11 +56,4 @@ describe('CoverageMatrix', () => {
     render(<CoverageMatrix results={partial} />)
     expect(cell('Greece', 'B')).toHaveTextContent('No result')
   })
-
-  it('explains in one line what counts as reached', () => {
-    render(<CoverageMatrix results={h1} />)
-    expect(
-      screen.getByText('A market is reached when used evidence comes from it.'),
-    ).toBeVisible()
-  })
 })

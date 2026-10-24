@@ -15,7 +15,7 @@ import { plural } from '../../charts/scale'
 import { Panel, type PanelState } from '../../components/panel'
 import { PIPELINES } from '../../design/pipelines'
 import { Screen } from '../screen'
-import { FlowDiagram } from '../../components/flow-diagram'
+import { FLOW_TITLE, FlowDiagram } from '../../components/flow-diagram'
 import { loadLatest, verdictFrom, type TileFigures } from '../../app/latest-run'
 
 const LINK = 'text-text-primary underline'
@@ -87,10 +87,6 @@ function LatestRun() {
               <Tile key={figures.pipeline} figures={figures} />
             ))}
           </div>
-          <p className="text-sm text-text-muted">
-            Evidence score: 1 is all the needed evidence and nothing extra.
-            Intervals are for the differences below.
-          </p>
           <ul className="list-disc space-y-1 pl-5 text-base text-text-primary">
             {verdict.headlines.map((line, index) => (
               <li key={`${index}-${line}`}>{line}</li>
@@ -189,7 +185,7 @@ export function Overview() {
   return (
     <Screen destination="overview">
       <LatestRun />
-      <Panel title="How the three approaches differ" state="ready">
+      <Panel title={FLOW_TITLE} state="ready">
         <FlowDiagram />
       </Panel>
       <div className="grid grid-cols-2 items-start gap-4">

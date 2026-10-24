@@ -7,6 +7,9 @@
 import { PIPELINES } from '../design/pipelines'
 import { LANES, SHARED_AFTER, SHARED_BEFORE, STEP_LINES } from '../run/lanes'
 
+/** The picture's name, and the heading of the panel that holds it. */
+export const FLOW_TITLE = 'How the three approaches differ'
+
 const BOX_H = 40
 const LANE_H = 72
 const LABEL_H = 24
@@ -117,7 +120,7 @@ export function FlowDiagram() {
         style={{ width: `${WIDTH / BASE_PX}em`, maxWidth: '100%' }}
         className="h-auto"
       >
-        <title id="flow-title">How the three approaches differ</title>
+        <title id="flow-title">{FLOW_TITLE}</title>
         <desc id="flow-desc">{STEP_LINES.join(' ')}</desc>
         <defs>
           <marker

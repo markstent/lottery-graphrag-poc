@@ -52,7 +52,7 @@ describe('Graph tab map', () => {
     await screen.findByRole('button', { name: 'game, 120 nodes' })
     expect(screen.getByRole('radio', { name: 'Full schema' })).toBeChecked()
     const list = within(
-      screen.getByRole('region', { name: 'Relationships and their counts' }),
+      screen.getByRole('region', { name: 'Relationships' }),
     ).getAllByRole('listitem')
     expect(list.map((item) => item.textContent)).toEqual([
       'affects: 34',
@@ -93,9 +93,7 @@ describe('Graph tab map', () => {
     renderTab()
     await screen.findByRole('button', { name: 'game, 120 nodes' })
     const types = () =>
-      within(
-        screen.getByRole('region', { name: 'Relationships and their counts' }),
-      )
+      within(screen.getByRole('region', { name: 'Relationships' }))
         .getAllByRole('listitem')
         .map((item) => item.textContent)
 
@@ -119,11 +117,7 @@ describe('Graph tab map', () => {
   it('shows the properties and a sample node of a kind of record when it is chosen', async () => {
     stubApi(ROUTES)
     renderTab()
-    expect(
-      await screen.findByText(
-        'Choose a kind of record to see its properties, a sample and its relationships.',
-      ),
-    ).toBeVisible()
+    expect(await screen.findByText('Choose a kind of record.')).toBeVisible()
     expect(screen.queryByRole('dialog')).toBeNull()
     await userEvent.click(
       await screen.findByRole('button', { name: 'game, 120 nodes' }),
@@ -283,11 +277,7 @@ describe('Graph tab focused node', () => {
       '/api/v1/graph/nodes/GAME_001/neighbours': NEIGHBOURS(true),
     })
     renderTab('node=GAME_001')
-    expect(
-      await screen.findByText(
-        'Showing the first 20 neighbours. This node has more.',
-      ),
-    ).toBeVisible()
+    expect(await screen.findByText('Showing the first 20.')).toBeVisible()
   })
 
   it('moves to a neighbour when it is chosen', async () => {

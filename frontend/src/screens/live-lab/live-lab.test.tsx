@@ -117,7 +117,7 @@ describe('Live Lab', () => {
     for (const button of within(saved).getAllByRole('button'))
       expect(button).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
-    expect(screen.getByText('Pick a question or type one.')).toBeVisible()
+    expect(screen.getByText('Pick a question.')).toBeVisible()
     await user.click(question)
     expect(question).toHaveAttribute('aria-pressed', 'true')
     await waitFor(() =>

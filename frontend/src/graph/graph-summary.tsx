@@ -6,7 +6,7 @@
  * the whole view without the picture.
  */
 
-import { EVIDENCE_STATES } from '../design/evidence-states'
+import { ADDED_BY_ONTOLOGY, EVIDENCE_STATES } from '../design/evidence-states'
 import { countedLabel, nodeLabel } from '../design/node-labels'
 import type { EvidenceState } from '../design/evidence-states'
 import { hopWords, type GraphNodeView, type GraphView } from './model'
@@ -31,7 +31,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
           ? ` ${countedLabel(view.path.length, 'node')} lie on an evidence path.`
           : ' No evidence path has been recorded yet.'}
         {added > 0
-          ? ` ${countedLabel(added, 'node')} were added by the ontology.`
+          ? ` ${countedLabel(added, 'node')} were ${ADDED_BY_ONTOLOGY}.`
           : ''}
       </p>
       {(Object.keys(EVIDENCE_STATES) as EvidenceState[])
@@ -49,7 +49,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
                 {single.map((node) => (
                   <li key={node.id}>
                     {nodeLabel(node.label)} ({node.id}), {hopWords(node.hop)}
-                    {node.addedByOntology ? ', added by the ontology' : ''}
+                    {node.addedByOntology ? `, ${ADDED_BY_ONTOLOGY}` : ''}
                   </li>
                 ))}
                 {view.clusters.flatMap((cluster) => {
@@ -64,7 +64,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
                           , {hopWords(cluster.hop)}:{' '}
                           {members.map((n) => n.id).join(', ')}
                           {members.some((n) => n.addedByOntology)
-                            ? `, ${members.filter((n) => n.addedByOntology).length} added by the ontology`
+                            ? `, ${members.filter((n) => n.addedByOntology).length} ${ADDED_BY_ONTOLOGY}`
                             : ''}
                         </li>,
                       ]

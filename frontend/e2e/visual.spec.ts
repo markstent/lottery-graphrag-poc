@@ -294,11 +294,7 @@ async function screenShot(
 
 test.describe('Overview', () => {
   const STATES = [
-    [
-      'overview-fixture-official',
-      'official',
-      'Intervals are for the differences below.',
-    ],
+    ['overview-fixture-official', 'official', 'Evidence score, all questions'],
     ['overview-no-official-run', 'none', 'No official run yet'],
     ['overview-smoke-only', 'smoke', 'Latest run: scorer smoke test'],
     ['overview-error', 'unavailable', 'The latest run is unavailable.'],
@@ -763,7 +759,7 @@ test.describe('presentation mode', () => {
     [
       'overview-fixture-official',
       '#/overview',
-      'Intervals are for the differences below.',
+      'Evidence score, all questions',
     ],
     ['results', '#/results', 'This run predates the split.'],
     ['data-model', '#/data-model', 'Incident management'],

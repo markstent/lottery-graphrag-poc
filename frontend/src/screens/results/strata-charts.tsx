@@ -59,7 +59,6 @@ export function StrataCharts({
       />
       <IntervalPlot
         title={`Paired differences in ${label.toLowerCase()}`}
-        description="Difference in points."
         rows={comparisonRows(summary, metric)}
         unit={points}
         zero

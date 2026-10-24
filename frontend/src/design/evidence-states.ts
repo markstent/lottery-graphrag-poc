@@ -41,6 +41,9 @@ export interface EvidenceStateDesign {
  * never the only cue. "Set aside" is grey and dashed: it is not an error.
  * A concept belongs to the ontology layer, so it wears pipeline C's tones.
  */
+/** Said of a node the ontology added to the graph. */
+export const ADDED_BY_ONTOLOGY = 'added by the ontology'
+
 export const EVIDENCE_STATES: Record<EvidenceState, EvidenceStateDesign> = {
   seed: {
     label: 'Starting point',

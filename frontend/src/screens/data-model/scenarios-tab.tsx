@@ -77,7 +77,7 @@ function ScenarioCard({ scenario }: { scenario: Scenario }) {
           })}
           className={LINK}
         >
-          See the questions that test it
+          See its questions
         </a>
       </div>
     </article>
@@ -105,10 +105,6 @@ export function ScenariosTab() {
     )
   return (
     <section aria-label="Scenarios" className="space-y-3">
-      <p className="text-sm text-text-secondary">
-        Strength is how obvious the signal is, from 0.2 to 1.0. Noise level is
-        the unrelated activity around it.
-      </p>
       <div className="grid grid-cols-1 gap-4 min-[1400px]:grid-cols-2 min-[1800px]:grid-cols-4">
         {load.data.map((scenario) => (
           <ScenarioCard key={scenario.scenario_id} scenario={scenario} />

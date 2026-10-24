@@ -6,7 +6,7 @@
  * joined across it.
  */
 
-import { EVIDENCE_STATES } from '../design/evidence-states'
+import { ADDED_BY_ONTOLOGY, EVIDENCE_STATES } from '../design/evidence-states'
 import { nodeLabel } from '../design/node-labels'
 import { relationshipPhrase } from '../design/relationships'
 import type { GraphEdgeView, GraphNodeView, GraphView } from './model'
@@ -73,7 +73,7 @@ export function EvidencePathList({
                   </span>
                   {': '}
                   {nodeLabel(node.label)} ({node.id})
-                  {node.addedByOntology ? ', added by the ontology' : ''}
+                  {node.addedByOntology ? `, ${ADDED_BY_ONTOLOGY}` : ''}
                   {step ? (
                     <span className="text-text-muted">, {step}</span>
                   ) : null}

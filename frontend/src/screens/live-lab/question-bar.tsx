@@ -142,7 +142,7 @@ export function QuestionBar({
       : source === 'live' && liveOff !== null
         ? liveOff
         : selected === null && !adHoc
-          ? 'Pick a question or type one.'
+          ? 'Pick a question.'
           : source === 'recorded' && !recorded
             ? 'No recorded run for this question.'
             : null

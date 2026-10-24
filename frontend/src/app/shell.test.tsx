@@ -455,9 +455,7 @@ describe('reduced motion', () => {
     expect(
       screen.getByRole('checkbox', { name: 'Reduce motion' }),
     ).not.toBeChecked()
-    expect(
-      screen.getByText('On because your system asks for reduced motion'),
-    ).toBeVisible()
+    expect(screen.getByText('Set by your system')).toBeVisible()
     expect(document.documentElement).toHaveClass('reduced-motion')
   })
 

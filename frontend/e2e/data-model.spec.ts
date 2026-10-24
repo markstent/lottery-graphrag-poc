@@ -348,12 +348,11 @@ test('the scenarios are cards that link to Help, with no answers on them', async
   await expect(page.getByRole('article')).toHaveCount(8)
   const card = page.getByRole('article').first()
   await expect(card.getByText('Strength')).toBeVisible()
-  await expect(page.getByText(/Strength is how obvious/)).toBeVisible()
   await expect(
     card.getByRole('link', { name: 'Read the story' }),
   ).toHaveAttribute('href', /^#\/help\?section=stories&story=SCN-001$/)
   await expect(
-    card.getByRole('link', { name: 'See the questions that test it' }),
+    card.getByRole('link', { name: 'See its questions' }),
   ).toHaveAttribute('href', /^#\/help\?section=questions&story=SCN-001$/)
   await shot(page, 'scenarios')
 })
@@ -397,7 +396,7 @@ test('presentation mode draws the graph map larger', async ({ page }) => {
   const map = async (url: string) => {
     await page.goto(url)
     const picture = page.getByRole('img', {
-      name: 'Kinds of record and their relationships',
+      name: 'Kinds of record',
     })
     await expect(picture).toBeVisible()
     return (await picture.boundingBox())!
