@@ -141,8 +141,7 @@ function Preferences() {
             />
           </label>
           <p className="mt-1 text-text-secondary">
-            Graph nodes drawn before the rest are grouped. From {NODE_CAP_MIN}{' '}
-            to {NODE_CAP_MAX}.
+            Further nodes are grouped. From {NODE_CAP_MIN} to {NODE_CAP_MAX}.
           </p>
         </div>
       </div>

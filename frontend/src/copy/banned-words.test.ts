@@ -66,6 +66,9 @@ const NAMED_EXCEPTIONS = [
   { file: 'screens/data-model/data-model.tsx', text: 'Ontology' },
 ] as const
 
+/** Attributes read out or kept as a fallback, never drawn: they do not count toward the budget. */
+const NOT_SHOWN = /^(?:aria-.*|alt)$/
+
 const isStringLike = (node: ts.Node): node is ts.StringLiteralLike =>
   ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
 
@@ -90,23 +93,28 @@ function textsOf(node: ts.Node | undefined): string[] {
   return []
 }
 
+/** A .ts file is not JSX: `<T>` in it is a type argument, not an element. */
+const scriptKind = (fileName: string) =>
+  fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+
 /** Every piece of copy in `source`, with its 1-based line. */
 export function copyIn(
   source: string,
   fileName = 'sample.tsx',
-): { line: number; text: string }[] {
+): { line: number; text: string; visible: boolean }[] {
   const file = ts.createSourceFile(
     fileName,
     source,
     ts.ScriptTarget.Latest,
     true,
-    ts.ScriptKind.TSX,
+    scriptKind(fileName),
   )
-  const found: { line: number; text: string }[] = []
-  const add = (node: ts.Node, texts: string[]) => {
+  const found: { line: number; text: string; visible: boolean }[] = []
+  const add = (node: ts.Node, texts: string[], visible = true) => {
     const line =
       file.getLineAndCharacterOfPosition(node.getStart(file)).line + 1
-    for (const text of texts) if (text.trim() !== '') found.push({ line, text })
+    for (const text of texts)
+      if (text.trim() !== '') found.push({ line, text, visible })
   }
   const visit = (node: ts.Node) => {
     if (ts.isJsxText(node)) add(node, [node.text])
@@ -122,6 +130,7 @@ export function copyIn(
         init && ts.isJsxExpression(init)
           ? textsOf(init.expression)
           : textsOf(init),
+        !NOT_SHOWN.test(node.name.getText(file)),
       )
     } else if (
       ts.isPropertyAssignment(node) &&
@@ -265,32 +274,38 @@ describe('copy scan', () => {
   })
 })
 
-/** Product copy outside Help: screens and the shell, without tests, fixtures or text from the API. */
+/** Product copy outside Help: every source a screen renders, without tests, fixtures or text from the API. */
 const isProductCopy = (path: string) =>
   isCopyFile(path) &&
-  /^\/src\/(?:screens|app)\//.test(path) &&
+  /^\/src\/(?:screens|app|components|charts|graph|design)\//.test(path) &&
   !path.startsWith('/src/screens/help/') &&
   !path.endsWith('.fixtures.ts')
 
 /**
- * Every piece of product copy in a file: what the scan reads, plus sentence-like
+ * Every piece of drawn product copy in a file: what the scan reads, minus the
+ * accessible names that are never drawn, plus sentence-like
  * literals held in tables and constants (they start with a capital and hold a
  * space, which class names and identifiers never do). Each text counts once.
  */
 function budgetCopyIn(source: string, fileName: string): string[] {
-  const texts = copyIn(source, fileName).map(({ text }) => text)
+  const found = copyIn(source, fileName)
+  const texts = found.filter(({ visible }) => visible).map(({ text }) => text)
   const counted = new Map<string, number>()
-  for (const text of texts) counted.set(text, (counted.get(text) ?? 0) + 1)
+  for (const { text } of found) counted.set(text, (counted.get(text) ?? 0) + 1)
   const file = ts.createSourceFile(
     fileName,
     source,
     ts.ScriptTarget.Latest,
     true,
-    ts.ScriptKind.TSX,
+    scriptKind(fileName),
   )
   const visit = (node: ts.Node) => {
     if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return
-    if (isStringLike(node) && /^[A-Z][^\n]* /.test(node.text)) {
+    if (
+      isStringLike(node) &&
+      /^[A-Z][^\n]* /.test(node.text) &&
+      /[a-z]{2}/.test(node.text)
+    ) {
       const left = counted.get(node.text) ?? 0
       if (left > 0) counted.set(node.text, left - 1)
       else texts.push(node.text)
@@ -328,9 +343,9 @@ describe('copy budget outside Help', () => {
     expect(total).toBeGreaterThan(600)
   })
 
-  it('counts table and constant copy once, beside what the scan reads', () => {
-    const sample = `const TABLE = { a: 'Two words', b: 'one' }
-      export const X = () => <p aria-label="Two words">Hello there</p>`
+  it('counts table and constant copy once, and leaves out accessible names', () => {
+    const sample = `const TABLE = { a: 'Two words', b: 'one', c: 'M0,0 L10,5 z' }
+      export const X = () => <p aria-label="Not drawn here" title="Two words">Hello there</p>`
     expect(budgetCopyIn(sample, 'x.tsx')).toEqual([
       'Two words',
       'Hello there',

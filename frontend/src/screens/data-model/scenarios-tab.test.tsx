@@ -44,7 +44,7 @@ describe('ScenariosTab', () => {
     stubOntology()
     render(<ScenariosTab />)
     expect(
-      await screen.findByText(/Strength is how obvious the planted signal is/),
+      await screen.findByText(/Strength is how obvious the signal is/),
     ).toBeVisible()
   })
 

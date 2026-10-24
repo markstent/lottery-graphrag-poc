@@ -18,7 +18,7 @@ export function CoverageMatrix({
         Market coverage
       </h3>
       <p className="text-sm text-text-secondary">
-        A market is reached when evidence an approach used comes from it.
+        A market is reached when used evidence comes from it.
       </p>
       <div className="overflow-hidden rounded-card border border-hairline bg-surface">
         <table

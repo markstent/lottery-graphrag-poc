@@ -33,7 +33,7 @@ describe('GraphCanvas when the layout fails', () => {
     )
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(
-      'The graph could not be drawn. Reload the page to try again.',
+      'The graph could not be drawn. Reload the page.',
     )
     expect(alert).not.toHaveTextContent('elk')
     expect(logged).toHaveBeenCalledWith(

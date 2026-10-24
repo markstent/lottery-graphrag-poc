@@ -60,9 +60,7 @@ describe('CoverageMatrix', () => {
   it('explains in one line what counts as reached', () => {
     render(<CoverageMatrix results={h1} />)
     expect(
-      screen.getByText(
-        'A market is reached when evidence an approach used comes from it.',
-      ),
+      screen.getByText('A market is reached when used evidence comes from it.'),
     ).toBeVisible()
   })
 })

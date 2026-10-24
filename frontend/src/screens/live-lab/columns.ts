@@ -194,6 +194,8 @@ export function evidenceSummary(
     : text
 }
 
+const CONNECTION_LOST = 'The live connection stopped before the run ended.'
+
 /** One sentence on where the run stands and, for a replay, its position. */
 export function runStatusLine({
   phase,
@@ -213,12 +215,9 @@ export function runStatusLine({
   if (phase === 'idle') return 'Choose a question and press Run.'
   if (phase === 'starting')
     return source === null ? 'Loading the recorded run.' : 'Starting the run.'
-  if (phase === 'interrupted')
-    return 'The live connection stopped before the run ended.'
+  if (phase === 'interrupted') return CONNECTION_LOST
   if (!timeline.replaying)
-    return phase === 'finished'
-      ? 'The live connection stopped before the run ended.'
-      : 'The run is in progress.'
+    return phase === 'finished' ? CONNECTION_LOST : 'The run is in progress.'
   if (timeline.playing)
     return source === 'recorded'
       ? 'Playing the recorded run.'

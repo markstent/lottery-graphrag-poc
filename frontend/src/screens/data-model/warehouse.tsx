@@ -197,7 +197,7 @@ export function Warehouse({
   return (
     <div className="space-y-4">
       <p className="text-sm text-text-secondary">
-        Each box is a table with its row count. Select one to see its rows.
+        Select a table to see its rows.
       </p>
       <div className="flex flex-wrap items-start gap-4">
         {groupBySystem(dictionary).map(({ system, tables }) => (

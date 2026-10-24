@@ -28,7 +28,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
           ? ` ${countedLabel(folded, 'node')} are folded into ${countedLabel(view.clusters.length, 'group')}.`
           : ''}
         {view.path.length > 0
-          ? ` ${countedLabel(view.path.length, 'node')} lie on an evidence path, listed with the evidence paths.`
+          ? ` ${countedLabel(view.path.length, 'node')} lie on an evidence path.`
           : ' No evidence path has been recorded yet.'}
         {added > 0
           ? ` ${countedLabel(added, 'node')} were added by the ontology.`

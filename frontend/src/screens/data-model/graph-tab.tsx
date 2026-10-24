@@ -92,7 +92,7 @@ function SampleNode({ table }: { table: string }) {
     <Panel
       title="Details"
       state={empty ? 'empty' : load.status}
-      message="The table has no rows, so there is no sample."
+      message="No rows, so no sample."
       error={load.status === 'error' ? load.error : undefined}
       onRetry={load.retry}
     >
@@ -135,7 +135,7 @@ function Details({
         <Panel
           title="Details"
           state="disabled"
-          message="Built from the ontology, not from a table, so it has no sample row."
+          message="Built from the ontology: no sample row."
         />
       )}
       {table !== undefined && <SampleNode key={table} table={table} />}
@@ -202,8 +202,8 @@ function KindsMap({
           : `${MODES.find((m) => m.id === mode)?.label} follows ${followed} of the ${typeCount.size} relationship types.`}
       </p>
       <p className="text-sm text-text-secondary">
-        Choose a kind of record to see its properties and a sample, and to tag
-        its relationships on the map.
+        Choose a kind of record to see its properties, a sample and its
+        relationships.
         {label !== null && (
           <button
             type="button"

@@ -855,7 +855,7 @@ function Canvas(props: GraphCanvasProps) {
             role="alert"
             className="absolute inset-x-4 top-4 rounded-card border border-error bg-surface p-3 text-sm text-error"
           >
-            The graph could not be drawn. Reload the page to try again.
+            The graph could not be drawn. Reload the page.
           </p>
         ) : null}
       </div>

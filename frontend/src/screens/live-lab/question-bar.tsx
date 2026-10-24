@@ -294,7 +294,6 @@ export function QuestionBar({
           </div>
         )}
         <label className="block text-sm text-text-secondary">
-          <span className="sr-only">Or ask your own question</span>
           <input
             type="text"
             aria-label="Or ask your own question"

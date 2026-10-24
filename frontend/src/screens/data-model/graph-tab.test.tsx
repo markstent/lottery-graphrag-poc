@@ -121,7 +121,7 @@ describe('Graph tab map', () => {
     renderTab()
     expect(
       await screen.findByText(
-        'Choose a kind of record to see its properties and a sample, and to tag its relationships on the map.',
+        'Choose a kind of record to see its properties, a sample and its relationships.',
       ),
     ).toBeVisible()
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -202,9 +202,7 @@ describe('Graph tab map', () => {
       await screen.findByRole('button', { name: 'business concept, 30 nodes' }),
     )
     expect(
-      await screen.findByText(
-        'Built from the ontology, not from a table, so it has no sample row.',
-      ),
+      await screen.findByText('Built from the ontology: no sample row.'),
     ).toBeVisible()
   })
 

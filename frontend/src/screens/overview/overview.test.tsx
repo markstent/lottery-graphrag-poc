@@ -95,7 +95,7 @@ describe('Overview', () => {
     ).toBeVisible()
     expect(
       screen.getByText(
-        'Evidence score runs from 0 to 1: 1 is all the needed evidence and nothing extra. Intervals are for the differences below.',
+        'Evidence score: 1 is all the needed evidence and nothing extra. Intervals are for the differences below.',
       ),
     ).toBeVisible()
   })

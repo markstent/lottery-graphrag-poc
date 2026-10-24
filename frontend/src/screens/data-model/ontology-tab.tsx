@@ -100,7 +100,6 @@ function BoundTerms({
       )}
       <Panel
         title="Local terms bound to it"
-        purpose="What each market calls this concept in its own data."
         state={
           load.status === 'ready'
             ? load.data.length === 0

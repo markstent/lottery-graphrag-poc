@@ -86,8 +86,8 @@ function LatestRun() {
             ))}
           </div>
           <p className="text-sm text-text-muted">
-            Evidence score runs from 0 to 1: 1 is all the needed evidence and
-            nothing extra. Intervals are for the differences below.
+            Evidence score: 1 is all the needed evidence and nothing extra.
+            Intervals are for the differences below.
           </p>
           <ul className="list-disc space-y-1 pl-5 text-base text-text-primary">
             {verdict.headlines.map((line, index) => (

@@ -4,7 +4,13 @@
  * `screens/help/help.test.tsx`.
  */
 
-/** Product copy outside Help; the target is about 1,200 words. */
+/**
+ * Product copy outside Help; the target is about 1,200 words. The count covers
+ * the copy in src/screens (except Help), src/app, src/components, src/charts,
+ * src/graph and src/design (the label maps). It leaves out tests, fixtures,
+ * the development pages, text from the API, and the glossary in src/copy,
+ * which renders in Help and counts there.
+ */
 export const OUTSIDE_HELP_WORD_CAP = 1300
 
 /** Help prose, leaving out text from the API. */

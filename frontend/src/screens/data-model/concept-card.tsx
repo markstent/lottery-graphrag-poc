@@ -101,11 +101,7 @@ export function ConceptCard({
     ({ id }) => (concept.synonyms[id] ?? []).length > 0,
   )
   return (
-    <Panel
-      state="ready"
-      title="Concept"
-      purpose="One shared idea, and the name each market uses for it."
-    >
+    <Panel state="ready" title="Concept">
       <h3 className="text-lg font-semibold text-text-primary">
         {labelOf(concept)}
       </h3>
