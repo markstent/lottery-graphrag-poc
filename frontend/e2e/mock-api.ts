@@ -46,7 +46,12 @@ const cell = (mean: number, repeats: number) => ({
   repeats,
 })
 
-/** Test values, not results: a whole-bank official run, so Overview draws its tiles. */
+const FIXTURE_SCORE = 0.4
+
+/**
+ * Test values, not results: a whole-bank official run, so Overview draws its
+ * tiles. The three scores are equal so no screenshot can suggest a result.
+ */
 const FIXTURE_OFFICIAL = {
   run_id: 'fixture-official',
   run_kind: 'official',
@@ -60,9 +65,9 @@ const FIXTURE_OFFICIAL = {
     metrics: {
       overall: {
         evidence_f1: {
-          A: cell(0.31, BANK_INSTANCES * REPEATS),
-          B: cell(0.43, BANK_INSTANCES * REPEATS),
-          C: cell(0.46, BANK_INSTANCES * REPEATS),
+          A: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
+          B: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
+          C: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
         },
       },
     },
