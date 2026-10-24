@@ -1,0 +1,53 @@
+[
+  {
+    "run_id": "pilot-2026-nothink",
+    "run_kind": "official",
+    "label": "subset run (at most 2 instances per question)",
+    "started_at": "2026-10-19T19:58:50+00:00",
+    "selection": { "strata": null, "limit": 2 },
+    "worlds": [2026],
+    "headlines": [
+      "Too few pairs to say for Graph and text search on multi-hop questions (8 pairs in 4 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on multi-hop questions (8 pairs in 4 groups).",
+      "Too few pairs to say for Graph and text search on ontology-dependent questions anchored by id (8 pairs in 4 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on ontology-dependent questions anchored by id (8 pairs in 4 groups).",
+      "Too few pairs to say for Graph and text search on single facts (8 pairs in 4 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on single facts (8 pairs in 4 groups).",
+      "Too few pairs to say for Graph and text search on planted patterns (8 pairs in 8 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on planted patterns (8 pairs in 8 groups).",
+      "Name-anchored questions: Graph minus text search -1.8 evidence points (95 percent interval -3.7 to 0.0, 4 pairs in 2 groups); no test is run on this sub-group.",
+      "Name-anchored questions: Graph + Ontology minus Graph 7.8 evidence points (95 percent interval 1.9 to 13.6, 4 pairs in 2 groups); no test is run on this sub-group."
+    ]
+  },
+  {
+    "run_id": "pilot-2026",
+    "run_kind": "official",
+    "label": "subset run (at most 1 instance per question)",
+    "started_at": "2026-10-19T18:24:47+00:00",
+    "selection": { "strata": null, "limit": 1 },
+    "worlds": [2026],
+    "headlines": [
+      "Too few pairs to say for Graph and text search on multi-hop questions (0 pairs in 0 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on multi-hop questions (0 pairs in 0 groups).",
+      "Too few pairs to say for Graph and text search on ontology-dependent questions anchored by id (0 pairs in 0 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on ontology-dependent questions anchored by id (0 pairs in 0 groups).",
+      "Too few pairs to say for Graph and text search on single facts (4 pairs in 4 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on single facts (3 pairs in 3 groups).",
+      "Too few pairs to say for Graph and text search on planted patterns (0 pairs in 0 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on planted patterns (0 pairs in 0 groups).",
+      "Name-anchored questions: no pairs for Graph minus text search; no test is run on this sub-group.",
+      "Name-anchored questions: no pairs for Graph + Ontology minus Graph; no test is run on this sub-group."
+    ]
+  },
+  {
+    "run_id": "20261019T164733Z-smoke",
+    "run_kind": "smoke",
+    "label": "scorer smoke test",
+    "started_at": "2026-10-19T16:47:50+00:00",
+    "selection": { "strata": null, "limit": null },
+    "worlds": [2026, 2027, 2028],
+    "headlines": [
+      "Scorer smoke test: the fake generator answers from titles only; these numbers are not a result."
+    ]
+  }
+]

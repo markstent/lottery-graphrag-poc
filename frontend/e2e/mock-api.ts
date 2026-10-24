@@ -22,6 +22,12 @@ import {
 import scoredQuestions from './fixtures/benchmark-questions-scored.json' with { type: 'json' }
 import unscoredQuestions from './fixtures/benchmark-questions-unscored.json' with { type: 'json' }
 import { membersOf, ONTOLOGY, SCENARIOS } from './mock-ontology'
+import officialInstances from './fixtures/results-official-instances.json' with { type: 'json' }
+import officialSummary from './fixtures/results-official-summary.json' with { type: 'json' }
+import pilotInstances from './fixtures/results-pilot-instances.json' with { type: 'json' }
+import pilotSummary from './fixtures/results-pilot-summary.json' with { type: 'json' }
+import runsFixture from './fixtures/results-runs.json' with { type: 'json' }
+import smokeSummary from './fixtures/results-smoke-summary.json' with { type: 'json' }
 import world from './fixtures/world-shell.json' with { type: 'json' }
 
 /** The captured bank: its instance count (Help shows it) and the repeats of an official run. */
@@ -37,7 +43,7 @@ const REPEATS = 3
  */
 const SUMMARY = world.datasets[0]
 const READY = world.ready
-const RUNS = world.runs
+const RUNS = runsFixture
 const DEMO_QUESTIONS = world.demo_questions
 
 const cell = (mean: number, repeats: number) => ({
@@ -87,13 +93,43 @@ const LATEST = {
 
 export type LatestRun = keyof typeof LATEST | 'unavailable' | 'pending'
 
+/**
+ * The runs Results can open, by id: the captured pilot and quick check, and
+ * the generated "Fixture run (test values)" whole-bank run, which has no
+ * counterpart in the published list. Overview's own official run stays
+ * FIXTURE_OFFICIAL above, so its baselines keep their look.
+ */
+const RUN_SUMMARIES: Record<string, unknown> = {
+  'pilot-2026-nothink': pilotSummary,
+  '20261019T164733Z-smoke': smokeSummary,
+  [officialSummary.run_id]: officialSummary,
+}
+const RUN_INSTANCES: Record<string, unknown> = {
+  'pilot-2026-nothink': pilotInstances,
+  [officialSummary.run_id]: officialInstances,
+}
+
+/** The models as captured, with a judge, which the capture ran without. */
+const MODELS = {
+  ...world.models,
+  judge: {
+    provider: 'fake',
+    model: 'fake-judge-v1',
+    reachable: true,
+    detail: 'fake judge (offline)',
+  },
+}
+
+const RUN_PREFIX = '/api/v1/benchmarks/'
+
 const ROUTES: Record<string, unknown> = {
+  '/api/v1/benchmarks/jobs': [],
   '/api/v1/benchmarks': RUNS,
   '/api/v1/demo/questions': DEMO_QUESTIONS,
   '/api/v1/health/ready': READY,
   '/api/v1/datasets': [SUMMARY],
   [`/api/v1/datasets/${DATASET_ID}`]: world.dataset,
-  '/api/v1/models': world.models,
+  '/api/v1/models': MODELS,
   '/api/v1/ontology': ONTOLOGY,
   '/api/v1/scenarios': SCENARIOS,
   [`/api/v1/datasets/${DATASET_ID}/dictionary`]: DICTIONARY,
@@ -191,6 +227,16 @@ export async function mockApi(
       return route.fulfill(
         json(latest === 'official' ? scoredQuestions : unscoredQuestions),
       )
+    if (path.startsWith(RUN_PREFIX) && path !== '/api/v1/benchmarks/jobs') {
+      const [id, part] = path.slice(RUN_PREFIX.length).split('/')
+      const table = part === 'instances' ? RUN_INSTANCES : RUN_SUMMARIES
+      if (part === undefined || part === 'instances') {
+        const answer = table[decodeURIComponent(id)]
+        return route.fulfill(
+          answer === undefined ? envelope('No such run.', 404) : json(answer),
+        )
+      }
+    }
     if (dataModel !== 'normal' && DATA_MODEL_PATHS.includes(path)) {
       if (dataModel === 'pending') return new Promise<void>(() => undefined)
       if (dataModel === 'error')

@@ -1,0 +1,5753 @@
+[
+  {
+    "instance_id": "H1-0-2026-X",
+    "question_id": "H1-0",
+    "world_seed": 2026,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-1-2026-X",
+    "question_id": "H1-1",
+    "world_seed": 2026,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-2-2026-X",
+    "question_id": "H1-2",
+    "world_seed": 2026,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-3-2026-X",
+    "question_id": "H1-3",
+    "world_seed": 2026,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-4-2026-X",
+    "question_id": "H1-4",
+    "world_seed": 2026,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-5-2026-X",
+    "question_id": "H1-5",
+    "world_seed": 2026,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-0-2026-X",
+    "question_id": "H2-0",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-1-2026-X",
+    "question_id": "H2-1",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-2-2026-X",
+    "question_id": "H2-2",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-3-2026-X",
+    "question_id": "H2-3",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-4-2026-X",
+    "question_id": "H2-4",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-5-2026-X",
+    "question_id": "H2-5",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-0-2026-X",
+    "question_id": "H3-0",
+    "world_seed": 2026,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-1-2026-X",
+    "question_id": "H3-1",
+    "world_seed": 2026,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-2-2026-X",
+    "question_id": "H3-2",
+    "world_seed": 2026,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-3-2026-X",
+    "question_id": "H3-3",
+    "world_seed": 2026,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-4-2026-X",
+    "question_id": "H3-4",
+    "world_seed": 2026,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-5-2026-X",
+    "question_id": "H3-5",
+    "world_seed": 2026,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-0-2026-X",
+    "question_id": "H5-0",
+    "world_seed": 2026,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-1-2026-X",
+    "question_id": "H5-1",
+    "world_seed": 2026,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-2-2026-X",
+    "question_id": "H5-2",
+    "world_seed": 2026,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-3-2026-X",
+    "question_id": "H5-3",
+    "world_seed": 2026,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-4-2026-X",
+    "question_id": "H5-4",
+    "world_seed": 2026,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-5-2026-X",
+    "question_id": "H5-5",
+    "world_seed": 2026,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-0-2026-X",
+    "question_id": "H2N-0",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-1-2026-X",
+    "question_id": "H2N-1",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-2-2026-X",
+    "question_id": "H2N-2",
+    "world_seed": 2026,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-0-2027-X",
+    "question_id": "H1-0",
+    "world_seed": 2027,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-1-2027-X",
+    "question_id": "H1-1",
+    "world_seed": 2027,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-2-2027-X",
+    "question_id": "H1-2",
+    "world_seed": 2027,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-3-2027-X",
+    "question_id": "H1-3",
+    "world_seed": 2027,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-4-2027-X",
+    "question_id": "H1-4",
+    "world_seed": 2027,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-5-2027-X",
+    "question_id": "H1-5",
+    "world_seed": 2027,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-0-2027-X",
+    "question_id": "H2-0",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-1-2027-X",
+    "question_id": "H2-1",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-2-2027-X",
+    "question_id": "H2-2",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-3-2027-X",
+    "question_id": "H2-3",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-4-2027-X",
+    "question_id": "H2-4",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-5-2027-X",
+    "question_id": "H2-5",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-0-2027-X",
+    "question_id": "H3-0",
+    "world_seed": 2027,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-1-2027-X",
+    "question_id": "H3-1",
+    "world_seed": 2027,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-2-2027-X",
+    "question_id": "H3-2",
+    "world_seed": 2027,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-3-2027-X",
+    "question_id": "H3-3",
+    "world_seed": 2027,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-4-2027-X",
+    "question_id": "H3-4",
+    "world_seed": 2027,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-5-2027-X",
+    "question_id": "H3-5",
+    "world_seed": 2027,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-0-2027-X",
+    "question_id": "H5-0",
+    "world_seed": 2027,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-1-2027-X",
+    "question_id": "H5-1",
+    "world_seed": 2027,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-2-2027-X",
+    "question_id": "H5-2",
+    "world_seed": 2027,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-3-2027-X",
+    "question_id": "H5-3",
+    "world_seed": 2027,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-4-2027-X",
+    "question_id": "H5-4",
+    "world_seed": 2027,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-5-2027-X",
+    "question_id": "H5-5",
+    "world_seed": 2027,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-0-2027-X",
+    "question_id": "H2N-0",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-1-2027-X",
+    "question_id": "H2N-1",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-2-2027-X",
+    "question_id": "H2N-2",
+    "world_seed": 2027,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-0-2028-X",
+    "question_id": "H1-0",
+    "world_seed": 2028,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-1-2028-X",
+    "question_id": "H1-1",
+    "world_seed": 2028,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-2-2028-X",
+    "question_id": "H1-2",
+    "world_seed": 2028,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-3-2028-X",
+    "question_id": "H1-3",
+    "world_seed": 2028,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-4-2028-X",
+    "question_id": "H1-4",
+    "world_seed": 2028,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H1-5-2028-X",
+    "question_id": "H1-5",
+    "world_seed": 2028,
+    "stratum": "H1",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-0-2028-X",
+    "question_id": "H2-0",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-1-2028-X",
+    "question_id": "H2-1",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-2-2028-X",
+    "question_id": "H2-2",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-3-2028-X",
+    "question_id": "H2-3",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-4-2028-X",
+    "question_id": "H2-4",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2-5-2028-X",
+    "question_id": "H2-5",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "id_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-0-2028-X",
+    "question_id": "H3-0",
+    "world_seed": 2028,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-1-2028-X",
+    "question_id": "H3-1",
+    "world_seed": 2028,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-2-2028-X",
+    "question_id": "H3-2",
+    "world_seed": 2028,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-3-2028-X",
+    "question_id": "H3-3",
+    "world_seed": 2028,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-4-2028-X",
+    "question_id": "H3-4",
+    "world_seed": 2028,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H3-5-2028-X",
+    "question_id": "H3-5",
+    "world_seed": 2028,
+    "stratum": "H3",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-0-2028-X",
+    "question_id": "H5-0",
+    "world_seed": 2028,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-1-2028-X",
+    "question_id": "H5-1",
+    "world_seed": 2028,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-2-2028-X",
+    "question_id": "H5-2",
+    "world_seed": 2028,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-3-2028-X",
+    "question_id": "H5-3",
+    "world_seed": 2028,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-4-2028-X",
+    "question_id": "H5-4",
+    "world_seed": 2028,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H5-5-2028-X",
+    "question_id": "H5-5",
+    "world_seed": 2028,
+    "stratum": "H5",
+    "sub_stratum": null,
+    "ontology_dependent": false,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-0-2028-X",
+    "question_id": "H2N-0",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-1-2028-X",
+    "question_id": "H2N-1",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  },
+  {
+    "instance_id": "H2N-2-2028-X",
+    "question_id": "H2N-2",
+    "world_seed": 2028,
+    "stratum": "H2",
+    "sub_stratum": "name_anchored",
+    "ontology_dependent": true,
+    "text": "question?",
+    "pipelines": {
+      "A": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "B": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      },
+      "C": {
+        "repeats": 3,
+        "unscored_repeats": 0,
+        "answer": 0.4,
+        "evidence_f1": 0.4,
+        "evidence_recall": 0.4,
+        "evidence_precision": 0.4,
+        "efficiency_per_1k": 1.0,
+        "citation_accuracy": 1.0,
+        "latency_ms": 200.0,
+        "context_tokens": 1000.0,
+        "judge_correctness": 2.0,
+        "judge_completeness": 2.0,
+        "judge_faithfulness": 2.0,
+        "judge_citation_accuracy": 2.0,
+        "judge_abstention": 2.0,
+        "failure_classes": {
+          "retrieval_failure": 3
+        }
+      }
+    }
+  }
+]
