@@ -3,6 +3,7 @@
     "instance_id": "L01-2026-GAME_AT_04",
     "question": "What is the ticket price of game GAME_AT_04?",
     "stratum": "H3",
+    "dataset_id": "dev-seed2026",
     "run_id": "RUN-2842BCE7997C",
     "model": "ollama/qwen3.6:latest",
     "captured_at": "2026-10-23T20:19:17.863Z"
@@ -11,6 +12,7 @@
     "instance_id": "L05-2026-INC_037",
     "question": "Which other markets had incidents on the same platform version as incident INC_037?",
     "stratum": "H1",
+    "dataset_id": "dev-seed2026",
     "run_id": "RUN-69A108F89DFB",
     "model": "ollama/qwen3.6:latest",
     "captured_at": "2026-10-23T20:18:21.690Z"
@@ -19,6 +21,7 @@
     "instance_id": "L09-2026-GAME_AT_05",
     "question": "Which games in other markets belong to the same kind of game family as game GAME_AT_05?",
     "stratum": "H2",
+    "dataset_id": "dev-seed2026",
     "run_id": "RUN-22633B9F4043",
     "model": "ollama/qwen3.6:latest",
     "captured_at": "2026-10-23T20:18:53.780Z"
@@ -27,6 +30,7 @@
     "instance_id": "L15-2026-INC_041",
     "question": "What caused incident INC_041?",
     "stratum": "H5",
+    "dataset_id": "dev-seed2026",
     "run_id": "RUN-0B6A3B82B797",
     "model": "ollama/qwen3.6:latest",
     "captured_at": "2026-10-23T20:19:41.988Z"

@@ -69,6 +69,8 @@ export interface LiveRun {
   /** `t_ms` of the first event, which the timeline counts from. */
   originMs: number
   runId: string | null
+  /** The world a recording was captured on; null for a live run. */
+  recordedDataset: string | null
   timeline: Timeline
   controls: TimelineControls
   /** The same controls as the presentation keys use. */
@@ -107,7 +109,8 @@ const NO_EVENTS: RunEvent[] = []
 /**
  * A bank question's score is written just after the run's final status, so
  * results read at once can say "pending". They are read again this often, up
- * to this many times, then left as they are.
+ * to this many times; after that the screen says so and offers a Retry, which
+ * reads again from the start.
  */
 const SCORE_POLL_MS = 1000
 const SCORE_POLL_TRIES = 5
@@ -188,11 +191,18 @@ export function useLiveRun({
       (results) => {
         if (token.current !== mine) return
         setFetched(results)
-        if (results.score_status === 'pending' && tries < SCORE_POLL_TRIES)
+        if (results.score_status !== 'pending') return
+        if (tries < SCORE_POLL_TRIES)
           scorePoll.current = setTimeout(
             () => loadResults(id, mine, tries + 1),
             SCORE_POLL_MS,
           )
+        else
+          setFailure({
+            message: 'The score is still being written.',
+            step: 'results',
+            retryable: true,
+          })
       },
       (error: unknown) => {
         if (token.current !== mine) return
@@ -422,6 +432,7 @@ export function useLiveRun({
     busy: loading || live.stage === 'starting' || live.stage === 'streaming',
     originMs,
     runId: recording?.run_id ?? live.runId,
+    recordedDataset: recording?.dataset_id ?? null,
     timeline: showReplay
       ? {
           replaying: true,

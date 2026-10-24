@@ -5,6 +5,7 @@
  */
 
 import type { Schemas } from '../../api/client'
+import { datasetName } from '../../app/plain-words'
 import type { EvidenceSource } from '../../components/evidence-drawer'
 import type { PipelineId } from '../../design/pipelines'
 import { pathsFromResult } from '../../graph/from-result'
@@ -16,6 +17,19 @@ export interface PathPosition {
   path: number
   step: number
   of: number
+}
+
+/**
+ * Why a record of a recording cannot be opened: the active dataset is not the
+ * world the run was captured on, so the row or node would be another world's.
+ * Null for a live run, when either world is unknown, or when they match.
+ */
+export function otherWorldNotice(
+  recorded: string | null,
+  active: string | null,
+): string | null {
+  if (recorded === null || active === null || recorded === active) return null
+  return `This run was recorded on ${datasetName(recorded)}. The active dataset is ${datasetName(active)}, so its records cannot be opened here.`
 }
 
 export function sourceFor(

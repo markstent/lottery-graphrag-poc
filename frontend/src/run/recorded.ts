@@ -11,6 +11,8 @@ export interface RecordedRunSummary {
   instance_id: string
   question: string
   stratum: string
+  /** The world the recording was captured on; its records belong to that world. */
+  dataset_id: string
   run_id: string
   model: string
   captured_at: string

@@ -654,19 +654,73 @@ describe('Live Lab, results', () => {
     expect(screen.queryByRole('region', { name: /answer$/ })).toBeNull()
   })
 
-  it('opens the evidence drawer from a citation by keyboard and returns focus on close', async () => {
-    const user = await finishRecording(userEvent.setup())
-    const answer = screen.getByRole('region', { name: 'B · Graph answer' })
-    const citation = within(answer).getByRole('button', {
-      name: /^Open source 1/,
+  describe('evidence drawer from every opener by keyboard', () => {
+    /** The paths the screen has asked the API for. */
+    const opened = () => vi.mocked(fetch).mock.calls.map(([url]) => String(url))
+
+    it('opens the evidence drawer from a citation by keyboard and returns focus on close', async () => {
+      const user = await finishRecording(userEvent.setup())
+      const answer = screen.getByRole('region', { name: 'B · Graph answer' })
+      const citation = within(answer).getByRole('button', {
+        name: /^Open source 1/,
+      })
+      citation.focus()
+      await user.keyboard('{Enter}')
+      const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+      expect(await within(dialog).findByText('severity')).toBeVisible()
+      expect(
+        within(dialog).getByText('INC_037', { selector: 'dd' }),
+      ).toBeVisible()
+      expect(opened()).toContain('/api/v1/graph/nodes/INC_037')
+      await user.keyboard('{Escape}')
+      expect(screen.queryByRole('dialog')).toBeNull()
+      expect(citation).toHaveFocus()
     })
-    citation.focus()
-    await user.keyboard('{Enter}')
-    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
-    await within(dialog).findByText('severity')
-    await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog')).toBeNull()
-    expect(citation).toHaveFocus()
+
+    it('opens the drawer from an evidence row in a column, by keyboard, and returns focus', async () => {
+      const user = await finishRecording(userEvent.setup())
+      const list = within(column('B · Graph')).getByRole('list', {
+        name: 'Evidence',
+      })
+      const row = within(list).getAllByRole('button')[0]
+      row.focus()
+      await user.keyboard('{Enter}')
+      const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+      // The row is the node INC_037: its properties are the record shown first.
+      expect(await within(dialog).findByText('severity')).toBeVisible()
+      expect(within(dialog).getByText('MEDIUM')).toBeVisible()
+      expect(
+        within(dialog).getByText('INC_037', { selector: 'dd' }),
+      ).toBeVisible()
+      expect(opened()).toContain('/api/v1/graph/nodes/INC_037')
+      await user.keyboard('{Escape}')
+      expect(row).toHaveFocus()
+    })
+
+    it('opens the drawer from a graph node by keyboard and returns focus to the node', async () => {
+      const user = await finishRecording(userEvent.setup())
+      const canvas = await screen.findByRole('group', {
+        name: 'Graph for B · Graph',
+      })
+      const node = await waitFor(() => {
+        const found = canvas.querySelector<HTMLElement>(
+          '[data-node-id="INC_037"]',
+        )
+        expect(found).not.toBeNull()
+        return found!
+      })
+      node.focus()
+      await user.keyboard('{Enter}')
+      const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+      expect(await within(dialog).findByText('severity')).toBeVisible()
+      expect(within(dialog).getByText('MEDIUM')).toBeVisible()
+      expect(
+        within(dialog).getByText('INC_037', { selector: 'dd' }),
+      ).toBeVisible()
+      expect(opened()).toContain('/api/v1/graph/nodes/INC_037')
+      await user.keyboard('{Escape}')
+      await waitFor(() => expect(node).toHaveFocus())
+    })
   })
 
   it('opens a table record cited by pipeline A from its row in the dataset', async () => {
@@ -690,22 +744,6 @@ describe('Live Lab, results', () => {
     expect(
       await within(dialog).findByText('INC_037', { selector: 'dd' }),
     ).toBeVisible()
-  })
-
-  it('opens the drawer from an evidence row in a column, by keyboard, and returns focus', async () => {
-    const user = await finishRecording(userEvent.setup())
-    const list = within(column('B · Graph')).getByRole('list', {
-      name: 'Evidence',
-    })
-    const row = within(list).getAllByRole('button')[0]
-    row.focus()
-    await user.keyboard('{Enter}')
-    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
-    // The row is the node INC_037: its properties are the record shown first.
-    expect(await within(dialog).findByText('severity')).toBeVisible()
-    expect(within(dialog).getByText('MEDIUM')).toBeVisible()
-    await user.keyboard('{Escape}')
-    expect(row).toHaveFocus()
   })
 
   it('opens a passage from its row with the text the results carry, and returns focus', async () => {
@@ -782,25 +820,65 @@ describe('Live Lab, results', () => {
     expect(node).toHaveFocus()
   })
 
-  it('opens the drawer from a graph node by keyboard and returns focus to the node', async () => {
-    const user = await finishRecording(userEvent.setup())
-    const canvas = await screen.findByRole('group', {
-      name: 'Graph for B · Graph',
+  it('refuses to open a record of a recording when the active dataset is another world', async () => {
+    reduceMotion()
+    const fetchMock = api({
+      '/api/v1/health/ready': DOWN,
+      '/api/v1/datasets': [{ ...DATASETS[0], dataset_id: 'dev-seed2027' }],
+      '/api/v1/graph/nodes/INC_037': NODE,
     })
-    const node = await waitFor(() => {
-      const found = canvas.querySelector<HTMLElement>(
-        '[data-node-id="INC_037"]',
-      )
-      expect(found).not.toBeNull()
-      return found!
+    const user = userEvent.setup()
+    open(`#/live-lab?question=${h1.instance_id}`)
+    await screen.findByRole('region', { name: 'Scorecard' })
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/v1/datasets'),
+        expect.anything(),
+      ),
+    )
+    const list = within(column('B · Graph')).getByRole('list', {
+      name: 'Evidence',
     })
-    node.focus()
+    const row = within(list).getAllByRole('button')[0]
+    await waitFor(() => expect(row).toBeEnabled())
+    row.focus()
     await user.keyboard('{Enter}')
     const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
-    expect(await within(dialog).findByText('severity')).toBeVisible()
-    expect(within(dialog).getByText('MEDIUM')).toBeVisible()
-    await user.keyboard('{Escape}')
-    await waitFor(() => expect(node).toHaveFocus())
+    expect(dialog).toHaveTextContent(
+      'This run was recorded on dev world, 2026. The active dataset is dev world, 2027, so its records cannot be opened here.',
+    )
+    expect(
+      fetchMock.mock.calls.some(([url]) =>
+        String(url).includes('/graph/nodes/'),
+      ),
+    ).toBe(false)
+  })
+
+  it('still opens a passage of a recording when the active dataset is another world', async () => {
+    reduceMotion()
+    api({
+      '/api/v1/health/ready': DOWN,
+      '/api/v1/datasets': [{ ...DATASETS[0], dataset_id: 'dev-seed2027' }],
+    })
+    const h2 = RECORDINGS.find((run) => run.stratum === 'H2')!
+    const passage = (
+      h2.results.results!.A as {
+        evidence: { chunk_id: string; kind: string; selected: boolean }[]
+      }
+    ).evidence.find((c) => c.kind === 'chunk' && c.selected)!
+    const user = userEvent.setup()
+    open(`#/live-lab?question=${h2.instance_id}`)
+    await screen.findByRole('region', { name: 'Scorecard' })
+    const list = within(column('A · Text search')).getByRole('list', {
+      name: 'Evidence',
+    })
+    const row = within(list)
+      .getAllByRole('button')
+      .find((b) => b.textContent?.includes(passage.chunk_id))!
+    row.focus()
+    await user.keyboard('{Enter}')
+    const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
+    expect(dialog).not.toHaveTextContent('cannot be opened here')
   })
 
   it('shows measurable items only, and no key, for a typed question', async () => {

@@ -24,7 +24,12 @@ import { AnswerBlock } from './answer-block'
 import { CanvasArea, CanvasPlaceholder, type FoldedGroup } from './canvas-area'
 import { runStatusLine } from './columns'
 import { CoverageMatrix } from './coverage-matrix'
-import { pathPosition, sourceFor, type PathPosition } from './evidence-open'
+import {
+  otherWorldNotice,
+  pathPosition,
+  sourceFor,
+  type PathPosition,
+} from './evidence-open'
 import { PathStrip } from './path-strip'
 import { PipelineColumn } from './pipeline-column'
 import { recordTitle } from './record-title'
@@ -78,6 +83,17 @@ export function LiveLab() {
     source = sourceOf(pipeline, id),
   ) => {
     if (source === null) return
+    const notice =
+      source.kind === 'record' || source.kind === 'node'
+        ? otherWorldNotice(run.recordedDataset, datasetId)
+        : null
+    if (notice !== null) {
+      setInDrawer({
+        source: { kind: 'unavailable', message: notice },
+        position: null,
+      })
+      return
+    }
     const recorded =
       pipeline !== 'A' && state.graph[pipeline].evidencePath !== null
     setInDrawer({

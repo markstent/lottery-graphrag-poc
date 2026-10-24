@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { RECORDINGS } from '../../test/recordings'
-import { pathPosition, sourceFor } from './evidence-open'
+import { otherWorldNotice, pathPosition, sourceFor } from './evidence-open'
 
 type Results = Schemas['QueryResults']
 
@@ -102,5 +102,19 @@ describe('pathPosition', () => {
     expect(pathPosition(h1, 'B', 'SUP_00113', false)).toBeNull()
     expect(pathPosition(h1, 'A', 'SUP_00113', true)).toBeNull()
     expect(pathPosition(null, 'B', 'SUP_00113', true)).toBeNull()
+  })
+})
+
+describe('otherWorldNotice', () => {
+  it('names both worlds in plain words when a recording is not on the active one', () => {
+    expect(otherWorldNotice('dev-seed2026', 'dev-seed2027')).toBe(
+      'This run was recorded on dev world, 2026. The active dataset is dev world, 2027, so its records cannot be opened here.',
+    )
+  })
+
+  it('says nothing for a live run, an unknown world or the same world', () => {
+    expect(otherWorldNotice(null, 'dev-seed2027')).toBeNull()
+    expect(otherWorldNotice('dev-seed2026', null)).toBeNull()
+    expect(otherWorldNotice('dev-seed2026', 'dev-seed2026')).toBeNull()
   })
 })

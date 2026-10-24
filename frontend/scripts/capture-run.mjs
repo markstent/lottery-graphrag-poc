@@ -7,7 +7,7 @@
 // posted with its benchmark_instance_id, so the API applies the instance's own
 // scope and returns the live score. The generation provider and model are the
 // server's own configuration (GENERATION_PROVIDER, GENERATION_MODEL, ...); the
-// script records what GET /models reports:
+// script records what GET /models reports and the active dataset (dataset_id):
 //   node scripts/capture-run.mjs [http://localhost:8000] --strata H1,H2,H3,H5 \
 //     --out-dir src/run/fixtures/recorded
 //
@@ -154,6 +154,10 @@ if (values.adhoc) {
 } else if (OUT_DIR) {
   mkdirSync(OUT_DIR, { recursive: true })
   const { generation } = await api('/models')
+  // The recordings name the world they were captured on, so Live Lab can
+  // refuse to open their records from a different active world.
+  const active = (await api('/datasets')).find((dataset) => dataset.active)
+  if (!active) throw new Error('no dataset is active')
   for (const stratum of STRATA) {
     const question = find(stratum)
     const { runId, run, events } = await capture(question, true)
@@ -161,6 +165,7 @@ if (values.adhoc) {
       instance_id: question.instance_id,
       question: question.text,
       stratum: question.stratum,
+      dataset_id: active.dataset_id,
       run_id: runId,
       model: generation.model,
       captured_at: new Date().toISOString(),

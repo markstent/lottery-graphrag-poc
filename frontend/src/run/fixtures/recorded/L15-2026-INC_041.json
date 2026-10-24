@@ -2,6 +2,7 @@
   "instance_id": "L15-2026-INC_041",
   "question": "What caused incident INC_041?",
   "stratum": "H5",
+  "dataset_id": "dev-seed2026",
   "run_id": "RUN-0B6A3B82B797",
   "model": "ollama/qwen3.6:latest",
   "captured_at": "2026-10-23T20:19:41.988Z",

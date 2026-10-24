@@ -26,6 +26,8 @@ export type EvidenceSource =
       title: string
       members: readonly { id: string; label: string; title: string | null }[]
     }
+  /** A record that cannot be opened, with the reason in plain words. */
+  | { kind: 'unavailable'; message: string }
   /** A passage the run's results carry in full: shown as is, with no request. */
   | {
       kind: 'passage'
@@ -80,7 +82,7 @@ const GRAPH_ERRORS: Record<string, string> = {
 const graphErrorWords = (code: string): string =>
   GRAPH_ERRORS[code] ?? 'The graph could not be read for this record.'
 
-type Fetched = Exclude<EvidenceSource, { kind: 'passage' | 'group' }>
+type Fetched = Extract<EvidenceSource, { kind: 'record' | 'node' }>
 
 function loaded(source: Fetched, followInto?: (nodeId: string) => string) {
   return source.kind === 'record'
@@ -271,6 +273,10 @@ export function EvidenceDrawer({
         <PassageBody source={source} />
       ) : source?.kind === 'group' ? (
         <GroupBody source={source} />
+      ) : source?.kind === 'unavailable' ? (
+        <Panel title="Record" state="ready">
+          <p className="text-sm text-text-primary">{source.message}</p>
+        </Panel>
       ) : (
         source && (
           <EvidenceBody

@@ -489,6 +489,31 @@ describe('useLiveRun, a score still being written', () => {
     expect(result.current.results).toBe(pending)
   })
 
+  it('offers a retry once the tries are used up, and it reads again until the score is there', async () => {
+    client.getRun.mockResolvedValue(pending)
+    const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))
+    await startLive(result)
+    await act(async () => {
+      for (const event of live) handlers.onEvent(event)
+      handlers.onEnd()
+    })
+    expect(result.current.error).toBeNull()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60000)
+    })
+    expect(result.current.error?.message).toBe(
+      'The score is still being written.',
+    )
+    expect(result.current.error?.retry).not.toBeNull()
+    const calls = client.getRun.mock.calls.length
+
+    client.getRun.mockResolvedValue(h1.results)
+    await act(async () => result.current.error!.retry!())
+    expect(client.getRun).toHaveBeenCalledTimes(calls + 1)
+    expect(result.current.error).toBeNull()
+    expect(result.current.results).toBe(h1.results)
+  })
+
   it('stops reading when a new run starts', async () => {
     client.getRun.mockResolvedValue(pending)
     const { result } = renderHook(() => useLiveRun({ reducedMotion: false }))

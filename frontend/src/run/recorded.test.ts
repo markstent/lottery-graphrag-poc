@@ -42,6 +42,15 @@ describe('recorded runs', () => {
     expect(RECORDINGS.map(details)).toEqual([...RECORDED_INDEX])
   })
 
+  it('names the world each recording was captured on, in the index and the recording', () => {
+    expect(RECORDED_INDEX.map((r) => r.dataset_id)).toEqual(
+      Array(4).fill('dev-seed2026'),
+    )
+    expect(RECORDINGS.map((r) => r.dataset_id)).toEqual(
+      RECORDED_INDEX.map((r) => r.dataset_id),
+    )
+  })
+
   it('loads a recording by its question, and refuses one it does not have', async () => {
     const [first] = RECORDED_INDEX
     expect((await loadRecording(first.instance_id)).run_id).toBe(first.run_id)

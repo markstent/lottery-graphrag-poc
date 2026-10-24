@@ -2,6 +2,7 @@
   "instance_id": "L05-2026-INC_037",
   "question": "Which other markets had incidents on the same platform version as incident INC_037?",
   "stratum": "H1",
+  "dataset_id": "dev-seed2026",
   "run_id": "RUN-69A108F89DFB",
   "model": "ollama/qwen3.6:latest",
   "captured_at": "2026-10-23T20:18:21.690Z",
