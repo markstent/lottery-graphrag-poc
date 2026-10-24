@@ -850,6 +850,27 @@ function Canvas(props: GraphCanvasProps) {
             if (event && laidOut) setSettledFor(layout)
           }}
         />
+        {/* A soft edge on the sides where the drawing is cropped, so a cut label reads as cropped. */}
+        <div
+          aria-hidden
+          data-canvas-fade
+          className="pointer-events-none absolute inset-y-0 right-0"
+          style={{
+            width: 'var(--canvas-fade)',
+            background:
+              'linear-gradient(to left, var(--color-surface) 25%, transparent)',
+          }}
+        />
+        <div
+          aria-hidden
+          data-canvas-fade
+          className="pointer-events-none absolute inset-x-0 bottom-0"
+          style={{
+            height: 'var(--canvas-fade)',
+            background:
+              'linear-gradient(to top, var(--color-surface) 25%, transparent)',
+          }}
+        />
         {failed ? (
           <p
             role="alert"

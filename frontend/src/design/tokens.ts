@@ -79,6 +79,8 @@ export const TOKENS = {
   'radius-card': '0.5rem',
   'radius-chip': '0.25rem',
 
+  'canvas-fade': '3rem',
+
   'shadow-overlay': '0 8px 24px rgb(18 21 27 / 0.14)',
 
   'duration-micro': '140ms',

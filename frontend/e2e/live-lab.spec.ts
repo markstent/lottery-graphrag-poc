@@ -10,12 +10,15 @@ import {
   RECORDED_RUNS,
   serveLiveRun,
 } from './live-lab-fixtures'
-import { mockApi } from './mock-api'
+import { expectNoUnmockedRequests, mockApi } from './mock-api'
 
 /* Live Lab in a browser: a recording through the replay clock, and a live run
    whose stream is served from a captured run. SHOTS=<dir> also saves pictures. */
 
 test.use({ viewport: { width: 1920, height: 1080 } })
+
+// A call the mock does not answer is refused; it must not go unnoticed.
+test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
 /** A viewport picture at the scroll position of `from` (the top by default); never the whole page. */
 async function shot(page: Page, name: string, from?: Locator) {
@@ -77,7 +80,7 @@ test('a finished recording does not stretch the page past its content', async ({
 test('follows a live run and offers the timeline when it ends', async ({
   page,
 }) => {
-  await serveLiveRun(page, live.events)
+  await serveLiveRun(page, live.events, live.results)
   await page.goto('/#/live-lab')
   await page.getByRole('button', { name: h1.question }).click()
   await page.getByRole('button', { name: 'Live', exact: true }).click()

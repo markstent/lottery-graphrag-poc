@@ -94,8 +94,17 @@ export function CanvasArea({
   // run's results, which hold the paths, have been read.
   const canOverlay =
     results !== null && state.graph[other].evidencePath !== null
+  const otherStatus = state.pipelines[other].status
   const whyNot =
-    results === null ? 'Available once the run ends.' : `Not recorded yet.`
+    results === null
+      ? 'Available once the run ends.'
+      : otherStatus === 'skipped'
+        ? `${other} did not run.`
+        : otherStatus === 'cancelled'
+          ? `${other} was cancelled.`
+          : otherStatus === 'failed'
+            ? `${other} failed.`
+            : 'Not recorded yet.'
   const showOther = overlay && canOverlay
 
   const view = useMemo(

@@ -121,6 +121,18 @@ describe('GraphCanvas', () => {
     expect(nodeButtons()).toHaveLength(view.nodes.length)
   })
 
+  it('fades the drawing at its right and bottom edges, over nothing a reader can click', async () => {
+    render(canvas(viewAt('B')))
+    await placed(viewAt('B').nodes.length)
+    const fades = document.querySelectorAll<HTMLElement>('[data-canvas-fade]')
+    expect(fades).toHaveLength(2)
+    for (const fade of fades) {
+      expect(fade).toHaveAttribute('aria-hidden', 'true')
+      expect(fade.className).toContain('pointer-events-none')
+      expect(fade.style.background).toContain('var(--color-surface)')
+    }
+  })
+
   it('flags the canvas ready only once the viewport has stopped moving', async () => {
     const view = viewAt('B')
     render(canvas(view))

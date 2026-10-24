@@ -140,7 +140,7 @@ export function LiveLab() {
       )}
       {run.phase === 'idle' && (
         <p role="status" className="text-sm text-text-secondary">
-          {runStatusLine(run)}
+          {error !== null ? 'The run did not start.' : runStatusLine(run)}
         </p>
       )}
       {stored !== null && state.status === 'completed' && (

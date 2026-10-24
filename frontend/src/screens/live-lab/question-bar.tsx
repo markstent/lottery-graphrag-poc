@@ -121,11 +121,12 @@ export function QuestionBar({
 
   const list = questions.status === 'ready' ? questions.data : []
   const adHoc = text.trim() !== ''
+  // Nothing looks chosen until the link or the reader chooses a question.
   const selected = adHoc
     ? null
     : (list.find(
         (question) => question.instance_id === (chosenId ?? linkedId),
-      ) ?? (chosenId === null && linkedId === null ? (list[0] ?? null) : null))
+      ) ?? null)
   const recorded = hasRecording(selected?.instance_id ?? null)
 
   const liveOff = liveUnavailableReason(status, checks)

@@ -1,12 +1,13 @@
 /**
  * A deterministic stand-in for the backend, for the visual baselines: the
  * calls the shell, Settings and the evidence drawer make answer with fixed
- * data, and everything else answers 404 in the backend's error envelope.
+ * data, and everything else is refused (and listed, for
+ * expectNoUnmockedRequests).
  * The node ids `node-loading`, `node-error` and `node-orphan` give the
  * evidence drawer its loading, error and no-source states.
  */
 
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 
 import {
   DATASET_ID,
@@ -16,146 +17,78 @@ import {
   graphNode,
   neighboursOf,
   recordOf,
-  ROW_COUNTS,
   rowsOf,
 } from './mock-data-model'
 import scoredQuestions from './fixtures/benchmark-questions-scored.json' with { type: 'json' }
 import unscoredQuestions from './fixtures/benchmark-questions-unscored.json' with { type: 'json' }
 import { membersOf, ONTOLOGY, SCENARIOS } from './mock-ontology'
+import world from './fixtures/world-shell.json' with { type: 'json' }
 
-const SUMMARY = {
-  dataset_id: 'dev-seed2026',
-  generator_version: '0.2.0',
-  world_seed: 2026,
-  scenario_seed: 7,
-  profile: 'dev',
-  row_counts: ROW_COUNTS,
-  active: true,
-}
+/** The captured bank: its instance count (Help shows it) and the repeats of an official run. */
+const BANK_INSTANCES = scoredQuestions.length
+const REPEATS = 3
 
-const model = (provider: string, name: string, reachable: boolean | null) => ({
-  provider,
-  model: name,
-  reachable,
-  detail: reachable === false ? 'not listed' : 'listed',
-})
+/*
+ * Everything the shell, Overview and Results show comes from a capture of the
+ * real API (scripts/capture-shell.mjs): the demo questions, models, readiness,
+ * datasets and the published runs. The one invented thing is FIXTURE_OFFICIAL,
+ * an "official run" of the whole bank: no such run exists yet, so the screens
+ * that show one are baselined with test values, named `fixture-official`.
+ */
+const SUMMARY = world.datasets[0]
+const READY = world.ready
+const RUNS = world.runs
+const DEMO_QUESTIONS = world.demo_questions
 
-const READY = {
-  ready: true,
-  checks: {
-    lab: { ok: true, detail: 'built' },
-    index: { ok: true, detail: '1,204 points, record version 2' },
-    graph: { ok: true, detail: 'answering' },
-    model: { ok: true, detail: 'qwen3:8b is reachable' },
-    embedding: { ok: true, detail: 'bge-m3 is reachable' },
-  },
-}
-
-const RUNS = [
-  {
-    run_id: 'official-2026-10-20',
-    run_kind: 'official',
-    label: null,
-    started_at: '2026-10-20T09:00:00Z',
-    selection: { strata: null, limit: null },
-    worlds: [2026],
-    headlines: [
-      'Graph and ontology answered more questions correctly than the current approach.',
-    ],
-  },
-  {
-    run_id: 'smoke-2026-10-18',
-    run_kind: 'smoke',
-    label: 'Pilot check',
-    started_at: '2026-10-18T09:00:00Z',
-    selection: { strata: ['depth'], limit: 3 },
-    worlds: [2026],
-    headlines: ['Three instances per question on the depth stratum only.'],
-  },
-]
-
-const cell = (mean: number, n: number, repeats: number) => ({
+const cell = (mean: number, repeats: number) => ({
   mean,
-  n,
+  n: BANK_INSTANCES,
   repeats,
 })
 
-const FULL_BANK = { strata: null, limit: null }
-
-const LATEST_SUMMARY = {
-  selection: FULL_BANK,
-  headlines: [
-    'Graph found 0.12 more evidence than text search on multi-hop questions (95% interval 0.05 to 0.19, 36 pairs in 12 groups).',
-    'Graph + Ontology found 0.03 more evidence than Graph on questions anchored by id (95% interval -0.02 to 0.08, 36 pairs in 12 groups).',
-  ],
-  metrics: {
-    overall: {
-      evidence_f1: {
-        A: cell(0.31, 114, 342),
-        B: cell(0.43, 114, 342),
-        C: cell(0.46, 114, 342),
+/** Test values, not results: a whole-bank official run, so Overview draws its tiles. */
+const FIXTURE_OFFICIAL = {
+  run_id: 'fixture-official',
+  run_kind: 'official',
+  label: null,
+  summary: {
+    selection: { strata: null, limit: null },
+    headlines: [
+      'Fixture headline for the H1 comparison (test values).',
+      'Fixture headline for the H2 comparison (test values).',
+    ],
+    metrics: {
+      overall: {
+        evidence_f1: {
+          A: cell(0.31, BANK_INSTANCES * REPEATS),
+          B: cell(0.43, BANK_INSTANCES * REPEATS),
+          C: cell(0.46, BANK_INSTANCES * REPEATS),
+        },
       },
     },
   },
 }
 
-/** What GET /benchmarks/latest answers: the official run, a smoke-only state, or a 404. */
+/**
+ * What GET /benchmarks/latest answers: the invented official run, the newest
+ * smoke run, or the newest published run as captured (a subset run, so
+ * Overview says there is no official run yet).
+ */
 const LATEST = {
-  official: {
-    run_id: 'official-2026-10-20',
-    run_kind: 'official',
-    label: null,
-    summary: LATEST_SUMMARY,
-  },
-  smoke: {
-    run_id: 'smoke-2026-10-18',
-    run_kind: 'smoke',
-    label: 'scorer smoke test',
-    summary: { ...LATEST_SUMMARY, headlines: ['Scorer smoke test.'] },
-  },
+  official: FIXTURE_OFFICIAL,
+  smoke: world.latest_smoke,
+  none: world.latest,
 } as const
 
-export type LatestRun = keyof typeof LATEST | 'none' | 'unavailable' | 'pending'
-
-const DEMO_QUESTIONS = [
-  [
-    'L05-2026-INC_S007_GR',
-    'L05',
-    'Why did digital conversion fall in Greece?',
-    'H1',
-  ],
-  ['L07-2026-X', 'L07', 'Which markets share a payment provider?', 'H2'],
-  ['L11-2026-X', 'L11', 'Which incidents touched the checkout system?', 'H1'],
-  ['L14-2026-X', 'L14', 'What was the weekly sales total in Austria?', 'H3'],
-].map(([instance_id, question_id, text, stratum]) => ({
-  instance_id,
-  question_id,
-  text,
-  stratum,
-  market_scope: [],
-}))
+export type LatestRun = keyof typeof LATEST | 'unavailable' | 'pending'
 
 const ROUTES: Record<string, unknown> = {
   '/api/v1/benchmarks': RUNS,
   '/api/v1/demo/questions': DEMO_QUESTIONS,
   '/api/v1/health/ready': READY,
   '/api/v1/datasets': [SUMMARY],
-  '/api/v1/datasets/dev-seed2026': {
-    summary: SUMMARY,
-    provenance: {},
-    index_status: {
-      built_at: '2026-10-19T09:00:00Z',
-      collection: 'dev',
-      points: 1204,
-      serialiser_version: '2',
-    },
-  },
-  '/api/v1/models': {
-    generation: model('ollama', 'qwen3:8b', true),
-    embedding: model('ollama', 'bge-m3', true),
-    rerank: model('local', 'bge-reranker-v2-m3', null),
-    sparse: model('local', 'bm25', true),
-  },
+  [`/api/v1/datasets/${DATASET_ID}`]: world.dataset,
+  '/api/v1/models': world.models,
   '/api/v1/ontology': ONTOLOGY,
   '/api/v1/scenarios': SCENARIOS,
   [`/api/v1/datasets/${DATASET_ID}/dictionary`]: DICTIONARY,
@@ -212,18 +145,30 @@ function node(id: string) {
   }
 }
 
+/** The paths a page asked for that the mock has no answer for. */
+const unmockedBy = new WeakMap<Page, string[]>()
+
+/** Fails the test when the page asked for something the mock does not answer. */
+export function expectNoUnmockedRequests(page: Page) {
+  expect(unmockedBy.get(page) ?? [], 'unmocked API requests').toEqual([])
+}
+
 /** Fixes the clock and answers the API from the data above. */
 export async function mockApi(
   page: Page,
   /** The run list the Results screen sees: as published, none, or failing. */
-  runs: 'published' | 'none' | 'unavailable' = 'published',
+  runs: 'published' | 'none' | 'unavailable' | 'pending' = 'published',
   /** The newest run Overview sees: official, smoke only, none (404), failing or never answering. */
   latest: LatestRun = 'official',
   dataModel: DataModelState = 'normal',
 ) {
+  const unmocked: string[] = []
+  unmockedBy.set(page, unmocked)
   await page.clock.setFixedTime(new Date('2026-10-20T10:00:00Z'))
   await page.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname
+    if (path === '/api/v1/benchmarks' && runs === 'pending')
+      return new Promise<void>(() => undefined)
     if (path === '/api/v1/benchmarks' && runs !== 'published')
       return route.fulfill(
         runs === 'none'
@@ -232,19 +177,6 @@ export async function mockApi(
       )
     if (path === '/api/v1/benchmarks/latest') {
       if (latest === 'pending') return new Promise<void>(() => undefined)
-      if (latest === 'none')
-        return route.fulfill(
-          json(
-            {
-              error: {
-                error_code: 'NOT_FOUND',
-                message: 'no published benchmark run',
-                retryable: false,
-              },
-            },
-            404,
-          ),
-        )
       if (latest === 'unavailable')
         return route.fulfill(envelope('The latest run is unavailable.', 503))
       return route.fulfill(json(LATEST[latest]))
@@ -295,6 +227,9 @@ export async function mockApi(
         return route.fulfill(envelope('The graph is not answering.', 503))
       return route.fulfill(json(graphNode(id) ?? node(id)))
     }
-    return route.fulfill(envelope(`no mock for ${path}`, 404))
+    // Nothing may reach a backend that happens to run on this machine: an
+    // unmocked call is refused and fails the test (see below).
+    unmocked.push(path)
+    return route.abort()
   })
 }

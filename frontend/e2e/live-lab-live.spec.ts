@@ -101,23 +101,28 @@ async function stored(page: Page, runId: string) {
   }
 }
 
-/** The screen state a run ends in: the columns, the scorecard, the evidence paths and the coverage. */
+/**
+ * The screen state a run ends in that the reducer derives from the events:
+ * each column (status, steps and timings, evidence found) and what each
+ * graph canvas says it shows. The scorecard and answers come from the stored
+ * results, which every page reads from the same place, so they say nothing
+ * about the events and are left out.
+ */
 async function endState(page: Page) {
-  const text = (locator: ReturnType<Page['getByRole']>) => locator.innerText()
-  return {
-    columns: await Promise.all(
-      PANELS.map((name) =>
-        text(page.getByRole('region', { name, exact: true })),
-      ),
+  const columns = await Promise.all(
+    PANELS.map((name) =>
+      page.getByRole('region', { name, exact: true }).innerText(),
     ),
-    scorecard: await text(page.getByRole('region', { name: 'Scorecard' })),
-    answers: await Promise.all(
-      PANELS.map((name) =>
-        text(page.getByRole('region', { name: `${name} answer` })),
-      ),
-    ),
-    coverage: await text(page.getByRole('table', { name: 'Market coverage' })),
+  )
+  const canvases: string[] = []
+  for (const tab of PANELS.slice(1)) {
+    await page.getByRole('tab', { name: tab }).click()
+    const canvas = page.getByRole('group', { name: `Graph for ${tab}` })
+    await expect(canvas).toHaveAttribute('data-layout-ready', 'true')
+    canvases.push(await canvas.innerText())
   }
+  await page.getByRole('tab', { name: PANELS[1] }).click()
+  return { columns, canvases }
 }
 
 /**
@@ -194,14 +199,21 @@ test('a live run against the real backend streams to completion', async ({
 /** How many events of the real stream the first connection delivers before it drops. */
 const EVENTS_BEFORE_DROP = 120
 
+/** The sequence numbers in the `id:` lines of SSE frames. */
+const sequencesOf = (frames: string) =>
+  [...frames.matchAll(/^id: (\d+)$/gm)].map((match) => Number(match[1]))
+
 /**
  * Drops the stream of a real run part of the way through. The first
  * connection carries the real stream up to that many events and then ends,
- * as a connection lost mid-run does. The browser's own retry is answered with
- * a 503, so it gives up on that connection and the app opens a new one after
- * the last event it has. Every later connection goes to the backend as it is.
+ * as a connection lost mid-run does. The browser's retry is answered with a
+ * 503, so it gives up on that connection and the app opens a new one after
+ * the last event it has. That connection is the backend's real answer, handed
+ * on whole. Every frame handed to the page is logged, so the test can read
+ * the sequence numbers the page received.
  */
 async function dropStreamOnce(page: Page) {
+  const delivered: number[] = []
   let connections = 0
   await page.route('**/api/v1/queries/*/events/stream*', async (route) => {
     connections += 1
@@ -217,8 +229,13 @@ async function dropStreamOnce(page: Page) {
           },
         }),
       })
-    if (connections > 2) return route.continue()
     const { pathname, search } = new URL(route.request().url())
+    if (connections > 2) {
+      const real = await route.fetch()
+      const body = await real.text()
+      delivered.push(...sequencesOf(body))
+      return route.fulfill({ response: real, body })
+    }
     const upstream = await fetch(`http://localhost:8000${pathname}${search}`, {
       headers: { accept: 'text/event-stream' },
     })
@@ -228,19 +245,22 @@ async function dropStreamOnce(page: Page) {
     let pending = ''
     while (frames.length < EVENTS_BEFORE_DROP) {
       const { done, value } = await reader.read()
-      expect(done, 'the run outlasts the events kept').toBe(false)
+      if (done) break
       pending += decoder.decode(value, { stream: true })
       const parts = pending.split('\n\n')
       pending = parts.pop()!
       frames = frames.concat(parts)
     }
     await reader.cancel()
+    const body = frames.slice(0, EVENTS_BEFORE_DROP).join('\n\n') + '\n\n'
+    delivered.push(...sequencesOf(body))
     await route.fulfill({
       status: 200,
       contentType: 'text/event-stream',
-      body: frames.slice(0, EVENTS_BEFORE_DROP).join('\n\n') + '\n\n',
+      body,
     })
   })
+  return delivered
 }
 
 test('live run resumes after a dropped stream', async ({ page, context }) => {
@@ -249,7 +269,7 @@ test('live run resumes after a dropped stream', async ({ page, context }) => {
     if (new URL(request.url()).pathname.endsWith('/events/stream'))
       streams.push(request)
   })
-  await dropStreamOnce(page)
+  const delivered = await dropStreamOnce(page)
 
   const question = await h1Question(page)
   const runId = await startLiveRun(page, question)
@@ -264,11 +284,14 @@ test('live run resumes after a dropped stream', async ({ page, context }) => {
     String(EVENTS_BEFORE_DROP),
   )
 
-  // Nothing is missing or twice: the screen shows what the server stored.
+  // Nothing is missing or twice: the page received every sequence number
+  // from 1 to the last, once each, and that is what the server stored.
   const kept = await stored(page, runId)
   const sequences = kept.events.map((event) => event.sequence)
   expect(sequences).toEqual(sequences.map((_, index) => index + 1))
   expect(sequences.length).toBeGreaterThan(EVENTS_BEFORE_DROP)
+  expect(delivered).toEqual(sequences)
+  // And the screen shows what those events say.
   const results = await (
     await page.request.get(`/api/v1/queries/${runId}`)
   ).json()
@@ -299,7 +322,8 @@ test('the final state equals the replay of the stored events', async ({
   await expect(page.getByText(/^Paused at 0 s/)).toBeVisible()
   const end = (await slider.getAttribute('max'))!
   await slider.fill(end)
-  await expect(slider).toHaveValue(end)
+  // The position reads the whole run (the slider's own value is rounded).
+  await expect(slider).toHaveAttribute('aria-valuetext', /^(.+) of \1$/)
   await expect(page.getByText('The run is complete.')).toBeVisible()
   expect(await endState(page)).toEqual(live)
 

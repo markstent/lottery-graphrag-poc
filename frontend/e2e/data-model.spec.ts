@@ -1,12 +1,19 @@
 import { expect, test, type Page, type Request } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 
-import { mockApi, type DataModelState } from './mock-api'
+import {
+  expectNoUnmockedRequests,
+  mockApi,
+  type DataModelState,
+} from './mock-api'
 import { GRAPH_SCHEMA, ROW_COUNTS, rowsOf } from './mock-data-model'
 
 /* Data Model in a browser, against the mock API. SHOTS=<dir> also saves pictures. */
 
 test.use({ viewport: { width: 1920, height: 1080 } })
+
+// A call the mock does not answer is refused; it must not go unnoticed.
+test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
 async function shot(page: Page, name: string) {
   const dir = process.env.SHOTS

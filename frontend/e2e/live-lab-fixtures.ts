@@ -2,12 +2,13 @@ import type { Page } from '@playwright/test'
 import { readdirSync, readFileSync } from 'node:fs'
 
 import cancelled from '../src/run/fixtures/run-cancelled.json' with { type: 'json' }
+import adhoc from '../src/run/fixtures/run-adhoc.json' with { type: 'json' }
 import live from '../src/run/fixtures/run-abc.json' with { type: 'json' }
 
 /* What the Live Lab specs share: the recorded runs on disk, the questions the
    mock API lists for them, and a live run whose stream is served from a capture. */
 
-export { cancelled, live }
+export { adhoc, cancelled, live }
 
 const RECORDED_DIR = 'src/run/fixtures/recorded'
 export const RECORDED_RUNS: {
@@ -89,4 +90,34 @@ export async function listRecordedQuestions(page: Page) {
       body: JSON.stringify(QUESTIONS),
     }),
   )
+}
+
+/**
+ * A live run that is part of the way through: the first `count` events of a
+ * captured run arrive, and then the connection stays quiet, so the screen
+ * stays in its "in progress" state for as long as the test looks at it.
+ */
+export async function serveRunInProgress(
+  page: Page,
+  events: typeof live.events,
+  count: number,
+) {
+  await page.route('**/api/v1/queries', (route) =>
+    route.fulfill({
+      status: 202,
+      contentType: 'application/json',
+      body: JSON.stringify({ run_id: 'RUN-E2E' }),
+    }),
+  )
+  let connections = 0
+  await page.route('**/api/v1/queries/RUN-E2E/events/stream*', (route) => {
+    connections += 1
+    // The first connection carries the events so far; the browser's retry never gets an answer.
+    if (connections > 1) return new Promise<void>(() => undefined)
+    return route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: sse(events.slice(0, count)),
+    })
+  })
 }

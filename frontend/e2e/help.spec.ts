@@ -1,11 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 
-import { mockApi, type LatestRun } from './mock-api'
+import { expectNoUnmockedRequests, mockApi, type LatestRun } from './mock-api'
 
 /* Help in a browser, against the mock API. SHOTS=<dir> also saves pictures. */
 
 test.use({ viewport: { width: 1920, height: 1080 } })
+
+// A call the mock does not answer is refused; it must not go unnoticed.
+test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
 async function shot(page: Page, name: string) {
   const dir = process.env.SHOTS

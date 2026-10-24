@@ -227,6 +227,35 @@ describe('CanvasArea', () => {
       expect(screen.getByText('Not recorded yet.')).toBeVisible()
     })
 
+    it.each([
+      ['skipped', 'B did not run.'],
+      ['cancelled', 'B was cancelled.'],
+      ['failed', 'B failed.'],
+    ] as const)(
+      'says why the other path is missing from its status (%s)',
+      async (status, words) => {
+        const final = finalOf(h1)
+        const state = {
+          ...final,
+          graph: {
+            ...final.graph,
+            B: { ...final.graph.B, evidencePath: null },
+          },
+          pipelines: {
+            ...final.pipelines,
+            B: { ...final.pipelines.B, status },
+          },
+        }
+        const user = userEvent.setup()
+        show(h1, { state, finalState: state })
+        await user.click(screen.getByRole('tab', { name: /C · Graph/ }))
+        expect(
+          screen.getByRole('button', { name: "Show B's path" }),
+        ).toBeDisabled()
+        expect(screen.getByText(words)).toBeVisible()
+      },
+    )
+
     it("offers B's path on C while C has not recorded its own", async () => {
       const final = finalOf(h1)
       const inFlight = {

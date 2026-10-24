@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import { h1, listRecordedQuestions } from './live-lab-fixtures'
-import { mockApi } from './mock-api'
+import { expectNoUnmockedRequests, mockApi } from './mock-api'
 
 /* The five destinations in order, with the sentence each is described by (spec 7.1). */
 const DESTINATIONS = [
@@ -35,6 +35,9 @@ const DESTINATIONS = [
       'How it works in plain language, every benchmark question with its answer key, glossary, how to run it',
   },
 ] as const
+
+// A call the mock does not answer is refused; it must not go unnoticed.
+test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
 test('the sidebar lists the five destinations in order', async ({ page }) => {
   await page.goto('/')

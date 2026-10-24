@@ -108,6 +108,23 @@ describe('Live Lab', () => {
     await screen.findByRole('button', { name: h1.question })
   })
 
+  it('shows no question as chosen, and Run disabled, until one is chosen', async () => {
+    api({})
+    const user = userEvent.setup()
+    open()
+    const question = await screen.findByRole('button', { name: h1.question })
+    const saved = screen.getByRole('group', { name: 'Saved questions' })
+    for (const button of within(saved).getAllByRole('button'))
+      expect(button).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+    expect(screen.getByText('Pick a question or type one.')).toBeVisible()
+    await user.click(question)
+    expect(question).toHaveAttribute('aria-pressed', 'true')
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Run' })).toBeEnabled(),
+    )
+  })
+
   it('defaults to the recorded run when the backend is not ready and says why Live is off', async () => {
     api({ '/api/v1/health/ready': DOWN })
     open()
@@ -412,6 +429,9 @@ describe('Live Lab, live run', () => {
 
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Another run is using the graph.')
+    // The status line says what happened, not that nothing was chosen.
+    expect(screen.getByText('The run did not start.')).toBeVisible()
+    expect(screen.queryByText('Choose a question and press Run.')).toBeNull()
     await user.click(within(alert).getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(stream.subscribeRun).toHaveBeenCalled())
     expect(screen.queryByRole('alert')).toBeNull()

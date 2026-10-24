@@ -1,15 +1,21 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 
 import {
+  adhoc,
   cancelled,
   h1,
   listRecordedQuestions,
   live,
-  plainAnswers,
   RECORDED_RUNS,
   serveLiveRun,
+  serveRunInProgress,
 } from './live-lab-fixtures'
-import { mockApi, type DataModelState, type LatestRun } from './mock-api'
+import {
+  expectNoUnmockedRequests,
+  mockApi,
+  type DataModelState,
+  type LatestRun,
+} from './mock-api'
 
 /**
  * Visual regression baselines for the foundation. Run locally only:
@@ -22,9 +28,13 @@ import { mockApi, type DataModelState, type LatestRun } from './mock-api'
  * (src/dev/gallery.tsx), one image per state. Every screen is baselined in each
  * of its states below, as a 1920 by 1080 viewport (a drawer as its own box).
  *
- * The mock API's "official run" is a test fixture: its tiles, headlines and
- * scores are invented numbers, not results. Every baseline that shows them has
- * `fixture-official` in its name. Recorded runs are real captures.
+ * Data sources. The shell, Overview (but for the official run), Results, the
+ * recorded runs, the cancelled run, the ad hoc run, the Data Model and Help are
+ * captures of the real API (scripts/capture-*.mjs). The one invented thing is
+ * the mock API's "official run": no full official run exists yet, so its tiles
+ * and headlines are test values, not results, and the Help scores shown beside
+ * it are a pilot run's shown as if official. Every baseline that shows them has
+ * `fixture-official` in its name.
  */
 
 test.use({
@@ -35,6 +45,9 @@ test.use({
 test.beforeEach(async ({ page }) => {
   await mockApi(page)
 })
+
+// A call the mock does not answer is refused; it must not go unnoticed.
+test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
 /** Fonts loaded, then the frames in which the last change reaches the page. */
 async function settle(page: Page) {
@@ -134,7 +147,7 @@ test.describe('shell', () => {
       }),
     ).toBeVisible()
     await settle(page)
-    await expectBaseline(
+    await expectScreen(
       page.getByRole('dialog', { name: 'Evidence' }),
       'shell-evidence-drawer.png',
     )
@@ -223,7 +236,7 @@ test.describe('gallery', () => {
       await expect(page.getByRole('dialog')).toBeVisible()
       await expect(page.getByRole('dialog').getByText(text)).toBeAttached()
       await settle(page)
-      await expectBaseline(
+      await expectScreen(
         id.startsWith('evidence') ? page.getByRole('dialog') : page,
         `gallery-drawer-${id}.png`,
       )
@@ -240,7 +253,7 @@ async function openScreen(
   page: Page,
   hash: string,
   options: {
-    runs?: 'published' | 'none' | 'unavailable'
+    runs?: 'published' | 'none' | 'unavailable' | 'pending'
     latest?: LatestRun
     dataModel?: DataModelState
   } = {},
@@ -260,6 +273,13 @@ const SCREEN_DIFF_PIXELS = 300
  * it to a section (`scroll: 'keep'`). Opening a control can scroll the page, so
  * the position is set rather than assumed.
  */
+async function expectScreen(target: Page | Locator, name: string) {
+  await expect(target).toHaveScreenshot(name, {
+    maxDiffPixels: SCREEN_DIFF_PIXELS,
+    maxDiffPixelRatio: undefined,
+  })
+}
+
 async function screenShot(
   page: Page,
   name: string,
@@ -268,10 +288,7 @@ async function screenShot(
   await page.mouse.move(0, 0)
   if (scroll === 'top') await page.evaluate(() => window.scrollTo(0, 0))
   await settle(page)
-  await expect(page).toHaveScreenshot(`${name}.png`, {
-    maxDiffPixels: SCREEN_DIFF_PIXELS,
-    maxDiffPixelRatio: undefined,
-  })
+  await expectScreen(page, `${name}.png`)
 }
 
 test.describe('Overview', () => {
@@ -301,11 +318,7 @@ test.describe('Overview', () => {
 
 test.describe('Results', () => {
   const STATES = [
-    [
-      'results-fixture-official-list',
-      'published',
-      'Reproducibility record (JSON)',
-    ],
+    ['results-list', 'published', 'Reproducibility record (JSON)'],
     ['results-empty', 'none', 'No benchmark runs yet.'],
     ['results-error', 'unavailable', 'The run list is unavailable.'],
   ] as const
@@ -315,6 +328,12 @@ test.describe('Results', () => {
       await expect(page.getByText(text).first()).toBeVisible()
       await screenShot(page, name)
     })
+
+  test('results-loading', async ({ page }) => {
+    await openScreen(page, '#/results', { runs: 'pending' })
+    await expect(page.getByText('Loading Benchmark runs')).toBeAttached()
+    await screenShot(page, 'results-loading')
+  })
 })
 
 test.describe('Help', () => {
@@ -336,6 +355,40 @@ test.describe('Help', () => {
         page.getByRole('table', { name: 'Benchmark questions' }),
       ).toBeVisible()
       await screenShot(page, name, 'keep')
+    })
+})
+
+test.describe('Help, bank not loaded', () => {
+  for (const state of ['loading', 'error'] as const)
+    test(`help-${state}`, async ({ page }) => {
+      await openScreen(page, '#/help')
+      // Registered after the mock, so it answers first.
+      await page.route('**/api/v1/benchmarks/questions*', (route) =>
+        state === 'loading'
+          ? new Promise<void>(() => undefined)
+          : route.fulfill({
+              status: 503,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: {
+                  error_code: 'RUN_ERROR',
+                  message: 'The question bank is unavailable.',
+                  retryable: true,
+                },
+              }),
+            }),
+      )
+      await page.reload()
+      if (state === 'loading')
+        await expect(page.getByRole('status')).toHaveCount(2)
+      else
+        await expect(page.getByRole('alert').first()).toContainText(
+          'The question bank is unavailable.',
+        )
+      await page
+        .locator('#stories')
+        .evaluate((el) => el.scrollIntoView({ block: 'start' }))
+      await screenShot(page, `help-${state}`, 'keep')
     })
 })
 
@@ -378,7 +431,7 @@ test.describe('Data Model', () => {
     const drawer = page.getByRole('dialog', { name: 'Evidence' })
     await expect(drawer.getByText('ticket price')).toBeVisible()
     await settle(page)
-    await expectBaseline(drawer, 'data-model-record-drawer.png')
+    await expectScreen(drawer, 'data-model-record-drawer.png')
   })
 
   test('data-model-graph-full', async ({ page }) => {
@@ -447,6 +500,50 @@ test.describe('Data Model', () => {
     )
     await screenShot(page, 'data-model-error')
   })
+
+  test('data-model-empty', async ({ page }) => {
+    await openScreen(page, '#/data-model', { dataModel: 'empty' })
+    await expect(
+      page.getByText('No data has been generated yet.'),
+    ).toBeVisible()
+    await screenShot(page, 'data-model-empty')
+  })
+
+  // The Graph and Ontology tabs have their own loading, empty and error states.
+  const TABS = [
+    [
+      'graph',
+      '#/data-model?tab=graph',
+      'Kinds of record',
+      'The graph has no kinds of record yet.',
+    ],
+    [
+      'ontology',
+      '#/data-model?tab=ontology',
+      'Concepts',
+      'The ontology has no concepts yet.',
+    ],
+  ] as const
+  for (const [tab, hash, title, none] of TABS)
+    for (const state of ['pending', 'empty', 'error'] as const)
+      test(`data-model-${tab}-${state === 'pending' ? 'loading' : state}`, async ({
+        page,
+      }) => {
+        await openScreen(page, hash, { dataModel: state })
+        if (state === 'pending')
+          await expect(page.getByRole('status')).toContainText(
+            `Loading ${title}`,
+          )
+        if (state === 'empty') await expect(page.getByText(none)).toBeVisible()
+        if (state === 'error')
+          await expect(page.getByRole('alert')).toContainText(
+            'The data is unavailable.',
+          )
+        await screenShot(
+          page,
+          `data-model-${tab}-${state === 'pending' ? 'loading' : state}`,
+        )
+      })
 })
 
 test.describe('Live Lab', () => {
@@ -468,6 +565,8 @@ test.describe('Live Lab', () => {
     const target =
       ms === 'end' ? (await slider(page).getAttribute('max'))! : String(ms)
     await slider(page).fill(target)
+    // No focus ring is left on the slider in the picture.
+    await slider(page).blur()
   }
 
   async function finishedRecording(page: Page, run = h1, prefix = '') {
@@ -491,7 +590,30 @@ test.describe('Live Lab', () => {
     await expect(
       page.getByText('Choose a question and press Run.'),
     ).toBeVisible()
+    // Nothing is chosen, so nothing looks chosen and Run is disabled.
+    await expect(
+      page.getByRole('button', { name: h1.question }),
+    ).toHaveAttribute('aria-pressed', 'false')
+    await expect(
+      page.getByRole('button', { name: 'Run', exact: true }),
+    ).toBeDisabled()
     await screenShot(page, 'live-lab-idle')
+  })
+
+  test('live-lab-live-running', async ({ page }) => {
+    // A live run part of the way through: the first 55 percent of a captured run's events.
+    await serveRunInProgress(
+      page,
+      live.events,
+      Math.floor(live.events.length * 0.55),
+    )
+    await liveRun(page, 'The run is in progress.')
+    await expect(page.getByRole('button', { name: 'Cancel run' })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Run', exact: true }),
+    ).toBeDisabled()
+    await canvasReady(page)
+    await screenShot(page, 'live-lab-live-running')
   })
 
   test('live-lab-h1-mid-replay-paused', async ({ page }) => {
@@ -558,9 +680,11 @@ test.describe('Live Lab', () => {
     await serveLiveRun(
       page,
       cancelled.events as unknown as typeof live.events,
-      plainAnswers(cancelled.results),
+      cancelled.results,
     )
     await liveRun(page, 'The run was cancelled.')
+    // C never started, and the toggle says so.
+    await expect(page.getByText('C did not run.')).toBeVisible()
     await expect(
       page.getByRole('region', { name: 'B · Graph answer' }),
     ).toContainText('No answer was recorded.')
@@ -568,14 +692,21 @@ test.describe('Live Lab', () => {
   })
 
   test('live-lab-ad-hoc-end', async ({ page }) => {
-    await serveLiveRun(page, live.events, {
-      ...plainAnswers(live.results),
-      benchmark_instance_id: null,
-      answer_key: 'none',
-      score_status: 'not_applicable',
-      score: null,
-    })
-    await liveRun(page, 'No answer key exists for this question.')
+    // A real run of a typed question: no answer key, no score.
+    await serveLiveRun(
+      page,
+      adhoc.events as unknown as typeof live.events,
+      adhoc.results,
+    )
+    await page.goto('/#/live-lab')
+    await page
+      .getByRole('textbox', { name: 'Or ask your own question' })
+      .fill(adhoc.question)
+    await page.getByRole('button', { name: 'Run', exact: true }).click()
+    await expect(
+      page.getByText('No answer key exists for this question.'),
+    ).toBeVisible()
+    await expect(page.getByText(adhoc.question).first()).toBeVisible()
     await canvasReady(page)
     await screenShot(page, 'live-lab-ad-hoc-end')
   })
@@ -598,6 +729,7 @@ test.describe('Live Lab', () => {
     await expect(
       page.getByRole('alert').getByRole('button', { name: 'Retry' }),
     ).toBeVisible()
+    await expect(page.getByText('The run did not start.')).toBeVisible()
     await screenShot(page, 'live-lab-error-409')
   })
 
@@ -612,7 +744,7 @@ test.describe('Live Lab', () => {
     const drawer = page.getByRole('dialog', { name: 'Evidence' })
     await expect(drawer).toBeVisible()
     await settle(page)
-    await expectBaseline(drawer, 'live-lab-evidence-drawer.png')
+    await expectScreen(drawer, 'live-lab-evidence-drawer.png')
   })
 
   test('live-lab-presentation-end', async ({ page }) => {
@@ -628,7 +760,7 @@ test.describe('presentation mode', () => {
       '#/overview',
       'Intervals are for the differences below.',
     ],
-    ['results-fixture-official', '#/results', 'Reproducibility record (JSON)'],
+    ['results', '#/results', 'Reproducibility record (JSON)'],
     ['data-model', '#/data-model', 'Incident management'],
     ['help-fixture-official', '#/help', 'What we are testing'],
   ] as const

@@ -16,6 +16,10 @@
 // It fails when the run finished before the cancel landed, so it can be retried:
 //   node scripts/capture-run.mjs [http://localhost:8000] --cancel-on B
 //
+// Ad hoc run, a live run of a question you type (not one of the bank's), into
+// src/run/fixtures/run-adhoc.json. It has no answer key and no score:
+//   node scripts/capture-run.mjs [http://localhost:8000] --adhoc "Which ..."
+//
 // The run id and timestamps are kept as the API gave them. The final results
 // (GET /queries/{id}) are stored beside the events, so the evidence paths and
 // source records the pipelines returned are part of the fixture.
@@ -28,6 +32,7 @@ const { values, positionals } = parseArgs({
     strata: { type: 'string' },
     'out-dir': { type: 'string' },
     'cancel-on': { type: 'string' },
+    adhoc: { type: 'string' },
   },
 })
 const BASE = positionals[0] ?? 'http://localhost:8000'
@@ -36,6 +41,7 @@ const OUT_DIR = values['out-dir']
 if (values.strata && !OUT_DIR) throw new Error('--strata needs --out-dir')
 const FIXTURE = 'src/run/fixtures/run-abc.json'
 const CANCELLED_FIXTURE = 'src/run/fixtures/run-cancelled.json'
+const ADHOC_FIXTURE = 'src/run/fixtures/run-adhoc.json'
 const CANCEL_POLL_MS = 20
 const CONFIGURATIONS = ['A', 'B', 'C']
 const FINISHED = ['completed', 'failed', 'cancelled']
@@ -115,7 +121,20 @@ const find = (stratum) => {
   return question
 }
 
-if (values['cancel-on']) {
+if (values.adhoc) {
+  const question = { text: values.adhoc, market_scope: [] }
+  const { runId, run, events } = await capture(question, false)
+  const fixture = {
+    run_id: runId,
+    question: question.text,
+    market_scope: question.market_scope,
+    configurations: CONFIGURATIONS,
+    results: run,
+    events,
+  }
+  writeFileSync(ADHOC_FIXTURE, `${JSON.stringify(fixture, null, 2)}\n`)
+  console.log(`${ADHOC_FIXTURE}: ${runId}, ${events.length} events`)
+} else if (values['cancel-on']) {
   const question = find('H1')
   const { runId, run, events } = await captureCancelled(
     question,
