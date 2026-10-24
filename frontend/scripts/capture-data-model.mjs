@@ -5,6 +5,8 @@
 // keep the world's spread; the mock shows the real counts and refuses a page or a filter
 // the sample cannot answer. Usage: node scripts/capture-data-model.mjs
 // [http://localhost:8000]. Run it against a read-only dev world; it ingests nothing.
+// It also captures the ontology, the members of every concept (all markets, and each
+// market the concept is bound in) and the scenarios into e2e/fixtures/ontology-world.json.
 import { writeFileSync } from 'node:fs'
 
 const API = `${process.argv[2] ?? 'http://localhost:8000'}/api/v1`
@@ -68,3 +70,19 @@ console.log(
     .map(([table, list]) => `${table} ${list.length}`)
     .join('\n'),
 )
+
+const ontology = await get('/ontology')
+const members = {}
+for (const { concept_id: id, binding_counts: bound } of ontology.concepts) {
+  const markets = Object.keys(bound).filter((m) => m !== 'shared')
+  members[id] = { all: await get(`/ontology/concepts/${id}/members`) }
+  for (const market of markets)
+    members[id][market] = await get(
+      `/ontology/concepts/${id}/members?market=${market}`,
+    )
+}
+writeFileSync(
+  new URL('../e2e/fixtures/ontology-world.json', import.meta.url),
+  JSON.stringify({ ontology, members, scenarios: await get('/scenarios') }),
+)
+console.log(`ontology: ${ontology.concepts.length} concepts`)

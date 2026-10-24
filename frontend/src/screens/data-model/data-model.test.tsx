@@ -1,10 +1,11 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SettingsProvider } from '../../app/settings'
 import { stubApi } from '../../test/api-stub'
 import { DATASET, DICTIONARY, SCHEMA, STATS } from './data-model.fixtures'
 import { DataModel } from './data-model'
+import { stubOntology } from './ontology.fixtures'
 
 const ROUTES = {
   '/api/v1/datasets': [DATASET],
@@ -53,6 +54,8 @@ describe('DataModel', () => {
     ).toEqual([
       ['Warehouse', '#/data-model?tab=warehouse'],
       ['Graph', '#/data-model?tab=graph'],
+      ['Ontology', '#/data-model?tab=ontology'],
+      ['Scenarios', '#/data-model?tab=scenarios'],
     ])
   })
 
@@ -73,9 +76,24 @@ describe('DataModel', () => {
 
   it('falls back to the Warehouse for a tab it does not have', async () => {
     stubApi(ROUTES)
-    renderAt('#/data-model?tab=ontology')
+    renderAt('#/data-model?tab=nonsense')
     expect(
       await screen.findByRole('button', { name: 'games, 120 rows' }),
     ).toBeVisible()
+  })
+
+  it('opens the Ontology and Scenarios tabs the address names', async () => {
+    stubOntology()
+    renderAt('#/data-model?tab=ontology&concept=CONCEPT_NATIONAL_DRAW')
+    expect((await screen.findAllByText('Αριθμολαχείο')).length).toBeGreaterThan(
+      0,
+    )
+    expect(screen.getByRole('link', { name: 'Ontology' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    cleanup()
+    renderAt('#/data-model?tab=scenarios')
+    expect(await screen.findAllByRole('article')).toHaveLength(8)
   })
 })

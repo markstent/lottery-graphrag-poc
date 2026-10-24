@@ -11,6 +11,8 @@ import { hrefFor, useRoute } from '../../app/router'
 import { useSettings } from '../../app/use-settings'
 import { Screen } from '../screen'
 import { GraphTab } from './graph-tab'
+import { OntologyTab } from './ontology-tab'
+import { ScenariosTab } from './scenarios-tab'
 import { Warehouse } from './warehouse'
 
 interface Tab {
@@ -29,6 +31,16 @@ const TABS: readonly Tab[] = [
     id: 'graph',
     label: 'Graph',
     render: (params, scale) => <GraphTab params={params} scale={scale} />,
+  },
+  {
+    id: 'ontology',
+    label: 'Ontology',
+    render: (params) => <OntologyTab params={params} />,
+  },
+  {
+    id: 'scenarios',
+    label: 'Scenarios',
+    render: () => <ScenariosTab />,
   },
 ]
 

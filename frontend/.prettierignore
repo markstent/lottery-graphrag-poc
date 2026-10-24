@@ -9,3 +9,4 @@ dist-e2e
 src/dev/fixtures/graph-200.json
 src/run/fixtures/recorded/
 e2e/fixtures/data-model-world.json
+e2e/fixtures/ontology-world.json

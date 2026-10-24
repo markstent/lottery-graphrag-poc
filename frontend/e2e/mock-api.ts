@@ -19,6 +19,7 @@ import {
   ROW_COUNTS,
   rowsOf,
 } from './mock-data-model'
+import { membersOf, ONTOLOGY, SCENARIOS } from './mock-ontology'
 
 const SUMMARY = {
   dataset_id: 'dev-seed2026',
@@ -153,7 +154,8 @@ const ROUTES: Record<string, unknown> = {
     rerank: model('local', 'bge-reranker-v2-m3', null),
     sparse: model('local', 'bm25', true),
   },
-  '/api/v1/ontology': { version: '2.0.0', concepts: [] },
+  '/api/v1/ontology': ONTOLOGY,
+  '/api/v1/scenarios': SCENARIOS,
   [`/api/v1/datasets/${DATASET_ID}/dictionary`]: DICTIONARY,
   '/api/v1/graph/schema': GRAPH_SCHEMA,
   '/api/v1/graph/stats': GRAPH_STATS,
@@ -179,7 +181,17 @@ const NODE_PREFIX = '/api/v1/graph/nodes/'
 const DATA_MODEL_PATHS = [
   `/api/v1/datasets/${DATASET_ID}/dictionary`,
   '/api/v1/graph/schema',
+  '/api/v1/ontology',
+  '/api/v1/scenarios',
 ]
+
+/** What each Data Model route answers when the world has none. */
+const NONE: Record<string, unknown> = {
+  '/api/v1/graph/schema': { ...GRAPH_SCHEMA, labels: [] },
+  '/api/v1/ontology': { ...ONTOLOGY, concepts: [] },
+}
+
+const MEMBERS = /^\/api\/v1\/ontology\/concepts\/([^/]+)\/members$/
 
 function node(id: string) {
   return {
@@ -239,9 +251,15 @@ export async function mockApi(
       if (dataModel === 'pending') return new Promise<void>(() => undefined)
       if (dataModel === 'error')
         return route.fulfill(envelope('The data is unavailable.', 503))
-      return route.fulfill(
-        json(path.endsWith('/schema') ? { ...GRAPH_SCHEMA, labels: [] } : []),
+      return route.fulfill(json(NONE[path] ?? []))
+    }
+    const members = MEMBERS.exec(path)
+    if (members) {
+      const answer = membersOf(
+        decodeURIComponent(members[1]),
+        new URL(route.request().url()).searchParams.get('market'),
       )
+      return route.fulfill(json(answer.body, answer.status))
     }
     if (path in ROUTES) return route.fulfill(json(ROUTES[path]))
     if (path.startsWith(TABLES_PREFIX)) {

@@ -70,6 +70,14 @@ export const PHASE6_REWRITES = [
   'mock/content.ts',
 ] as const
 
+/**
+ * Spec 7.6 names the Data Model tab "Ontology", which is the one place that
+ * word stands alone as a name. It is the concept, not the v1 pipeline.
+ */
+const NAMED_EXCEPTIONS = [
+  { file: 'screens/data-model/data-model.tsx', text: 'Ontology' },
+] as const
+
 const isStringLike = (node: ts.Node): node is ts.StringLiteralLike =>
   ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)
 
@@ -248,7 +256,12 @@ describe('copy scan', () => {
       .flatMap(([path, source]) =>
         copyIn(source, path).flatMap(({ line, text }) => {
           const why = violation(text)
-          return why ? [`${relative(path)}:${line} ${why}: ${text.trim()}`] : []
+          const allowed = NAMED_EXCEPTIONS.some(
+            (e) => e.file === relative(path) && e.text === text.trim(),
+          )
+          return why && !allowed
+            ? [`${relative(path)}:${line} ${why}: ${text.trim()}`]
+            : []
         }),
       )
     expect(hits).toEqual([])
@@ -262,6 +275,16 @@ describe('copy scan', () => {
         ),
     )
     expect(clean).toEqual([])
+  })
+
+  it('only allows named exceptions that are still in their file', () => {
+    const stale = NAMED_EXCEPTIONS.filter(
+      (e) =>
+        !copyIn(sources[`/src/${e.file}`] ?? '', e.file).some(
+          (copy) => copy.text.trim() === e.text,
+        ),
+    )
+    expect(stale).toEqual([])
   })
 
   it('only excludes files that still exist', () => {

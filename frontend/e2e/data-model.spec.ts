@@ -287,3 +287,114 @@ test('presentation mode raises the type on the map', async ({ page }) => {
   await expect(page.getByRole('button', { name: /^game, / })).toBeVisible()
   await shot(page, 'graph-presentation')
 })
+
+const NATIONAL_DRAW = '#/data-model?tab=ontology&concept=CONCEPT_NATIONAL_DRAW'
+
+test('the ontology shows one concept under four names, and filters its terms by market', async ({
+  page,
+}) => {
+  await open(page, NATIONAL_DRAW)
+  const card = page.getByRole('region', { name: 'Concept', exact: true })
+  await expect(card.getByText('Αριθμολαχείο')).toBeVisible()
+  await expect(card.getByText('Zahlenziehung')).toBeVisible()
+  await expect(card.getByText('National Draw').first()).toBeVisible()
+  const terms = page.getByRole('region', { name: 'Local terms bound to it' })
+  await expect(terms.getByRole('group')).toHaveCount(4)
+  await shot(page, 'ontology-national-draw')
+
+  await page.getByRole('button', { name: 'Greece' }).click()
+  await expect(page).toHaveURL(/concept=CONCEPT_NATIONAL_DRAW&market=MKT_GR$/)
+  await expect(terms.getByRole('group')).toHaveCount(1)
+  await expect(terms.getByText('Αριθμολαχείο')).toBeVisible()
+  await expect(terms.getByText('Zahlenziehung')).toHaveCount(0)
+  await shot(page, 'ontology-filtered-by-market')
+})
+
+test('the concept tree is a keyboard tree', async ({ page }) => {
+  await open(page, NATIONAL_DRAW)
+  const tree = page.getByRole('tree', { name: 'Concepts' })
+  await expect(tree.getByRole('treeitem', { selected: true })).toHaveText(
+    'National Draw',
+  )
+  // The tree is one tab stop, and it lands on the selected concept.
+  await page.getByRole('link', { name: 'Scenarios' }).focus()
+  await page.keyboard.press('Tab')
+  await expect(
+    tree.getByRole('treeitem', { name: 'National Draw' }),
+  ).toBeFocused()
+  await page.keyboard.press('ArrowLeft')
+  await expect(tree.getByRole('treeitem', { name: 'Draw game' })).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/concept=CONCEPT_DRAW_GAME$/)
+  await expect(
+    page
+      .getByRole('region', { name: 'Concept', exact: true })
+      .getByText('Ziehungsspiel', { exact: true }),
+  ).toBeVisible()
+  await shot(page, 'ontology-keyboard')
+})
+
+test('the scenarios are cards that link to Help, with no answers on them', async ({
+  page,
+}) => {
+  await open(page, '#/data-model?tab=scenarios')
+  await expect(page.getByRole('article')).toHaveCount(8)
+  const card = page.getByRole('article').first()
+  await expect(card.getByText('Planted in this world')).toBeVisible()
+  await expect(
+    card.getByRole('link', { name: 'Read the story' }),
+  ).toHaveAttribute('href', /^#\/help\?section=stories&story=SCN-001$/)
+  await expect(
+    card.getByRole('link', { name: 'See the questions that test it' }),
+  ).toHaveAttribute('href', /^#\/help\?section=questions&story=SCN-001$/)
+  await shot(page, 'scenarios')
+})
+
+for (const state of ['pending', 'empty', 'error'] as const)
+  test(`the ontology and scenarios show their ${state} state`, async ({
+    page,
+  }) => {
+    await open(page, NATIONAL_DRAW, state)
+    const concepts = page.getByRole('region', { name: 'Concepts' })
+    if (state === 'pending')
+      await expect(page.getByRole('status')).toContainText('Loading Concepts')
+    if (state === 'empty')
+      await expect(
+        concepts.getByText('The ontology has no concepts yet.'),
+      ).toBeVisible()
+    if (state === 'error')
+      await expect(page.getByRole('alert')).toContainText(
+        'The data is unavailable.',
+      )
+    await shot(page, `ontology-${state}`)
+
+    await page.getByRole('link', { name: 'Scenarios' }).click()
+    const scenarios = page.getByRole('region', { name: 'Scenarios' })
+    if (state === 'pending')
+      await expect(page.getByRole('status')).toContainText('Loading Scenarios')
+    if (state === 'empty')
+      await expect(
+        scenarios.getByText('No scenarios are defined.'),
+      ).toBeVisible()
+    if (state === 'error')
+      await expect(page.getByRole('alert')).toContainText(
+        'The data is unavailable.',
+      )
+    await shot(page, `scenarios-${state}`)
+  })
+
+test('presentation mode keeps the ontology and scenarios legible', async ({
+  page,
+}) => {
+  await mockApi(page)
+  await page.goto(
+    '/?present=1#/data-model?tab=ontology&concept=CONCEPT_NATIONAL_DRAW',
+  )
+  await expect(
+    page.getByRole('region', { name: 'Concept', exact: true }),
+  ).toBeVisible()
+  await shot(page, 'ontology-presentation')
+  await page.getByRole('link', { name: 'Scenarios' }).click()
+  await expect(page.getByRole('article')).toHaveCount(8)
+  await shot(page, 'scenarios-presentation')
+})

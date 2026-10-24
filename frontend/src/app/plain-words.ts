@@ -13,13 +13,14 @@ export function datasetName(id: string): string {
   return match ? `${match[1]} world, ${match[2]}` : plainName(id)
 }
 
-/** "affected_systems" and "affectedSystems" read "affected systems". */
+/** "affected_systems" and "affectedSystems" read "affected systems"; a chunk reads as a passage. */
 export function plainName(name: string): string {
   return name
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/[_-]+/g, ' ')
     .trim()
     .toLowerCase()
+    .replace(/\bchunk(s?)\b/g, 'passage$1')
 }
 
 /** Text for a field value: lists as comma lists, nothing as "none". */

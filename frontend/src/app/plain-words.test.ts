@@ -23,6 +23,11 @@ describe('plain words', () => {
     expect(plainName('title')).toBe('title')
   })
 
+  it('says passage where the data says chunk', () => {
+    expect(plainName('document_chunks')).toBe('document passages')
+    expect(plainName('chunk_id')).toBe('passage id')
+  })
+
   it('shows lists as comma lists, nothing as none, and nested fields as pairs', () => {
     expect(plainValue(['checkout', 'wallet'])).toBe('checkout, wallet')
     expect(plainValue([])).toBe('')

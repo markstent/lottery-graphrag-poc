@@ -194,3 +194,9 @@ export function metaGraphModel(
     hasOutside: edges.some((e) => !e.hidden && e.look === 'outside'),
   }
 }
+
+/** The concept's name in `language`, or its English name when it has none there. */
+export const labelOf = (
+  concept: Schemas['ConceptOut'],
+  language = 'en',
+): string => concept.labels[language] ?? concept.labels.en ?? concept.concept_id
