@@ -384,6 +384,22 @@ for (const state of ['pending', 'empty', 'error'] as const)
     await shot(page, `scenarios-${state}`)
   })
 
+test('presentation mode draws the graph map larger', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await mockApi(page)
+  const map = async (url: string) => {
+    await page.goto(url)
+    const picture = page.getByRole('img', {
+      name: 'Kinds of record and their relationships',
+    })
+    await expect(picture).toBeVisible()
+    return (await picture.boundingBox())!
+  }
+  const normal = await map('/#/data-model?tab=graph')
+  const presenting = await map('/?present=1#/data-model?tab=graph')
+  expect(presenting.height).toBeGreaterThan(normal.height)
+})
+
 test('presentation mode keeps the ontology and scenarios legible', async ({
   page,
 }) => {

@@ -299,6 +299,26 @@ describe('useLiveRun, loading a recording', () => {
     expect(result.current.source).toBe('recorded')
   })
 
+  it('does not update state, or warn, when a file arrives after the screen has gone', async () => {
+    const warn = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    let finish: (run: RecordedRun) => void = () => undefined
+    vi.mocked(loadRecording).mockReturnValueOnce(
+      new Promise((resolve) => (finish = resolve)),
+    )
+    const { result, unmount } = renderHook(() =>
+      useLiveRun({ reducedMotion: true }),
+    )
+    act(() =>
+      result.current.start({ source: 'recorded', instanceId: h1.instance_id }),
+    )
+    const before = result.current
+    unmount()
+    await act(async () => finish(h1))
+    expect(result.current).toBe(before)
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
   it('ignores a file that arrives after another run was chosen', async () => {
     let finish: (run: RecordedRun) => void = () => undefined
     vi.mocked(loadRecording).mockReturnValueOnce(

@@ -6,17 +6,23 @@
 
 import { describe, expect, it } from 'vitest'
 
-const sources = import.meta.glob<string>('/src/**/*.{ts,tsx}', {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-})
+const sources = import.meta.glob<string>(
+  ['/src/**/*.{ts,tsx}', '/e2e/**/*.ts'],
+  {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  },
+)
 
-const IMPORT_OF_V1 =
-  /\bfrom\s+['"][^'"]*(?:\/mock\/|backend-run|\/views\/|v1-)[^'"]*['"]|\bimport\(\s*['"][^'"]*(?:\/mock\/|backend-run|\/views\/|v1-)/
+const V1_PATH = String.raw`['"][^'"]*(?:\/mock\/|backend-run|\/views\/|v1-)`
+/** `from 'x'`, `import 'x'` (side effect) and `import('x')`. */
+const IMPORT_OF_V1 = new RegExp(
+  String.raw`\bfrom\s+${V1_PATH}|\bimport\s*\(?\s*${V1_PATH}`,
+)
 
 describe('the first application', () => {
-  it('is not imported by any source file', () => {
+  it('is not imported by any source or e2e file', () => {
     const importers = Object.entries(sources)
       .filter(([path]) => !path.endsWith('/no-v1.test.ts'))
       .filter(([, source]) => IMPORT_OF_V1.test(source))
@@ -39,6 +45,8 @@ describe('the first application', () => {
       true,
     )
     expect(IMPORT_OF_V1.test("const m = import('./views/help')")).toBe(true)
+    expect(IMPORT_OF_V1.test("import './views/help'")).toBe(true)
+    expect(IMPORT_OF_V1.test('import "../mock/telemetry"')).toBe(true)
     expect(IMPORT_OF_V1.test("import { z } from '../screens/help/help'")).toBe(
       false,
     )
