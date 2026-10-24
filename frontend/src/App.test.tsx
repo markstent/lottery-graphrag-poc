@@ -1,10 +1,31 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
 import App from './App'
 import { DESTINATIONS } from './app/router'
 import { SHELL_API, stubApi } from './test/api-stub'
+
+// These tests are about routing, not loading: transform every destination's
+// chunk first, so a cold transform under load cannot outlast findBy's wait
+// (App-lazy.test.tsx covers the loading state).
+beforeAll(async () => {
+  await Promise.all([
+    import('./screens/overview/overview'),
+    import('./screens/live-lab/live-lab'),
+    import('./screens/results/results'),
+    import('./screens/data-model/data-model'),
+    import('./screens/help/help'),
+  ])
+}, 60_000)
 
 beforeEach(() => {
   window.localStorage.clear()
