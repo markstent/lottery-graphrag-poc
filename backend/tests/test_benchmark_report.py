@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from typing import Any
 
@@ -13,6 +14,7 @@ from app.evaluation.judge import JudgeScores, JudgeVerdict
 from app.evaluation.report import (
     SMOKE_HEADLINE,
     SUMMARY_SCHEMA_VERSION,
+    instance_means,
     render_report,
     summarize,
 )
@@ -388,3 +390,103 @@ def test_smoke_comparisons_say_they_are_not_a_result(smoke_run: BenchmarkRun) ->
     assert "| tested (smoke run, not a result) |" in report
     assert "| tested |" not in report
     assert "| tested |" in render_report(_benchmark("official", h5_per_world=6))
+
+
+def _with_flags(run: BenchmarkRun, flagged: set[str]) -> BenchmarkRun:
+    """The run with ontology_dependent set exactly on the named questions."""
+    worlds = [
+        dataclasses.replace(
+            world,
+            results=[
+                dataclasses.replace(
+                    r,
+                    instance=dataclasses.replace(
+                        r.instance, ontology_dependent=r.instance.question_id in flagged
+                    ),
+                )
+                for r in world.results
+            ],
+        )
+        for world in run.worlds
+    ]
+    return dataclasses.replace(run, worlds=worlds)
+
+
+@pytest.fixture
+def run_with_ontology_flags() -> BenchmarkRun:
+    # One H5 and one H2 question are flagged; the flag, not the stratum, decides.
+    return _with_flags(_benchmark("official", h5_per_world=6), {"L50", "L20"})
+
+
+@pytest.fixture
+def same_run_all_flags_false() -> BenchmarkRun:
+    return _with_flags(_benchmark("official", h5_per_world=6), set())
+
+
+def test_ontology_split_cells_cover_both_groups_and_comparisons(
+    run_with_ontology_flags: BenchmarkRun,
+) -> None:
+    cells = summarize(run_with_ontology_flags)["ontology_split"]
+    assert {(c["group"], c["metric"], c["comparison"]) for c in cells} == {
+        (g, m, k)
+        for g in ("ontology_dependent", "other")
+        for m in ("evidence_f1", "answer")
+        for k in ("B_vs_A", "C_vs_B")
+    }
+    assert len(cells) == 8
+    assert all(c["in_family"] is False and c["p"] is None and c["p_holm"] is None for c in cells)
+
+
+def test_ontology_split_uses_the_flag_not_the_stratum(
+    run_with_ontology_flags: BenchmarkRun,
+) -> None:
+    cells = summarize(run_with_ontology_flags)["ontology_split"]
+
+    def cell(group: str) -> dict[str, Any]:
+        return next(
+            c
+            for c in cells
+            if c["group"] == group and c["metric"] == "evidence_f1" and c["comparison"] == "C_vs_B"
+        )
+
+    # L50 (H5) and L20 (H2) in two worlds; the other H2 questions are not flagged.
+    assert (cell("ontology_dependent")["n"], cell("ontology_dependent")["clusters"]) == (4, 4)
+    assert cell("ontology_dependent")["reason"] == "too_few"
+    assert cell("other")["reason"] == "not_in_family"
+    assert cell("other")["n"] == 2 * (6 * 3 + 3 + 6) - 4
+    assert cell("other")["low"] <= cell("other")["mean"] <= cell("other")["high"]
+
+
+def test_ontology_split_does_not_change_the_comparisons(
+    run_with_ontology_flags: BenchmarkRun, same_run_all_flags_false: BenchmarkRun
+) -> None:
+    flagged, unflagged = summarize(run_with_ontology_flags), summarize(same_run_all_flags_false)
+    assert flagged["comparisons"] == unflagged["comparisons"]
+    assert flagged["headlines"] == unflagged["headlines"]
+    assert all(c["n"] == 0 and c["mean"] is None for c in unflagged["ontology_split"][:4])
+
+
+def test_instance_means_matches_the_observation(run_with_ontology_flags: BenchmarkRun) -> None:
+    summary = summarize(run_with_ontology_flags)
+    results = [r for world in run_with_ontology_flags.worlds for r in world.results]
+    h3 = next(r for r in results if r.instance.stratum == "H3")
+    means = instance_means(h3)
+    # A's failed repeat is excluded: (1.0 + 0.5) / 2.
+    assert means["A"]["answer"] == pytest.approx(0.75)
+    assert means["B"]["evidence_f1"] == pytest.approx(0.2)
+    for tag in ("A", "B", "C"):
+        pooled = [
+            m[tag]["answer"]
+            for r in results
+            if r.instance.stratum == "H3"
+            for m in [instance_means(r)]
+        ]
+        assert summary["metrics"]["H3"]["answer"][tag]["mean"] == pytest.approx(
+            sum(pooled) / len(pooled)  # type: ignore[arg-type]
+        )
+
+
+def test_the_report_renders_the_ontology_split(run_with_ontology_flags: BenchmarkRun) -> None:
+    report = render_report(run_with_ontology_flags)
+    assert "## Ontology-dependent split" in report
+    assert "| ontology_dependent | evidence_f1 | C_vs_B | 4 | 4 |" in report

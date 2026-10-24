@@ -80,6 +80,8 @@ HOLM_FAMILY = frozenset(
         ("H5", "answer"),
     }
 )
+# The two groups of the ontology-dependent split, by the instance flag.
+ONTOLOGY_GROUPS = {"ontology_dependent": True, "other": False}
 REASON_WORDS = {
     "tested": "tested",
     "too_few": "not tested: too few pairs or groups",
@@ -122,6 +124,7 @@ class _Observation:
 
     stratum: str
     cluster: str
+    ontology_dependent: bool
     values: dict[str, dict[str, tuple[float, int]]]
 
 
@@ -166,7 +169,8 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
     """The machine-readable result of a run, written as ``summary.json``."""
     results = [result for world in run.worlds for result in world.results]
     pipelines = _pipelines(results)
-    comparisons = _comparisons([_observe(result) for result in results])
+    observations = [_observe(result) for result in results]
+    comparisons = _comparisons(observations)
     smoke = run.kind == "smoke"
     return {
         "schema_version": SUMMARY_SCHEMA_VERSION,
@@ -188,6 +192,7 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
         "anchor_resolution_basis": {tag: ANCHOR_RESOLUTION_BASIS[tag] for tag in pipelines},
         "metrics": metric_tables(results),
         "comparisons": [c.to_payload() for c in comparisons],
+        "ontology_split": _ontology_split(observations),
         "headlines": [SMOKE_HEADLINE] if smoke else _headlines(comparisons),
         "judge_agreement": _judge_agreement(results, pipelines),
         "failures": _failures(results, pipelines),
@@ -213,22 +218,46 @@ def _pipelines(results: Sequence[InstanceResult]) -> list[str]:
     return [tag for tag in PIPELINES if any(tag in r.scores for r in results)]
 
 
-def _observe(result: InstanceResult) -> _Observation:
-    values: dict[str, dict[str, tuple[float, int]]] = {}
-    for metric, extract in METRICS.items():
-        per_pipeline: dict[str, tuple[float, int]] = {}
-        for tag, scores in result.scores.items():
-            defined = [
+def _defined_values(result: InstanceResult) -> dict[str, dict[str, list[float]]]:
+    """Per pipeline and metric, the values of the repeats where it is defined."""
+    return {
+        tag: {
+            metric: [
                 value
                 for score, run in zip(scores, result.runs[tag], strict=True)
                 if score is not None and (value := extract(score, run)) is not None
             ]
-            if defined:
-                per_pipeline[tag] = (statistics.mean(defined), len(defined))
-        values[metric] = per_pipeline
+            for metric, extract in METRICS.items()
+        }
+        for tag, scores in result.scores.items()
+    }
+
+
+def instance_means(result: InstanceResult) -> dict[str, dict[str, float | None]]:
+    """Per pipeline, the mean over its successful repeats of every metric
+    (None where no repeat defines it). This is the value a pair is made of."""
+    return {
+        tag: {
+            metric: statistics.mean(defined) if defined else None
+            for metric, defined in metrics.items()
+        }
+        for tag, metrics in _defined_values(result).items()
+    }
+
+
+def _observe(result: InstanceResult) -> _Observation:
+    means, defined = instance_means(result), _defined_values(result)
+    values: dict[str, dict[str, tuple[float, int]]] = {metric: {} for metric in METRICS}
+    for tag, per_metric in means.items():
+        for metric, mean in per_metric.items():
+            if mean is not None:
+                values[metric][tag] = (mean, len(defined[tag][metric]))
     instance = result.instance
     return _Observation(
-        stratum_key(instance), f"{instance.question_id}:{instance.world_seed}", values
+        stratum_key(instance),
+        f"{instance.question_id}:{instance.world_seed}",
+        instance.ontology_dependent,
+        values,
     )
 
 
@@ -253,20 +282,32 @@ def _metric_table(
     return table
 
 
+def _pairs(
+    observations: Sequence[_Observation],
+    metric: str,
+    x: str,
+    y: str,
+) -> tuple[list[float], list[str]]:
+    """The paired differences x minus y of the observations, and their clusters."""
+    diffs: list[float] = []
+    clusters: list[str] = []
+    for o in observations:
+        value = o.values[metric]
+        if x in value and y in value:
+            diffs.append(value[x][0] - value[y][0])
+            clusters.append(o.cluster)
+    return diffs, clusters
+
+
 def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
     """Every compared cell; p and the Holm p only for cells in the family
     that pass both the pairs gate and the groups gate."""
     cells: list[_Comparison] = []
     for stratum in STRATUM_KEYS:
+        members = [o for o in observations if o.stratum == stratum]
         for metric in COMPARED_METRICS:
             for comparison, (x, y) in COMPARISONS.items():
-                diffs: list[float] = []
-                clusters: list[str] = []
-                for o in observations:
-                    value = o.values[metric]
-                    if o.stratum == stratum and x in value and y in value:
-                        diffs.append(value[x][0] - value[y][0])
-                        clusters.append(o.cluster)
+                diffs, clusters = _pairs(members, metric, x, y)
                 n, groups = len(diffs), len(set(clusters))
                 if (stratum, metric) not in HOLM_FAMILY:
                     reason = "not_in_family"
@@ -292,6 +333,38 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
     family = {str(i): c.p for i, c in enumerate(cells) if c.p is not None}
     for i, adjusted in holm(family).items():
         cells[int(i)].p_holm = adjusted
+    return cells
+
+
+def _ontology_split(observations: Sequence[_Observation]) -> list[dict[str, Any]]:
+    """B versus A and C versus B on the ontology-dependent questions and on the
+    rest, grouped by the instance flag across every stratum. Descriptive: the
+    cells are never in the Holm family, so p and the Holm p are always None."""
+    cells: list[dict[str, Any]] = []
+    for group, flag in ONTOLOGY_GROUPS.items():
+        members = [o for o in observations if o.ontology_dependent is flag]
+        for metric in COMPARED_METRICS:
+            for comparison, (x, y) in COMPARISONS.items():
+                diffs, clusters = _pairs(members, metric, x, y)
+                n, groups = len(diffs), len(set(clusters))
+                interval = cluster_bootstrap(diffs, clusters) if diffs else None
+                too_few = n < MIN_PAIRS_FOR_CLAIM or groups < MIN_CLUSTERS_FOR_CLAIM
+                cells.append(
+                    {
+                        "group": group,
+                        "metric": metric,
+                        "comparison": comparison,
+                        "n": n,
+                        "clusters": groups,
+                        "mean": None if interval is None else interval.mean,
+                        "low": None if interval is None else interval.low,
+                        "high": None if interval is None else interval.high,
+                        "p": None,
+                        "p_holm": None,
+                        "in_family": False,
+                        "reason": "too_few" if too_few else "not_in_family",
+                    }
+                )
     return cells
 
 
@@ -369,6 +442,7 @@ def render_report(run: BenchmarkRun) -> str:
     for key in (*STRATUM_KEYS, OVERALL):
         lines += _stratum_section(summary, key)
     lines += _comparison_section(summary["comparisons"], smoke=run.kind == "smoke")
+    lines += _ontology_split_section(summary["ontology_split"])
     lines += _agreement_section(summary["judge_agreement"])
     lines += _failure_section(summary["failures"], summary["unavailable"])
     lines += reproducibility_section(summary["reproducibility"])
@@ -445,6 +519,30 @@ def _comparison_section(comparisons: Sequence[dict[str, Any]], smoke: bool) -> l
             f"| {c['stratum']} | {c['metric']} | {c['comparison']} | {c['n']} | {c['clusters']} "
             f"| {mean} | {interval} | {_p(c['p'])} | {_p(c['p_holm'])} "
             f"| {words[c['reason']]} |"
+        )
+    return [*lines, ""]
+
+
+def _ontology_split_section(cells: Sequence[dict[str, Any]]) -> list[str]:
+    lines = [
+        "## Ontology-dependent split",
+        "",
+        "Descriptive only: outside the Holm family, so no p values and no claim. "
+        "Questions are grouped by the ontology-dependent flag across every stratum. "
+        "Differences in points, with the 95 percent cluster bootstrap interval.",
+        "",
+        "| Group | Metric | Comparison | Pairs | Groups | Mean | 95 percent interval | Note |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for c in cells:
+        if c["mean"] is None:
+            mean, interval = "-", "-"
+        else:
+            mean, interval = points(c["mean"]), f"{points(c['low'])} to {points(c['high'])}"
+        note = "too few pairs or groups" if c["reason"] == "too_few" else "descriptive"
+        lines.append(
+            f"| {c['group']} | {c['metric']} | {c['comparison']} | {c['n']} | {c['clusters']} "
+            f"| {mean} | {interval} | {note} |"
         )
     return [*lines, ""]
 

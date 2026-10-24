@@ -92,6 +92,20 @@ Below six groups the sub-group line prints the mean alone, with "too few groups 
 
 A smoke run keeps every statistic in `summary.json`, but its only headline says it is a scorer smoke test and not a result, and the comparisons table of its `report.md` marks tested cells "tested (smoke run, not a result)".
 
+## Ontology-dependent split
+
+`summary.json` carries an `ontology_split` list: B versus A and C versus B, on `evidence_f1` and `answer`, for the ontology-dependent questions and for all the others.
+That is eight cells, each with `group`, `metric`, `comparison`, `n`, `clusters`, `mean`, `low` and `high`.
+The split exists because the spec asks how B and C compare on the questions that need the ontology and on the rest.
+Membership comes from the per-instance `ontology_dependent` flag, across every stratum, never from the stratum.
+This is why it differs from H2: in the pilot two H5 instances are ontology-dependent, and the name-anchored H2 sub-group is in H2 whatever its flag.
+The interval is the same cluster bootstrap as for a stratum, computed whenever there is at least one pair.
+The split is descriptive.
+It is outside the Holm family, so `p` and `p_holm` are always null and `in_family` is false, and it never appears in a headline.
+`reason` is `too_few` when the cell is below the pairs or groups minimum and `not_in_family` otherwise.
+`report.md` prints the same cells in an "Ontology-dependent split" table after the comparisons.
+`summary.json` stays at schema version 2, because the key is additive and readers treat it as optional.
+
 ## Agreement of the judge
 
 The judge is compared with the deterministic answer score as described in [scoring.md](scoring.md): agreement rate and Cohen's kappa, overall and per pipeline.
