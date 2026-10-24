@@ -83,6 +83,20 @@ test('with no official run the score column says so and shows no number', async 
   await shot(page, 'questions-no-official-run')
 })
 
+test('the score column headings sit on one line each, with or without scores', async ({
+  page,
+}) => {
+  for (const latest of ['none', 'official'] as const) {
+    await open(page, '#/help?section=questions', latest)
+    for (const name of ['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
+      expect(
+        await page
+          .getByRole('columnheader', { name })
+          .evaluate((el) => el.getBoundingClientRect().height),
+      ).toBeLessThan(40)
+  }
+})
+
 test('a quick check as the newest run shows no scores either', async ({
   page,
 }) => {

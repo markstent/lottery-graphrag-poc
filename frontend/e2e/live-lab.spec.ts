@@ -1,32 +1,21 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import { mkdirSync, readdirSync, readFileSync } from 'node:fs'
+import { mkdirSync } from 'node:fs'
 
-import cancelled from '../src/run/fixtures/run-cancelled.json' with { type: 'json' }
-import live from '../src/run/fixtures/run-abc.json' with { type: 'json' }
+import {
+  cancelled,
+  h1,
+  listRecordedQuestions,
+  live,
+  plainAnswers,
+  RECORDED_RUNS,
+  serveLiveRun,
+} from './live-lab-fixtures'
 import { mockApi } from './mock-api'
 
 /* Live Lab in a browser: a recording through the replay clock, and a live run
    whose stream is served from a captured run. SHOTS=<dir> also saves pictures. */
 
 test.use({ viewport: { width: 1920, height: 1080 } })
-
-const RECORDED_DIR = 'src/run/fixtures/recorded'
-const RECORDED_RUNS: {
-  instance_id: string
-  question: string
-  stratum: string
-  events: { t_ms: number }[]
-}[] = readdirSync(RECORDED_DIR)
-  .filter((file) => file !== 'index.json')
-  .map((file) => JSON.parse(readFileSync(`${RECORDED_DIR}/${file}`, 'utf8')))
-const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
-const QUESTIONS = RECORDED_RUNS.map((run) => ({
-  instance_id: run.instance_id,
-  question_id: run.instance_id.slice(0, 3),
-  text: run.question,
-  stratum: run.stratum,
-  market_scope: [],
-}))
 
 /** A viewport picture at the scroll position of `from` (the top by default); never the whole page. */
 async function shot(page: Page, name: string, from?: Locator) {
@@ -39,68 +28,9 @@ async function shot(page: Page, name: string, from?: Locator) {
   await page.screenshot({ path: `${dir}/${name}.png` })
 }
 
-/** Stored results whose answers carry plain text, so pictures show no fixture tokens. */
-function plainAnswers<T extends { results?: Record<string, unknown> }>(
-  results: T,
-): T {
-  const copy = structuredClone(results)
-  for (const result of Object.values(copy.results ?? {})) {
-    const answer = (result as { answer: { text: string; raw_text: string } })
-      .answer
-    answer.text =
-      'Incident INC_037 runs on platform version 2024.2.0 [1]. No other market is named in the sources.'
-    answer.raw_text = answer.text
-  }
-  return copy
-}
-
-/** The captured events as one finished event stream. */
-const sse = (events: { sequence: number; event_type: string }[]) =>
-  events
-    .map(
-      (event) =>
-        `id: ${event.sequence}\nevent: ${event.event_type}\ndata: ${JSON.stringify(event)}\n\n`,
-    )
-    .join('')
-
-async function serveLiveRun(
-  page: Page,
-  events: typeof live.events,
-  results?: unknown,
-) {
-  if (results !== undefined)
-    await page.route('**/api/v1/queries/RUN-E2E', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify(results),
-      }),
-    )
-  await page.route('**/api/v1/queries', (route) =>
-    route.fulfill({
-      status: 202,
-      contentType: 'application/json',
-      body: JSON.stringify({ run_id: 'RUN-E2E' }),
-    }),
-  )
-  await page.route('**/api/v1/queries/RUN-E2E/events/stream*', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'text/event-stream',
-      body: sse(events),
-    }),
-  )
-}
-
 test.beforeEach(async ({ page }) => {
   await mockApi(page)
-  await page.route('**/api/v1/demo/questions', (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(QUESTIONS),
-    }),
-  )
+  await listRecordedQuestions(page)
 })
 
 test('plays a recording, pauses it and scrubs through it', async ({ page }) => {
@@ -300,6 +230,15 @@ async function expectPathNodesInViewOrCounted(page: Page, name: string) {
   expect(startVisible).toBe(true)
 }
 
+/** How many lines the text of an element is laid out in. */
+const lineCount = (element: Locator) =>
+  element.evaluate((el) => {
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    return new Set([...range.getClientRects()].map((r) => Math.round(r.top)))
+      .size
+  })
+
 /** Moves the position slider to its far end. */
 async function toEnd(page: Page) {
   const slider = page.getByRole('slider', { name: 'Position' })
@@ -440,14 +379,7 @@ test('shows the verdict, the graph, the answers, the paths and the coverage at t
   const corner = page.getByText('scored against the answer key')
   await expect(corner).toBeVisible()
   // The label sits on one line: its text makes a single line box.
-  expect(
-    await corner.evaluate((el) => {
-      const range = document.createRange()
-      range.selectNodeContents(el)
-      return new Set([...range.getClientRects()].map((r) => Math.round(r.top)))
-        .size
-    }),
-  ).toBe(1)
+  expect(await lineCount(corner)).toBe(1)
   await expect(
     page.getByRole('table', { name: 'Market coverage' }),
   ).toBeVisible()
@@ -573,4 +505,15 @@ test('presentation mode enlarges the graph canvas', async ({ page }) => {
   expect(
     await height(`/?present=1#/live-lab?question=${h1.instance_id}`),
   ).toBeGreaterThan(normal)
+})
+
+test('presentation mode keeps the scorecard label on one line', async ({
+  page,
+}) => {
+  await page.goto(`/?present=1#/live-lab?question=${h1.instance_id}`)
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await toEnd(page)
+  const corner = page.getByText('scored against the answer key')
+  await expect(corner).toBeVisible()
+  expect(await lineCount(corner)).toBe(1)
 })

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import { h1, listRecordedQuestions } from './live-lab-fixtures'
 import { mockApi } from './mock-api'
 
 /* The five destinations in order, with the sentence each is described by (spec 7.1). */
@@ -147,4 +148,41 @@ test.describe('presentation mode on every destination', () => {
       expect(await h1Size(page)).toBeGreaterThan(normal)
     })
   }
+})
+
+test('a recorded run plays to completion in Live Lab', async ({ page }) => {
+  await mockApi(page)
+  await listRecordedQuestions(page)
+  await page.goto('/#/live-lab')
+  await page.getByRole('button', { name: h1.question }).click()
+  await page.getByRole('button', { name: 'Recorded run', exact: true }).click()
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  // Play it from the start at 4x, so the recording of about 36 s takes about 9 s.
+  await page.getByRole('button', { name: '4x', exact: true }).click()
+  await page.getByRole('button', { name: 'Replay', exact: true }).click()
+
+  await expect(page.getByText('The run is complete.')).toBeVisible({
+    timeout: 30_000,
+  })
+  for (const name of ['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
+    await expect(page.getByRole('region', { name, exact: true })).toContainText(
+      'Done',
+    )
+  await expect(page.getByRole('region', { name: 'Scorecard' })).toBeVisible()
+})
+
+test('the sidebar stays in view when a long page is scrolled', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 })
+  await mockApi(page)
+  await page.goto('/#/help')
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  await expect(
+    page.getByRole('button', { name: 'Collapse sidebar' }),
+  ).toBeInViewport({ ratio: 1 })
+  await expect(
+    page.getByRole('navigation', { name: 'Primary' }),
+  ).toBeInViewport({ ratio: 1 })
 })
