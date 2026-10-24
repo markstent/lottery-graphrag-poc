@@ -8,7 +8,7 @@ import {
   listDatasets,
   type Schemas,
 } from '../../api/client'
-import { plainName } from '../../app/plain-words'
+import { failureWords } from '../../app/plain-words'
 import { hrefFor, useRoute } from '../../app/router'
 import { evidenceScore, MISSING, percent } from '../../app/score-words'
 import { useLoad } from '../../app/use-load'
@@ -33,6 +33,7 @@ import {
 import {
   JUDGE_LABELS,
   STRATUM_LABELS,
+  STRATUM_SHORT,
   STRATUM_ORDER,
 } from '../../results/strata'
 import { RunBadge } from './run-badge'
@@ -56,7 +57,7 @@ const BUTTON =
 
 const classCounts = (classes: Record<string, number>) =>
   Object.entries(classes)
-    .map(([cls, count]) => `${plainName(cls)} ${count}`)
+    .map(([cls, count]) => `${failureWords(cls)}: ${count}`)
     .join(', ') || 'None'
 
 /** The scores of one question in one world, a column per approach. */
@@ -160,7 +161,7 @@ function QuestionRow({
             </div>
           </div>
         </td>
-        <td className="px-2 py-2">{STRATUM_LABELS[stratumOf(row)]}</td>
+        <td className="px-2 py-2">{STRATUM_SHORT[stratumOf(row)]}</td>
         <td className={CELL}>{row.world_seed}</td>
         {PIPELINES.map(({ id }) => (
           <Scores key={id} row={row} id={id} />
@@ -176,7 +177,14 @@ function QuestionRow({
             </a>
           ) : (
             <span className="text-text-secondary">
-              {worldsFailed ? MISSING : link.reason}
+              {worldsFailed ? (
+                MISSING
+              ) : (
+                <span title={link.reason} className="whitespace-nowrap">
+                  <span aria-hidden>Not loaded</span>
+                  <span className="sr-only">{link.reason}</span>
+                </span>
+              )}
             </span>
           )}
         </td>
@@ -255,7 +263,7 @@ function Filters({
         <span className="flex items-center gap-2">
           <span className="rounded-chip border border-border px-2 py-0.5">
             <span>
-              {filter.failure.pipeline} {plainName(filter.failure.cls)}
+              {filter.failure.pipeline}: {failureWords(filter.failure.cls)}
             </span>
           </span>
           <button

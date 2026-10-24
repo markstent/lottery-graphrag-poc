@@ -23,6 +23,21 @@ export function plainName(name: string): string {
     .replace(/\bchunk(s?)\b/g, 'passage$1')
 }
 
+/** The harness's failure classes (backend/app/evaluation/scoring.py) in plain words. */
+export const FAILURE_WORDS: Record<string, string> = {
+  entity_resolution_failure: 'the starting record was not found',
+  retrieval_failure: 'the needed evidence was not retrieved',
+  generation_failure: 'the evidence was retrieved but the answer was wrong',
+}
+
+/** Words for a failure class; a class from a newer backend still reads as words. */
+export function failureWords(failureClass: string): string
+export function failureWords(failureClass: string | null): string | null
+export function failureWords(failureClass: string | null): string | null {
+  if (failureClass === null) return null
+  return FAILURE_WORDS[failureClass] ?? plainName(failureClass)
+}
+
 /** Text for a field value: lists as comma lists, nothing as "none". */
 export function plainValue(value: JsonValue): string {
   if (value === null) return 'none'

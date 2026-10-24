@@ -26,7 +26,7 @@ export const QUESTION_HEADS = {
 export const TABLE_HEADS = {
   measure: 'Measure',
   failureKind: 'Kind of failure',
-  efficiencyRow: 'Kind of question and approach',
+  kindApproach: 'Kind of question and approach',
   group: 'Group',
   pairs: 'Pairs judged',
   agreement: 'Agreement',

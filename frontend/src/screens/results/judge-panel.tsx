@@ -1,10 +1,9 @@
-/** The judge's five scores (0 to 2) per approach, and how often it agrees with the answer score. */
+/** The judge's five scores (0 to 2) per kind of question and approach, and how often it agrees with the answer score. */
 
 import type { Schemas } from '../../api/client'
 import { DataTable } from '../../charts/data-table'
-import { PIPELINES } from '../../design/pipelines'
-import { CAPTIONS, MEASURES, TABLE_HEADS } from '../../results/labels'
-import { agreement, judgeRows } from '../../results/strata'
+import { CAPTIONS, TABLE_HEADS } from '../../results/labels'
+import { agreement, JUDGE_LABELS, judgeRows } from '../../results/strata'
 import { RunBadge } from './run-badge'
 
 type Summary = Schemas['SummaryOut']
@@ -21,8 +20,8 @@ export function JudgePanel({
       <RunBadge label={badge} />
       <DataTable
         caption={CAPTIONS.judge}
-        rowHeader={MEASURES.judge}
-        columns={PIPELINES.map(({ label }) => label)}
+        rowHeader={TABLE_HEADS.kindApproach}
+        columns={Object.values(JUDGE_LABELS)}
         rows={judgeRows(summary)}
       />
       <DataTable

@@ -284,7 +284,9 @@ describe('copy scan', () => {
 /** Product copy outside Help: every source a screen renders, without tests, fixtures or text from the API. */
 const isProductCopy = (path: string) =>
   isCopyFile(path) &&
-  /^\/src\/(?:screens|app|components|charts|graph|design)\//.test(path) &&
+  /^\/src\/(?:screens|app|components|charts|graph|design|results)\//.test(
+    path,
+  ) &&
   !path.startsWith('/src/screens/help/') &&
   !path.endsWith('.fixtures.ts')
 

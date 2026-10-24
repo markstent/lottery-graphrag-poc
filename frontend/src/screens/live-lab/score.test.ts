@@ -2,13 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { RECORDINGS } from '../../test/recordings'
-import {
-  FAILURE_WORDS,
-  delta,
-  deltaWords,
-  failureWords,
-  scorecard,
-} from './score'
+import { delta, deltaWords, scorecard } from './score'
 
 type Results = Schemas['QueryResults']
 
@@ -120,30 +114,5 @@ describe('deltaWords', () => {
   })
   it('says nothing for a missing delta', () => {
     expect(deltaWords('score', null)).toBeNull()
-  })
-})
-
-describe('failureWords', () => {
-  it('has words for every class the backend scorer names', () => {
-    expect(Object.keys(FAILURE_WORDS).sort()).toEqual([
-      'entity_resolution_failure',
-      'generation_failure',
-      'retrieval_failure',
-    ])
-  })
-  it('says what each class means in plain words', () => {
-    expect(failureWords('retrieval_failure')).toBe(
-      'the needed evidence was not retrieved',
-    )
-    expect(failureWords('entity_resolution_failure')).toBe(
-      'the starting record was not found',
-    )
-    expect(failureWords('generation_failure')).toBe(
-      'the evidence was retrieved but the answer was wrong',
-    )
-  })
-  it('reads a class from a newer backend as its own words, and no class as null', () => {
-    expect(failureWords('new_kind_of_failure')).toBe('new kind of failure')
-    expect(failureWords(null)).toBeNull()
   })
 })

@@ -54,7 +54,7 @@ export function EfficiencyPanel({
       </div>
       <DataTable
         caption={CAPTIONS.efficiency}
-        rowHeader={TABLE_HEADS.efficiencyRow}
+        rowHeader={TABLE_HEADS.kindApproach}
         columns={[MEASURES.latency, MEASURES.context, MEASURES.efficiency]}
         rows={efficiencyRows(summary)}
       />

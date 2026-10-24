@@ -1,7 +1,7 @@
 /** How often each approach failed and how: each count sets the failure filter of the question table. */
 
 import type { Schemas } from '../../api/client'
-import { plainName } from '../../app/plain-words'
+import { failureWords } from '../../app/plain-words'
 import { PIPELINES } from '../../design/pipelines'
 import { CAPTIONS, MEASURES, TABLE_HEADS } from '../../results/labels'
 import { failureTotals } from '../../results/strata'
@@ -49,8 +49,11 @@ export function FailurePanel({
           <tbody>
             {classes.map((cls) => (
               <tr key={cls} className="border-b border-hairline">
-                <th scope="row" className="py-2 pr-4 text-left font-normal">
-                  {plainName(cls)}
+                <th
+                  scope="row"
+                  className="py-2 pr-4 text-left font-normal first-letter:uppercase"
+                >
+                  {failureWords(cls)}
                 </th>
                 {PIPELINES.map(({ id }) => {
                   const n = count(id, cls)
@@ -61,7 +64,7 @@ export function FailurePanel({
                       ) : (
                         <button
                           type="button"
-                          aria-label={`${id} ${plainName(cls)}, ${n}`}
+                          aria-label={`${id}, ${failureWords(cls)}, ${n}`}
                           onClick={() => onFilter(id, cls)}
                           className="rounded-chip border border-border px-2 py-0.5 hover:bg-surface-raised"
                         >

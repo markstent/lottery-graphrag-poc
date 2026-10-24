@@ -30,6 +30,16 @@ export const STRATUM_LABELS: Record<string, string> = {
   overall: 'All questions',
 }
 
+/** The same groups in a word or two, for a table row. */
+export const STRATUM_SHORT: Record<string, string> = {
+  H1: 'Multi-hop',
+  H2: 'Ontology, by id',
+  H2_name: 'Ontology, by name',
+  H3: 'Single facts',
+  H5: 'Planted patterns',
+  overall: 'All',
+}
+
 export const COMPARISON_LABELS: Record<string, string> = {
   B_vs_A: 'Graph against text search',
   C_vs_B: 'Graph + Ontology against Graph',
@@ -240,15 +250,17 @@ export function efficiencyRows(summary: Summary): DataTableRow[] {
   )
 }
 
-/** The five judge scores, overall, one column per pipeline (0 to 2). */
+/** The five judge scores (0 to 2) for each stratum and pipeline, one column per judge metric. */
 export function judgeRows(summary: Summary): DataTableRow[] {
-  return JUDGE_METRICS.map((metric) => ({
-    key: metric,
-    label: JUDGE_LABELS[metric],
-    cells: PIPELINES.map(({ id }) =>
-      formatOrGap(cellOf(summary, 'overall', metric, id)?.mean, twoPlaces),
-    ),
-  }))
+  return strataIn(summary).flatMap((stratum) =>
+    PIPELINES.map(({ id, name }) => ({
+      key: `${stratum}-${id}`,
+      label: `${STRATUM_LABELS[stratum]} - ${name}`,
+      cells: JUDGE_METRICS.map((metric) =>
+        formatOrGap(cellOf(summary, stratum, metric, id)?.mean, twoPlaces),
+      ),
+    })),
+  )
 }
 
 const UNDEFINED = 'Undefined'

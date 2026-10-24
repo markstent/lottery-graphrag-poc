@@ -7,25 +7,12 @@
  */
 
 import type { Schemas } from '../../api/client'
-import { plainName } from '../../app/plain-words'
+import { failureWords } from '../../app/plain-words'
 import type { PipelineId } from '../../design/pipelines'
 import { coverage } from '../../run/coverage'
 import { formatWorkTime } from './format'
 
 type Results = Schemas['QueryResults']
-
-/** The harness's failure classes (backend/app/evaluation/scoring.py) in plain words. */
-export const FAILURE_WORDS: Record<string, string> = {
-  entity_resolution_failure: 'the starting record was not found',
-  retrieval_failure: 'the needed evidence was not retrieved',
-  generation_failure: 'the evidence was retrieved but the answer was wrong',
-}
-
-/** Words for a failure class; a class from a newer backend still reads as words. */
-export function failureWords(failureClass: string | null): string | null {
-  if (failureClass === null) return null
-  return FAILURE_WORDS[failureClass] ?? plainName(failureClass)
-}
 
 export interface ScoreColumn {
   /** Null where the run holds no score for this pipeline. */

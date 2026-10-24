@@ -95,13 +95,15 @@ describe('question table', () => {
       await screen.findByRole('region', { name: 'Failures' }),
     )
     const button = failures.getAllByRole('button', {
-      name: /^B .*retrieval failure/,
+      name: /^B, the needed evidence was not retrieved/,
     })[0]
     await user.click(button)
     expect(window.location.hash).toContain('failure=B%3Aretrieval_failure')
     const table = await questionTable()
     expect(await table.findByText(/^1 to 50 of 81$/)).toBeVisible()
-    expect(table.getByText('B retrieval failure')).toBeVisible()
+    expect(
+      table.getByText('B: the needed evidence was not retrieved'),
+    ).toBeVisible()
     expect(document.activeElement).toBe(
       screen
         .getByRole('region', { name: 'Questions' })
@@ -185,6 +187,22 @@ describe('question table', () => {
     expect(screen.getByRole('region', { name: 'Failures' })).toBeVisible()
   })
 
+  it('kind column is short, the filter keeps the full name, and a not loaded cell keeps its reason', async () => {
+    stubApi(ROUTES)
+    open('run=fixture-official&stratum=H2_name&world=2027')
+    const table = await questionTable()
+    const row = (await table.findAllByText('Ontology, by name'))[0].closest(
+      'tr',
+    ) as HTMLElement
+    expect(within(row).getByText('Not loaded')).toBeVisible()
+    expect(within(row).getByText('Loaded world is 2026')).toBeInTheDocument()
+    expect(
+      table.getByRole('option', {
+        name: 'Ontology-dependent questions, by local-language name',
+      }),
+    ).toBeInTheDocument()
+  })
+
   it('subset run labels the table and panels', async () => {
     stubApi(ROUTES)
     open('run=pilot-2026-nothink')
@@ -226,6 +244,17 @@ describe('panels', () => {
         'No judge in this run',
       ),
     ).toBeVisible()
+  })
+
+  it('judge shows the five metrics per kind of question and approach', async () => {
+    stubApi(ROUTES)
+    open('run=fixture-official')
+    const panel = within(await screen.findByRole('region', { name: 'Judge' }))
+    expect(
+      panel.getByRole('rowheader', { name: 'Single facts - Graph' }),
+    ).toBeVisible()
+    for (const name of ['Correctness', 'Abstention'])
+      expect(panel.getByRole('columnheader', { name })).toBeVisible()
   })
 
   it('efficiency carries its one line and the two charts', async () => {

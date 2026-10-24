@@ -248,16 +248,23 @@ describe('efficiencyRows', () => {
 })
 
 describe('judgeRows and agreement', () => {
-  it('has the five judge metrics with a value per pipeline', () => {
+  it('has a row per stratum and pipeline with the five judge metrics', () => {
     const rows = judgeRows(PILOT)
-    expect(rows.map((r) => r.key)).toEqual([
-      'judge_correctness',
-      'judge_completeness',
-      'judge_faithfulness',
-      'judge_citation_accuracy',
-      'judge_abstention',
-    ])
-    expect(rows[0].cells).toHaveLength(3)
+    expect(rows).toHaveLength(Object.keys(PILOT.metrics).length * 3)
+    expect(rows[0].key).toBe('H1-A')
+    expect(rows[0].label).toBe('Multi-hop questions - Text search')
+    expect(rows[0].cells).toEqual(
+      [
+        'judge_correctness',
+        'judge_completeness',
+        'judge_faithfulness',
+        'judge_citation_accuracy',
+        'judge_abstention',
+      ].map((m) => {
+        const mean = PILOT.metrics.H1[m]?.A?.mean
+        return typeof mean === 'number' ? mean.toFixed(2) : 'no value'
+      }),
+    )
   })
   it('agreement has overall and per pipeline rows', () => {
     expect(agreement(PILOT)?.map((r) => r.label)).toEqual([
