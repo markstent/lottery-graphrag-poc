@@ -27,7 +27,7 @@ type Table = Schemas['TableSchemaOut']
 
 /** Width of a table box: its name plus room either side, at normal type. */
 const widthOf = (name: string, scale: number) =>
-  Math.round(Math.max(170, name.length * 10 + 40) * scale)
+  Math.round(Math.max(170, name.length * 11 + 40) * scale)
 
 function SystemMap({
   system,

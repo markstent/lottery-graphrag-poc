@@ -29,6 +29,10 @@ export interface DiagramEdge {
   target: string
   /** Drawn on the edge. */
   label?: string
+  /** False draws the line without its tag (default: tagged). */
+  tagged?: boolean
+  /** Drawn pale, to stand back from the lines that matter. */
+  faint?: boolean
   /** Not drawn and not listed, but kept so the layout does not move. */
   hidden?: boolean
   look?: EdgeLook
@@ -69,20 +73,35 @@ export const count = (n: number) => n.toLocaleString('en-GB')
 const MIN_WIDTH = 150
 const MAX_WIDTH = 210
 
+/** One relationship type, once, with its count, for the list beside the map. */
+export interface RelationshipLine {
+  type: string
+  /** "is an instance of concept: 124" */
+  text: string
+  /** What else a reader needs: a link between two records of one kind, or one neither approach follows. */
+  note?: string
+}
+
 export interface MetaGraphModel {
+  /** The kinds that have a relationship in the schema, for the drawing. */
   nodes: DiagramNode[]
+  /** The kinds with no relationship at all, which the drawing would only clutter. */
+  isolated: DiagramNode[]
   edges: DiagramEdge[]
-  /** Relationships between two records of one kind, which the map cannot draw as an edge. */
-  loops: string[]
+  /** Each relationship type shown, once, with its count. */
+  types: RelationshipLine[]
+  /** True when the map draws a line neither approach follows (dashed grey). */
+  hasOutside: boolean
 }
 
 /**
- * The map of kinds of record: each sized by its count, each relationship type
- * labelled with the count the ingestion recorded for it. The statistics count
- * a type once across every pair of kinds it joins, so a type that joins
- * several pairs says "in all". `mode` picks which relationships are shown:
- * those B may follow, those C may follow (the ontology's marked apart), or
- * the whole schema (those neither follows marked apart).
+ * The map of kinds of record: each sized by its count, each relationship drawn
+ * as a line tagged with its phrase. The statistics count a type once across
+ * every pair of kinds it joins, so the counts are in a list that gives each
+ * type once (self-links, which the map cannot draw, are in it too). `mode`
+ * picks which relationships are shown: those B may follow, those C may follow
+ * (the ontology's marked apart), or the whole schema (those neither follows
+ * marked apart).
  */
 export function metaGraphModel(
   schema: Schemas['GraphSchema'],
@@ -93,16 +112,6 @@ export function metaGraphModel(
   const allowed = {
     B: new Set(schema.allow_list.B ?? []),
     C: new Set(schema.allow_list.C ?? []),
-  }
-  const pairs = new Map<string, number>()
-  for (const { type } of schema.relationship_types)
-    pairs.set(type, (pairs.get(type) ?? 0) + 1)
-
-  const labelFor = (type: string) => {
-    const total = stats.relationships_by_type[type]
-    const words = relationshipPhrase(type)
-    if (total === undefined) return words
-    return `${words} · ${count(total)}${(pairs.get(type) ?? 0) > 1 ? ' in all' : ''}`
   }
   const looks = (type: string): { hidden: boolean; look: EdgeLook } => {
     if (mode === 'B') return { hidden: !allowed.B.has(type), look: 'b' }
@@ -118,35 +127,55 @@ export function metaGraphModel(
   }
 
   const edges: DiagramEdge[] = []
-  const loops: string[] = []
+  const types = new Map<string, RelationshipLine>()
   const connected = new Set<string>()
   for (const rel of schema.relationship_types) {
     const { hidden, look } = looks(rel.type)
-    if (rel.from_label === rel.to_label) {
-      if (!hidden) {
-        loops.push(
-          `${nodeLabel(rel.from_label)} ${labelFor(rel.type).replace(' · ', ` ${nodeLabel(rel.to_label)} · `)}`,
-        )
-        connected.add(rel.from_label)
-      }
+    if (hidden) {
+      if (rel.from_label !== rel.to_label)
+        edges.push({
+          id: `${rel.type}:${rel.from_label}>${rel.to_label}`,
+          source: rel.from_label,
+          target: rel.to_label,
+          label: relationshipPhrase(rel.type),
+          hidden,
+          look,
+        })
       continue
     }
-    if (!hidden) {
-      connected.add(rel.from_label)
-      connected.add(rel.to_label)
-    }
-    edges.push({
-      id: `${rel.type}:${rel.from_label}>${rel.to_label}`,
-      source: rel.from_label,
-      target: rel.to_label,
-      label: labelFor(rel.type),
-      hidden,
-      look,
+    connected.add(rel.from_label)
+    connected.add(rel.to_label)
+    const total = stats.relationships_by_type[rel.type]
+    const note =
+      look === 'outside'
+        ? 'followed by neither approach'
+        : rel.from_label === rel.to_label
+          ? `between two ${nodeLabel(rel.from_label)} records`
+          : undefined
+    types.set(rel.type, {
+      type: rel.type,
+      text:
+        total === undefined
+          ? relationshipPhrase(rel.type)
+          : `${relationshipPhrase(rel.type)}: ${count(total)}`,
+      note: types.get(rel.type)?.note ?? note,
     })
+    if (rel.from_label !== rel.to_label)
+      edges.push({
+        id: `${rel.type}:${rel.from_label}>${rel.to_label}`,
+        source: rel.from_label,
+        target: rel.to_label,
+        label: relationshipPhrase(rel.type),
+        hidden,
+        look,
+      })
   }
 
   const largest = Math.max(1, ...Object.values(stats.nodes_by_label))
-  const nodes = schema.labels.map((label) => {
+  const joined = new Set(
+    schema.relationship_types.flatMap((r) => [r.from_label, r.to_label]),
+  )
+  const sized = schema.labels.map((label) => {
     const n = stats.nodes_by_label[label] ?? 0
     const share = Math.log1p(n) / Math.log1p(largest)
     return {
@@ -157,5 +186,11 @@ export function metaGraphModel(
       dimmed: !connected.has(label),
     }
   })
-  return { nodes, edges, loops }
+  return {
+    nodes: sized.filter((n) => joined.has(n.id)),
+    isolated: sized.filter((n) => !joined.has(n.id)),
+    edges,
+    types: [...types.values()],
+    hasOutside: edges.some((e) => !e.hidden && e.look === 'outside'),
+  }
 }

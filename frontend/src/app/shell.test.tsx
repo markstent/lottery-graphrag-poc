@@ -102,6 +102,19 @@ describe('shell navigation', () => {
     )
   })
 
+  it.each([
+    ['#/live-lab', true],
+    ['#/data-model', true],
+    ['#/results', false],
+    ['#/overview', false],
+  ])('gives %s the wide page column: %s', (hash, wide) => {
+    window.history.replaceState(null, '', `/${hash}`)
+    render(<App />)
+    const main = document.getElementById('main')
+    expect(main?.classList.contains('max-w-[110rem]')).toBe(wide)
+    expect(main?.classList.contains('max-w-7xl')).toBe(!wide)
+  })
+
   it('follows a link to another destination', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('link', { name: 'Help' }))

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { datasetName, plainName, plainValue } from './plain-words'
+import {
+  datasetName,
+  distinctFields,
+  plainName,
+  plainValue,
+} from './plain-words'
 
 describe('plain words', () => {
   it('turns a dataset id into a name', () => {
@@ -27,5 +32,40 @@ describe('plain words', () => {
     expect(plainValue({ open_date: '2026-03-02', tags: ['a', 'b'] })).toBe(
       'open date: 2026-03-02; tags: a, b',
     )
+  })
+})
+
+describe('distinctFields', () => {
+  it('keeps one key where several hold the same value, preferring the id', () => {
+    expect(
+      distinctFields({
+        game_id: 'GAME_UK_01',
+        id: 'GAME_UK_01',
+        name: 'Albion Millions',
+        source_record_id: 'GAME_UK_01',
+      }),
+    ).toEqual([
+      ['id', 'GAME_UK_01'],
+      ['name', 'Albion Millions'],
+    ])
+  })
+
+  it('keeps the first key when none is the id, and keeps the order of the rest', () => {
+    expect(
+      distinctFields({
+        market_id: 'MKT_UK',
+        region: 'South',
+        home_market: 'MKT_UK',
+      }),
+    ).toEqual([
+      ['market_id', 'MKT_UK'],
+      ['region', 'South'],
+    ])
+  })
+
+  it('never drops a field because an empty or boolean value repeats', () => {
+    expect(
+      distinctFields({ a: true, b: true, c: null, d: null, e: 0, f: 0 }),
+    ).toHaveLength(6)
   })
 })

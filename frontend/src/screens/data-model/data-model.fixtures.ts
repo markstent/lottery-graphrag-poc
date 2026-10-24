@@ -107,7 +107,12 @@ export const STATS: Schemas['GraphStats'] = {
 export const GAME_NODE: Schemas['NodeOut'] = {
   node_id: 'GAME_001',
   labels: ['Game'],
-  properties: { id: 'GAME_001', name: 'Albion Millions 1', market_id: 'UK' },
+  properties: {
+    id: 'GAME_001',
+    name: 'Albion Millions 1',
+    market_id: 'UK',
+    source_record_id: 'GAME_001',
+  },
   provenance: {
     table: 'games',
     row_id: 'GAME_001',

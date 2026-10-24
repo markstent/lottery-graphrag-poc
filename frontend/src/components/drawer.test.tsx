@@ -66,6 +66,33 @@ describe('Drawer', () => {
 })
 
 describe('Drawer focus', () => {
+  it('returns focus to an opener that is drawn in SVG', async () => {
+    const user = userEvent.setup()
+    function SvgHarness() {
+      const [open, setOpen] = useState(false)
+      return (
+        <>
+          <svg>
+            <g
+              role="button"
+              tabIndex={0}
+              aria-label="Open the svg"
+              onClick={() => setOpen(true)}
+            />
+          </svg>
+          <Drawer open={open} title="Details" onClose={() => setOpen(false)}>
+            <button type="button">First</button>
+          </Drawer>
+        </>
+      )
+    }
+    render(<SvgHarness />)
+    const opener = screen.getByRole('button', { name: 'Open the svg' })
+    await user.click(opener)
+    await user.keyboard('{Escape}')
+    expect(opener).toHaveFocus()
+  })
+
   it('returns focus to the canvas node when the opener has been removed', async () => {
     const user = userEvent.setup()
     function Page() {

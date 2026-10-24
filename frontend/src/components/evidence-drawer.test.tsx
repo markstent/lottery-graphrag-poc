@@ -75,6 +75,31 @@ describe('EvidenceDrawer', () => {
     ).toBeTruthy()
   })
 
+  it('shows a key once where two keys hold the same value, keeping the id of a node', async () => {
+    stubApi({
+      '/api/v1/graph/nodes/INC_S007_GR': {
+        ...NODE,
+        properties: {
+          id: 'INC_S007_GR',
+          incident_id: 'INC_S007_GR',
+          source_record_id: 'INC_S007_GR',
+          market: 'GR',
+        },
+      },
+    })
+    render(
+      <EvidenceDrawer
+        source={{ kind: 'node', nodeId: 'INC_S007_GR' }}
+        onClose={() => undefined}
+      />,
+    )
+    const record = await screen.findByRole('region', { name: 'Record' })
+    await within(record).findByText('market')
+    expect(within(record).getAllByText('INC_S007_GR')).toHaveLength(1)
+    expect(within(record).getByText('id')).toBeVisible()
+    expect(within(record).queryByText('source record id')).toBeNull()
+  })
+
   it('shows the properties of a graph node, then its provenance', async () => {
     stubApi({ '/api/v1/graph/nodes/INC_S007_GR': NODE })
     render(

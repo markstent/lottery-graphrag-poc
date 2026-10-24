@@ -9,7 +9,7 @@ describe('Diagram', () => {
     { id: 'b', title: 'market', detail: '4 nodes', width: 200 },
   ]
   const edges = [
-    { id: 'e', source: 'a', target: 'b', label: 'is available in · 310' },
+    { id: 'e', source: 'a', target: 'b', label: 'is available in' },
   ]
 
   it('draws a keyboard-reachable button for each node and lists each link in words', async () => {
@@ -27,9 +27,7 @@ describe('Diagram', () => {
     expect(game).toHaveAttribute('tabindex', '0')
     fireEvent.keyDown(game, { key: 'Enter' })
     expect(onSelect).toHaveBeenCalledWith('a')
-    expect(
-      screen.getByText('game is available in · 310 market'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('game is available in market')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'Map' })).toBeInTheDocument()
   })
 

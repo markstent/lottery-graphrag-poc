@@ -2,6 +2,7 @@ import { expect, test, type Page, type Request } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 
 import { mockApi, type DataModelState } from './mock-api'
+import { GRAPH_SCHEMA, ROW_COUNTS, rowsOf } from './mock-data-model'
 
 /* Data Model in a browser, against the mock API. SHOTS=<dir> also saves pictures. */
 
@@ -21,50 +22,101 @@ async function open(page: Page, hash: string, state?: DataModelState) {
   await page.goto(`/${hash}`)
 }
 
-const rowsRequests = (page: Page) => {
+const rowsRequests = (page: Page, table: string) => {
   const seen: URL[] = []
   page.on('request', (request: Request) => {
     const url = new URL(request.url())
-    if (url.pathname.endsWith('/tables/tickets/rows')) seen.push(url)
+    if (url.pathname.endsWith(`/tables/${table}/rows`)) seen.push(url)
   })
   return seen
 }
 
-test('filter by a copied timestamp and page', async ({ page }) => {
-  const requests = rowsRequests(page)
-  await open(page, '#/data-model?tab=warehouse&table=tickets')
-  await expect(page.getByText('Rows 1 to 50 of 4,200')).toBeVisible()
+/** The smallest type in the map's SVG as it shows on screen, in px. */
+const smallestType = (page: Page) =>
+  page.evaluate(() => {
+    const svg = document.querySelector('svg[role=img]')!
+    const k = svg.getBoundingClientRect().width / svg.viewBox.baseVal.width
+    return Math.min(
+      ...[...svg.querySelectorAll('text')].map(
+        (t) => Number(t.getAttribute('font-size')) * k,
+      ),
+    )
+  })
 
-  // Copy the sold_at value of the first row, exactly as the grid shows it.
+const total = (n: number) => n.toLocaleString('en-GB')
+const typeCount = (list: string[]) => new Set(list).size
+const allTypes = new Set(GRAPH_SCHEMA.relationship_types.map((r) => r.type))
+
+/* Devices repeat their first-seen timestamps widely, so a copied one has pages. */
+test('filter by a copied timestamp and page', async ({ page }) => {
+  const requests = rowsRequests(page, 'devices')
+  await open(page, '#/data-model?tab=warehouse&table=devices')
+  await expect(
+    page.getByText(`Rows 1 to 50 of ${total(ROW_COUNTS.devices)}`),
+  ).toBeVisible()
+
+  // Copy the first_seen_at value of the first row, exactly as the grid shows it.
+  const headers = await page.getByRole('columnheader').allInnerTexts()
   const stamp = await page
     .getByRole('row')
     .nth(1)
     .getByRole('cell')
-    .nth(4)
+    .nth(headers.indexOf('first_seen_at'))
     .innerText()
-  expect(stamp).toMatch(/^2026-03-0\d{1}T10:15:00$/)
+  expect(stamp).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$/)
+  const matching = (
+    rowsOf(
+      'devices',
+      new URLSearchParams({ column: 'first_seen_at', value: stamp }),
+    ).body as { total: number }
+  ).total
+  expect(matching).toBeGreaterThan(50)
 
-  await page.getByLabel('Column').selectOption('sold_at')
+  await page.getByLabel('Column').selectOption('first_seen_at')
   await page.getByLabel('Value').fill(stamp)
   await page.getByRole('button', { name: 'Filter', exact: true }).click()
-  await expect(page.getByText('Rows 1 to 50 of 1,400')).toBeVisible()
+  await expect(
+    page.getByText(`Rows 1 to 50 of ${total(matching)}`),
+  ).toBeVisible()
   await expect(page.getByRole('row')).toHaveCount(51)
   await shot(page, 'rows-filtered')
 
   await page.getByRole('button', { name: 'Next page' }).click()
-  await expect(page.getByText('Rows 51 to 100 of 1,400')).toBeVisible()
-  await expect(page.getByRole('row')).toHaveCount(51)
   await expect(
-    page.getByRole('row').nth(2).getByRole('cell').nth(4),
+    page.getByText(
+      `Rows 51 to ${Math.min(100, matching)} of ${total(matching)}`,
+    ),
+  ).toBeVisible()
+  await expect(page.getByRole('row')).toHaveCount(
+    Math.min(100, matching) - 50 + 1,
+  )
+  await expect(
+    page
+      .getByRole('row')
+      .nth(2)
+      .getByRole('cell')
+      .nth(headers.indexOf('first_seen_at')),
   ).toHaveText(stamp)
 
+  // On to the last page: its bounds are exact and there is no way further.
+  const next = page.getByRole('button', { name: 'Next page' })
+  while (await next.isEnabled()) await next.click()
+  const first = Math.floor((matching - 1) / 50) * 50 + 1
+  await expect(
+    page.getByText(
+      `Rows ${total(first)} to ${total(matching)} of ${total(matching)}`,
+    ),
+  ).toBeVisible()
+  await expect(page.getByRole('row')).toHaveCount(matching - first + 2)
+  await expect(next).toBeDisabled()
+
   const typed = requests.filter((url) => url.searchParams.has('column'))
-  expect(typed.map((url) => url.searchParams.get('offset'))).toEqual([
-    '0',
-    '50',
-  ])
+  const offsets = typed.map((url) => Number(url.searchParams.get('offset')))
+  expect(offsets).toEqual(
+    Array.from({ length: Math.ceil(matching / 50) }, (_, i) => i * 50),
+  )
   for (const url of typed) {
-    expect(url.searchParams.get('column')).toBe('sold_at')
+    expect(url.searchParams.get('column')).toBe('first_seen_at')
     expect(url.searchParams.get('value')).toBe(stamp)
     expect(Number(url.searchParams.get('limit'))).toBeLessThanOrEqual(50)
   }
@@ -74,17 +126,19 @@ test('a value that does not fit the column shows the server message', async ({
   page,
 }) => {
   await open(page, '#/data-model?tab=warehouse&table=tickets')
-  await page.getByLabel('Column').selectOption('sold_at')
+  await page.getByLabel('Column').selectOption('purchase_timestamp')
   await page.getByLabel('Value').fill('last week')
   await page.getByRole('button', { name: 'Filter', exact: true }).click()
   await expect(page.getByRole('alert')).toHaveText(
-    "'last week' is not a TIMESTAMP value for sold_at",
+    "'last week' is not a TIMESTAMP value for purchase_timestamp",
   )
   await shot(page, 'rows-error')
   await page.getByLabel('Value').fill('2031-01-01T00:00:00')
   await page.getByRole('button', { name: 'Filter', exact: true }).click()
   await expect(
-    page.getByText('No row has sold_at equal to 2031-01-01T00:00:00.'),
+    page.getByText(
+      'No row has purchase_timestamp equal to 2031-01-01T00:00:00.',
+    ),
   ).toBeVisible()
   await shot(page, 'rows-empty')
 })
@@ -96,36 +150,46 @@ test('the warehouse map is grouped by source system, and a row follows into the 
   await expect(
     page.getByRole('region', { name: 'Incident management' }),
   ).toBeVisible()
-  await expect(
-    page.getByRole('button', { name: 'games, 120 rows' }),
-  ).toBeVisible()
+  const games = page.getByRole('button', {
+    name: `games, ${total(ROW_COUNTS.games)} rows`,
+  })
+  await expect(games).toBeVisible()
   await shot(page, 'warehouse-map')
 
-  await page.getByRole('button', { name: 'games, 120 rows' }).click()
+  await games.click()
   await expect(page).toHaveURL(/#\/data-model\?tab=warehouse&table=games$/)
-  await page.getByRole('button', { name: 'Open GAME_003' }).click()
+  await page.getByRole('button', { name: 'Open GAME_UK_01' }).click()
   const drawer = page.getByRole('dialog', { name: 'Evidence' })
   await expect(drawer.getByText('ticket price')).toBeVisible()
   await shot(page, 'record-drawer')
 
   await drawer.getByRole('link', { name: 'Follow into the graph' }).click()
-  await expect(page).toHaveURL(/#\/data-model\?tab=graph&node=GAME_003$/)
+  await expect(page).toHaveURL(/#\/data-model\?tab=graph&node=GAME_UK_01$/)
   await expect(
-    page.getByRole('button', { name: /^Vltava Draw 3, game$/ }),
+    page.getByRole('button', { name: 'Albion Millions, game' }),
   ).toHaveAttribute('aria-pressed', 'true')
+  // The neighbours come from the rows: the game's own market first.
   await expect(
-    page.getByRole('button', { name: 'INCIDENT_007, incident' }),
+    page.getByRole('button', { name: 'United Kingdom, market' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: /^INC_\d+, incident$/ }).first(),
   ).toBeVisible()
   await shot(page, 'graph-focused-node')
 
   await page.goBack()
   await expect(page).toHaveURL(/table=games$/)
-  await expect(page.getByText('Rows 1 to 50 of 120')).toBeVisible()
+  await expect(
+    page.getByText(`Rows 1 to ${ROW_COUNTS.games} of ${ROW_COUNTS.games}`),
+  ).toBeVisible()
 })
 
 test('a row with no node in the graph says so', async ({ page }) => {
   await open(page, '#/data-model?tab=warehouse&table=tickets')
-  await page.getByRole('button', { name: 'Open TICKET_001' }).click()
+  await page
+    .getByRole('button', { name: /^Open TKT_\d+$/ })
+    .first()
+    .click()
   const drawer = page.getByRole('dialog', { name: 'Evidence' })
   await expect(
     drawer.getByText('This row has no node in the graph.'),
@@ -139,28 +203,43 @@ test('a row with no node in the graph says so', async ({ page }) => {
 test('the Graph tab narrows to what each approach follows and shows a sample node', async ({
   page,
 }) => {
+  const labels = GRAPH_SCHEMA.labels.length
+  expect(labels).toBe(29)
   await open(page, '#/data-model?tab=graph')
   await expect(
-    page.getByRole('button', { name: 'game, 120 nodes' }),
+    page.getByRole('button', { name: `game, ${ROW_COUNTS.games} nodes` }),
   ).toBeVisible()
   await shot(page, 'graph-full')
+  // The whole map, as drawn: no type below 12 px on screen.
+  expect(await smallestType(page)).toBeGreaterThanOrEqual(12)
   await page.getByRole('radio', { name: 'B · Graph' }).click()
   await expect(
-    page.getByText('B · Graph follows 8 of the 10 relationship types.'),
+    page.getByText(
+      `B · Graph follows ${typeCount(GRAPH_SCHEMA.allow_list.B)} of the ${allTypes.size} relationship types.`,
+    ),
   ).toBeVisible()
   await shot(page, 'graph-b')
   await page.getByRole('radio', { name: 'C · Graph + Ontology' }).click()
   await expect(
     page.getByText(
-      'C · Graph + Ontology follows 10 of the 10 relationship types.',
+      `C · Graph + Ontology follows ${typeCount(GRAPH_SCHEMA.allow_list.C)} of the ${allTypes.size} relationship types.`,
     ),
   ).toBeVisible()
   await shot(page, 'graph-c')
 
-  await page.getByRole('button', { name: 'game, 120 nodes' }).click()
+  await page.getByRole('button', { name: /^game, / }).click()
   const details = page.getByRole('region', { name: 'Details' })
-  await expect(details.getByText('Aegean Gold 1')).toBeVisible()
+  await expect(details.getByText(/^Built from games\./)).toBeVisible()
+  await expect(details.getByText('market id')).toBeVisible()
   await shot(page, 'graph-label-sample')
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  // Focus goes back to the kind that was chosen.
+  await expect(page.getByRole('button', { name: /^game, / })).toBeFocused()
+  // Its relationships are tagged now, and the tags are as legible.
+  await expect(page.locator('g[data-edge-id] text').first()).toBeVisible()
+  expect(await smallestType(page)).toBeGreaterThanOrEqual(12)
+  await shot(page, 'graph-label-tagged')
 })
 
 for (const state of ['pending', 'empty', 'error'] as const)
@@ -190,12 +269,12 @@ test('presentation mode raises the type on the map', async ({ page }) => {
   await mockApi(page)
   await page.goto('/?present=1#/data-model')
   await expect(
-    page.getByRole('button', { name: 'games, 120 rows' }),
+    page.getByRole('button', {
+      name: `games, ${total(ROW_COUNTS.games)} rows`,
+    }),
   ).toBeVisible()
   await shot(page, 'warehouse-presentation')
   await page.getByRole('link', { name: 'Graph' }).click()
-  await expect(
-    page.getByRole('button', { name: 'game, 120 nodes' }),
-  ).toBeVisible()
+  await expect(page.getByRole('button', { name: /^game, / })).toBeVisible()
   await shot(page, 'graph-presentation')
 })

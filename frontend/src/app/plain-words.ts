@@ -32,3 +32,25 @@ export function plainValue(value: JsonValue): string {
       .join('; ')
   return String(value)
 }
+
+/**
+ * The fields of a record without repeats: where several keys hold the same
+ * text (a node's `id` and `source_record_id`, a row's own key repeated), one
+ * is kept, the `id` if it is one of them, else the first. Numbers, booleans
+ * and nothing never count as repeats. The order of the rest is kept.
+ */
+export function distinctFields(
+  fields: Record<string, JsonValue>,
+): [string, JsonValue][] {
+  const entries = Object.entries(fields)
+  const keeper = new Map<string, string>()
+  for (const [key, value] of entries) {
+    if (typeof value !== 'string' || value === '') continue
+    const kept = keeper.get(value)
+    if (kept === undefined || (key === 'id' && kept !== 'id'))
+      keeper.set(value, key)
+  }
+  return entries.filter(
+    ([key, value]) => typeof value !== 'string' || keeper.get(value) === key,
+  )
+}

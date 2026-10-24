@@ -23,7 +23,8 @@ interface DrawerProps {
  */
 function returnFocus(opener: Element | null) {
   const target =
-    opener instanceof HTMLElement && opener.isConnected
+    (opener instanceof HTMLElement || opener instanceof SVGElement) &&
+    opener.isConnected
       ? opener
       : (document.querySelector<HTMLElement>('[data-node-id][tabindex="0"]') ??
         document.getElementById('main'))

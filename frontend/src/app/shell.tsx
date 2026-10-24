@@ -265,11 +265,14 @@ function Header() {
   )
 }
 
+const WIDE_DESTINATIONS: readonly RouteName[] = ['live-lab', 'data-model']
+
 export function Shell({ children }: { children: ReactNode }) {
   const { presentation } = useSettings()
-  // Live Lab draws a graph beside three panels and wants the room; the other
-  // destinations are read in a column.
-  const wide = useRoute().name === 'live-lab'
+  // Live Lab draws a graph beside three panels and Data Model draws maps of
+  // tables and of the graph; both want the room. The other destinations are
+  // read in a column.
+  const wide = WIDE_DESTINATIONS.includes(useRoute().name)
 
   return (
     <div className="flex min-h-screen">

@@ -5,7 +5,12 @@
  */
 
 import { getNode, getRecord, type Schemas } from '../api/client'
-import { datasetName, plainName, plainValue } from '../app/plain-words'
+import {
+  datasetName,
+  distinctFields,
+  plainName,
+  plainValue,
+} from '../app/plain-words'
 import { useLoad } from '../app/use-load'
 import { nodeLabel } from '../design/node-labels'
 import { relationshipPhrase } from '../design/relationships'
@@ -52,7 +57,7 @@ function Fact({ term, children }: { term: string; children: string }) {
 }
 
 function Facts({ fields }: { fields: Fields }) {
-  const entries = Object.entries(fields)
+  const entries = distinctFields(fields)
   if (entries.length === 0)
     return <p className="text-sm text-text-secondary">No fields.</p>
   return (

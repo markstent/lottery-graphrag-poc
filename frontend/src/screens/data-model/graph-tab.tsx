@@ -18,7 +18,7 @@ import {
   listDatasets,
   type Schemas,
 } from '../../api/client'
-import { plainName, plainValue } from '../../app/plain-words'
+import { distinctFields, plainName, plainValue } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Drawer } from '../../components/drawer'
@@ -57,7 +57,7 @@ const backToKinds = (
 function Properties({ node }: { node: Node }) {
   return (
     <dl className="space-y-2">
-      {Object.entries(node.properties).map(([name, value]) => (
+      {distinctFields(node.properties).map(([name, value]) => (
         <div key={name} className="grid grid-cols-[9rem_1fr] gap-x-4 text-sm">
           <dt className="text-text-muted">{plainName(name)}</dt>
           <dd className="min-w-0 break-words text-text-primary">
@@ -153,9 +153,25 @@ function KindsMap({
   scale: number
 }) {
   const [mode, setMode] = useState<AllowList>('full')
+  // The kind chosen stays chosen (its lines are tagged, the rest pale) when
+  // its details are closed, until the reader clears it.
   const [label, setLabel] = useState<string | null>(null)
-  const { nodes, edges, loops } = metaGraphModel(schema, stats, mode, scale)
-  const types = new Set(schema.relationship_types.map((r) => r.type))
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const choose = (id: string) => {
+    setLabel(id)
+    setDetailsOpen(true)
+  }
+  const model = metaGraphModel(schema, stats, mode, scale)
+  const { nodes, isolated, types, hasOutside } = model
+  const edges = model.edges.map((edge) => {
+    const touches = edge.source === label || edge.target === label
+    return {
+      ...edge,
+      tagged: touches,
+      faint: label !== null && !touches,
+    }
+  })
+  const typeCount = new Set(schema.relationship_types.map((r) => r.type))
   const followed = mode === 'full' ? null : schema.allow_list[mode]?.length
 
   return (
@@ -182,28 +198,72 @@ function KindsMap({
       </div>
       <p className="text-sm text-text-secondary">
         {followed === null
-          ? `Every relationship in the schema, ${types.size} types. Dashed grey lines are followed by neither approach.`
-          : `${MODES.find((m) => m.id === mode)?.label} follows ${followed} of the ${types.size} relationship types.`}
+          ? `Every relationship in the schema, ${typeCount.size} types.${hasOutside ? ' Dashed grey lines are followed by neither approach.' : ''}`
+          : `${MODES.find((m) => m.id === mode)?.label} follows ${followed} of the ${typeCount.size} relationship types.`}
       </p>
       <p className="text-sm text-text-secondary">
-        Choose a kind of record to see its properties and a sample.
+        Choose a kind of record to see its properties and a sample, and to tag
+        its relationships on the map.
+        {label !== null && (
+          <button
+            type="button"
+            onClick={() => setLabel(null)}
+            className="ml-3 rounded-chip border border-border px-2 py-0.5 text-text-primary hover:bg-surface-raised"
+          >
+            Show all relationships
+          </button>
+        )}
       </p>
       <Diagram
         nodes={nodes}
         edges={edges}
         label="Kinds of record and their relationships"
         selected={label}
-        onSelect={setLabel}
+        onSelect={choose}
         scale={scale}
       />
-      {loops.length > 0 && (
-        <ul className="list-disc pl-5 text-sm text-text-secondary">
-          {loops.map((loop) => (
-            <li key={loop}>{loop}</li>
+      {isolated.length > 0 && (
+        <section
+          aria-label="Kinds with no relationships"
+          className="flex flex-wrap items-center gap-2 text-sm text-text-secondary"
+        >
+          <h2 className="text-base font-semibold text-text-primary">
+            No relationships in the schema
+          </h2>
+          {isolated.map((node) => (
+            <button
+              key={node.id}
+              type="button"
+              aria-pressed={label === node.id}
+              aria-label={`${node.title}, ${node.detail}`}
+              onClick={() => choose(node.id)}
+              className="rounded-chip border border-border px-3 py-1 text-text-primary hover:bg-surface-raised aria-pressed:bg-surface-raised aria-pressed:font-semibold"
+            >
+              {`${node.title} · ${node.detail}`}
+            </button>
+          ))}
+        </section>
+      )}
+      <section aria-label="Relationships and their counts">
+        <h2 className="text-base font-semibold text-text-primary">
+          Relationships and their counts
+        </h2>
+        <ul className="mt-2 columns-3 gap-6 text-sm text-text-primary">
+          {types.map((line) => (
+            <li key={line.type} className="break-inside-avoid py-0.5">
+              {line.text}
+              {line.note && (
+                <span className="text-text-muted">{` (${line.note})`}</span>
+              )}
+            </li>
           ))}
         </ul>
-      )}
-      <Details label={label} schema={schema} onClose={() => setLabel(null)} />
+      </section>
+      <Details
+        label={detailsOpen ? label : null}
+        schema={schema}
+        onClose={() => setDetailsOpen(false)}
+      />
     </div>
   )
 }
@@ -245,7 +305,7 @@ function FocusedNode({ nodeId, scale }: { nodeId: string; scale: number }) {
       id: n.node_id,
       title: titleOf(n),
       detail: n.labels.map(nodeLabel).join(', '),
-      width: Math.round(Math.max(190, titleOf(n).length * 10 + 40) * scale),
+      width: Math.round(Math.max(190, titleOf(n).length * 12 + 40) * scale),
     })),
   ]
   const edges: DiagramEdge[] = neighbours.items.map((item) => ({

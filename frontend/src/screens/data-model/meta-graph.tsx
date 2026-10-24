@@ -18,8 +18,8 @@ import type { DiagramEdge, DiagramNode, EdgeLook } from './model'
 
 /** Node height and label size at normal type; `scale` raises both for presentation. */
 const NODE_HEIGHT = 56
-const TITLE_FONT = 17
-const DETAIL_FONT = 15
+const TITLE_FONT = 18
+const DETAIL_FONT = 16
 const TAG_FONT = 15
 /**
  * The smallest size, in px on screen, a node title is shrunk to when the page
@@ -44,7 +44,7 @@ interface DiagramProps {
 }
 
 /** Longest line of a tag's phrase, in characters, before it wraps. */
-const TAG_WRAP = 16
+const TAG_WRAP = 12
 
 /**
  * The lines of a tag: the phrase, wrapped so a long one does not push the
@@ -201,7 +201,11 @@ export function Diagram({
           const { color, dash } = edgeStyle(edge.look)
           const tag = tagSize(edge.label, scale)
           return (
-            <g key={edge.id} data-edge-id={edge.id}>
+            <g
+              key={edge.id}
+              data-edge-id={edge.id}
+              opacity={edge.faint ? 0.2 : 1}
+            >
               <path
                 d={roundedPath(route.points)}
                 fill="none"
@@ -210,7 +214,7 @@ export function Diagram({
                 strokeDasharray={dash}
                 markerEnd={`url(#${arrows}-${edge.look ?? 'plain'})`}
               />
-              {edge.label && (
+              {edge.label && edge.tagged !== false && (
                 <>
                   <rect
                     x={route.tag.x - tag.width / 2}
@@ -285,7 +289,7 @@ export function Diagram({
               />
               <text
                 x={at.x + node.width / 2}
-                y={at.y + height / (node.detail ? 2.9 : 2)}
+                y={at.y + height * (node.detail ? 0.36 : 0.5)}
                 textAnchor="middle"
                 dominantBaseline="central"
                 fontSize={TITLE_FONT * scale}
@@ -297,7 +301,7 @@ export function Diagram({
               {node.detail && (
                 <text
                   x={at.x + node.width / 2}
-                  y={at.y + (height * 2) / 3.1}
+                  y={at.y + height * 0.71}
                   textAnchor="middle"
                   dominantBaseline="central"
                   fontSize={DETAIL_FONT * scale}
