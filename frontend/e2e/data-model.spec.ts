@@ -100,7 +100,14 @@ test('filter by a copied timestamp and page', async ({ page }) => {
 
   // On to the last page: its bounds are exact and there is no way further.
   const next = page.getByRole('button', { name: 'Next page' })
-  while (await next.isEnabled()) await next.click()
+  for (let start = 101; start <= matching; start += 50) {
+    await next.click()
+    await expect(
+      page.getByText(
+        `Rows ${total(start)} to ${total(Math.min(start + 49, matching))} of ${total(matching)}`,
+      ),
+    ).toBeVisible()
+  }
   const first = Math.floor((matching - 1) / 50) * 50 + 1
   await expect(
     page.getByText(
@@ -109,6 +116,7 @@ test('filter by a copied timestamp and page', async ({ page }) => {
   ).toBeVisible()
   await expect(page.getByRole('row')).toHaveCount(matching - first + 2)
   await expect(next).toBeDisabled()
+  await shot(page, 'rows-last-page')
 
   const typed = requests.filter((url) => url.searchParams.has('column'))
   const offsets = typed.map((url) => Number(url.searchParams.get('offset')))
@@ -133,12 +141,13 @@ test('a value that does not fit the column shows the server message', async ({
     "'last week' is not a TIMESTAMP value for purchase_timestamp",
   )
   await shot(page, 'rows-error')
+  // Devices are captured in full, so a filter on them has the world's own total.
+  await page.goto('/#/data-model?tab=warehouse&table=devices')
+  await page.getByLabel('Column').selectOption('first_seen_at')
   await page.getByLabel('Value').fill('2031-01-01T00:00:00')
   await page.getByRole('button', { name: 'Filter', exact: true }).click()
   await expect(
-    page.getByText(
-      'No row has purchase_timestamp equal to 2031-01-01T00:00:00.',
-    ),
+    page.getByText('No row has first_seen_at equal to 2031-01-01T00:00:00.'),
   ).toBeVisible()
   await shot(page, 'rows-empty')
 })

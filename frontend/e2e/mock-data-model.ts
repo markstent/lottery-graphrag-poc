@@ -41,6 +41,7 @@ const world = captured as unknown as {
     relationship_types: { type: string; from_label: string; to_label: string }[]
   }
   stats: unknown
+  row_counts: Record<string, number>
   rows: Record<string, Row[]>
 }
 
@@ -48,9 +49,8 @@ export const DATASET_ID = world.dataset_id
 export const DICTIONARY = world.dictionary
 export const GRAPH_SCHEMA = world.schema
 export const GRAPH_STATS = world.stats
-export const ROW_COUNTS = Object.fromEntries(
-  Object.entries(world.rows).map(([table, rows]) => [table, rows.length]),
-)
+/** The world's own row counts, whatever the sample of rows below holds. */
+export const ROW_COUNTS = world.row_counts
 
 export interface Answer {
   status: number
@@ -89,6 +89,13 @@ function same(type: string, cell: unknown, value: string): boolean {
   return Number(cell) === Number(value)
 }
 
+/** A table the capture holds only a sample of, so it cannot answer every page or filter. */
+export const isSampled = (table: string) =>
+  world.rows[table].length < world.row_counts[table]
+
+const mockOnly = (message: string): Answer =>
+  failure(501, 'CONFIGURATION_ERROR', `mock only: ${message}`)
+
 export function rowsOf(table: string, query: URLSearchParams): Answer {
   const def = tableDef(table)
   if (!def) return failure(422, 'VALIDATION_ERROR', `unknown table: ${table}`)
@@ -99,6 +106,7 @@ export function rowsOf(table: string, query: URLSearchParams): Answer {
   const column = query.get('column')
   const value = query.get('value')
   let rows = world.rows[table]
+  let total = world.row_counts[table]
   if (column !== null && value !== null) {
     const found = def.columns.find((c) => c.name === column)
     if (!found)
@@ -109,7 +117,15 @@ export function rowsOf(table: string, query: URLSearchParams): Answer {
         'VALIDATION_ERROR',
         `'${value}' is not a ${found.type} value for ${column}`,
       )
+    // A filter's total is the world's, which a sample cannot give.
+    if (isSampled(table))
+      return mockOnly(`${table} is sampled, so a filter has no real total`)
     rows = rows.filter((row) => same(found.type, row[column], value))
+    total = rows.length
+  } else if (isSampled(table) && offset + limit > rows.length) {
+    return mockOnly(
+      `${table} holds ${rows.length} of its ${total} rows, so there is no page at offset ${offset}`,
+    )
   }
   return {
     status: 200,
@@ -117,7 +133,7 @@ export function rowsOf(table: string, query: URLSearchParams): Answer {
       table,
       offset,
       limit,
-      total: rows.length,
+      total,
       rows: rows.slice(offset, offset + limit),
     },
   }

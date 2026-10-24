@@ -1,16 +1,20 @@
 // Captures the Data Model answers of a running API into e2e/fixtures/data-model-world.json,
 // which the e2e mock API serves: the dictionary, the graph schema and statistics, and
-// rows of every table. A table above the cap is sampled in blocks spread across its
-// ordered rows, so ids and timestamps keep the world's spread; the mock reports the
-// sampled count as the table's row count. Usage: node scripts/capture-data-model.mjs
+// the world's real row counts, and rows of every table. A table above the cap (and not
+// in FULL) is sampled in blocks spread across its ordered rows, so ids and timestamps
+// keep the world's spread; the mock shows the real counts and refuses a page or a filter
+// the sample cannot answer. Usage: node scripts/capture-data-model.mjs
 // [http://localhost:8000]. Run it against a read-only dev world; it ingests nothing.
 import { writeFileSync } from 'node:fs'
 
 const API = `${process.argv[2] ?? 'http://localhost:8000'}/api/v1`
 const CAP = 600
 const BLOCK = 50
-/** Tables whose timestamps repeat widely: kept larger so a copied timestamp has pages. */
-const CAPS = { devices: 2500 }
+/**
+ * Tables captured in full, so a filter on them has the world's own total:
+ * devices repeat their first-seen timestamps widely, so a copied one has pages.
+ */
+const FULL = ['devices']
 
 const get = async (path) => {
   const response = await fetch(`${API}${path}`)
@@ -29,7 +33,7 @@ const dictionary = await get(`/datasets/${world.dataset_id}/dictionary`)
 const rows = {}
 for (const { table } of dictionary) {
   const total = world.row_counts[table]
-  const cap = CAPS[table] ?? CAP
+  const cap = FULL.includes(table) ? total : CAP
   const page = async (offset, limit) =>
     (
       await get(
@@ -52,6 +56,7 @@ writeFileSync(
   new URL('../e2e/fixtures/data-model-world.json', import.meta.url),
   JSON.stringify({
     dataset_id: world.dataset_id,
+    row_counts: world.row_counts,
     dictionary,
     schema,
     stats,
