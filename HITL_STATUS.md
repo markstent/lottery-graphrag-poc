@@ -26,8 +26,89 @@ Only the project owner may mark a gate `APPROVED`.
 | CP1 Experiment (part 3: benchmark v2) | APPROVED | 2026-10-20 | Bank 2.0.0 (22 logical questions, hashed anchors frozen per world), deterministic answer, evidence and citation scoring, the blinded LLM judge, clustered paired statistics with Holm, `summary.json` v2, and the three-seed harness with the depth sweep and model comparison, on `overhaul/v2`. Docs: `docs/evaluation/scoring.md`, `statistics.md`, `reproducibility.md`, `docs/05-benchmark-spec.md` (as built). Decisions D-029 to D-032 are controller rulings, approved by the project owner with this checkpoint. Approved by the project owner in session ("approve") at branch head 3b6e0c0, after the final review fix wave; merged to main; the open owner questions below stand as built until the owner revisits them. Open owner questions: L16 and L17 expected sets include baseline players; L22 scores 0.5 when an answer also quotes the stale price; the cluster-level test (D-032). Known: the saved demo questions in `backend/app/api/queries.py` are stale v1 questions, replaced in the product phase; Results and Live Lab show a plain v2 notice until then. Owner items: `docs/08-implementation-phases.md:226` and `docs/product/product-requirements.md:24` still say "30-question" (original plan and requirements, left for the owner). Scorer smoke test `20261019T164733Z-smoke` (fake generator and judge, seeds 2026 to 2028): 150 instances (50 per world), none unavailable, presentation graph restored at 36,888 nodes. Local pilot `pilot-2026-nothink` (seed 2026, 2 instances per question, 3 repeats, 324 cells; qwen3.6 generator, gemma4:31b judge, `GENERATION_REASONING=off`, `JUDGE_REASONING=off`) is a subset and not a result: 0 generation and 0 judge failures, strict JSON contract 324 of 324, judge agreement 0.59 with kappa 0.18, 25.1 s per cell, so a full three-seed official run projects to about 9.5 hours. Finding for CP3 from the first pilot `pilot-2026` (reasoning on): thinking models spend the token caps on hidden reasoning and return empty answers (159 of 198 generations, every judge call). |
 | Phase 4 Product API | BUILT | 2026-10-20 | The backend as a product API on `overhaul/v2`: run store, event stream with resume, cancellation, readiness, Data Model, graph, ontology, scenario, model and benchmark routes, live scoring of bank questions, benchmark jobs, and the live end-to-end test (`tests/test_api_live.py`); described in `docs/07-api-event-spec.md`, decisions D-033 to D-038 (proposed). No checkpoint: CP2 follows Phases 5 and 6. Owner items for CP2: (1) `ConceptOut.relationships` is derived from ingestion; should the ontology declare its allowed relationships, as `docs/03` asks? (2) The Help screen's DEMO-01..04 table and story chips in `docs/ux` are stale until Phase 6, because the demo questions are now the first bank instance of H1, H2, H3 and H5 (D-036). |
 | Phase 5 Frontend foundation | BUILT | 2026-10-23 | The five-destination shell, light design system, typed API client and run stream, replayable run state, graph canvas, chart primitives, evidence drawer, presentation mode, copy rules and visual baselines on `overhaul/v2`, decisions D-039 to D-045. No checkpoint: CP2 follows Phase 6. For CP2 the owner should look at: (1) the default fit frames the evidence path, not the whole graph, with an out-of-view note for what falls outside; (2) the replay layout comes from the final graph, because positions are known before events (the path is still drawn only after its event); (3) the visible-node cap of 24 is a legibility choice, set from a 14 px label floor; (4) the StatTile hero uses tabular numerals, as spec 7.2 requires, which overrides the dataviz anti-pattern. Phase 6 items: wire `nodeCap` into the Live Lab canvas; an off-screen indicator for evidence nodes is already built, so check it in Live Lab; the ontology overlay compares C against B at the same cursor; remove the v1 views, mocks and `src/api/backend-run.ts`; rewrite `docs/ux/screen-specifications.md`. |
-| CP2 Product | PENDING | | Overview, Live Lab, Data Model, Help on the live API |
+| Phase 6 Product screens | BUILT | 2026-10-24 | Overview, Live Lab, Data Model (Warehouse, Graph, Ontology, Scenarios tabs) and Help (eight sections) are built on the live API on `overhaul/v2`, with a stopgap Results list (the full Results screen is Phase 7). Live Lab runs a question through A, B and C from a recorded run or live, with a graph canvas, three approach panels, a docked timeline, a scorecard, answers with citations, evidence paths and a market coverage table. The first-version views, mocks and `backend-run.ts` are removed. Four real runs are recorded as fixtures. Decisions D-046 to D-059 are proposed. `docs/ux/screen-specifications.md` is rewritten as built. Gates at this commit: see the CP2 package below. |
+| CP2 Product | PRESENTED | 2026-10-24 | Presented to the project owner for review; not approved. The package is in the section "CP2 package" below: screenshots, four recorded runs and their result, every owner item from Phases 4 to 6, and the open questions. |
 | CP3 Official run | PENDING | | model and cost choice, dry run, then official run and Results |
+
+## CP2 package (presented 2026-10-24)
+
+Nothing in this section is approved.
+Every ruling it names is "Proposed" in `DECISIONS.md` until the project owner says otherwise.
+
+### Where to look
+
+- Screenshots: `frontend/e2e/visual.spec.ts-snapshots/`.
+  `docs/ux/screen-specifications.md` names the baseline for each state of each screen.
+- Baselines whose names contain `fixture-official` show test fixture numbers and headlines, not results.
+  No full official run exists yet, so those screens are drawn from a made-up test run.
+  Its counts agree with the question bank and its headlines are neutral, but none of it is a measurement.
+  The baselines are `overview-fixture-official`, `presentation-overview-fixture-official`, `presentation-help-fixture-official` and `help-questions-fixture-official-filtered-by-story`.
+- Recorded runs: `frontend/src/run/fixtures/recorded/`, four runs, one for each of H1, H2, H3 and H5.
+  Open one in Live Lab with `#/live-lab?question=<instance id>`, or from the saved questions on Overview.
+- Running it: `README.md`, "Run the demo", names the five screens and their links.
+
+### The four recorded runs
+
+They are live captures through the API on the presentation dev world (`dev-seed2026`), with the answer model qwen3.6 through Ollama with reasoning off, all three approaches completed.
+They are not edited, and the demo questions were not re-picked to make a better story.
+
+| Question | Kind | A answer / evidence score | B answer / evidence score | C answer / evidence score |
+|---|---|---|---|---|
+| L05, incidents on the same platform version as INC_037 | H1 multi-hop | 0.00 / 0.00 | 0.00 / 0.00 | 0.00 / 0.00 |
+| L09, games in other markets of the same kind as GAME_AT_05 | H2 ontology-dependent | 0.40 / 0.35 | 0.50 / 0.14 | 0.50 / 0.14 |
+| L01, ticket price of GAME_AT_04 | H3 single fact | 1.00 / no score | 1.00 / no score | 1.00 / no score |
+| L15, cause of INC_041 | H5 planted pattern | 0.00 / 0.15 | 0.00 / 0.15 | 0.00 / 0.15 |
+
+The honest result is that on these four questions B and C did no better than A.
+B and C are level with A on three of the four.
+On the ontology question B and C wrote a slightly better answer (0.50 against 0.40) while finding less of the needed evidence (0.14 against 0.35).
+C's answers equal B's on every question.
+The single fact (H3) has no evidence score because it has no claims to find.
+
+Why, in plain words, for the multi-hop question (L05):
+B's graph search did find the right records.
+Its selection held the incident INC_037, the platform record, and INC_024, the record that carries the claim the answer needs.
+But all three approaches choose what the model sees through one shared re-ranker over the graph results and the document search together (D-025, approved at CP1).
+Only 4 items reached the prompt: INC_037 and three support cases.
+INC_024 did not, so the model said "the sources do not contain" the answer.
+This is the designed behaviour and not a bug.
+Neither the rule nor the demo questions were changed, because that would favour one approach.
+What to do about it is an owner decision, listed under the open questions.
+
+### Owner items
+
+Each is one line, with where to look.
+
+1. `ConceptOut.relationships` is derived from ingestion (IS_A, MAPS_TO) and the ontology declares no allowed relationships, although `docs/03` line 476 asks for it. Data Model, Ontology tab, concept card.
+2. Overview tiles show no interval for one approach, because `docs/evaluation/statistics.md` defines intervals for differences only, while spec 7.3 says tiles carry "the interval". Overview; D-048.
+3. Live Lab layout: graph on the left, the three approach panels on the right, a collapsed question bar, a compact scorecard and a docked timeline. Live Lab baselines; D-046.
+4. "Evidence score" (0 to 1, two decimals, signed deltas) and "Answer writing time" are the names on Overview, Live Lab and Help. Overview, Live Lab, Help "How scoring works"; D-047.
+5. In a replay, the layout comes from the final graph with the evidence path placed first in each layer, so the future path sits at the top of each layer before its event (nothing is styled as on the path until the event). `live-lab-h1-mid-replay-paused`; D-049.
+6. The default fit frames the evidence path and the first starting point at a 14 px label floor, with an "out of view" note, and six of the eight recorded end states are larger than the frame. `live-lab-h1-end-b`, `live-lab-h1-end-c`; D-050.
+7. The visible-node cap of 24 is a legibility choice from the 14 px floor, and Settings allows 12 to 60. Settings drawer; D-043.
+8. The stat tile hero uses tabular numerals, as spec 7.2 asks, which overrides the dataviz anti-pattern. Overview tiles.
+9. The overlay of the other approach's path needs the run's results, so it is off during a live run (the event carries counts only). Live Lab canvas toolbar; D-051.
+10. The ontology highlight on C marks only nodes C records as found through the ontology that B lacks at the same point of the run. `live-lab-h1-end-c`; D-052.
+11. Copy cuts: about 100 words of helper prose were cut to reach 1,200 words outside Help, with a before and after table in `.superpowers/sdd/2026-10-23-phase6-screens/task-9-report.md`. The budget counts visible text only and has no margin left. D-055.
+12. The Data Model full meta-graph has 24 connected labels and is dense, and a per-label neighbourhood map is proposed. `data-model-graph-full`.
+13. The warehouse map is one 27-table group, because the real data dictionary has one source system. `data-model-warehouse-map`.
+14. Help has no A/B/C walk-through of the SCN-007 worked example, because no recorded run covers SCN-007. Help, "The planted stories".
+15. Help's recovery table omits `make demo-reset`, because which world is the presentation world is not settled (`DATASET_DIR` defines it). Help, "Running it".
+16. Results is a stopgap list, and its purpose sentence promises more than it shows. Phase 7 builds the rest. Results.
+17. Recorded runs show no graph advantage, for the reason above (D-025). Live Lab with the four recordings.
+18. Small known gaps: the replay slider can read just below its end at the end of a run, the Overview and Help flow diagram does not grow in presentation mode, the evidence drawer's group list is fixed when opened while a replay plays, the idle approach panels are about 30 px shorter than running ones, the Data Model e2e fixture is 4.2 MB, and `recorded.ts` casts the fixtures without validating event types.
+19. Decisions D-033 to D-059 are all proposed and unreviewed, including the LiteLLM load fix (D-059) and the two API additions for Data Model (D-058). `DECISIONS.md`.
+
+### Open questions for the owner
+
+1. Is the D-025 shared re-ranker still what you want, given that it kept the claim record out of the prompt on the multi-hop question? Options sit with CP2 and CP3: keep it, or change how the graph's selection reaches the prompt (a method change that needs your approval before an official run).
+2. Should Overview tiles gain a per-approach interval (a new field in `summary.json`), or stay as built, with intervals on differences only?
+3. Should the ontology declare its allowed relationships, as `docs/03` asks, or keep the derived field?
+4. Do you accept the Live Lab layout and the replay and fit behaviour (items 3, 5, 6 and 9)?
+5. Which world is the presentation world, and should Help's recovery steps include `make demo-reset`?
+6. Do you want a per-label neighbourhood map in the Graph tab in place of, or beside, the dense full map?
+7. Is a copy budget with no margin at 1,200 words acceptable, or should the cap move?
+8. May Phase 7 (the full Results screen, the documentation cut and the copy pass) start after CP2?
 
 Phase 2 (pipelines v2) is built on branch `overhaul/v2` and presented as CP1 part 2, 2026-10-19; Phase 3 (question bank 2.0.0, the answer judge and the statistics) was approved as CP1 part 3 on 2026-10-20, which closes CP1; the product phases toward CP2 follow.
 

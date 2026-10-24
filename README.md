@@ -42,9 +42,34 @@ make serve-demo-api   # API on :8000 against the demo world
 make dev-frontend     # UI on :5173
 ```
 
-Then open `http://localhost:5173`. Live Lab starts on the committed demo
-story (offline-safe); switch the composer to "Live backend" to execute real
-A/B/C runs against the demo world. Development data and tests:
+Then open `http://localhost:5173`.
+The product has five screens, and each is a link:
+
+| Screen | Link | What it is for |
+|---|---|---|
+| Overview | `http://localhost:5173/#/overview` | The verdict from the latest official run, how the approaches differ, and a way into Live Lab |
+| Live Lab | `http://localhost:5173/#/live-lab` | Run one question through A, B and C and watch them work |
+| Results | `http://localhost:5173/#/results` | The published benchmark runs (a stopgap list until Phase 7) |
+| Data Model | `http://localhost:5173/#/data-model` | The warehouse, graph, ontology and scenarios, with live counts. Tabs are `?tab=warehouse`, `?tab=graph`, `?tab=ontology` and `?tab=scenarios` |
+| Help | `http://localhost:5173/#/help` | How it works, every benchmark question with its answer key, the glossary and how to run it. Sections are `?section=what`, `approaches`, `data`, `stories`, `questions`, `scoring`, `glossary` and `running` |
+
+Live Lab opens on a question bar.
+Choose one of the four saved questions and the source "Recorded run" to replay a real captured run, which needs no model.
+Choose "Live" to run it for real against the world the API serves.
+That needs the services, the vector index, the graph and the answer model to be ready, and the model status in the header says whether they are.
+Add `?present=1` to the address, or use the header button, for presentation mode.
+
+To run the live end-to-end spec against the real backend and the dev world, start the backend and then run the spec.
+It never runs in CI, and it skips unless `LIVE_WORLD_E2E=1` is set:
+
+```bash
+cd backend && GENERATION_PROVIDER=fake uv run uvicorn app.main:app --port 8000
+cd frontend && LIVE_WORLD_E2E=1 node node_modules/@playwright/test/cli.js test e2e/live-lab-live.spec.ts
+```
+
+The run is real (embedding, search and graph traversal happen) and the graph is only read.
+
+Development data and tests:
 
 ```bash
 make generate-dev-data  # development dataset
