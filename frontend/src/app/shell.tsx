@@ -49,7 +49,7 @@ function Sidebar() {
 
   return (
     <aside
-      className={`flex shrink-0 flex-col border-r border-hairline bg-surface ${
+      className={`sticky top-0 flex h-screen shrink-0 flex-col self-start border-r border-hairline bg-surface ${
         sidebarCollapsed ? 'w-16' : 'w-60'
       }`}
     >

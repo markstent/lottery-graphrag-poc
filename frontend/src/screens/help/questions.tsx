@@ -212,7 +212,11 @@ function QuestionTable({
                 Answer key
               </th>
               {PIPELINES.map(({ id, label }) => (
-                <th key={id} scope="col" className={CELL}>
+                <th
+                  key={id}
+                  scope="col"
+                  className={`${CELL} whitespace-nowrap`}
+                >
                   {label}
                 </th>
               ))}
