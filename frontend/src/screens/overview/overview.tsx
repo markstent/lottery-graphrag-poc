@@ -7,6 +7,7 @@
 import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
 import { datasetName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
+import { MISSING } from '../../app/score-words'
 import { MODEL_LABELS } from '../../app/settings-labels'
 import { useLoad, type Load } from '../../app/use-load'
 import { StatTile } from '../../charts/stat-tile'
@@ -14,8 +15,8 @@ import { plural } from '../../charts/scale'
 import { Panel, type PanelState } from '../../components/panel'
 import { PIPELINES } from '../../design/pipelines'
 import { Screen } from '../screen'
-import { FlowDiagram } from './flow-diagram'
-import { loadLatest, verdictFrom, type TileFigures } from './latest-run'
+import { FlowDiagram } from '../../components/flow-diagram'
+import { loadLatest, verdictFrom, type TileFigures } from '../../app/latest-run'
 
 const LINK = 'text-text-primary underline'
 
@@ -53,6 +54,7 @@ function Tile({ figures }: { figures: TileFigures }) {
         value={figures.mean}
         unit=""
         decimals={2}
+        gap={MISSING}
       />
       <div className="tabular mt-1 text-sm text-text-muted">
         {`${plural(figures.n, 'question')}, ${plural(figures.repeats, 'run')}`}

@@ -7,19 +7,13 @@
 import type { Schemas } from '../../api/client'
 import { listBenchmarks } from '../../api/client'
 import { plainName } from '../../app/plain-words'
+import { kindWord } from '../../app/run-kinds'
 import { useLoad } from '../../app/use-load'
+import { plural } from '../../charts/scale'
 import { Panel } from '../../components/panel'
 import { Screen } from '../screen'
 
 type Run = Schemas['BenchmarkRunOut']
-
-const KIND_WORDS: Record<string, string> = {
-  official: 'Official run',
-  smoke: 'Quick check run',
-  sweep: 'Depth sweep',
-}
-
-const kindWord = (kind: string) => KIND_WORDS[kind] ?? plainName(kind)
 
 const date = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', {
@@ -37,9 +31,7 @@ function selectionText({ strata, limit }: Run['selection']): string | null {
       : 'all strata',
   ]
   if (typeof limit === 'number')
-    parts.push(
-      `at most ${limit} ${limit === 1 ? 'instance' : 'instances'} per question`,
-    )
+    parts.push(`at most ${plural(limit, 'instance')} per question`)
   return `Subset (${parts.join('; ')})`
 }
 

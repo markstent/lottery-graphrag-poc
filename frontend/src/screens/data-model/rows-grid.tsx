@@ -12,6 +12,7 @@ import { getRows, type Schemas } from '../../api/client'
 import { plainValue } from '../../app/plain-words'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
+import { count } from './model'
 
 export const PAGE_SIZE = 50
 
@@ -139,7 +140,7 @@ export function RowsGrid({ datasetId, schema, onOpenRow }: RowsGridProps) {
         </button>
         {page && !empty && (
           <p className="tabular text-sm text-text-secondary">
-            {`Rows ${(offset + 1).toLocaleString('en-GB')} to ${end.toLocaleString('en-GB')} of ${page.total.toLocaleString('en-GB')}`}
+            {`Rows ${count(offset + 1)} to ${count(end)} of ${count(page.total)}`}
           </p>
         )}
       </div>

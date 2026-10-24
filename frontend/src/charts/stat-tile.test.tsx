@@ -72,6 +72,14 @@ describe('StatTile', () => {
     expect(screen.queryByText('points')).toBeNull()
   })
 
+  it('draws a missing value as the gap text it is given', () => {
+    render(
+      <StatTile label="Evidence found" value={null} unit="" gap="Missing" />,
+    )
+    expect(screen.getByText('Missing')).toBeInTheDocument()
+    expect(screen.queryByText('no value')).toBeNull()
+  })
+
   it('does not wear a series colour on its text', () => {
     const { container } = render(
       <StatTile label="Evidence found" value={61.4} unit="points" />,

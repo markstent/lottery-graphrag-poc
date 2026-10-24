@@ -15,7 +15,7 @@ import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
 import { APPROACH_LINES } from '../screens/help/approach-lines'
 import { STRATUM_NAMES } from '../screens/help/bank'
-import { KIND_WORDS } from '../screens/overview/latest-run'
+import { KIND_WORDS } from '../app/run-kinds'
 import {
   RELATIONSHIP_PHRASES,
   relationshipPhrase,

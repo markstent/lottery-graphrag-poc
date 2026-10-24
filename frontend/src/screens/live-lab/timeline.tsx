@@ -9,7 +9,7 @@ import { Pause, Play, RotateCcw, SkipBack } from 'lucide-react'
 import { PIPELINES } from '../../design/pipelines'
 import type { RunState } from '../../run/reduce'
 import type { Speed } from '../../run/replay'
-import { STAGE_LABELS } from './columns'
+import { STAGE_LABELS } from '../../run/lanes'
 import { formatDuration } from './format'
 import { assignRows, trackSegments, type PlacedSegment } from './tracks'
 import type {

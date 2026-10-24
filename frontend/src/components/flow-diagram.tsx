@@ -4,8 +4,8 @@
  * The same steps are given as an ordered list for screen readers.
  */
 
-import { PIPELINES } from '../../design/pipelines'
-import { LANES, SHARED_AFTER, SHARED_BEFORE, STEP_LINES } from './lanes'
+import { PIPELINES } from '../design/pipelines'
+import { LANES, SHARED_AFTER, SHARED_BEFORE, STEP_LINES } from '../run/lanes'
 
 const BOX_H = 40
 const LANE_H = 72

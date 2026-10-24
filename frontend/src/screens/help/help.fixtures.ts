@@ -11,9 +11,9 @@ import type { Schemas } from '../../api/client'
 import { json, SHELL_API } from '../../test/api-stub'
 import scored from '../../../e2e/fixtures/benchmark-questions-scored.json'
 import unscored from '../../../e2e/fixtures/benchmark-questions-unscored.json'
-import { SCENARIOS } from '../data-model/ontology.fixtures'
+import world from '../../../e2e/fixtures/ontology-world.json'
 
-export { SCENARIOS }
+export const SCENARIOS = world.scenarios as unknown as Schemas['ScenarioOut'][]
 export const SCORED = scored as unknown as Schemas['QuestionOut'][]
 export const UNSCORED = unscored as unknown as Schemas['QuestionOut'][]
 

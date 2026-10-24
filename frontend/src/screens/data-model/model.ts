@@ -7,6 +7,7 @@
 
 import type { Schemas } from '../../api/client'
 import { plainName } from '../../app/plain-words'
+import { plural } from '../../charts/scale'
 import { nodeLabel } from '../../design/node-labels'
 import { relationshipPhrase } from '../../design/relationships'
 
@@ -181,7 +182,7 @@ export function metaGraphModel(
     return {
       id: label,
       title: nodeLabel(label),
-      detail: `${count(n)} ${n === 1 ? 'node' : 'nodes'}`,
+      detail: plural(n, 'node'),
       width: Math.round((MIN_WIDTH + (MAX_WIDTH - MIN_WIDTH) * share) * scale),
       dimmed: !connected.has(label),
     }

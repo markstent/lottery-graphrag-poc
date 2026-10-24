@@ -66,9 +66,7 @@ describe('Results', () => {
     stubApi(ROUTES)
     render(<Results />)
     const [, subset] = await screen.findAllByRole('article')
-    expect(
-      within(subset).getByText('Quick check run - Pilot check'),
-    ).toBeVisible()
+    expect(within(subset).getByText('Quick check - Pilot check')).toBeVisible()
     expect(
       within(subset).getByText(
         'Subset (strata: depth; at most 3 instances per question)',

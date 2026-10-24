@@ -10,7 +10,12 @@
 import type { ReactNode } from 'react'
 
 import type { Schemas } from '../../api/client'
-import { answerWords, evidenceScore } from '../../app/score-words'
+import {
+  answerWords,
+  evidenceScore,
+  MISSING,
+  yesNo,
+} from '../../app/score-words'
 import { PIPELINES, type PipelineId } from '../../design/pipelines'
 import { MARKETS } from '../../run/coverage'
 import { formatWorkTime } from './format'
@@ -22,17 +27,6 @@ import {
   type ScoreColumn,
 } from './score'
 
-const MISSING = 'Missing'
-const percent = (value: number | null) =>
-  value === null ? MISSING : `${Math.round(value * 100)}%`
-const yesNo = (value: number | null) =>
-  value === null
-    ? MISSING
-    : value >= 1
-      ? 'Yes'
-      : value <= 0
-        ? 'No'
-        : percent(value)
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
 interface Row {

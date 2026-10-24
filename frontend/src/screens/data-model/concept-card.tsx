@@ -7,6 +7,7 @@ import type { ReactNode } from 'react'
 
 import type { Schemas } from '../../api/client'
 import { hrefFor } from '../../app/router'
+import { plural } from '../../charts/scale'
 import { Panel } from '../../components/panel'
 import { relationshipPhrase } from '../../design/relationships'
 import { labelOf } from './model'
@@ -31,8 +32,6 @@ const conceptLink = (concept: Concept) => (
     {labelOf(concept)}
   </a>
 )
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 /** "Bound to 4 local terms across 4 markets and 1 shared by every market"; null when nothing is bound. */
 function bindingLine(counts: Record<string, number>): string | null {

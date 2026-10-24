@@ -81,13 +81,13 @@ describe('verdictFrom', () => {
     ).toEqual({ kind: 'none', otherRun: 'subset run' })
     expect(
       verdictFrom(run('official', null, { strata: ['H1'], limit: null })),
-    ).toEqual({ kind: 'none', otherRun: 'official run' })
+    ).toEqual({ kind: 'none', otherRun: 'Official run' })
   })
 
   it('names an unlabelled run of another kind in words', () => {
     expect(verdictFrom(run('sweep', null, FULL))).toEqual({
       kind: 'none',
-      otherRun: 'depth sweep',
+      otherRun: 'Depth sweep',
     })
   })
 

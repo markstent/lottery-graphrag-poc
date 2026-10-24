@@ -7,7 +7,7 @@
 import type { Schemas } from '../../api/client'
 import { nodeLabel } from '../../design/node-labels'
 import type { PipelineId } from '../../design/pipelines'
-import { STEP } from '../overview/lanes'
+import { STAGE_LABELS, STEPS } from '../../run/lanes'
 import { formatDuration } from './format'
 import { recordTitle } from './record-title'
 import type { RunPhase, Timeline } from './use-live-run'
@@ -36,33 +36,6 @@ export interface StageRow {
   status: StageRowStatus
   /** Null until the step has ended. */
   durationMs: number | null
-}
-
-export const STAGE_LABELS: Record<Stage, string> = {
-  embedding: 'Embed the question',
-  search: STEP.searchPassages,
-  expansion: STEP.addOntologyTerms,
-  resolution: STEP.findStartingPoints,
-  traversal: STEP.followRelationships,
-  linking: STEP.addLinkedRecords,
-  rerank: STEP.reorderAndPick,
-  context: 'Build the context',
-  generation: 'Write the answer',
-}
-
-/** Each pipeline's steps in the order they run. */
-const STEPS: Record<PipelineId, readonly Stage[]> = {
-  A: ['embedding', 'search', 'rerank', 'context', 'generation'],
-  B: ['resolution', 'traversal', 'rerank', 'context', 'generation'],
-  C: [
-    'expansion',
-    'resolution',
-    'traversal',
-    'linking',
-    'rerank',
-    'context',
-    'generation',
-  ],
 }
 
 /** What a step the reducer never saw means, by how its pipeline ended. */

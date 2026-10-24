@@ -11,6 +11,7 @@ import { plainName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
+import { count } from './model'
 
 type Scenario = Schemas['ScenarioOut']
 
@@ -53,7 +54,7 @@ function ScenarioCard({ scenario }: { scenario: Scenario }) {
             <li key={table} className="flex justify-between gap-4">
               <span className="text-text-secondary">{plainName(table)}</span>
               <span className="tabular-nums text-text-primary">
-                {rows.toLocaleString('en-GB')}
+                {count(rows)}
               </span>
             </li>
           ))}

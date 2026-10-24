@@ -1,4 +1,4 @@
-import { FlowDiagram } from '../overview/flow-diagram'
+import { FlowDiagram } from '../../components/flow-diagram'
 import { Section } from './section'
 
 export function What() {

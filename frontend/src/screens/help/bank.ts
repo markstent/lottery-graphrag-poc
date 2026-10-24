@@ -11,7 +11,7 @@ import {
   type Schemas,
 } from '../../api/client'
 import type { Load } from '../../app/use-load'
-import { isFullOfficial } from '../overview/latest-run'
+import { isFullOfficial } from '../../app/latest-run'
 
 export type Question = Schemas['QuestionOut']
 export type Scenario = Schemas['ScenarioOut']

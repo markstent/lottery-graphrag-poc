@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { answerWords, evidenceScore } from './score-words'
+import {
+  answerWords,
+  evidenceScore,
+  MISSING,
+  percent,
+  yesNo,
+} from './score-words'
 
 describe('evidenceScore', () => {
   it('has two decimals on a 0 to 1 scale and shows no score as missing', () => {
@@ -19,5 +25,19 @@ describe('answerWords', () => {
   })
   it('shows a missing score as missing, not 0', () => {
     expect(answerWords(null)).toBe('Missing')
+  })
+})
+
+describe('percent and yesNo', () => {
+  it('round to a whole percentage and show no score as missing', () => {
+    expect(percent(0.456)).toBe('46%')
+    expect(percent(null)).toBe(MISSING)
+    expect(MISSING).toBe('Missing')
+  })
+  it('read 1 as Yes, 0 as No and between as a percentage', () => {
+    expect(yesNo(1)).toBe('Yes')
+    expect(yesNo(0)).toBe('No')
+    expect(yesNo(0.5)).toBe('50%')
+    expect(yesNo(null)).toBe('Missing')
   })
 })

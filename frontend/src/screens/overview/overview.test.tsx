@@ -88,7 +88,7 @@ describe('Overview', () => {
     expect(within(a).getByText('114 questions, 342 runs')).toBeVisible()
     const b = screen.getByTestId('tile-B')
     expect(within(b).getByText('B · Graph')).toBeVisible()
-    expect(within(b).getByText('no value')).toBeVisible()
+    expect(within(b).getByText('Missing')).toBeVisible()
     expect(within(b).queryByText('0.00')).toBeNull()
     expect(
       within(screen.getByTestId('tile-C')).getByText('C · Graph + Ontology'),

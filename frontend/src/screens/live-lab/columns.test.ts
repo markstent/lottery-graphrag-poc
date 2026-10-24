@@ -45,8 +45,8 @@ describe('stageRows', () => {
     ])
     // The order of the Overview diagram's C lane, then the shared steps.
     expect(stageRows('C', start.pipelines.C).map((row) => row.label)).toEqual([
-      'Add ontology terms',
       'Find starting points',
+      'Add ontology terms',
       'Follow relationships',
       'Add linked records',
       'Re-order and pick',
@@ -104,8 +104,8 @@ describe('stageRows, a step the pipeline never ran', () => {
     expect(state.pipelines.C.status).toBe('completed')
     const rows = stageRows('C', state.pipelines.C)
     expect(rows.map((row) => [row.label, row.status])).toEqual([
-      ['Add ontology terms', 'done'],
       ['Find starting points', 'done'],
+      ['Add ontology terms', 'done'],
       ['Follow relationships', 'done'],
       ['Add linked records', 'not-run'],
       ['Re-order and pick', 'done'],

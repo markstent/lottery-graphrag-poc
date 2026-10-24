@@ -10,7 +10,7 @@ import { useEffect, useRef } from 'react'
 
 import { hrefFor, useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
-import { loadLatest } from '../overview/latest-run'
+import { loadLatest } from '../../app/latest-run'
 import { Screen } from '../screen'
 import { Approaches } from './approaches'
 import { loadBank, scoreState } from './bank'

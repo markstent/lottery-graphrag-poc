@@ -4,9 +4,10 @@
  * run at all, is named in words and carries no number.
  */
 
-import { getLatestBenchmark, type Schemas } from '../../api/client'
-import { ApiError } from '../../api/http'
-import type { PipelineId } from '../../design/pipelines'
+import { getLatestBenchmark, type Schemas } from '../api/client'
+import { ApiError } from '../api/http'
+import type { PipelineId } from '../design/pipelines'
+import { kindWord } from './run-kinds'
 
 export interface TileFigures {
   pipeline: PipelineId
@@ -23,12 +24,6 @@ export type Verdict =
   | { kind: 'none'; otherRun: string | null }
 
 const PIPELINE_IDS: readonly PipelineId[] = ['A', 'B', 'C']
-
-export const KIND_WORDS: Record<string, string> = {
-  smoke: 'quick check',
-  sweep: 'depth sweep',
-  official: 'official run',
-}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -67,7 +62,7 @@ export function verdictFrom(
   if (!isFullOfficial(latest))
     return {
       kind: 'none',
-      otherRun: latest.label ?? KIND_WORDS[latest.run_kind] ?? latest.run_kind,
+      otherRun: latest.label ?? kindWord(latest.run_kind),
     }
   const { headlines } = latest.summary
   return {

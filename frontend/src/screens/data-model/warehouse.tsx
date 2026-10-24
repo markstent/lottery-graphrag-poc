@@ -11,11 +11,11 @@ import { getDictionary, listDatasets, type Schemas } from '../../api/client'
 import { plainName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
+import { plural } from '../../charts/scale'
 import { EvidenceDrawer } from '../../components/evidence-drawer'
 import { Panel } from '../../components/panel'
 import { Diagram } from './meta-graph'
 import {
-  count,
   groupBySystem,
   systemName,
   type DiagramEdge,
@@ -47,7 +47,7 @@ function SystemMap({
     detail:
       rowCounts[t.table] === undefined
         ? undefined
-        : `${count(rowCounts[t.table])} ${rowCounts[t.table] === 1 ? 'row' : 'rows'}`,
+        : plural(rowCounts[t.table], 'row'),
     width: widthOf(plainName(t.table), scale),
   }))
   const edges: DiagramEdge[] = tables.flatMap((t) =>
@@ -63,7 +63,7 @@ function SystemMap({
   return (
     <Panel
       title={systemName(system)}
-      purpose={`${tables.length} ${tables.length === 1 ? 'table' : 'tables'}, ${count(rows)} rows`}
+      purpose={`${plural(tables.length, 'table')}, ${plural(rows, 'row')}`}
       state="ready"
     >
       <Diagram
@@ -107,8 +107,8 @@ function TableView({
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
           {`Source: ${systemName(table.source_system)}`}
-          {rowCount !== undefined && ` · ${count(rowCount)} rows`}
-          {` · ${table.columns.length} columns`}
+          {rowCount !== undefined && ` · ${plural(rowCount, 'row')}`}
+          {` · ${plural(table.columns.length, 'column')}`}
         </p>
         {links.length > 0 && (
           <p className="mt-1 text-sm text-text-secondary">

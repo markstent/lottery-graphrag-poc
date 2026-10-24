@@ -2,14 +2,14 @@ import { render, screen, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 
 import { FlowDiagram } from './flow-diagram'
-import { LANES, STEP_LINES } from './lanes'
+import { LANES, STEP_LINES } from '../run/lanes'
 
 const ORDER = {
   'A, B and C': ['Search passages'],
   'B · Graph': ['Find starting points', 'Follow relationships'],
   'C · Graph + Ontology': [
-    'Add ontology terms',
     'Find starting points',
+    'Add ontology terms',
     'Follow relationships',
     'Add linked records',
   ],
@@ -39,7 +39,7 @@ describe('FlowDiagram', () => {
     expect(items.slice(1, 4)).toEqual([
       'A, B and C: Search passages.',
       'B · Graph: Find starting points, then Follow relationships.',
-      'C · Graph + Ontology: Add ontology terms, then Find starting points, then Follow relationships, then Add linked records.',
+      'C · Graph + Ontology: Find starting points, then Add ontology terms, then Follow relationships, then Add linked records.',
     ])
     expect(items.at(-1)).toBe(
       'All three then re-order and pick, then answer with sources.',
