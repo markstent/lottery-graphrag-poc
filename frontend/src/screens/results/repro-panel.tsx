@@ -8,10 +8,10 @@ type Fields = Schemas['ReproducibilityOut']['run']
 function FieldList({ record }: { record: Fields }) {
   return (
     <dl className="grid grid-cols-[minmax(0,20rem)_1fr] gap-x-6 gap-y-1 text-sm">
-      {reproFields(record).map(({ key, label, value }) => (
+      {reproFields(record).map(({ key, value }) => (
         <div key={key} className="contents">
-          <dt className="text-text-secondary">{label}</dt>
-          <dd className="break-words text-text-primary">{value}</dd>
+          <dt className="font-mono text-text-secondary">{key}</dt>
+          <dd className="break-words font-mono text-text-primary">{value}</dd>
         </div>
       ))}
     </dl>

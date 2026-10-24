@@ -7,7 +7,7 @@ export const MEASURES = {
   latency: 'Latency (ms)',
   context: 'Context (tokens)',
   efficiency: 'Evidence per 1,000 tokens',
-  failures: 'Failure classes',
+  failures: 'Failures',
   /** Repeats that have no score because the answer model failed: not the generation_failure class. */
   unscored: 'Repeats with no score (generation failed)',
   judge: 'Judge (0 to 2)',
@@ -25,8 +25,8 @@ export const QUESTION_HEADS = {
 
 export const TABLE_HEADS = {
   measure: 'Measure',
-  failureKind: 'Kind of failure',
-  kindApproach: 'Kind of question and approach',
+  failureKind: 'Failure',
+  kindApproach: 'Kind and approach',
   group: 'Group',
   pairs: 'Pairs judged',
   agreement: 'Agreement',
@@ -36,9 +36,9 @@ export const TABLE_HEADS = {
 
 /** Table names that are read out and never drawn. */
 export const CAPTIONS = {
-  questions: 'Question scores',
+  questions: 'Questions',
   efficiency: 'Efficiency',
   failures: 'Failures',
-  judge: 'Judge scores',
+  judge: 'Judge',
   agreement: 'Agreement',
 } as const

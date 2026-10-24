@@ -149,7 +149,7 @@ describe('question table', () => {
     const repro = within(
       await screen.findByRole('region', { name: 'Reproducibility' }),
     )
-    const term = repro.getAllByText('Code changed since that version')[0]
+    const term = repro.getAllByText('git_dirty')[0]
     expect(term.nextElementSibling).toHaveTextContent('Not recorded')
     expect(repro.getByRole('link', { name: 'Raw record' })).toHaveAttribute(
       'href',

@@ -16,7 +16,6 @@ import { PIPELINES } from '../design/pipelines'
 import { APPROACH_LINES } from '../screens/help/approach-lines'
 import { STRATUM_NAMES } from '../screens/help/bank'
 import { KIND_WORDS } from '../app/run-kinds'
-import { REPRO_LABELS } from '../results/reproducibility'
 import {
   COMPARISON_LABELS,
   GROUP_LABELS,
@@ -386,7 +385,6 @@ describe('generated copy', () => {
     ...Object.values(COMPARISON_LABELS),
     ...Object.values(GROUP_LABELS),
     ...Object.values(JUDGE_LABELS),
-    ...Object.values(REPRO_LABELS),
     ...GLOSSARY_TERMS.flatMap(({ term, meaning }) => [term, meaning]),
     ...Object.values(REACHABLE),
     plainName('affected_systems'),

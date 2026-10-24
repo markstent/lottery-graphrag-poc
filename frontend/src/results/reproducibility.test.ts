@@ -1,29 +1,27 @@
 import { describe, expect, it } from 'vitest'
 
 import { OFFICIAL, PILOT } from './results.fixtures'
-import { REPRO_LABELS, reproFields } from './reproducibility'
+import { REPRO_KEYS, reproFields } from './reproducibility'
 
 describe('reproFields', () => {
   it('older run renders with missing fields', () =>
     expect(
       reproFields({ git_sha: 'abc' }).find((f) => f.key === 'git_dirty')?.value,
     ).toBe('Not recorded'))
-  it('lists every labelled field in label order, whatever the record holds', () => {
-    expect(reproFields({}).map((f) => f.key)).toEqual(Object.keys(REPRO_LABELS))
+  it('lists every known field in order, whatever the record holds', () => {
+    expect(reproFields({}).map((f) => f.key)).toEqual([...REPRO_KEYS])
     const fields = reproFields({ git_sha: 'abc', repeats: 3 })
     expect(fields.find((f) => f.key === 'git_sha')).toEqual({
       key: 'git_sha',
-      label: REPRO_LABELS.git_sha,
       value: 'abc',
     })
   })
   it('shows null as not recorded', () =>
     expect(reproFields({ git_dirty: null })[1]?.value).toBe('Not recorded'))
-  it('puts unknown keys after the known ones, as plain words', () => {
+  it('puts unknown keys after the known ones, by their own name', () => {
     const fields = reproFields({ git_sha: 'abc', zeta_field: 1 })
     expect(fields.at(-1)).toEqual({
       key: 'zeta_field',
-      label: 'zeta field',
       value: '1',
     })
   })
@@ -40,9 +38,11 @@ describe('reproFields', () => {
       'depth: 2',
     )
   })
-  it('labels every field a current run records', () => {
+  it('names every field a current run records', () => {
     const keys = Object.keys(OFFICIAL.reproducibility.run)
-    expect(keys.filter((k) => !(k in REPRO_LABELS))).toEqual([])
+    expect(
+      keys.filter((k) => !(REPRO_KEYS as readonly string[]).includes(k)),
+    ).toEqual([])
   })
   it('an older pilot record has only fields that exist, the rest not recorded', () => {
     const fields = reproFields(PILOT.reproducibility.run)

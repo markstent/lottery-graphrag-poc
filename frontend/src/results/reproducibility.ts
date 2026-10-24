@@ -1,62 +1,62 @@
-/** A run's reproducibility record as labelled rows, for runs old and new. */
+/** A run's reproducibility record by record name, for runs old and new. */
 
 import type { Schemas } from '../api/client'
-import { plainName, plainValue } from '../app/plain-words'
+import { plainValue } from '../app/plain-words'
 import { yesNo } from '../app/score-words'
 
 type JsonValue = Schemas['JsonValue']
 
 const NOT_RECORDED = 'Not recorded'
 
-/** Every field of docs/evaluation/reproducibility.md in the order it is shown. */
-export const REPRO_LABELS: Record<string, string> = {
-  git_sha: 'Code version',
-  git_dirty: 'Code changed since that version',
-  question_bank_version: 'Question bank version (in the code)',
-  bank_version: 'Question bank version (frozen)',
-  bank_hash: 'Question bank fingerprint',
-  scorer_version: 'Scorer version',
-  run_kind: 'Kind of run',
-  repeats: 'Repeats per question',
-  started_at: 'Started',
-  world_dir: 'World folder',
-  generator_version: 'World generator version',
-  profile: 'World size',
-  world_seed: 'World number',
-  scenario_seed: 'Scenario number',
-  reference_date: 'Reference date',
-  ontology_version: 'Ontology version',
-  graph_label_version: 'Graph label version',
-  embedding_model: 'Embedding model',
-  embedding_dimensions: 'Embedding size',
-  sparse_model: 'Keyword search model',
-  rrf_k: 'Rank fusion constant',
-  record_serialiser_version: 'Record text version',
-  reranker: 'Second-pass ranking model',
-  top_k: 'Hits per search before fusion',
-  context_budget_tokens: 'Context budget (tokens)',
-  context: 'Context settings',
-  dedupe_threshold: 'Near-duplicate threshold',
-  graph_limits: 'Graph limits',
-  relationship_types_b: 'Relationships followed by Graph',
-  relationship_types_c: 'Relationships followed by Graph + Ontology',
-  ranking_weights: 'Graph evidence ranking weights',
-  excluded_labels: 'Node labels the graph does not follow',
-  generation_model: 'Answer model',
-  generation_model_family: 'Answer model family',
-  generation_quantisation: 'Answer model quantisation',
-  generation_temperature: 'Answer model temperature',
-  max_tokens: 'Answer length limit (tokens)',
-  generation_reasoning: 'Answer model reasoning',
-  prompt_version: 'Answer prompt version',
-  prompt_hash: 'Answer prompt fingerprint',
-  judge_model: 'Judge model',
-  judge_model_family: 'Judge model family',
-  judge_reasoning: 'Judge model reasoning',
-  judge_temperature: 'Judge model temperature',
-  judge_prompt_version: 'Judge prompt version',
-  judge_prompt_hash: 'Judge prompt fingerprint',
-}
+/** Every field of docs/evaluation/reproducibility.md in the order it is shown, by the name the record gives it. */
+export const REPRO_KEYS = [
+  'git_sha',
+  'git_dirty',
+  'question_bank_version',
+  'bank_version',
+  'bank_hash',
+  'scorer_version',
+  'run_kind',
+  'repeats',
+  'started_at',
+  'world_dir',
+  'generator_version',
+  'profile',
+  'world_seed',
+  'scenario_seed',
+  'reference_date',
+  'ontology_version',
+  'graph_label_version',
+  'embedding_model',
+  'embedding_dimensions',
+  'sparse_model',
+  'rrf_k',
+  'record_serialiser_version',
+  'reranker',
+  'top_k',
+  'context_budget_tokens',
+  'context',
+  'dedupe_threshold',
+  'graph_limits',
+  'relationship_types_b',
+  'relationship_types_c',
+  'ranking_weights',
+  'excluded_labels',
+  'generation_model',
+  'generation_model_family',
+  'generation_quantisation',
+  'generation_temperature',
+  'max_tokens',
+  'generation_reasoning',
+  'prompt_version',
+  'prompt_hash',
+  'judge_model',
+  'judge_model_family',
+  'judge_reasoning',
+  'judge_temperature',
+  'judge_prompt_version',
+  'judge_prompt_hash',
+] as const
 
 function show(value: JsonValue | undefined): string {
   if (value === null || value === undefined) return NOT_RECORDED
@@ -65,17 +65,15 @@ function show(value: JsonValue | undefined): string {
   return text === '' ? 'None' : text
 }
 
-/** Every labelled field in label order, then any other key; a field the run did not record reads "Not recorded". */
+/** Every known field in order, then any other key, each by its record name; a field the run did not record reads "Not recorded". */
 export function reproFields(
   record: Record<string, JsonValue>,
-): { key: string; label: string; value: string }[] {
-  const known = Object.entries(REPRO_LABELS).map(([key, label]) => ({
+): { key: string; value: string }[] {
+  const extra = Object.keys(record).filter(
+    (key) => !(REPRO_KEYS as readonly string[]).includes(key),
+  )
+  return [...REPRO_KEYS, ...extra].map((key) => ({
     key,
-    label,
     value: show(record[key]),
   }))
-  const extra = Object.keys(record)
-    .filter((key) => !(key in REPRO_LABELS))
-    .map((key) => ({ key, label: plainName(key), value: show(record[key]) }))
-  return [...known, ...extra]
 }
