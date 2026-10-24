@@ -374,3 +374,16 @@ describe('gap notes', () => {
     expect(strataBars(noH3, 'answer').gapNotes).toEqual({})
   })
 })
+
+describe('a cell with no pairs', () => {
+  it('says No pairs and draws nothing, whatever its reason', () => {
+    const [row] = comparisonRows(
+      withComparisons(
+        cell({ n: 0, clusters: 0, reason: 'not_in_family', in_family: false }),
+      ),
+      'evidence_f1',
+    )
+    expect(row).toMatchObject({ mean: null, low: null, high: null })
+    expect(row.note).toBe('No pairs')
+  })
+})

@@ -75,10 +75,10 @@ describe('selectionText', () => {
     expect(selectionText({ strata: null, limit: null })).toBeNull())
   it('names strata and limit', () =>
     expect(selectionText({ strata: ['depth'], limit: 3 })).toBe(
-      'Subset (strata: depth; at most 3 instances per question)',
+      'Strata: depth; at most 3 instances per question',
     ))
   it('reads a limit alone as all strata', () =>
     expect(selectionText({ strata: null, limit: 1 })).toBe(
-      'Subset (all strata; at most 1 instance per question)',
+      'All strata; at most 1 instance per question',
     ))
 })

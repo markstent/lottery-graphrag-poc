@@ -56,6 +56,7 @@ export const MIN_GROUPS_FOR_INTERVAL = 6
 
 const POINTS = 100
 const TOO_FEW = 'Too few pairs'
+const NO_PAIRS = 'No pairs'
 const TOO_FEW_GROUPS = 'Too few groups for an interval'
 const NO_EVIDENCE = 'No evidence score by design'
 const NO_CLAIM = 'No claim'
@@ -137,6 +138,7 @@ function interval(
 ): Pick<IntervalRow, 'mean' | 'low' | 'high' | 'note'> {
   const points = (value: number | null) =>
     value === null ? null : value * POINTS
+  if (cell.n === 0) return { mean: null, low: null, high: null, note: NO_PAIRS }
   switch (cell.reason) {
     case 'tested':
       return {

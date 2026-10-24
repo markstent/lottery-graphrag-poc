@@ -144,7 +144,7 @@ export function IntervalPlot({
             ? []
             : [{ value: NO_VALUE, label: 'interval' }]),
         {
-          value: pairsInGroups(row.n, row.groups),
+          value: row.n === 0 ? NO_VALUE : pairsInGroups(row.n, row.groups),
           label: row.inFamily ? 'tested' : (row.note ?? 'not tested'),
         },
       ],
@@ -171,7 +171,7 @@ export function IntervalPlot({
           formatOrGap(r.mean, fmt),
           formatOrGap(r.low, fmt),
           formatOrGap(r.high, fmt),
-          pairsInGroups(r.n, r.groups),
+          r.n === 0 ? NO_VALUE : pairsInGroups(r.n, r.groups),
           r.inFamily ? 'tested' : (r.note ?? 'not tested'),
           ...(withP ? [formatOrGap(r.pHolm, formatP)] : []),
         ],
@@ -300,7 +300,7 @@ export function IntervalPlot({
                 </text>
               ))}
               {[
-                pairsInGroups(row.n, row.groups),
+                ...(row.n === 0 ? [] : [pairsInGroups(row.n, row.groups)]),
                 ...(row.inFamily || !row.note
                   ? []
                   : wrapText(row.note, Math.floor(countW / CHAR_PX), 3)),

@@ -42,7 +42,7 @@ export function defaultRun(runs: readonly Run[]): string | null {
   )
 }
 
-/** What a subset run covers in words; null for a run of the whole bank. */
+/** What a subset run covers in words, to stand beside the "Subset run" label; null for a run of the whole bank. */
 export function selectionText({
   strata,
   limit,
@@ -50,10 +50,10 @@ export function selectionText({
   if (strata == null && limit == null) return null
   const parts = [
     Array.isArray(strata)
-      ? `strata: ${strata.map((name) => plainName(String(name))).join(', ')}`
-      : 'all strata',
+      ? `Strata: ${strata.map((name) => plainName(String(name))).join(', ')}`
+      : 'All strata',
   ]
   if (typeof limit === 'number')
     parts.push(`at most ${plural(limit, 'instance')} per question`)
-  return `Subset (${parts.join('; ')})`
+  return parts.join('; ')
 }

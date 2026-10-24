@@ -147,7 +147,7 @@ describe('Results', () => {
     open('pilot-2026-nothink')
     expect(await within(await verdict()).findByText('Subset run')).toBeVisible()
     expect(
-      screen.getByText('Subset (all strata; at most 2 instances per question)'),
+      screen.getByText('All strata; at most 2 instances per question'),
     ).toBeVisible()
     expect(
       screen.getAllByRole('group', { name: /evidence score$/ }),
@@ -223,6 +223,28 @@ describe('Results', () => {
       '8 pairs in 4 groups',
       'Too few pairs',
     ])
+  })
+
+  it('a cell with no pairs reads No pairs, with no counts line', async () => {
+    stubApi(ROUTES)
+    open('pilot-2026-nothink')
+    await screen.findAllByRole('figure')
+    const figure = figureOf(/Paired differences/)
+    expect(within(figure).getAllByText('No pairs').length).toBeGreaterThan(0)
+    expect(within(figure).queryByText(/^0 pairs/)).not.toBeInTheDocument()
+    fireEvent.click(
+      within(figure).getByRole('button', { name: 'Show as table' }),
+    )
+    const row = within(figure)
+      .getByRole('rowheader', {
+        name: /Single facts: Graph against text search/,
+      })
+      .closest('tr') as HTMLElement
+    expect(
+      within(row)
+        .getAllByRole('cell')
+        .map((c) => c.textContent),
+    ).toEqual(['no value', 'no value', 'no value', 'no value', 'No pairs'])
   })
 
   it('shows the Holm-adjusted p in the table of a tested row', async () => {
