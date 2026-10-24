@@ -46,8 +46,18 @@ export const GROUP_LABELS: Record<string, string> = {
   other: 'All other questions',
 }
 
+/**
+ * An untested sub-group with fewer groups than this has no interval and no
+ * delta: docs/evaluation/statistics.md (name-anchored sub-group) prints the
+ * mean alone below six groups, because a bootstrap over so few says little.
+ * Runs made before the harness applied the rule still carry the interval.
+ */
+export const MIN_GROUPS_FOR_INTERVAL = 6
+
 const POINTS = 100
 const TOO_FEW = 'Too few pairs'
+const TOO_FEW_GROUPS = 'Too few groups for an interval'
+const NO_EVIDENCE = 'No evidence score by design'
 const NO_CLAIM = 'No claim'
 const NOT_TESTED = 'Not tested'
 
@@ -77,11 +87,23 @@ const cellOf = (
 const strataIn = (summary: Summary) =>
   STRATUM_ORDER.filter((stratum) => stratum in summary.metrics)
 
-/** Grouped bars of a metric per stratum, with B minus A as the delta; a cell with too few pairs has none. */
+const hasBar = (values: BarGroup['values']) =>
+  Object.values(values).some((value) => value != null)
+
+/** A cell that makes no claim of an interval or a delta: too few pairs, or an untested one over too few groups. */
+const lacksGroups = (cell: Comparison | Split) =>
+  cell.reason === 'not_in_family' && cell.clusters < MIN_GROUPS_FOR_INTERVAL
+
+/** Grouped bars of a metric per stratum, with B minus A as the delta; a cell with too few pairs or groups has none. */
 export function strataBars(
   summary: Summary,
   metric: 'evidence_f1' | 'answer',
-): { groups: BarGroup[]; delta: GroupedBarsProps['delta'] } {
+): {
+  groups: BarGroup[]
+  delta: GroupedBarsProps['delta']
+  /** Said once, horizontally, for a group with no bar at all. */
+  gapNotes: Record<string, string>
+} {
   const groups = strataIn(summary).map((stratum) => ({
     key: stratum,
     label: STRATUM_LABELS[stratum],
@@ -95,9 +117,18 @@ export function strataBars(
   const values = Object.fromEntries(
     summary.comparisons
       .filter((c) => c.metric === metric && c.comparison === 'B_vs_A')
-      .map((c) => [c.stratum, c.reason === 'too_few' ? null : c.mean]),
+      .map((c) => [
+        c.stratum,
+        c.reason === 'too_few' || lacksGroups(c) ? null : c.mean,
+      ]),
   )
-  return { groups, delta: { between: ['B', 'A'], values } }
+  // Single facts are scored on the answer alone, so they have no evidence bars.
+  const gapNotes: Record<string, string> =
+    metric === 'evidence_f1' &&
+    groups.some(({ key, values }) => key === 'H3' && !hasBar(values))
+      ? { H3: NO_EVIDENCE }
+      : {}
+  return { groups, delta: { between: ['B', 'A'], values }, gapNotes }
 }
 
 /** A cell's interval in points, or nothing and a note where the cell makes no claim. */
@@ -114,6 +145,13 @@ function interval(
         high: points(cell.high),
       }
     case 'not_in_family':
+      if (lacksGroups(cell))
+        return {
+          mean: points(cell.mean),
+          low: null,
+          high: null,
+          note: TOO_FEW_GROUPS,
+        }
       return {
         mean: points(cell.mean),
         low: points(cell.low),

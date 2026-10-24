@@ -152,6 +152,40 @@ describe('Results', () => {
     expect(
       screen.getAllByRole('group', { name: /evidence score$/ }),
     ).toHaveLength(3)
+    await screen.findAllByRole('figure')
+    const figures = screen.getAllByRole('figure')
+    expect(figures).toHaveLength(2)
+    for (const figure of figures) {
+      expect(within(figure).getByText('Subset run')).toBeVisible()
+      fireEvent.click(
+        within(figure).getByRole('button', { name: 'Show as table' }),
+      )
+      expect(within(figure).getByRole('table')).toBeVisible()
+      expect(within(figure).getByText('Subset run')).toBeVisible()
+    }
+  })
+
+  it('a whole-bank run carries no subset label in its figures', async () => {
+    stubApi(ROUTES)
+    open()
+    await screen.findAllByRole('figure')
+    for (const figure of screen.getAllByRole('figure'))
+      expect(within(figure).queryByText('Subset run')).not.toBeInTheDocument()
+  })
+
+  it('labels a split chart as a subset too', async () => {
+    stubApi({
+      ...ROUTES,
+      '/api/v1/benchmarks': [
+        { ...OFFICIAL_RUN, selection: { strata: null, limit: 5 } },
+      ],
+    })
+    open()
+    await screen.findAllByRole('figure')
+    const figures = screen.getAllByRole('figure')
+    expect(figures).toHaveLength(3)
+    for (const figure of figures)
+      expect(within(figure).getByText('Subset run')).toBeVisible()
   })
 
   it('tiles show evidence to two places and the answer score as a percentage', async () => {
@@ -208,18 +242,42 @@ describe('Results', () => {
   it('shows the split with its descriptive line', async () => {
     stubApi(ROUTES)
     open()
+    const heading = await screen.findByRole('heading', {
+      name: 'Ontology-dependent split',
+    })
+    const figure = figureOf(/Differences in evidence score, by question group/)
+    expect(heading.nextElementSibling).toBe(figure)
     expect(
-      await screen.findByText('Descriptive: not part of the tested family.'),
+      within(figure).getByText('Descriptive: not part of the tested family.'),
     ).toBeVisible()
-    expect(figureOf(/Ontology-dependent split/)).toBeVisible()
+  })
+
+  it('draws no ellipsis in any chart label', async () => {
+    stubApi(ROUTES)
+    open()
+    await screen.findAllByRole('figure')
+    for (const figure of screen.getAllByRole('figure'))
+      expect(figure.textContent).not.toContain('…')
+  })
+
+  it('says once, horizontally, that single facts have no evidence score', async () => {
+    stubApi(ROUTES)
+    open('pilot-2026-nothink')
+    await screen.findAllByRole('figure')
+    const figure = figureOf(/Evidence score by kind of question/)
+    expect(within(figure).getByText(/^No evidence/)).toBeVisible()
+    expect(within(figure).queryByText('no value')).not.toBeInTheDocument()
   })
 
   it('split absent says the run predates it', async () => {
     stubApi(ROUTES)
     open('pilot-2026-nothink')
-    expect(
-      await screen.findByText('This run predates the split.'),
-    ).toBeVisible()
+    const heading = await screen.findByRole('heading', {
+      name: 'Ontology-dependent split',
+    })
+    expect(heading.nextElementSibling).toHaveTextContent(
+      'This run predates the split.',
+    )
     expect(
       screen.queryByText('Descriptive: not part of the tested family.'),
     ).not.toBeInTheDocument()

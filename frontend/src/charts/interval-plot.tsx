@@ -62,7 +62,8 @@ const TOP = 16
 const AXIS = 48
 const CHAR_PX = 6.4
 const LABEL_CHAR_PX = 7.4
-const LABEL_MAX = 220
+const LABEL_MAX = 330
+const LABEL_LINES = 3
 const GUTTER = 16
 const DOT = 5
 const TICK_COUNT = 6
@@ -79,6 +80,7 @@ export function IntervalPlot({
   status,
   error,
   disabled = false,
+  badge,
 }: IntervalPlotProps) {
   const {
     hostRef,
@@ -184,6 +186,7 @@ export function IntervalPlot({
       status={status}
       error={error}
       disabled={disabled}
+      badge={badge}
       empty={rows.length === 0}
       legend={
         <Legend series={series} notTested={rows.some((r) => !r.inFamily)} />
@@ -281,24 +284,26 @@ export function IntervalPlot({
               : x(row.mean)
           return (
             <g key={row.key} pointerEvents="none">
-              {wrapText(row.label, Math.floor(labelW / LABEL_CHAR_PX), 2).map(
-                (line, l, all) => (
-                  <text
-                    key={l}
-                    x={0}
-                    y={cy + 4 + (l - (all.length - 1) / 2) * 15}
-                    fontSize={14}
-                    fill={TOKENS['color-text-primary']}
-                  >
-                    {line}
-                  </text>
-                ),
-              )}
+              {wrapText(
+                row.label,
+                Math.floor(labelW / LABEL_CHAR_PX),
+                LABEL_LINES,
+              ).map((line, l, all) => (
+                <text
+                  key={l}
+                  x={0}
+                  y={cy + 4 + (l - (all.length - 1) / 2) * 15}
+                  fontSize={14}
+                  fill={TOKENS['color-text-primary']}
+                >
+                  {line}
+                </text>
+              ))}
               {[
                 pairsInGroups(row.n, row.groups),
                 ...(row.inFamily || !row.note
                   ? []
-                  : wrapText(row.note, Math.floor(countW / CHAR_PX), 2)),
+                  : wrapText(row.note, Math.floor(countW / CHAR_PX), 3)),
               ].map((line, l, all) => (
                 <text
                   key={l}

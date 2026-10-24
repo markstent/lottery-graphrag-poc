@@ -45,6 +45,8 @@ export interface GroupedBarsProps extends ChartStateProps {
     between: readonly [PipelineId, PipelineId]
     values: Record<string, number | null | undefined>
   }
+  /** Said once, horizontally, for a group with no bar, by group key; "no value" otherwise. */
+  gapNotes?: Record<string, string>
   unit: string
   domain: Domain
   decimals?: number
@@ -76,12 +78,14 @@ export function GroupedBars({
   groups,
   intervals,
   delta,
+  gapNotes,
   unit,
   domain,
   decimals,
   status,
   error,
   disabled = false,
+  badge,
 }: GroupedBarsProps) {
   const places = decimals ?? decimalsFor(domain)
   const fmt = (v: number, signed = false) =>
@@ -147,6 +151,8 @@ export function GroupedBars({
     s * step +
     GAP / 2
   const barW = step - GAP
+  const blank = (group: BarGroup) =>
+    series.every((id) => (group.values[id] ?? null) === null)
   const showLetters = series.length <= 4
 
   function describe(bar: Bar): TipContent {
@@ -203,6 +209,7 @@ export function GroupedBars({
       status={status}
       error={error}
       disabled={disabled}
+      badge={badge}
       empty={groups.length === 0}
       legend={<Legend series={series} />}
       plotRef={hostRef}
@@ -244,6 +251,25 @@ export function GroupedBars({
             </text>
           </g>
         ))}
+        {groups.filter(blank).map((group) => {
+          const centre = plot.left + groups.indexOf(group) * band + band / 2
+          const note = gapNotes?.[group.key] ?? NO_VALUE
+          return wrapText(note, Math.floor((band * 0.9) / CHAR_PX), 3).map(
+            (line, l) => (
+              <text
+                key={`${group.key}-${l}`}
+                x={centre}
+                y={base - 28 + l * LABEL_LINE}
+                textAnchor="middle"
+                fontSize={12}
+                fill={TOKENS['color-text-muted']}
+                pointerEvents="none"
+              >
+                {line}
+              </text>
+            ),
+          )
+        })}
         {bars.map((bar) => {
           const g = groups.indexOf(bar.group)
           const s = series.indexOf(bar.series)
@@ -280,6 +306,7 @@ export function GroupedBars({
           const cx = x + barW / 2
           const range = intervals?.[bar.group.key]?.[bar.series]
           if (bar.value === null) {
+            if (blank(bar.group)) return null
             return (
               <text
                 key={`gap-${bar.group.key}-${bar.series}`}

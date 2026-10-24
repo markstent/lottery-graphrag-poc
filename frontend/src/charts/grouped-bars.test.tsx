@@ -49,7 +49,22 @@ describe('GroupedBars', () => {
       />,
     )
     expect(container.querySelectorAll('[data-mark="bar"]')).toHaveLength(0)
-    expect(screen.getAllByText('no value')).toHaveLength(2)
+    expect(screen.getAllByText('no value')).toHaveLength(1)
+  })
+
+  it('says a group note once, horizontally, in place of the gaps', () => {
+    const { container } = render(
+      <GroupedBars
+        {...props}
+        groups={[
+          { key: 'H1', label: 'Single record', values: { A: null, B: null } },
+        ]}
+        gapNotes={{ H1: 'Nothing to score' }}
+      />,
+    )
+    expect(screen.getByText('Nothing to score')).toBeVisible()
+    expect(screen.queryByText('no value')).not.toBeInTheDocument()
+    expect(container.querySelector('text[transform]')).toBeNull()
   })
 
   it('keeps null out of the scale: a bar of 60 reaches the 60 gridline whatever else is null', () => {

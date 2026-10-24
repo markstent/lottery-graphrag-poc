@@ -15,7 +15,14 @@ const METRICS: { id: Metric; label: string; points: string }[] = [
   { id: 'answer', label: 'Answer score', points: 'answer points' },
 ]
 
-export function StrataCharts({ summary }: { summary: Summary }) {
+export function StrataCharts({
+  summary,
+  badge,
+}: {
+  summary: Summary
+  /** Beside every chart: what kind of run these numbers come from, when it is not a result. */
+  badge?: string
+}) {
   const [metric, setMetric] = useState<Metric>('evidence_f1')
   const { label, points } =
     METRICS.find(({ id }) => id === metric) ?? METRICS[0]
@@ -44,6 +51,8 @@ export function StrataCharts({ summary }: { summary: Summary }) {
         title={`${label} by kind of question`}
         groups={bars.groups}
         delta={bars.delta}
+        gapNotes={bars.gapNotes}
+        badge={badge}
         unit="score"
         domain={[0, 1]}
         decimals={2}
@@ -54,26 +63,30 @@ export function StrataCharts({ summary }: { summary: Summary }) {
         rows={comparisonRows(summary, metric)}
         unit={points}
         zero
+        badge={badge}
       />
-      <div className="space-y-2">
+      <section aria-labelledby="split-heading" className="space-y-2">
+        <h3
+          id="split-heading"
+          className="text-base font-semibold text-text-primary"
+        >
+          Ontology-dependent split
+        </h3>
         {split ? (
-          <>
-            <IntervalPlot
-              title={`Ontology-dependent split in ${label.toLowerCase()}`}
-              rows={split}
-              unit={points}
-              zero
-            />
-            <p className="text-sm text-text-secondary">
-              Descriptive: not part of the tested family.
-            </p>
-          </>
+          <IntervalPlot
+            title={`Differences in ${label.toLowerCase()}, by question group`}
+            description="Descriptive: not part of the tested family."
+            rows={split}
+            unit={points}
+            zero
+            badge={badge}
+          />
         ) : (
           <p className="text-sm text-text-secondary">
             This run predates the split.
           </p>
         )}
-      </div>
+      </section>
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { getBenchmark, listBenchmarks, type Schemas } from '../../api/client'
 import { useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
-import { defaultRun, standing } from '../../results/runs'
+import { defaultRun, standing, standingWord } from '../../results/runs'
 import { Screen } from '../screen'
 import { RunPicker } from './run-picker'
 import { StrataCharts } from './strata-charts'
@@ -36,7 +36,10 @@ function RunView({ run }: { run: Run }) {
       </Panel>
       {ready && kind !== 'quick-check' && (
         <Panel title="Scores by kind of question" state="ready">
-          <StrataCharts summary={load.data.summary} />
+          <StrataCharts
+            summary={load.data.summary}
+            badge={kind === 'subset' ? standingWord(run) : undefined}
+          />
         </Panel>
       )}
     </>

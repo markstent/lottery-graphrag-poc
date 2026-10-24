@@ -9,6 +9,7 @@ import {
   failureTotals,
   judgeRows,
   splitRows,
+  MIN_GROUPS_FOR_INTERVAL,
   STRATUM_LABELS,
   STRATUM_ORDER,
   strataBars,
@@ -293,5 +294,83 @@ describe('units', () => {
     const summary = withComparisons(cell({ mean: 0.1, low: 0.05, high: 0.15 }))
     expect(comparisonRows(summary, 'evidence_f1')[0].mean).toBeCloseTo(10)
     expect(strataBars(summary, 'evidence_f1').delta?.values.H1).toBe(0.1)
+  })
+})
+
+describe('the group floor for an untested sub-group', () => {
+  const few = cell({
+    stratum: 'H2_name',
+    reason: 'not_in_family',
+    in_family: false,
+    clusters: MIN_GROUPS_FOR_INTERVAL - 1,
+    p: null,
+    p_holm: null,
+  })
+  it('draws the mean alone, with a note, below the floor', () => {
+    const [row] = comparisonRows(withComparisons(few), 'evidence_f1')
+    expect(row).toMatchObject({ mean: 10, low: null, high: null })
+    expect(row.note).toBe('Too few groups for an interval')
+  })
+  it('keeps the interval at the floor', () => {
+    const [row] = comparisonRows(
+      withComparisons({ ...few, clusters: MIN_GROUPS_FOR_INTERVAL }),
+      'evidence_f1',
+    )
+    expect(row).toMatchObject({ low: 5, high: 15, note: 'Not tested' })
+  })
+  it('gives the bars no delta below the floor, and one at it', () => {
+    expect(
+      strataBars(withComparisons(few), 'evidence_f1').delta?.values.H2_name,
+    ).toBeNull()
+    expect(
+      strataBars(
+        withComparisons({ ...few, clusters: MIN_GROUPS_FOR_INTERVAL }),
+        'evidence_f1',
+      ).delta?.values.H2_name,
+    ).toBe(0.1)
+  })
+  it('applies to the split too', () => {
+    const [row] =
+      splitRows(
+        {
+          ...OFFICIAL,
+          ontology_split: [
+            {
+              group: 'other',
+              metric: 'answer',
+              comparison: 'B_vs_A',
+              n: 3,
+              clusters: 2,
+              mean: 0.2,
+              low: 0.1,
+              high: 0.3,
+              p: null,
+              p_holm: null,
+              in_family: false,
+              reason: 'not_in_family',
+            },
+          ],
+        },
+        'answer',
+      ) ?? []
+    expect(row).toMatchObject({ low: null, high: null })
+    expect(row.note).toBe('Too few groups for an interval')
+  })
+})
+
+describe('gap notes', () => {
+  it('notes single facts once when evidence has no bars', () => {
+    expect(strataBars(OFFICIAL, 'evidence_f1').gapNotes).toEqual({})
+    const noH3: Summary = {
+      ...OFFICIAL,
+      metrics: {
+        ...OFFICIAL.metrics,
+        H3: { ...OFFICIAL.metrics.H3, evidence_f1: {} },
+      },
+    }
+    expect(strataBars(noH3, 'evidence_f1').gapNotes).toEqual({
+      H3: 'No evidence score by design',
+    })
+    expect(strataBars(noH3, 'answer').gapNotes).toEqual({})
   })
 })

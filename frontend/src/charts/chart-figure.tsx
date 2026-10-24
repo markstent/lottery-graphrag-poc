@@ -13,6 +13,8 @@ export interface ChartStateProps {
   /** Shown in place of the chart when status is "error". */
   error?: string
   disabled?: boolean
+  /** A short label drawn beside the title in both the chart and the table view. */
+  badge?: string
 }
 
 export function ChartFigure({
@@ -21,6 +23,7 @@ export function ChartFigure({
   status = 'ready',
   error,
   disabled = false,
+  badge,
   empty,
   legend,
   plotRef,
@@ -67,6 +70,11 @@ export function ChartFigure({
         <div>
           <div className="flex items-baseline gap-2 text-base font-semibold text-text-primary">
             {title}
+            {badge ? (
+              <span className="rounded-chip border border-border px-2 py-0.5 text-sm font-medium">
+                {badge}
+              </span>
+            ) : null}
             {status === 'loading' && !empty ? (
               <span className="text-sm font-normal text-text-secondary">
                 Updating
