@@ -112,9 +112,14 @@ describe('otherWorldNotice', () => {
     )
   })
 
-  it('says nothing for a live run, an unknown world or the same world', () => {
+  it('says nothing for a live run or the same world', () => {
     expect(otherWorldNotice(null, 'dev-seed2027')).toBeNull()
-    expect(otherWorldNotice('dev-seed2026', null)).toBeNull()
     expect(otherWorldNotice('dev-seed2026', 'dev-seed2026')).toBeNull()
+  })
+
+  it("holds a recording's record back until the active dataset is known", () => {
+    expect(otherWorldNotice('dev-seed2026', null)).toBe(
+      'The active dataset is still loading, so this record cannot be opened yet.',
+    )
   })
 })

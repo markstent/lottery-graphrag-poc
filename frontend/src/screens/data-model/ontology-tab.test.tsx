@@ -1,4 +1,4 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -220,9 +220,12 @@ describe('OntologyTab', () => {
     const { requested } = stubOntology()
     renderAt(`&concept=${NATIONAL_DRAW}&market=MKT_GR`)
     await screen.findByText('Αριθμολαχείο', { selector: 'span.font-medium' })
-    expect(requested.filter((path) => path.includes('/members'))).toEqual([
-      `/api/v1/ontology/concepts/${NATIONAL_DRAW}/members?market=MKT_GR`,
-    ])
+    // The label also shows on the concept card, so wait for the request itself.
+    await waitFor(() =>
+      expect(requested.filter((path) => path.includes('/members'))).toEqual([
+        `/api/v1/ontology/concepts/${NATIONAL_DRAW}/members?market=MKT_GR`,
+      ]),
+    )
   })
 
   it('says so when a market has no terms bound to the concept', async () => {

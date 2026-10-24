@@ -22,13 +22,16 @@ export interface PathPosition {
 /**
  * Why a record of a recording cannot be opened: the active dataset is not the
  * world the run was captured on, so the row or node would be another world's.
- * Null for a live run, when either world is unknown, or when they match.
+ * Null for a live run or when they match. While the active dataset is not yet
+ * known, a recording's record waits rather than risk another world's row.
  */
 export function otherWorldNotice(
   recorded: string | null,
   active: string | null,
 ): string | null {
-  if (recorded === null || active === null || recorded === active) return null
+  if (recorded === null || recorded === active) return null
+  if (active === null)
+    return 'The active dataset is still loading, so this record cannot be opened yet.'
   return `This run was recorded on ${datasetName(recorded)}. The active dataset is ${datasetName(active)}, so its records cannot be opened here.`
 }
 
