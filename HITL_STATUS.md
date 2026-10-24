@@ -27,13 +27,13 @@ Only the project owner may mark a gate `APPROVED`.
 | Phase 4 Product API | BUILT | 2026-10-20 | The backend as a product API on `overhaul/v2`: run store, event stream with resume, cancellation, readiness, Data Model, graph, ontology, scenario, model and benchmark routes, live scoring of bank questions, benchmark jobs, and the live end-to-end test (`tests/test_api_live.py`); described in `docs/07-api-event-spec.md`, decisions D-033 to D-038 (proposed). No checkpoint: CP2 follows Phases 5 and 6. Owner items for CP2: (1) `ConceptOut.relationships` is derived from ingestion; should the ontology declare its allowed relationships, as `docs/03` asks? (2) The Help screen's DEMO-01..04 table and story chips in `docs/ux` are stale until Phase 6, because the demo questions are now the first bank instance of H1, H2, H3 and H5 (D-036). |
 | Phase 5 Frontend foundation | BUILT | 2026-10-23 | The five-destination shell, light design system, typed API client and run stream, replayable run state, graph canvas, chart primitives, evidence drawer, presentation mode, copy rules and visual baselines on `overhaul/v2`, decisions D-039 to D-045. No checkpoint: CP2 follows Phase 6. For CP2 the owner should look at: (1) the default fit frames the evidence path, not the whole graph, with an out-of-view note for what falls outside; (2) the replay layout comes from the final graph, because positions are known before events (the path is still drawn only after its event); (3) the visible-node cap of 24 is a legibility choice, set from a 14 px label floor; (4) the StatTile hero uses tabular numerals, as spec 7.2 requires, which overrides the dataviz anti-pattern. Phase 6 items: wire `nodeCap` into the Live Lab canvas; an off-screen indicator for evidence nodes is already built, so check it in Live Lab; the ontology overlay compares C against B at the same cursor; remove the v1 views, mocks and `src/api/backend-run.ts`; rewrite `docs/ux/screen-specifications.md`. |
 | Phase 6 Product screens | BUILT | 2026-10-24 | Overview, Live Lab, Data Model (Warehouse, Graph, Ontology, Scenarios tabs) and Help (eight sections) are built on the live API on `overhaul/v2`, with a stopgap Results list (the full Results screen is Phase 7). Live Lab runs a question through A, B and C from a recorded run or live, with a graph canvas, three approach panels, a docked timeline, a scorecard, answers with citations, evidence paths and a market coverage table. The first-version views, mocks and `backend-run.ts` are removed. Four real runs are recorded as fixtures. Decisions D-046 to D-059 are proposed. `docs/ux/screen-specifications.md` is rewritten as built. Gates at this commit: see the CP2 package below. |
-| CP2 Product | PRESENTED | 2026-10-24 | Presented to the project owner for review; not approved. The package is in the section "CP2 package" below: screenshots, four recorded runs and their result, every owner item from Phases 4 to 6, and the open questions. |
+| CP2 Product | APPROVED | 2026-10-24 | Approved by the project owner in session ("approve") at branch head 76df299, with the package below as presented and no changes requested; merged to main. Decisions D-033 to D-059 are controller rulings, approved with this checkpoint. The open owner questions below stand as built until the owner revisits them; question 1 (D-025 and how the graph's selection reaches the prompt) is a method question to settle before CP3. Phase 7 (the full Results screen, the documentation cut and the copy pass) may start. |
 | CP3 Official run | PENDING | | model and cost choice, dry run, then official run and Results |
 
-## CP2 package (presented 2026-10-24)
+## CP2 package (presented 2026-10-24, approved 2026-10-24)
 
-Nothing in this section is approved.
-Every ruling it names is "Proposed" in `DECISIONS.md` until the project owner says otherwise.
+The project owner approved this package as presented on 2026-10-24.
+The rulings it names are approved in `DECISIONS.md`; the open questions stand as built until the owner revisits them.
 
 ### Where to look
 
@@ -97,7 +97,7 @@ Each is one line, with where to look.
 16. Results is a stopgap list, and its purpose sentence promises more than it shows. Phase 7 builds the rest. Results.
 17. Recorded runs show no graph advantage, for the reason above (D-025). Live Lab with the four recordings.
 18. Small known gaps: the replay slider can read just below its end at the end of a run, the Overview and Help flow diagram does not grow in presentation mode, the evidence drawer's group list is fixed when opened while a replay plays, the idle approach panels are about 30 px shorter than running ones, the Data Model e2e fixture is 4.2 MB, and `recorded.ts` casts the fixtures without validating event types.
-19. Decisions D-033 to D-059 are all proposed and unreviewed, including the LiteLLM load fix (D-059) and the two API additions for Data Model (D-058). `DECISIONS.md`.
+19. Decisions D-033 to D-059 were proposed at presentation and are approved with CP2, including the LiteLLM load fix (D-059) and the two API additions for Data Model (D-058). `DECISIONS.md`.
 
 ### Open questions for the owner
 
