@@ -340,7 +340,8 @@ test('the scenarios are cards that link to Help, with no answers on them', async
   await open(page, '#/data-model?tab=scenarios')
   await expect(page.getByRole('article')).toHaveCount(8)
   const card = page.getByRole('article').first()
-  await expect(card.getByText('Planted in this world')).toBeVisible()
+  await expect(card.getByText('Strength')).toBeVisible()
+  await expect(page.getByText(/Strength is how obvious/)).toBeVisible()
   await expect(
     card.getByRole('link', { name: 'Read the story' }),
   ).toHaveAttribute('href', /^#\/help\?section=stories&story=SCN-001$/)

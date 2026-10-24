@@ -64,11 +64,15 @@ describe('OntologyTab', () => {
     )
   })
 
-  it('shows no definition when the API gives none', async () => {
+  it('shows the definition the API gives, under the name', async () => {
     stubOntology()
     renderAt(`&concept=${NATIONAL_DRAW}`)
     const card = await screen.findByRole('region', { name: 'Concept' })
-    expect(within(card).queryByText(/definition/i)).toBeNull()
+    expect(
+      within(card).getByText(
+        'The flagship number draw run by a single market for its own players.',
+      ),
+    ).toBeVisible()
   })
 
   it('shows synonyms the API gives, by language', async () => {
@@ -99,7 +103,9 @@ describe('OntologyTab', () => {
     })
     expect(within(relationships).getByText(/is a kind of/)).toBeVisible()
     expect(
-      within(relationships).getByText(/is an instance of concept/),
+      within(relationships).getByText(
+        'Bound to 4 local terms across 4 markets',
+      ),
     ).toBeVisible()
     expect(
       within(relationships).getByRole('link', { name: 'Draw game' }),
@@ -161,6 +167,98 @@ describe('OntologyTab', () => {
       name: 'Shared by every market',
     })
     expect(within(shared).getByText('Mobile application')).toBeVisible()
+  })
+
+  it('counts shared terms in the binding line and in the terms panel', async () => {
+    stubOntology()
+    renderAt('&concept=CONCEPT_PAYMENT_INCIDENT')
+    const card = await screen.findByRole('region', { name: 'Concept' })
+    expect(
+      within(card).getByText(
+        'Bound to 4 local terms across 4 markets and 1 shared by every market',
+      ),
+    ).toBeVisible()
+    const shared = await screen.findByRole('group', {
+      name: 'Shared by every market',
+    })
+    expect(within(shared).getByRole('heading')).toHaveTextContent(
+      'Shared by every market1',
+    )
+  })
+
+  it('says a concept bound only to shared codes is shared by every market', async () => {
+    stubOntology()
+    renderAt('&concept=CONCEPT_DIGITAL_CHANNEL')
+    const card = await screen.findByRole('region', { name: 'Concept' })
+    expect(
+      within(card).getByText('Bound to 2 local terms shared by every market'),
+    ).toBeVisible()
+    expect(screen.queryByRole('group', { name: 'Show terms from' })).toBeNull()
+  })
+
+  it('keeps shared terms visible whichever market is chosen', async () => {
+    const { requested } = stubOntology()
+    renderAt('&concept=CONCEPT_PAYMENT_INCIDENT&market=MKT_GR')
+    const members = await screen.findByRole('region', {
+      name: 'Local terms bound to it',
+    })
+    const shared = await within(members).findByRole('group', {
+      name: 'Shared by every market',
+    })
+    expect(shared).toBeVisible()
+    expect(within(members).getByRole('group', { name: 'Greece' })).toBeVisible()
+    expect(within(members).queryByRole('group', { name: 'Austria' })).toBeNull()
+    expect(requested).toContain(
+      '/api/v1/ontology/concepts/CONCEPT_PAYMENT_INCIDENT/members?market=MKT_GR',
+    )
+    expect(requested).toContain(
+      '/api/v1/ontology/concepts/CONCEPT_PAYMENT_INCIDENT/members',
+    )
+  })
+
+  it('asks only for the market when the concept has no shared terms', async () => {
+    const { requested } = stubOntology()
+    renderAt(`&concept=${NATIONAL_DRAW}&market=MKT_GR`)
+    await screen.findByText('Αριθμολαχείο', { selector: 'span.font-medium' })
+    expect(requested.filter((path) => path.includes('/members'))).toEqual([
+      `/api/v1/ontology/concepts/${NATIONAL_DRAW}/members?market=MKT_GR`,
+    ])
+  })
+
+  it('says so when a market has no terms bound to the concept', async () => {
+    const { fetchMock } = stubOntology()
+    const answer = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input) =>
+      String(input).includes('market=')
+        ? Promise.resolve(json([]))
+        : answer(input),
+    )
+    renderAt(`&concept=${NATIONAL_DRAW}&market=MKT_GR`)
+    expect(
+      await screen.findByText(
+        'No local terms from this market are bound to this concept.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Greece' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+  })
+
+  it('falls back to all markets when the address names a market the concept is not bound in', async () => {
+    const { requested } = stubOntology()
+    renderAt('&concept=CONCEPT_ANNUITY_DRAW&market=MKT_GR')
+    expect(
+      await screen.findByRole('button', { name: 'All markets' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      await within(
+        await screen.findByRole('region', { name: 'Local terms bound to it' }),
+      ).findByText('Annuity Draw'),
+    ).toBeVisible()
+    expect(requested.filter((path) => path.includes('/members'))).toEqual([
+      '/api/v1/ontology/concepts/CONCEPT_ANNUITY_DRAW/members',
+    ])
   })
 
   it('says so when nothing is bound to a concept', async () => {

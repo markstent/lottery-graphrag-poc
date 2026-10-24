@@ -356,6 +356,10 @@
             "title": "Concept Id",
             "type": "string"
           },
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
           "labels": {
             "additionalProperties": {
               "type": "string"
@@ -395,6 +399,7 @@
         "required": [
           "concept_id",
           "parent_id",
+          "definition",
           "labels",
           "synonyms",
           "relationships",

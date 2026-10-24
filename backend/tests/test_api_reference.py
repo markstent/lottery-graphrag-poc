@@ -17,6 +17,7 @@ from app.config import EmbeddingSettings, GraphConfig
 from app.datasets.config import GenerationConfig
 from app.datasets.world import build_world
 from app.main import create_app
+from app.ontology.loader import load_ontology
 from app.scenarios.catalogue import ENABLED
 from app.scenarios.engine import apply_scenarios
 from fastapi.testclient import TestClient
@@ -84,6 +85,15 @@ def test_concepts_carry_four_language_labels(client: TestClient) -> None:
     counts = concept["binding_counts"]
     assert sum(counts.values()) > 0
     assert set(counts) <= {"MKT_UK", "MKT_GR", "MKT_AT", "MKT_CZ", "shared"}
+
+
+def test_every_concept_carries_its_ontology_definition(client: TestClient) -> None:
+    concepts = _concepts(client)
+    ontology = load_ontology()
+    assert len(concepts) == len(ontology.concepts)
+    for concept in ontology.concepts:
+        assert concept.definition
+        assert concepts[concept.concept_id]["definition"] == concept.definition
 
 
 def test_a_concept_without_bindings_has_empty_counts(client: TestClient) -> None:

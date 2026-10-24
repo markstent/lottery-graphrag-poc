@@ -31,11 +31,11 @@ function ScenarioCard({ scenario }: { scenario: Scenario }) {
           {scenario.title}
         </h3>
         <p className="text-sm text-text-muted">{scenario.scenario_id}</p>
-        <p className="mt-1 text-sm font-medium text-text-primary">
-          {scenario.planted
-            ? 'Planted in this world'
-            : 'Not planted in this world'}
-        </p>
+        {!scenario.planted && (
+          <p className="mt-1 text-sm font-medium text-text-primary">
+            Not planted in this world
+          </p>
+        )}
       </div>
       <dl className="grid grid-cols-[7rem_1fr] gap-y-1 text-sm">
         <dt className="text-text-muted">Strength</dt>
@@ -106,7 +106,9 @@ export function ScenariosTab() {
     <section aria-label="Scenarios" className="space-y-3">
       <p className="text-sm text-text-secondary">
         Each story is planted in the data on purpose, so a question can test
-        whether an approach finds it.
+        whether an approach finds it. Strength is how obvious the planted signal
+        is, from 0.2 (subtle) to 1.0 (obvious). Noise level is how much
+        unrelated activity surrounds it.
       </p>
       <div className="grid grid-cols-1 gap-4 min-[1400px]:grid-cols-2 min-[1800px]:grid-cols-4">
         {load.data.map((scenario) => (

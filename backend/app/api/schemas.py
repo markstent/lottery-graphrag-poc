@@ -490,6 +490,7 @@ class ConceptOut(BaseModel):
 
     concept_id: str
     parent_id: str | None
+    definition: str
     labels: dict[str, str]
     synonyms: dict[str, list[str]]
     relationships: list[str]

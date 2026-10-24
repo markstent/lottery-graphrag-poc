@@ -1,8 +1,9 @@
 /**
  * One ontology concept: its name in each language, the other names it goes
- * by, and how it relates to the rest, written in plain words. The API gives
- * no definition, so none is shown.
+ * by, its definition, and how it relates to the rest, written in plain words.
  */
+
+import type { ReactNode } from 'react'
 
 import type { Schemas } from '../../api/client'
 import { hrefFor } from '../../app/router'
@@ -31,6 +32,20 @@ const conceptLink = (concept: Concept) => (
   </a>
 )
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** "Bound to 4 local terms across 4 markets and 1 shared by every market"; null when nothing is bound. */
+function bindingLine(counts: Record<string, number>): string | null {
+  const shared = counts.shared ?? 0
+  const markets = Object.entries(counts).filter(([id]) => id !== 'shared')
+  const terms = markets.reduce((sum, [, n]) => sum + n, 0)
+  if (terms === 0 && shared === 0) return null
+  if (terms === 0)
+    return `Bound to ${plural(shared, 'local term')} shared by every market`
+  const own = `Bound to ${plural(terms, 'local term')} across ${plural(markets.length, 'market')}`
+  return shared > 0 ? `${own} and ${shared} shared by every market` : own
+}
+
 /** The relationships the concept takes part in, as sentences about it. */
 function Relationships({
   concept,
@@ -41,7 +56,7 @@ function Relationships({
   parent: Concept | undefined
   kinds: Concept[]
 }) {
-  const sentences = concept.relationships.flatMap((type) => {
+  const sentences: ReactNode[] = concept.relationships.flatMap((type) => {
     const phrase = relationshipPhrase(type)
     if (type === 'IS_A')
       return [
@@ -58,12 +73,10 @@ function Relationships({
           </>
         )),
       ]
-    return [
-      <>
-        A local term {phrase} {labelOf(concept)}
-      </>,
-    ]
+    return []
   })
+  const binding = bindingLine(concept.binding_counts)
+  if (binding) sentences.push(binding)
   return (
     <ul aria-label="Relationships" className="space-y-1 text-sm">
       {sentences.map((sentence, index) => (
@@ -96,6 +109,7 @@ export function ConceptCard({
       <h3 className="text-lg font-semibold text-text-primary">
         {labelOf(concept)}
       </h3>
+      <p className="mt-1 text-sm text-text-secondary">{concept.definition}</p>
       <ul aria-label="Names in each language" className="mt-3 space-y-1">
         {LANGUAGES.map(({ id, name }) => (
           <li

@@ -60,6 +60,7 @@ def _concept(ontology: Ontology, concept: Concept) -> ConceptOut:
     return ConceptOut(
         concept_id=concept.concept_id,
         parent_id=concept.parent_id,
+        definition=concept.definition,
         labels=dict(concept.labels),
         synonyms={language: list(words) for language, words in concept.synonyms.items()},
         relationships=relationships,

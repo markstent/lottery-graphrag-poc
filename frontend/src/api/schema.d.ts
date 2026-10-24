@@ -645,6 +645,8 @@ export interface components {
             };
             /** Concept Id */
             concept_id: string;
+            /** Definition */
+            definition: string;
             /** Labels */
             labels: {
                 [key: string]: string;

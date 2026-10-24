@@ -26,7 +26,7 @@ describe('ScenariosTab', () => {
     stubOntology()
     render(<ScenariosTab />)
     const card = (await screen.findAllByRole('article'))[0]
-    expect(within(card).getByText('Planted in this world')).toBeVisible()
+    expect(within(card).queryByText(/planted in this world/i)).toBeNull()
     const rows = within(card).getByRole('list', { name: 'Planted rows' })
     expect(within(rows).getByText('sessions').nextSibling).toHaveTextContent(
       '150',
@@ -38,6 +38,14 @@ describe('ScenariosTab', () => {
       'moderate',
     )
     expect(card).not.toHaveTextContent('SCN-001-')
+  })
+
+  it('explains strength and noise once, at the top', async () => {
+    stubOntology()
+    render(<ScenariosTab />)
+    expect(
+      await screen.findByText(/Strength is how obvious the planted signal is/),
+    ).toBeVisible()
   })
 
   it('says when a story is not planted and has no rows', async () => {
