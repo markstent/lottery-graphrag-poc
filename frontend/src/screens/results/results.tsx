@@ -3,12 +3,20 @@
  * question. `#/results?run=<id>` names the run; none opens the newest result.
  */
 
+import { useRef } from 'react'
+
 import { getBenchmark, listBenchmarks, type Schemas } from '../../api/client'
-import { useRoute } from '../../app/router'
+import { hrefFor, useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
+import { filterFromParams, paramsWithFilter } from '../../results/questions'
 import { defaultRun, standing, standingWord } from '../../results/runs'
 import { Screen } from '../screen'
+import { EfficiencyPanel } from './efficiency-panel'
+import { FailurePanel } from './failure-panel'
+import { JudgePanel } from './judge-panel'
+import { QuestionsPanel } from './question-table'
+import { ReproPanel } from './repro-panel'
 import { RunPicker } from './run-picker'
 import { StrataCharts } from './strata-charts'
 import { Verdict } from './verdict'
@@ -24,6 +32,19 @@ function RunView({ run }: { run: Run }) {
   )
   const kind = standing(run)
   const ready = load.status === 'ready'
+  const badge = kind === 'subset' ? standingWord(run) : undefined
+  const { params } = useRoute()
+  const tableRef = useRef<HTMLDivElement>(null)
+  const filterBy = (pipeline: string, cls: string) => {
+    window.location.hash = hrefFor(
+      'results',
+      paramsWithFilter(params, {
+        ...filterFromParams(params),
+        failure: { pipeline, cls },
+      }),
+    )
+    tableRef.current?.focus()
+  }
   return (
     <>
       <Panel
@@ -35,10 +56,39 @@ function RunView({ run }: { run: Run }) {
         {ready && <Verdict run={run} summary={load.data.summary} kind={kind} />}
       </Panel>
       {ready && kind !== 'quick-check' && (
-        <Panel title="Scores by kind of question" state="ready">
-          <StrataCharts
-            summary={load.data.summary}
-            badge={kind === 'subset' ? standingWord(run) : undefined}
+        <>
+          <Panel title="Scores by kind of question" state="ready">
+            <StrataCharts summary={load.data.summary} badge={badge} />
+          </Panel>
+          <QuestionsPanel
+            runId={run.run_id}
+            tableRef={tableRef}
+            badge={badge}
+          />
+          <Panel title="Efficiency" state="ready">
+            <EfficiencyPanel summary={load.data.summary} badge={badge} />
+          </Panel>
+          <Panel title="Failures" state="ready">
+            <FailurePanel
+              summary={load.data.summary}
+              badge={badge}
+              onFilter={filterBy}
+            />
+          </Panel>
+          <Panel
+            title="Judge"
+            state={load.data.summary.judge_agreement ? 'ready' : 'empty'}
+            message="No judge in this run"
+          >
+            <JudgePanel summary={load.data.summary} badge={badge} />
+          </Panel>
+        </>
+      )}
+      {ready && (
+        <Panel title="Reproducibility" state="ready">
+          <ReproPanel
+            runId={run.run_id}
+            record={load.data.summary.reproducibility}
           />
         </Panel>
       )}

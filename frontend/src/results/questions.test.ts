@@ -3,7 +3,13 @@ import { describe, expect, it } from 'vitest'
 import type { Schemas } from '../api/client'
 import { hrefFor } from '../app/router'
 import { PILOT_INSTANCES } from './results.fixtures'
-import { filterInstances, liveLabLink, type QuestionFilter } from './questions'
+import {
+  filterFromParams,
+  filterInstances,
+  liveLabLink,
+  paramsWithFilter,
+  type QuestionFilter,
+} from './questions'
 
 type Row = Schemas['InstanceResultOut']
 
@@ -131,4 +137,34 @@ describe('liveLabLink', () => {
     expect(liveLabLink(row2026, null)).toEqual({
       reason: 'No world is loaded',
     }))
+})
+
+describe('filter addresses', () => {
+  it('reads the three filters from the address', () => {
+    expect(
+      filterFromParams(
+        new URLSearchParams(
+          'run=r&stratum=H2&world=2027&failure=B:retrieval_failure',
+        ),
+      ),
+    ).toEqual({
+      stratum: 'H2',
+      world: 2027,
+      failure: { pipeline: 'B', cls: 'retrieval_failure' },
+    })
+    expect(filterFromParams(new URLSearchParams('world=x&failure=B'))).toEqual(
+      NONE,
+    )
+  })
+
+  it('writes only the filters that are set, keeping the rest of the address', () => {
+    const params = new URLSearchParams('run=r&stratum=H1&world=2026')
+    expect(
+      paramsWithFilter(params, {
+        ...filterFromParams(params),
+        stratum: null,
+        failure: { pipeline: 'C', cls: 'x' },
+      }),
+    ).toEqual({ run: 'r', world: '2026', failure: 'C:x' })
+  })
 })

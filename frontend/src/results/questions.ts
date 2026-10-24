@@ -13,7 +13,7 @@ export type QuestionFilter = {
 }
 
 /** The stratum a row is reported under: name-anchored H2 questions are their own group. */
-const stratumOf = (row: Row) =>
+export const stratumOf = (row: Row) =>
   row.stratum === 'H2' && row.sub_stratum === 'name_anchored'
     ? 'H2_name'
     : row.stratum
@@ -48,4 +48,36 @@ export function liveLabLink(
   if (row.world_seed !== activeWorldSeed)
     return { reason: `Loaded world is ${activeWorldSeed}` }
   return { href: hrefFor('live-lab', { question: row.instance_id }) }
+}
+
+/** The filters an address holds (`stratum`, `world`, `failure=B:retrieval_failure`); a malformed one is unset. */
+export function filterFromParams(params: URLSearchParams): QuestionFilter {
+  const world = Number(params.get('world'))
+  const [pipeline, cls] = (params.get('failure') ?? '').split(':')
+  return {
+    stratum: params.get('stratum'),
+    world:
+      params.get('world') !== null && Number.isInteger(world) ? world : null,
+    failure: pipeline && cls ? { pipeline, cls } : null,
+  }
+}
+
+/** The address parameters for a filter, replacing the filters of `params` and keeping its other keys. */
+export function paramsWithFilter(
+  params: URLSearchParams,
+  f: QuestionFilter,
+): Record<string, string> {
+  const rest = Object.fromEntries(
+    [...params].filter(
+      ([key]) => !['stratum', 'world', 'failure'].includes(key),
+    ),
+  )
+  return {
+    ...rest,
+    ...(f.stratum === null ? {} : { stratum: f.stratum }),
+    ...(f.world === null ? {} : { world: String(f.world) }),
+    ...(f.failure === null
+      ? {}
+      : { failure: `${f.failure.pipeline}:${f.failure.cls}` }),
+  }
 }

@@ -51,6 +51,12 @@ const ROUTES = {
 const figureOf = (title: RegExp) =>
   screen.getByText(title).closest('figure') as HTMLElement
 
+/** The charts of the scores panel; the efficiency panel draws figures of its own. */
+const scoreFigures = () =>
+  within(
+    screen.getByRole('region', { name: 'Scores by kind of question' }),
+  ).getAllByRole('figure')
+
 const verdict = () => screen.findByRole('region', { name: 'Verdict' })
 
 const open = (run?: string) => {
@@ -153,7 +159,7 @@ describe('Results', () => {
       screen.getAllByRole('group', { name: /evidence score$/ }),
     ).toHaveLength(3)
     await screen.findAllByRole('figure')
-    const figures = screen.getAllByRole('figure')
+    const figures = scoreFigures()
     expect(figures).toHaveLength(2)
     for (const figure of figures) {
       expect(within(figure).getByText('Subset run')).toBeVisible()
@@ -169,7 +175,7 @@ describe('Results', () => {
     stubApi(ROUTES)
     open()
     await screen.findAllByRole('figure')
-    for (const figure of screen.getAllByRole('figure'))
+    for (const figure of scoreFigures())
       expect(within(figure).queryByText('Subset run')).not.toBeInTheDocument()
   })
 
@@ -182,7 +188,7 @@ describe('Results', () => {
     })
     open()
     await screen.findAllByRole('figure')
-    const figures = screen.getAllByRole('figure')
+    const figures = scoreFigures()
     expect(figures).toHaveLength(3)
     for (const figure of figures)
       expect(within(figure).getByText('Subset run')).toBeVisible()
@@ -278,7 +284,7 @@ describe('Results', () => {
     stubApi(ROUTES)
     open()
     await screen.findAllByRole('figure')
-    for (const figure of screen.getAllByRole('figure'))
+    for (const figure of scoreFigures())
       expect(figure.textContent).not.toContain('…')
   })
 
