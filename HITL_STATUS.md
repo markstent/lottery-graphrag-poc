@@ -62,7 +62,7 @@ They are not edited, and the demo questions were not re-picked to make a better 
 The honest result is that on these four questions B and C did no better than A.
 B and C are level with A on three of the four.
 On the ontology question B and C wrote a slightly better answer (0.50 against 0.40) while finding less of the needed evidence (0.14 against 0.35).
-C's answers equal B's on every question.
+C's scores equal B's on every question (the L05 answer texts differ).
 The single fact (H3) has no evidence score because it has no claims to find.
 
 Why, in plain words, for the multi-hop question (L05):

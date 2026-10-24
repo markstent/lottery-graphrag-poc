@@ -61,9 +61,9 @@ From top to bottom:
 2. "How the three approaches differ": a flow diagram.
    The question fans out to one shared "Search passages" lane.
    B has the lane "Find starting points", "Follow relationships".
-   C has "Add ontology terms", "Find starting points", "Follow relationships", "Add linked records".
+   C has "Find starting points", "Add ontology terms", "Follow relationships", "Add linked records".
    All lanes join at one shared "Re-order and pick", then "Answer with sources".
-   The lane order comes from one module (`screens/overview/lanes.ts`), and a test pins it to the order the recorded events show.
+   The lane order comes from one module (`run/lanes.ts`), and the test "the order of the steps against the recorded events" in `run/lanes.test.ts` pins it to the order in which the first event of each stage arrives in the four recordings and the fixture run.
 3. Two panels side by side: "Run a question" and "Configuration".
    "Run a question" has a "Run a question" button to Live Lab and the four demo questions, each a link to Live Lab with that question chosen.
    "Configuration" lists the active dataset in plain words and the four model roles (answer, embedding, re-ordering, keyword search) with the configured model names.
@@ -129,7 +129,9 @@ From top to bottom, with the first screen at 1920 by 1080, while a run is going,
 3. Graph canvas on the left (about three fifths of the width, at least 640 px) and the three approach panels on the right.
    The canvas has a tab for B and a tab for C, a toggle that lays the other approach's evidence path over the graph ("Show C's path" on B's tab, "Show B's path" on C's tab), and "Focus on the path".
    Each panel (A, B, C) shows the approach's status, its steps in order with a status word, an icon and a time, and the evidence it has found, used and set aside.
-   Under the canvas are the legend and a note when evidence is out of view.
+   The steps in each panel and tracker come from the same module as the Overview lanes (`run/lanes.ts`), so C reads "Find starting points", "Add ontology terms", "Follow relationships", "Add linked records", then the steps all three share.
+   Under the canvas is the legend.
+   The note when evidence is out of view sits in the strip above the drawing, with its "Bring into view" button, and nowhere else.
 4. Timeline, docked under both: Rewind, Play or Pause, Replay, a position slider, the time, and speeds 0.5x, 1x, 2x and 4x, with one track for each approach.
    Steps that ran together sit on thin extra rows, so no bar is trimmed.
 5. After the run ends: the three answers as the model wrote them (each citation marker is a button), the evidence path rows for B and C, and the market coverage table.
@@ -139,7 +141,7 @@ A recorded run knows every event, so it is laid out once from the final graph an
 In that layout the nodes of the evidence path are placed first in each layer, which is ordering only: nothing is drawn differently before the path event (D-049).
 A live run grows with its stream and settles into the final layout once at the end.
 The picture fits the evidence path and the first starting point.
-A path larger than the frame fits at the 14 px label floor from the seed, and the toolbar says how many evidence nodes are out of view, with a button that brings them into view (D-050).
+A path larger than the frame fits at the 14 px label floor from the seed, and the strip above the drawing says how many evidence nodes are out of view, with a button that brings them into view (D-050).
 Folded groups are opened into a list of their members in the evidence drawer.
 
 On C's graph, nodes that C's own events record as found through the ontology, and that B does not hold at the same point of the run, are marked "added by the ontology" (D-052).
@@ -149,6 +151,9 @@ The overlay of the other approach's path needs the run's stored results, so duri
 
 - Recorded runs: four real captures through the API, in `frontend/src/run/fixtures/recorded/`, loaded on demand one file at a time (D-056).
   A small index (`index.json`) is always loaded, and a test checks it matches the files.
+  Each recording names the world it was captured on (`dataset_id`, written by `scripts/capture-run.mjs`).
+  A record or node opened from a recording is refused, with a plain message in the drawer, when the active dataset is another world.
+  A passage the results carry in full still opens.
 - Live runs: `POST /api/v1/queries`, then the event stream `GET /api/v1/queries/{id}/events/stream`, resumed with `?after=` if the connection drops, then `GET /api/v1/queries/{id}` for the stored results.
   A bank question is scored after the run with the benchmark runner's deterministic scorer, and the scorecard says it is scored against the answer key.
   `POST /api/v1/queries/{id}/cancel` stops a run.
@@ -176,6 +181,8 @@ The overlay of the other approach's path needs the run's stored results, so duri
 - Failed or interrupted: "The run failed: " with the recorded reason, or a lost-connection message when the stream ended without an end event.
 - Error: a notice with the message and a Retry button when repeating can help.
   A second run while the graph is leased by a benchmark job shows the API's 409 message.
+  A bank question's score is read up to five more times, a second apart, while it is still being written.
+  If it is still not there, the notice says "The score is still being written." and Retry reads it again from the start.
 - Empty: a pipeline that did not run reads "Not started".
   A pipeline with no recorded path says "No evidence path was recorded." only after it has ended.
   Stages that a finished pipeline never took read "Not run".
