@@ -16,11 +16,6 @@ export const GLOSSARY = {
 /** What Help's glossary shows: twelve terms, about twelve words each. */
 export const GLOSSARY_TERMS: readonly { term: string; meaning: string }[] = [
   {
-    term: 'Anchor',
-    meaning:
-      'The record a question names. All three approaches are given it, so finding it earns nothing.',
-  },
-  {
     term: 'Answer key',
     meaning:
       'The correct answer to a question, written down before any approach is run.',
@@ -73,6 +68,11 @@ export const GLOSSARY_TERMS: readonly { term: string; meaning: string }[] = [
   {
     term: 'Starting point',
     meaning:
-      'The first records the graph search picks from the words of the question.',
+      'Where the graph walk begins, picked from the question’s words. Not the starting record.',
+  },
+  {
+    term: 'Starting record',
+    meaning:
+      'The record the question names, which the evidence must start from. Not the graph’s starting point.',
   },
 ]

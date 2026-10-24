@@ -23,9 +23,9 @@ export function Scoring() {
           and the records or documents that state them. The score balances the
           share of claims found against the share of items used that carry a
           claim. All three approaches get the same limits, 12 items and 2,000
-          tokens by default. The anchor is left out, so finding it earns
-          nothing. When no claim is left, the score reads Missing and the
-          question counts for the answer only.
+          tokens by default. The starting record (the record the question names)
+          is left out, so finding it earns nothing. When no claim is left, the
+          score reads Missing and the question counts for the answer only.
         </p>
       </Part>
       <Part title="Correct answer">

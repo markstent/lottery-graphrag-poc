@@ -420,6 +420,30 @@ describe('scoring and glossary', () => {
   })
 })
 
+describe('one name for the record a question names', () => {
+  it('calls it the starting record in scoring and the glossary, and never an anchor', async () => {
+    const { container } = await renderHelp()
+    const scoring = within(section('6. How scoring works'))
+    expect(
+      scoring.getByText(
+        /The starting record \(the record the question names\)/,
+      ),
+    ).toBeVisible()
+    const glossary = section('7. Glossary')
+    const meaning = (term: string) =>
+      within(glossary).getByText(term).nextElementSibling!.textContent
+    expect(meaning('Starting record')).toMatch(
+      /^The record the question names, which the evidence must start from\./,
+    )
+    expect(meaning('Starting record')).toContain('Not the graph')
+    expect(meaning('Starting point')).toContain('Where the graph walk begins')
+    expect(meaning('Starting point')).toContain('Not the starting record')
+    const rest = container.cloneNode(true) as HTMLElement
+    rest.querySelectorAll('[data-api]').forEach((node) => node.remove())
+    expect(rest.textContent).not.toMatch(/\banchor/i)
+  })
+})
+
 describe('section 8 and the vendor names', () => {
   it('names vendors and engineering commands in Running it and nowhere else', async () => {
     const { container } = await renderHelp()
