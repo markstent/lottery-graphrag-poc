@@ -34,6 +34,14 @@ describe('errorsOf', () => {
     expect(errorsOf(form({ repeats: '3.5' })).repeats).toBeDefined()
   })
 
+  it('needs a kind of question when the scope is chosen', () => {
+    expect(errorsOf(form({ scope: 'chosen' })).strata).toBe(
+      'Choose at least one kind.',
+    )
+    expect(errorsOf(form({ scope: 'chosen', strata: ['H1'] }))).toEqual({})
+    expect(errorsOf(form({ scope: 'bank', strata: [] }))).toEqual({})
+  })
+
   it('needs a world and a whole-number limit when one is given', () => {
     expect(errorsOf(form({ worlds: [] })).worlds).toBe(
       'Choose at least one world.',
@@ -56,6 +64,10 @@ describe('startBody', () => {
     })
   })
 
+  it('sends no strata for the whole bank even when kinds were ticked', () => {
+    expect(startBody(form({ scope: 'bank', strata: ['H1'] })).strata).toBeNull()
+  })
+
   it('sends chosen worlds in order, strata and the limit', () => {
     expect(
       startBody(
@@ -63,6 +75,7 @@ describe('startBody', () => {
           kind: 'smoke',
           worlds: [2028, 2026],
           repeats: '1',
+          scope: 'chosen',
           strata: ['H1', 'H3'],
           limit: '2',
         }),

@@ -4,13 +4,13 @@
  */
 
 import { TriangleAlert } from 'lucide-react'
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
 
 import { getLatestBenchmark, getModels, type Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
 import { KIND_WORDS } from '../../app/run-kinds'
 import { useLoad } from '../../app/use-load'
-import { Notice, Panel } from '../../components/panel'
+import { Notice } from '../../components/panel'
 import { STRATUM_LABELS } from '../../results/strata'
 import {
   DEFAULT_FORM,
@@ -86,17 +86,27 @@ function Group({
 function Choice({
   type,
   checked,
+  disabled,
   onChange,
+  inputRef,
   children,
 }: {
   type: 'radio' | 'checkbox'
   checked: boolean
+  disabled?: boolean
   onChange: () => void
+  inputRef?: Ref<HTMLInputElement>
   children: string
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm text-text-primary">
-      <input type={type} checked={checked} onChange={onChange} />
+    <label className="flex items-center gap-2 text-sm text-text-primary has-[:disabled]:cursor-not-allowed has-[:disabled]:text-text-muted has-[:disabled]:opacity-60">
+      <input
+        ref={inputRef}
+        type={type}
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+      />
       {children}
     </label>
   )
@@ -140,7 +150,15 @@ function Setup() {
   )
 }
 
-function Form({ start }: { start: (body: Body) => Promise<void> }) {
+function Form({
+  start,
+  onClose,
+}: {
+  start: (body: Body) => Promise<void>
+  onClose: () => void
+}) {
+  const first = useRef<HTMLInputElement>(null)
+  useEffect(() => first.current?.focus(), [])
   const [form, setForm] = useState(DEFAULT_FORM)
   const [sending, setSending] = useState(false)
   const [problem, setProblem] = useState<Error | null>(null)
@@ -165,6 +183,11 @@ function Form({ start }: { start: (body: Body) => Promise<void> }) {
   return (
     <form
       className="space-y-3"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape') return
+        event.preventDefault()
+        onClose()
+      }}
       onSubmit={(event) => {
         event.preventDefault()
         void submit()
@@ -175,6 +198,7 @@ function Form({ start }: { start: (body: Body) => Promise<void> }) {
           <Choice
             key={kind}
             type="radio"
+            inputRef={kind === KINDS[0] ? first : undefined}
             checked={form.kind === kind}
             onChange={() =>
               change({
@@ -221,22 +245,39 @@ function Form({ start }: { start: (body: Body) => Promise<void> }) {
       <Group legend="Scope">
         <Choice
           type="radio"
-          checked={form.strata.length === 0}
-          onChange={() => change({ strata: [] })}
+          checked={form.scope === 'bank'}
+          onChange={() => change({ scope: 'bank' })}
         >
           Whole bank
         </Choice>
+        <Choice
+          type="radio"
+          checked={form.scope === 'chosen'}
+          onChange={() => change({ scope: 'chosen' })}
+        >
+          Chosen kinds
+        </Choice>
+      </Group>
+      <div
+        role="group"
+        aria-label="Kinds of question"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-60"
+      >
         {STRATA.map((stratum) => (
           <Choice
             key={stratum}
             type="checkbox"
-            checked={form.strata.includes(stratum)}
+            disabled={form.scope === 'bank'}
+            checked={form.scope === 'chosen' && form.strata.includes(stratum)}
             onChange={() => change({ strata: toggled(form.strata, stratum) })}
           >
             {STRATUM_LABELS[stratum]}
           </Choice>
         ))}
-      </Group>
+        {errors.strata && (
+          <span className="text-sm text-error">{errors.strata}</span>
+        )}
+      </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <label
           htmlFor="start-limit"
@@ -263,13 +304,18 @@ function Form({ start }: { start: (body: Body) => Promise<void> }) {
           onRetry={retryable ? () => void submit() : undefined}
         />
       )}
-      <button
-        type="submit"
-        disabled={sending || Object.keys(errors).length > 0}
-        className="rounded-chip bg-text-primary px-5 py-2 text-sm font-semibold text-surface disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Start
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={sending || Object.keys(errors).length > 0}
+          className="rounded-chip bg-text-primary px-5 py-2 text-sm font-semibold text-surface disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Start
+        </button>
+        <button type="button" onClick={onClose} className={BUTTON}>
+          Close
+        </button>
+      </div>
     </form>
   )
 }
@@ -323,56 +369,78 @@ function Progress({ job, cancel }: { job: Job; cancel: () => Promise<void> }) {
   )
 }
 
-export function StartPanel({
+/** The "Start a run" button of the runs panel's heading row; not shown while a job runs. */
+export function StartButton({
+  job,
+  open,
+  onToggle,
+  buttonRef,
+}: {
+  job: Job | null
+  open: boolean
+  onToggle: () => void
+  buttonRef: Ref<HTMLButtonElement>
+}) {
+  if (job?.status === 'running') return null
+  return (
+    <button
+      ref={buttonRef}
+      type="button"
+      aria-expanded={open}
+      onClick={onToggle}
+      className={BUTTON}
+    >
+      Start a run
+    </button>
+  )
+}
+
+/** What sits under the runs panel's heading: the form, or the job and how it stands. */
+export function StartArea({
   job,
   error,
+  open,
+  onClose,
   start,
   cancel,
 }: {
   job: Job | null
   /** A failure to start following, or to keep following, the job. */
   error: Error | null
+  open: boolean
+  onClose: () => void
   start: (body: Body) => Promise<void>
   cancel: () => Promise<void>
 }) {
-  const [open, setOpen] = useState(false)
   const running = job?.status === 'running'
+  const note =
+    job?.status === 'cancelled' ? (
+      <p role="status" className="text-sm text-text-primary">
+        Cancelled. No results were written.
+      </p>
+    ) : job?.status === 'failed' ? (
+      <Problem message={job.error?.message ?? 'The run failed.'} />
+    ) : null
+  if (!error && !running && !note && !open) return null
   return (
-    <Panel title="Run a benchmark" state="ready">
-      <div className="space-y-3">
-        {error && <Problem message={error.message} />}
-        {running ? (
-          <Progress job={job} cancel={cancel} />
-        ) : (
-          <>
-            {job?.status === 'cancelled' && (
-              <p role="status" className="text-sm text-text-primary">
-                Cancelled. No results were written.
-              </p>
-            )}
-            {job?.status === 'failed' && (
-              <Problem message={job.error?.message ?? 'The run failed.'} />
-            )}
-            {open ? (
-              <Form
-                start={async (body) => {
-                  await start(body)
-                  setOpen(false)
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                aria-expanded={false}
-                onClick={() => setOpen(true)}
-                className={BUTTON}
-              >
-                Start a run
-              </button>
-            )}
-          </>
-        )}
-      </div>
-    </Panel>
+    <div className="space-y-3">
+      {error && <Problem message={error.message} />}
+      {running ? (
+        <Progress job={job} cancel={cancel} />
+      ) : (
+        <>
+          {note}
+          {open && (
+            <Form
+              onClose={onClose}
+              start={async (body) => {
+                await start(body)
+                onClose()
+              }}
+            />
+          )}
+        </>
+      )}
+    </div>
   )
 }

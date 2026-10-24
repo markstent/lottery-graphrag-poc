@@ -3,7 +3,7 @@
  * question. `#/results?run=<id>` names the run; none opens the newest result.
  */
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
 import { getBenchmark, listBenchmarks, type Schemas } from '../../api/client'
 import { hrefFor, useRoute } from '../../app/router'
@@ -18,7 +18,7 @@ import { JudgePanel } from './judge-panel'
 import { QuestionsPanel } from './question-table'
 import { ReproPanel } from './repro-panel'
 import { RunPicker } from './run-picker'
-import { StartPanel } from './start-panel'
+import { StartArea, StartButton } from './start-panel'
 import { StrataCharts } from './strata-charts'
 import { useBenchmarkJob } from './use-benchmark-job'
 import { Verdict } from './verdict'
@@ -112,18 +112,41 @@ export function Results() {
           (a, b) => Date.parse(b.started_at) - Date.parse(a.started_at),
         )
       : []
+  const [starting, setStarting] = useState(false)
+  const startButton = useRef<HTMLButtonElement>(null)
+  const closeForm = () => {
+    setStarting(false)
+    startButton.current?.focus()
+  }
   const empty = load.status === 'ready' && runs.length === 0
   const id = requested ?? defaultRun(runs)
   const run = runs.find((candidate) => candidate.run_id === id)
   return (
     <Screen destination="results">
-      <StartPanel job={job} error={error} start={start} cancel={cancel} />
       <Panel
         title="Benchmark runs"
         state={empty ? 'empty' : load.status}
         message="No benchmark runs yet."
         error={load.status === 'error' ? load.error : undefined}
         onRetry={load.retry}
+        headerAction={
+          <StartButton
+            job={job}
+            open={starting}
+            onToggle={() => setStarting(!starting)}
+            buttonRef={startButton}
+          />
+        }
+        above={
+          <StartArea
+            job={job}
+            error={error}
+            open={starting}
+            onClose={closeForm}
+            start={start}
+            cancel={cancel}
+          />
+        }
       >
         {load.status === 'ready' && (
           <RunPicker runs={runs} selected={run?.run_id ?? null} />

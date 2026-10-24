@@ -18,7 +18,8 @@ export interface StartForm {
   worlds: number[]
   /** As typed, so an empty box is an error and not a zero. */
   repeats: string
-  /** Empty means the whole bank. */
+  scope: 'bank' | 'chosen'
+  /** The kinds of question, used only when the scope is chosen. */
   strata: string[]
   /** As typed; empty means no limit. */
   limit: string
@@ -28,6 +29,7 @@ export const DEFAULT_FORM: StartForm = {
   kind: 'official',
   worlds: WORLD_SEEDS,
   repeats: String(MIN_REPEATS.official),
+  scope: 'bank',
   strata: [],
   limit: '',
 }
@@ -39,10 +41,14 @@ const wholeNumber = (text: string) => /^\d+$/.test(text.trim())
 /** What is wrong with the form, by field; the backend checks the same rules again. */
 export function errorsOf(
   form: StartForm,
-): Partial<Record<'worlds' | 'repeats' | 'limit', string>> {
-  const errors: Partial<Record<'worlds' | 'repeats' | 'limit', string>> = {}
+): Partial<Record<'worlds' | 'repeats' | 'limit' | 'strata', string>> {
+  const errors: Partial<
+    Record<'worlds' | 'repeats' | 'limit' | 'strata', string>
+  > = {}
   const min = MIN_REPEATS[form.kind]
   if (form.worlds.length === 0) errors.worlds = 'Choose at least one world.'
+  if (form.scope === 'chosen' && form.strata.length === 0)
+    errors.strata = 'Choose at least one kind.'
   if (!wholeNumber(form.repeats) || Number(form.repeats) < min)
     errors.repeats = wholeAtLeast(min)
   if (
@@ -58,7 +64,7 @@ export const startBody = (form: StartForm): Start => ({
   kind: form.kind,
   seeds: WORLD_SEEDS.filter((seed) => form.worlds.includes(seed)),
   repeats: Number(form.repeats),
-  strata: form.strata.length === 0 ? null : form.strata,
+  strata: form.scope === 'chosen' ? form.strata : null,
   limit: form.limit.trim() === '' ? null : Number(form.limit),
 })
 

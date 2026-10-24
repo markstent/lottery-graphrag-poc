@@ -393,6 +393,16 @@ describe('Results', () => {
   })
 
   describe('following a run', () => {
+    it('puts Start a run in the heading row of the runs panel, first on the screen', async () => {
+      stubApi(ROUTES)
+      open()
+      const runs = await screen.findByRole('region', { name: 'Benchmark runs' })
+      expect(screen.getAllByRole('region')[0]).toBe(runs)
+      expect(
+        within(runs).getByRole('button', { name: 'Start a run' }),
+      ).toHaveAttribute('aria-expanded', 'false')
+    })
+
     const NEW_RUN = {
       ...OFFICIAL_RUN,
       run_id: 'new-run',

@@ -23,6 +23,10 @@ interface PanelProps {
   /** A further button in the error state, such as reloading the page. */
   action?: { label: string; onClick: () => void }
   skeleton?: ReactNode
+  /** A control in the heading row, whatever the state. */
+  headerAction?: ReactNode
+  /** Content between the heading and the state's own content, whatever the state. */
+  above?: ReactNode
   children?: ReactNode
 }
 
@@ -64,6 +68,8 @@ export function Panel({
   onRetry,
   action,
   skeleton = DEFAULT_SKELETON,
+  headerAction,
+  above,
   children,
 }: PanelProps) {
   const retryable = error instanceof ApiError && error.retryable && onRetry
@@ -74,8 +80,16 @@ export function Panel({
       aria-busy={state === 'loading' ? true : undefined}
       className="rounded-card border border-hairline bg-surface p-4"
     >
-      <h2 className="text-base font-semibold text-text-primary">{title}</h2>
+      {headerAction ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-base font-semibold text-text-primary">{title}</h2>
+          {headerAction}
+        </div>
+      ) : (
+        <h2 className="text-base font-semibold text-text-primary">{title}</h2>
+      )}
       {purpose && <p className="mt-1 text-sm text-text-secondary">{purpose}</p>}
+      {above && <div className="mt-3">{above}</div>}
       <div className="mt-3">
         {state === 'ready' && children}
         {state === 'loading' && (
