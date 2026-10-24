@@ -139,8 +139,14 @@ describe('question table', () => {
     open('run=fixture-official&stratum=H3')
     const table = await questionTable()
     await table.findAllByRole('link', { name: /in Live Lab$/ })
-    expect(table.getAllByRole('link', { name: /in Live Lab$/ })).toHaveLength(6)
-    expect(table.getAllByText('Loaded world is 2026')).toHaveLength(12)
+    const h3 = OFFICIAL_INSTANCES.filter((row) => row.stratum === 'H3')
+    const loaded = h3.filter((row) => row.world_seed === 2026).length
+    expect(table.getAllByRole('link', { name: /in Live Lab$/ })).toHaveLength(
+      loaded,
+    )
+    const elsewhere = h3.length - loaded
+    expect(table.getAllByText('Loaded world is 2026')).toHaveLength(elsewhere)
+    expect(table.getAllByText('Not loaded')).toHaveLength(elsewhere)
   })
 
   it('older run renders with missing fields', async () => {
@@ -251,7 +257,7 @@ describe('panels', () => {
     open('run=fixture-official')
     const panel = within(await screen.findByRole('region', { name: 'Judge' }))
     expect(
-      panel.getByRole('rowheader', { name: 'Single facts - Graph' }),
+      panel.getByRole('rowheader', { name: 'Single facts - B · Graph' }),
     ).toBeVisible()
     for (const name of ['Correctness', 'Abstention'])
       expect(panel.getByRole('columnheader', { name })).toBeVisible()

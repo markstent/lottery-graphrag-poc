@@ -262,9 +262,7 @@ function Filters({
       {filter.failure && (
         <span className="flex items-center gap-2">
           <span className="rounded-chip border border-border px-2 py-0.5">
-            <span>
-              {filter.failure.pipeline}: {failureWords(filter.failure.cls)}
-            </span>
+            {filter.failure.pipeline}: {failureWords(filter.failure.cls)}
           </span>
           <button
             type="button"

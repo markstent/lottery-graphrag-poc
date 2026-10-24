@@ -226,7 +226,7 @@ describe('efficiencyRows', () => {
     const rows = efficiencyRows(OFFICIAL)
     expect(rows).toHaveLength(STRATUM_ORDER.length * 3)
     expect(rows[0].key).toBe('H1-A')
-    expect(rows[0].label).toBe('Multi-hop questions - Text search')
+    expect(rows[0].label).toBe('Multi-hop questions - A · Text search')
     expect(rows[0].cells).toHaveLength(3)
   })
   it('shows a gap for a value that does not exist', () => {
@@ -252,7 +252,7 @@ describe('judgeRows and agreement', () => {
     const rows = judgeRows(PILOT)
     expect(rows).toHaveLength(Object.keys(PILOT.metrics).length * 3)
     expect(rows[0].key).toBe('H1-A')
-    expect(rows[0].label).toBe('Multi-hop questions - Text search')
+    expect(rows[0].label).toBe('Multi-hop questions - A · Text search')
     expect(rows[0].cells).toEqual(
       [
         'judge_correctness',
@@ -269,9 +269,9 @@ describe('judgeRows and agreement', () => {
   it('agreement has overall and per pipeline rows', () => {
     expect(agreement(PILOT)?.map((r) => r.label)).toEqual([
       'All questions',
-      'Text search',
-      'Graph',
-      'Graph + Ontology',
+      'A · Text search',
+      'B · Graph',
+      'C · Graph + Ontology',
     ])
   })
   it('agreement is null without a judge', () =>

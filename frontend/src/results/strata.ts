@@ -234,12 +234,12 @@ const twoPlaces = (value: number) => formatNumber(value, { decimals: 2 })
 /** Latency, context size and evidence per 1,000 tokens for each stratum and pipeline. */
 export function efficiencyRows(summary: Summary): DataTableRow[] {
   return strataIn(summary).flatMap((stratum) =>
-    PIPELINES.map(({ id, name }) => {
+    PIPELINES.map(({ id, label }) => {
       const mean = (metric: string) =>
         cellOf(summary, stratum, metric, id)?.mean
       return {
         key: `${stratum}-${id}`,
-        label: `${STRATUM_LABELS[stratum]} - ${name}`,
+        label: `${STRATUM_LABELS[stratum]} - ${label}`,
         cells: [
           formatOrGap(mean('latency_ms'), whole),
           formatOrGap(mean('context_tokens'), whole),
@@ -253,9 +253,9 @@ export function efficiencyRows(summary: Summary): DataTableRow[] {
 /** The five judge scores (0 to 2) for each stratum and pipeline, one column per judge metric. */
 export function judgeRows(summary: Summary): DataTableRow[] {
   return strataIn(summary).flatMap((stratum) =>
-    PIPELINES.map(({ id, name }) => ({
+    PIPELINES.map(({ id, label }) => ({
       key: `${stratum}-${id}`,
-      label: `${STRATUM_LABELS[stratum]} - ${name}`,
+      label: `${STRATUM_LABELS[stratum]} - ${label}`,
       cells: JUDGE_METRICS.map((metric) =>
         formatOrGap(cellOf(summary, stratum, metric, id)?.mean, twoPlaces),
       ),
@@ -280,8 +280,8 @@ export function agreement(summary: Summary): DataTableRow[] | null {
   })
   return [
     row('overall', STRATUM_LABELS.overall, judged.overall),
-    ...PIPELINES.flatMap(({ id, name }) =>
-      id in judged.pipelines ? [row(id, name, judged.pipelines[id])] : [],
+    ...PIPELINES.flatMap(({ id, label }) =>
+      id in judged.pipelines ? [row(id, label, judged.pipelines[id])] : [],
     ),
   ]
 }
