@@ -362,6 +362,128 @@ describe('Live Lab', () => {
   })
 })
 
+describe('Live Lab, deep link to a bank question', () => {
+  const BANK = [
+    {
+      instance_id: 'L77-2026-BANK_ONLY',
+      question_id: 'L77',
+      text: 'A bank question with no recording?',
+      stratum: 'H3',
+      expected_answer: 'x',
+      hidden_truth: null,
+      ontology_dependent: false,
+      scenario_id: null,
+      scores: null,
+      tests: 'x',
+    },
+  ]
+
+  it('deep link preselects a bank question without starting', async () => {
+    const fetchMock = api({ '/api/v1/benchmarks/questions': BANK })
+    open('#/live-lab?question=L77-2026-BANK_ONLY')
+    const question = await screen.findByRole('button', {
+      name: 'A bank question with no recording?',
+    })
+    expect(question).toHaveAttribute('aria-pressed', 'true')
+    const source = screen.getByRole('group', { name: 'Source' })
+    await waitFor(() =>
+      expect(
+        within(source).getByRole('button', { name: 'Live' }),
+      ).toHaveAttribute('aria-pressed', 'true'),
+    )
+    expect(screen.getByRole('button', { name: 'Run' })).toBeEnabled()
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url) === '/api/v1/queries'),
+    ).toBe(false)
+    expect(stream.subscribeRun).not.toHaveBeenCalled()
+  })
+
+  it('runs the bank question live with its own text and an empty scope', async () => {
+    const fetchMock = api({ '/api/v1/benchmarks/questions': BANK })
+    const user = userEvent.setup()
+    open('#/live-lab?question=L77-2026-BANK_ONLY')
+    await screen.findByRole('button', {
+      name: 'A bank question with no recording?',
+    })
+    const run = screen.getByRole('button', { name: 'Run' })
+    await waitFor(() => expect(run).toBeEnabled())
+    await user.click(run)
+    await waitFor(() => expect(stream.subscribeRun).toHaveBeenCalled())
+    const [, init] = fetchMock.mock.calls.find(
+      ([url]) => String(url) === '/api/v1/queries',
+    ) as [string, RequestInit]
+    expect(JSON.parse(String(init.body))).toEqual({
+      benchmark_instance_id: 'L77-2026-BANK_ONLY',
+      configurations: ['A', 'B', 'C'],
+      market_scope: [],
+    })
+  })
+
+  it('selects Live and says why it is off when the backend is not ready', async () => {
+    api({
+      '/api/v1/health/ready': DOWN,
+      '/api/v1/benchmarks/questions': BANK,
+    })
+    open('#/live-lab?question=L77-2026-BANK_ONLY')
+    const source = screen.getByRole('group', { name: 'Source' })
+    await screen.findByRole('button', {
+      name: 'A bank question with no recording?',
+    })
+    await waitFor(() =>
+      expect(screen.getByText(/The answer model is not ready/)).toBeVisible(),
+    )
+    expect(
+      within(source).getByRole('button', { name: 'Live' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+  })
+
+  it('deep link outside the loaded world says so', async () => {
+    api({ '/api/v1/benchmarks/questions': BANK })
+    open('#/live-lab?question=L77-2027-OTHER_WORLD')
+    expect(
+      await screen.findByText('This question is not in the loaded world.'),
+    ).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+  })
+
+  it('does not ask for the bank when the link names a saved or recorded question', async () => {
+    const fetchMock = api()
+    const first = open(`#/live-lab?question=${h1.instance_id}`)
+    await screen.findByRole('button', { name: 'Change question' })
+    first.unmount()
+    open('#/live-lab?question=L99-2026-GR_ONLY')
+    await screen.findByRole('button', {
+      name: 'A saved question with no recording?',
+    })
+    expect(
+      fetchMock.mock.calls.some(([url]) =>
+        String(url).includes('/benchmarks/questions'),
+      ),
+    ).toBe(false)
+  })
+
+  it('shows why the bank could not be read, with a retry', async () => {
+    let up = false
+    api({
+      '/api/v1/benchmarks/questions': () =>
+        up ? json(BANK) : failure('The bank is unavailable.', true),
+    })
+    const user = userEvent.setup()
+    open('#/live-lab?question=L77-2026-BANK_ONLY')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The bank is unavailable.',
+    )
+    up = true
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(
+      await screen.findByRole('button', {
+        name: 'A bank question with no recording?',
+      }),
+    ).toHaveAttribute('aria-pressed', 'true')
+  })
+})
+
 describe('Live Lab, live run', () => {
   async function startLive(user: ReturnType<typeof userEvent.setup>) {
     await user.click(await screen.findByRole('button', { name: h1.question }))

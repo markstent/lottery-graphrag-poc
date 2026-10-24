@@ -18,7 +18,9 @@ import { JudgePanel } from './judge-panel'
 import { QuestionsPanel } from './question-table'
 import { ReproPanel } from './repro-panel'
 import { RunPicker } from './run-picker'
+import { StartPanel } from './start-panel'
 import { StrataCharts } from './strata-charts'
+import { useBenchmarkJob } from './use-benchmark-job'
 import { Verdict } from './verdict'
 
 type Run = Schemas['BenchmarkRunOut']
@@ -99,6 +101,11 @@ function RunView({ run }: { run: Run }) {
 export function Results() {
   const requested = useRoute().params.get('run')
   const load = useLoad(listBenchmarks, 'benchmark-runs')
+  // A finished run joins the list and is the one shown.
+  const { job, error, start, cancel } = useBenchmarkJob((runId) => {
+    load.retry()
+    window.location.hash = hrefFor('results', { run: runId })
+  })
   const runs =
     load.status === 'ready'
       ? [...load.data].sort(
@@ -110,6 +117,7 @@ export function Results() {
   const run = runs.find((candidate) => candidate.run_id === id)
   return (
     <Screen destination="results">
+      <StartPanel job={job} error={error} start={start} cancel={cancel} />
       <Panel
         title="Benchmark runs"
         state={empty ? 'empty' : load.status}

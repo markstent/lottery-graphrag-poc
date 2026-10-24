@@ -7,11 +7,16 @@
 import { TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
-import { getDemoQuestions, listDatasets } from '../../api/client'
+import {
+  getBenchmarkQuestions,
+  getDemoQuestions,
+  listDatasets,
+  type Schemas,
+} from '../../api/client'
 import { useRegisterReplay } from '../../app/presentation'
 import { useRoute } from '../../app/router'
 import { useSettings } from '../../app/use-settings'
-import { useLoad } from '../../app/use-load'
+import { useLoad, type Load } from '../../app/use-load'
 import {
   EvidenceDrawer,
   type EvidenceSource,
@@ -38,6 +43,51 @@ import { Scorecard } from './scorecard'
 import { Timeline } from './timeline'
 import { useLiveRun } from './use-live-run'
 
+const NOT_LOADED = 'This question is not in the loaded world.'
+
+/**
+ * The saved questions, plus the one a link names when it is in the loaded
+ * world's bank but not among the saved ones. The bank is read only then.
+ */
+function useLinkedQuestions(linkedId: string | null) {
+  const saved = useLoad(getDemoQuestions, 'live-lab-questions')
+  const needsBank =
+    linkedId !== null &&
+    saved.status === 'ready' &&
+    !saved.data.some((q) => q.instance_id === linkedId) &&
+    !RECORDED_INDEX.some((r) => r.instance_id === linkedId)
+  const bank = useLoad(
+    (signal) =>
+      needsBank
+        ? getBenchmarkQuestions(undefined, signal)
+        : Promise.resolve([]),
+    `live-lab-bank:${needsBank}`,
+  )
+  const found =
+    bank.status === 'ready'
+      ? bank.data.find((q) => q.instance_id === linkedId)
+      : undefined
+  // A bank question runs with its own text and no market scope, as the API requires.
+  const linked: Schemas['DemoQuestion'] | null = found
+    ? {
+        instance_id: found.instance_id,
+        question_id: found.question_id,
+        text: found.text,
+        stratum: found.stratum,
+        market_scope: [],
+      }
+    : null
+  const questions: Load<Schemas['DemoQuestion'][]> =
+    saved.status === 'ready' && linked
+      ? { ...saved, data: [...saved.data, linked] }
+      : saved
+  return {
+    questions,
+    missing: needsBank && bank.status === 'ready' && !linked,
+    bankError: needsBank && bank.status === 'error' ? bank : null,
+  }
+}
+
 interface Opened {
   source: EvidenceSource
   position: PathPosition | null
@@ -46,7 +96,7 @@ interface Opened {
 export function LiveLab() {
   const { reducedMotion } = useSettings()
   const linkedId = useRoute().params.get('question')
-  const questions = useLoad(getDemoQuestions, 'live-lab-questions')
+  const { questions, missing, bankError } = useLinkedQuestions(linkedId)
   const run = useLiveRun({ reducedMotion })
   useRegisterReplay(run.keys)
 
@@ -135,6 +185,19 @@ export function LiveLab() {
         onRun={run.start}
         onCancel={run.cancel}
       />
+      {missing && (
+        <p role="status" className="text-sm text-text-primary">
+          {NOT_LOADED}
+        </p>
+      )}
+      {bankError && (
+        <p role="alert" className="text-sm text-text-primary">
+          {bankError.error.message}{' '}
+          <button type="button" onClick={bankError.retry} className="underline">
+            Retry
+          </button>
+        </p>
+      )}
       {error !== null && (
         <div
           role="alert"

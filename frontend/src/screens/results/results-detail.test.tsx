@@ -32,6 +32,7 @@ const summaryOf = (run_id: string, summary: Schemas['SummaryOut']) => ({
 })
 
 const ROUTES = {
+  '/api/v1/benchmarks/jobs': [],
   '/api/v1/benchmarks': [OFFICIAL_RUN, ...CAPTURED_RUNS],
   '/api/v1/datasets': DATASETS,
   '/api/v1/benchmarks/fixture-official': summaryOf(

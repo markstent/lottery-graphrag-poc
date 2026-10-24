@@ -28,7 +28,7 @@ export function failure(
 }
 
 export function stubApi(routes: Record<string, Route>) {
-  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+  const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
     const path = new URL(String(input), 'http://localhost').pathname
     if (!(path in routes))
       return Promise.resolve(failure(`no stub for ${path}`, false, 404))

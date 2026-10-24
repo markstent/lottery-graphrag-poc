@@ -63,6 +63,7 @@ const FIXTURE_OFFICIAL = {
   run_kind: 'official',
   label: null,
   summary: {
+    bank_version: 'fixture-bank (test value)',
     selection: { strata: null, limit: null },
     headlines: [
       'Fixture headline for the H1 comparison (test values).',
@@ -300,4 +301,72 @@ export async function mockApi(
     unmocked.push(path)
     return route.abort()
   })
+}
+
+/** The progress a running job reports in the scripts below. */
+export const JOB_PROGRESS = {
+  world_seed: 2027,
+  worlds_done: 1,
+  worlds_total: 3,
+  instances_done: 12,
+  instances_total: 40,
+}
+
+type JobState = {
+  job_id: string
+  status: 'running' | 'completed' | 'failed' | 'cancelled'
+  run_id: string | null
+  error: { error_code: string; message: string; retryable: boolean } | null
+  progress: typeof JOB_PROGRESS | null
+}
+
+/** A running job, as it answers while it works. */
+export const RUNNING_JOB: JobState = {
+  job_id: 'job-e2e',
+  status: 'running',
+  run_id: null,
+  error: null,
+  progress: JOB_PROGRESS,
+}
+
+/** The job the script ends with: it published a run the mock already serves. */
+export const COMPLETED_JOB: JobState = {
+  ...RUNNING_JOB,
+  status: 'completed',
+  run_id: 'pilot-2026-nothink',
+  progress: null,
+}
+
+/**
+ * Scripted benchmark jobs, on top of mockApi. `starts` answers each poll in
+ * turn (the last one repeats), so a test can walk a job from running to
+ * completed. `attached` has the job already running when the screen loads, as
+ * after a reload; otherwise POST /benchmarks starts it. The request bodies
+ * and the cancel calls are kept for the test to read.
+ */
+export async function mockJobs(
+  page: Page,
+  { script, attached = false }: { script: JobState[]; attached?: boolean },
+) {
+  const seen = { started: [] as unknown[], cancels: 0, polls: 0 }
+  await page.route('**/api/v1/benchmarks/jobs**', async (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (path === '/api/v1/benchmarks/jobs')
+      return route.fulfill(json(attached ? [script[0]] : []))
+    if (path.endsWith('/cancel')) {
+      seen.cancels += 1
+      return route.fulfill(json(script[0], 202))
+    }
+    seen.polls += 1
+    return route.fulfill(json(script[Math.min(seen.polls, script.length - 1)]))
+  })
+  await page.route(
+    (url) => url.pathname === '/api/v1/benchmarks',
+    async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      seen.started.push(route.request().postDataJSON())
+      return route.fulfill(json(script[0], 202))
+    },
+  )
+  return seen
 }

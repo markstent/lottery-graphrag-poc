@@ -133,7 +133,10 @@ export function QuestionBar({
   const source: Source = adHoc
     ? 'live'
     : (chosenSource ??
-      (liveOff === null && !hasRecording(linkedId) ? 'live' : 'recorded'))
+      // A linked question with no recording can only run live, so Live is shown even when it is off.
+      (!hasRecording(linkedId) && (linkedId !== null || liveOff === null)
+        ? 'live'
+        : 'recorded'))
   const shownScope = selected ? selected.market_scope : scope
 
   const blocker =

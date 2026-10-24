@@ -1,4 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -30,6 +37,7 @@ const summaryOf = (
 ) => ({ run_id, run_kind, label: null, summary })
 
 const ROUTES = {
+  '/api/v1/benchmarks/jobs': [],
   '/api/v1/benchmarks': RUNS,
   '/api/v1/benchmarks/fixture-official': summaryOf(
     'fixture-official',
@@ -284,8 +292,11 @@ describe('Results', () => {
     stubApi(ROUTES)
     open()
     await screen.findAllByRole('figure')
-    for (const figure of scoreFigures())
-      expect(figure.textContent).not.toContain('…')
+    // A chart draws at a fallback width until its container has been measured.
+    await waitFor(() => {
+      for (const figure of scoreFigures())
+        expect(figure.textContent).not.toContain('…')
+    })
   })
 
   it('says once, horizontally, that single facts have no evidence score', async () => {
@@ -342,7 +353,7 @@ describe('Results', () => {
   })
 
   it('says so when there are no runs', async () => {
-    stubApi({ '/api/v1/benchmarks': [] })
+    stubApi({ ...ROUTES, '/api/v1/benchmarks': [] })
     open()
     expect(await screen.findByText('No benchmark runs yet.')).toBeVisible()
   })
@@ -379,5 +390,71 @@ describe('Results', () => {
     up = true
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText(OFFICIAL.headlines[0])).toBeVisible()
+  })
+
+  describe('following a run', () => {
+    const NEW_RUN = {
+      ...OFFICIAL_RUN,
+      run_id: 'new-run',
+      label: 'Just finished',
+      started_at: '2026-10-24T09:00:00Z',
+    }
+    const progress = {
+      world_seed: 2026,
+      worlds_done: 0,
+      worlds_total: 1,
+      instances_done: 3,
+      instances_total: 10,
+    }
+
+    it('reattaches to a running job after reload', async () => {
+      stubApi({
+        ...ROUTES,
+        '/api/v1/benchmarks/jobs': [
+          { job_id: 'J1', status: 'running', progress },
+        ],
+      })
+      open()
+      expect(
+        await screen.findByText('World 2026 (1 of 1): 3 of 10 questions'),
+      ).toBeVisible()
+      expect(screen.queryByRole('button', { name: 'Start a run' })).toBeNull()
+    })
+
+    it('completed job selects the new run', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        let done = false
+        stubApi({
+          ...ROUTES,
+          '/api/v1/benchmarks/jobs': [
+            { job_id: 'J1', status: 'running', progress },
+          ],
+          '/api/v1/benchmarks/jobs/J1': () =>
+            json({ job_id: 'J1', status: 'completed', run_id: 'new-run' }),
+          '/api/v1/benchmarks': () => json(done ? [NEW_RUN, ...RUNS] : RUNS),
+          '/api/v1/benchmarks/new-run': summaryOf(
+            'new-run',
+            'official',
+            OFFICIAL,
+          ),
+        })
+        open()
+        await screen.findByText('World 2026 (1 of 1): 3 of 10 questions')
+        done = true
+        await act(() => vi.advanceTimersByTimeAsync(2000))
+        await waitFor(() =>
+          expect(screen.getByRole('combobox', { name: 'Run' })).toHaveValue(
+            'new-run',
+          ),
+        )
+        expect(window.location.hash).toBe('#/results?run=new-run')
+        expect(
+          screen.getByRole('button', { name: 'Start a run' }),
+        ).toBeVisible()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 })

@@ -13,6 +13,8 @@ import {
 import {
   expectNoUnmockedRequests,
   mockApi,
+  mockJobs,
+  RUNNING_JOB,
   type DataModelState,
   type LatestRun,
   type RunsMode,
@@ -329,6 +331,23 @@ test.describe('Results', () => {
       await expect(page.getByText(text).first()).toBeVisible()
       await screenShot(page, name)
     })
+
+  test('results-start-form', async ({ page }) => {
+    await page.goto('/#/results')
+    await page.getByRole('button', { name: 'Start a run' }).click()
+    await expect(page.getByText('Generation model')).toBeVisible()
+    await expect(page.getByText('fake-judge-v1')).toBeVisible()
+    await screenShot(page, 'results-start-form')
+  })
+
+  test('results-job-running', async ({ page }) => {
+    await mockJobs(page, { script: [RUNNING_JOB], attached: true })
+    await page.goto('/#/results')
+    await expect(
+      page.getByText('World 2027 (2 of 3): 12 of 40 questions'),
+    ).toBeVisible()
+    await screenShot(page, 'results-job-running')
+  })
 
   test('results-loading', async ({ page }) => {
     await openScreen(page, '#/results', { runs: 'pending' })
