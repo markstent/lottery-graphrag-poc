@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 import { mockApi } from './mock-api'
 
@@ -117,6 +117,34 @@ test.describe('Overview latest run', () => {
       await mockApi(page, 'published', latest)
       await page.goto('/#/overview')
       await expect(page.getByText(text).first()).toBeVisible()
+    })
+  }
+})
+
+test.describe('presentation mode on every destination', () => {
+  const h1Size = (page: Page) =>
+    page
+      .getByRole('heading', { level: 1 })
+      .evaluate((el) => parseFloat(getComputedStyle(el).fontSize))
+
+  for (const { name, hash } of DESTINATIONS) {
+    test(`${name} hides the navigation and enlarges the type`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width: 1920, height: 1080 })
+      await page.goto(`/${hash}`)
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+      const normal = await h1Size(page)
+      await expect(
+        page.getByRole('navigation', { name: 'Primary' }),
+      ).toBeVisible()
+
+      await page.goto(`/?present=1${hash}`)
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
+      await expect(
+        page.getByRole('navigation', { name: 'Primary' }),
+      ).toHaveCount(0)
+      expect(await h1Size(page)).toBeGreaterThan(normal)
     })
   }
 })

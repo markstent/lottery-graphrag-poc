@@ -12,6 +12,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SettingsProvider } from '../../app/settings'
+import { HELP_WORD_CAP, wordsIn } from '../../copy/budget'
 import { Help } from './help'
 import { BRING_UP, MODELS, RECOVERY } from './running-data'
 import {
@@ -466,13 +467,13 @@ describe('section 8 and the vendor names', () => {
 })
 
 describe('copy budget', () => {
-  it('keeps Help prose within 1,650 words, leaving out text from the API', async () => {
+  it('keeps Help prose within its word cap, leaving out text from the API', async () => {
     const { container } = await renderHelp()
     const clone = container.cloneNode(true) as HTMLElement
     clone.querySelectorAll('[data-api]').forEach((node) => node.remove())
     clone.querySelectorAll('svg').forEach((node) => node.remove())
-    const words = clone.textContent!.split(/\s+/).filter(Boolean).length
-    expect(words).toBeLessThanOrEqual(1650)
+    const words = wordsIn(clone.textContent!)
+    expect(words).toBeLessThanOrEqual(HELP_WORD_CAP)
     expect(words).toBeGreaterThan(800)
   })
 })

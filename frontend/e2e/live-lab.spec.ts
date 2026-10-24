@@ -561,3 +561,16 @@ test('presentation mode keeps the finished screen readable', async ({
     page.getByRole('region', { name: 'Graph canvas' }),
   )
 })
+
+test('presentation mode enlarges the graph canvas', async ({ page }) => {
+  const height = async (url: string) => {
+    await page.goto(url)
+    const canvas = page.getByRole('region', { name: 'Graph canvas' })
+    await expect(canvas).toBeVisible()
+    return (await canvas.boundingBox())!.height
+  }
+  const normal = await height(`/#/live-lab?question=${h1.instance_id}`)
+  expect(
+    await height(`/?present=1#/live-lab?question=${h1.instance_id}`),
+  ).toBeGreaterThan(normal)
+})

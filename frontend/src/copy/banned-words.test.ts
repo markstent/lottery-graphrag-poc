@@ -20,6 +20,7 @@ import {
   RELATIONSHIP_PHRASES,
   relationshipPhrase,
 } from '../design/relationships'
+import { OUTSIDE_HELP_WORD_CAP, wordsIn } from './budget'
 import { GLOSSARY, GLOSSARY_TERMS } from './glossary'
 
 export const BANNED_WORDS = [
@@ -56,22 +57,6 @@ const COPY_ATTRIBUTES = new Set([
   'text',
   'caption',
 ])
-
-/**
- * Files that Phase 6 deletes or rewrites and that still carry banned v1 copy.
- * They are skipped by the scan until then. Tests fail if a listed file is gone
- * or no longer has a hit, so the list shrinks as files are cleaned.
- */
-export const PHASE6_REWRITES = [
-  'views/live-lab.tsx',
-  'views/data-dictionary.tsx',
-  'views/help.tsx',
-  'views/experiment-home.tsx',
-  'views/v1-evidence-inspector.tsx',
-  'components/rag-pane.tsx',
-  'components/score-strip.tsx',
-  'mock/content.ts',
-] as const
 
 /**
  * Spec 7.6 names the Data Model tab "Ontology", which is the one place that
@@ -252,10 +237,9 @@ describe('copy scan', () => {
     expect(violation('added by the ontology')).toBeUndefined()
   })
 
-  it('has no banned copy outside the Phase 6 rewrites', () => {
-    const skipped = new Set<string>(PHASE6_REWRITES)
+  it('has no banned copy anywhere', () => {
     const hits = Object.entries(sources)
-      .filter(([path]) => isCopyFile(path) && !skipped.has(relative(path)))
+      .filter(([path]) => isCopyFile(path))
       .flatMap(([path, source]) =>
         copyIn(source, path).flatMap(({ line, text }) => {
           const why = violation(text)
@@ -270,16 +254,6 @@ describe('copy scan', () => {
     expect(hits).toEqual([])
   })
 
-  it('only excludes files that still have banned copy', () => {
-    const clean = PHASE6_REWRITES.filter(
-      (file) =>
-        !copyIn(sources[`/src/${file}`] ?? '', file).some((copy) =>
-          violation(copy.text),
-        ),
-    )
-    expect(clean).toEqual([])
-  })
-
   it('only allows named exceptions that are still in their file', () => {
     const stale = NAMED_EXCEPTIONS.filter(
       (e) =>
@@ -289,10 +263,79 @@ describe('copy scan', () => {
     )
     expect(stale).toEqual([])
   })
+})
 
-  it('only excludes files that still exist', () => {
-    const existing = new Set(Object.keys(sources).map(relative))
-    expect(PHASE6_REWRITES.filter((file) => !existing.has(file))).toEqual([])
+/** Product copy outside Help: screens and the shell, without tests, fixtures or text from the API. */
+const isProductCopy = (path: string) =>
+  isCopyFile(path) &&
+  /^\/src\/(?:screens|app)\//.test(path) &&
+  !path.startsWith('/src/screens/help/') &&
+  !path.endsWith('.fixtures.ts')
+
+/**
+ * Every piece of product copy in a file: what the scan reads, plus sentence-like
+ * literals held in tables and constants (they start with a capital and hold a
+ * space, which class names and identifiers never do). Each text counts once.
+ */
+function budgetCopyIn(source: string, fileName: string): string[] {
+  const texts = copyIn(source, fileName).map(({ text }) => text)
+  const counted = new Map<string, number>()
+  for (const text of texts) counted.set(text, (counted.get(text) ?? 0) + 1)
+  const file = ts.createSourceFile(
+    fileName,
+    source,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  )
+  const visit = (node: ts.Node) => {
+    if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) return
+    if (isStringLike(node) && /^[A-Z][^\n]* /.test(node.text)) {
+      const left = counted.get(node.text) ?? 0
+      if (left > 0) counted.set(node.text, left - 1)
+      else texts.push(node.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  return texts
+}
+
+describe('copy budget outside Help', () => {
+  const perFile = Object.entries(sources)
+    .filter(([path]) => isProductCopy(path))
+    .map(([path, source]) => ({
+      file: relative(path),
+      words: budgetCopyIn(source, path).reduce(
+        (total, text) => total + wordsIn(text),
+        0,
+      ),
+    }))
+  const total = perFile.reduce((sum, { words }) => sum + words, 0)
+
+  it(`stays within ${OUTSIDE_HELP_WORD_CAP} words`, () => {
+    const biggest = [...perFile]
+      .sort((a, b) => b.words - a.words)
+      .slice(0, 8)
+      .map(({ file, words }) => `${file} ${words}`)
+    expect(
+      total,
+      `${total} words; biggest: ${biggest.join(', ')}`,
+    ).toBeLessThanOrEqual(OUTSIDE_HELP_WORD_CAP)
+  })
+
+  it('counts something, so a broken scan cannot pass', () => {
+    expect(total).toBeGreaterThan(600)
+  })
+
+  it('counts table and constant copy once, beside what the scan reads', () => {
+    const sample = `const TABLE = { a: 'Two words', b: 'one' }
+      export const X = () => <p aria-label="Two words">Hello there</p>`
+    expect(budgetCopyIn(sample, 'x.tsx')).toEqual([
+      'Two words',
+      'Hello there',
+      'Two words',
+    ])
   })
 })
 
