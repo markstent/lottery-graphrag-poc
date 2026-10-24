@@ -196,19 +196,143 @@ class DemoQuestion(BaseModel):
     market_scope: list[str]
 
 
+class UnavailableOut(BaseModel):
+    """A bank question the world could not ground, and why."""
+
+    question_id: str
+    reason: str
+
+
+class InstanceCounts(BaseModel):
+    """Scored instances per stratum key and overall: in all, and per world seed."""
+
+    total: dict[str, int]
+    per_world: dict[str, dict[str, int]]
+
+
+class MetricCell(BaseModel):
+    """One pipeline's mean of one metric over a stratum: ``n`` instances,
+    ``repeats`` scored repeats; the mean is None where no repeat defines it."""
+
+    mean: float | None
+    n: int
+    repeats: int
+
+
+class ComparisonCell(BaseModel):
+    """One paired comparison of a stratum and metric: the mean difference with
+    its clustered 95 percent interval, and the test where one was run."""
+
+    stratum: str
+    metric: str
+    comparison: str
+    n: int
+    clusters: int
+    mean: float | None
+    low: float | None
+    high: float | None
+    p: float | None
+    p_holm: float | None
+    in_family: bool
+    reason: str
+
+
+class SplitCell(BaseModel):
+    """A cell of the ontology-dependent split: a comparison of B and C
+    over one group of instances, never tested (``in_family`` is false)."""
+
+    group: str
+    metric: str
+    comparison: str
+    n: int
+    clusters: int
+    mean: float | None
+    low: float | None
+    high: float | None
+    p: float | None
+    p_holm: float | None
+    in_family: bool
+    reason: str
+
+
+class AgreementOut(BaseModel):
+    """Agreement of the judge with the deterministic answer score over ``n``
+    judged repeats; None where none were judged."""
+
+    n: int
+    agreement: float | None
+    kappa: float | None
+
+
+class JudgeAgreementOut(BaseModel):
+    overall: AgreementOut
+    pipelines: dict[str, AgreementOut]
+
+
+class FailuresOut(BaseModel):
+    """Per pipeline: scored repeats, generation and judge failures, and the
+    repeats per failure class."""
+
+    repeats: dict[str, int]
+    generation: dict[str, int]
+    judge: dict[str, int]
+    classes: dict[str, dict[str, int]]
+
+
+class SelectionOut(BaseModel):
+    """The part of the bank a run scored."""
+
+    strata: list[str] | None
+    limit: int | None
+
+
+class ReproducibilityOut(BaseModel):
+    """What the run and each world recorded. Mappings, not models: older runs
+    lack fields, and the Results screen shows unknown keys by name."""
+
+    run: dict[str, JsonValue]
+    worlds: list[dict[str, JsonValue]]
+
+
+class SummaryOut(BaseModel):
+    """A run's ``summary.json`` (schema 2), every key the harness writes.
+
+    A key added later is ignored, so an older client keeps reading.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    schema_version: str
+    run_kind: str
+    label: str | None
+    bank_version: str
+    worlds: list[int]
+    instances: InstanceCounts
+    unavailable: dict[str, list[UnavailableOut]]
+    anchor_resolution_basis: dict[str, str]
+    metrics: dict[str, dict[str, dict[str, MetricCell]]]
+    comparisons: list[ComparisonCell]
+    ontology_split: list[SplitCell] | None = None
+    headlines: list[str]
+    judge_agreement: JudgeAgreementOut | None
+    failures: FailuresOut
+    selection: SelectionOut
+    reproducibility: ReproducibilityOut
+
+
 class BenchmarkSummary(BaseModel):
     """Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
 
-    ``summary`` is the run's ``summary.json`` (schema 2), passed through
-    unchanged: the only benchmark source the API publishes. ``run_kind``
-    and ``label`` are copied out of it so a client can tell a smoke or
-    sweep run from an official result without reading the summary.
+    ``summary`` is the run's ``summary.json`` (schema 2), typed: the only
+    benchmark source the API publishes. ``run_kind`` and ``label`` are
+    copied out of it so a client can tell a smoke or sweep run from an
+    official result without reading the summary.
     """
 
     run_id: str
     run_kind: str
     label: str | None
-    summary: dict[str, Any]
+    summary: SummaryOut
 
 
 class BenchmarkRunOut(BaseModel):
@@ -252,6 +376,45 @@ class QuestionOut(BaseModel):
     scores: dict[str, PipelineScore] | None
 
 
+class InstancePipelineOut(BaseModel):
+    """One pipeline's scores on one instance: each metric is the mean over its
+    successful repeats (None where none defines it), from the run's results."""
+
+    repeats: int
+    generation_failures: int
+    answer: float | None
+    evidence_f1: float | None
+    evidence_recall: float | None
+    evidence_precision: float | None
+    efficiency_per_1k: float | None
+    citation_accuracy: float | None
+    latency_ms: float | None
+    context_tokens: float | None
+    judge_correctness: float | None
+    judge_completeness: float | None
+    judge_faithfulness: float | None
+    judge_citation_accuracy: float | None
+    judge_abstention: float | None
+    failure_classes: dict[str, int]
+
+
+class InstanceResultOut(BaseModel):
+    """One scored bank instance of a run (GET /api/v1/benchmarks/{run_id}/instances).
+
+    Carries the question and the scores only: never the expected answer,
+    the claims or checks, or any answer text.
+    """
+
+    instance_id: str
+    question_id: str
+    world_seed: int
+    stratum: str
+    sub_stratum: str | None
+    ontology_dependent: bool
+    text: str
+    pipelines: dict[str, InstancePipelineOut]
+
+
 class BenchmarkStart(BaseModel):
     """Request for POST /api/v1/benchmarks; the seeds, strata and kind are
     checked against the harness's own before a job starts."""
@@ -274,6 +437,8 @@ class JobProgress(BaseModel):
     world_seed: int
     instances_done: int
     instances_total: int
+    worlds_done: int
+    worlds_total: int
 
 
 class BenchmarkJob(BaseModel):
@@ -536,10 +701,14 @@ class ModelOut(BaseModel):
 
 
 class ModelsOut(BaseModel):
+    """``judge`` is the benchmark judge model; null when none is configured
+    (the offline judge of a smoke run is not a model)."""
+
     embedding: ModelOut
     sparse: ModelOut
     rerank: ModelOut
     generation: ModelOut
+    judge: ModelOut | None
 
 
 class ErrorEnvelope(BaseModel):

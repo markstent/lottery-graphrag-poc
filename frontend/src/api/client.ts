@@ -169,6 +169,11 @@ export const getLatestBenchmark = (signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks/latest', { signal })
 export const getBenchmark = (id: string, signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks/{run_id}', { path: { run_id: id }, signal })
+export const getBenchmarkInstances = (runId: string, signal?: AbortSignal) =>
+  call('get', '/api/v1/benchmarks/{run_id}/instances', {
+    path: { run_id: runId },
+    signal,
+  })
 export const getBenchmarkQuestions = (runId?: string, signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks/questions', {
     query: { run_id: runId },
@@ -183,6 +188,8 @@ export const startBenchmark = (
     signal,
     timeoutMs: START_TIMEOUT_MS,
   })
+export const listJobs = (signal?: AbortSignal) =>
+  call('get', '/api/v1/benchmarks/jobs', { signal })
 export const getJob = (id: string, signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks/jobs/{job_id}', {
     path: { job_id: id },

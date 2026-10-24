@@ -26,6 +26,7 @@ from app.evaluation.runner import (
     ReproducibilityRecord,
     RunScore,
     WorldRun,
+    instance_result_from_payload,
 )
 from app.evaluation.scoring import EvidenceScore
 
@@ -483,3 +484,14 @@ def test_the_report_renders_the_ontology_split(run_with_ontology_flags: Benchmar
     report = render_report(run_with_ontology_flags)
     assert "## Ontology-dependent split" in report
     assert "| ontology_dependent | evidence_f1 | C_vs_B | 4 | 4 |" in report
+
+
+def test_a_result_reads_back_from_results_json(synthetic_run: BenchmarkRun) -> None:
+    payload = json.loads(json.dumps(synthetic_run.to_payload()))
+    written = [result for world in synthetic_run.worlds for result in world.results]
+    read = [
+        instance_result_from_payload(result)
+        for world in payload["worlds"]
+        for result in world["results"]
+    ]
+    assert read == written

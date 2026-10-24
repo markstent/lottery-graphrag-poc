@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import random
 import re
 import time
@@ -35,12 +34,12 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
+from app.config import FAKE_JUDGE_MODEL, JudgeSettings
 from app.models.gateway import (
     Completion,
     CompletionRequest,
     GatewayError,
     complete,
-    parse_reasoning,
 )
 from app.retrieval.standard.generation import CITATION, FENCED_JSON
 
@@ -59,7 +58,6 @@ ANSWER_CHAR_CAP = 2400
 JUDGE_MAX_TOKENS = 300
 JUDGE_TIMEOUT_S = 120.0
 TRUNCATION_MARK = " [truncated]"
-FAKE_JUDGE_MODEL = "fake-judge-v1"
 # A deterministic answer score at or above this counts as correct when the
 # judge's correctness is compared with it.
 AGREEMENT_ANSWER_THRESHOLD = 0.5
@@ -103,33 +101,6 @@ _IDENTIFIER = re.compile(r"\b[A-Z]{2,}(?:_[A-Z0-9]+)+\b")
 
 class JudgeParseError(ValueError):
     """Raised when a judge reply is not the five-score JSON object."""
-
-
-@dataclass(frozen=True, slots=True)
-class JudgeSettings:
-    """The judge model; ``provider`` is "fake" or "litellm"."""
-
-    provider: str
-    model: str
-    model_family: str | None
-    api_base: str | None
-    temperature: float
-    # "default" or "off" (app.models.gateway.REASONING_MODES).
-    reasoning: str = "default"
-
-
-def judge_settings_from_env() -> JudgeSettings:
-    """Read the JUDGE_* variables (see .env.example); empty means unset."""
-    return JudgeSettings(
-        provider=os.environ.get("JUDGE_PROVIDER", "fake"),
-        model=os.environ.get("JUDGE_MODEL", FAKE_JUDGE_MODEL),
-        model_family=os.environ.get("JUDGE_MODEL_FAMILY") or None,
-        api_base=os.environ.get("JUDGE_API_BASE") or None,
-        temperature=float(os.environ.get("JUDGE_TEMPERATURE") or 0),
-        reasoning=parse_reasoning(
-            os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING"
-        ),
-    )
 
 
 @dataclass(frozen=True, slots=True)

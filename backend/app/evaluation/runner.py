@@ -33,21 +33,27 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.config import LABEL_VERSION, REPO_ROOT, GraphConfig
+from app.config import LABEL_VERSION, REPO_ROOT, GraphConfig, judge_settings_from_env
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import CitationMetrics, answer_score, citation_metrics
 from app.evaluation.claims import selection_carrier
-from app.evaluation.grounding import BankInstance, FrozenBank, GroundingError, Unavailable
+from app.evaluation.grounding import (
+    BankInstance,
+    FrozenBank,
+    GroundingError,
+    Unavailable,
+    instance_from_payload,
+)
 from app.evaluation.judge import (
     JUDGE_PROMPT_VERSION,
     FakeJudge,
     GatewayJudge,
     Judge,
     JudgeItem,
+    JudgeScores,
     JudgeVerdict,
     check_families,
     judge_prompt_hash,
-    judge_settings_from_env,
 )
 from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_score
 from app.events import GRAPH_ENTITY_RESOLVED
@@ -221,6 +227,50 @@ class InstanceResult:
     instance: BankInstance
     runs: dict[str, list[PipelineRun]]
     scores: dict[str, list[RunScore | None]]
+
+
+def instance_result_from_payload(payload: dict[str, Any]) -> InstanceResult:
+    """One entry of a world's ``results`` in ``results.json``, read back."""
+    return InstanceResult(
+        instance=instance_from_payload(payload["instance"]),
+        runs={
+            tag: [
+                PipelineRun(
+                    **{
+                        **run,
+                        "cited_blocks": tuple(run["cited_blocks"]),
+                        "blocks": tuple(ShownBlock(**block) for block in run["blocks"]),
+                        "selected": tuple(run["selected"]),
+                        "resolved_ids": tuple(run["resolved_ids"]),
+                    }
+                )
+                for run in runs
+            ]
+            for tag, runs in payload["runs"].items()
+        },
+        scores={
+            tag: [None if score is None else _score_from_payload(score) for score in scores]
+            for tag, scores in payload["scores"].items()
+        },
+    )
+
+
+def _score_from_payload(payload: dict[str, Any]) -> RunScore:
+    judge = payload["judge"]
+    return RunScore(
+        answer=payload["answer"],
+        evidence=EvidenceScore(**payload["evidence"]),
+        citations=CitationMetrics(**payload["citations"]),
+        failure_class=payload["failure_class"],
+        judge=None
+        if judge is None
+        else JudgeVerdict(
+            **{
+                **judge,
+                "scores": None if judge["scores"] is None else JudgeScores(**judge["scores"]),
+            }
+        ),
+    )
 
 
 @dataclass(frozen=True, slots=True)

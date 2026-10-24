@@ -13,6 +13,7 @@ import json
 from collections.abc import Callable
 
 import pytest
+from app.config import JudgeSettings, judge_settings_from_env
 from app.evaluation import judge as judge_module
 from app.evaluation.checks import CitationMetrics
 from app.evaluation.judge import (
@@ -26,7 +27,6 @@ from app.evaluation.judge import (
     JudgeItem,
     JudgeParseError,
     JudgeScores,
-    JudgeSettings,
     JudgeVerdict,
     agreement,
     blind,
@@ -34,7 +34,6 @@ from app.evaluation.judge import (
     check_families,
     judge_pairs,
     judge_prompt_hash,
-    judge_settings_from_env,
     parse_judge,
 )
 from app.evaluation.runner import RunScore, ShownBlock

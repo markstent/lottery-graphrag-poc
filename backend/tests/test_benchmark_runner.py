@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from app.config import LABEL_VERSION, GraphConfig, from_env
+from app.config import LABEL_VERSION, GraphConfig, JudgeSettings, from_env
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import TokenCheck, answer_score, citation_metrics
@@ -36,7 +36,6 @@ from app.evaluation.judge import (
     FakeJudge,
     GatewayJudge,
     JudgeItem,
-    JudgeSettings,
     build_judge_prompt,
     judge_prompt_hash,
 )

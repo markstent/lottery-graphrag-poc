@@ -233,6 +233,36 @@ def _env_float(name: str, default: float) -> float:
         raise ValueError(f"{name} must be a number, got {raw!r}") from None
 
 
+FAKE_JUDGE_MODEL = "fake-judge-v1"
+
+
+@dataclass(frozen=True, slots=True)
+class JudgeSettings:
+    """The judge model; ``provider`` is "fake" or "litellm"."""
+
+    provider: str
+    model: str
+    model_family: str | None
+    api_base: str | None
+    temperature: float
+    # "default" or "off" (app.models.gateway.REASONING_MODES).
+    reasoning: str = "default"
+
+
+def judge_settings_from_env() -> JudgeSettings:
+    """Read the JUDGE_* variables (see .env.example); empty means unset."""
+    return JudgeSettings(
+        provider=os.environ.get("JUDGE_PROVIDER", "fake"),
+        model=os.environ.get("JUDGE_MODEL", FAKE_JUDGE_MODEL),
+        model_family=os.environ.get("JUDGE_MODEL_FAMILY") or None,
+        api_base=os.environ.get("JUDGE_API_BASE") or None,
+        temperature=float(os.environ.get("JUDGE_TEMPERATURE") or 0),
+        reasoning=parse_reasoning(
+            os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING"
+        ),
+    )
+
+
 def from_env() -> RetrievalSettings:
     """Read settings from the environment with local-development defaults."""
     default_rerank_provider = (

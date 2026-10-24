@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app.api import benchmarks
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
@@ -27,6 +28,7 @@ from app.evaluation import official
 from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
 from app.evaluation.official import InstanceHook, WorldPaths, world_paths
+from app.evaluation.report import summarize
 from app.evaluation.runner import WorldRun
 from app.evaluation.truth_ledger import load_ledger
 from app.events import TERMINAL_EVENT_TYPES
@@ -37,6 +39,7 @@ from app.scenarios.ledger import build_ledger, write_ledger
 from fastapi.testclient import TestClient
 
 from tests.conftest import build_lab_offline
+from tests.test_benchmark_report import _benchmark
 from tests.test_official import FakeRunner, Recorder
 
 GRAPH_BUSY = "a benchmark run is using the graph; try again when it finishes"
@@ -265,7 +268,13 @@ def test_a_finished_job_names_its_published_run(
     finished = wait_job(client_with_blocking_benchmark, job["job_id"])
     assert finished["status"] == "completed" and finished["error"] is None
     assert (runs_dir / finished["run_id"] / "summary.json").is_file()
-    assert finished["progress"] == {"world_seed": 2027, "instances_done": 9, "instances_total": 9}
+    assert finished["progress"] == {
+        "world_seed": 2027,
+        "instances_done": 9,
+        "instances_total": 9,
+        "worlds_done": 2,
+        "worlds_total": 2,
+    }
     summary = client_with_blocking_benchmark.get(f"/api/v1/benchmarks/{finished['run_id']}").json()
     assert summary["run_kind"] == "smoke" and summary["summary"]["worlds"] == [2026, 2027]
 
@@ -280,7 +289,13 @@ def test_progress_reports_the_running_world(
         progress = client_with_blocking_benchmark.get(
             f"/api/v1/benchmarks/jobs/{job['job_id']}"
         ).json()["progress"]
-    assert progress == {"world_seed": 2026, "instances_done": 0, "instances_total": 9}
+    assert progress == {
+        "world_seed": 2026,
+        "instances_done": 0,
+        "instances_total": 9,
+        "worlds_done": 0,
+        "worlds_total": 1,
+    }
 
 
 def test_a_failed_job_reports_the_error_and_publishes_nothing(
@@ -520,12 +535,20 @@ def publish(
 ) -> None:
     run_dir = root / name
     run_dir.mkdir(parents=True)
-    summary = {
+    summary: dict[str, Any] = {
         "schema_version": schema,
         "run_kind": kind,
         "label": "scorer smoke test" if kind == "smoke" else None,
-        "headlines": [f"{name} headline"],
+        "bank_version": "2.0.0",
         "worlds": [2026],
+        "instances": {"total": {"overall": 0}, "per_world": {"2026": {"overall": 0}}},
+        "unavailable": {"2026": []},
+        "anchor_resolution_basis": {"A": "selection"},
+        "metrics": {},
+        "comparisons": [],
+        "headlines": [f"{name} headline"],
+        "judge_agreement": None,
+        "failures": {"repeats": {}, "generation": {}, "judge": {}, "classes": {}},
         "selection": selection or {"strata": None, "limit": None},
         "reproducibility": {"run": {"started_at": started_at}, "worlds": []},
     }
@@ -972,3 +995,132 @@ def test_an_ungrounded_bank_reads_the_same_on_both_question_routes(client: TestC
             "message": "the question bank has not been grounded; run make ground-bank",
             "retryable": False,
         }
+
+
+# -- typed summary, per-question results and the job list -------------------------
+
+
+def publish_run(root: Path, name: str, kind: str = "official") -> None:
+    """A run written as the harness writes one: the fake-generator run of
+    tests/test_benchmark_report.py through ``summarize`` and ``to_payload``."""
+    run = _benchmark(kind, h5_per_world=6)
+    run_dir = root / name
+    run_dir.mkdir(parents=True)
+    (run_dir / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
+    (run_dir / "results.json").write_text(json.dumps(run.to_payload()), encoding="utf-8")
+
+
+@pytest.fixture
+def client_with_runs(client: TestClient, runs_dir: Path) -> TestClient:
+    publish_run(runs_dir, "official-fixture")
+    publish_run(runs_dir, "smoke-fixture", kind="smoke")
+    publish(
+        runs_dir,
+        "subset",
+        "official",
+        "2026-10-01T09:00:00+00:00",
+        selection={"strata": ["H1"], "limit": 2},
+    )
+    publish(runs_dir, "no-split", "official", "2026-10-02T09:00:00+00:00")
+    return client
+
+
+def test_summary_is_typed_for_every_run_shape(client_with_runs: TestClient) -> None:
+    runs = client_with_runs.get("/api/v1/benchmarks").json()
+    assert len(runs) == 4
+    for run in runs:
+        body = client_with_runs.get(f"/api/v1/benchmarks/{run['run_id']}").json()
+        assert body["summary"]["schema_version"] == "2"
+    official = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
+    assert official["metrics"]["H3"]["answer"]["A"]["n"] == 12
+    assert official["comparisons"][0]["comparison"] == "B_vs_A"
+    assert official["ontology_split"][0]["in_family"] is False
+    assert official["judge_agreement"]["overall"]["n"] > 0
+    assert official["failures"]["classes"]["A"]["retrieval_failure"] > 0
+    assert official["unavailable"]["2026"] == [{"question_id": "L99", "reason": "no anchor"}]
+    assert official["reproducibility"]["run"]["judge_temperature"] == 0.0
+
+
+def test_older_run_without_split_or_new_reproducibility_fields_reads(
+    client_with_runs: TestClient, runs_dir: Path
+) -> None:
+    path = runs_dir / "official-fixture" / "summary.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    del summary["ontology_split"]
+    for record in (summary["reproducibility"]["run"], *summary["reproducibility"]["worlds"]):
+        for field in ("git_dirty", "graph_label_version", "judge_temperature"):
+            record.pop(field, None)
+    summary["a_key_added_later"] = {"x": 1}
+    path.write_text(json.dumps(summary), encoding="utf-8")
+    body = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
+    assert body["ontology_split"] is None
+    assert "judge_temperature" not in body["reproducibility"]["run"]
+    assert "a_key_added_later" not in body
+
+
+def test_a_summary_that_does_not_fit_is_a_server_error_naming_the_run(
+    runs_dir: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    publish(runs_dir, "broken", "official", "2026-10-02T09:00:00+00:00")
+    path = runs_dir / "broken" / "summary.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    del summary["failures"]
+    path.write_text(json.dumps(summary), encoding="utf-8")
+    with TestClient(create_app(), raise_server_exceptions=False) as client:
+        response = client.get("/api/v1/benchmarks/broken")
+    assert response.status_code == 500
+    assert "broken" in caplog.text
+
+
+def test_instances_route_returns_means_and_failure_counts(client_with_runs: TestClient) -> None:
+    response = client_with_runs.get("/api/v1/benchmarks/official-fixture/instances")
+    assert response.status_code == 200
+    instances = {i["instance_id"]: i for i in response.json()}
+    assert len(instances) == 2 * (6 + 6 + 6 + 3 + 6)
+    h3 = instances["L30-2026-X"]
+    assert (h3["stratum"], h3["sub_stratum"], h3["ontology_dependent"]) == ("H3", None, False)
+    assert h3["text"] == "question?" and h3["world_seed"] == 2026
+    a = h3["pipelines"]["A"]
+    assert (a["repeats"], a["generation_failures"]) == (3, 1)
+    assert a["answer"] == pytest.approx(0.75) and a["evidence_f1"] == pytest.approx(0.2)
+    assert a["latency_ms"] == pytest.approx(150.0) and a["context_tokens"] == 1000
+    assert a["judge_correctness"] == 2.0 and a["failure_classes"] == {"retrieval_failure": 2}
+    h2 = instances["L20-2026-X"]
+    assert h2["ontology_dependent"] and h2["sub_stratum"] == "id_anchored"
+
+
+def test_instances_route_carries_no_answer_key(client_with_runs: TestClient) -> None:
+    text = client_with_runs.get("/api/v1/benchmarks/official-fixture/instances").text
+    for word in ("expected_answer", "claims", "checks", "raw_text", "blocks", "answer text"):
+        assert word not in text
+    assert '"text":"question?"' in text.replace(" ", "")
+    assert '"answer":"' not in text
+
+
+def test_instances_route_404_without_results_json(client_with_runs: TestClient) -> None:
+    missing = client_with_runs.get("/api/v1/benchmarks/no-split/instances")
+    assert missing.status_code == 404
+    assert missing.json()["error"]["message"] == "This run has no per-question results."
+    unknown = client_with_runs.get("/api/v1/benchmarks/nope/instances")
+    assert unknown.status_code == 404 and unknown.json()["error"]["error_code"] == "NOT_FOUND"
+
+
+def test_jobs_list_newest_first_with_world_progress(
+    client_with_blocking_benchmark: TestClient,
+    gate: threading.Event,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    client = client_with_blocking_benchmark
+    # Run ids have a one second resolution: two jobs in one second would share a directory.
+    names = iter(["20261024T100000Z-smoke", "20261024T100001Z-smoke"])
+    monkeypatch.setattr(benchmarks, "run_id", lambda _kind: next(names))
+    assert client.get("/api/v1/benchmarks/jobs").json() == []
+    gate.set()
+    first = client.post("/api/v1/benchmarks", json=smoke(seeds=[2026, 2027])).json()
+    wait_job(client, first["job_id"])
+    second = client.post("/api/v1/benchmarks", json=smoke()).json()
+    wait_job(client, second["job_id"])
+    jobs = client.get("/api/v1/benchmarks/jobs").json()
+    assert [job["job_id"] for job in jobs] == [second["job_id"], first["job_id"]]
+    assert jobs[1]["progress"]["worlds_done"] == 2 and jobs[1]["progress"]["worlds_total"] == 2
+    assert jobs[0]["progress"]["worlds_total"] == 1

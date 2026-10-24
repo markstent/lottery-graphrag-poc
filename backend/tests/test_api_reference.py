@@ -161,11 +161,36 @@ def test_a_dataset_without_a_manifest_plants_nothing(bare_client: TestClient) ->
 # -- models -------------------------------------------------------------------
 
 
-def test_models_name_the_configured_providers(client: TestClient) -> None:
+def test_models_name_the_configured_providers(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("JUDGE_PROVIDER", raising=False)
     body = client.get("/api/v1/models").json()
     assert body["generation"]["provider"] == "fake" and body["generation"]["reachable"] is True
-    assert set(body) == {"embedding", "sparse", "rerank", "generation"}
-    assert all(set(m) == {"provider", "model", "reachable", "detail"} for m in body.values())
+    assert set(body) == {"embedding", "sparse", "rerank", "generation", "judge"}
+    assert body["judge"] is None
+    models = [m for name, m in body.items() if name != "judge"]
+    assert all(set(m) == {"provider", "model", "reachable", "detail"} for m in models)
+
+
+def test_models_report_the_judge(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    probed: list[str] = []
+
+    def probe(settings: Any, *_args: object) -> object:
+        probed.append(settings.model)
+        return type("Reached", (), {"ok": True, "detail": "the model answered"})()
+
+    monkeypatch.setattr("app.models.gateway.probe", probe)
+    monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
+    monkeypatch.setenv("JUDGE_MODEL", "ollama/gemma4:31b")
+    judge = client.get("/api/v1/models").json()["judge"]
+    assert judge == {
+        "provider": "litellm",
+        "model": "ollama/gemma4:31b",
+        "reachable": True,
+        "detail": "the model answered",
+    }
+    assert probed == ["ollama/gemma4:31b"]
 
 
 def test_in_process_models_are_unknown_until_the_lab_loads_them(

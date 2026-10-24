@@ -61,6 +61,8 @@ This table is the route list as built; it matches the application's OpenAPI sche
 | GET    | `/benchmarks/latest`                                  | `BenchmarkSummary`                                   | section 20, "Benchmark reads"                     |
 | GET    | `/benchmarks/questions`                               | `list[QuestionOut]`                                  | section 20, "Benchmark reads"                     |
 | GET    | `/benchmarks/{run_id}`                                | `BenchmarkSummary`                                   | section 20, "Benchmark reads"                     |
+| GET    | `/benchmarks/{run_id}/instances`                      | `list[InstanceResultOut]`                            | section 20, "Benchmark reads"                     |
+| GET    | `/benchmarks/jobs`                                    | `list[BenchmarkJob]`                                 | section 20, "Benchmark jobs and the shared graph" |
 | POST   | `/benchmarks`                                         | `BenchmarkJob` (202)                                 | section 20, "Benchmark jobs and the shared graph" |
 | GET    | `/benchmarks/jobs/{job_id}`                           | `BenchmarkJob`                                       | section 20, "Benchmark jobs and the shared graph" |
 | POST   | `/benchmarks/jobs/{job_id}/cancel`                    | `BenchmarkJob` (202)                                 | section 20, "Benchmark jobs and the shared graph" |
@@ -557,14 +559,16 @@ Replay must use recorded event sequence rather than rerunning retrieval.
 
 ## 16. Benchmark Results
 
-The API publishes benchmark results unchanged from the harness.
+The API publishes benchmark results as the harness wrote them, typed.
 
-- `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, summary}`, where `summary` is the run's `summary.json` (schema version 2): the headline tiles, metrics per stratum and pipeline, confidence intervals, failure counts and reproducibility record.
+- `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, summary}`, where `summary` is the run's `summary.json` (schema version 2) as `SummaryOut`: the headline tiles, metrics per stratum and pipeline, confidence intervals, the ontology-dependent split, judge agreement, failure counts and reproducibility record.
+  Every key the harness writes is typed; a key added later is ignored on read, so an older client keeps working.
+  The reproducibility record stays a mapping (`run` and `worlds`), because older runs lack fields that newer ones record.
   Its contents are specified in `docs/evaluation/reproducibility.md` and `docs/evaluation/scoring.md`.
+- `GET /benchmarks/{run_id}/instances` lists the run's scored instances (`InstanceResultOut`) with each pipeline's mean over its successful repeats of every metric, its repeat and generation-failure counts, and its failure classes.
+  It carries the question text and the scores only: never the expected answer, claims, checks, answer text or context blocks.
 - `GET /benchmarks/questions` carries each bank question's mean `answer` and `evidence_f1` per pipeline from a published run (`PipelineScore`), null where undefined.
 - A live bank question's score (`LiveScore` in `GET /queries/{run_id}`) holds, per pipeline, `answer`, `evidence_f1`, `anchor_resolution` and `failure_class`, scored by the deterministic scorers and never the judge.
-
-There is no per-question result resource: the per-instance results are the run directory's `results.json`.
 
 ---
 
@@ -632,17 +636,23 @@ GET /api/v1/benchmarks                 list[BenchmarkRunOut]
 GET /api/v1/benchmarks/latest          BenchmarkSummary
 GET /api/v1/benchmarks/questions       list[QuestionOut]
 GET /api/v1/benchmarks/{run_id}        BenchmarkSummary
+GET /api/v1/benchmarks/{run_id}/instances  list[InstanceResultOut]
 ```
 
 A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of the schema the report writes (`SUMMARY_SCHEMA_VERSION`, now 2); the harness writes that file last.
 Directories with another schema version are not listed.
-A malformed `summary.json` is a server error, never silently skipped.
+A malformed `summary.json` is a server error, never silently skipped; reading one that does not fit `SummaryOut` is a server error too, and the log names the run.
 
 - `GET /benchmarks` lists published runs newest first, by `reproducibility.run.started_at` and then by directory name.
   Each entry is `run_id`, `run_kind`, `label`, `started_at`, `selection` (the strata and per-question limit it scored) and `worlds` (its seeds).
-- `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, summary}`, where `summary` is the run's `summary.json` unchanged.
+- `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, summary}`, where `summary` is the run's `summary.json`, typed as `SummaryOut` (section 16).
   `latest` is the newest official run of the whole bank, else the newest run of any kind, and is a 404 `NOT_FOUND` when nothing is published.
   `{run_id}` is looked up among the published runs, never as a path, so a name that is not one is a 404 `NOT_FOUND`.
+- `GET /benchmarks/{run_id}/instances` is declared before `GET /benchmarks/{run_id}`.
+  It reads the run's `results.json` and returns, per scored instance, `instance_id`, `question_id`, `world_seed`, `stratum`, `sub_stratum`, `ontology_dependent`, `text` and `pipelines`.
+  Each pipeline entry has `repeats`, `generation_failures`, the means of `answer`, `evidence_f1`, `evidence_recall`, `evidence_precision`, `efficiency_per_1k`, `citation_accuracy`, `latency_ms`, `context_tokens` and the five `judge_*` scores (null where no successful repeat defines one), and `failure_classes`, the repeats per class.
+  Instances the world could not ground are not listed; they are in `summary.unavailable`.
+  An unknown run is a 404 `NOT_FOUND`, and so is a run without `results.json`: "This run has no per-question results."
 - `GET /benchmarks/questions` lists the questions of the presentation world's frozen bank for the Help screen.
   Each entry has `question_id`, `instance_id`, `text`, `tests`, `stratum`, `scenario_id`, `ontology_dependent`, `expected_answer`, `hidden_truth` (the planted scenario's truth for an H5 question, else null) and `scores`.
   `scores` are per pipeline (`answer` and `evidence_f1`, null where undefined) from the run named by the optional `run_id` query parameter, else from the newest official run of the whole bank; they are null when that run did not score the question or no such run exists.
@@ -672,7 +682,9 @@ None of these queries Neo4j.
   What was planted comes from the active dataset's manifest (`scenarios.applied`).
   Where or why it was planted is the truth ledger, which is evaluator-only and is never read here.
   A dataset without a manifest has every scenario unplanted.
-- `models` reports the embedding, sparse, rerank and generation models, each as `provider`, `model`, `reachable` and `detail`.
+- `models` reports the embedding, sparse, rerank and generation models, and the benchmark judge, each as `provider`, `model`, `reachable` and `detail`.
+  `judge` reads the `JUDGE_*` settings the official preflight reads, is probed like the generation model, and is null while `JUDGE_PROVIDER` is `fake` (the offline judge of a smoke run is not a model).
+  It is not part of readiness.
   The embedding model is checked by listing the models of its Ollama server.
   The generation model is probed as readiness probes it (section 20, "Health and readiness").
   Each result is cached per configuration for 30 s, failures included, and concurrent calls share one probe.
@@ -691,8 +703,10 @@ The harness checks the request before anything starts: a seed the harness does n
 The response is 202 with a job: `{job_id, status, run_id, error, progress}`.
 `status` is `running`, `completed`, `failed` or `cancelled`.
 `run_id` names the published run once the job has completed, and is null before that and for a job that did not complete.
-`progress` is `{world_seed, instances_done, instances_total}` for the world being run, and null until the first world reaches its first instance.
+`progress` is `{world_seed, instances_done, instances_total, worlds_done, worlds_total}` for the world being run, and null until the first world reaches its first instance.
+`worlds_total` is the number of seeds requested; `worlds_done` counts the worlds whose last instance is done, so it reaches `worlds_total` with the last report.
 `error` is the section 11 envelope of a failed job, with a curated message; the exception text is logged only.
+`GET /api/v1/benchmarks/jobs` lists every job since the server started, newest first; jobs live in memory, so a restart empties it.
 `GET /api/v1/benchmarks/jobs/{job_id}` reads the job and `POST /api/v1/benchmarks/jobs/{job_id}/cancel` asks it to stop (202); an unknown job is a 404 `NOT_FOUND`, and cancelling a finished job is a 409 `CONFLICT`.
 A job ingests seeds 2027 and 2028 into the same Neo4j that Live Lab reads, then ingests seed 2026 again, so one graph lease keeps jobs and live runs apart:
 
@@ -821,7 +835,7 @@ The first design listed these routes; the application does not have them:
 - `GET /queries/{run_id}/evidence`, because evidence is embedded in each pipeline's result in `GET /queries/{run_id}`;
 - `GET /models/status`, because `GET /models` carries each model's reachability;
 - `GET /graph/evidence-paths/{run_id}`, because the evidence paths are the recorded graph events of the run;
-- `GET /benchmarks/{benchmark_run_id}/results` and `POST /benchmarks/{benchmark_run_id}/cancel`, which are `GET /benchmarks/{run_id}` and `POST /benchmarks/jobs/{job_id}/cancel`.
+- `GET /benchmarks/{benchmark_run_id}/results` and `POST /benchmarks/{benchmark_run_id}/cancel`, which are `GET /benchmarks/{run_id}` with `GET /benchmarks/{run_id}/instances`, and `POST /benchmarks/jobs/{job_id}/cancel`.
 
 ---
 

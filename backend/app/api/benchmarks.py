@@ -26,11 +26,13 @@ import json
 import logging
 import threading
 import uuid
+from collections import Counter
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter
+from pydantic import ValidationError
 
 from app.api.errors import ApiError, ApiErrorBody, ErrorCode, classify, run_error_body
 from app.api.graph_world import GraphLease, LeaseHold
@@ -39,10 +41,13 @@ from app.api.schemas import (
     BenchmarkRunOut,
     BenchmarkStart,
     BenchmarkSummary,
+    InstancePipelineOut,
+    InstanceResultOut,
     JobProgress,
     JobStatus,
     PipelineScore,
     QuestionOut,
+    SummaryOut,
     error_responses,
 )
 from app.api.scoring import require_bank
@@ -62,8 +67,8 @@ from app.evaluation.official import (
     run_id,
     world_paths,
 )
-from app.evaluation.report import SUMMARY_SCHEMA_VERSION
-from app.evaluation.runner import WORLD_MANIFEST
+from app.evaluation.report import SUMMARY_SCHEMA_VERSION, instance_means
+from app.evaluation.runner import WORLD_MANIFEST, instance_result_from_payload
 from app.observability.logging import run_context
 
 logger = logging.getLogger(__name__)
@@ -120,10 +125,64 @@ def _published(runs_dir: Path, name: str) -> Published:
 
 
 def _summary_out(run: Published) -> BenchmarkSummary:
+    """The run's summary, typed; one that does not fit is a 500 naming the run."""
     name, summary = run
-    return BenchmarkSummary(
-        run_id=name, run_kind=summary["run_kind"], label=summary["label"], summary=summary
-    )
+    try:
+        typed = SummaryOut.model_validate(summary)
+    except ValidationError as error:
+        raise RuntimeError(
+            f"the summary of benchmark run {name!r} is malformed: {error}"
+        ) from error
+    return BenchmarkSummary(run_id=name, run_kind=typed.run_kind, label=typed.label, summary=typed)
+
+
+def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
+    """Each scored instance of the run with its pipelines' means: the
+    question's text and scores, never its answer key or any answer text."""
+    _published(runs_dir, name)
+    try:
+        results = load_results(runs_dir / name)
+    except ValueError:
+        raise ApiError(404, ErrorCode.NOT_FOUND, "This run has no per-question results.") from None
+    out = []
+    for world in results["worlds"]:
+        for payload in world["results"]:
+            result = instance_result_from_payload(payload)
+            instance = result.instance
+            means = instance_means(result)
+            out.append(
+                InstanceResultOut(
+                    instance_id=instance.instance_id,
+                    question_id=instance.question_id,
+                    world_seed=instance.world_seed,
+                    stratum=instance.stratum,
+                    sub_stratum=instance.sub_stratum,
+                    ontology_dependent=instance.ontology_dependent,
+                    text=instance.text,
+                    pipelines={
+                        tag: InstancePipelineOut(
+                            repeats=len(scores),
+                            generation_failures=sum(score is None for score in scores),
+                            failure_classes=dict(
+                                sorted(
+                                    Counter(
+                                        score.failure_class
+                                        for score in scores
+                                        if score is not None and score.failure_class
+                                    ).items()
+                                )
+                            ),
+                            **{
+                                metric: means[tag][metric]
+                                for metric in InstancePipelineOut.model_fields
+                                if metric in means[tag]
+                            },
+                        )
+                        for tag, scores in result.scores.items()
+                    },
+                )
+            )
+    return out
 
 
 def presentation_bank() -> FrozenBank | None:
@@ -215,6 +274,16 @@ def _questions(runs_dir: Path, name: str | None) -> list[QuestionOut]:
     ]
 
 
+def _job_out(job: _Job) -> BenchmarkJob:
+    return BenchmarkJob(
+        job_id=job.job_id,
+        status=job.status,
+        run_id=job.run_id,
+        error=job.error,
+        progress=job.progress,
+    )
+
+
 @dataclasses.dataclass
 class _Job:
     job_id: str
@@ -223,6 +292,7 @@ class _Job:
     run_id: str | None = None
     error: ApiErrorBody | None = None
     progress: JobProgress | None = None
+    seeds: tuple[int, ...] = ()
 
 
 class BenchmarkJobs:
@@ -250,7 +320,11 @@ class BenchmarkJobs:
             raise ApiError(422, ErrorCode.VALIDATION_ERROR, str(error)) from None
         hold = self._lease.take_benchmark()
         try:
-            job = _Job(job_id=f"JOB-{uuid.uuid4().hex[:12].upper()}", cancelled=threading.Event())
+            job = _Job(
+                job_id=f"JOB-{uuid.uuid4().hex[:12].upper()}",
+                cancelled=threading.Event(),
+                seeds=tuple(request.seeds),
+            )
             with self._lock:
                 self._jobs[job.job_id] = job
             out_dir = self._runs_dir / run_id(request.kind)
@@ -270,13 +344,12 @@ class BenchmarkJobs:
             job = self._jobs.get(job_id)
             if job is None:
                 raise ApiError(404, ErrorCode.NOT_FOUND, f"unknown benchmark job {job_id!r}")
-            return BenchmarkJob(
-                job_id=job.job_id,
-                status=job.status,
-                run_id=job.run_id,
-                error=job.error,
-                progress=job.progress,
-            )
+            return _job_out(job)
+
+    def all_jobs(self) -> list[BenchmarkJob]:
+        """Every job since the server started, newest first."""
+        with self._lock:
+            return [_job_out(job) for job in reversed(self._jobs.values())]
 
     def cancel(self, job_id: str) -> BenchmarkJob:
         """Ask a running job to stop; a 409 once it finished.
@@ -326,7 +399,14 @@ class BenchmarkJobs:
 
     def _progress(self, job: _Job, seed: int, done: int, total: int) -> None:
         with self._lock:
-            job.progress = JobProgress(world_seed=seed, instances_done=done, instances_total=total)
+            # A world counts as done once its last instance is: the last report is complete.
+            job.progress = JobProgress(
+                world_seed=seed,
+                instances_done=done,
+                instances_total=total,
+                worlds_done=job.seeds.index(seed) + (done == total),
+                worlds_total=len(job.seeds),
+            )
 
     def _finish(
         self,
@@ -410,6 +490,10 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
     def start_benchmark(request: BenchmarkStart) -> BenchmarkJob:
         return jobs.start(request)
 
+    @router.get("/benchmarks/jobs", response_model=list[BenchmarkJob], responses=error_responses())
+    def list_jobs() -> list[BenchmarkJob]:
+        return jobs.all_jobs()
+
     @router.get(
         "/benchmarks/jobs/{job_id}",
         response_model=BenchmarkJob,
@@ -428,6 +512,14 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
         """Request the job to stop before its next instance; the instance in
         progress finishes first, so the job stays running until then."""
         return jobs.cancel(job_id)
+
+    @router.get(
+        "/benchmarks/{run_id}/instances",
+        response_model=list[InstanceResultOut],
+        responses=error_responses(404, 422),
+    )
+    def read_instances(run_id: str) -> list[InstanceResultOut]:
+        return _instances(runs_dir, run_id)
 
     # Last: the run id is a free path segment.
     @router.get(

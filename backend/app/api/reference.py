@@ -28,7 +28,7 @@ from app.api.schemas import (
     ScenarioOut,
     error_responses,
 )
-from app.config import RetrievalSettings, from_env
+from app.config import GenerationSettings, RetrievalSettings, from_env, judge_settings_from_env
 from app.datasets.master_data import MARKETS
 from app.datasets.taxonomies import local_names
 from app.ontology.loader import load_ontology
@@ -152,6 +152,21 @@ def build_reference_router() -> APIRouter:
         embedding = checks.model.check_embedding(settings.embedding)
         generation = checks.model.check(settings.generation, settings.embedding.host or None)
         loaded = lab is not None
+        judge = judge_settings_from_env()
+        judge_model = None
+        if judge.provider != "fake":
+            probed = checks.model.check(
+                GenerationSettings(
+                    provider=judge.provider,
+                    model=judge.model,
+                    temperature=judge.temperature,
+                    api_base=judge.api_base,
+                    model_family=judge.model_family,
+                    reasoning=judge.reasoning,
+                ),
+                settings.embedding.host or None,
+            )
+            judge_model = _model_out(judge.provider, judge.model, probed.ok, probed.detail)
         return ModelsOut(
             embedding=_model_out(
                 settings.embedding.provider,
@@ -169,6 +184,7 @@ def build_reference_router() -> APIRouter:
                 generation.ok,
                 generation.detail,
             ),
+            judge=judge_model,
         )
 
     return router

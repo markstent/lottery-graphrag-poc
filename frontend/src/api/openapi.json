@@ -1,6 +1,44 @@
 {
   "components": {
     "schemas": {
+      "AgreementOut": {
+        "description": "Agreement of the judge with the deterministic answer score over ``n``\njudged repeats; None where none were judged.",
+        "properties": {
+          "agreement": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement"
+          },
+          "kappa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kappa"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "agreement",
+          "kappa"
+        ],
+        "title": "AgreementOut",
+        "type": "object"
+      },
       "ApiErrorBody": {
         "description": "The error object every failure carries (docs/07 section 11).",
         "properties": {
@@ -200,7 +238,7 @@
         "type": "object"
       },
       "BenchmarkSummary": {
-        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json`` (schema 2), passed through\nunchanged: the only benchmark source the API publishes. ``run_kind``\nand ``label`` are copied out of it so a client can tell a smoke or\nsweep run from an official result without reading the summary.",
+        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json`` (schema 2), typed: the only\nbenchmark source the API publishes. ``run_kind`` and ``label`` are\ncopied out of it so a client can tell a smoke or sweep run from an\nofficial result without reading the summary.",
         "properties": {
           "label": {
             "anyOf": [
@@ -222,9 +260,7 @@
             "type": "string"
           },
           "summary": {
-            "additionalProperties": true,
-            "title": "Summary",
-            "type": "object"
+            "$ref": "#/components/schemas/SummaryOut"
           }
         },
         "required": [
@@ -340,6 +376,110 @@
           "description"
         ],
         "title": "ColumnOut",
+        "type": "object"
+      },
+      "ComparisonCell": {
+        "description": "One paired comparison of a stratum and metric: the mean difference with\nits clustered 95 percent interval, and the test where one was run.",
+        "properties": {
+          "clusters": {
+            "title": "Clusters",
+            "type": "integer"
+          },
+          "comparison": {
+            "title": "Comparison",
+            "type": "string"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "in_family": {
+            "title": "In Family",
+            "type": "boolean"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P"
+          },
+          "p_holm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Holm"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "stratum": {
+            "title": "Stratum",
+            "type": "string"
+          }
+        },
+        "required": [
+          "stratum",
+          "metric",
+          "comparison",
+          "n",
+          "clusters",
+          "mean",
+          "low",
+          "high",
+          "p",
+          "p_holm",
+          "in_family",
+          "reason"
+        ],
+        "title": "ComparisonCell",
         "type": "object"
       },
       "ConceptOut": {
@@ -812,6 +952,50 @@
           "rank"
         ],
         "title": "EvidenceChunk",
+        "type": "object"
+      },
+      "FailuresOut": {
+        "description": "Per pipeline: scored repeats, generation and judge failures, and the\nrepeats per failure class.",
+        "properties": {
+          "classes": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "title": "Classes",
+            "type": "object"
+          },
+          "generation": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Generation",
+            "type": "object"
+          },
+          "judge": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Judge",
+            "type": "object"
+          },
+          "repeats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Repeats",
+            "type": "object"
+          }
+        },
+        "required": [
+          "repeats",
+          "generation",
+          "judge",
+          "classes"
+        ],
+        "title": "FailuresOut",
         "type": "object"
       },
       "ForeignKeyOut": {
@@ -2593,6 +2777,276 @@
         "title": "IndexStatus",
         "type": "object"
       },
+      "InstanceCounts": {
+        "description": "Scored instances per stratum key and overall: in all, and per world seed.",
+        "properties": {
+          "per_world": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "title": "Per World",
+            "type": "object"
+          },
+          "total": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Total",
+            "type": "object"
+          }
+        },
+        "required": [
+          "total",
+          "per_world"
+        ],
+        "title": "InstanceCounts",
+        "type": "object"
+      },
+      "InstancePipelineOut": {
+        "description": "One pipeline's scores on one instance: each metric is the mean over its\nsuccessful repeats (None where none defines it), from the run's results.",
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "citation_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Citation Accuracy"
+          },
+          "context_tokens": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Tokens"
+          },
+          "efficiency_per_1k": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Efficiency Per 1K"
+          },
+          "evidence_f1": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence F1"
+          },
+          "evidence_precision": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Precision"
+          },
+          "evidence_recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Recall"
+          },
+          "failure_classes": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Failure Classes",
+            "type": "object"
+          },
+          "generation_failures": {
+            "title": "Generation Failures",
+            "type": "integer"
+          },
+          "judge_abstention": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Abstention"
+          },
+          "judge_citation_accuracy": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Citation Accuracy"
+          },
+          "judge_completeness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Completeness"
+          },
+          "judge_correctness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Correctness"
+          },
+          "judge_faithfulness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Faithfulness"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "repeats",
+          "generation_failures",
+          "answer",
+          "evidence_f1",
+          "evidence_recall",
+          "evidence_precision",
+          "efficiency_per_1k",
+          "citation_accuracy",
+          "latency_ms",
+          "context_tokens",
+          "judge_correctness",
+          "judge_completeness",
+          "judge_faithfulness",
+          "judge_citation_accuracy",
+          "judge_abstention",
+          "failure_classes"
+        ],
+        "title": "InstancePipelineOut",
+        "type": "object"
+      },
+      "InstanceResultOut": {
+        "description": "One scored bank instance of a run (GET /api/v1/benchmarks/{run_id}/instances).\n\nCarries the question and the scores only: never the expected answer,\nthe claims or checks, or any answer text.",
+        "properties": {
+          "instance_id": {
+            "title": "Instance Id",
+            "type": "string"
+          },
+          "ontology_dependent": {
+            "title": "Ontology Dependent",
+            "type": "boolean"
+          },
+          "pipelines": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/InstancePipelineOut"
+            },
+            "title": "Pipelines",
+            "type": "object"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "stratum": {
+            "title": "Stratum",
+            "type": "string"
+          },
+          "sub_stratum": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sub Stratum"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "world_seed": {
+            "title": "World Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "instance_id",
+          "question_id",
+          "world_seed",
+          "stratum",
+          "sub_stratum",
+          "ontology_dependent",
+          "text",
+          "pipelines"
+        ],
+        "title": "InstanceResultOut",
+        "type": "object"
+      },
       "JobProgress": {
         "description": "The world a job is running and how far through its instances it is.",
         "properties": {
@@ -2607,17 +3061,47 @@
           "world_seed": {
             "title": "World Seed",
             "type": "integer"
+          },
+          "worlds_done": {
+            "title": "Worlds Done",
+            "type": "integer"
+          },
+          "worlds_total": {
+            "title": "Worlds Total",
+            "type": "integer"
           }
         },
         "required": [
           "world_seed",
           "instances_done",
-          "instances_total"
+          "instances_total",
+          "worlds_done",
+          "worlds_total"
         ],
         "title": "JobProgress",
         "type": "object"
       },
       "JsonValue": {},
+      "JudgeAgreementOut": {
+        "properties": {
+          "overall": {
+            "$ref": "#/components/schemas/AgreementOut"
+          },
+          "pipelines": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AgreementOut"
+            },
+            "title": "Pipelines",
+            "type": "object"
+          }
+        },
+        "required": [
+          "overall",
+          "pipelines"
+        ],
+        "title": "JudgeAgreementOut",
+        "type": "object"
+      },
       "LivePipelineScore": {
         "description": "One pipeline's deterministic scores on a live bank question; None\nwhere the instance does not define the metric.",
         "properties": {
@@ -2746,6 +3230,37 @@
         "title": "MemberOut",
         "type": "object"
       },
+      "MetricCell": {
+        "description": "One pipeline's mean of one metric over a stratum: ``n`` instances,\n``repeats`` scored repeats; the mean is None where no repeat defines it.",
+        "properties": {
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mean",
+          "n",
+          "repeats"
+        ],
+        "title": "MetricCell",
+        "type": "object"
+      },
       "ModelOut": {
         "description": "One configured model. ``reachable`` is null for a model that runs in\nprocess and has not been loaded.",
         "properties": {
@@ -2798,12 +3313,23 @@
         "type": "object"
       },
       "ModelsOut": {
+        "description": "``judge`` is the benchmark judge model; null when none is configured\n(the offline judge of a smoke run is not a model).",
         "properties": {
           "embedding": {
             "$ref": "#/components/schemas/ModelOut"
           },
           "generation": {
             "$ref": "#/components/schemas/ModelOut"
+          },
+          "judge": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "rerank": {
             "$ref": "#/components/schemas/ModelOut"
@@ -2816,7 +3342,8 @@
           "embedding",
           "sparse",
           "rerank",
-          "generation"
+          "generation",
+          "judge"
         ],
         "title": "ModelsOut",
         "type": "object"
@@ -4822,6 +5349,34 @@
         "title": "RelTypeOut",
         "type": "object"
       },
+      "ReproducibilityOut": {
+        "description": "What the run and each world recorded. Mappings, not models: older runs\nlack fields, and the Results screen shows unknown keys by name.",
+        "properties": {
+          "run": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Run",
+            "type": "object"
+          },
+          "worlds": {
+            "items": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/JsonValue"
+              },
+              "type": "object"
+            },
+            "title": "Worlds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "run",
+          "worlds"
+        ],
+        "title": "ReproducibilityOut",
+        "type": "object"
+      },
       "RerankStarted": {
         "additionalProperties": false,
         "description": "``rag.rerank.started`` and ``graph.rerank.started``.",
@@ -5297,6 +5852,280 @@
         "title": "ScenarioOut",
         "type": "object"
       },
+      "SelectionOut": {
+        "description": "The part of the bank a run scored.",
+        "properties": {
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Limit"
+          },
+          "strata": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strata"
+          }
+        },
+        "required": [
+          "strata",
+          "limit"
+        ],
+        "title": "SelectionOut",
+        "type": "object"
+      },
+      "SplitCell": {
+        "description": "A cell of the ontology-dependent split: a comparison of B and C\nover one group of instances, never tested (``in_family`` is false).",
+        "properties": {
+          "clusters": {
+            "title": "Clusters",
+            "type": "integer"
+          },
+          "comparison": {
+            "title": "Comparison",
+            "type": "string"
+          },
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "in_family": {
+            "title": "In Family",
+            "type": "boolean"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "metric": {
+            "title": "Metric",
+            "type": "string"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "p": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P"
+          },
+          "p_holm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "P Holm"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "group",
+          "metric",
+          "comparison",
+          "n",
+          "clusters",
+          "mean",
+          "low",
+          "high",
+          "p",
+          "p_holm",
+          "in_family",
+          "reason"
+        ],
+        "title": "SplitCell",
+        "type": "object"
+      },
+      "SummaryOut": {
+        "description": "A run's ``summary.json`` (schema 2), every key the harness writes.\n\nA key added later is ignored, so an older client keeps reading.",
+        "properties": {
+          "anchor_resolution_basis": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Anchor Resolution Basis",
+            "type": "object"
+          },
+          "bank_version": {
+            "title": "Bank Version",
+            "type": "string"
+          },
+          "comparisons": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonCell"
+            },
+            "title": "Comparisons",
+            "type": "array"
+          },
+          "failures": {
+            "$ref": "#/components/schemas/FailuresOut"
+          },
+          "headlines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Headlines",
+            "type": "array"
+          },
+          "instances": {
+            "$ref": "#/components/schemas/InstanceCounts"
+          },
+          "judge_agreement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JudgeAgreementOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/MetricCell"
+                },
+                "type": "object"
+              },
+              "type": "object"
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "ontology_split": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SplitCell"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ontology Split"
+          },
+          "reproducibility": {
+            "$ref": "#/components/schemas/ReproducibilityOut"
+          },
+          "run_kind": {
+            "title": "Run Kind",
+            "type": "string"
+          },
+          "schema_version": {
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/SelectionOut"
+          },
+          "unavailable": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/UnavailableOut"
+              },
+              "type": "array"
+            },
+            "title": "Unavailable",
+            "type": "object"
+          },
+          "worlds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Worlds",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schema_version",
+          "run_kind",
+          "label",
+          "bank_version",
+          "worlds",
+          "instances",
+          "unavailable",
+          "anchor_resolution_basis",
+          "metrics",
+          "comparisons",
+          "headlines",
+          "judge_agreement",
+          "failures",
+          "selection",
+          "reproducibility"
+        ],
+        "title": "SummaryOut",
+        "type": "object"
+      },
       "TableProvenance": {
         "description": "Where a table's rows come from, as the world's manifest records it.",
         "properties": {
@@ -5374,6 +6203,25 @@
           "dictionary_source"
         ],
         "title": "TableSchemaOut",
+        "type": "object"
+      },
+      "UnavailableOut": {
+        "description": "A bank question the world could not ground, and why.",
+        "properties": {
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "reason"
+        ],
+        "title": "UnavailableOut",
         "type": "object"
       }
     }
@@ -5480,6 +6328,38 @@
           }
         },
         "summary": "Start Benchmark"
+      }
+    },
+    "/api/v1/benchmarks/jobs": {
+      "get": {
+        "operationId": "list_jobs_api_v1_benchmarks_jobs_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/BenchmarkJob"
+                  },
+                  "title": "Response List Jobs Api V1 Benchmarks Jobs Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "List Jobs"
       }
     },
     "/api/v1/benchmarks/jobs/{job_id}": {
@@ -5786,6 +6666,69 @@
           }
         },
         "summary": "Read Benchmark"
+      }
+    },
+    "/api/v1/benchmarks/{run_id}/instances": {
+      "get": {
+        "operationId": "read_instances_api_v1_benchmarks__run_id__instances_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/InstanceResultOut"
+                  },
+                  "title": "Response Read Instances Api V1 Benchmarks  Run Id  Instances Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Read Instances"
       }
     },
     "/api/v1/datasets": {

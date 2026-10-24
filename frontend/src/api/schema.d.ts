@@ -22,6 +22,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/benchmarks/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Jobs */
+        get: operations["list_jobs_api_v1_benchmarks_jobs_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/benchmarks/jobs/{job_id}": {
         parameters: {
             query?: never;
@@ -103,6 +120,23 @@ export interface paths {
         };
         /** Read Benchmark */
         get: operations["read_benchmark_api_v1_benchmarks__run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/benchmarks/{run_id}/instances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Instances */
+        get: operations["read_instances_api_v1_benchmarks__run_id__instances_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -487,6 +521,19 @@ export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         /**
+         * AgreementOut
+         * @description Agreement of the judge with the deterministic answer score over ``n``
+         *     judged repeats; None where none were judged.
+         */
+        AgreementOut: {
+            /** Agreement */
+            agreement: number | null;
+            /** Kappa */
+            kappa: number | null;
+            /** N */
+            n: number;
+        };
+        /**
          * ApiErrorBody
          * @description The error object every failure carries (docs/07 section 11).
          */
@@ -565,10 +612,10 @@ export interface components {
          * BenchmarkSummary
          * @description Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
          *
-         *     ``summary`` is the run's ``summary.json`` (schema 2), passed through
-         *     unchanged: the only benchmark source the API publishes. ``run_kind``
-         *     and ``label`` are copied out of it so a client can tell a smoke or
-         *     sweep run from an official result without reading the summary.
+         *     ``summary`` is the run's ``summary.json`` (schema 2), typed: the only
+         *     benchmark source the API publishes. ``run_kind`` and ``label`` are
+         *     copied out of it so a client can tell a smoke or sweep run from an
+         *     official result without reading the summary.
          */
         BenchmarkSummary: {
             /** Label */
@@ -577,10 +624,7 @@ export interface components {
             run_id: string;
             /** Run Kind */
             run_kind: string;
-            /** Summary */
-            summary: {
-                [key: string]: unknown;
-            };
+            summary: components["schemas"]["SummaryOut"];
         };
         /**
          * Check
@@ -629,6 +673,37 @@ export interface components {
             name: string;
             /** Type */
             type: string;
+        };
+        /**
+         * ComparisonCell
+         * @description One paired comparison of a stratum and metric: the mean difference with
+         *     its clustered 95 percent interval, and the test where one was run.
+         */
+        ComparisonCell: {
+            /** Clusters */
+            clusters: number;
+            /** Comparison */
+            comparison: string;
+            /** High */
+            high: number | null;
+            /** In Family */
+            in_family: boolean;
+            /** Low */
+            low: number | null;
+            /** Mean */
+            mean: number | null;
+            /** Metric */
+            metric: string;
+            /** N */
+            n: number;
+            /** P */
+            p: number | null;
+            /** P Holm */
+            p_holm: number | null;
+            /** Reason */
+            reason: string;
+            /** Stratum */
+            stratum: string;
         };
         /**
          * ConceptOut
@@ -854,6 +929,31 @@ export interface components {
             valid_from?: string | null;
             /** Valid To */
             valid_to?: string | null;
+        };
+        /**
+         * FailuresOut
+         * @description Per pipeline: scored repeats, generation and judge failures, and the
+         *     repeats per failure class.
+         */
+        FailuresOut: {
+            /** Classes */
+            classes: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /** Generation */
+            generation: {
+                [key: string]: number;
+            };
+            /** Judge */
+            judge: {
+                [key: string]: number;
+            };
+            /** Repeats */
+            repeats: {
+                [key: string]: number;
+            };
         };
         /**
          * ForeignKeyOut
@@ -1594,6 +1694,90 @@ export interface components {
             serialiser_version: string;
         };
         /**
+         * InstanceCounts
+         * @description Scored instances per stratum key and overall: in all, and per world seed.
+         */
+        InstanceCounts: {
+            /** Per World */
+            per_world: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /** Total */
+            total: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * InstancePipelineOut
+         * @description One pipeline's scores on one instance: each metric is the mean over its
+         *     successful repeats (None where none defines it), from the run's results.
+         */
+        InstancePipelineOut: {
+            /** Answer */
+            answer: number | null;
+            /** Citation Accuracy */
+            citation_accuracy: number | null;
+            /** Context Tokens */
+            context_tokens: number | null;
+            /** Efficiency Per 1K */
+            efficiency_per_1k: number | null;
+            /** Evidence F1 */
+            evidence_f1: number | null;
+            /** Evidence Precision */
+            evidence_precision: number | null;
+            /** Evidence Recall */
+            evidence_recall: number | null;
+            /** Failure Classes */
+            failure_classes: {
+                [key: string]: number;
+            };
+            /** Generation Failures */
+            generation_failures: number;
+            /** Judge Abstention */
+            judge_abstention: number | null;
+            /** Judge Citation Accuracy */
+            judge_citation_accuracy: number | null;
+            /** Judge Completeness */
+            judge_completeness: number | null;
+            /** Judge Correctness */
+            judge_correctness: number | null;
+            /** Judge Faithfulness */
+            judge_faithfulness: number | null;
+            /** Latency Ms */
+            latency_ms: number | null;
+            /** Repeats */
+            repeats: number;
+        };
+        /**
+         * InstanceResultOut
+         * @description One scored bank instance of a run (GET /api/v1/benchmarks/{run_id}/instances).
+         *
+         *     Carries the question and the scores only: never the expected answer,
+         *     the claims or checks, or any answer text.
+         */
+        InstanceResultOut: {
+            /** Instance Id */
+            instance_id: string;
+            /** Ontology Dependent */
+            ontology_dependent: boolean;
+            /** Pipelines */
+            pipelines: {
+                [key: string]: components["schemas"]["InstancePipelineOut"];
+            };
+            /** Question Id */
+            question_id: string;
+            /** Stratum */
+            stratum: string;
+            /** Sub Stratum */
+            sub_stratum: string | null;
+            /** Text */
+            text: string;
+            /** World Seed */
+            world_seed: number;
+        };
+        /**
          * JobProgress
          * @description The world a job is running and how far through its instances it is.
          */
@@ -1604,8 +1788,20 @@ export interface components {
             instances_total: number;
             /** World Seed */
             world_seed: number;
+            /** Worlds Done */
+            worlds_done: number;
+            /** Worlds Total */
+            worlds_total: number;
         };
         JsonValue: unknown;
+        /** JudgeAgreementOut */
+        JudgeAgreementOut: {
+            overall: components["schemas"]["AgreementOut"];
+            /** Pipelines */
+            pipelines: {
+                [key: string]: components["schemas"]["AgreementOut"];
+            };
+        };
         /**
          * LivePipelineScore
          * @description One pipeline's deterministic scores on a live bank question; None
@@ -1656,6 +1852,19 @@ export interface components {
             name: string | null;
         };
         /**
+         * MetricCell
+         * @description One pipeline's mean of one metric over a stratum: ``n`` instances,
+         *     ``repeats`` scored repeats; the mean is None where no repeat defines it.
+         */
+        MetricCell: {
+            /** Mean */
+            mean: number | null;
+            /** N */
+            n: number;
+            /** Repeats */
+            repeats: number;
+        };
+        /**
          * ModelOut
          * @description One configured model. ``reachable`` is null for a model that runs in
          *     process and has not been loaded.
@@ -1679,10 +1888,15 @@ export interface components {
             /** Model */
             model: string;
         };
-        /** ModelsOut */
+        /**
+         * ModelsOut
+         * @description ``judge`` is the benchmark judge model; null when none is configured
+         *     (the offline judge of a smoke run is not a model).
+         */
         ModelsOut: {
             embedding: components["schemas"]["ModelOut"];
             generation: components["schemas"]["ModelOut"];
+            judge: components["schemas"]["ModelOut"] | null;
             rerank: components["schemas"]["ModelOut"];
             sparse: components["schemas"]["ModelOut"];
         };
@@ -2470,6 +2684,21 @@ export interface components {
             type: string;
         };
         /**
+         * ReproducibilityOut
+         * @description What the run and each world recorded. Mappings, not models: older runs
+         *     lack fields, and the Results screen shows unknown keys by name.
+         */
+        ReproducibilityOut: {
+            /** Run */
+            run: {
+                [key: string]: components["schemas"]["JsonValue"];
+            };
+            /** Worlds */
+            worlds: {
+                [key: string]: components["schemas"]["JsonValue"];
+            }[];
+        };
+        /**
          * RerankStarted
          * @description ``rag.rerank.started`` and ``graph.rerank.started``.
          */
@@ -2662,6 +2891,92 @@ export interface components {
             title: string;
         };
         /**
+         * SelectionOut
+         * @description The part of the bank a run scored.
+         */
+        SelectionOut: {
+            /** Limit */
+            limit: number | null;
+            /** Strata */
+            strata: string[] | null;
+        };
+        /**
+         * SplitCell
+         * @description A cell of the ontology-dependent split: a comparison of B and C
+         *     over one group of instances, never tested (``in_family`` is false).
+         */
+        SplitCell: {
+            /** Clusters */
+            clusters: number;
+            /** Comparison */
+            comparison: string;
+            /** Group */
+            group: string;
+            /** High */
+            high: number | null;
+            /** In Family */
+            in_family: boolean;
+            /** Low */
+            low: number | null;
+            /** Mean */
+            mean: number | null;
+            /** Metric */
+            metric: string;
+            /** N */
+            n: number;
+            /** P */
+            p: number | null;
+            /** P Holm */
+            p_holm: number | null;
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * SummaryOut
+         * @description A run's ``summary.json`` (schema 2), every key the harness writes.
+         *
+         *     A key added later is ignored, so an older client keeps reading.
+         */
+        SummaryOut: {
+            /** Anchor Resolution Basis */
+            anchor_resolution_basis: {
+                [key: string]: string;
+            };
+            /** Bank Version */
+            bank_version: string;
+            /** Comparisons */
+            comparisons: components["schemas"]["ComparisonCell"][];
+            failures: components["schemas"]["FailuresOut"];
+            /** Headlines */
+            headlines: string[];
+            instances: components["schemas"]["InstanceCounts"];
+            judge_agreement: components["schemas"]["JudgeAgreementOut"] | null;
+            /** Label */
+            label: string | null;
+            /** Metrics */
+            metrics: {
+                [key: string]: {
+                    [key: string]: {
+                        [key: string]: components["schemas"]["MetricCell"];
+                    };
+                };
+            };
+            /** Ontology Split */
+            ontology_split?: components["schemas"]["SplitCell"][] | null;
+            reproducibility: components["schemas"]["ReproducibilityOut"];
+            /** Run Kind */
+            run_kind: string;
+            /** Schema Version */
+            schema_version: string;
+            selection: components["schemas"]["SelectionOut"];
+            /** Unavailable */
+            unavailable: {
+                [key: string]: components["schemas"]["UnavailableOut"][];
+            };
+            /** Worlds */
+            worlds: number[];
+        };
+        /**
          * TableProvenance
          * @description Where a table's rows come from, as the world's manifest records it.
          */
@@ -2692,6 +3007,16 @@ export interface components {
             source_system: string;
             /** Table */
             table: string;
+        };
+        /**
+         * UnavailableOut
+         * @description A bank question the world could not ground, and why.
+         */
+        UnavailableOut: {
+            /** Question Id */
+            question_id: string;
+            /** Reason */
+            reason: string;
         };
     };
     responses: never;
@@ -2782,6 +3107,35 @@ export interface operations {
             };
             /** @description Service Unavailable */
             503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    list_jobs_api_v1_benchmarks_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BenchmarkJob"][];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3012,6 +3366,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BenchmarkSummary"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_instances_api_v1_benchmarks__run_id__instances_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceResultOut"][];
                 };
             };
             /** @description Not Found */

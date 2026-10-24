@@ -354,10 +354,22 @@ describe('route groups', () => {
       '/api/v1/benchmarks/R-1',
     ],
     [
+      'benchmarks: instances',
+      () => client.getBenchmarkInstances('R-1'),
+      'GET',
+      '/api/v1/benchmarks/R-1/instances',
+    ],
+    [
       'benchmarks: questions',
       () => client.getBenchmarkQuestions('R-1'),
       'GET',
       '/api/v1/benchmarks/questions?run_id=R-1',
+    ],
+    [
+      'benchmarks: jobs',
+      () => client.listJobs(),
+      'GET',
+      '/api/v1/benchmarks/jobs',
     ],
     [
       'benchmarks: start',

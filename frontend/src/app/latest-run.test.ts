@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import type { Schemas } from '../api/client'
 import { isFullOfficial, verdictFrom } from './latest-run'
 
 const cell = (mean: number | null, n: number, repeats: number) => ({
@@ -22,12 +23,18 @@ const summary = (selection: unknown) => ({
   },
 })
 
-const run = (run_kind: string, label: string | null, selection: unknown) => ({
-  run_id: 'r',
-  run_kind,
-  label,
-  summary: summary(selection),
-})
+// Only the keys the Overview tiles read are built; the cast stands in for the rest of the summary.
+const run = (
+  run_kind: string,
+  label: string | null,
+  selection: unknown,
+): Schemas['BenchmarkSummary'] =>
+  ({
+    run_id: 'r',
+    run_kind,
+    label,
+    summary: summary(selection),
+  }) as unknown as Schemas['BenchmarkSummary']
 
 const FULL = { strata: null, limit: null }
 
@@ -55,7 +62,7 @@ describe('verdictFrom', () => {
       run_kind: 'official',
       label: null,
       summary: { selection: FULL },
-    }
+    } as unknown as Schemas['BenchmarkSummary']
     expect(verdictFrom(bare)).toEqual({
       kind: 'official',
       tiles: ['A', 'B', 'C'].map((pipeline) => ({

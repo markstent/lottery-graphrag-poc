@@ -36,7 +36,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol, cast
 
-from app.config import REPO_ROOT, GraphConfig, RetrievalSettings, from_env
+from app.config import (
+    REPO_ROOT,
+    GraphConfig,
+    RetrievalSettings,
+    from_env,
+    judge_settings_from_env,
+)
 from app.datasets import __main__ as datasets_cli
 from app.datasets.config import GENERATOR_VERSION
 from app.evaluation.bank import BANK_VERSION, STRATA, question_by_id
@@ -48,7 +54,7 @@ from app.evaluation.grounding import (
     load_frozen_bank,
     write_frozen_bank,
 )
-from app.evaluation.judge import GatewayJudge, check_families, judge_settings_from_env
+from app.evaluation.judge import GatewayJudge, check_families
 from app.evaluation.report import (
     COMPARED_METRICS,
     OVERALL,
