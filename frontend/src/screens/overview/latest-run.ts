@@ -4,7 +4,8 @@
  * run at all, is named in words and carries no number.
  */
 
-import type { Schemas } from '../../api/client'
+import { getLatestBenchmark, type Schemas } from '../../api/client'
+import { ApiError } from '../../api/http'
 import type { PipelineId } from '../../design/pipelines'
 
 export interface TileFigures {
@@ -75,5 +76,15 @@ export function verdictFrom(
     headlines: Array.isArray(headlines)
       ? headlines.filter((line): line is string => typeof line === 'string')
       : [],
+  }
+}
+
+/** The newest run, or null when none is published (a 404 is not a failure). */
+export async function loadLatest(signal: AbortSignal) {
+  try {
+    return await getLatestBenchmark(signal)
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null
+    throw error
   }
 }

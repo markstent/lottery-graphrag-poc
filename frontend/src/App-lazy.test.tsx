@@ -19,7 +19,7 @@ describe('App routes', () => {
     render(<App />)
     expect(screen.getByRole('status')).toHaveTextContent('Loading This page')
     expect(
-      await screen.findByRole('tablist', { name: 'Help sections' }),
+      await screen.findByRole('navigation', { name: 'Help sections' }),
     ).toBeVisible()
     expect(screen.queryByText('Loading This page')).toBeNull()
   })

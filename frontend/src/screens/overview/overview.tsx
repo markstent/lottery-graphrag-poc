@@ -4,13 +4,7 @@
  * summary as published; nothing is computed here.
  */
 
-import { ApiError } from '../../api/http'
-import {
-  getDemoQuestions,
-  getLatestBenchmark,
-  getModels,
-  listDatasets,
-} from '../../api/client'
+import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
 import { datasetName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { MODEL_LABELS } from '../../app/settings-labels'
@@ -21,7 +15,7 @@ import { Panel, type PanelState } from '../../components/panel'
 import { PIPELINES } from '../../design/pipelines'
 import { Screen } from '../screen'
 import { FlowDiagram } from './flow-diagram'
-import { verdictFrom, type TileFigures } from './latest-run'
+import { loadLatest, verdictFrom, type TileFigures } from './latest-run'
 
 const LINK = 'text-text-primary underline'
 
@@ -31,16 +25,6 @@ const stateOf = (load: Load<unknown>, empty = false): PanelState =>
 
 const errorOf = (load: Load<unknown>) =>
   load.status === 'error' ? load.error : undefined
-
-/** The newest run, or null when none is published (a 404 is not a failure). */
-async function loadLatest(signal: AbortSignal) {
-  try {
-    return await getLatestBenchmark(signal)
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null
-    throw error
-  }
-}
 
 async function loadConfiguration(signal: AbortSignal) {
   const [datasets, models] = await Promise.all([

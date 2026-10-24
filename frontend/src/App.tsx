@@ -24,7 +24,7 @@ const DataModel = lazy(() =>
   })),
 )
 const Help = lazy(() =>
-  import('./views/help').then((m) => ({ default: m.Help })),
+  import('./screens/help/help').then((m) => ({ default: m.Help })),
 )
 
 function Page({ name }: { name: RouteName }) {

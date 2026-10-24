@@ -19,6 +19,8 @@ import {
   ROW_COUNTS,
   rowsOf,
 } from './mock-data-model'
+import scoredQuestions from './fixtures/benchmark-questions-scored.json' with { type: 'json' }
+import unscoredQuestions from './fixtures/benchmark-questions-unscored.json' with { type: 'json' }
 import { membersOf, ONTOLOGY, SCENARIOS } from './mock-ontology'
 
 const SUMMARY = {
@@ -247,6 +249,11 @@ export async function mockApi(
         return route.fulfill(envelope('The latest run is unavailable.', 503))
       return route.fulfill(json(LATEST[latest]))
     }
+    // The bank is scored only when the newest run is a whole-bank official run, as the backend does.
+    if (path === '/api/v1/benchmarks/questions')
+      return route.fulfill(
+        json(latest === 'official' ? scoredQuestions : unscoredQuestions),
+      )
     if (dataModel !== 'normal' && DATA_MODEL_PATHS.includes(path)) {
       if (dataModel === 'pending') return new Promise<void>(() => undefined)
       if (dataModel === 'error')

@@ -1,7 +1,7 @@
 /**
  * The plain words screens use in place of the project's working terms.
  * Keys are the banned terms (see `banned-words.test.ts`); values are what
- * product copy says instead. Help's glossary renders from this map.
+ * product copy says instead. Help's glossary shows `GLOSSARY_TERMS` below.
  */
 export const GLOSSARY = {
   seed: 'starting point',
@@ -12,3 +12,67 @@ export const GLOSSARY = {
   MAPS_TO: 'is an instance of concept',
   prototype: 'early version',
 } as const satisfies Record<string, string>
+
+/** What Help's glossary shows: twelve terms, about twelve words each. */
+export const GLOSSARY_TERMS: readonly { term: string; meaning: string }[] = [
+  {
+    term: 'Anchor',
+    meaning:
+      'The record a question names. All three approaches are given it, so finding it earns nothing.',
+  },
+  {
+    term: 'Answer key',
+    meaning:
+      'The correct answer to a question, written down before any approach is run.',
+  },
+  {
+    term: 'Concept',
+    meaning:
+      'One shared meaning in the ontology, such as a game family that each market names differently.',
+  },
+  {
+    term: 'Enterprise ontology',
+    meaning:
+      'The shared vocabulary that ties each market’s local terms to one concept.',
+  },
+  {
+    term: 'Evidence score',
+    meaning:
+      'How much of the needed evidence an approach found without padding, from 0 to 1.',
+  },
+  {
+    term: 'Hidden truth',
+    meaning:
+      'The fact planted behind a story. Help shows it, and no approach can see it.',
+  },
+  {
+    term: 'Interval',
+    meaning:
+      'The range a difference between two approaches most likely lies in, with 95 percent confidence.',
+  },
+  {
+    term: 'Official run',
+    meaning:
+      'One run of every question in the bank, scored the same way for all three approaches.',
+  },
+  {
+    term: 'Passage',
+    meaning:
+      'A short piece of a document. It is the unit that text search finds.',
+  },
+  {
+    term: 'Planted story',
+    meaning:
+      'A pattern added to the synthetic data on purpose, so its true answer is known.',
+  },
+  {
+    term: 'Re-ordering',
+    meaning:
+      'Ranking found items again so the most useful ones fill the limited space.',
+  },
+  {
+    term: 'Starting point',
+    meaning:
+      'The first records the graph search picks from the words of the question.',
+  },
+]

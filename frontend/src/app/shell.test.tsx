@@ -331,11 +331,13 @@ describe('Settings', () => {
 
   it('shows an error panel with Retry when the values do not load', async () => {
     const user = userEvent.setup()
-    // Help loads nothing, so only Settings asks for the models.
+    // Help's two sections that need data get an empty bank, so only Settings fails.
     window.history.replaceState(null, '', '/#/help')
     let answers = 0
     stubApi({
       ...SHELL_API,
+      '/api/v1/benchmarks/questions': [],
+      '/api/v1/scenarios': [],
       '/api/v1/models': () =>
         ++answers === 1
           ? failure('The server did not answer.', true)

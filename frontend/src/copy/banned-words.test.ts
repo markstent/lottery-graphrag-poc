@@ -17,7 +17,7 @@ import {
   RELATIONSHIP_PHRASES,
   relationshipPhrase,
 } from '../design/relationships'
-import { GLOSSARY } from './glossary'
+import { GLOSSARY, GLOSSARY_TERMS } from './glossary'
 
 export const BANNED_WORDS = [
   'honest',
@@ -308,6 +308,7 @@ describe('generated copy', () => {
     ...PIPELINES.flatMap((pipeline) => [pipeline.name, pipeline.label]),
     ...['dev-seed2026', 'dev-seed2027', 'dev-seed2028'].map(datasetName),
     ...Object.values(MODEL_LABELS),
+    ...GLOSSARY_TERMS.flatMap(({ term, meaning }) => [term, meaning]),
     ...Object.values(REACHABLE),
     plainName('affected_systems'),
     plainValue({ affectedSystems: ['a', null], note: 'ok' }),
