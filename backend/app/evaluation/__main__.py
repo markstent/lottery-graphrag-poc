@@ -31,7 +31,7 @@ from app.evaluation.runner import OFFICIAL_MIN_REPEATS
 DOC_COMMAND = "python -m app.evaluation bank-doc"
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="app.evaluation", description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     ground = commands.add_parser("ground", help="Ground the bank into one world.")
@@ -92,6 +92,11 @@ def main(argv: list[str] | None = None) -> int:
     compare.add_argument("small", type=Path, help="Run directory of the small model.")
     compare.add_argument("large", type=Path, help="Run directory of the large model.")
     compare.add_argument("--out", type=Path, default=None, help="Directory for comparison.json.")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
     args = parser.parse_args(argv)
     if args.command == "run" and args.resume and args.out is None:
         parser.error("--resume needs --out, the directory of the run to continue")

@@ -12,7 +12,9 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
+import subprocess
 import threading
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -1567,3 +1569,21 @@ def test_cli_resume_needs_out(captured: dict[str, Any], tmp_path: Path) -> None:
     assert "run" not in captured
     cli.main(["run", "--kind", "smoke", "--resume", "--out", str(tmp_path / "out")])
     assert captured["run"][1]["resume"] is True
+
+
+def test_make_dry_run_recipe_passes_the_official_run_checks() -> None:
+    """The recipe, as ``make -n`` prints it (the shell never runs), parses with
+    the CLI's own parser and satisfies the official run configuration."""
+    env = {**os.environ, "GENERATION_PROVIDER": "litellm", "JUDGE_PROVIDER": "litellm"}
+    repo = Path(__file__).resolve().parents[2]
+    printed = subprocess.run(
+        ["make", "-n", "dry-run"], cwd=repo, env=env, capture_output=True, text=True, check=True
+    ).stdout
+    line = next(row for row in printed.splitlines() if "app.evaluation run" in row)
+    words = shlex.split(line.split("app.evaluation", 1)[1])
+    words = [w for w in words if not w.startswith("$(") and w != ")"]
+    arguments = cli.build_parser().parse_args(words[: words.index("--questions")])
+    assert arguments.kind == "official"
+    assert arguments.seeds == (2026,)
+    assert arguments.limit == 1
+    runner_module.check_run_config(arguments.kind, arguments.repeats, False, "family")

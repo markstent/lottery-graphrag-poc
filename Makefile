@@ -128,7 +128,7 @@ run-benchmark: ## Official run on three worlds, 3 repeats (reads GENERATION_* an
 dry-run: ## Four-question dry run of the official settings (wipes and restores the graph; owner approval required)
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
-	$(UV) run python -m app.evaluation run --kind official --seeds 2026 --repeats 1 --limit 1 --questions $$($(UV) run python -m app.evaluation dry-run-questions) $(if $(OUT),--out $(OUT))
+	$(UV) run python -m app.evaluation run --kind official --seeds 2026 --repeats 3 --limit 1 --questions $$($(UV) run python -m app.evaluation dry-run-questions) $(if $(OUT),--out $(OUT))
 
 run-sweep: ## H1 depth sweep 0 to 3 for B and C on three worlds (reads JUDGE_* and GENERATION_*)
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }

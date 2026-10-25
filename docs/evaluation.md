@@ -244,7 +244,7 @@ Every run uses graph depth 2 except the sweep.
 An official run uses the dev profile on world seeds 2026, 2027 and 2028 in turn, with the scenario seed equal to the world seed.
 A run with `--strata`, `--questions` or `--limit` is labelled a subset run and is never published as the official result.
 `--questions` names logical questions of the bank, and an id the bank does not define is refused before any world is prepared.
-The dry run is `make dry-run`: the first bank instance of each of the strata H1, H2, H3 and H5, chosen as `GET /api/v1/demo/questions` chooses them, on world 2026 with one repeat.
+The dry run is `make dry-run`: the first bank instance of each of the strata H1, H2, H3 and H5, chosen as `GET /api/v1/demo/questions` chooses them, on world 2026 with the official three repeats.
 `python -m app.evaluation dry-run-questions` prints those question ids by reading the frozen bank file, so a bank change cannot leave them stale.
 
 ## Operation
@@ -252,7 +252,7 @@ The dry run is `make dry-run`: the first bank instance of each of the strata H1,
 ```bash
 make ground-bank        # freeze the bank into the active world (seed 2026)
 make run-smoke          # needs the services, no model
-make dry-run            # four questions on world 2026, one repeat; the official settings, so owner approval first
+make dry-run            # four questions on world 2026, three repeats; the official settings, so owner approval first
 make run-benchmark      # needs GENERATION_PROVIDER=litellm and JUDGE_PROVIDER=litellm with models and families set
 make run-sweep
 ```
