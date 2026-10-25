@@ -6,20 +6,30 @@ reranker scores every candidate a pipeline has, and selection walks the
 reranked list once, in judge order. Pipeline A's candidates are its hybrid
 hits; pipelines B and C add structured graph candidates to the same list.
 
-The graph share (D-081, which superseded D-025's single shared cut): of the
-evidence slots, ``graph_slots`` are reserved for graph nodes and the rest go
-to documents (chunks and records). Before the walk, the first ``graph_slots``
-usable nodes in judge order are given a graph slot; a node is usable when
-its own tokens fit the whole budget. Every other node is refused as
-``slot_limit``. During the walk a document is admitted only while the
-selected items plus the graph slots still waiting for their node leave room,
-so documents never take a graph slot. A graph slot that no node fills (fewer
-usable nodes than the share) is never reserved, so documents get it. A node
-that holds a slot but is refused by the budget releases its slot at that
-point: later documents may use it, and documents already refused as
-``slot_limit`` stay refused, because the walk never revisits a decision.
-Pipeline A has no nodes and so keeps every slot for documents, exactly as
-under D-025.
+The graph share (D-081, which superseded D-025's single shared cut and
+D-023's "no reserved slots per channel"): of the evidence slots,
+``graph_slots`` are reserved for graph nodes and the rest go to documents
+(chunks and records). Before the walk, the first ``graph_slots`` usable nodes
+in judge order are given a graph slot; a node is usable when its own tokens
+fit the whole budget. Every other node is refused as ``slot_limit``. During
+the walk a document is admitted only while the selected items plus the graph
+slots still waiting for their node leave room, so documents never take a
+graph slot. The share goes one way: a graph slot that no node fills (fewer
+usable nodes than the share) goes to documents, but a document slot that no
+document fills never goes to a node. Pipeline A has no nodes and so keeps
+every slot for documents, exactly as under D-025.
+
+A record block competes as a document under its own rank, except when its
+node holds a graph slot: then the node is the authoritative copy (design
+10a.8, D-028) and the block is refused as ``superseded_by_structured_fact``,
+so one fact never takes two slots. A node refused by the share leaves its
+record block to compete as a document.
+
+Known limitation: the walk is single-pass. A node that holds a slot but is
+refused by the budget releases its slot at that point, so a later, lower
+ranked document may take it, while a document already refused as
+``slot_limit`` stays refused, because the walk never revisits a decision.
+The budget rarely binds (pilot prompts used about 1,130 of 2,000 tokens).
 
 For each candidate the checks run in a fixed order, and the first failing
 check is the discard reason:
@@ -41,7 +51,6 @@ count is recorded on the event stream.
 from __future__ import annotations
 
 import math
-from collections.abc import Collection
 from dataclasses import dataclass
 
 from app.config import ContextSettings
@@ -50,8 +59,8 @@ from app.evidence import EvidenceChunk
 SELECTION_BUDGET = "context_budget"
 SELECTION_DUPLICATE = "duplicate"
 SELECTION_SLOT_LIMIT = "slot_limit"
-# A record block whose record is already a structured graph candidate
-# (design 10a.8): the structured candidate is the authoritative copy.
+# A record block whose node holds a graph slot (design 10a.8): the node is
+# the authoritative copy.
 SELECTION_SUPERSEDED = "superseded_by_structured_fact"
 # A graph node whose label is in GraphRagSettings.excluded_labels (a
 # directly resolved Document seed): it may anchor traversal but is never a
@@ -83,7 +92,8 @@ def select_context(
     budget_tokens: int,
     dedupe_threshold: float = 0.85,
     max_items: int | None = None,
-    graph_slots: int = 0,
+    *,
+    graph_slots: int,
 ) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
     """Split ranked candidates into (selected, discarded-with-reason).
 
@@ -102,12 +112,17 @@ def select_context(
 
     holders = _graph_slot_holders(candidates, budget_tokens, max_items, graph_slots)
     waiting = len(holders)
+    # A node holding a slot is the authoritative copy of its record's fact.
+    superseding = {candidates[index].chunk_id for index in holders}
 
     for index, candidate in enumerate(candidates):
         tokens = estimate_tokens(candidate.text)
         holds_slot = index in holders
         if holds_slot:
             waiting -= 1  # its slot is filled below or released by a refusal
+        if candidate.kind == "record" and candidate.document_id in superseding:
+            discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_SUPERSEDED}))
+            continue
         if used + tokens > budget_tokens:
             discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_BUDGET}))
             continue
@@ -151,28 +166,6 @@ def _graph_slot_holders(
         if candidate.kind == NODE_KIND and estimate_tokens(candidate.text) <= budget_tokens
     ]
     return set(usable[:share])
-
-
-def supersede_records(
-    structured_ids: Collection[str], documents: list[EvidenceChunk]
-) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
-    """Split document candidates into (kept, superseded) before judging.
-
-    A record block whose record id is a structured candidate's node id is
-    superseded (design 10a.8): keeping both would spend two slots on one
-    fact. The node is judged on that record's exact text, so with a
-    text-only pointwise judge (the production cross-encoder and the CI
-    lexical overlap judge) a node that loses means the record would have
-    lost too.
-    """
-    kept: list[EvidenceChunk] = []
-    superseded: list[EvidenceChunk] = []
-    for chunk in documents:
-        if chunk.kind == "record" and chunk.document_id in structured_ids:
-            superseded.append(chunk.model_copy(update={"discard_reason": SELECTION_SUPERSEDED}))
-        else:
-            kept.append(chunk)
-    return kept, superseded
 
 
 @dataclass(frozen=True, slots=True)

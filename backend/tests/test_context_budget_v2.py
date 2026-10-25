@@ -4,7 +4,8 @@ Structured graph candidates (pipelines B and C) and document candidates are
 reranked together and selected from one list into one token budget and one
 evidence-slot count, so A, B and C answer from the same amount of context
 (docs/reference/retrieval/retrieval-fairness.md). Record blocks of structured
-candidates are superseded before judging (design 10a.8).
+candidates are judged with the documents and yield to their node only when
+the node holds a graph slot (design 10a.8, D-081).
 """
 
 from __future__ import annotations
@@ -28,7 +29,6 @@ from app.retrieval.standard.context import (
     assemble_context,
     estimate_tokens,
     select_context,
-    supersede_records,
 )
 from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.embeddings import HashingEmbedder
@@ -139,7 +139,7 @@ def test_select_context_checks_budget_then_slots_then_duplicates() -> None:
     oversized = doc_chunk("big", words=400)
     late = doc_chunk("d1", words=10)
     selected, discarded = select_context(
-        [first, oversized, duplicate, late], budget_tokens=200, max_items=1
+        [first, oversized, duplicate, late], budget_tokens=200, max_items=1, graph_slots=0
     )
     assert [chunk.chunk_id for chunk in selected] == ["d0"]
     reasons = {chunk.chunk_id: chunk.discard_reason for chunk in discarded}
@@ -149,13 +149,13 @@ def test_select_context_checks_budget_then_slots_then_duplicates() -> None:
         "d1": SELECTION_SLOT_LIMIT,
     }
 
-    selected, discarded = select_context([first, duplicate], budget_tokens=200)
+    selected, discarded = select_context([first, duplicate], budget_tokens=200, graph_slots=0)
     assert [chunk.discard_reason for chunk in discarded] == [SELECTION_DUPLICATE]
 
 
 def test_no_slot_cap_when_max_items_is_omitted() -> None:
     docs = [doc_chunk(f"d{i}", words=5) for i in range(20)]
-    selected, discarded = select_context(docs, budget_tokens=10_000)
+    selected, discarded = select_context(docs, budget_tokens=10_000, graph_slots=6)
     assert len(selected) == 20 and not discarded
 
 
@@ -212,13 +212,14 @@ def _record_pipeline() -> GraphRagPipeline:
     )
 
 
-def test_record_block_of_a_structured_candidate_is_superseded_before_judging() -> None:
+def test_record_block_of_a_slotted_node_is_judged_then_superseded() -> None:
     graph_pipeline = _record_pipeline()
     reranker = RecordingReranker()
     graph_pipeline.reranker = reranker
     run = graph_pipeline.run("What is the price of GAME_GR_01?")
-    judged = {candidate.chunk_id for candidate in reranker.calls[0][1]}
-    assert "GAME_GR_01" in judged and "REC_games_GAME_GR_01" not in judged
+    judged = [candidate.chunk_id for candidate in reranker.calls[0][1]]
+    assert "GAME_GR_01" in judged and "REC_games_GAME_GR_01" in judged
+    assert len(judged) == len(set(judged))  # each candidate is judged once
     reasons = {c.chunk_id: c.discard_reason for c in run.document_evidence}
     assert reasons.get("REC_games_GAME_GR_01") == SELECTION_SUPERSEDED
     assert any(node.node_id == "GAME_GR_01" and node.selected for node in run.node_evidence)
@@ -229,7 +230,7 @@ def test_record_block_of_a_structured_candidate_is_superseded_before_judging() -
         and event.payload.get("chunk_id") == "REC_games_GAME_GR_01"
     ]
     assert [event.payload["reason"] for event in superseded_events] == [SELECTION_SUPERSEDED]
-    assert superseded_events[0].payload["rerank_score"] is None
+    assert superseded_events[0].payload["rerank_score"] is not None
 
 
 def test_graph_context_tokens_respect_the_shared_budget() -> None:
@@ -249,17 +250,43 @@ def record_chunk(record_id: str, words: int) -> EvidenceChunk:
     )
 
 
-def test_supersede_records_drops_only_records_of_structured_candidates() -> None:
-    docs = [
-        record_chunk("GAME_GR_01", words=5),
-        record_chunk("GAME_GR_02", words=5),
-        doc_chunk("d0", words=5).model_copy(update={"document_id": "GAME_GR_01"}),
-    ]
-    kept, superseded = supersede_records({"GAME_GR_01"}, docs)
-    assert [chunk.chunk_id for chunk in kept] == ["REC_games_GAME_GR_02", "d0"]
-    assert [(chunk.chunk_id, chunk.discard_reason) for chunk in superseded] == [
-        ("REC_games_GAME_GR_01", SELECTION_SUPERSEDED)
-    ]
+def _pairs(count: int) -> list[EvidenceChunk]:
+    """Node and record block pairs for the same rows, equal text, node first."""
+    pairs: list[EvidenceChunk] = []
+    for index in range(count):
+        row = f"GAME_{index:02d}"
+        node = node_chunk(row, 5)
+        pairs += [node, record_chunk(row, 5).model_copy(update={"text": node.text})]
+    return pairs
+
+
+def test_a_node_in_a_graph_slot_supersedes_its_record_block() -> None:
+    result = assemble_context(_pairs(2), settings(10_000))
+    assert _ids(result.structured_selected) == ["GAME_00", "GAME_01"]
+    assert not result.document_selected
+    assert {c.chunk_id: c.discard_reason for c in result.discarded} == {
+        "REC_games_GAME_00": SELECTION_SUPERSEDED,
+        "REC_games_GAME_01": SELECTION_SUPERSEDED,
+    }
+
+
+def test_a_record_block_competes_as_a_document_when_its_node_misses_the_share() -> None:
+    # Seven equal-scoring pairs: six nodes take the graph slots and their
+    # blocks yield; the seventh node is refused by the share, so its block
+    # competes for a document slot under its own rank.
+    result = assemble_context(_pairs(7), settings(10_000))
+    assert _ids(result.structured_selected) == [f"GAME_{i:02d}" for i in range(6)]
+    assert _ids(result.document_selected) == ["REC_games_GAME_06"]
+    reasons = {c.chunk_id: c.discard_reason for c in result.discarded}
+    assert reasons["GAME_06"] == SELECTION_SLOT_LIMIT
+    assert reasons["REC_games_GAME_00"] == SELECTION_SUPERSEDED
+    assert "REC_games_GAME_06" not in reasons
+
+
+def test_with_no_nodes_record_blocks_are_ordinary_documents() -> None:
+    records = [record_chunk(f"GAME_{i:02d}", 5) for i in range(3)]
+    result = assemble_context(records, settings(10_000))
+    assert _ids(result.document_selected) == _ids(records) and not result.discarded
 
 
 def _shared_text(suffix: str) -> str:
@@ -489,7 +516,7 @@ def test_share_discard_reason() -> None:
 
 
 def test_selection_rule_is_recorded() -> None:
-    assert SELECTION_RULE == "reranker-graph-share-6-of-12"
+    assert SELECTION_RULE == "reranker-graph-share"
     context = from_env().context
     assert (context.evidence_slots, context.graph_slots) == (12, 6)
 

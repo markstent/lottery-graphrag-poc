@@ -34,6 +34,7 @@ B and C were level with A on three of the four questions.
 On the ontology question B and C wrote a slightly better answer and found less of the needed evidence.
 
 The selection rule has changed since those runs (decision D-081, 2026-10-25, after the CP3 proposal).
+It was changed after the pilot runs and a diagnostic showed B and C doing no better than A, and the share was fixed before the new rule was measured.
 Decision D-025 had made all three approaches choose what the model sees through one shared re-ranker.
 On the multi-hop question, B's graph search found the record that carries the claim the answer needed, and the shared re-ranker kept that record out of the prompt.
 Now half of the 12 evidence slots go to the graph's own selection in B and C, and A keeps all 12 for documents.

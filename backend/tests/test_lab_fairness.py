@@ -197,9 +197,10 @@ def test_one_shared_judge_sees_the_same_documents_in_a_b_and_c() -> None:
     assert judged[0] == judged[1] == judged[2] == (question, judged[0][1])
 
 
-def test_b_judges_a_documents_minus_the_records_its_nodes_supersede() -> None:
-    """With structured candidates, B's document channel is A's minus the
-    record blocks of B's own nodes (design 10a.8), in A's order and ranks."""
+def test_b_judges_exactly_a_documents_including_its_nodes_record_blocks() -> None:
+    """With structured candidates, B's document channel is A's, record blocks
+    of B's own nodes included, in A's order and ranks: a block yields to its
+    node only in selection, and only when the node holds a graph slot."""
     reranker = RecordingReranker()
     lab = dataclasses.replace(build_lab_offline(), reranker=reranker)
     record = record_corpus_chunk(
@@ -218,14 +219,8 @@ def test_b_judges_a_documents_minus_the_records_its_nodes_supersede() -> None:
     assert "INC_S007_GR" in nodes_b
     documents_a = [(chunk.chunk_id, chunk.rank) for chunk in judged_a]
     assert record.chunk_id in dict(documents_a), "A must retrieve the record block"
-    expected = [
-        (chunk.chunk_id, chunk.rank)
-        for chunk in judged_a
-        if not (chunk.kind == "record" and chunk.document_id in nodes_b)
-    ]
     documents_b = [(chunk.chunk_id, chunk.rank) for chunk in judged_b if chunk.kind != "node"]
-    assert documents_b == expected
-    assert len(expected) == len(documents_a) - 1
+    assert documents_b == documents_a
 
 
 def test_a_and_b_hand_the_generator_the_same_prompt_for_the_same_evidence() -> None:

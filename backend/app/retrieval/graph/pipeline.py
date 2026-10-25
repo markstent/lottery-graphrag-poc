@@ -7,10 +7,11 @@ Specified in docs/reference/08 (Phase 9) and docs/reference/retrieval/graph-rag.
              -> bounded traversal (+ ontology expansion for pipeline C)
              -> transparent evidence ranking -> structured candidates
              -> authoritative source lookup
-             -> pipeline A's document channel (record blocks of structured
-                candidates superseded)
+             -> pipeline A's document channel
              -> one judge (the shared reranker, raw question) over both
-             -> one selection (budget and slots shared with A)
+             -> one selection (budget and slot count as A, with the graph
+                share; a record block yields to its node only when the node
+                holds a graph slot)
              -> LLM over the selection in judge order -> answer + citations
 
 Pipeline B runs the identical pipeline with `ontology_expansion=False`
@@ -102,7 +103,7 @@ class GraphRagPipeline:
         ranked = stages.rank_and_scope(resolution, traversal, scope, graph, nodes, emitter)
         selection = stages.select_and_attach(ranked, graph.excluded_labels, self.source_lookup)
         documents = stages.document_channel(
-            resolution.search_text, scope, selection, vectors, self.settings.top_k
+            resolution.search_text, scope, vectors, self.settings.top_k
         )
         answer = stages.assemble_and_generate(
             question,

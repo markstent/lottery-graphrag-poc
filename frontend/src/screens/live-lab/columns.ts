@@ -85,7 +85,7 @@ const DISCARD_WORDS: Record<DiscardReason, string> = {
   out_of_scope_market: 'outside the markets asked about',
   superseded_by_structured_fact: 'a table value already answers it',
   context_budget: 'the context was full',
-  slot_limit: 'too many better-ranked records',
+  slot_limit: 'no slot left',
   duplicate: 'a duplicate',
 }
 

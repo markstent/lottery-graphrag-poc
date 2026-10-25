@@ -1,12 +1,12 @@
-"""Read-only diagnostic of what the shared re-ranker keeps (D-025).
+"""Read-only diagnostic of what the shared re-ranker keeps (D-025, D-081).
 
-Every pipeline hands its candidates to one shared re-ranker, which picks
-what reaches the prompt. This module runs retrieval only, for every bank
-instance that has claims, and counts per pipeline how many claims had a
-carrier among the graph candidates, among the document candidates and among
-the selected evidence. The carrier notion is the scorer's: a claim is found
-by a set of ids when one of its carriers is among them, after the question's
-anchor is removed (``exclude_anchor``).
+Every pipeline hands its candidates to one shared re-ranker, which orders
+them; the slots and the graph share then pick what reaches the prompt. This
+module runs retrieval only, for every bank instance that has claims, and counts
+per pipeline how many claims had a carrier among the graph candidates, among the
+document candidates and among the selected evidence. The carrier notion is the
+scorer's: a claim is found by a set of ids when one of its carriers is among
+them, after the question's anchor is removed (``exclude_anchor``).
 
 Candidates and selections are read from the events each pipeline records,
 the same events Live Lab shows. The generator handed to the lab refuses to
@@ -28,7 +28,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from app.config import GraphConfig
+from app.config import SELECTION_RULE, GraphConfig
 from app.evaluation import official
 from app.evaluation.bank import STRATA
 from app.evaluation.claims import exclude_anchor, selection_carrier
@@ -322,7 +322,8 @@ GLOSSARY = (
     "The record the question itself names is left out, as the scorer leaves it out.",
     "This diagnostic runs the search, the graph walk and the re-ranker, and stops before the "
     "language model writes an answer.",
-    "The re-ranker is the one shared step that picks what reaches the prompt.",
+    "The re-ranker orders every candidate; the slots, with a share of them kept for the graph's "
+    "own selection in B and C, decide what reaches the prompt.",
 )
 COLUMNS = (
     "| Approach | Questions | Claims to find | Found by the graph "
@@ -353,7 +354,7 @@ def render_markdown(diagnostic: SelectionDiagnostic) -> str:
         lines += ["None.", ""]
     else:
         lines += [
-            "Reasons: `slot_limit` means the prompt's slots were full,",
+            "Reasons: `slot_limit` means the slots for its kind were full,",
             "`context_budget` means the token budget was full,",
             "`duplicate` means a near copy was already kept,",
             "and `not judged` means the record was not offered to the re-ranker.",
@@ -421,6 +422,8 @@ def settings_record(lab: Lab, node_count: int) -> dict[str, Any]:
         "top_k": settings.top_k,
         "context_budget_tokens": settings.context.budget_tokens,
         "evidence_slots": settings.context.evidence_slots,
+        "graph_slots": settings.context.graph_slots,
+        "selection_rule": SELECTION_RULE,
         "graph_depth": settings.graph.max_depth,
         "graph_nodes_per_hop": settings.graph.max_nodes_per_hop,
         "graph_edges_per_node_type": settings.graph.max_edges_per_node_type,

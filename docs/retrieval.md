@@ -28,11 +28,10 @@ The model answered that the sources do not contain the answer.
 This is the designed behaviour of D-025, not a defect, and neither the rule nor the questions were changed, because that would favour one approach.
 
 D-025 was presented with CP1 part 2, which the project owner approved.
-DECISIONS.md records it as a controller ruling, and the owner has the method question open before CP3.
-Whether it is still the rule the owner wants, or whether the graph's selection should reach the prompt in some other way, is a method question to settle before CP3, the official run.
-Changing it is a method change that needs the owner's approval first.
+DECISIONS.md records it as a controller ruling.
 
-Update, 2026-10-25: the owner chose to change the rule after the CP3 proposal, and it is now the graph share (D-081, described under "The graph share" below).
+Update, 2026-10-25: the rule was changed after the CP3 proposal, on the owner's reply, and it is now the graph share (D-081, described under "The graph share" below; D-081 is a proposed controller ruling).
+The change was made after the pilot runs and the diagnostic, in which B and C did no better than A and fewer of their claims reached the prompt (38 and 39 against 43 for A).
 The four pilot runs above were made under D-025, so they describe the old rule and are history, not results of the current one.
 
 ## Purpose
@@ -93,9 +92,8 @@ question
  -> candidate scoring                       (ranks the structured channel, drives telemetry)
  -> authoritative facts attached from the source tables
  -> document channel                        (the same hybrid search as A)
- -> record blocks of structured candidates are superseded
  -> one judge over both channels
- -> one selection
+ -> one selection              (graph share; a record block yields to its node only if the node holds a graph slot)
  -> the same generator as A
 ```
 
@@ -183,10 +181,11 @@ The model is the cross-encoder `BAAI/bge-reranker-v2-m3`, run by fastembed (D-02
 Ties break on id.
 There is no cut inside the judge.
 
-Before judging, a record block whose record id is a structured candidate is dropped as `superseded_by_structured_fact`, so one fact never takes two slots.
-The node is judged on that record's exact text, so a node that loses means the record would have lost too.
+Record blocks of structured candidates are judged with the other documents, each candidate once.
+A record block is refused as `superseded_by_structured_fact` only when its node holds a graph slot, because then the node is the authoritative copy and one fact never takes two slots.
+A node refused by the share leaves its record block to compete as a document under its own rank, so the fact is not lost.
 
-One selection walks the judged list under one token budget and one slot count (D-023):
+One selection walks the judged list under one token budget and one slot count (D-023, in part superseded by D-081):
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -195,7 +194,7 @@ One selection walks the judged list under one token budget and one slot count (D
 | `RAG_GRAPH_SLOTS` | 6 | Of those slots, how many graph nodes may take in B and C (0 to `RAG_EVIDENCE_SLOTS`) |
 | `RAG_DEDUPE_THRESHOLD` | 0.85 | Jaccard overlap at which a document chunk is a near-duplicate |
 
-For each candidate the first failing check is its discard reason, in this order: `context_budget` (a smaller later candidate may still fit), `slot_limit`, `duplicate`.
+For each candidate the first failing check is its discard reason, in this order: `context_budget` (a smaller later candidate may still fit), `slot_limit` (the slots for its kind were full), `duplicate`.
 The near-duplicate check applies to document chunks only, because two distinct rows with similar columns are different facts.
 Graph nodes and documents each have their own slots (D-081, below), but the token budget is shared and is checked in judge order, so neither channel reserves any of it.
 The budget counts block text only, not titles.
@@ -206,7 +205,8 @@ The selection comes back in judge order, and that single list is what the genera
 Of the 12 slots, 6 are for the graph's own selection and the rest are for documents.
 The reason is in the 2026-10-25 diagnostic: the graph found many of the facts a correct answer needs, but the shared re-ranker scores the graph's record text low against the question, so nearly all of them fell below the cut at 12.
 With one cut, the experiment measured mostly the re-ranker's view of record text, not what the graph adds.
-The rule is fixed at half, before anything was measured, and no other value has been tried.
+The change was made after the pilot runs and the diagnostic, in which B and C did no better than A and fewer of their claims reached the prompt (38 and 39 against 43 for A).
+The share was fixed at half before the new rule was measured, and no other value has been tried.
 It is option 3 in [the official run proposal](evaluation/official-run-proposal.md).
 
 How it works, in one walk of the judged list:
@@ -214,13 +214,15 @@ How it works, in one walk of the judged list:
 - the first 6 usable graph nodes in judge order are given a graph slot, and a node is usable when its own tokens fit the whole budget;
 - every other node is refused as `slot_limit`;
 - a document is admitted only while the items selected, plus the graph slots still waiting for their node, leave room, so documents never take a graph slot;
-- a graph slot with no node to fill it (fewer than 6 usable nodes) goes to documents;
+- the share goes one way: a graph slot with no node to fill it (fewer than 6 usable nodes) goes to documents, but a document slot that no document fills never goes to graph nodes, so B and C can show fewer than 12 items while nodes are refused;
+- a record block yields to its node only when that node holds a graph slot;
 - a node that holds a slot but does not fit the remaining token budget is refused as `context_budget` and releases its slot to the documents still to come, while documents already refused as `slot_limit` stay refused because the walk never revisits a decision;
+- known limitation: the walk is single-pass, so a lower-ranked document may take a slot that a budget-refused node released, after a higher-ranked document was already refused as `slot_limit`; the token budget rarely binds (pilot prompts used about 1,130 of 2,000 tokens);
 - A has no graph nodes, so it keeps all 12 slots for documents and its selection is exactly what D-025 gave.
 
 Before 2026-10-25 the rule was D-025: one cut at 12 across both channels (recorded as `shared-reranker-12-slots`).
 The development pilot runs used it.
-The recorded rule is now `reranker-graph-share-6-of-12`, and `graph_slots` is part of the recorded context settings, so runs made under different rules never compare or resume as one experiment.
+The recorded rule is now `reranker-graph-share`, and `graph_slots` and `evidence_slots` are part of the recorded context settings, so runs made under different rules never compare or resume as one experiment.
 
 ### Answers
 
@@ -336,7 +338,7 @@ A local thinking model with `GENERATION_REASONING=default` can spend the whole t
   It also changes what A can see, so it changes the comparison.
 - A new seedable id prefix: `SEED_ID_PREFIXES`, which is a method change.
 - A new reranker or model: configuration, then an index rebuild when the embedding model changes.
-- Changing how the graph's selection reaches the prompt is the open method question above.
+- Changing how the graph's selection reaches the prompt was the method question settled by D-081 (see above); any further change is a method change that needs the owner's approval.
 
 ## Failure modes
 

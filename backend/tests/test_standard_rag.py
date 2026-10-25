@@ -299,7 +299,7 @@ class TestContextLimits:
             candidate(twin, 2, 0.85),
             candidate(corpus[1], 3, 0.4),
         ]
-        selected, discarded = select_context(candidates, budget_tokens=1000)
+        selected, discarded = select_context(candidates, budget_tokens=1000, graph_slots=0)
 
         assert [chunk.chunk_id for chunk in selected] == ["CHNK_PAY_00", "CHNK_MARKETING_00"]
         assert [chunk.discard_reason for chunk in discarded] == ["duplicate"]

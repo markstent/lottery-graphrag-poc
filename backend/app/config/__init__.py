@@ -57,9 +57,10 @@ class VectorSettings:
 # one re-ranker over every candidate, `graph_slots` of the `evidence_slots`
 # reserved for graph nodes and the rest for documents, one token budget in
 # judge order. A run records it, so runs made under different rules never
-# compare or resume as one experiment; change this value with the rule.
+# compare or resume as one experiment; change this value with the rule. The
+# slot counts are not in the label: they are recorded as context settings.
 # The pilot runs used "shared-reranker-12-slots" (D-025).
-SELECTION_RULE = "reranker-graph-share-6-of-12"
+SELECTION_RULE = "reranker-graph-share"
 
 
 @dataclass(frozen=True, slots=True)

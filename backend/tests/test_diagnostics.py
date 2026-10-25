@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from typing import cast
 
 import pytest
-from app.config import GraphConfig
+from app.config import SELECTION_RULE, GraphConfig
 from app.evaluation import diagnostics, official
 from app.evaluation.checks import TokenCheck
 from app.evaluation.claims import Claim, selection_carrier
@@ -25,6 +25,7 @@ from app.evaluation.diagnostics import (
     diagnostics_dir,
     read_candidates,
     render_markdown,
+    settings_record,
     write_diagnostic,
 )
 from app.evaluation.grounding import BankInstance, FrozenBank, GroundingError
@@ -46,6 +47,7 @@ from app.retrieval.standard.corpus import CorpusChunk
 from app.retrieval.standard.generation import GenerationOutput
 from app.retrieval.standard.vector_store import InMemoryVectorStore
 
+from tests.conftest import build_lab_offline
 from tests.test_benchmark_runner import INCIDENT, indexed_lab
 from tests.test_graph_rag import build_corpus, resolved, scn007_adjacency
 
@@ -178,6 +180,7 @@ def test_dropped_list_names_instance_and_carrier() -> None:
     assert "Approach B, question `L05-2026-X`, claim `c1`" in markdown
     assert "`CLM_1` (reason slot_limit, score 0.200, rank 3)" in markdown
     assert "Approach B: 1 claims (slot_limit 1)." in markdown
+    assert "`slot_limit` means the slots for its kind were full" in markdown
     assert "| B: documents and the graph | 1 | 2 | 2 | 0 | 1 |" in markdown
     assert "| A: documents only | 1 | 2 | - | 0 | 0 |" in markdown
     assert "## H2: ontology-dependent questions" in markdown
@@ -266,6 +269,12 @@ def test_other_errors_are_not_swallowed() -> None:
     claims = (Claim("c1", "s", frozenset({"CLM_2"})),)
     with pytest.raises(RuntimeError, match="neo4j down"):
         diagnose(bank_of(instance(claims)), {"B": cast(Retriever, Broken())}, CORPUS)
+
+
+def test_settings_block_records_the_selection_rule_and_graph_share() -> None:
+    record = settings_record(build_lab_offline(), node_count=7)
+    assert record["selection_rule"] == SELECTION_RULE
+    assert (record["evidence_slots"], record["graph_slots"]) == (12, 6)
 
 
 def test_writes_json_and_markdown(tmp_path: Path) -> None:

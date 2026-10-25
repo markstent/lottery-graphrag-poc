@@ -8,8 +8,7 @@
     rank_and_scope        transparent evidence ranking, market scope
     select_and_attach     excluded labels out, authoritative facts on, one
                           structured candidate per remaining node
-    document_channel      pipeline A's document channel, minus the record
-                          blocks of the structured candidates
+    document_channel      pipeline A's document channel, identical to A
     assemble_and_generate one judge over both channels, one selection,
                           generation over the selection in judge order
 
@@ -72,7 +71,6 @@ from app.retrieval.standard.context import (
     SELECTION_EXCLUDED_LABEL,
     ContextAssembly,
     assemble_context,
-    supersede_records,
 )
 from app.retrieval.standard.corpus import CorpusChunk, hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
@@ -191,7 +189,6 @@ class Selection:
 @dataclass(frozen=True, slots=True)
 class DocumentCandidates:
     documents: list[EvidenceChunk]  # A's document channel, ready to judge
-    superseded: list[EvidenceChunk]  # record blocks of structured candidates
 
 
 @dataclass(frozen=True, slots=True)
@@ -504,7 +501,6 @@ def _source_system(table: str | None) -> str:
 def document_channel(
     search_text: str,
     scope: Sequence[str] | None,
-    selection: Selection,
     vectors: VectorLayer,
     top_k: int,
 ) -> DocumentCandidates:
@@ -514,16 +510,14 @@ def document_channel(
     retrieval fairness): same corpus (document chunks and record blocks),
     same dense and sparse models, same hybrid search and top_k, same
     market scope. Pipeline C embeds the expanded ``search_text`` (dense
-    and sparse); judging always uses the raw question. The record blocks
-    of the structured candidates are superseded before judging (design
-    10a.8).
+    and sparse); judging always uses the raw question. Record blocks of
+    structured candidates are judged here too, each once; selection refuses
+    one only when its node holds a graph slot (design 10a.8).
     """
     hits = vectors.search(search_text, limit=top_k, markets=scope)
-    documents, superseded = supersede_records(
-        {evidence.node_id for evidence in selection.drafts},
-        [hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)],
+    return DocumentCandidates(
+        documents=[hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
     )
-    return DocumentCandidates(documents=documents, superseded=superseded)
 
 
 def assemble_and_generate(
@@ -536,8 +530,8 @@ def assemble_and_generate(
     emitter: EventEmitter,
 ) -> Answer:
     """One judge (the shared reranker, raw question) over the structured then
-    the document channel, one selection (budget and slots shared with A),
-    then the LLM over the selection in judge order."""
+    the document channel, one selection (budget and slot count as A, with the
+    graph share, D-081), then the LLM over the selection in judge order."""
     judged = [*selection.structured, *documents.documents]
     emitter.emit(GRAPH_RERANK_STARTED, candidates=len(judged), model=reranker.model_name)
     reranked = reranker.rerank(question, judged)
@@ -644,11 +638,7 @@ def _document_outcomes(
     blocks included, in judge order), each emitted as an event."""
     selected = assembly.document_selected
     discarded = sorted(
-        (
-            chunk
-            for chunk in [*documents.superseded, *assembly.discarded]
-            if chunk.kind != NODE_KIND
-        ),
+        (chunk for chunk in assembly.discarded if chunk.kind != NODE_KIND),
         key=lambda chunk: (chunk.rerank_score is None, chunk.rank),
     )
     for chunk in selected:

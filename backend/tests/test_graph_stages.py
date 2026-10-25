@@ -226,10 +226,7 @@ STAGE_ORDER = (
 
 
 def test_run_composes_the_stages_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``run`` is the ordered composition of the typed stages, each called once.
-    The structured candidates are selected and given their facts before the
-    document channel searches, because its record blocks are superseded by
-    exactly those candidates."""
+    """``run`` is the ordered composition of the typed stages, each called once."""
     calls: list[str] = []
     for name in STAGE_ORDER:
         original = getattr(stages, name)

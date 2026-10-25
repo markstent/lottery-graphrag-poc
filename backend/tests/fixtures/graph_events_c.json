@@ -2164,7 +2164,7 @@
    {
     "event_type": "graph.rerank.started",
     "payload": {
-     "candidates": 105,
+     "candidates": 109,
      "model": "lexical-overlap"
     },
     "pipeline": "C"
@@ -2442,8 +2442,8 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00002",
-     "kind": "node",
+     "candidate_id": "REC_support_cases_SUP_00002",
+     "kind": "record",
      "rank": 28,
      "rerank_score": 0.230769
     },
@@ -2452,7 +2452,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00006",
+     "candidate_id": "SUP_00002",
      "kind": "node",
      "rank": 29,
      "rerank_score": 0.230769
@@ -2462,7 +2462,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00010",
+     "candidate_id": "SUP_00006",
      "kind": "node",
      "rank": 30,
      "rerank_score": 0.230769
@@ -2472,7 +2472,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00014",
+     "candidate_id": "SUP_00010",
      "kind": "node",
      "rank": 31,
      "rerank_score": 0.230769
@@ -2482,7 +2482,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00030",
+     "candidate_id": "SUP_00014",
      "kind": "node",
      "rank": 32,
      "rerank_score": 0.230769
@@ -2492,7 +2492,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00054",
+     "candidate_id": "SUP_00030",
      "kind": "node",
      "rank": 33,
      "rerank_score": 0.230769
@@ -2502,7 +2502,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00058",
+     "candidate_id": "SUP_00054",
      "kind": "node",
      "rank": 34,
      "rerank_score": 0.230769
@@ -2512,17 +2512,17 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "APPV_GR_531",
+     "candidate_id": "SUP_00058",
      "kind": "node",
      "rank": 35,
-     "rerank_score": 0.153846
+     "rerank_score": 0.230769
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CONCEPT_IDENTITY_INCIDENT",
+     "candidate_id": "APPV_GR_531",
      "kind": "node",
      "rank": 36,
      "rerank_score": 0.153846
@@ -2532,7 +2532,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CONCEPT_PAYMENT_INCIDENT",
+     "candidate_id": "CONCEPT_IDENTITY_INCIDENT",
      "kind": "node",
      "rank": 37,
      "rerank_score": 0.153846
@@ -2542,7 +2542,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_GR_ARITHMOLACHEIO",
+     "candidate_id": "CONCEPT_PAYMENT_INCIDENT",
      "kind": "node",
      "rank": 38,
      "rerank_score": 0.153846
@@ -2552,7 +2552,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_GR_POLYETHNIKO_TZAKPOT",
+     "candidate_id": "FAM_GR_ARITHMOLACHEIO",
      "kind": "node",
      "rank": 39,
      "rerank_score": 0.153846
@@ -2562,7 +2562,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_GR_PSIFIAKO_STIGMIAIO",
+     "candidate_id": "FAM_GR_POLYETHNIKO_TZAKPOT",
      "kind": "node",
      "rank": 40,
      "rerank_score": 0.153846
@@ -2572,7 +2572,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_GR_SYCHNES_KLIROSEIS",
+     "candidate_id": "FAM_GR_PSIFIAKO_STIGMIAIO",
      "kind": "node",
      "rank": 41,
      "rerank_score": 0.153846
@@ -2582,7 +2582,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_001",
+     "candidate_id": "FAM_GR_SYCHNES_KLIROSEIS",
      "kind": "node",
      "rank": 42,
      "rerank_score": 0.153846
@@ -2592,7 +2592,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_005",
+     "candidate_id": "INC_001",
      "kind": "node",
      "rank": 43,
      "rerank_score": 0.153846
@@ -2602,7 +2602,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_009",
+     "candidate_id": "INC_005",
      "kind": "node",
      "rank": 44,
      "rerank_score": 0.153846
@@ -2612,7 +2612,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_013",
+     "candidate_id": "INC_009",
      "kind": "node",
      "rank": 45,
      "rerank_score": 0.153846
@@ -2622,7 +2622,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_017",
+     "candidate_id": "INC_013",
      "kind": "node",
      "rank": 46,
      "rerank_score": 0.153846
@@ -2632,7 +2632,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_018",
+     "candidate_id": "INC_017",
      "kind": "node",
      "rank": 47,
      "rerank_score": 0.153846
@@ -2642,7 +2642,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_CORP_PAYMENT",
+     "candidate_id": "INC_018",
      "kind": "node",
      "rank": 48,
      "rerank_score": 0.153846
@@ -2652,7 +2652,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_GR_EFARMOGI",
+     "candidate_id": "ITYPE_CORP_PAYMENT",
      "kind": "node",
      "rank": 49,
      "rerank_score": 0.153846
@@ -2662,7 +2662,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_GR_KLIROSI",
+     "candidate_id": "ITYPE_GR_EFARMOGI",
      "kind": "node",
      "rank": 50,
      "rerank_score": 0.153846
@@ -2672,7 +2672,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_GR_PLIROMES",
+     "candidate_id": "ITYPE_GR_KLIROSI",
      "kind": "node",
      "rank": 51,
      "rerank_score": 0.153846
@@ -2682,7 +2682,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_GR_SYNDESI",
+     "candidate_id": "ITYPE_GR_PLIROMES",
      "kind": "node",
      "rank": 52,
      "rerank_score": 0.153846
@@ -2692,7 +2692,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MECH_GR_AMESOI_GYROI",
+     "candidate_id": "ITYPE_GR_SYNDESI",
      "kind": "node",
      "rank": 53,
      "rerank_score": 0.153846
@@ -2702,7 +2702,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MECH_GR_EPILOGI_ARITHMON",
+     "candidate_id": "MECH_GR_AMESOI_GYROI",
      "kind": "node",
      "rank": 54,
      "rerank_score": 0.153846
@@ -2712,7 +2712,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MECH_GR_TYCHAIA_EPILOGI",
+     "candidate_id": "MECH_GR_EPILOGI_ARITHMON",
      "kind": "node",
      "rank": 55,
      "rerank_score": 0.153846
@@ -2722,7 +2722,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUPC_GR_LOGARIASMOS",
+     "candidate_id": "MECH_GR_TYCHAIA_EPILOGI",
      "kind": "node",
      "rank": 56,
      "rerank_score": 0.153846
@@ -2732,8 +2732,8 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUPC_GR_TECHNIKO",
-     "kind": "node",
+     "candidate_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
+     "kind": "record",
      "rank": 57,
      "rerank_score": 0.153846
     },
@@ -2742,8 +2742,8 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00001",
-     "kind": "node",
+     "candidate_id": "REC_incident_types_ITYPE_GR_PLIROMES",
+     "kind": "record",
      "rank": 58,
      "rerank_score": 0.153846
     },
@@ -2752,7 +2752,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00005",
+     "candidate_id": "SUPC_GR_LOGARIASMOS",
      "kind": "node",
      "rank": 59,
      "rerank_score": 0.153846
@@ -2762,7 +2762,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00007",
+     "candidate_id": "SUPC_GR_TECHNIKO",
      "kind": "node",
      "rank": 60,
      "rerank_score": 0.153846
@@ -2772,7 +2772,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00009",
+     "candidate_id": "SUP_00001",
      "kind": "node",
      "rank": 61,
      "rerank_score": 0.153846
@@ -2782,7 +2782,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00013",
+     "candidate_id": "SUP_00005",
      "kind": "node",
      "rank": 62,
      "rerank_score": 0.153846
@@ -2792,7 +2792,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00049",
+     "candidate_id": "SUP_00007",
      "kind": "node",
      "rank": 63,
      "rerank_score": 0.153846
@@ -2802,37 +2802,37 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CONCEPT_DRAW_INCIDENT",
+     "candidate_id": "SUP_00009",
      "kind": "node",
      "rank": 64,
-     "rerank_score": 0.076923
+     "rerank_score": 0.153846
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CONCEPT_INCIDENT",
+     "candidate_id": "SUP_00013",
      "kind": "node",
      "rank": 65,
-     "rerank_score": 0.076923
+     "rerank_score": 0.153846
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_UK_RAPID_NUMBERS",
+     "candidate_id": "SUP_00049",
      "kind": "node",
      "rank": 66,
-     "rerank_score": 0.076923
+     "rerank_score": 0.153846
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_UK_SCRATCHCARD",
+     "candidate_id": "CONCEPT_DRAW_INCIDENT",
      "kind": "node",
      "rank": 67,
      "rerank_score": 0.076923
@@ -2842,7 +2842,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_014",
+     "candidate_id": "CONCEPT_INCIDENT",
      "kind": "node",
      "rank": 68,
      "rerank_score": 0.076923
@@ -2852,7 +2852,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_AT_ANMELDUNG",
+     "candidate_id": "FAM_UK_RAPID_NUMBERS",
      "kind": "node",
      "rank": 69,
      "rerank_score": 0.076923
@@ -2862,7 +2862,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_AT_APP",
+     "candidate_id": "FAM_UK_SCRATCHCARD",
      "kind": "node",
      "rank": 70,
      "rerank_score": 0.076923
@@ -2872,7 +2872,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_AT_ZAHLUNG",
+     "candidate_id": "INC_014",
      "kind": "node",
      "rank": 71,
      "rerank_score": 0.076923
@@ -2882,7 +2882,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_AT_ZIEHUNG",
+     "candidate_id": "ITYPE_AT_ANMELDUNG",
      "kind": "node",
      "rank": 72,
      "rerank_score": 0.076923
@@ -2892,7 +2892,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_CZ_APLIKACE",
+     "candidate_id": "ITYPE_AT_APP",
      "kind": "node",
      "rank": 73,
      "rerank_score": 0.076923
@@ -2902,7 +2902,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_CZ_LOSOVANI",
+     "candidate_id": "ITYPE_AT_ZAHLUNG",
      "kind": "node",
      "rank": 74,
      "rerank_score": 0.076923
@@ -2912,7 +2912,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_CZ_PLATBY",
+     "candidate_id": "ITYPE_AT_ZIEHUNG",
      "kind": "node",
      "rank": 75,
      "rerank_score": 0.076923
@@ -2922,7 +2922,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_CZ_PRIHLASENI",
+     "candidate_id": "ITYPE_CZ_APLIKACE",
      "kind": "node",
      "rank": 76,
      "rerank_score": 0.076923
@@ -2932,7 +2932,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_UK_APP_STABILITY",
+     "candidate_id": "ITYPE_CZ_LOSOVANI",
      "kind": "node",
      "rank": 77,
      "rerank_score": 0.076923
@@ -2942,7 +2942,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_UK_DRAW_DELAY",
+     "candidate_id": "ITYPE_CZ_PLATBY",
      "kind": "node",
      "rank": 78,
      "rerank_score": 0.076923
@@ -2952,7 +2952,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_UK_SIGN_IN",
+     "candidate_id": "ITYPE_CZ_PRIHLASENI",
      "kind": "node",
      "rank": 79,
      "rerank_score": 0.076923
@@ -2962,7 +2962,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MECH_UK_QUICK_PICK",
+     "candidate_id": "ITYPE_UK_APP_STABILITY",
      "kind": "node",
      "rank": 80,
      "rerank_score": 0.076923
@@ -2972,7 +2972,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MECH_UK_SCRATCH",
+     "candidate_id": "ITYPE_UK_DRAW_DELAY",
      "kind": "node",
      "rank": 81,
      "rerank_score": 0.076923
@@ -2982,7 +2982,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MKT_GR",
+     "candidate_id": "ITYPE_UK_SIGN_IN",
      "kind": "node",
      "rank": 82,
      "rerank_score": 0.076923
@@ -2992,47 +2992,47 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CAT_GR_ARITHMOPAICHNIDIA",
+     "candidate_id": "MECH_UK_QUICK_PICK",
      "kind": "node",
      "rank": 83,
-     "rerank_score": 0.0
+     "rerank_score": 0.076923
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CAT_GR_KLIROSEIS",
+     "candidate_id": "MECH_UK_SCRATCH",
      "kind": "node",
      "rank": 84,
-     "rerank_score": 0.0
+     "rerank_score": 0.076923
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CAT_GR_STIGMIAIA",
+     "candidate_id": "MKT_GR",
      "kind": "node",
      "rank": 85,
-     "rerank_score": 0.0
+     "rerank_score": 0.076923
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CAT_UK_INSTANT",
-     "kind": "node",
+     "candidate_id": "REC_incident_types_ITYPE_CZ_PLATBY",
+     "kind": "record",
      "rank": 86,
-     "rerank_score": 0.0
+     "rerank_score": 0.076923
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CAT_UK_NUMBERS",
+     "candidate_id": "CAT_GR_ARITHMOPAICHNIDIA",
      "kind": "node",
      "rank": 87,
      "rerank_score": 0.0
@@ -3042,7 +3042,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CONCEPT_APPLICATION_INCIDENT",
+     "candidate_id": "CAT_GR_KLIROSEIS",
      "kind": "node",
      "rank": 88,
      "rerank_score": 0.0
@@ -3052,7 +3052,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CONCEPT_PLATFORM_INCIDENT",
+     "candidate_id": "CAT_GR_STIGMIAIA",
      "kind": "node",
      "rank": 89,
      "rerank_score": 0.0
@@ -3062,7 +3062,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_CORP_APPLICATION",
+     "candidate_id": "CAT_UK_INSTANT",
      "kind": "node",
      "rank": 90,
      "rerank_score": 0.0
@@ -3072,7 +3072,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_CORP_IDENTITY",
+     "candidate_id": "CAT_UK_NUMBERS",
      "kind": "node",
      "rank": 91,
      "rerank_score": 0.0
@@ -3082,7 +3082,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MKT_UK",
+     "candidate_id": "CONCEPT_APPLICATION_INCIDENT",
      "kind": "node",
      "rank": 92,
      "rerank_score": 0.0
@@ -3092,7 +3092,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLT_ANALYTICS",
+     "candidate_id": "CONCEPT_PLATFORM_INCIDENT",
      "kind": "node",
      "rank": 93,
      "rerank_score": 0.0
@@ -3102,7 +3102,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLT_APP_ANDROID",
+     "candidate_id": "ITYPE_CORP_APPLICATION",
      "kind": "node",
      "rank": 94,
      "rerank_score": 0.0
@@ -3112,7 +3112,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLT_APP_IOS",
+     "candidate_id": "ITYPE_CORP_IDENTITY",
      "kind": "node",
      "rank": 95,
      "rerank_score": 0.0
@@ -3122,7 +3122,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLT_DRAW",
+     "candidate_id": "MKT_UK",
      "kind": "node",
      "rank": 96,
      "rerank_score": 0.0
@@ -3132,7 +3132,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLT_IDENTITY",
+     "candidate_id": "PLT_ANALYTICS",
      "kind": "node",
      "rank": 97,
      "rerank_score": 0.0
@@ -3142,7 +3142,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLT_PAYMENTS",
+     "candidate_id": "PLT_APP_ANDROID",
      "kind": "node",
      "rank": 98,
      "rerank_score": 0.0
@@ -3152,7 +3152,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLT_RETAIL",
+     "candidate_id": "PLT_APP_IOS",
      "kind": "node",
      "rank": 99,
      "rerank_score": 0.0
@@ -3162,7 +3162,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLV_ANALYTICS_2",
+     "candidate_id": "PLT_DRAW",
      "kind": "node",
      "rank": 100,
      "rerank_score": 0.0
@@ -3172,7 +3172,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLV_APP_IOS_1",
+     "candidate_id": "PLT_IDENTITY",
      "kind": "node",
      "rank": 101,
      "rerank_score": 0.0
@@ -3182,7 +3182,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLV_IDENTITY_2",
+     "candidate_id": "PLT_PAYMENTS",
      "kind": "node",
      "rank": 102,
      "rerank_score": 0.0
@@ -3192,7 +3192,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLV_PAYMENTS_1",
+     "candidate_id": "PLT_RETAIL",
      "kind": "node",
      "rank": 103,
      "rerank_score": 0.0
@@ -3202,7 +3202,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLV_PAYMENTS_2",
+     "candidate_id": "PLV_ANALYTICS_2",
      "kind": "node",
      "rank": 104,
      "rerank_score": 0.0
@@ -3212,9 +3212,49 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "PLV_PAYMENTS_3",
+     "candidate_id": "PLV_APP_IOS_1",
      "kind": "node",
      "rank": 105,
+     "rerank_score": 0.0
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.reranked",
+    "payload": {
+     "candidate_id": "PLV_IDENTITY_2",
+     "kind": "node",
+     "rank": 106,
+     "rerank_score": 0.0
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.reranked",
+    "payload": {
+     "candidate_id": "PLV_PAYMENTS_1",
+     "kind": "node",
+     "rank": 107,
+     "rerank_score": 0.0
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.reranked",
+    "payload": {
+     "candidate_id": "PLV_PAYMENTS_2",
+     "kind": "node",
+     "rank": 108,
+     "rerank_score": 0.0
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.reranked",
+    "payload": {
+     "candidate_id": "PLV_PAYMENTS_3",
+     "kind": "node",
+     "rank": 109,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -4498,38 +4538,38 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.discarded",
-    "payload": {
-     "chunk_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
-     "reason": "superseded_by_structured_fact",
-     "rerank_score": null
-    },
-    "pipeline": "C"
-   },
-   {
-    "event_type": "graph.candidate.discarded",
-    "payload": {
-     "chunk_id": "REC_incident_types_ITYPE_GR_PLIROMES",
-     "reason": "superseded_by_structured_fact",
-     "rerank_score": null
-    },
-    "pipeline": "C"
-   },
-   {
-    "event_type": "graph.candidate.discarded",
+    "event_type": "graph.candidate.selected",
     "payload": {
      "chunk_id": "REC_support_cases_SUP_00002",
-     "reason": "superseded_by_structured_fact",
-     "rerank_score": null
+     "rank": 28,
+     "rerank_score": 0.230769
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.discarded",
+    "event_type": "graph.candidate.selected",
+    "payload": {
+     "chunk_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
+     "rank": 57,
+     "rerank_score": 0.153846
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.selected",
+    "payload": {
+     "chunk_id": "REC_incident_types_ITYPE_GR_PLIROMES",
+     "rank": 58,
+     "rerank_score": 0.153846
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.selected",
     "payload": {
      "chunk_id": "REC_incident_types_ITYPE_CZ_PLATBY",
-     "reason": "superseded_by_structured_fact",
-     "rerank_score": null
+     "rank": 86,
+     "rerank_score": 0.076923
     },
     "pipeline": "C"
    },
@@ -4544,8 +4584,8 @@
    {
     "event_type": "graph.context.assembled",
     "payload": {
-     "context_tokens": 479,
-     "document_chunks": 0,
+     "context_tokens": 675,
+     "document_chunks": 4,
      "evidence_slots": 12,
      "structured_nodes": 6
     },
@@ -4562,7 +4602,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 479,
+     "context_tokens": 675,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -4633,34 +4673,97 @@
       "source_record_id": "GAME_GR_05",
       "source_system": "warehouse",
       "title": "games: GAME_GR_05"
+     },
+     {
+      "chunk_id": "REC_support_cases_SUP_00002",
+      "document_id": "SUP_00002",
+      "language_code": "en",
+      "market_id": "MKT_GR",
+      "record_table": "support_cases",
+      "source_record_id": "SUP_00002",
+      "source_system": "support_platform",
+      "title": "support_cases: SUP_00002"
+     },
+     {
+      "chunk_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
+      "document_id": "ITYPE_CORP_PAYMENT",
+      "language_code": "en",
+      "market_id": "",
+      "record_table": "incident_types",
+      "source_record_id": "ITYPE_CORP_PAYMENT",
+      "source_system": "warehouse",
+      "title": "incident_types: ITYPE_CORP_PAYMENT"
+     },
+     {
+      "chunk_id": "REC_incident_types_ITYPE_GR_PLIROMES",
+      "document_id": "ITYPE_GR_PLIROMES",
+      "language_code": "en",
+      "market_id": "MKT_GR",
+      "record_table": "incident_types",
+      "source_record_id": "ITYPE_GR_PLIROMES",
+      "source_system": "warehouse",
+      "title": "incident_types: ITYPE_GR_PLIROMES"
+     },
+     {
+      "chunk_id": "REC_incident_types_ITYPE_CZ_PLATBY",
+      "document_id": "ITYPE_CZ_PLATBY",
+      "language_code": "en",
+      "market_id": "MKT_CZ",
+      "record_table": "incident_types",
+      "source_record_id": "ITYPE_CZ_PLATBY",
+      "source_system": "warehouse",
+      "title": "incident_types: ITYPE_CZ_PLATBY"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 479,
+    "context_tokens": 675,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].\"}",
-    "text": "[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 10 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].\"}",
+    "text": "[fake-model] Based on 10 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
    "document_evidence": [
     {
+     "chunk_id": "REC_support_cases_SUP_00002",
+     "chunk_index": 0,
+     "dense_rank": 3,
+     "discard_reason": null,
+     "discovered_via": "vector",
+     "document_id": "SUP_00002",
+     "document_type": "SUPPORT_CASES",
+     "kind": "record",
+     "language_code": "en",
+     "market_id": "MKT_GR",
+     "rank": 28,
+     "record_table": "support_cases",
+     "rerank_score": 0.230769,
+     "selected": true,
+     "similarity": 0.015873,
+     "source_system": "support_platform",
+     "sparse_rank": null,
+     "text": "Support case SUP_00002 in Greece: Synthetic support contact describing a player-reported issue. Category Πρόσβαση λογαριασμού (SUPC_GR_LOGARIASMOS). Player PLAYER_GR_000026. Game Ellas Jackpot (GAME_GR_02). Opened 2025-08-29T13:02:48. Closed 2025-09-03T02:02:48. Sentiment score 0.031. Source: support_platform table support_cases, record SUP_00002.",
+     "title": "support_cases: SUP_00002",
+     "valid_from": "2025-08-29T13:02:48",
+     "valid_to": null
+    },
+    {
      "chunk_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
      "chunk_index": 0,
      "dense_rank": 1,
-     "discard_reason": "superseded_by_structured_fact",
+     "discard_reason": null,
      "discovered_via": "vector",
      "document_id": "ITYPE_CORP_PAYMENT",
      "document_type": "INCIDENT_TYPES",
      "kind": "record",
      "language_code": "en",
      "market_id": "",
-     "rank": 1,
+     "rank": 57,
      "record_table": "incident_types",
-     "rerank_score": null,
-     "selected": false,
+     "rerank_score": 0.153846,
+     "selected": true,
      "similarity": 0.032522,
      "source_system": "warehouse",
      "sparse_rank": 2,
@@ -4673,17 +4776,17 @@
      "chunk_id": "REC_incident_types_ITYPE_GR_PLIROMES",
      "chunk_index": 0,
      "dense_rank": 2,
-     "discard_reason": "superseded_by_structured_fact",
+     "discard_reason": null,
      "discovered_via": "vector",
      "document_id": "ITYPE_GR_PLIROMES",
      "document_type": "INCIDENT_TYPES",
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_GR",
-     "rank": 2,
+     "rank": 58,
      "record_table": "incident_types",
-     "rerank_score": null,
-     "selected": false,
+     "rerank_score": 0.153846,
+     "selected": true,
      "similarity": 0.032522,
      "source_system": "warehouse",
      "sparse_rank": 1,
@@ -4693,43 +4796,20 @@
      "valid_to": null
     },
     {
-     "chunk_id": "REC_support_cases_SUP_00002",
-     "chunk_index": 0,
-     "dense_rank": 3,
-     "discard_reason": "superseded_by_structured_fact",
-     "discovered_via": "vector",
-     "document_id": "SUP_00002",
-     "document_type": "SUPPORT_CASES",
-     "kind": "record",
-     "language_code": "en",
-     "market_id": "MKT_GR",
-     "rank": 3,
-     "record_table": "support_cases",
-     "rerank_score": null,
-     "selected": false,
-     "similarity": 0.015873,
-     "source_system": "support_platform",
-     "sparse_rank": null,
-     "text": "Support case SUP_00002 in Greece: Synthetic support contact describing a player-reported issue. Category Πρόσβαση λογαριασμού (SUPC_GR_LOGARIASMOS). Player PLAYER_GR_000026. Game Ellas Jackpot (GAME_GR_02). Opened 2025-08-29T13:02:48. Closed 2025-09-03T02:02:48. Sentiment score 0.031. Source: support_platform table support_cases, record SUP_00002.",
-     "title": "support_cases: SUP_00002",
-     "valid_from": "2025-08-29T13:02:48",
-     "valid_to": null
-    },
-    {
      "chunk_id": "REC_incident_types_ITYPE_CZ_PLATBY",
      "chunk_index": 0,
      "dense_rank": null,
-     "discard_reason": "superseded_by_structured_fact",
+     "discard_reason": null,
      "discovered_via": "vector",
      "document_id": "ITYPE_CZ_PLATBY",
      "document_type": "INCIDENT_TYPES",
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_CZ",
-     "rank": 4,
+     "rank": 86,
      "record_table": "incident_types",
-     "rerank_score": null,
-     "selected": false,
+     "rerank_score": 0.076923,
+     "selected": true,
      "similarity": 0.015873,
      "source_system": "warehouse",
      "sparse_rank": 3,
@@ -9812,7 +9892,7 @@
    {
     "event_type": "graph.rerank.started",
     "payload": {
-     "candidates": 60,
+     "candidates": 64,
      "model": "lexical-overlap"
     },
     "pipeline": "C"
@@ -9880,17 +9960,17 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_002",
-     "kind": "node",
+     "candidate_id": "REC_incidents_INC_010",
+     "kind": "record",
      "rank": 7,
-     "rerank_score": 0.230769
+     "rerank_score": 0.307692
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_006",
+     "candidate_id": "INC_002",
      "kind": "node",
      "rank": 8,
      "rerank_score": 0.230769
@@ -9900,7 +9980,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_022",
+     "candidate_id": "INC_006",
      "kind": "node",
      "rank": 9,
      "rerank_score": 0.230769
@@ -9910,7 +9990,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00002",
+     "candidate_id": "INC_022",
      "kind": "node",
      "rank": 10,
      "rerank_score": 0.230769
@@ -9920,8 +10000,8 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00006",
-     "kind": "node",
+     "candidate_id": "REC_support_cases_SUP_00002",
+     "kind": "record",
      "rank": 11,
      "rerank_score": 0.230769
     },
@@ -9930,7 +10010,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00010",
+     "candidate_id": "SUP_00002",
      "kind": "node",
      "rank": 12,
      "rerank_score": 0.230769
@@ -9940,7 +10020,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00014",
+     "candidate_id": "SUP_00006",
      "kind": "node",
      "rank": 13,
      "rerank_score": 0.230769
@@ -9950,7 +10030,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00030",
+     "candidate_id": "SUP_00010",
      "kind": "node",
      "rank": 14,
      "rerank_score": 0.230769
@@ -9960,7 +10040,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00054",
+     "candidate_id": "SUP_00014",
      "kind": "node",
      "rank": 15,
      "rerank_score": 0.230769
@@ -9970,7 +10050,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUP_00058",
+     "candidate_id": "SUP_00030",
      "kind": "node",
      "rank": 16,
      "rerank_score": 0.230769
@@ -9980,27 +10060,27 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "APPV_GR_531",
+     "candidate_id": "SUP_00054",
      "kind": "node",
      "rank": 17,
-     "rerank_score": 0.153846
+     "rerank_score": 0.230769
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CONCEPT_IDENTITY_INCIDENT",
+     "candidate_id": "SUP_00058",
      "kind": "node",
      "rank": 18,
-     "rerank_score": 0.153846
+     "rerank_score": 0.230769
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "CONCEPT_PAYMENT_INCIDENT",
+     "candidate_id": "APPV_GR_531",
      "kind": "node",
      "rank": 19,
      "rerank_score": 0.153846
@@ -10010,7 +10090,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_GR_ARITHMOLACHEIO",
+     "candidate_id": "CONCEPT_IDENTITY_INCIDENT",
      "kind": "node",
      "rank": 20,
      "rerank_score": 0.153846
@@ -10020,7 +10100,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_GR_POLYETHNIKO_TZAKPOT",
+     "candidate_id": "CONCEPT_PAYMENT_INCIDENT",
      "kind": "node",
      "rank": 21,
      "rerank_score": 0.153846
@@ -10030,7 +10110,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_GR_PSIFIAKO_STIGMIAIO",
+     "candidate_id": "FAM_GR_ARITHMOLACHEIO",
      "kind": "node",
      "rank": 22,
      "rerank_score": 0.153846
@@ -10040,7 +10120,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "FAM_GR_SYCHNES_KLIROSEIS",
+     "candidate_id": "FAM_GR_POLYETHNIKO_TZAKPOT",
      "kind": "node",
      "rank": 23,
      "rerank_score": 0.153846
@@ -10050,7 +10130,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "INC_018",
+     "candidate_id": "FAM_GR_PSIFIAKO_STIGMIAIO",
      "kind": "node",
      "rank": 24,
      "rerank_score": 0.153846
@@ -10060,7 +10140,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_CORP_PAYMENT",
+     "candidate_id": "FAM_GR_SYCHNES_KLIROSEIS",
      "kind": "node",
      "rank": 25,
      "rerank_score": 0.153846
@@ -10070,7 +10150,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_GR_EFARMOGI",
+     "candidate_id": "INC_018",
      "kind": "node",
      "rank": 26,
      "rerank_score": 0.153846
@@ -10080,7 +10160,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_GR_KLIROSI",
+     "candidate_id": "ITYPE_CORP_PAYMENT",
      "kind": "node",
      "rank": 27,
      "rerank_score": 0.153846
@@ -10090,7 +10170,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_GR_PLIROMES",
+     "candidate_id": "ITYPE_GR_EFARMOGI",
      "kind": "node",
      "rank": 28,
      "rerank_score": 0.153846
@@ -10100,7 +10180,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "ITYPE_GR_SYNDESI",
+     "candidate_id": "ITYPE_GR_KLIROSI",
      "kind": "node",
      "rank": 29,
      "rerank_score": 0.153846
@@ -10110,7 +10190,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MECH_GR_AMESOI_GYROI",
+     "candidate_id": "ITYPE_GR_PLIROMES",
      "kind": "node",
      "rank": 30,
      "rerank_score": 0.153846
@@ -10120,7 +10200,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MECH_GR_EPILOGI_ARITHMON",
+     "candidate_id": "ITYPE_GR_SYNDESI",
      "kind": "node",
      "rank": 31,
      "rerank_score": 0.153846
@@ -10130,7 +10210,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "MECH_GR_TYCHAIA_EPILOGI",
+     "candidate_id": "MECH_GR_AMESOI_GYROI",
      "kind": "node",
      "rank": 32,
      "rerank_score": 0.153846
@@ -10140,7 +10220,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUPC_GR_LOGARIASMOS",
+     "candidate_id": "MECH_GR_EPILOGI_ARITHMON",
      "kind": "node",
      "rank": 33,
      "rerank_score": 0.153846
@@ -10150,7 +10230,7 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
-     "candidate_id": "SUPC_GR_TECHNIKO",
+     "candidate_id": "MECH_GR_TYCHAIA_EPILOGI",
      "kind": "node",
      "rank": 34,
      "rerank_score": 0.153846
@@ -10160,9 +10240,49 @@
    {
     "event_type": "graph.candidate.reranked",
     "payload": {
+     "candidate_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
+     "kind": "record",
+     "rank": 35,
+     "rerank_score": 0.153846
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.reranked",
+    "payload": {
+     "candidate_id": "REC_incident_types_ITYPE_GR_PLIROMES",
+     "kind": "record",
+     "rank": 36,
+     "rerank_score": 0.153846
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.reranked",
+    "payload": {
+     "candidate_id": "SUPC_GR_LOGARIASMOS",
+     "kind": "node",
+     "rank": 37,
+     "rerank_score": 0.153846
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.reranked",
+    "payload": {
+     "candidate_id": "SUPC_GR_TECHNIKO",
+     "kind": "node",
+     "rank": 38,
+     "rerank_score": 0.153846
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.reranked",
+    "payload": {
      "candidate_id": "CONCEPT_DRAW_INCIDENT",
      "kind": "node",
-     "rank": 35,
+     "rank": 39,
      "rerank_score": 0.076923
     },
     "pipeline": "C"
@@ -10172,7 +10292,7 @@
     "payload": {
      "candidate_id": "CONCEPT_INCIDENT",
      "kind": "node",
-     "rank": 36,
+     "rank": 40,
      "rerank_score": 0.076923
     },
     "pipeline": "C"
@@ -10182,7 +10302,7 @@
     "payload": {
      "candidate_id": "INC_014",
      "kind": "node",
-     "rank": 37,
+     "rank": 41,
      "rerank_score": 0.076923
     },
     "pipeline": "C"
@@ -10192,7 +10312,7 @@
     "payload": {
      "candidate_id": "MKT_GR",
      "kind": "node",
-     "rank": 38,
+     "rank": 42,
      "rerank_score": 0.076923
     },
     "pipeline": "C"
@@ -10202,7 +10322,7 @@
     "payload": {
      "candidate_id": "CAT_GR_ARITHMOPAICHNIDIA",
      "kind": "node",
-     "rank": 39,
+     "rank": 43,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10212,7 +10332,7 @@
     "payload": {
      "candidate_id": "CAT_GR_KLIROSEIS",
      "kind": "node",
-     "rank": 40,
+     "rank": 44,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10222,7 +10342,7 @@
     "payload": {
      "candidate_id": "CAT_GR_STIGMIAIA",
      "kind": "node",
-     "rank": 41,
+     "rank": 45,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10232,7 +10352,7 @@
     "payload": {
      "candidate_id": "CAT_UK_INSTANT",
      "kind": "node",
-     "rank": 42,
+     "rank": 46,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10242,7 +10362,7 @@
     "payload": {
      "candidate_id": "CAT_UK_NUMBERS",
      "kind": "node",
-     "rank": 43,
+     "rank": 47,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10252,7 +10372,7 @@
     "payload": {
      "candidate_id": "CONCEPT_APPLICATION_INCIDENT",
      "kind": "node",
-     "rank": 44,
+     "rank": 48,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10262,7 +10382,7 @@
     "payload": {
      "candidate_id": "CONCEPT_PLATFORM_INCIDENT",
      "kind": "node",
-     "rank": 45,
+     "rank": 49,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10272,7 +10392,7 @@
     "payload": {
      "candidate_id": "ITYPE_CORP_APPLICATION",
      "kind": "node",
-     "rank": 46,
+     "rank": 50,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10282,7 +10402,7 @@
     "payload": {
      "candidate_id": "ITYPE_CORP_IDENTITY",
      "kind": "node",
-     "rank": 47,
+     "rank": 51,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10292,7 +10412,7 @@
     "payload": {
      "candidate_id": "PLT_ANALYTICS",
      "kind": "node",
-     "rank": 48,
+     "rank": 52,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10302,7 +10422,7 @@
     "payload": {
      "candidate_id": "PLT_APP_ANDROID",
      "kind": "node",
-     "rank": 49,
+     "rank": 53,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10312,7 +10432,7 @@
     "payload": {
      "candidate_id": "PLT_APP_IOS",
      "kind": "node",
-     "rank": 50,
+     "rank": 54,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10322,7 +10442,7 @@
     "payload": {
      "candidate_id": "PLT_DRAW",
      "kind": "node",
-     "rank": 51,
+     "rank": 55,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10332,7 +10452,7 @@
     "payload": {
      "candidate_id": "PLT_IDENTITY",
      "kind": "node",
-     "rank": 52,
+     "rank": 56,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10342,7 +10462,7 @@
     "payload": {
      "candidate_id": "PLT_PAYMENTS",
      "kind": "node",
-     "rank": 53,
+     "rank": 57,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10352,7 +10472,7 @@
     "payload": {
      "candidate_id": "PLT_RETAIL",
      "kind": "node",
-     "rank": 54,
+     "rank": 58,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10362,7 +10482,7 @@
     "payload": {
      "candidate_id": "PLV_ANALYTICS_2",
      "kind": "node",
-     "rank": 55,
+     "rank": 59,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10372,7 +10492,7 @@
     "payload": {
      "candidate_id": "PLV_APP_IOS_1",
      "kind": "node",
-     "rank": 56,
+     "rank": 60,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10382,7 +10502,7 @@
     "payload": {
      "candidate_id": "PLV_IDENTITY_2",
      "kind": "node",
-     "rank": 57,
+     "rank": 61,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10392,7 +10512,7 @@
     "payload": {
      "candidate_id": "PLV_PAYMENTS_1",
      "kind": "node",
-     "rank": 58,
+     "rank": 62,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10402,7 +10522,7 @@
     "payload": {
      "candidate_id": "PLV_PAYMENTS_2",
      "kind": "node",
-     "rank": 59,
+     "rank": 63,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -10412,7 +10532,7 @@
     "payload": {
      "candidate_id": "PLV_PAYMENTS_3",
      "kind": "node",
-     "rank": 60,
+     "rank": 64,
      "rerank_score": 0.0
     },
     "pipeline": "C"
@@ -11156,29 +11276,29 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.discarded",
-    "payload": {
-     "chunk_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
-     "reason": "superseded_by_structured_fact",
-     "rerank_score": null
-    },
-    "pipeline": "C"
-   },
-   {
-    "event_type": "graph.candidate.discarded",
-    "payload": {
-     "chunk_id": "REC_incident_types_ITYPE_GR_PLIROMES",
-     "reason": "superseded_by_structured_fact",
-     "rerank_score": null
-    },
-    "pipeline": "C"
-   },
-   {
-    "event_type": "graph.candidate.discarded",
+    "event_type": "graph.candidate.selected",
     "payload": {
      "chunk_id": "REC_support_cases_SUP_00002",
-     "reason": "superseded_by_structured_fact",
-     "rerank_score": null
+     "rank": 11,
+     "rerank_score": 0.230769
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.selected",
+    "payload": {
+     "chunk_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
+     "rank": 35,
+     "rerank_score": 0.153846
+    },
+    "pipeline": "C"
+   },
+   {
+    "event_type": "graph.candidate.selected",
+    "payload": {
+     "chunk_id": "REC_incident_types_ITYPE_GR_PLIROMES",
+     "rank": 36,
+     "rerank_score": 0.153846
     },
     "pipeline": "C"
    },
@@ -11187,7 +11307,7 @@
     "payload": {
      "chunk_id": "REC_incidents_INC_010",
      "reason": "superseded_by_structured_fact",
-     "rerank_score": null
+     "rerank_score": 0.307692
     },
     "pipeline": "C"
    },
@@ -11202,8 +11322,8 @@
    {
     "event_type": "graph.context.assembled",
     "payload": {
-     "context_tokens": 483,
-     "document_chunks": 0,
+     "context_tokens": 643,
+     "document_chunks": 3,
      "evidence_slots": 12,
      "structured_nodes": 6
     },
@@ -11220,7 +11340,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 483,
+     "context_tokens": 643,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -11293,34 +11413,87 @@
       "source_record_id": "INC_010",
       "source_system": "incident_management",
       "title": "incidents: INC_010"
+     },
+     {
+      "chunk_id": "REC_support_cases_SUP_00002",
+      "document_id": "SUP_00002",
+      "language_code": "en",
+      "market_id": "MKT_GR",
+      "record_table": "support_cases",
+      "source_record_id": "SUP_00002",
+      "source_system": "support_platform",
+      "title": "support_cases: SUP_00002"
+     },
+     {
+      "chunk_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
+      "document_id": "ITYPE_CORP_PAYMENT",
+      "language_code": "en",
+      "market_id": "",
+      "record_table": "incident_types",
+      "source_record_id": "ITYPE_CORP_PAYMENT",
+      "source_system": "warehouse",
+      "title": "incident_types: ITYPE_CORP_PAYMENT"
+     },
+     {
+      "chunk_id": "REC_incident_types_ITYPE_GR_PLIROMES",
+      "document_id": "ITYPE_GR_PLIROMES",
+      "language_code": "en",
+      "market_id": "MKT_GR",
+      "record_table": "incident_types",
+      "source_record_id": "ITYPE_GR_PLIROMES",
+      "source_system": "warehouse",
+      "title": "incident_types: ITYPE_GR_PLIROMES"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 483,
+    "context_tokens": 643,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: games: GAME_GR_01, games: GAME_GR_02 [1].\"}",
-    "text": "[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: games: GAME_GR_01, games: GAME_GR_02 [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 9 retrieved source(s), the strongest evidence for the question is in: games: GAME_GR_01, games: GAME_GR_02 [1].\"}",
+    "text": "[fake-model] Based on 9 retrieved source(s), the strongest evidence for the question is in: games: GAME_GR_01, games: GAME_GR_02 [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
    "document_evidence": [
     {
+     "chunk_id": "REC_support_cases_SUP_00002",
+     "chunk_index": 0,
+     "dense_rank": 3,
+     "discard_reason": null,
+     "discovered_via": "vector",
+     "document_id": "SUP_00002",
+     "document_type": "SUPPORT_CASES",
+     "kind": "record",
+     "language_code": "en",
+     "market_id": "MKT_GR",
+     "rank": 11,
+     "record_table": "support_cases",
+     "rerank_score": 0.230769,
+     "selected": true,
+     "similarity": 0.015873,
+     "source_system": "support_platform",
+     "sparse_rank": null,
+     "text": "Support case SUP_00002 in Greece: Synthetic support contact describing a player-reported issue. Category Πρόσβαση λογαριασμού (SUPC_GR_LOGARIASMOS). Player PLAYER_GR_000026. Game Ellas Jackpot (GAME_GR_02). Opened 2025-08-29T13:02:48. Closed 2025-09-03T02:02:48. Sentiment score 0.031. Source: support_platform table support_cases, record SUP_00002.",
+     "title": "support_cases: SUP_00002",
+     "valid_from": "2025-08-29T13:02:48",
+     "valid_to": null
+    },
+    {
      "chunk_id": "REC_incident_types_ITYPE_CORP_PAYMENT",
      "chunk_index": 0,
      "dense_rank": 1,
-     "discard_reason": "superseded_by_structured_fact",
+     "discard_reason": null,
      "discovered_via": "vector",
      "document_id": "ITYPE_CORP_PAYMENT",
      "document_type": "INCIDENT_TYPES",
      "kind": "record",
      "language_code": "en",
      "market_id": "",
-     "rank": 1,
+     "rank": 35,
      "record_table": "incident_types",
-     "rerank_score": null,
-     "selected": false,
+     "rerank_score": 0.153846,
+     "selected": true,
      "similarity": 0.032522,
      "source_system": "warehouse",
      "sparse_rank": 2,
@@ -11333,46 +11506,23 @@
      "chunk_id": "REC_incident_types_ITYPE_GR_PLIROMES",
      "chunk_index": 0,
      "dense_rank": 2,
-     "discard_reason": "superseded_by_structured_fact",
+     "discard_reason": null,
      "discovered_via": "vector",
      "document_id": "ITYPE_GR_PLIROMES",
      "document_type": "INCIDENT_TYPES",
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_GR",
-     "rank": 2,
+     "rank": 36,
      "record_table": "incident_types",
-     "rerank_score": null,
-     "selected": false,
+     "rerank_score": 0.153846,
+     "selected": true,
      "similarity": 0.032522,
      "source_system": "warehouse",
      "sparse_rank": 1,
      "text": "Incident type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES) in Greece. Language el. Source: warehouse table incident_types, record ITYPE_GR_PLIROMES.",
      "title": "incident_types: ITYPE_GR_PLIROMES",
      "valid_from": null,
-     "valid_to": null
-    },
-    {
-     "chunk_id": "REC_support_cases_SUP_00002",
-     "chunk_index": 0,
-     "dense_rank": 3,
-     "discard_reason": "superseded_by_structured_fact",
-     "discovered_via": "vector",
-     "document_id": "SUP_00002",
-     "document_type": "SUPPORT_CASES",
-     "kind": "record",
-     "language_code": "en",
-     "market_id": "MKT_GR",
-     "rank": 3,
-     "record_table": "support_cases",
-     "rerank_score": null,
-     "selected": false,
-     "similarity": 0.015873,
-     "source_system": "support_platform",
-     "sparse_rank": null,
-     "text": "Support case SUP_00002 in Greece: Synthetic support contact describing a player-reported issue. Category Πρόσβαση λογαριασμού (SUPC_GR_LOGARIASMOS). Player PLAYER_GR_000026. Game Ellas Jackpot (GAME_GR_02). Opened 2025-08-29T13:02:48. Closed 2025-09-03T02:02:48. Sentiment score 0.031. Source: support_platform table support_cases, record SUP_00002.",
-     "title": "support_cases: SUP_00002",
-     "valid_from": "2025-08-29T13:02:48",
      "valid_to": null
     },
     {
@@ -11386,9 +11536,9 @@
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_GR",
-     "rank": 4,
+     "rank": 7,
      "record_table": "incidents",
-     "rerank_score": null,
+     "rerank_score": 0.307692,
      "selected": false,
      "similarity": 0.015873,
      "source_system": "incident_management",
