@@ -36,6 +36,7 @@ from typing import Any
 from app.config import (
     LABEL_VERSION,
     REPO_ROOT,
+    SELECTION_RULE,
     GraphConfig,
     RetrievalSettings,
     judge_settings_from_env,
@@ -166,6 +167,7 @@ def settings_fields(
         "judge_prompt_hash": judge_prompt_hash(),
         "judge_temperature": judge.temperature,
         "judge_reasoning": judge.reasoning,
+        "selection_rule": SELECTION_RULE,
     }
 
 
@@ -224,6 +226,8 @@ class ReproducibilityRecord:
     # Gateway reasoning modes ("default" or "off"); the fake judge has none.
     generation_reasoning: str
     judge_reasoning: str | None
+    # Which rule chose the evidence in context; None in a file written before it was recorded.
+    selection_rule: str | None = None
 
     def to_payload(self) -> dict[str, Any]:
         """Every field, JSON-ready."""

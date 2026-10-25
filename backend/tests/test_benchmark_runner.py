@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
-from app.config import LABEL_VERSION, GraphConfig, JudgeSettings, from_env
+from app.config import LABEL_VERSION, SELECTION_RULE, GraphConfig, JudgeSettings, from_env
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import TokenCheck, answer_score, citation_metrics
@@ -615,6 +615,7 @@ V2_FIELDS = {
     "judge_temperature",
     "git_dirty",
     "graph_label_version",
+    "selection_rule",
 }
 
 
@@ -658,6 +659,7 @@ def test_reproducibility_payload_carries_every_field(
     assert payload["judge_prompt_version"] == JUDGE_PROMPT_VERSION
     assert payload["judge_prompt_hash"] == judge_prompt_hash()
     assert payload["generation_reasoning"] == settings.generation.reasoning
+    assert payload["selection_rule"] == SELECTION_RULE
     assert payload["judge_reasoning"] is None  # the fake judge calls no model
     assert payload["judge_temperature"] is None
     assert payload["graph_label_version"] == LABEL_VERSION

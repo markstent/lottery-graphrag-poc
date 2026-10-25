@@ -53,6 +53,13 @@ class VectorSettings:
     collection: str
 
 
+# The rule that picks the evidence items placed in context, as built: one
+# re-ranker over every candidate, then the first `evidence_slots` that fit the
+# budget. A run records it, so runs made under different rules never compare
+# or resume as one experiment; change this value with the rule.
+SELECTION_RULE = "shared-reranker-12-slots"
+
+
 @dataclass(frozen=True, slots=True)
 class ContextSettings:
     """Context budget (docs/reference/retrieval/context-budgeting.md)."""

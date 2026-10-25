@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app.config import SELECTION_RULE
 from app.datasets.config import GENERATOR_VERSION
 from app.evaluation import __main__ as cli
 from app.evaluation import official
@@ -1555,12 +1556,99 @@ def test_kept_worlds_without_resume_are_refused(tmp_path: Path, data_dir: Path) 
     assert fresh.generated == []
 
 
-@pytest.mark.parametrize("resume", [False, True])
-def test_used_dir_still_refused_without_resume(recorder: Recorder, resume: bool) -> None:
+def test_a_used_dir_is_refused_without_resume(recorder: Recorder) -> None:
     _run(recorder)
     with pytest.raises(FileExistsError, match=r"results\.json"):
-        _run(recorder, resume=resume)
+        _run(recorder)
     assert recorder.generated == [2026, 2027, 2028]
+
+
+def test_a_finished_run_is_not_resumed(recorder: Recorder) -> None:
+    _run(recorder)
+    with pytest.raises(FileExistsError, match=r"summary\.json"):
+        _run(recorder, resume=True)
+    assert recorder.generated == [2026, 2027, 2028]
+
+
+def test_resume_finishes_a_run_that_stopped_before_summary_json(
+    recorder: Recorder,
+) -> None:
+    _run(recorder)
+    expected = (recorder.tmp / "summary.json").read_text()
+    (recorder.tmp / "summary.json").unlink()
+    (recorder.tmp / "report.md").unlink()
+    (recorder.tmp / "results.json").write_text("{}")
+    fresh = Recorder(recorder.tmp.parent)
+    _run(fresh, resume=True)
+    assert fresh.runners == []
+    assert (recorder.tmp / "summary.json").read_text() == expected
+    assert (recorder.tmp / "report.md").exists()
+    assert json.loads((recorder.tmp / "results.json").read_text()) != {}
+
+
+def test_the_selection_rule_is_recorded(recorder: Recorder) -> None:
+    _run(recorder)
+    assert _kept(recorder, 2026)["record"]["selection_rule"] == SELECTION_RULE
+
+
+@pytest.mark.parametrize("change", ["other", None])
+def test_resume_refuses_another_or_a_missing_selection_rule(
+    tmp_path: Path, data_dir: Path, change: str | None
+) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+
+    def edit(saved: dict[str, Any]) -> None:
+        if change is None:
+            del saved["record"]["selection_rule"]
+        else:
+            saved["record"]["selection_rule"] = change
+
+    _edit_kept(failing, 2026, edit)
+    with pytest.raises(ValueError, match="selection_rule"):
+        _run(fresh, resume=True)
+    assert fresh.generated == fresh.ingested == [] and fresh.runners == []
+
+
+def test_compare_refuses_runs_under_different_selection_rules(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="selection_rule"):
+        _compare_with(tmp_path, selection_rule="another-rule")
+
+
+def test_compare_refuses_a_run_from_before_the_rule_was_recorded(tmp_path: Path) -> None:
+    small = _write_run(tmp_path / "small", _official_with("small-model", selection_rule=None))
+    large = _write_run(
+        tmp_path / "large", _official_with("large-model", selection_rule=SELECTION_RULE)
+    )
+    with pytest.raises(ValueError, match="selection_rule"):
+        compare_runs(small, large)
+
+
+def test_a_record_from_before_the_rule_was_recorded_still_loads() -> None:
+    payload = _record("official").to_payload()
+    del payload["selection_rule"]
+    assert ReproducibilityRecord(**payload).selection_rule is None
+
+
+@pytest.mark.parametrize(
+    ("strata", "questions"),
+    [(("H1",), ["L01"]), (("H1", "H2"), ["L01", "L05"]), (("H3",), ["L05"])],
+)
+def test_a_question_outside_the_strata_is_refused_before_any_world_is_prepared(
+    recorder: Recorder, strata: tuple[str, ...], questions: list[str]
+) -> None:
+    with pytest.raises(ValueError, match="nothing is selected"):
+        _run(recorder, strata=strata, questions=questions)
+    assert recorder.generated == recorder.ingested == []
+
+
+def test_a_selection_no_frozen_bank_matches_is_refused_before_any_world_is_prepared(
+    recorder: Recorder,
+) -> None:
+    _run(recorder)  # grounds the three banks
+    fresh = Recorder(recorder.tmp.parent / "again")
+    with pytest.raises(ValueError, match="no instance in the frozen bank"):
+        _run(fresh, questions=["L02"], strata=None)
+    assert fresh.generated == fresh.ingested == []
 
 
 def test_cli_resume_needs_out(captured: dict[str, Any], tmp_path: Path) -> None:

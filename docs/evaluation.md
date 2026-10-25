@@ -239,7 +239,7 @@ A smoke run keeps every statistic but its only headline says it is a scorer smok
 | smoke | `make run-smoke` | Scores the three worlds with the stand-in generator and judge. It tests the scoring code, and its numbers are not results. |
 | official | `make run-benchmark` | Three worlds, three repeats, a hosted or local generation model, and a judge of another family |
 | sweep | `make run-sweep` | The H1 questions with B and C at graph depth 0, 1, 2 and 3. Reports intervals, runs no test. |
-| compare | `python -m app.evaluation compare SMALL_RUN LARGE_RUN` | H7: large minus small per pipeline, stratum and metric, as clustered intervals. Needs two official runs with the same frozen banks. |
+| compare | `python -m app.evaluation compare SMALL_RUN LARGE_RUN` | H7: large minus small per pipeline, stratum and metric, as clustered intervals. Needs two official runs with the same frozen banks and the same settings except the generation model (see Kept worlds and resume). |
 
 Every run uses graph depth 2 except the sweep.
 An official run uses the dev profile on world seeds 2026, 2027 and 2028 in turn, with the scenario seed equal to the world seed.

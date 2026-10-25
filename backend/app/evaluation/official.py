@@ -389,6 +389,39 @@ def check_selection(strata: Sequence[str] | None, questions: Sequence[str] | Non
         raise ValueError(f"unknown questions {unknown}; expected some of {known}")
 
 
+def check_selection_not_empty(
+    seeds: Sequence[int],
+    strata: Sequence[str] | None,
+    questions: Sequence[str] | None,
+    limit: int | None,
+) -> None:
+    """Refuse a selection that leaves no instance, before any world is prepared.
+
+    A named question outside the named strata can never match, whatever the
+    bank holds. Beyond that, the frozen bank of each seed is read when its
+    file exists; a seed with no bank file yet is assumed able to match.
+    """
+    if strata is not None and questions is not None:
+        outside = sorted(q for q in questions if question_by_id(q).stratum not in strata)
+        if outside:
+            raise ValueError(
+                f"questions {outside} belong to no stratum in {list(strata)}, "
+                "so nothing is selected"
+            )
+    banks = [world_paths(seed).bank_path for seed in seeds]
+    if any(not path.exists() for path in banks):
+        return
+    if not any(
+        select_instances(load_frozen_bank(path), strata, limit, questions).instances
+        for path in banks
+    ):
+        raise ValueError(
+            "no instance in the frozen bank of any requested seed matches strata "
+            f"{None if strata is None else list(strata)} and questions "
+            f"{None if questions is None else list(questions)}"
+        )
+
+
 def dry_run_question_ids() -> list[str]:
     """The logical questions of the four-question dry run: those of the demo
     instances (D-036) of the frozen bank of the development world, read from
@@ -517,9 +550,10 @@ def run_benchmark(
             f"there is no run to resume at {out_dir}; "
             "name the directory of the failed run, or drop --resume to start a new run"
         )
-    _refuse_used_dir(out_dir)
+    _refuse_used_dir(out_dir, resume)
     preflight(kind, repeats)
     check_selection(strata, questions)
+    check_selection_not_empty(seeds, strata, questions, limit)
     selection = Selection(
         None if strata is None else tuple(strata),
         limit,
@@ -1021,8 +1055,18 @@ def _first_record(worlds: Sequence[WorldRun]) -> ReproducibilityRecord:
     return worlds[0].record
 
 
-def _refuse_used_dir(out_dir: Path) -> None:
-    for name in ("results.json", "summary.json", "sweep.json"):
+def _refuse_used_dir(out_dir: Path, resume: bool = False) -> None:
+    """Refuse a directory that holds a finished run. summary.json is written
+    last, so a resume may finish a run that stopped before it was written."""
+    for name in (
+        ("summary.json", "sweep.json")
+        if resume
+        else (
+            "results.json",
+            "summary.json",
+            "sweep.json",
+        )
+    ):
         if (out_dir / name).exists():
             raise FileExistsError(f"{out_dir} already holds a run ({name}); choose another --out")
 
