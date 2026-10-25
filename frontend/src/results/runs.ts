@@ -3,6 +3,7 @@
 import type { Schemas } from '../api/client'
 import { plainName } from '../app/plain-words'
 import { plural } from '../charts/scale'
+import { STRATUM_LABELS } from './strata'
 
 type Run = Schemas['BenchmarkRunOut']
 
@@ -53,7 +54,7 @@ export function selectionText({
   const parts: string[] = []
   if (Array.isArray(strata))
     parts.push(
-      `Strata: ${strata.map((name) => plainName(String(name))).join(', ')}`,
+      `Strata: ${strata.map((name) => STRATUM_LABELS[String(name)] ?? plainName(String(name))).join(', ')}`,
     )
   else if (!Array.isArray(questions)) parts.push('All strata')
   if (Array.isArray(questions)) parts.push(`Questions: ${questions.join(', ')}`)

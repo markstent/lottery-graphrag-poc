@@ -87,6 +87,10 @@ describe('selectionText', () => {
     expect(selectionText({ strata: ['depth'], limit: 3 })).toBe(
       'Strata: depth; at most 3 instances per question',
     ))
+  it('names a bank stratum by its label', () =>
+    expect(selectionText({ strata: ['H1', 'H3'], limit: null })).toBe(
+      'Strata: Multi-hop questions, Single facts',
+    ))
   it('reads a limit alone as all strata', () =>
     expect(selectionText({ strata: null, limit: 1 })).toBe(
       'All strata; at most 1 instance per question',
@@ -105,6 +109,6 @@ describe('selectionText', () => {
     ).toBe('Questions: L01')
     expect(
       selectionText({ strata: ['H3'], limit: null, questions: ['L01'] }),
-    ).toBe('Strata: h3; Questions: L01')
+    ).toBe('Strata: Single facts; Questions: L01')
   })
 })
