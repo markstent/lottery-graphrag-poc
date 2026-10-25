@@ -131,3 +131,7 @@ A test (`backend/tests/test_docs_links.py`) fails if any file outside this folde
 - `docs/reference/development/neo4j-setup.md` - Neo4j setup. Replaced by `docs/operations.md`.
 - `docs/reference/development/troubleshooting.md` - troubleshooting notes. Replaced by `docs/operations.md`.
 - `docs/reference/demo/presentation.md` - the presentation run-of-show. Replaced by `docs/operations.md`.
+
+## Governance history
+
+- `docs/reference/hitl-history.md` - the long notes moved out of `HITL_STATUS.md`: the CP2 package with its owner items and open questions, and the per-gate notes for HITL-08 to HITL-11. Replaced by `HITL_STATUS.md`, which keeps the gate table and the checkpoint rows.

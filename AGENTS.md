@@ -58,13 +58,20 @@ Use this precedence when requirements conflict:
 
 1. `AGENTS.md`
 2. explicit instructions from the project owner
-3. `docs/reference/product/`
-4. `docs/reference/architecture/`
-5. `docs/reference/data/`
-6. `docs/reference/retrieval/`
-7. `docs/reference/evaluation/`
-8. `docs/reference/ux/`
-9. existing implementation
+3. `README.md`
+4. `docs/architecture.md`
+5. `docs/data.md`
+6. `docs/graph-and-ontology.md`
+7. `docs/scenarios.md`
+8. `docs/retrieval.md`
+9. `docs/evaluation.md`
+10. `docs/api.md`
+11. `docs/ux.md`
+12. `docs/operations.md`
+13. existing implementation
+
+`docs/reference/` is an archive of earlier specifications.
+It records history and is not a source of truth.
 
 If implementation conflicts with a written specification, do not silently preserve the implementation.
 
@@ -102,7 +109,7 @@ The current approved checkpoint state should be recorded in project documentatio
 
 # Required Human Checkpoints
 
-## HITL-01 — Product Scope
+## HITL-01 - Product Scope
 
 Stop after preparing:
 
@@ -116,7 +123,7 @@ Do not finalise architecture until approved.
 
 ---
 
-## HITL-02 — Architecture
+## HITL-02 - Architecture
 
 Stop after preparing:
 
@@ -132,7 +139,7 @@ Do not implement the final architecture until approved.
 
 ---
 
-## HITL-03 — Synthetic Data Model
+## HITL-03 - Synthetic Data Model
 
 Stop after preparing:
 
@@ -147,7 +154,7 @@ Do not build large-scale generators or ingestion until approved.
 
 ---
 
-## HITL-04 — Ontology and Graph Model
+## HITL-04 - Ontology and Graph Model
 
 Stop after preparing:
 
@@ -163,7 +170,7 @@ Do not implement final graph ingestion or GraphRAG until approved.
 
 ---
 
-## HITL-05 — Scenario Library and Truth Ledger
+## HITL-05 - Scenario Library and Truth Ledger
 
 Stop after preparing:
 
@@ -176,7 +183,7 @@ Do not generate official benchmark data until approved.
 
 ---
 
-## HITL-06 — UX Information Architecture
+## HITL-06 - UX Information Architecture
 
 Stop after preparing:
 
@@ -191,7 +198,7 @@ Do not start final high-fidelity design until approved.
 
 ---
 
-## HITL-07 — High-Fidelity UX
+## HITL-07 - High-Fidelity UX
 
 Stop after preparing:
 
@@ -209,7 +216,7 @@ Do not build the final frontend until approved.
 
 ---
 
-## HITL-08 — Retrieval Behaviour
+## HITL-08 - Retrieval Behaviour
 
 Stop after implementing prototypes of:
 
@@ -225,7 +232,7 @@ Do not lock benchmark methodology until approved.
 
 ---
 
-## HITL-09 — Benchmark and Scoring
+## HITL-09 - Benchmark and Scoring
 
 Stop after preparing:
 
@@ -240,7 +247,7 @@ Do not perform official benchmark runs until approved.
 
 ---
 
-## HITL-10 — Testing and Quality
+## HITL-10 - Testing and Quality
 
 Stop after preparing:
 
@@ -256,7 +263,7 @@ Do not declare release-candidate status until approved.
 
 ---
 
-## HITL-11 — Presentation Readiness
+## HITL-11 - Presentation Readiness
 
 Stop after preparing:
 
@@ -269,6 +276,23 @@ Stop after preparing:
 - final architecture explanation
 
 Do not declare the POC complete until approved.
+
+---
+
+## HITL-12 - Overhaul v2
+
+The project owner approved the overhaul design on 2026-10-18.
+For the v2 work the approval model is one design document, then three checkpoints.
+
+- The design document is `docs/superpowers/specs/2026-10-18-overhaul-design.md`.
+- CP1 Experiment: stop after the data layer, pipelines, question bank and harness are built.
+- CP2 Product: stop after Overview, Live Lab, Data Model and Help are built against the live API.
+- CP3 Official run: stop after the Results screen is built and a model and cost choice is ready, before any official run.
+
+HITL-12 supersedes gates HITL-03 to HITL-09 for the v2 work.
+The agent stops at each checkpoint and reports with artefacts and screenshots, as in "What to Provide at Every HITL Gate".
+Work happens on branch `overhaul/v2`, merged to `main` at each approved checkpoint.
+`HITL_STATUS.md` records HITL-12 and each checkpoint, and only the project owner may mark one approved.
 
 ---
 
