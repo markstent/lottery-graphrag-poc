@@ -150,6 +150,7 @@ A job started from the API never resumes; its failure message names the command 
 | `make demo-reset` | The demo graph load and index build |
 | `make serve-demo-api` | Serves the API against the demo world |
 | `make traces` | Writes the side-by-side example traces (needs the dev graph, index and bank) |
+| `make dry-run` | Four-question dry run of the official settings; it wipes and restores the graph, and needs owner approval first |
 | `make run-smoke`, `run-benchmark`, `run-sweep` | The benchmark runs (see [evaluation.md](evaluation.md)) |
 
 The Makefile is the stable command surface.

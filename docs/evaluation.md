@@ -242,13 +242,17 @@ A smoke run keeps every statistic but its only headline says it is a scorer smok
 
 Every run uses graph depth 2 except the sweep.
 An official run uses the dev profile on world seeds 2026, 2027 and 2028 in turn, with the scenario seed equal to the world seed.
-A run with `--strata` or `--limit` is labelled a subset run and is never published as the official result.
+A run with `--strata`, `--questions` or `--limit` is labelled a subset run and is never published as the official result.
+`--questions` names logical questions of the bank, and an id the bank does not define is refused before any world is prepared.
+The dry run is `make dry-run`: the first bank instance of each of the strata H1, H2, H3 and H5, chosen as `GET /api/v1/demo/questions` chooses them, on world 2026 with one repeat.
+`python -m app.evaluation dry-run-questions` prints those question ids by reading the frozen bank file, so a bank change cannot leave them stale.
 
 ## Operation
 
 ```bash
 make ground-bank        # freeze the bank into the active world (seed 2026)
 make run-smoke          # needs the services, no model
+make dry-run            # four questions on world 2026, one repeat; the official settings, so owner approval first
 make run-benchmark      # needs GENERATION_PROVIDER=litellm and JUDGE_PROVIDER=litellm with models and families set
 make run-sweep
 ```
@@ -256,7 +260,8 @@ make run-sweep
 Direct form, from `backend/`:
 
 ```bash
-uv run python -m app.evaluation run --kind smoke|official [--seeds 2026,2027,2028] [--repeats N] [--strata H1,H3] [--limit N] [--out DIR] [--resume]
+uv run python -m app.evaluation run --kind smoke|official [--seeds 2026,2027,2028] [--repeats N] [--strata H1,H3] [--questions L01,L05] [--limit N] [--out DIR] [--resume]
+uv run python -m app.evaluation dry-run-questions
 uv run python -m app.evaluation sweep [--seeds ...] [--depths 0,1,2,3] [--repeats N] [--limit N] [--out DIR]
 uv run python -m app.evaluation compare SMALL_RUN_DIR LARGE_RUN_DIR [--out DIR]
 uv run python -m app.evaluation bank-doc --bank FILE --out FILE
@@ -278,7 +283,7 @@ The API never resumes a run; a failed job says how many worlds were kept and nam
 Resume refuses to mix worlds made under different settings.
 Before any world is prepared, it checks each kept world against this run and against the other kept worlds:
 
-- the run kind and the selection of the bank (`--strata`, `--limit`);
+- the run kind and the selection of the bank (`--strata`, `--questions`, `--limit`);
 - every setting the environment, the configuration, the code and git fix: the repeats, the generation and judge settings, the retrieval and graph limits, the ranking weights, the prompt, the scorer and ontology versions, and the code revision (`git_sha`);
 - the frozen bank of that seed, which must be the one the world was scored on;
 - the kept worlds among themselves.

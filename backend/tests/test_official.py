@@ -678,6 +678,45 @@ def test_selection_refuses_an_unknown_stratum() -> None:
         select_instances(_bank(()), strata=["H9"], limit=None)
 
 
+def test_questions_filter_keeps_only_named_questions() -> None:
+    instances = tuple(
+        _instance(question_id, stratum, 2026, anchor=anchor)
+        for question_id, stratum in (("L01", "H3"), ("L05", "H1"), ("L06", "H1"))
+        for anchor in ("X1", "X2")
+    )
+    bank = select_instances(_bank(instances), strata=None, limit=1, questions=["L01", "L05"])
+    assert [i.instance_id for i in bank.instances] == ["L01-2026-X1", "L05-2026-X1"]
+    # An unavailable question that was not asked for is not reported.
+    assert [u.question_id for u in bank.unavailable] == ["L01"]
+
+
+def test_unknown_question_id_refused() -> None:
+    with pytest.raises(ValueError, match="L99"):
+        select_instances(_bank(()), strata=None, limit=None, questions=["L01", "L99"])
+
+
+def test_dry_run_questions_are_the_demo_instances_of_the_frozen_bank(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    instances = tuple(
+        _instance(question_id, stratum, 2026, anchor=anchor)
+        for question_id, stratum in (
+            ("L05", "H1"),
+            ("L06", "H1"),
+            ("L09", "H2"),
+            ("L01", "H3"),
+            ("L15", "H5"),
+            ("L20", "H4"),
+        )
+        for anchor in ("X1", "X2")
+    )
+    world_dir = tmp_path / "dev-seed2026"
+    monkeypatch.setattr(official, "_dev_presentation_world", lambda: (world_dir, tmp_path))
+    monkeypatch.setattr(official, "bank_path_for", lambda world: world / "bank.json")
+    monkeypatch.setattr(official, "load_frozen_bank", lambda path: _bank(instances))
+    assert official.dry_run_question_ids() == ["L05", "L09", "L01", "L15"]
+
+
 # --- run_benchmark -------------------------------------------------------------
 
 
@@ -950,7 +989,21 @@ def test_cli_run_passes_its_options(captured: dict[str, Any], tmp_path: Path) ->
         "strata": ["H1", "H3"],
         "limit": 2,
         "resume": False,
+        "questions": None,
     }
+
+
+def test_cli_run_passes_the_questions(captured: dict[str, Any], tmp_path: Path) -> None:
+    cli.main(["run", "--kind", "smoke", "--questions", "L01, L05", "--out", str(tmp_path / "o")])
+    assert captured["run"][1]["questions"] == ["L01", "L05"]
+
+
+def test_cli_prints_the_dry_run_questions(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(official, "dry_run_question_ids", lambda: ["L05", "L09"])
+    assert cli.main(["dry-run-questions"]) == 0
+    assert capsys.readouterr().out == "L05,L09\n"
 
 
 def test_cli_run_defaults_to_three_seeds_and_a_run_directory(
@@ -1082,6 +1135,29 @@ def test_a_subset_run_records_its_selection_and_is_labelled(
         "Selection: strata H1; at most 1 instance per question."
         in (recorder.tmp / "report.md").read_text()
     )
+
+
+def test_selection_records_questions(recorder: Recorder, gateway_env: None) -> None:
+    run = run_benchmark(
+        "official",
+        (2026,),
+        repeats=3,
+        out_dir=recorder.tmp,
+        limit=1,
+        questions=["L01", "L05"],
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    summary = json.loads((recorder.tmp / "summary.json").read_text())
+    assert summary["selection"] == {"strata": None, "limit": 1, "questions": ["L01", "L05"]}
+    assert run.label == "subset run (questions L01, L05; at most 1 instance per question)"
+    assert _kept(recorder, 2026)["selection"] == summary["selection"]
+
+
+def test_an_unknown_question_is_refused_before_any_world_is_prepared(recorder: Recorder) -> None:
+    with pytest.raises(ValueError, match="L99"):
+        _run(recorder, questions=["L99"])
+    assert recorder.ingested == []
 
 
 def test_a_full_official_run_has_no_label(recorder: Recorder, gateway_env: None) -> None:
@@ -1432,6 +1508,28 @@ def test_resume_refuses_a_different_selection(tmp_path: Path, data_dir: Path) ->
     with pytest.raises(ValueError, match="kept world 2026 was a smoke run"):
         _run(fresh, resume=True, strata=("H1",))
     assert fresh.generated == []
+
+
+def test_compare_and_resume_treat_questions_as_selection(tmp_path: Path, data_dir: Path) -> None:
+    _, fresh = _failed_then_fresh(tmp_path, questions=["L01"])
+    with pytest.raises(ValueError, match="kept world 2026 was a smoke run"):
+        _run(fresh, resume=True)
+    with pytest.raises(ValueError, match="kept world 2026 was a smoke run"):
+        _run(fresh, resume=True, questions=["L05"])
+    assert fresh.generated == []
+    _run(fresh, resume=True, questions=["L01"])
+    assert [r["seed"] for r in fresh.runners] == [2027, 2028]
+    small = _write_run(tmp_path / "small", _official("small-model"))
+    subset = dataclasses.replace(_official("large-model"), selection=Selection(questions=("L01",)))
+    with pytest.raises(ValueError, match="selection"):
+        compare_runs(small, _write_run(tmp_path / "large", subset))
+
+
+def test_a_stored_selection_without_questions_still_resumes(tmp_path: Path, data_dir: Path) -> None:
+    _, fresh = _failed_then_fresh(tmp_path)
+    _edit_kept(fresh, 2026, lambda saved: saved["selection"].pop("questions", None))
+    _run(fresh, resume=True)
+    assert [r["seed"] for r in fresh.runners] == [2027, 2028]
 
 
 def test_resume_refuses_a_different_kind(tmp_path: Path, data_dir: Path, gateway_env: None) -> None:

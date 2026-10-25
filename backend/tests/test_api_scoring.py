@@ -27,7 +27,6 @@ from app.api.errors import ApiError
 from app.api.runs import QueryService
 from app.api.schemas import LIVE_SCORE_LABEL, LivePipelineScore, LiveScore, QueryRequest
 from app.api.scoring import (
-    DEMO_STRATA,
     INSTANCE_SCOPE,
     ScoreState,
     demo_questions,
@@ -43,7 +42,7 @@ from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import TokenCheck
 from app.evaluation.claims import Claim
-from app.evaluation.grounding import BankInstance, FrozenBank
+from app.evaluation.grounding import DEMO_STRATA, BankInstance, FrozenBank
 from app.evaluation.official import world_paths
 from app.evaluation.runner import BenchmarkRunner, score_pipeline_run
 from app.lab import Lab

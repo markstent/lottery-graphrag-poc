@@ -46,10 +46,11 @@ from app.config import (
 )
 from app.datasets import __main__ as datasets_cli
 from app.datasets.config import GENERATOR_VERSION
-from app.evaluation.bank import BANK_VERSION, STRATA, question_by_id
+from app.evaluation.bank import BANK, BANK_VERSION, STRATA, question_by_id
 from app.evaluation.grounding import (
     FrozenBank,
     GroundingError,
+    demo_instances,
     freeze_bank,
     instance_from_payload,
     load_frozen_bank,
@@ -379,18 +380,40 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def select_instances(
-    bank: FrozenBank, strata: Sequence[str] | None, limit: int | None
-) -> FrozenBank:
-    """The bank's instances of ``strata`` (all when None), at most ``limit`` per
-    logical question in bank order; the bank keeps its hash, the identity of
-    the frozen file the instances came from."""
+def check_selection(strata: Sequence[str] | None, questions: Sequence[str] | None) -> None:
+    """Refuse a stratum or logical question the bank does not define."""
     if strata is not None and (unknown := sorted(set(strata) - set(STRATA))):
         raise ValueError(f"unknown strata {unknown}; expected some of {list(STRATA)}")
+    known = [q.question_id for q in BANK]
+    if questions is not None and (unknown := sorted(set(questions) - set(known))):
+        raise ValueError(f"unknown questions {unknown}; expected some of {known}")
+
+
+def dry_run_question_ids() -> list[str]:
+    """The logical questions of the four-question dry run: those of the demo
+    instances (D-036) of the frozen bank of the development world, read from
+    its file; nothing is prepared and no service is used."""
+    world_dir = _dev_presentation_world()[0]
+    bank = load_frozen_bank(bank_path_for(world_dir))
+    return [instance.question_id for instance in demo_instances(bank)]
+
+
+def select_instances(
+    bank: FrozenBank,
+    strata: Sequence[str] | None,
+    limit: int | None,
+    questions: Sequence[str] | None = None,
+) -> FrozenBank:
+    """The bank's instances of ``strata`` and ``questions`` (all when None), at
+    most ``limit`` per logical question in bank order; the bank keeps its
+    hash, the identity of the frozen file the instances came from."""
+    check_selection(strata, questions)
     taken: Counter[str] = Counter()
     kept = []
     for instance in bank.instances:
         if strata is not None and instance.stratum not in strata:
+            continue
+        if questions is not None and instance.question_id not in questions:
             continue
         if limit is not None and taken[instance.question_id] >= limit:
             continue
@@ -399,7 +422,8 @@ def select_instances(
     unavailable = tuple(
         u
         for u in bank.unavailable
-        if strata is None or question_by_id(u.question_id).stratum in strata
+        if (strata is None or question_by_id(u.question_id).stratum in strata)
+        and (questions is None or u.question_id in questions)
     )
     return dataclasses.replace(bank, instances=tuple(kept), unavailable=unavailable)
 
@@ -473,6 +497,7 @@ def run_benchmark(
     cancelled: threading.Event | None = None,
     on_progress: ProgressHook | None = None,
     resume: bool = False,
+    questions: Sequence[str] | None = None,
 ) -> BenchmarkRun:
     """Prepare and run each world in turn, restore the presentation graph,
     then write the run's three files into ``out_dir``.
@@ -494,7 +519,12 @@ def run_benchmark(
         )
     _refuse_used_dir(out_dir)
     preflight(kind, repeats)
-    selection = Selection(None if strata is None else tuple(strata), limit)
+    check_selection(strata, questions)
+    selection = Selection(
+        None if strata is None else tuple(strata),
+        limit,
+        None if questions is None else tuple(questions),
+    )
     kept = _load_kept_worlds(out_dir, seeds, kind, repeats, selection, depth, resume)
     steps = steps or default_steps()
     factory: RunnerFactory = runner_factory or build_runner
@@ -505,7 +535,7 @@ def run_benchmark(
             if seed in kept:
                 continue
             paths = prepare_world(seed, steps)
-            bank = select_instances(load_frozen_bank(paths.bank_path), strata, limit)
+            bank = select_instances(load_frozen_bank(paths.bank_path), strata, limit, questions)
             runner = factory(
                 paths, bank, kind=kind, repeats=repeats, pipelines=PIPELINES, depth=depth
             )

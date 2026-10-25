@@ -3,7 +3,8 @@
 ``ground`` grounds bank 2.0.0 into one generated world (by default the
 active one, from DATASET_DIR and TRUTH_LEDGER_PATH) and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
-bank page. ``run`` runs a smoke or official benchmark over one or more
+bank page. ``dry-run-questions`` prints the four-question dry run's questions;
+``run`` runs a smoke or official benchmark over one or more
 world seeds, ``sweep`` runs the multi-hop depth sweep and ``compare`` pairs
 two official runs of different generation models (H7). All are
 evaluator-only (ADR-008).
@@ -59,12 +60,22 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Repeats per pipeline (default 1 for smoke, {OFFICIAL_MIN_REPEATS} for official).",
     )
     run.add_argument("--strata", type=_names, default=None, help="Strata to run, e.g. H1,H3.")
+    run.add_argument(
+        "--questions",
+        type=_names,
+        default=None,
+        help="Logical questions to run, e.g. L01,L05 (the bank's ids).",
+    )
     _limit_argument(run)
     _out_argument(run)
     run.add_argument(
         "--resume",
         action="store_true",
         help="Continue the failed run in --out: skip its kept worlds (needs --out).",
+    )
+    commands.add_parser(
+        "dry-run-questions",
+        help="Print the questions of the four-question dry run, comma-separated.",
     )
     sweep = commands.add_parser("sweep", help="Run B and C on H1 at each graph depth.")
     _seeds_argument(sweep)
@@ -106,8 +117,12 @@ def _dispatch(args: argparse.Namespace) -> int:
             strata=args.strata,
             limit=args.limit,
             resume=args.resume,
+            questions=args.questions,
         )
         print(f"wrote {out}")
+        return 0
+    if args.command == "dry-run-questions":
+        print(",".join(official.dry_run_question_ids()))
         return 0
     if args.command == "sweep":
         out = _resolved(args.out) or official.run_dir(official.run_id("sweep"))

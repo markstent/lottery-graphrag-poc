@@ -330,6 +330,18 @@ def write_frozen_bank(bank: FrozenBank, path: Path) -> None:
     path.write_text(_canonical({**_content(bank), "bank_hash": bank.bank_hash}), encoding="utf-8")
 
 
+DEMO_STRATA = ("H1", "H2", "H3", "H5")
+
+
+def demo_instances(bank: FrozenBank) -> list[BankInstance]:
+    """The first instance in bank order of each demo stratum, in stratum order
+    (D-036); a stratum with no instance is left out."""
+    firsts: dict[str, BankInstance] = {}
+    for instance in bank.instances:
+        firsts.setdefault(instance.stratum, instance)
+    return [first for stratum in DEMO_STRATA if (first := firsts.get(stratum)) is not None]
+
+
 def load_frozen_bank(path: Path) -> FrozenBank:
     """Read a written bank; raises :class:`GroundingError` when its hash does
     not match or its content is malformed, so a caller grounds it again."""

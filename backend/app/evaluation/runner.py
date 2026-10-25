@@ -383,15 +383,17 @@ def world_run_from_payload(payload: dict[str, Any], record: dict[str, Any]) -> W
 
 @dataclass(frozen=True, slots=True)
 class Selection:
-    """Which part of the bank a run scored: strata (None for all) and at most
-    ``limit`` instances per logical question (None for all)."""
+    """Which part of the bank a run scored: strata and logical questions
+    (None for all of either) and at most ``limit`` instances per logical
+    question (None for all)."""
 
     strata: tuple[str, ...] | None = None
     limit: int | None = None
+    questions: tuple[str, ...] | None = None
 
     @property
     def full(self) -> bool:
-        return self.strata is None and self.limit is None
+        return self.strata is None and self.limit is None and self.questions is None
 
     def describe(self) -> str:
         """Plain words, for example "strata H1; at most 2 instances per question"."""
@@ -400,13 +402,23 @@ class Selection:
         parts = []
         if self.strata is not None:
             parts.append("strata " + ", ".join(self.strata))
+        if self.questions is not None:
+            parts.append("questions " + ", ".join(self.questions))
         if self.limit is not None:
             noun = "instance" if self.limit == 1 else "instances"
             parts.append(f"at most {self.limit} {noun} per question")
         return "; ".join(parts)
 
     def to_payload(self) -> dict[str, Any]:
-        return {"strata": None if self.strata is None else list(self.strata), "limit": self.limit}
+        """``questions`` is written only when set, so the payload of a run
+        over all questions is the one earlier runs stored."""
+        payload: dict[str, Any] = {
+            "strata": None if self.strata is None else list(self.strata),
+            "limit": self.limit,
+        }
+        if self.questions is not None:
+            payload["questions"] = list(self.questions)
+        return payload
 
 
 @dataclass(frozen=True, slots=True)

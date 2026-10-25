@@ -28,14 +28,13 @@ from app.api.schemas import (
     ScoreStatus,
 )
 from app.evaluation.claims import selection_carrier
-from app.evaluation.grounding import BankInstance, FrozenBank
+from app.evaluation.grounding import BankInstance, FrozenBank, demo_instances
 from app.evaluation.official import ground_command
 from app.evaluation.report import METRICS
 from app.evaluation.runner import PipelineRun, ShownBlock, score_pipeline_run
 from app.events import GRAPH_ENTITY_RESOLVED
 from app.persistence.store import RunRow
 
-DEMO_STRATA = ("H1", "H2", "H3", "H5")
 OWN_TEXT = "a bank question runs with its own text"
 OWN_SCOPE = "a bank question runs with its own scope"
 # The bank defines no market scope of its own: every instance runs unscoped.
@@ -65,9 +64,6 @@ class BankQuestion:
 
 def demo_questions(bank: FrozenBank) -> list[DemoQuestion]:
     """The first instance in bank order of each demo stratum, in stratum order."""
-    firsts: dict[str, BankInstance] = {}
-    for instance in bank.instances:
-        firsts.setdefault(instance.stratum, instance)
     return [
         DemoQuestion(
             instance_id=first.instance_id,
@@ -76,8 +72,7 @@ def demo_questions(bank: FrozenBank) -> list[DemoQuestion]:
             stratum=first.stratum,
             market_scope=list(INSTANCE_SCOPE),
         )
-        for stratum in DEMO_STRATA
-        if (first := firsts.get(stratum)) is not None
+        for first in demo_instances(bank)
     ]
 
 
