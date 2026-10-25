@@ -11,8 +11,9 @@ export type RunStanding = 'result' | 'subset' | 'quick-check'
 
 export function standing(run: Run): RunStanding {
   if (run.run_kind === 'smoke') return 'quick-check'
-  const { strata, limit } = run.selection
-  return run.run_kind === 'official' && (strata != null || limit != null)
+  const { strata, limit, questions } = run.selection
+  return run.run_kind === 'official' &&
+    (strata != null || limit != null || questions != null)
     ? 'subset'
     : 'result'
 }
@@ -46,13 +47,16 @@ export function defaultRun(runs: readonly Run[]): string | null {
 export function selectionText({
   strata,
   limit,
+  questions,
 }: Run['selection']): string | null {
-  if (strata == null && limit == null) return null
-  const parts = [
-    Array.isArray(strata)
-      ? `Strata: ${strata.map((name) => plainName(String(name))).join(', ')}`
-      : 'All strata',
-  ]
+  if (strata == null && limit == null && questions == null) return null
+  const parts: string[] = []
+  if (Array.isArray(strata))
+    parts.push(
+      `Strata: ${strata.map((name) => plainName(String(name))).join(', ')}`,
+    )
+  else if (!Array.isArray(questions)) parts.push('All strata')
+  if (Array.isArray(questions)) parts.push(`Questions: ${questions.join(', ')}`)
   if (typeof limit === 'number')
     parts.push(`at most ${plural(limit, 'instance')} per question`)
   return parts.join('; ')

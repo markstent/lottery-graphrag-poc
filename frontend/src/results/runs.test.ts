@@ -39,6 +39,16 @@ describe('standing', () => {
       ),
     ).toBe('subset')
   })
+  it('an official run of named questions is a subset, never a result', () =>
+    expect(
+      standing(
+        run('q', 'official', '2026-10-17T00:00:00Z', {
+          strata: null,
+          limit: null,
+          questions: ['L01'],
+        }),
+      ),
+    ).toBe('subset'))
   it('an official run of the whole bank is a result', () =>
     expect(standing(full)).toBe('result'))
   it('classifies the captured runs', () =>
@@ -81,4 +91,20 @@ describe('selectionText', () => {
     expect(selectionText({ strata: null, limit: 1 })).toBe(
       'All strata; at most 1 instance per question',
     ))
+  it('names the questions of a run selected by them', () =>
+    expect(
+      selectionText({
+        strata: null,
+        limit: 1,
+        questions: ['L05', 'L09', 'L01', 'L15'],
+      }),
+    ).toBe('Questions: L05, L09, L01, L15; at most 1 instance per question'))
+  it('names questions alone, and with strata', () => {
+    expect(
+      selectionText({ strata: null, limit: null, questions: ['L01'] }),
+    ).toBe('Questions: L01')
+    expect(
+      selectionText({ strata: ['H3'], limit: null, questions: ['L01'] }),
+    ).toBe('Strata: h3; Questions: L01')
+  })
 })

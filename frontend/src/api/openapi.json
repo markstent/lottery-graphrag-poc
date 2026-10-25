@@ -5866,6 +5866,20 @@
             ],
             "title": "Limit"
           },
+          "questions": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Questions"
+          },
           "strata": {
             "anyOf": [
               {

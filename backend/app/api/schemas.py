@@ -284,6 +284,8 @@ class SelectionOut(BaseModel):
 
     strata: list[str] | None
     limit: int | None
+    # Logical questions a run was limited to; absent in runs made before it was recorded.
+    questions: list[str] | None = None
 
 
 class ReproducibilityOut(BaseModel):

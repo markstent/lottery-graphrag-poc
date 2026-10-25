@@ -2897,6 +2897,8 @@ export interface components {
         SelectionOut: {
             /** Limit */
             limit: number | null;
+            /** Questions */
+            questions?: string[] | null;
             /** Strata */
             strata: string[] | null;
         };
