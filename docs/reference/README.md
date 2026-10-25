@@ -135,3 +135,4 @@ A test (`backend/tests/test_docs_links.py`) fails if any file outside this folde
 ## Governance history
 
 - `docs/reference/hitl-history.md` - the long notes moved out of `HITL_STATUS.md`: the CP2 package with its owner items and open questions, and the per-gate notes for HITL-08 to HITL-11. Replaced by `HITL_STATUS.md`, which keeps the gate table and the checkpoint rows.
+- `docs/reference/phase7-spec-gaps.md` - the places where the code and an archived specification disagree, found while writing the primary documents in Phase 7, with file and line evidence. Replaced by `HITL_STATUS.md`, which points to it for the owner's review at CP3.
