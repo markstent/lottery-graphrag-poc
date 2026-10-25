@@ -20,6 +20,7 @@ from typing import Any
 
 import pytest
 from app.api import benchmarks
+from app.api.graph_world import GraphLease
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
@@ -296,6 +297,42 @@ def test_progress_reports_the_running_world(
         "worlds_done": 0,
         "worlds_total": 1,
     }
+
+
+def test_progress_counts_a_world_done_once_its_last_question_is(tmp_path: Path) -> None:
+    """The shapes the Results screen reads (frontend/src/results/start.test.ts
+    holds the same ones): ``worlds_done`` already includes a world whose
+    questions are all done, so the screen must not count that world twice."""
+    jobs = benchmarks.BenchmarkJobs(tmp_path, GraphLease())
+    job = benchmarks._Job("job", threading.Event(), seeds=(2026, 2027, 2028))
+    reported = []
+    for seed, done in [(2027, 12), (2027, 40), (2028, 40)]:
+        jobs._progress(job, seed, done, 40)
+        assert job.progress is not None
+        reported.append(job.progress.model_dump())
+    assert reported == [
+        {
+            "world_seed": 2027,
+            "instances_done": 12,
+            "instances_total": 40,
+            "worlds_done": 1,
+            "worlds_total": 3,
+        },
+        {
+            "world_seed": 2027,
+            "instances_done": 40,
+            "instances_total": 40,
+            "worlds_done": 2,
+            "worlds_total": 3,
+        },
+        {
+            "world_seed": 2028,
+            "instances_done": 40,
+            "instances_total": 40,
+            "worlds_done": 3,
+            "worlds_total": 3,
+        },
+    ]
 
 
 def test_a_failed_job_reports_the_error_and_publishes_nothing(

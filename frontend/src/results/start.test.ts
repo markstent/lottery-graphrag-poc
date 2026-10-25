@@ -112,6 +112,31 @@ describe('progress', () => {
     expect(progressFraction(progress)).toBeCloseTo((1 + 12 / 40) / 3)
     expect(progressFraction(null)).toBe(0)
   })
+
+  // The shapes the backend reports (test_api_benchmarks.py pins the same):
+  // worlds_done already includes a world whose questions are all done.
+  const endOfWorld = {
+    world_seed: 2027,
+    worlds_done: 2,
+    worlds_total: 3,
+    instances_done: 40,
+    instances_total: 40,
+  }
+  const endOfRun = { ...endOfWorld, world_seed: 2028, worlds_done: 3 }
+
+  it('counts a finished world once, between worlds', () => {
+    expect(progressText(endOfWorld)).toBe(
+      'World 2027 (2 of 3): 40 of 40 questions',
+    )
+    expect(progressFraction(endOfWorld)).toBeCloseTo(2 / 3)
+  })
+
+  it('never passes the whole run or reads past the last world', () => {
+    expect(progressText(endOfRun)).toBe(
+      'World 2028 (3 of 3): 40 of 40 questions',
+    )
+    expect(progressFraction(endOfRun)).toBe(1)
+  })
 })
 
 describe('withKind', () => {

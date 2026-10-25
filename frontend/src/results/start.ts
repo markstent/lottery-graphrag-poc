@@ -105,9 +105,19 @@ export const startBody = (form: StartForm): Start => ({
   limit: form.limit.trim() === '' ? null : Number(form.limit),
 })
 
+/** A world counts as done once its last question is, so only a world still being asked is one more. */
+const inWorld = (progress: Progress) =>
+  progress.instances_done < progress.instances_total
+
+const currentWorld = (progress: Progress) =>
+  Math.min(
+    progress.worlds_done + (inWorld(progress) ? 1 : 0),
+    progress.worlds_total,
+  )
+
 export const progressText = (progress: Progress | null | undefined): string =>
   progress
-    ? `World ${progress.world_seed} (${progress.worlds_done + 1} of ${progress.worlds_total}): ${progress.instances_done} of ${progress.instances_total} questions`
+    ? `World ${progress.world_seed} (${currentWorld(progress)} of ${progress.worlds_total}): ${progress.instances_done} of ${progress.instances_total} questions`
     : 'Starting'
 
 /** The share of the run done: finished worlds count whole, the current one by its questions. */
@@ -116,8 +126,8 @@ export function progressFraction(
 ): number {
   if (!progress || progress.worlds_total === 0) return 0
   const current =
-    progress.instances_total === 0
-      ? 0
-      : progress.instances_done / progress.instances_total
+    progress.instances_total > 0 && inWorld(progress)
+      ? progress.instances_done / progress.instances_total
+      : 0
   return (progress.worlds_done + current) / progress.worlds_total
 }
