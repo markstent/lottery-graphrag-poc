@@ -76,6 +76,9 @@ export function Timeline({
 }) {
   const { cursor, duration, playing, speed, enabled } = timeline
   const total = Math.max(duration, 1)
+  const sliderMax = Math.max(Math.ceil(duration), 1)
+  // The last event sits at a fraction of a millisecond, so rounding would stop one short of the end.
+  const sliderValue = cursor >= duration ? sliderMax : Math.round(cursor)
   const tracks = trackSegments(state, originMs, cursor)
   const placed = {
     A: assignRows(tracks.A),
@@ -133,9 +136,9 @@ export function Timeline({
           aria-label="Position"
           aria-valuetext={`${formatDuration(cursor)} of ${formatDuration(duration)}`}
           min={0}
-          max={Math.max(Math.ceil(duration), 1)}
+          max={sliderMax}
           step={1}
-          value={Math.round(cursor)}
+          value={sliderValue}
           disabled={!enabled}
           onChange={(event) => controls.seek(Number(event.target.value))}
           className="min-w-48 flex-1"

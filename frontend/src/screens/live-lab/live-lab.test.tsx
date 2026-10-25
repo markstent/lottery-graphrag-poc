@@ -702,6 +702,25 @@ describe('Live Lab, timeline', () => {
     expect(screen.getByText('The run is complete.')).toBeVisible()
   })
 
+  it('slider reads its maximum at the end of a run', async () => {
+    // H3 lasts 20 987.4 ms: rounding the cursor would leave the slider 1 below its maximum.
+    vi.useFakeTimers({ shouldAdvanceTime: false })
+    const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!
+    api({ '/api/v1/health/ready': DOWN })
+    open(`#/live-lab?question=${h3.instance_id}`)
+    await act(async () => {
+      await loadRecording(h3.instance_id)
+    })
+    act(() => {
+      vi.advanceTimersByTime(h3.events.at(-1)!.t_ms - h3.events[0].t_ms + 1000)
+    })
+    const slider = screen.getByRole('slider', {
+      name: 'Position',
+    }) as HTMLInputElement
+    expect(screen.getByText('The run is complete.')).toBeVisible()
+    expect(slider.value).toBe(slider.max)
+  })
+
   it('draws three tracks, one per pipeline', async () => {
     await playRecording()
     const timeline = screen.getByRole('region', { name: 'Timeline' })
