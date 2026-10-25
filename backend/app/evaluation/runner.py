@@ -33,7 +33,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.config import LABEL_VERSION, REPO_ROOT, GraphConfig, judge_settings_from_env
+from app.config import (
+    LABEL_VERSION,
+    REPO_ROOT,
+    GraphConfig,
+    RetrievalSettings,
+    judge_settings_from_env,
+)
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import CitationMetrics, answer_score, citation_metrics
 from app.evaluation.claims import selection_carrier
@@ -104,6 +110,63 @@ def _git_dirty() -> bool | None:
     """Whether the checkout has uncommitted changes; None when git is unavailable."""
     output = _git("status", "--porcelain")
     return None if output is None else bool(output.strip())
+
+
+def settings_fields(
+    settings: RetrievalSettings, judge: Judge, kind: str, repeats: int
+) -> dict[str, Any]:
+    """The reproducibility fields that the environment, the configuration, the
+    code and git fix, with no world or lab built.
+
+    :meth:`BenchmarkRunner.record` builds its record from these, and a resumed
+    run compares them with its kept worlds before any world is prepared, so
+    the two cannot drift apart.
+    """
+    settings_b, settings_c = bc_graph_settings(settings)
+    return {
+        "git_sha": _git_sha(),
+        "git_dirty": _git_dirty(),
+        "question_bank_version": BANK_VERSION,
+        "rrf_k": RRF_K,
+        "generation_model": settings.generation.model,
+        "generation_temperature": settings.generation.temperature,
+        "max_tokens": settings.generation.max_tokens,
+        "prompt_version": PROMPT_VERSION,
+        "top_k": settings.top_k,
+        "context_budget_tokens": settings.context.budget_tokens,
+        "context": {
+            "dedupe_threshold": settings.context.dedupe_threshold,
+            "evidence_slots": settings.context.evidence_slots,
+        },
+        "graph_limits": {
+            "depth": settings.graph.max_depth,
+            "nodes_per_hop": settings.graph.max_nodes_per_hop,
+            "edges_per_node_type": settings.graph.max_edges_per_node_type,
+            "total_nodes": settings.graph.max_total_nodes,
+            "relationship_types": len(settings.graph.relationship_types),
+        },
+        "ranking_weights": dataclasses.asdict(settings.graph.ranking),
+        "reference_date": settings.graph.reference_date.isoformat(),
+        "excluded_labels": list(settings.graph.excluded_labels),
+        "ontology_version": ONTOLOGY_VERSION,
+        "graph_label_version": LABEL_VERSION,
+        "scorer_version": SCORER_VERSION,
+        "prompt_hash": hashlib.sha256(SYSTEM_PROMPT.encode("utf-8")).hexdigest(),
+        "relationship_types_b": list(settings_b.graph.relationship_types),
+        "relationship_types_c": list(settings_c.graph.relationship_types),
+        "dedupe_threshold": settings.context.dedupe_threshold,
+        "generation_quantisation": settings.generation.quantisation,
+        "generation_model_family": settings.generation.model_family,
+        "generation_reasoning": settings.generation.reasoning,
+        "repeats": repeats,
+        "run_kind": kind,
+        "judge_model": judge.model_name,
+        "judge_model_family": judge.model_family,
+        "judge_prompt_version": JUDGE_PROMPT_VERSION,
+        "judge_prompt_hash": judge_prompt_hash(),
+        "judge_temperature": judge.temperature,
+        "judge_reasoning": judge.reasoning,
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -466,13 +529,12 @@ class BenchmarkRunner:
         )
 
     def record(self) -> ReproducibilityRecord:
-        settings = self.lab.settings
-        settings_b, settings_c = bc_graph_settings(settings)
         manifest = self.world_manifest
         return ReproducibilityRecord(
-            git_sha=_git_sha(),
-            git_dirty=_git_dirty(),
-            question_bank_version=BANK_VERSION,
+            **{
+                **settings_fields(self.lab.settings, self.judge, self.kind, self.repeats),
+                "generation_model": self.lab.generator.model_name,
+            },
             world_dir=self.world_dir.as_posix(),
             generator_version=str(manifest.get("generator_version", "unknown")),
             profile=str(manifest.get("profile", "unknown")),
@@ -481,50 +543,11 @@ class BenchmarkRunner:
             embedding_model=self.lab.embeddings.model_name,
             embedding_dimensions=self.lab.embeddings.dimensions,
             sparse_model=self.lab.sparse.model_name,
-            rrf_k=RRF_K,
             record_serialiser_version=self.lab.record_serialiser_version,
-            generation_model=self.lab.generator.model_name,
-            generation_temperature=settings.generation.temperature,
-            max_tokens=settings.generation.max_tokens,
-            prompt_version=PROMPT_VERSION,
             reranker=self.lab.reranker.model_name,
-            top_k=settings.top_k,
-            context_budget_tokens=settings.context.budget_tokens,
-            context={
-                "dedupe_threshold": settings.context.dedupe_threshold,
-                "evidence_slots": settings.context.evidence_slots,
-            },
-            graph_limits={
-                "depth": settings.graph.max_depth,
-                "nodes_per_hop": settings.graph.max_nodes_per_hop,
-                "edges_per_node_type": settings.graph.max_edges_per_node_type,
-                "total_nodes": settings.graph.max_total_nodes,
-                "relationship_types": len(settings.graph.relationship_types),
-            },
-            ranking_weights=dataclasses.asdict(settings.graph.ranking),
-            reference_date=settings.graph.reference_date.isoformat(),
-            excluded_labels=list(settings.graph.excluded_labels),
-            ontology_version=ONTOLOGY_VERSION,
-            graph_label_version=LABEL_VERSION,
             started_at=self.started_at,
             bank_version=self.bank.bank_version,
             bank_hash=self.bank.bank_hash,
-            scorer_version=SCORER_VERSION,
-            prompt_hash=hashlib.sha256(SYSTEM_PROMPT.encode("utf-8")).hexdigest(),
-            relationship_types_b=list(settings_b.graph.relationship_types),
-            relationship_types_c=list(settings_c.graph.relationship_types),
-            dedupe_threshold=settings.context.dedupe_threshold,
-            generation_quantisation=settings.generation.quantisation,
-            generation_model_family=settings.generation.model_family,
-            repeats=self.repeats,
-            run_kind=self.kind,
-            judge_model=self.judge.model_name,
-            judge_model_family=self.judge.model_family,
-            judge_prompt_version=JUDGE_PROMPT_VERSION,
-            judge_prompt_hash=judge_prompt_hash(),
-            judge_temperature=self.judge.temperature,
-            generation_reasoning=settings.generation.reasoning,
-            judge_reasoning=self.judge.reasoning,
         )
 
     def _run_instance(

@@ -34,7 +34,14 @@ from typing import Any
 from fastapi import APIRouter
 from pydantic import ValidationError
 
-from app.api.errors import ApiError, ApiErrorBody, ErrorCode, classify, run_error_body
+from app.api.errors import (
+    CANCELLED_BODY,
+    ApiError,
+    ApiErrorBody,
+    ErrorCode,
+    classify,
+    run_error_body,
+)
 from app.api.graph_world import GraphLease, LeaseHold
 from app.api.schemas import (
     BenchmarkJob,
@@ -51,6 +58,7 @@ from app.api.schemas import (
     error_responses,
 )
 from app.api.scoring import require_bank
+from app.config import REPO_ROOT
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
@@ -388,7 +396,9 @@ class BenchmarkJobs:
                 )
                 self._finish(job, hold, "completed", run_id=out_dir.name)
             except BenchmarkCancelled:
-                self._finish(job, hold, "cancelled")
+                self._finish(
+                    job, hold, "cancelled", error=_with_kept_worlds(None, request, out_dir)
+                )
             except BaseException as error:  # surfaced as a typed error, never a trace
                 code, _retryable = classify(error)
                 logger.error("benchmark job failed", exc_info=error, extra={"error_code": code})
@@ -428,13 +438,16 @@ class BenchmarkJobs:
             job.status, job.run_id, job.error = status, run_id, error
 
 
-def _with_kept_worlds(error: BaseException, request: BenchmarkStart, out_dir: Path) -> ApiErrorBody:
-    """The failure's body; when the run kept finished worlds it says how many
-    and names the command that resumes the run (the API itself never resumes)."""
-    body = run_error_body(error)
+def _with_kept_worlds(
+    error: BaseException | None, request: BenchmarkStart, out_dir: Path
+) -> ApiErrorBody | None:
+    """The body of a failed or cancelled job; when the run kept finished worlds
+    it says how many and names the command that resumes the run (the API
+    itself never resumes). ``error`` is None for a cancelled job."""
     kept = kept_world_count(out_dir)
+    body = CANCELLED_BODY if error is None else run_error_body(error)
     if kept == 0:
-        return body
+        return None if error is None else body
     options = [
         f"--kind {request.kind}",
         f"--seeds {','.join(str(seed) for seed in request.seeds)}",
@@ -444,10 +457,9 @@ def _with_kept_worlds(error: BaseException, request: BenchmarkStart, out_dir: Pa
         options.append(f"--strata {','.join(request.strata)}")
     if request.limit is not None:
         options.append(f"--limit {request.limit}")
-    command = (
-        f"uv run python -m app.evaluation run {' '.join(options)} "
-        f"--out data/evaluation/runs/{out_dir.name} --resume"
-    )
+    # Relative to the repository root when inside it: the CLI resolves --out from there.
+    shown = out_dir.relative_to(REPO_ROOT) if out_dir.is_relative_to(REPO_ROOT) else out_dir
+    command = f"uv run python -m app.evaluation run {' '.join(options)} --out {shown} --resume"
     worlds = "world was" if kept == 1 else "worlds were"
     return body.model_copy(
         update={"message": f"{body.message} {kept} finished {worlds} kept; resume with: {command}"}

@@ -123,7 +123,9 @@ An official run requires `GENERATION_MODEL_FAMILY`, `JUDGE_MODEL_FAMILY` (differ
 Each finished world is kept in `worlds/<seed>.json` inside the run directory, so a failure in world 3 does not lose worlds 1 and 2.
 Nothing is published until the whole run finishes.
 Continue it with `make run-benchmark OUT=data/evaluation/runs/<run id> RESUME=1`, with the same model, judge and options.
+`OUT` is relative to the repository root, and the directory must exist.
 Resume refuses any setting that differs from the kept worlds and says which (see [evaluation.md](evaluation.md)).
+An official run resumes only from a clean checkout at the same revision, so any code change, committed or not, means a new run rather than a resume.
 A job started from the API never resumes; its failure message names the command to run.
 
 ## Command reference

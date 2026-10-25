@@ -21,6 +21,7 @@ from typing import Any
 import pytest
 from app.api import benchmarks
 from app.api.graph_world import GraphLease
+from app.config import REPO_ROOT
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
@@ -364,13 +365,23 @@ def test_failed_job_keeps_worlds_and_publishes_nothing(
     assert not list(runs_dir.glob("*/summary.json"))
     message = finished["error"]["message"]
     assert "1 finished world was kept" in message
-    assert (
-        f"--seeds 2026,2027 --repeats 1 --out data/evaluation/runs/{kept_dir.name} --resume"
-        in message
-    )
+    assert "--seeds 2026,2027 --repeats 1 --out " in message and message.endswith(" --resume")
+    shown = message.split(" --out ")[1].removesuffix(" --resume")
+    # The CLI resolves a relative --out from the repository root.
+    assert REPO_ROOT / shown == kept_dir
     assert "world 2027 failed" not in message
-    assert str(tmp_path) not in message
     assert client.get("/api/v1/benchmarks").json() == []
+
+
+def test_a_cancelled_job_with_kept_worlds_names_the_resume_command(tmp_path: Path) -> None:
+    out_dir = tmp_path / "20261025T000000Z-smoke"
+    (out_dir / "worlds").mkdir(parents=True)
+    (out_dir / "worlds" / "2026.json").write_text("{}")
+    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    body = benchmarks._with_kept_worlds(None, request, out_dir)
+    assert body is not None and body.error_code == "CANCELLED"
+    assert "1 finished world was kept" in body.message and "--resume" in body.message
+    assert benchmarks._with_kept_worlds(None, request, tmp_path / "none") is None
 
 
 def test_cancelling_a_finished_job_is_refused(

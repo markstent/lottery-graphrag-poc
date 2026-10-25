@@ -55,7 +55,7 @@ from app.evaluation.grounding import (
     load_frozen_bank,
     write_frozen_bank,
 )
-from app.evaluation.judge import GatewayJudge, check_families
+from app.evaluation.judge import FakeJudge, GatewayJudge, check_families
 from app.evaluation.report import (
     COMPARED_METRICS,
     OVERALL,
@@ -76,6 +76,7 @@ from app.evaluation.runner import (
     Selection,
     WorldRun,
     check_run_config,
+    settings_fields,
     world_run_from_payload,
 )
 from app.evaluation.settings_check import (
@@ -152,6 +153,8 @@ class BenchmarkCancelled(Exception):
 class WorldRunner(Protocol):
     """What a run needs of a runner: one world's results, calling
     ``on_instance`` between instances (it may raise to stop the world)."""
+
+    def record(self) -> ReproducibilityRecord: ...
 
     def run(self, on_instance: InstanceHook | None = None) -> WorldRun: ...
 
@@ -483,10 +486,15 @@ def run_benchmark(
     it is set the run raises :class:`BenchmarkCancelled`. ``on_progress``
     hears each world's instances done and total as the runner reaches them.
     """
+    if resume and not out_dir.is_dir():
+        raise FileNotFoundError(
+            f"there is no run to resume at {out_dir}; "
+            "name the directory of the failed run, or drop --resume to start a new run"
+        )
     _refuse_used_dir(out_dir)
     preflight(kind, repeats)
     selection = Selection(None if strata is None else tuple(strata), limit)
-    kept = _load_kept_worlds(out_dir, seeds, kind, repeats, selection, resume)
+    kept = _load_kept_worlds(out_dir, seeds, kind, repeats, selection, depth, resume)
     steps = steps or default_steps()
     factory: RunnerFactory = runner_factory or build_runner
     done: dict[int, WorldRun] = dict(kept)
@@ -500,18 +508,26 @@ def run_benchmark(
             runner = factory(
                 paths, bank, kind=kind, repeats=repeats, pipelines=PIPELINES, depth=depth
             )
+            if kept:
+                # Backstop for the fields only a built lab knows (the models' names).
+                _require_same_settings(
+                    _record_of(next(iter(kept.values()))), runner.record().to_payload(), kind
+                )
             world = runner.run(_instance_hook(seed, cancelled, on_progress))
-            if kept and not done.keys() - kept.keys():
-                _require_same_settings(_record_of(next(iter(kept.values()))), _record_of(world))
             done[seed] = world
             _keep_world(out_dir, kind, selection, world)
     _stop_if_cancelled(cancelled)
     worlds = [done[seed] for seed in seeds]
     run = BenchmarkRun(kind, run_label(kind, selection), _first_record(worlds), worlds, selection)
-    _write_atomic(out_dir / "results.json", _json(run.to_payload()))
-    _write_atomic(out_dir / "report.md", render_report(run))
-    # Last: the API publishes summary.json, so the other files exist once it does.
-    _write_atomic(out_dir / "summary.json", _json(summarize(run)))
+    # Render everything first, so a failing renderer leaves no results.json behind.
+    texts = {
+        "results.json": _json(run.to_payload()),
+        "report.md": render_report(run),
+        "summary.json": _json(summarize(run)),
+    }
+    for name, text in texts.items():
+        # summary.json is last: the API publishes it, so the other files exist once it does.
+        _write_atomic(out_dir / name, text)
     return run
 
 
@@ -544,18 +560,25 @@ def _load_kept_worlds(
     kind: str,
     repeats: int,
     selection: Selection,
+    depth: int,
     resume: bool,
 ) -> dict[int, WorldRun]:
     """The worlds a resumed run skips; empty for a fresh run in a clean directory.
 
     Refused before any world is prepared: kept worlds without ``resume``, a
-    kept world outside ``seeds``, another kind or selection, settings that
-    differ from this process's (the run-level fields the environment fixes,
-    and the kept worlds among themselves), or a bank other than the seed's
-    current frozen bank. The first newly run world is checked against the
-    full record afterwards (:func:`_require_same_settings`).
+    kept world outside ``seeds``, another kind or selection, any setting the
+    environment, configuration, code or git fixes (:func:`settings_fields`)
+    that differs from the kept world's, kept worlds that differ among
+    themselves, or a bank other than the seed's current frozen bank. An
+    official run resumes only from a clean checkout, now and in every kept
+    world, at the same revision. The models' names need a built lab, so
+    they are checked just before the first new world is scored.
     """
-    files = {int(path.stem): path for path in (out_dir / WORLDS_DIR).glob("*.json")}
+    files = {
+        int(path.stem): path
+        for path in (out_dir / WORLDS_DIR).glob("*.json")
+        if path.stem.isdecimal()
+    }
     if not resume:
         if files:
             raise FileExistsError(
@@ -565,65 +588,67 @@ def _load_kept_worlds(
     stray = sorted(files.keys() - set(seeds))
     if stray:
         raise ValueError(f"{out_dir} holds kept worlds {stray} outside the seeds of this run")
-    expected = _expected_settings(kind, repeats)
+    expected = current_settings(kind, repeats, seeds[0], depth)
+    if kind == "official" and expected["git_dirty"] is not False:
+        raise ValueError(
+            "an official run resumes only from a clean checkout, and this one has uncommitted "
+            "changes (or git is unavailable); commit them and start a new run"
+        )
     kept: dict[int, WorldRun] = {}
     for seed, path in sorted(files.items()):
-        saved = json.loads(path.read_text(encoding="utf-8"))
-        if saved["kind"] != kind or saved["selection"] != selection.to_payload():
+        try:
+            saved = json.loads(path.read_text(encoding="utf-8"))
+            world = world_run_from_payload(saved["world"], saved["record"])
+            saved_kind, saved_selection = saved["kind"], saved["selection"]
+        except (OSError, ValueError, KeyError, TypeError) as error:
             raise ValueError(
-                f"kept world {seed} was a {saved['kind']} run over {saved['selection']}, "
+                f"kept world file {path} cannot be read ({error!r}); delete it to rerun that world"
+            ) from error
+        if saved_kind != kind or saved_selection != selection.to_payload():
+            raise ValueError(
+                f"kept world {seed} was a {saved_kind} run over {saved_selection}, "
                 f"not a {kind} run over {selection.to_payload()}"
             )
-        _require_same_settings(
-            {k: saved["record"].get(k) for k in expected}, expected, f"kept world {seed}"
-        )
-        if kept:
-            _require_same_settings(
-                _record_of(next(iter(kept.values()))), saved["record"], f"kept world {seed}"
+        record = saved["record"]
+        if kind == "official" and record["git_dirty"] is not False:
+            raise ValueError(
+                f"kept world {seed} was run on a checkout with uncommitted changes, so an "
+                "official run cannot resume it; start a new run"
             )
-        world = world_run_from_payload(saved["world"], saved["record"])
+        projected = {k: record.get(k) for k in expected}
+        _require_same_settings(projected, expected, kind, f"kept world {seed}")
+        if kept:
+            first = _record_of(next(iter(kept.values())))
+            _require_same_settings(first, record, kind, f"kept world {seed}")
         _require_current_bank(world)
         kept[seed] = world
     return kept
 
 
+def current_settings(kind: str, repeats: int, seed: int, depth: int) -> dict[str, Any]:
+    """The record fields this process would write for a run, with no world prepared."""
+    judge = FakeJudge() if kind == "smoke" else GatewayJudge(judge_settings_from_env())
+    return settings_fields(world_settings(world_paths(seed), depth), judge, kind, repeats)
+
+
 def _require_same_settings(
-    a: dict[str, Any], b: dict[str, Any], where: str = "the first new world"
+    kept: dict[str, Any], now: dict[str, Any], kind: str, where: str = "the new world"
 ) -> None:
-    """Refuse a resume whose settings differ from the kept worlds' beyond
-    when and where they ran (and, between worlds, their own seeds and bank)."""
-    names = settings_differences(a, b, RESUME_MAY_DIFFER | PER_WORLD_FIELDS)
+    """Refuse a resume whose settings differ from the kept worlds' beyond when
+    and where they ran (and, between worlds, their own seeds and bank).
+
+    A smoke run may also differ in ``git_dirty``; an official run may not,
+    though it is refused earlier with a plainer reason.
+    """
+    allowed = RESUME_MAY_DIFFER | PER_WORLD_FIELDS
+    if kind == "official":
+        allowed -= {"git_dirty"}
+    names = settings_differences(kept, now, allowed)
     if names:
         raise ValueError(
             f"{where} was made with different settings than this run, so it cannot be "
-            f"resumed: {describe_differences(names, a, b, ('kept', 'now'))}"
+            f"resumed: {describe_differences(names, kept, now, ('kept', 'now'))}"
         )
-
-
-def _expected_settings(kind: str, repeats: int) -> dict[str, Any]:
-    """The run-level record fields this process's environment fixes.
-
-    A smoke run's generator and judge are fakes, so only its kind and
-    repeats are fixed; anything else is checked against the first new world.
-    """
-    expected: dict[str, Any] = {"run_kind": kind, "repeats": repeats}
-    if kind == "smoke":
-        return expected
-    generation = from_env().generation
-    judge = judge_settings_from_env()
-    return {
-        **expected,
-        "generation_model": generation.model,
-        "generation_model_family": generation.model_family,
-        "generation_quantisation": generation.quantisation,
-        "generation_temperature": generation.temperature,
-        "generation_reasoning": generation.reasoning,
-        "max_tokens": generation.max_tokens,
-        "judge_model": judge.model,
-        "judge_model_family": judge.model_family,
-        "judge_temperature": judge.temperature,
-        "judge_reasoning": judge.reasoning,
-    }
 
 
 def _require_current_bank(world: WorldRun) -> None:
@@ -819,12 +844,19 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
 def _require_equal_settings(small: dict[str, Any], large: dict[str, Any]) -> None:
     """Refuse two runs whose recorded settings differ beyond the model, the
     code revision and where they ran; name every differing field."""
+    by_seed = {
+        name: {world["world_seed"]: world for world in record["worlds"]}
+        for name, record in (("small", small), ("large", large))
+    }
+    if by_seed["small"].keys() != by_seed["large"].keys():
+        raise ValueError(
+            f"the runs record different worlds: {sorted(by_seed['small'])} and "
+            f"{sorted(by_seed['large'])}"
+        )
     pairs = [("the run records", small["run"], large["run"], COMPARE_MAY_DIFFER | PER_WORLD_FIELDS)]
-    if len(small["worlds"]) != len(large["worlds"]):
-        raise ValueError("the runs record a different number of worlds")
     pairs += [
-        (f"world {a.get('world_seed')}", a, b, COMPARE_MAY_DIFFER)
-        for a, b in zip(small["worlds"], large["worlds"], strict=True)
+        (f"world {seed}", by_seed["small"][seed], by_seed["large"][seed], COMPARE_MAY_DIFFER)
+        for seed in sorted(by_seed["small"])
     ]
     problems = []
     for where, a, b, allowed in pairs:
@@ -843,6 +875,12 @@ def render_comparison(comparison: dict[str, Any]) -> str:
         f"{comparison['large']['generation_model']} minus "
         f"{comparison['small']['generation_model']} ({comparison['note']})"
     ]
+    revisions = (comparison["small"]["git_sha"], comparison["large"]["git_sha"])
+    if revisions[0] != revisions[1]:
+        lines.append(
+            f"The runs were made at different code revisions: small {revisions[0]}, "
+            f"large {revisions[1]}."
+        )
     for c in comparison["cells"]:
         shown = (
             "no pairs"
@@ -910,6 +948,7 @@ def _run_identity(run_dir: Path, payload: dict[str, Any]) -> dict[str, Any]:
     return {
         "run": run_dir.name,
         "generation_model": record["generation_model"],
+        "git_sha": record.get("git_sha"),
         "generation_model_family": record["generation_model_family"],
         "generation_quantisation": record["generation_quantisation"],
     }
@@ -963,6 +1002,8 @@ def _write_atomic(path: Path, text: str) -> None:
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
             handle.write(text)
+            handle.flush()
+            os.fsync(handle.fileno())
         os.replace(name, path)
     except BaseException:
         Path(name).unlink(missing_ok=True)

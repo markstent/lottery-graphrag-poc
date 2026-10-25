@@ -279,16 +279,23 @@ Resume refuses to mix worlds made under different settings.
 Before any world is prepared, it checks each kept world against this run and against the other kept worlds:
 
 - the run kind and the selection of the bank (`--strata`, `--limit`);
-- the repeats, and for an official run the generation model, its family, quantisation, temperature, reasoning mode and token limit, and the judge model, family, temperature and reasoning mode;
+- every setting the environment, the configuration, the code and git fix: the repeats, the generation and judge settings, the retrieval and graph limits, the ranking weights, the prompt, the scorer and ontology versions, and the code revision (`git_sha`);
 - the frozen bank of that seed, which must be the one the world was scored on;
-- every other recorded setting, between the kept worlds themselves.
+- the kept worlds among themselves.
 
-The first newly run world is then checked against the full record of the kept worlds, and the run stops before keeping it if any setting differs.
-Only when the run started, where its world directory is and whether the checkout was dirty may differ.
-A directory that already holds `summary.json` or `results.json` is never resumed, and a directory that holds kept worlds is refused unless `--resume` is given.
+The names of the embedding, sparse and re-ranking models need a built lab, so they are checked after the next world is prepared and before it is scored.
+Only when the run started, where its world directory is and, for a smoke run, whether the checkout was dirty may differ.
+An official run resumes only from a clean checkout at the same revision, now and in every kept world, because an uncommitted edit would mix two code versions without leaving a trace in the record.
+Any code change therefore means a new run, not a resume.
+A directory that already holds `summary.json` or `results.json` is never resumed, a directory that holds kept worlds is refused unless `--resume` is given, and `--resume` on a directory that does not exist is refused.
+A kept file that cannot be read is named in the refusal, and deleting it reruns that world.
+
+A relative `--out` is relative to the repository root, so the same command works from the root and from `backend/`.
+A cancelled API job keeps its finished worlds in the same way, and its message names the resume command too.
 
 `compare` applies the same rule to two runs.
 It refuses runs whose recorded settings differ in anything except the generation model, its family and quantisation, the code revision and where the run happened, and it names every field that differs with both values.
+The worlds are paired by seed, and the output says when the two runs were made at different code revisions.
 
 Each world is brought up to date before it is scored:
 

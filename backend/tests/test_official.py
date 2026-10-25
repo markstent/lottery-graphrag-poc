@@ -23,6 +23,7 @@ import pytest
 from app.datasets.config import GENERATOR_VERSION
 from app.evaluation import __main__ as cli
 from app.evaluation import official
+from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.grounding import (
     BankInstance,
@@ -51,7 +52,7 @@ from app.evaluation.official import (
     select_instances,
     world_paths,
 )
-from app.evaluation.runner import BenchmarkRun, Selection, WorldRun
+from app.evaluation.runner import BenchmarkRun, ReproducibilityRecord, Selection, WorldRun
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
 from tests.test_benchmark_report import _graded, _instance, _record, _result, _world
@@ -75,6 +76,7 @@ class Recorder:
         self.grounded: list[int] = []
         self.points: dict[str, int] = {}
         self.runners: list[dict[str, Any]] = []
+        self.made: list[FakeRunner] = []
         self.steps = PrepareSteps(
             generate=self.generate,
             ingest=self.ingest,
@@ -154,7 +156,9 @@ class Recorder:
             }
         )
         fail = paths.seed == self.fail_on
-        return FakeRunner(paths.seed, bank, kind, depth, pipelines, fail, repeats)
+        runner = FakeRunner(paths.seed, bank, kind, depth, pipelines, fail, repeats)
+        self.made.append(runner)
+        return runner
 
 
 class FakeRunner:
@@ -171,28 +175,41 @@ class FakeRunner:
         self.seed, self.bank, self.kind, self.depth = seed, bank, kind, depth
         self.repeats = repeats
         self.pipelines, self.fail = pipelines, fail
+        self.ran = False
+
+    def record(self) -> ReproducibilityRecord:
+        """The settings fields as the real runner derives them, the rest fake."""
+        return dataclasses.replace(
+            _record(self.kind),
+            **official.current_settings(self.kind, self.repeats, self.seed, self.depth),
+            world_seed=self.seed,
+            world_dir=f"data/generated/dev-seed{self.seed}",
+            bank_hash=self.bank.bank_hash,
+        )
 
     def run(self, on_instance: InstanceHook | None = None) -> WorldRun:
+        self.ran = True
         if self.fail:
             raise RuntimeError(f"world {self.seed} failed")
         total = len(self.bank.instances)
         for done in (*range(total), total):
             if on_instance is not None:
                 on_instance(done, total)
-        record = dataclasses.replace(
-            _record(self.kind),
-            world_seed=self.seed,
-            world_dir=f"data/generated/dev-seed{self.seed}",
-            bank_hash=self.bank.bank_hash,
-            graph_limits={"depth": self.depth},
-            repeats=self.repeats,
-        )
         results = [
             _result(instance, {t: v for t, v in _graded(k).items() if t in self.pipelines})
             for k, instance in enumerate(self.bank.instances)
             if instance.stratum != "H3"
         ]
-        return WorldRun(self.seed, self.bank.bank_hash, results, self.bank.unavailable, record)
+        return WorldRun(
+            self.seed, self.bank.bank_hash, results, self.bank.unavailable, self.record()
+        )
+
+
+@pytest.fixture(autouse=True)
+def clean_checkout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A fixed revision on a clean checkout, whatever this repository's state."""
+    monkeypatch.setattr(runner_module, "_git_sha", lambda: "abc123")
+    monkeypatch.setattr(runner_module, "_git_dirty", lambda: False)
 
 
 @pytest.fixture
@@ -814,7 +831,7 @@ def test_the_sweep_summary_lists_metrics_per_depth_and_makes_no_claim(
     assert sorted(sweep["depths"]) == ["0", "2"]
     assert sorted(sweep["depths"]["2"]["metrics"]["evidence_f1"]) == ["B", "C"]
     record = sweep["depths"]["2"]["reproducibility"]
-    assert record["run"]["graph_limits"] == {"depth": 2}
+    assert record["run"]["graph_limits"]["depth"] == 2
     assert [w["world_seed"] for w in record["worlds"]] == [2026]
     text = json.dumps(sweep)
     assert "p_holm" not in text and "headlines" not in text
@@ -1004,7 +1021,7 @@ def test_a_multi_world_summary_names_no_single_world_at_run_level(recorder: Reco
     record = summary["reproducibility"]
     for field in ("world_seed", "world_dir", "bank_hash"):
         assert field not in record["run"]
-    assert record["run"]["generation_model"] == "fake-gen"
+    assert record["run"]["generation_model"] == "fake-answer-v1"
     assert record["run"]["started_at"] == "2026-10-19T10:00:00+00:00"
     assert [w["world_seed"] for w in record["worlds"]] == [2026, 2027]
     assert record["worlds"][0]["bank_hash"] != record["worlds"][1]["bank_hash"]
@@ -1137,6 +1154,38 @@ def test_compare_accepts_runs_that_differ_only_in_the_model(tmp_path: Path) -> N
     assert comparison["large"]["generation_model"] == "large-model"
 
 
+def _official_with_world_records(model: str, order: tuple[int, ...]) -> BenchmarkRun:
+    run = _official(model)
+    worlds = [
+        dataclasses.replace(
+            world, record=dataclasses.replace(run.record, world_seed=world.world_seed)
+        )
+        for world in run.worlds
+    ]
+    return dataclasses.replace(run, worlds=sorted(worlds, key=lambda w: order.index(w.world_seed)))
+
+
+def test_compare_pairs_worlds_by_seed_whatever_their_order(tmp_path: Path) -> None:
+    small = _write_run(tmp_path / "small", _official_with_world_records("small", (2026, 2027)))
+    large = _write_run(tmp_path / "large", _official_with_world_records("large", (2027, 2026)))
+    assert compare_runs(small, large)["hypothesis"] == "H7"
+
+
+def test_compare_shows_a_difference_in_code_revision(tmp_path: Path) -> None:
+    small = _write_run(tmp_path / "small", _official("small-model"))
+    large = _write_run(tmp_path / "large", _official_with("large-model", git_sha="def456"))
+    comparison = compare_runs(small, large)
+    assert (comparison["small"]["git_sha"], comparison["large"]["git_sha"]) == ("abc123", "def456")
+    assert "different code revisions: small abc123, large def456" in official.render_comparison(
+        comparison
+    )
+
+
+def test_cli_resolves_a_relative_out_from_the_repository_root(captured: dict[str, Any]) -> None:
+    cli.main(["run", "--kind", "smoke", "--out", "data/evaluation/runs/x", "--resume"])
+    assert captured["run"][1]["out_dir"] == official.REPO_ROOT / "data/evaluation/runs/x"
+
+
 @pytest.mark.parametrize(
     ("kind", "repeats", "env", "match"),
     [
@@ -1242,6 +1291,10 @@ def test_resume_skips_kept_worlds(tmp_path: Path, data_dir: Path) -> None:
         for record in (payload["reproducibility"]["run"], *payload["reproducibility"]["worlds"]):
             record.pop("started_at")
     assert resumed == expected
+    summaries = [json.loads((r.tmp / "summary.json").read_text()) for r in (fresh, clean)]
+    for summary in summaries:
+        summary["reproducibility"]["run"].pop("started_at")
+    assert summaries[0] == summaries[1]
     assert sorted(p.name for p in (fresh.tmp / "worlds").iterdir()) == [
         "2026.json",
         "2027.json",
@@ -1253,9 +1306,6 @@ def test_resume_refuses_different_settings(
     tmp_path: Path, gateway_env: None, data_dir: Path
 ) -> None:
     failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
-    # The fake runner's record is not the environment's; make the kept one match it.
-    expected = official._expected_settings("official", 3)
-    _edit_kept(failing, 2026, lambda saved: saved["record"].update(expected))
     _edit_kept(failing, 2026, lambda saved: saved["record"].update(max_tokens=4096))
     with pytest.raises(ValueError, match="max_tokens") as error:
         _run(fresh, kind="official", repeats=3, resume=True)
@@ -1263,15 +1313,76 @@ def test_resume_refuses_different_settings(
     assert fresh.generated == fresh.ingested == [] and fresh.runners == []
 
 
-def test_resume_refuses_settings_that_differ_in_the_first_new_world(
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("top_k", 3),
+        ("graph_limits", {"depth": 9}),
+        ("git_sha", "other"),
+        ("ranking_weights", {"w": 9.0}),
+        ("prompt_hash", "edited"),
+        ("scorer_version", "0.0.1"),
+    ],
+)
+def test_resume_refuses_retrieval_settings_before_any_world_is_prepared(
+    tmp_path: Path, data_dir: Path, field: str, value: Any
+) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+    _edit_kept(failing, 2026, lambda saved: saved["record"].update({field: value}))
+    with pytest.raises(ValueError, match=field):
+        _run(fresh, resume=True)
+    assert fresh.generated == fresh.ingested == [] and fresh.runners == []
+
+
+def test_resume_refuses_a_changed_model_component_before_the_world_is_scored(
     tmp_path: Path, data_dir: Path
 ) -> None:
     failing, fresh = _failed_then_fresh(tmp_path)
-    _edit_kept(failing, 2026, lambda saved: saved["record"].update(top_k=3))
-    with pytest.raises(ValueError, match="top_k"):
+    _edit_kept(failing, 2026, lambda saved: saved["record"].update(embedding_model="other"))
+    with pytest.raises(ValueError, match="embedding_model"):
         _run(fresh, resume=True)
+    assert len(fresh.made) == 1 and not fresh.made[0].ran
     assert not (fresh.tmp / "worlds" / "2027.json").exists()
     assert fresh.ingested[-1] == 2026
+
+
+def test_an_official_run_resumes_only_from_a_clean_checkout(
+    tmp_path: Path, gateway_env: None, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
+    monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
+    with pytest.raises(ValueError, match="clean checkout"):
+        _run(fresh, kind="official", repeats=3, resume=True)
+    monkeypatch.setattr(runner_module, "_git_dirty", lambda: False)
+    _edit_kept(failing, 2026, lambda saved: saved["record"].update(git_dirty=True))
+    with pytest.raises(ValueError, match="kept world 2026 was run on a checkout with uncommitted"):
+        _run(fresh, kind="official", repeats=3, resume=True)
+    assert fresh.generated == fresh.ingested == [] and fresh.runners == []
+
+
+def test_a_smoke_run_may_resume_across_a_dirty_checkout(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+    _edit_kept(failing, 2026, lambda saved: saved["record"].update(git_dirty=True))
+    monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
+    _run(fresh, resume=True)
+    assert [r["seed"] for r in fresh.runners] == [2027, 2028]
+
+
+def test_resume_refuses_a_directory_that_does_not_exist(recorder: Recorder) -> None:
+    with pytest.raises(FileNotFoundError, match="no run to resume"):
+        _run(recorder, resume=True)
+    assert recorder.generated == recorder.ingested == [] and not recorder.tmp.exists()
+
+
+def test_resume_names_an_unreadable_kept_file(tmp_path: Path, data_dir: Path) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+    (failing.tmp / "worlds" / "2026.json").write_text("")
+    (failing.tmp / "worlds" / "notes.json").write_text("not a world")
+    with pytest.raises(ValueError, match=r"2026\.json cannot be read"):
+        _run(fresh, resume=True)
+    assert fresh.generated == []
 
 
 def test_resume_refuses_kept_worlds_that_disagree(tmp_path: Path, data_dir: Path) -> None:
@@ -1308,6 +1419,7 @@ def test_resume_refuses_a_different_kind(tmp_path: Path, data_dir: Path, gateway
 
 
 def test_resume_without_kept_worlds_is_an_ordinary_run(recorder: Recorder) -> None:
+    recorder.tmp.mkdir()
     _run(recorder, resume=True)
     assert [r["seed"] for r in recorder.runners] == [2026, 2027, 2028]
     assert (recorder.tmp / "summary.json").exists()

@@ -15,6 +15,7 @@ import argparse
 from collections import Counter
 from pathlib import Path
 
+from app.config import REPO_ROOT
 from app.evaluation import official
 from app.evaluation.bank import BANK, NAME_ANCHORED, STRATA, LogicalQuestion
 from app.evaluation.grounding import (
@@ -96,7 +97,7 @@ def _dispatch(args: argparse.Namespace) -> int:
         repeats = args.repeats
         if repeats is None:
             repeats = 1 if args.kind == "smoke" else OFFICIAL_MIN_REPEATS
-        out = args.out or official.run_dir(official.run_id(args.kind))
+        out = _resolved(args.out) or official.run_dir(official.run_id(args.kind))
         official.run_benchmark(
             args.kind,
             args.seeds,
@@ -109,7 +110,7 @@ def _dispatch(args: argparse.Namespace) -> int:
         print(f"wrote {out}")
         return 0
     if args.command == "sweep":
-        out = args.out or official.run_dir(official.run_id("sweep"))
+        out = _resolved(args.out) or official.run_dir(official.run_id("sweep"))
         official.run_sweep(
             args.seeds, out_dir=out, depths=args.depths, repeats=args.repeats, limit=args.limit
         )
@@ -142,6 +143,12 @@ def _dispatch(args: argparse.Namespace) -> int:
     args.out.write_text(render_bank_doc(bank), encoding="utf-8")
     print(f"wrote {args.out}")
     return 0
+
+
+def _resolved(path: Path | None) -> Path | None:
+    """A relative ``--out`` is relative to the repository root, so the same
+    command works from the repository root (``make``) and from ``backend/``."""
+    return None if path is None else REPO_ROOT / path
 
 
 def _repeats(text: str) -> int:
@@ -185,7 +192,10 @@ def _out_argument(parser: argparse.ArgumentParser) -> None:
         "--out",
         type=Path,
         default=None,
-        help="Run directory (default data/evaluation/runs/<run id>).",
+        help=(
+            "Run directory; a relative path is from the repository root "
+            "(default data/evaluation/runs/<run id>)."
+        ),
     )
 
 
