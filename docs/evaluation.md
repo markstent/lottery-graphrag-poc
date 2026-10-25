@@ -271,6 +271,19 @@ Before any world is prepared, the run checks its kind, its repeats and the gener
 `--repeats` defaults to 1 for a smoke run and 3 otherwise, and an official run refuses fewer than 3.
 A sweep or official run refuses the stand-in generator and needs a gateway judge.
 
+### What the shared re-ranker keeps
+
+`make diagnose-selection` measures D-025 without a model.
+For every seed 2026 instance that has claims, it runs retrieval for A, B and C and stops where the generator would start.
+The lab is given a generator that refuses, and every candidate and selection event is emitted before a pipeline calls it.
+It counts claims with the scorer's carrier notion, after the anchor is removed.
+For each stratum and pipeline it reports the claims expected, the claims with a carrier among the graph candidates (B and C), among the document candidates, and among the selected evidence.
+Graph candidates are the seeds and the nodes the traversal discovered.
+Document candidates are A's retrieved chunks, and for B and C the chunks they selected or discarded.
+It also lists every claim the graph found and the re-ranker did not select.
+It refuses unless the presentation world is the dev world and the live graph's label counts equal that world's `_graph_stats.json`.
+It only reads the graph, and it writes `selection.json` and `selection.md` to `data/evaluation/diagnostics/<UTC>-selection/`.
+
 ### Kept worlds and resume
 
 A run writes each finished world to `worlds/<seed>.json` inside its run directory.
@@ -374,6 +387,7 @@ The Python code reads no `.env` file; the Makefile exports a root `.env` to the 
 - `test_checks.py`, `test_benchmark_scoring.py`: answer checks, citation metrics, evidence metrics and failure classes.
 - `test_judge.py`: blinding, parsing, the family rule and agreement.
 - `test_statistics.py`, `test_benchmark_report.py`: bootstrap, Wilcoxon, Holm, headlines and the summary.
+- `test_diagnostics.py`: the selection diagnostic, its refusals and its output.
 - `test_benchmark_runner.py`, `test_official.py`: repeats, refusals, three-world orchestration, sweep and compare.
 - `test_benchmark_live.py` (`LIVE_WORLD_E2E=1`): the live benchmark on the presentation world.
 

@@ -20,9 +20,9 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from app.api.graph_world import graph_world_matches, read_graph_stats
 from app.config import GraphConfig, from_env
 from app.graph import __main__ as graph_cli
+from app.graph.fingerprint import graph_world_matches, read_graph_stats
 from app.retrieval.graph.neo4j_adapter import GraphReader
 
 # The presentation world's directory (``DATASET_DIR``), read when the tests are

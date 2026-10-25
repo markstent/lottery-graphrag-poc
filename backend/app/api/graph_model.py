@@ -24,7 +24,7 @@ from pydantic import JsonValue
 
 from app.api.data_model import active_dataset_dir
 from app.api.errors import RUN_ERROR_MESSAGES, ApiError, ErrorCode, classify
-from app.api.graph_world import GRAPH_BUSY_MESSAGE, GraphWorldCheck, read_graph_stats
+from app.api.graph_world import GRAPH_BUSY_MESSAGE, GraphWorldCheck
 from app.api.schemas import (
     NEIGHBOURS_LIMIT_DEFAULT,
     NEIGHBOURS_LIMIT_MAX,
@@ -38,6 +38,7 @@ from app.api.schemas import (
     error_responses,
 )
 from app.config import LABEL_VERSION, GraphConfig, from_env
+from app.graph.fingerprint import read_graph_stats
 from app.graph.node_rows import node_table
 from app.graph.statements import NODE_LABELS, RELATIONSHIP_ENDPOINTS, RELATIONSHIP_TYPES
 from app.lab import bc_graph_settings

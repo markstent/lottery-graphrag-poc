@@ -4,6 +4,7 @@
 active one, from DATASET_DIR and TRUTH_LEDGER_PATH) and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
 bank page. ``dry-run-questions`` prints the four-question dry run's questions;
+``diagnose-selection`` counts, with no model, what the shared re-ranker keeps;
 ``run`` runs a smoke or official benchmark over one or more
 world seeds, ``sweep`` runs the multi-hop depth sweep and ``compare`` pairs
 two official runs of different generation models (H7). All are
@@ -17,7 +18,7 @@ from collections import Counter
 from pathlib import Path
 
 from app.config import REPO_ROOT
-from app.evaluation import official
+from app.evaluation import diagnostics, official
 from app.evaluation.bank import BANK, NAME_ANCHORED, STRATA, LogicalQuestion
 from app.evaluation.grounding import (
     BankInstance,
@@ -77,6 +78,10 @@ def build_parser() -> argparse.ArgumentParser:
         "dry-run-questions",
         help="Print the questions of the four-question dry run, comma-separated.",
     )
+    commands.add_parser(
+        "diagnose-selection",
+        help="Read-only: what the shared re-ranker keeps of the claim records each approach finds.",
+    )
     sweep = commands.add_parser("sweep", help="Run B and C on H1 at each graph depth.")
     _seeds_argument(sweep)
     sweep.add_argument(
@@ -128,6 +133,9 @@ def _dispatch(args: argparse.Namespace) -> int:
         return 0
     if args.command == "dry-run-questions":
         print(",".join(official.dry_run_question_ids()))
+        return 0
+    if args.command == "diagnose-selection":
+        print(f"wrote {diagnostics.run_selection_diagnostic()}")
         return 0
     if args.command == "sweep":
         out = _resolved(args.out) or official.run_dir(official.run_id("sweep"))

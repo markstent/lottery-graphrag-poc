@@ -17,13 +17,14 @@ from typing import Any, ClassVar
 
 import app.api.graph_model as graph_model
 import pytest
-from app.api.graph_world import WORLD_CHECK_TTL_S, GraphWorldCheck, graph_world_matches
+from app.api.graph_world import WORLD_CHECK_TTL_S, GraphWorldCheck
 from app.config import DEFAULT_DATASET_DIR, LABEL_VERSION, GraphConfig
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.graph import statements
+from app.graph.fingerprint import graph_world_matches
 from app.graph.ingest import GRAPH_STATS_FILE
 from app.graph.reader import load_dataset
 from app.graph.relationship_rows import build_relationship_rows
