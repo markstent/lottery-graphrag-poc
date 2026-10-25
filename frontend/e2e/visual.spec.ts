@@ -332,6 +332,53 @@ test.describe('Results', () => {
       await screenShot(page, name)
     })
 
+  test('results-subset', async ({ page }) => {
+    await openScreen(page, '#/results?run=pilot-2026-nothink')
+    await expect(page.getByText('This run predates the split.')).toBeVisible()
+    await screenShot(page, 'results-subset')
+  })
+
+  test('results-quick-check', async ({ page }) => {
+    await openScreen(page, '#/results?run=20261019T164733Z-smoke')
+    await expect(
+      page.getByText('A quick check tests the scoring code'),
+    ).toBeVisible()
+    await screenShot(page, 'results-quick-check')
+  })
+
+  test('results-table-expanded', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-official', {
+      runs: 'official',
+    })
+    const table = page.getByRole('region', { name: 'Questions' })
+    await table
+      .getByRole('button', { name: /^Details for / })
+      .first()
+      .click()
+    await expect(table.getByRole('rowheader', { name: 'Recall' })).toBeVisible()
+    await table.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+    await screenShot(page, 'results-table-expanded', 'keep')
+  })
+
+  test('results-failure-filter', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-official', {
+      runs: 'official',
+    })
+    await page
+      .getByRole('region', { name: 'Failures' })
+      .getByRole('button', {
+        name: /^B, the needed evidence was not retrieved/,
+      })
+      .first()
+      .click()
+    const table = page.getByRole('region', { name: 'Questions' })
+    await expect(
+      table.getByText('B: the needed evidence was not retrieved'),
+    ).toBeVisible()
+    await table.evaluate((el) => el.scrollIntoView({ block: 'start' }))
+    await screenShot(page, 'results-failure-filter', 'keep')
+  })
+
   test('results-start-form', async ({ page }) => {
     await page.goto('/#/results')
     await page.getByRole('button', { name: 'Start a run' }).click()
