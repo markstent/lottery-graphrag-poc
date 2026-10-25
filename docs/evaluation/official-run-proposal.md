@@ -78,6 +78,23 @@ The diagnostic reads the answer key, so no value may be chosen by trying values 
 The owner may also want the official run reported under both rules, the built D-025 and the chosen change, so a reader can see the effect of the rule itself.
 Any change is a method change: it needs the owner's approval, a new decision record replacing D-025, and a new value of the recorded selection rule; the pilot runs stay as the record of the old rule.
 
+### After the change
+
+The owner replied "continue" to this proposal on 2026-10-25, and option 3 was built as D-081.
+In review one change was made to it: a graph record that does not get a graph slot leaves its document copy free to compete for a document slot, so the share never removes a fact that A could see.
+The diagnostic then ran once, on 2026-10-25, with the graph still at 36,888 nodes (output `data/evaluation/diagnostics/20261025T200934Z-selection/`).
+
+| Approach | Claims in the prompt, D-025 | Claims in the prompt, D-081 |
+|---|---|---|
+| A: documents only | 43 | 43 |
+| B: documents and the graph | 38 | 41 |
+| C: documents, the graph and the ontology | 39 | 43 |
+
+The change helps a little, and A is unchanged, as designed.
+Most of the graph's findings still do not reach the model: 23 claims for B and 51 for C are left out, because within the graph's six slots the re-ranker ranks other graph records higher.
+No value was changed after this measurement.
+What the graph adds is now for the official run to show, with this rule.
+
 ## 3. Decision 2: models
 
 ### Size of an official run

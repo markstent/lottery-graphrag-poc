@@ -20,6 +20,7 @@ Evidence that exists is development evidence:
 - the selection rule changed on 2026-10-25, after the CP3 proposal and after pilot runs and a diagnostic in which B and C did no better than A: half of the 12 evidence slots now go to the graph's own selection (D-081, see [retrieval.md](retrieval.md)), and the development pilot runs below used the old rule (D-025);
 - on the multi-hop question, the shared re-ranker kept the graph's claim record out of the prompt (decision D-025), which led to the change of rule above (see [retrieval.md](retrieval.md));
 - the selection diagnostic of 2026-10-25 found that the graph finds 55 (B) and 88 (C) of the 122 claims of seed 2026, but only 38 and 39 reach the prompt, against 43 for A, because the 12 prompt slots cut them; the options and the recommendation are in [the official run proposal](evaluation/official-run-proposal.md);
+- the same diagnostic, run once after the change, found 41 (B) and 43 (C) claims in the prompt, against 43 for A, with 23 and 51 of the graph's claims still left out, because within the graph's six slots the re-ranker prefers other graph records;
 - local pilot and smoke runs of the harness (two subset runs with a local model and one scorer smoke test, kept under `data/`, which is not committed).
   The API lists them with their label, "subset run" or "scorer smoke test", and none is an official result.
 
