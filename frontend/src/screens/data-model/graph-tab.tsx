@@ -198,7 +198,7 @@ function KindsMap({
       </div>
       <p className="text-sm text-text-secondary">
         {followed === null
-          ? `Every relationship in the schema, ${typeCount.size} types.${hasOutside ? ' Dashed grey lines are followed by neither approach.' : ''}`
+          ? `Every relationship in the schema, ${typeCount.size} types.${hasOutside ? ' Dashed grey: in neither approach.' : ''}`
           : `${MODES.find((m) => m.id === mode)?.label} follows ${followed} of the ${typeCount.size} relationship types.`}
       </p>
       <p className="text-sm text-text-secondary">

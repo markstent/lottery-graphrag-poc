@@ -67,9 +67,9 @@ describe('Graph tab map', () => {
     stubApi(ROUTES)
     renderTab()
     await screen.findByRole('button', { name: 'game, 120 nodes' })
-    expect(screen.queryByText(/Dashed grey lines/)).toBeNull()
+    expect(screen.queryByText(/Dashed grey/)).toBeNull()
     await userEvent.click(screen.getByRole('radio', { name: 'B · Graph' }))
-    expect(screen.queryByText(/Dashed grey lines/)).toBeNull()
+    expect(screen.queryByText(/Dashed grey/)).toBeNull()
   })
 
   it('says it when a line followed by neither approach is drawn', async () => {
@@ -82,9 +82,7 @@ describe('Graph tab map', () => {
     })
     renderTab()
     expect(
-      await screen.findByText(
-        /Dashed grey lines are followed by neither approach\./,
-      ),
+      await screen.findByText(/Dashed grey: in neither approach\./),
     ).toBeVisible()
   })
 

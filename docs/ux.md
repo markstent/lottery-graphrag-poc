@@ -187,6 +187,8 @@ A whole-bank run or a subset shows all panels, and a quick check shows only the 
 
 A tested comparison with fewer pairs than the minimum shows "Too few pairs", with no interval and no delta.
 An untested cell with fewer than six groups shows "Too few groups for an interval".
+A run written before that rule can carry such an interval in its recorded headlines, which are never rewritten.
+For that run the Verdict adds one note under the headlines saying the charts omit it.
 Single facts show "No evidence score by design".
 While a run is a subset or a quick check, every chart and table carries its label.
 

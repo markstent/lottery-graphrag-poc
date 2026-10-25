@@ -117,7 +117,7 @@ export function RowsGrid({ datasetId, schema, onOpenRow }: RowsGridProps) {
           Clear filter
         </button>
         <p id="rows-filter-hint" className="text-sm text-text-muted">
-          {`Matches the whole value, read as ${TYPE_WORDS[typeOf ?? ''] ?? 'text'}.`}
+          {`Matches the whole value as ${TYPE_WORDS[typeOf ?? ''] ?? 'text'}.`}
         </p>
       </form>
 

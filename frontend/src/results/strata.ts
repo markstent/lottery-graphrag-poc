@@ -105,6 +105,21 @@ const hasBar = (values: BarGroup['values']) =>
 const lacksGroups = (cell: Comparison | Split) =>
   cell.reason === 'not_in_family' && cell.clusters < MIN_GROUPS_FOR_INTERVAL
 
+/**
+ * Whether a run written before the group floor carries an interval over fewer
+ * groups than the floor: its recorded headlines and sub-group lines print it,
+ * and the charts withdraw it.
+ */
+export function printsIntervalBelowFloor(summary: Summary): boolean {
+  const cells: (Comparison | Split)[] = [
+    ...summary.comparisons,
+    ...(summary.ontology_split ?? []),
+  ]
+  return cells.some(
+    (cell) => lacksGroups(cell) && cell.low != null && cell.high != null,
+  )
+}
+
 /** Grouped bars of a metric per stratum, with B minus A as the delta; a cell with too few pairs or groups has none. */
 export function strataBars(
   summary: Summary,

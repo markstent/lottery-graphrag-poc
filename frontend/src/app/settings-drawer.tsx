@@ -139,7 +139,7 @@ function Preferences() {
             />
           </label>
           <p className="mt-1 text-text-secondary">
-            Further nodes are grouped. From {NODE_CAP_MIN} to {NODE_CAP_MAX}.
+            Others are grouped ({NODE_CAP_MIN} to {NODE_CAP_MAX}).
           </p>
         </div>
       </div>

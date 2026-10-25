@@ -12,6 +12,7 @@ import {
   MIN_GROUPS_FOR_INTERVAL,
   STRATUM_LABELS,
   STRATUM_ORDER,
+  printsIntervalBelowFloor,
   strataBars,
   tiles,
 } from './strata'
@@ -335,6 +336,20 @@ describe('the group floor for an untested sub-group', () => {
         'evidence_f1',
       ).delta?.values.H2_name,
     ).toBe(0.1)
+  })
+  it('is told of a run whose recorded interval sits below the floor', () => {
+    expect(printsIntervalBelowFloor(withComparisons(few))).toBe(true)
+    expect(
+      printsIntervalBelowFloor(
+        withComparisons({ ...few, clusters: MIN_GROUPS_FOR_INTERVAL }),
+      ),
+    ).toBe(false)
+    expect(
+      printsIntervalBelowFloor(
+        withComparisons({ ...few, low: null, high: null }),
+      ),
+    ).toBe(false)
+    expect(printsIntervalBelowFloor(withComparisons(cell({})))).toBe(false)
   })
   it('applies to the split too', () => {
     const [row] =

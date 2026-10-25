@@ -270,9 +270,6 @@ describe('panels', () => {
     const panel = within(
       await screen.findByRole('region', { name: 'Efficiency' }),
     )
-    expect(
-      await panel.findByText('Means per question, without intervals.'),
-    ).toBeVisible()
-    expect(panel.getAllByRole('figure')).toHaveLength(2)
+    expect(await panel.findAllByRole('figure')).toHaveLength(2)
   })
 })

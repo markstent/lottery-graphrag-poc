@@ -7,12 +7,12 @@
 /**
  * Product copy outside Help; the target is about 1,200 words. The count covers
  * the copy in src/screens (except Help), src/app, src/components, src/charts,
- * src/graph and src/design (the label maps). It leaves out tests, fixtures,
+ * src/graph, src/design (the label maps) and src/results. It leaves out tests, fixtures,
  * the development pages, text from the API, and the glossary in src/copy,
  * which renders in Help and counts there.
  *
  * The count leaves out what a comparison reads (`status === 'ready'`), which
- * is not shown. The Phase 7 copy pass brought it from 1,362 to 1,298, so the
+ * is not shown. The Phase 7 copy pass brought it from 1,362 to 1,300, so the
  * raise to 1,375 made for the start form is withdrawn.
  */
 export const OUTSIDE_HELP_WORD_CAP = 1300

@@ -26,9 +26,6 @@ export function EfficiencyPanel({
   return (
     <div className="space-y-4">
       <RunBadge label={badge} />
-      <p className="text-sm text-text-secondary">
-        Means per question, without intervals.
-      </p>
       <div className="grid grid-cols-2 gap-6">
         {CHARTS.map(({ metric, title }) => {
           const values = Object.fromEntries(

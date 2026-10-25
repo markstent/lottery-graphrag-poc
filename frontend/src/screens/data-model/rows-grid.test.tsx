@@ -50,15 +50,13 @@ describe('RowsGrid', () => {
     stubRows()
     renderGrid()
     await screen.findByText('Rows 1 to 50 of 120')
-    expect(
-      screen.getByText('Matches the whole value, read as text.'),
-    ).toBeVisible()
+    expect(screen.getByText('Matches the whole value as text.')).toBeVisible()
     await userEvent.selectOptions(
       screen.getByLabelText('Column'),
       'launched_at',
     )
     expect(
-      screen.getByText('Matches the whole value, read as a timestamp.'),
+      screen.getByText('Matches the whole value as a timestamp.'),
     ).toBeVisible()
   })
 

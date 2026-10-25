@@ -18,6 +18,7 @@ import {
 } from '../../results/results.fixtures'
 import { failure, json, stubApi } from '../../test/api-stub'
 import { Results } from './results'
+import { BELOW_FLOOR_NOTE } from './verdict'
 
 const OFFICIAL_RUN: Schemas['BenchmarkRunOut'] = {
   run_id: 'fixture-official',
@@ -123,6 +124,24 @@ describe('Results', () => {
     expect(screen.getByRole('combobox', { name: 'Run' })).toHaveValue(
       'pilot-2026-nothink',
     )
+  })
+
+  it('notes under the headlines an interval the charts leave out', async () => {
+    stubApi(ROUTES)
+    open('pilot-2026-nothink')
+    const panel = await verdict()
+    expect(
+      await within(panel).findByText(/95 percent interval 1\.9 to 13\.6/),
+    ).toBeVisible()
+    expect(within(panel).getByText(BELOW_FLOOR_NOTE)).toBeVisible()
+  })
+
+  it('has no such note for a run that follows the rule', async () => {
+    stubApi(ROUTES)
+    open('fixture-official')
+    const panel = await verdict()
+    await within(panel).findByRole('list')
+    expect(within(panel).queryByText(BELOW_FLOOR_NOTE)).toBeNull()
   })
 
   it('choosing a run in the picker puts it in the address', async () => {

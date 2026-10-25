@@ -5,7 +5,7 @@ import { percent } from '../../app/score-words'
 import { StatTile } from '../../charts/stat-tile'
 import { pipeline, type PipelineId } from '../../design/pipelines'
 import { selectionText, type RunStanding } from '../../results/runs'
-import { tiles } from '../../results/strata'
+import { printsIntervalBelowFloor, tiles } from '../../results/strata'
 
 type Run = Schemas['BenchmarkRunOut']
 type Summary = Schemas['SummaryOut']
@@ -13,12 +13,21 @@ type Summary = Schemas['SummaryOut']
 export const QUICK_CHECK_WARNING =
   'A quick check tests the scoring code with a stand-in model. Its numbers are not results.'
 
-const Headlines = ({ lines }: { lines: readonly string[] }) => (
-  <ul className="list-disc space-y-1 pl-5 text-sm text-text-primary">
-    {lines.map((line, index) => (
-      <li key={`${index}-${line}`}>{line}</li>
-    ))}
-  </ul>
+export const BELOW_FLOOR_NOTE =
+  'Intervals over fewer than six groups predate the rule; charts omit them.'
+
+/** The recorded headlines, never rewritten; a run from before the group floor gets a note under them. */
+const Headlines = ({ summary }: { summary: Summary }) => (
+  <div className="space-y-1">
+    <ul className="list-disc space-y-1 pl-5 text-sm text-text-primary">
+      {summary.headlines.map((line, index) => (
+        <li key={`${index}-${line}`}>{line}</li>
+      ))}
+    </ul>
+    {printsIntervalBelowFloor(summary) && (
+      <p className="text-sm text-text-secondary">{BELOW_FLOOR_NOTE}</p>
+    )}
+  </div>
 )
 
 export function Verdict({
@@ -33,7 +42,7 @@ export function Verdict({
   if (kind === 'quick-check')
     return (
       <div className="space-y-3">
-        <Headlines lines={summary.headlines} />
+        <Headlines summary={summary} />
         <p className="text-sm font-medium text-text-primary">
           {QUICK_CHECK_WARNING}
         </p>
@@ -70,7 +79,7 @@ export function Verdict({
           </div>
         ))}
       </div>
-      <Headlines lines={summary.headlines} />
+      <Headlines summary={summary} />
     </div>
   )
 }
