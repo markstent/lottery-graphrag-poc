@@ -5,7 +5,7 @@
 // are a chunk of their own, fetched when that recording is chosen.
 import type { components } from '../api/schema'
 import index from './fixtures/recorded/index.json'
-import { EVENT_TYPES } from '../api/stream'
+import { EVENT_TYPES } from '../api/event-types'
 import type { RunEvent } from './reduce'
 
 export interface RecordedRunSummary {

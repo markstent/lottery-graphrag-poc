@@ -273,7 +273,8 @@ export function Shell({ children }: { children: ReactNode }) {
   // tables and of the graph; both want the room. The other destinations are
   // read in a column, except in presentation mode, where larger type needs the
   // room too (a figure sized in em would otherwise be squeezed back).
-  const wide = presentation || WIDE_DESTINATIONS.includes(useRoute().name)
+  const onWideDestination = WIDE_DESTINATIONS.includes(useRoute().name)
+  const wide = presentation || onWideDestination
 
   return (
     <div className="flex min-h-screen">
