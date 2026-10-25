@@ -194,6 +194,22 @@ describe('question table', () => {
     expect(screen.getByRole('region', { name: 'Failures' })).toBeVisible()
   })
 
+  it('a world list that failed to load does not say no world is loaded', async () => {
+    stubApi({
+      ...ROUTES,
+      '/api/v1/datasets': () =>
+        failure('The datasets could not be read.', true),
+    })
+    open('run=fixture-official&stratum=H3')
+    const table = await questionTable()
+    await table.findAllByText('Missing')
+    expect(table.queryByText('Not loaded')).toBeNull()
+    expect(table.queryByText('No world is loaded')).toBeNull()
+    expect(table.queryAllByRole('link', { name: /in Live Lab$/ })).toHaveLength(
+      0,
+    )
+  })
+
   it('kind column is short, the filter keeps the full name, and a not loaded cell keeps its reason', async () => {
     stubApi(ROUTES)
     open('run=fixture-official&stratum=H2_name&world=2027')
