@@ -13,6 +13,22 @@ const API = `${process.argv[2] ?? 'http://localhost:8000'}/api/v1`
 const CAP = 600
 const BLOCK = 50
 /**
+ * Tables no spec reads a row of or follows into the graph, so a short sample
+ * is enough (their real counts are still captured). The other tables keep the
+ * longer sample because the focus node of the graph specs, GAME_UK_01, has its
+ * neighbours worked out from the rows that point at it.
+ */
+const UNREAD = [
+  'sessions',
+  'accounts',
+  'payment_methods',
+  'player_device',
+  'player_payment_method',
+  'prizes',
+]
+const UNREAD_CAP = 120
+const UNREAD_BLOCK = 20
+/**
  * Tables captured in full, so a filter on them has the world's own total:
  * devices repeat their first-seen timestamps widely, so a copied one has pages.
  */
@@ -35,7 +51,9 @@ const dictionary = await get(`/datasets/${world.dataset_id}/dictionary`)
 const rows = {}
 for (const { table } of dictionary) {
   const total = world.row_counts[table]
-  const cap = FULL.includes(table) ? total : CAP
+  const unread = UNREAD.includes(table)
+  const cap = FULL.includes(table) ? total : unread ? UNREAD_CAP : CAP
+  const block = unread ? UNREAD_BLOCK : BLOCK
   const page = async (offset, limit) =>
     (
       await get(
@@ -47,10 +65,10 @@ for (const { table } of dictionary) {
     for (let offset = 0; offset < total; offset += 200)
       rows[table].push(...(await page(offset, 200)))
   } else {
-    const blocks = Math.ceil(cap / BLOCK)
-    const step = Math.floor((total - BLOCK) / (blocks - 1))
+    const blocks = Math.ceil(cap / block)
+    const step = Math.floor((total - block) / (blocks - 1))
     for (let b = 0; b < blocks; b++)
-      rows[table].push(...(await page(b * step, BLOCK)))
+      rows[table].push(...(await page(b * step, block)))
   }
 }
 
