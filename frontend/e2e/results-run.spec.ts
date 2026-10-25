@@ -15,13 +15,24 @@ test.use({ viewport: { width: 1920, height: 1080 } })
 test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
 const PROGRESS = 'World 2027 (2 of 3): 12 of 40 questions'
+// The worlds the form asks for in the first test (2026 and 2028).
+const TWO_WORLDS = {
+  ...RUNNING_JOB,
+  progress: {
+    world_seed: 2028,
+    worlds_done: 1,
+    worlds_total: 2,
+    instances_done: 12,
+    instances_total: 40,
+  },
+}
 
 test('starts a quick check, follows it and opens the run it made', async ({
   page,
 }) => {
   await mockApi(page)
   const jobs = await mockJobs(page, {
-    script: [RUNNING_JOB, RUNNING_JOB, COMPLETED_JOB],
+    script: [TWO_WORLDS, TWO_WORLDS, COMPLETED_JOB],
   })
   await page.goto('/#/results')
   await page.getByRole('button', { name: 'Start a run' }).click()
@@ -31,10 +42,12 @@ test('starts a quick check, follows it and opens the run it made', async ({
   await page.getByRole('checkbox', { name: 'Multi-hop questions' }).click()
   await page.getByRole('button', { name: 'Start', exact: true }).click()
 
-  await expect(page.getByText(PROGRESS)).toBeVisible()
+  await expect(
+    page.getByText('World 2028 (2 of 2): 12 of 40 questions'),
+  ).toBeVisible()
   await expect(
     page.getByRole('progressbar', { name: 'Run progress' }),
-  ).toHaveAttribute('aria-valuenow', '43')
+  ).toHaveAttribute('aria-valuenow', '65')
   expect(jobs.started).toEqual([
     {
       kind: 'smoke',
@@ -62,6 +75,34 @@ test('follows a job that was already running when the page loaded', async ({
   await page.goto('/#/results')
   await expect(page.getByText(PROGRESS)).toBeVisible()
   await expect(page.getByRole('button', { name: 'Start a run' })).toHaveCount(0)
+})
+
+test('a run whose last world is done reads 3 of 3 at 100 percent while it writes its reports', async ({
+  page,
+}) => {
+  await mockApi(page)
+  await mockJobs(page, {
+    script: [
+      {
+        ...RUNNING_JOB,
+        progress: {
+          world_seed: 2028,
+          worlds_done: 3,
+          worlds_total: 3,
+          instances_done: 40,
+          instances_total: 40,
+        },
+      },
+    ],
+    attached: true,
+  })
+  await page.goto('/#/results')
+  await expect(
+    page.getByText('World 2028 (3 of 3): 40 of 40 questions'),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('progressbar', { name: 'Run progress' }),
+  ).toHaveAttribute('aria-valuenow', '100')
 })
 
 test('cancelling shows the line about the current question and calls the server', async ({
