@@ -3,6 +3,7 @@ the reachability probe."""
 
 from __future__ import annotations
 
+import json
 import logging
 import sys
 import threading
@@ -17,6 +18,7 @@ from app.models.gateway import (
     OLLAMA_DEFAULT_BASE,
     OLLAMA_PROBE_TIMEOUT_S,
     CompletionRequest,
+    EmptyCompletionError,
     GatewayError,
     ProbeResult,
     _reasoning_off_kwargs,
@@ -106,12 +108,14 @@ def test_reasoning_off_for_openrouter_sends_reasoning_disabled(model: str) -> No
 
 
 def test_reasoning_off_refused_for_unmapped_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GENERATION_PROVIDER", "litellm")
     monkeypatch.setenv("GENERATION_MODEL", "anthropic/x")
     monkeypatch.setenv("GENERATION_REASONING", "default")
     assert from_env().generation.reasoning == "default"
     monkeypatch.setenv("GENERATION_REASONING", "off")
     with pytest.raises(ValueError, match=r"ollama/.*openrouter/"):
         from_env()
+    monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
     monkeypatch.setenv("JUDGE_MODEL", "anthropic/x")
     monkeypatch.setenv("JUDGE_REASONING", "default")
     assert judge_settings_from_env().reasoning == "default"
@@ -122,6 +126,88 @@ def test_reasoning_off_refused_for_unmapped_provider(monkeypatch: pytest.MonkeyP
     assert judge_settings_from_env().reasoning == "off"
     with pytest.raises(GatewayError, match="anthropic/x"):
         complete(CompletionRequest("anthropic/x", "s", "u", 0.0, 50, None, 5.0, reasoning="off"))
+
+
+def test_fake_providers_accept_reasoning_off_with_their_default_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for name in ("GENERATION_MODEL", "GENERATION_PROVIDER", "JUDGE_MODEL", "JUDGE_PROVIDER"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("GENERATION_REASONING", "off")
+    monkeypatch.setenv("JUDGE_REASONING", "off")
+    assert from_env().generation.reasoning == "off"
+    assert judge_settings_from_env().reasoning == "off"
+
+
+# LiteLLM 1.104 warns about a TypedDict qualifier when it first builds a response.
+@pytest.mark.filterwarnings("ignore:Item 'summary' on TypedDict:UserWarning")
+def test_reasoning_off_reaches_the_openrouter_request_through_litellm_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The real gateway and the real litellm.completion; only the HTTP send is
+    replaced, so nothing leaves the machine."""
+    sent: list[dict[str, object]] = []
+
+    def send(self: httpx.Client, request: httpx.Request, **kwargs: object) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        answer = {"role": "assistant", "content": "ok"}
+        body = {
+            "id": "x",
+            "object": "chat.completion",
+            "created": 1,
+            "model": "m",
+            "choices": [{"index": 0, "finish_reason": "stop", "message": answer}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+        }
+        return httpx.Response(200, json=body, request=request)
+
+    monkeypatch.setattr(httpx.Client, "send", send)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "not-a-real-key")
+    model = "openrouter/meta-llama/llama-3-8b-instruct"
+    assert complete(CompletionRequest(model, "s", "u", 0.0, 50, None, 5.0, "off")).text == "ok"
+    assert sent[0]["reasoning"] == {"enabled": False}
+
+
+def test_each_call_gets_its_own_reasoning_kwargs() -> None:
+    first = _reasoning_off_kwargs("openrouter/a/b")
+    assert first is not None
+    first["extra_body"] = "mutated"  # type: ignore[assignment]
+    assert _reasoning_off_kwargs("openrouter/a/b") == {
+        "extra_body": {"reasoning": {"enabled": False}}
+    }
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        {"completion_tokens_details": {"reasoning_tokens": 7}},
+        {"completion_tokens_details": types.SimpleNamespace(reasoning_tokens=7)},
+        types.SimpleNamespace(completion_tokens_details={"reasoning_tokens": 7}),
+    ],
+)
+def test_reasoning_tokens_are_read_from_dict_and_object_usage(
+    stub_litellm: StubLiteLLM, monkeypatch: pytest.MonkeyPatch, usage: object
+) -> None:
+    monkeypatch.setattr("tests.conftest._Response.usage", usage)
+    with pytest.raises(GatewayError, match="reasoning tokens"):
+        complete(CompletionRequest("ollama/m", "s", "u", 0.0, 50, None, 5.0, "off"))
+
+
+def test_missing_usage_is_not_reasoning(
+    stub_litellm: StubLiteLLM, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("tests.conftest._Response.usage", None)
+    assert complete(CompletionRequest("ollama/m", "s", "u", 0.0, 50, None, 5.0, "off")).text
+
+
+def test_reasoning_error_wins_over_the_empty_answer(
+    stub_litellm_empty: StubLiteLLM, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    usage = {"completion_tokens_details": {"reasoning_tokens": 50}}
+    monkeypatch.setattr("tests.conftest._Response.usage", usage)
+    with pytest.raises(GatewayError, match="reasoning tokens") as raised:
+        complete(CompletionRequest("ollama/m", "s", "u", 0.0, 50, None, 5.0, "off"))
+    assert not isinstance(raised.value, EmptyCompletionError)
 
 
 def test_reasoning_off_but_model_reasoned_is_an_error(

@@ -252,8 +252,9 @@ class JudgeSettings:
 def judge_settings_from_env() -> JudgeSettings:
     """Read the JUDGE_* variables (see .env.example); empty means unset."""
     model = os.environ.get("JUDGE_MODEL", FAKE_JUDGE_MODEL)
+    provider = os.environ.get("JUDGE_PROVIDER", "fake")
     return JudgeSettings(
-        provider=os.environ.get("JUDGE_PROVIDER", "fake"),
+        provider=provider,
         model=model,
         model_family=os.environ.get("JUDGE_MODEL_FAMILY") or None,
         api_base=os.environ.get("JUDGE_API_BASE") or None,
@@ -261,7 +262,7 @@ def judge_settings_from_env() -> JudgeSettings:
         if os.environ.get("JUDGE_TEMPERATURE")
         else 0.0,
         reasoning=parse_reasoning_for_model(
-            os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING", model
+            os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING", provider, model
         ),
     )
 
@@ -272,6 +273,7 @@ def from_env() -> RetrievalSettings:
         "lexical" if os.environ.get("EMBEDDING_PROVIDER") == "hashing" else "cross_encoder"
     )
     generation_model = os.environ.get("GENERATION_MODEL", "fake-answer-v1")
+    generation_provider = os.environ.get("GENERATION_PROVIDER", "fake")
     return RetrievalSettings(
         dataset_dir=os.environ.get("DATASET_DIR", str(DEFAULT_DATASET_DIR)),
         top_k=_env_int("RAG_TOP_K", 40),
@@ -297,7 +299,7 @@ def from_env() -> RetrievalSettings:
             model=os.environ.get("RERANK_MODEL", "BAAI/bge-reranker-v2-m3"),
         ),
         generation=GenerationSettings(
-            provider=os.environ.get("GENERATION_PROVIDER", "fake"),
+            provider=generation_provider,
             model=generation_model,
             temperature=_env_float("GENERATION_TEMPERATURE", 0.0),
             api_base=os.environ.get("GENERATION_API_BASE"),
@@ -307,6 +309,7 @@ def from_env() -> RetrievalSettings:
             reasoning=parse_reasoning_for_model(
                 os.environ.get("GENERATION_REASONING") or "default",
                 "GENERATION_REASONING",
+                generation_provider,
                 generation_model,
             ),
             timeout_s=_env_float("GENERATION_TIMEOUT_S", 120.0),

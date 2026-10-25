@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import threading
 import time
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from types import ModuleType
 from typing import TYPE_CHECKING
@@ -37,10 +38,10 @@ REASONING_MODES = ("default", "off")
 #   supported only for models LiteLLM flags reasoning-capable, so it would raise
 #   or be dropped for the rest. extra_body is merged into the request body for
 #   every model, so it sends {"reasoning": {"enabled": false}} on all of them.
-_REASONING_OFF_BY_PREFIX: dict[str, dict[str, object]] = {
-    "ollama/": {"reasoning_effort": "none"},
-    "ollama_chat/": {"reasoning_effort": "none"},
-    "openrouter/": {"extra_body": {"reasoning": {"enabled": False}}},
+_REASONING_OFF_BY_PREFIX: dict[str, Callable[[], dict[str, object]]] = {
+    "ollama/": lambda: {"reasoning_effort": "none"},
+    "ollama_chat/": lambda: {"reasoning_effort": "none"},
+    "openrouter/": lambda: {"extra_body": {"reasoning": {"enabled": False}}},
 }
 
 
@@ -52,9 +53,10 @@ def parse_reasoning(value: str, variable: str) -> str:
 
 
 def _reasoning_off_kwargs(model: str) -> dict[str, object] | None:
-    for prefix, kwargs in _REASONING_OFF_BY_PREFIX.items():
+    """Fresh kwargs for each call, so LiteLLM can never mutate shared state."""
+    for prefix, build in _REASONING_OFF_BY_PREFIX.items():
         if model.startswith(prefix):
-            return kwargs
+            return build()
     return None
 
 
@@ -63,10 +65,11 @@ def reasoning_mode_supported(model: str) -> bool:
     return _reasoning_off_kwargs(model) is not None
 
 
-def parse_reasoning_for_model(value: str, variable: str, model: str) -> str:
-    """``parse_reasoning``, and "off" only for a model whose provider has a switch."""
+def parse_reasoning_for_model(value: str, variable: str, provider: str, model: str) -> str:
+    """``parse_reasoning``; with the ``litellm`` provider, "off" also needs a model
+    whose prefix has a switch. The fake adapters ignore the mode."""
     mode = parse_reasoning(value, variable)
-    if mode == "off" and not reasoning_mode_supported(model):
+    if mode == "off" and provider == "litellm" and not reasoning_mode_supported(model):
         prefixes = list(_REASONING_OFF_BY_PREFIX)
         raise ValueError(
             f"{variable}=off is not supported for model {model!r}; "
@@ -145,22 +148,31 @@ def complete(request: CompletionRequest) -> Completion:
         content = response["choices"][0]["message"]["content"]
     except Exception as error:
         raise GatewayError(f"Model gateway call failed: {error}") from error
-    if not isinstance(content, str) or not content.strip():
-        raise EmptyCompletionError("Model gateway returned an empty answer")
+    # Before the empty-answer check: a model that ignores "off" and spends the
+    # cap thinking returns nothing, and the error should name that cause.
     if off_kwargs is not None and _reasoning_tokens(response) > 0:
         raise GatewayError(
             f"Model {request.model!r} reported reasoning tokens although reasoning is off"
         )
+    if not isinstance(content, str) or not content.strip():
+        raise EmptyCompletionError("Model gateway returned an empty answer")
     latency_ms = (time.perf_counter() - started) * 1000
     return Completion(content.strip(), latency_ms, _usage(response))
 
 
 def _reasoning_tokens(response: object) -> int:
     """Hidden reasoning tokens the provider reported, 0 when none."""
-    usage = getattr(response, "usage", None)
-    details = getattr(usage, "completion_tokens_details", None)
-    tokens = getattr(details, "reasoning_tokens", None)
+    usage = _field(response, "usage")
+    tokens = _field(_field(usage, "completion_tokens_details"), "reasoning_tokens")
     return tokens if isinstance(tokens, int) else 0
+
+
+def _field(item: object, name: str) -> object:
+    """An attribute or a mapping key; LiteLLM and adapters return either shape."""
+    value = getattr(item, name, None)
+    if value is None and isinstance(item, Mapping):
+        return item.get(name)
+    return value
 
 
 def _usage(response: object) -> dict[str, int] | None:
