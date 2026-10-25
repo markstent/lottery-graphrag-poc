@@ -271,8 +271,9 @@ export function Shell({ children }: { children: ReactNode }) {
   const { presentation } = useSettings()
   // Live Lab draws a graph beside three panels and Data Model draws maps of
   // tables and of the graph; both want the room. The other destinations are
-  // read in a column.
-  const wide = WIDE_DESTINATIONS.includes(useRoute().name)
+  // read in a column, except in presentation mode, where larger type needs the
+  // room too (a figure sized in em would otherwise be squeezed back).
+  const wide = presentation || WIDE_DESTINATIONS.includes(useRoute().name)
 
   return (
     <div className="flex min-h-screen">
