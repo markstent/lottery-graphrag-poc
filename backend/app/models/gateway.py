@@ -27,9 +27,21 @@ _USAGE_KEYS = ("prompt_tokens", "completion_tokens", "total_tokens")
 # "default" leaves the provider's behaviour unchanged; "off" asks a thinking
 # model not to spend its token budget on hidden reasoning.
 REASONING_MODES = ("default", "off")
-# The OpenAI-style option LiteLLM maps per provider; for Ollama it becomes
-# think=false (litellm/llms/ollama/*/transformation.py).
-REASONING_OFF = {"reasoning_effort": "none"}
+# What switches hidden reasoning off, per LiteLLM model prefix. Verified against
+# the installed LiteLLM (see tests/test_gateway.py, which runs its offline
+# request transformation):
+# - ollama/, ollama_chat/: llms/ollama/chat/transformation.py (map_openai_params)
+#   and llms/ollama/completion/transformation.py turn reasoning_effort "none"
+#   into think=false in the request body.
+# - openrouter/: llms/openrouter/chat/transformation.py lists reasoning_effort as
+#   supported only for models LiteLLM flags reasoning-capable, so it would raise
+#   or be dropped for the rest. extra_body is merged into the request body for
+#   every model, so it sends {"reasoning": {"enabled": false}} on all of them.
+_REASONING_OFF_BY_PREFIX: dict[str, dict[str, object]] = {
+    "ollama/": {"reasoning_effort": "none"},
+    "ollama_chat/": {"reasoning_effort": "none"},
+    "openrouter/": {"extra_body": {"reasoning": {"enabled": False}}},
+}
 
 
 def parse_reasoning(value: str, variable: str) -> str:
@@ -37,6 +49,30 @@ def parse_reasoning(value: str, variable: str) -> str:
     if value not in REASONING_MODES:
         raise ValueError(f"{variable} must be one of {list(REASONING_MODES)}, got {value!r}")
     return value
+
+
+def _reasoning_off_kwargs(model: str) -> dict[str, object] | None:
+    for prefix, kwargs in _REASONING_OFF_BY_PREFIX.items():
+        if model.startswith(prefix):
+            return kwargs
+    return None
+
+
+def reasoning_mode_supported(model: str) -> bool:
+    """Whether reasoning can be switched off for ``model`` (by its provider prefix)."""
+    return _reasoning_off_kwargs(model) is not None
+
+
+def parse_reasoning_for_model(value: str, variable: str, model: str) -> str:
+    """``parse_reasoning``, and "off" only for a model whose provider has a switch."""
+    mode = parse_reasoning(value, variable)
+    if mode == "off" and not reasoning_mode_supported(model):
+        prefixes = list(_REASONING_OFF_BY_PREFIX)
+        raise ValueError(
+            f"{variable}=off is not supported for model {model!r}; "
+            f"the supported prefixes are {prefixes}. Use 'default' or a supported model."
+        )
+    return mode
 
 
 class GatewayError(RuntimeError):
@@ -89,6 +125,9 @@ def load_litellm() -> ModuleType:
 
 def complete(request: CompletionRequest) -> Completion:
     litellm = load_litellm()
+    off_kwargs = _reasoning_off_kwargs(request.model) if request.reasoning == "off" else None
+    if request.reasoning == "off" and off_kwargs is None:
+        raise GatewayError(f"Reasoning cannot be switched off for model {request.model!r}")
     started = time.perf_counter()
     try:
         response = litellm.completion(
@@ -101,15 +140,27 @@ def complete(request: CompletionRequest) -> Completion:
             max_tokens=request.max_tokens,
             base_url=request.api_base,
             timeout=request.timeout_s,
-            **(REASONING_OFF if request.reasoning == "off" else {}),
+            **(off_kwargs or {}),
         )
         content = response["choices"][0]["message"]["content"]
     except Exception as error:
         raise GatewayError(f"Model gateway call failed: {error}") from error
     if not isinstance(content, str) or not content.strip():
         raise EmptyCompletionError("Model gateway returned an empty answer")
+    if off_kwargs is not None and _reasoning_tokens(response) > 0:
+        raise GatewayError(
+            f"Model {request.model!r} reported reasoning tokens although reasoning is off"
+        )
     latency_ms = (time.perf_counter() - started) * 1000
     return Completion(content.strip(), latency_ms, _usage(response))
+
+
+def _reasoning_tokens(response: object) -> int:
+    """Hidden reasoning tokens the provider reported, 0 when none."""
+    usage = getattr(response, "usage", None)
+    details = getattr(usage, "completion_tokens_details", None)
+    tokens = getattr(details, "reasoning_tokens", None)
+    return tokens if isinstance(tokens, int) else 0
 
 
 def _usage(response: object) -> dict[str, int] | None:

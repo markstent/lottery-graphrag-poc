@@ -15,7 +15,7 @@ from pathlib import Path
 
 from app.datasets.config import WINDOW_DAYS, WINDOW_START
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
-from app.models.gateway import parse_reasoning
+from app.models.gateway import parse_reasoning_for_model
 
 # Repository layout anchors data at the repository root (ADR-006), independent
 # of the process working directory.
@@ -251,16 +251,17 @@ class JudgeSettings:
 
 def judge_settings_from_env() -> JudgeSettings:
     """Read the JUDGE_* variables (see .env.example); empty means unset."""
+    model = os.environ.get("JUDGE_MODEL", FAKE_JUDGE_MODEL)
     return JudgeSettings(
         provider=os.environ.get("JUDGE_PROVIDER", "fake"),
-        model=os.environ.get("JUDGE_MODEL", FAKE_JUDGE_MODEL),
+        model=model,
         model_family=os.environ.get("JUDGE_MODEL_FAMILY") or None,
         api_base=os.environ.get("JUDGE_API_BASE") or None,
         temperature=_env_float("JUDGE_TEMPERATURE", 0.0)
         if os.environ.get("JUDGE_TEMPERATURE")
         else 0.0,
-        reasoning=parse_reasoning(
-            os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING"
+        reasoning=parse_reasoning_for_model(
+            os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING", model
         ),
     )
 
@@ -270,6 +271,7 @@ def from_env() -> RetrievalSettings:
     default_rerank_provider = (
         "lexical" if os.environ.get("EMBEDDING_PROVIDER") == "hashing" else "cross_encoder"
     )
+    generation_model = os.environ.get("GENERATION_MODEL", "fake-answer-v1")
     return RetrievalSettings(
         dataset_dir=os.environ.get("DATASET_DIR", str(DEFAULT_DATASET_DIR)),
         top_k=_env_int("RAG_TOP_K", 40),
@@ -296,14 +298,16 @@ def from_env() -> RetrievalSettings:
         ),
         generation=GenerationSettings(
             provider=os.environ.get("GENERATION_PROVIDER", "fake"),
-            model=os.environ.get("GENERATION_MODEL", "fake-answer-v1"),
+            model=generation_model,
             temperature=_env_float("GENERATION_TEMPERATURE", 0.0),
             api_base=os.environ.get("GENERATION_API_BASE"),
             max_tokens=_env_int("GENERATION_MAX_TOKENS", 1200),
             model_family=os.environ.get("GENERATION_MODEL_FAMILY") or None,
             quantisation=os.environ.get("GENERATION_MODEL_QUANTISATION") or None,
-            reasoning=parse_reasoning(
-                os.environ.get("GENERATION_REASONING") or "default", "GENERATION_REASONING"
+            reasoning=parse_reasoning_for_model(
+                os.environ.get("GENERATION_REASONING") or "default",
+                "GENERATION_REASONING",
+                generation_model,
             ),
             timeout_s=_env_float("GENERATION_TIMEOUT_S", 120.0),
         ),

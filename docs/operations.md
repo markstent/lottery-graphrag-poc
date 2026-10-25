@@ -107,6 +107,9 @@ make serve-demo-api
 
 The four recorded runs used `ollama/qwen3.6:latest` with reasoning off.
 A thinking model left on `default` can spend its whole token cap thinking and return an empty answer, which the gateway reports as an error.
+`off` is sent as `think=false` for `ollama/` and `ollama_chat/` models and as `reasoning.enabled=false` for `openrouter/` models.
+Settings refuse `off` for any other provider prefix, for the generator and the judge alike.
+If a model reports reasoning tokens although reasoning is off, the call fails and names the model.
 
 **Hosted model.**
 Set `GENERATION_MODEL` to an `openrouter/...` model and `OPENROUTER_API_KEY` in the environment.
@@ -156,7 +159,7 @@ The product shows the failed check and its plain reason.
 | Index check fails, or text search finds nothing | The index is missing, dense-only, or built by another serialiser version | `make index-vector` |
 | Embedding model not listed | Ollama is not running or the model is not pulled | Start Ollama, then `make pull-models` |
 | Answer model not listed or unreachable | The model is not pulled, or the provider is down | `ollama pull <model>`, or fix `GENERATION_API_BASE` |
-| A run fails with `MODEL_ERROR` | The gateway call failed or returned nothing | Check the model. A thinking model needs `GENERATION_REASONING=off`. |
+| A run fails with `MODEL_ERROR` | The gateway call failed or returned nothing | Check the model. A thinking model needs `GENERATION_REASONING=off`. A failure naming reasoning tokens means the provider ignored `off`; use another model. |
 | 503 "the question bank has not been grounded" | No frozen bank for this world | `make ground-bank` (`make ground-demo-bank` for the demo world) |
 | 503 "the question bank does not match the active world" | The world, ledger or serialiser changed since grounding | Re-run the grounding command. |
 | 409 "a benchmark run is using the graph" | A job is running | Retry when it ends. |

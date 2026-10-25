@@ -218,6 +218,7 @@ def test_generation_reasoning_comes_from_the_environment(
 
     monkeypatch.delenv("GENERATION_REASONING", raising=False)
     assert from_env().generation.reasoning == "default"
+    monkeypatch.setenv("GENERATION_MODEL", "ollama/m")
     monkeypatch.setenv("GENERATION_REASONING", "off")
     settings = from_env()
     assert settings.generation.reasoning == "off"

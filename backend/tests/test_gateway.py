@@ -11,7 +11,7 @@ import types
 
 import httpx
 import pytest
-from app.config import GenerationSettings
+from app.config import GenerationSettings, from_env, judge_settings_from_env
 from app.models.gateway import (
     COMPLETION_PROBE_CAP_S,
     OLLAMA_DEFAULT_BASE,
@@ -19,6 +19,7 @@ from app.models.gateway import (
     CompletionRequest,
     GatewayError,
     ProbeResult,
+    _reasoning_off_kwargs,
     complete,
     generation_api_base,
     load_litellm,
@@ -53,10 +54,90 @@ def test_complete_raises_gateway_error_on_provider_failure(
     assert isinstance(raised.value.__cause__, RuntimeError)
 
 
-def test_reasoning_off_asks_the_provider_not_to_think(stub_litellm: StubLiteLLM) -> None:
-    complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0, reasoning="off"))
-    # LiteLLM maps reasoning_effort "none" to Ollama's think=false.
+def test_reasoning_off_sends_the_provider_switch(stub_litellm: StubLiteLLM) -> None:
+    complete(CompletionRequest("ollama/m", "s", "u", 0.0, 50, None, 5.0, reasoning="off"))
+    complete(CompletionRequest("openrouter/a/b", "s", "u", 0.0, 50, None, 5.0, reasoning="off"))
     assert stub_litellm.calls[0]["reasoning_effort"] == "none"
+    assert "extra_body" not in stub_litellm.calls[0]
+    assert stub_litellm.calls[1]["extra_body"] == {"reasoning": {"enabled": False}}
+    assert "reasoning_effort" not in stub_litellm.calls[1]
+
+
+def test_reasoning_off_for_ollama_sends_think_false() -> None:
+    """LiteLLM's own offline request transformation, no network and no model."""
+    from litellm import OllamaConfig
+    from litellm.llms.ollama.chat.transformation import OllamaChatConfig
+    from litellm.utils import get_optional_params
+
+    kwargs = _reasoning_off_kwargs("ollama/qwen3.6:latest")
+    messages = [{"role": "user", "content": "hi"}]
+    for provider, config in (("ollama_chat", OllamaChatConfig()), ("ollama", OllamaConfig())):
+        params = get_optional_params(
+            model="qwen3.6:latest", custom_llm_provider=provider, max_tokens=5, **(kwargs or {})
+        )
+        body = config.transform_request(
+            model="qwen3.6:latest",
+            messages=messages,  # type: ignore[arg-type]
+            optional_params=dict(params),
+            litellm_params={},
+            headers={},
+        )
+        assert body["think"] is False, provider
+
+
+@pytest.mark.parametrize("model", ["qwen/qwen3-8b", "meta-llama/llama-3-8b-instruct"])
+def test_reasoning_off_for_openrouter_sends_reasoning_disabled(model: str) -> None:
+    """Holds for a model LiteLLM flags reasoning-capable and for one it does not."""
+    from litellm.llms.openrouter.chat.transformation import OpenrouterConfig
+    from litellm.utils import get_optional_params
+
+    kwargs = _reasoning_off_kwargs(f"openrouter/{model}")
+    params = get_optional_params(
+        model=model, custom_llm_provider="openrouter", max_tokens=5, **(kwargs or {})
+    )
+    body = OpenrouterConfig().transform_request(
+        model=model,
+        messages=[{"role": "user", "content": "hi"}],
+        optional_params=dict(params),
+        litellm_params={},
+        headers={},
+    )
+    assert body["reasoning"] == {"enabled": False}
+
+
+def test_reasoning_off_refused_for_unmapped_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GENERATION_MODEL", "anthropic/x")
+    monkeypatch.setenv("GENERATION_REASONING", "default")
+    assert from_env().generation.reasoning == "default"
+    monkeypatch.setenv("GENERATION_REASONING", "off")
+    with pytest.raises(ValueError, match=r"ollama/.*openrouter/"):
+        from_env()
+    monkeypatch.setenv("JUDGE_MODEL", "anthropic/x")
+    monkeypatch.setenv("JUDGE_REASONING", "default")
+    assert judge_settings_from_env().reasoning == "default"
+    monkeypatch.setenv("JUDGE_REASONING", "off")
+    with pytest.raises(ValueError, match="JUDGE_REASONING"):
+        judge_settings_from_env()
+    monkeypatch.setenv("JUDGE_MODEL", "openrouter/a/b")
+    assert judge_settings_from_env().reasoning == "off"
+    with pytest.raises(GatewayError, match="anthropic/x"):
+        complete(CompletionRequest("anthropic/x", "s", "u", 0.0, 50, None, 5.0, reasoning="off"))
+
+
+def test_reasoning_off_but_model_reasoned_is_an_error(
+    stub_litellm: StubLiteLLM, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    usage = types.SimpleNamespace(
+        prompt_tokens=3,
+        completion_tokens=9,
+        total_tokens=12,
+        completion_tokens_details=types.SimpleNamespace(reasoning_tokens=7),
+    )
+    monkeypatch.setattr("tests.conftest._Response.usage", usage)
+    with pytest.raises(GatewayError, match="openrouter/a/thinker"):
+        complete(CompletionRequest("openrouter/a/thinker", "s", "u", 0.0, 50, None, 5.0, "off"))
+    # With reasoning left on, reported reasoning tokens are expected.
+    assert complete(CompletionRequest("openrouter/a/thinker", "s", "u", 0.0, 50, None, 5.0)).text
 
 
 def test_default_reasoning_leaves_the_provider_unchanged(stub_litellm: StubLiteLLM) -> None:
