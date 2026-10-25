@@ -1,8 +1,7 @@
-# Stable command surface defined in docs/reference/development/commands.md.
-# Targets for later phases fail loudly instead of faking success.
+# Stable command surface, described in docs/operations.md.
 
 # A root .env (git-ignored) sets the backend's variables for every target. Write
-# KEY=value with no quotes: make reads the file, and a $ in a value is expanded.
+# KEY=value with no quotes: make reads the file, a $ in a value is expanded, and a # starts a comment.
 -include .env
 export
 
@@ -15,7 +14,7 @@ PNPM := pnpm -C $(FRONTEND)
 .PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build api-contract e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep traces
 
 help: ## Show available commands
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
 
 setup: ## Install Python, frontend and Playwright dependencies
 	$(UV) sync
@@ -31,8 +30,8 @@ dev-frontend: ## Run the Vite frontend dev server
 dev: ## Run backend and frontend together (Ctrl+C stops both)
 	$(MAKE) -j2 dev-backend dev-frontend
 
-test: ## Run Python and frontend unit tests
-	$(UV) run pytest
+test: ## Run Python and frontend unit tests (never the live graph tests)
+	env -u GRAPH_E2E $(UV) run pytest
 	$(PNPM) run test
 
 test-graph: ## Run live-graph integration tests (wipes the Neo4j database)
