@@ -26,9 +26,11 @@ Offline tests need neither data nor services, because they build a tiny world in
 
 **Environment.**
 The backend reads settings from the process environment only.
-No code loads a `.env` file, and the Makefile does not either, so `.env.example` is a reference of every variable and its default, and any value you want to change must be exported in the shell that starts the process.
-The Help screen's "Set in .env" wording is therefore inaccurate.
-A shell line such as `set -a; source .env; set +a` before `make` works.
+The Makefile reads a root `.env` when it exists (it is git-ignored), so copy `.env.example` to `.env` and change what you need, and every `make` target sees it.
+Write `KEY=value` with no quotes, because make reads the file and expands a `$` in a value.
+A key left empty is exported as an empty string, and a few settings treat that differently from unset, so delete a line to get its default.
+A process started without `make` (for example `uv run uvicorn` directly) needs the variables exported in its shell.
+The demo targets set `DATASET_DIR`, `TRUTH_LEDGER_PATH` and `QDRANT_COLLECTION` on the command line, which wins over `.env`.
 
 **Machine notes** recorded on the owner's Mac on 2026-10-18 and 2026-10-19, which may not hold now:
 
@@ -51,10 +53,8 @@ make dev-frontend           # the screens on :5173
 make dev                    # the last two together
 ```
 
-`make dev-frontend` serves the app but cannot reach the API, because the Vite dev server has no `/api` proxy and the frontend calls relative paths.
-Only `vite preview` proxies `/api` to `localhost:8000`.
-To use the screens against the real API, run `make build` and then `pnpm preview` inside `frontend/`, or put a proxy in front of the dev server.
-The README and Help name `make dev` and `localhost:5173` and do not mention this.
+Open `http://localhost:5173`.
+The frontend calls relative `/api` paths, and both the Vite dev server and `vite preview` forward them to `localhost:8000` (`frontend/vite.config.ts`), so the API must be on port 8000.
 
 The API builds its retrieval lab in the background at start-up.
 The first build loads the sparse model and the re-ranker, and the re-ranker downloads about 2.3 GB on first use into `FASTEMBED_CACHE`.

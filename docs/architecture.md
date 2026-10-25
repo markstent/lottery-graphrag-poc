@@ -230,7 +230,9 @@ Screens, states and accessibility are in [ux.md](ux.md).
 ## Configuration
 
 Settings are read from the process environment only.
-No code loads a `.env` file, so `.env.example` is a reference that lists every variable with its default, and the variables must be exported into the shell that starts the backend.
+The Python code loads no `.env` file itself.
+The Makefile reads a root `.env` and exports it to every target, and `.env.example` lists every variable with its default.
+A process started outside `make` needs the variables exported in its shell.
 The settings module is `backend/app/config/__init__.py`.
 Retrieval, model and traversal settings are read when the lab is built.
 The API settings (`CORS_ORIGINS`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `BENCHMARK_DIR`, `LOG_LEVEL`) are read once, when the app is created, and need a restart to change.

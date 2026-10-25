@@ -330,7 +330,7 @@ Generation and judging with a real model can vary between repeats even at temper
 | `OPENROUTER_API_KEY` | Read by LiteLLM for hosted models |
 
 The judge reply is capped at 300 tokens, so a thinking judge needs `JUDGE_REASONING=off`.
-Nothing is read from a `.env` file.
+The Python code reads no `.env` file; the Makefile exports a root `.env` to the benchmark targets.
 
 ## Testing
 

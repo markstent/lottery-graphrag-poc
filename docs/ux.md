@@ -334,7 +334,7 @@ The graph harness (`#/__graph`) draws one canvas with its parameters in the addr
 ## Operation
 
 ```bash
-make dev-frontend    # Vite dev server on :5173, with no API proxy (see Configuration)
+make dev-frontend    # Vite dev server on :5173, forwarding /api to :8000
 make build           # the production bundle
 make e2e             # build, then the Playwright smoke and functional specs
 ```
@@ -349,9 +349,7 @@ The only invented state is the "fixture-official" run.
 
 The frontend has no environment variables.
 It calls relative paths (`/api/v1/...`), so it reaches the API on the page's own origin.
-Only `vite preview` proxies `/api` to `http://localhost:8000` (`frontend/vite.config.ts`, line 16).
-The dev server of `make dev-frontend` has no proxy: a request to `/api/v1/health` on port 5173 was answered with the app's own `index.html`, so a screen that needs the API shows its error state.
-To use the real API from a browser, build with `make build` and run `pnpm preview`, or put a proxy in front.
+Both the dev server (`make dev-frontend`) and `vite preview` forward `/api` to `http://localhost:8000` (`frontend/vite.config.ts`), so the API must be on that port.
 Browser storage holds only per-reader preferences: the collapsed sidebar, reduced motion and the node cap.
 
 ## Testing
