@@ -78,7 +78,8 @@ export function Timeline({
   const total = Math.max(duration, 1)
   const sliderMax = Math.max(Math.ceil(duration), 1)
   // The last event sits at a fraction of a millisecond, so rounding would stop one short of the end.
-  const sliderValue = cursor >= duration ? sliderMax : Math.round(cursor)
+  const sliderValue =
+    duration > 0 && cursor >= duration ? sliderMax : Math.round(cursor)
   const tracks = trackSegments(state, originMs, cursor)
   const placed = {
     A: assignRows(tracks.A),
