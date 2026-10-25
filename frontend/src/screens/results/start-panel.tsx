@@ -20,6 +20,8 @@ import {
   startBody,
   STRATA,
   WORLD_SEEDS,
+  serverErrors,
+  withKind,
   type StartForm,
 } from '../../results/start'
 
@@ -162,16 +164,30 @@ function Form({
   const [form, setForm] = useState(DEFAULT_FORM)
   const [sending, setSending] = useState(false)
   const [problem, setProblem] = useState<Error | null>(null)
+  const [fromServer, setFromServer] = useState<
+    ReturnType<typeof serverErrors>['fields']
+  >({})
   const errors = errorsOf(form)
-  const change = (part: Partial<StartForm>) => setForm({ ...form, ...part })
+  const shown = { ...fromServer, ...errors }
+  const change = (part: Partial<StartForm>) => {
+    setFromServer({})
+    setForm({ ...form, ...part })
+  }
 
   const submit = async () => {
     setProblem(null)
+    setFromServer({})
     setSending(true)
     try {
       await start(startBody(form))
     } catch (failure) {
-      setProblem(asError(failure))
+      const error = asError(failure)
+      if (error instanceof ApiError && error.status === 422) {
+        // Parts of the message that name a field show at that field.
+        const { fields, rest } = serverErrors(error.message)
+        setFromServer(fields)
+        setProblem(rest === null ? null : new Error(rest))
+      } else setProblem(error)
     } finally {
       setSending(false)
     }
@@ -200,18 +216,16 @@ function Form({
             type="radio"
             inputRef={kind === KINDS[0] ? first : undefined}
             checked={form.kind === kind}
-            onChange={() =>
-              change({
-                kind,
-                repeats: kind === 'official' ? DEFAULT_FORM.repeats : '1',
-              })
-            }
+            onChange={() => {
+              setFromServer({})
+              setForm(withKind(form, kind))
+            }}
           >
             {KIND_WORDS[kind]}
           </Choice>
         ))}
       </Group>
-      <Group legend="Worlds" error={errors.worlds}>
+      <Group legend="Worlds" error={shown.worlds}>
         {WORLD_SEEDS.map((seed) => (
           <Choice
             key={seed}
@@ -235,11 +249,13 @@ function Form({
           type="number"
           min={1}
           value={form.repeats}
-          onChange={(event) => change({ repeats: event.target.value })}
+          onChange={(event) =>
+            change({ repeats: event.target.value, repeatsEdited: true })
+          }
           className={`${FIELD} w-20`}
         />
-        {errors.repeats && (
-          <span className="text-sm text-error">{errors.repeats}</span>
+        {shown.repeats && (
+          <span className="text-sm text-error">{shown.repeats}</span>
         )}
       </div>
       <Group legend="Scope">
@@ -274,8 +290,8 @@ function Form({
             {STRATUM_LABELS[stratum]}
           </Choice>
         ))}
-        {errors.strata && (
-          <span className="text-sm text-error">{errors.strata}</span>
+        {shown.strata && (
+          <span className="text-sm text-error">{shown.strata}</span>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -293,8 +309,8 @@ function Form({
           onChange={(event) => change({ limit: event.target.value })}
           className={`${FIELD} w-20`}
         />
-        {errors.limit && (
-          <span className="text-sm text-error">{errors.limit}</span>
+        {shown.limit && (
+          <span className="text-sm text-error">{shown.limit}</span>
         )}
       </div>
       <Setup />
@@ -320,7 +336,20 @@ function Form({
   )
 }
 
-function Progress({ job, cancel }: { job: Job; cancel: () => Promise<void> }) {
+function Progress({
+  job,
+  cancel,
+  focusOnMount,
+}: {
+  job: Job
+  cancel: () => Promise<void>
+  /** The reader has just started this run, and the button they pressed is gone. */
+  focusOnMount: boolean
+}) {
+  const stopButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (focusOnMount) stopButton.current?.focus()
+  }, [focusOnMount])
   const [cancelling, setCancelling] = useState(false)
   const [problem, setProblem] = useState<Error | null>(null)
   const percent = Math.round(progressFraction(job.progress) * 100)
@@ -353,6 +382,7 @@ function Progress({ job, cancel }: { job: Job; cancel: () => Promise<void> }) {
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <button
+          ref={stopButton}
           type="button"
           disabled={cancelling}
           onClick={() => void stop()}
@@ -373,21 +403,22 @@ function Progress({ job, cancel }: { job: Job; cancel: () => Promise<void> }) {
 export function StartButton({
   job,
   open,
-  onToggle,
-  buttonRef,
+  onOpen,
+  autoFocus,
 }: {
   job: Job | null
   open: boolean
-  onToggle: () => void
-  buttonRef: Ref<HTMLButtonElement>
+  onOpen: () => void
+  /** The reader just closed the form, so the button that comes back takes focus. */
+  autoFocus: boolean
 }) {
-  if (job?.status === 'running') return null
+  if (job?.status === 'running' || open) return null
   return (
     <button
-      ref={buttonRef}
+      autoFocus={autoFocus}
       type="button"
-      aria-expanded={open}
-      onClick={onToggle}
+      aria-expanded={false}
+      onClick={onOpen}
       className={BUTTON}
     >
       Start a run
@@ -401,6 +432,7 @@ export function StartArea({
   error,
   open,
   onClose,
+  onStarted,
   start,
   cancel,
 }: {
@@ -408,7 +440,10 @@ export function StartArea({
   /** A failure to start following, or to keep following, the job. */
   error: Error | null
   open: boolean
+  /** The reader closed the form. */
   onClose: () => void
+  /** The run started, so the form is done and the progress takes its place. */
+  onStarted: () => void
   start: (body: Body) => Promise<void>
   cancel: () => Promise<void>
 }) {
@@ -421,12 +456,14 @@ export function StartArea({
     ) : job?.status === 'failed' ? (
       <Problem message={job.error?.message ?? 'The run failed.'} />
     ) : null
+  // Set before the request, so the progress that replaces the form can take focus.
+  const [justStarted, setJustStarted] = useState(false)
   if (!error && !running && !note && !open) return null
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 border-b border-hairline pb-4">
       {error && <Problem message={error.message} />}
       {running ? (
-        <Progress job={job} cancel={cancel} />
+        <Progress job={job} cancel={cancel} focusOnMount={justStarted} />
       ) : (
         <>
           {note}
@@ -434,8 +471,14 @@ export function StartArea({
             <Form
               onClose={onClose}
               start={async (body) => {
-                await start(body)
-                onClose()
+                setJustStarted(true)
+                try {
+                  await start(body)
+                } catch (failure) {
+                  setJustStarted(false)
+                  throw failure
+                }
+                onStarted()
               }}
             />
           )}

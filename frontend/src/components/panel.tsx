@@ -81,7 +81,7 @@ export function Panel({
       className="rounded-card border border-hairline bg-surface p-4"
     >
       {headerAction ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-h-[1.875rem] flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-text-primary">{title}</h2>
           {headerAction}
         </div>
@@ -89,7 +89,7 @@ export function Panel({
         <h2 className="text-base font-semibold text-text-primary">{title}</h2>
       )}
       {purpose && <p className="mt-1 text-sm text-text-secondary">{purpose}</p>}
-      {above && <div className="mt-3">{above}</div>}
+      {above && <div className="mt-3 empty:hidden">{above}</div>}
       <div className="mt-3">
         {state === 'ready' && children}
         {state === 'loading' && (

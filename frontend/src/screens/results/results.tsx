@@ -113,10 +113,10 @@ export function Results() {
         )
       : []
   const [starting, setStarting] = useState(false)
-  const startButton = useRef<HTMLButtonElement>(null)
+  const [returned, setReturned] = useState(false)
   const closeForm = () => {
+    setReturned(true)
     setStarting(false)
-    startButton.current?.focus()
   }
   const empty = load.status === 'ready' && runs.length === 0
   const id = requested ?? defaultRun(runs)
@@ -133,8 +133,11 @@ export function Results() {
           <StartButton
             job={job}
             open={starting}
-            onToggle={() => setStarting(!starting)}
-            buttonRef={startButton}
+            onOpen={() => {
+              setReturned(false)
+              setStarting(true)
+            }}
+            autoFocus={returned}
           />
         }
         above={
@@ -143,6 +146,10 @@ export function Results() {
             error={error}
             open={starting}
             onClose={closeForm}
+            onStarted={() => {
+              setReturned(false)
+              setStarting(false)
+            }}
             start={start}
             cancel={cancel}
           />

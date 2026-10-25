@@ -18,6 +18,8 @@ export interface StartForm {
   worlds: number[]
   /** As typed, so an empty box is an error and not a zero. */
   repeats: string
+  /** The reader has typed in Repeats, so a change of kind leaves it alone. */
+  repeatsEdited: boolean
   scope: 'bank' | 'chosen'
   /** The kinds of question, used only when the scope is chosen. */
   strata: string[]
@@ -29,9 +31,46 @@ export const DEFAULT_FORM: StartForm = {
   kind: 'official',
   worlds: WORLD_SEEDS,
   repeats: String(MIN_REPEATS.official),
+  repeatsEdited: false,
   scope: 'bank',
   strata: [],
   limit: '',
+}
+
+/** Another kind; Repeats follows the kind's own minimum until the reader has typed in it. */
+export const withKind = (form: StartForm, kind: Start['kind']): StartForm => ({
+  ...form,
+  kind,
+  repeats: form.repeatsEdited ? form.repeats : String(MIN_REPEATS[kind]),
+})
+
+type Field = 'worlds' | 'repeats' | 'limit' | 'strata'
+
+/** The request field each server field name stands for (seeds are the worlds). */
+const FIELD_OF_NAME: Record<string, Field> = {
+  seeds: 'worlds',
+  repeats: 'repeats',
+  limit: 'limit',
+  strata: 'strata',
+}
+
+/**
+ * A 422's message ("seeds: ...; unknown strata [...]") split by field: the parts
+ * that name a field go to that field, the rest stay a form-level message.
+ */
+export function serverErrors(message: string): {
+  fields: Partial<Record<Field, string>>
+  rest: string | null
+} {
+  const fields: Partial<Record<Field, string>> = {}
+  const rest: string[] = []
+  for (const part of message.split('; ')) {
+    const field =
+      FIELD_OF_NAME[/\b(seeds|repeats|limit|strata)\b/.exec(part)?.[1] ?? '']
+    if (field && !(field in fields)) fields[field] = part
+    else rest.push(part)
+  }
+  return { fields, rest: rest.length === 0 ? null : rest.join('; ') }
 }
 
 const wholeAtLeast = (min: number) => `Use a whole number, at least ${min}.`
@@ -39,9 +78,7 @@ const wholeAtLeast = (min: number) => `Use a whole number, at least ${min}.`
 const wholeNumber = (text: string) => /^\d+$/.test(text.trim())
 
 /** What is wrong with the form, by field; the backend checks the same rules again. */
-export function errorsOf(
-  form: StartForm,
-): Partial<Record<'worlds' | 'repeats' | 'limit' | 'strata', string>> {
+export function errorsOf(form: StartForm): Partial<Record<Field, string>> {
   const errors: Partial<
     Record<'worlds' | 'repeats' | 'limit' | 'strata', string>
   > = {}

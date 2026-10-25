@@ -5,7 +5,9 @@ import {
   errorsOf,
   progressFraction,
   progressText,
+  serverErrors,
   startBody,
+  withKind,
   type StartForm,
 } from './start'
 
@@ -109,5 +111,43 @@ describe('progress', () => {
   it('is the share of the whole run done, worlds counted whole', () => {
     expect(progressFraction(progress)).toBeCloseTo((1 + 12 / 40) / 3)
     expect(progressFraction(null)).toBe(0)
+  })
+})
+
+describe('withKind', () => {
+  it('sets Repeats to the minimum of the kind while it is untouched', () => {
+    expect(withKind(form(), 'smoke').repeats).toBe('1')
+    expect(withKind(withKind(form(), 'smoke'), 'official').repeats).toBe('3')
+  })
+
+  it('leaves Repeats alone once the reader has typed in it', () => {
+    const typed = form({ repeats: '5', repeatsEdited: true })
+    expect(withKind(typed, 'smoke')).toMatchObject({
+      kind: 'smoke',
+      repeats: '5',
+    })
+  })
+})
+
+describe('serverErrors', () => {
+  it('gives each part that names a field to that field', () => {
+    expect(
+      serverErrors(
+        'unknown seeds [2029]; repeats: Input should be greater than or equal to 1; kind: bad',
+      ),
+    ).toEqual({
+      fields: {
+        worlds: 'unknown seeds [2029]',
+        repeats: 'repeats: Input should be greater than or equal to 1',
+      },
+      rest: 'kind: bad',
+    })
+  })
+
+  it('keeps a message that names no field as the form message', () => {
+    expect(serverErrors('invalid request')).toEqual({
+      fields: {},
+      rest: 'invalid request',
+    })
   })
 })

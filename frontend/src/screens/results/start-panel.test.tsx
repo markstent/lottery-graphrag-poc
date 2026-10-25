@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -46,10 +46,10 @@ type Props = Pick<
 
 function Harness(props: Props) {
   const [open, setOpen] = useState(false)
-  const button = useRef<HTMLButtonElement>(null)
+  const [returned, setReturned] = useState(false)
   const close = () => {
+    setReturned(true)
     setOpen(false)
-    button.current?.focus()
   }
   return (
     <Panel
@@ -59,11 +59,18 @@ function Harness(props: Props) {
         <StartButton
           job={props.job}
           open={open}
-          onToggle={() => setOpen(!open)}
-          buttonRef={button}
+          onOpen={() => setOpen(true)}
+          autoFocus={returned}
         />
       }
-      above={<StartArea {...props} open={open} onClose={close} />}
+      above={
+        <StartArea
+          {...props}
+          open={open}
+          onClose={close}
+          onStarted={() => setOpen(false)}
+        />
+      }
     />
   )
 }
@@ -110,26 +117,85 @@ describe('StartPanel', () => {
     expect(within(form()).getAllByText(/Set in configuration/)).toHaveLength(2)
   })
 
-  it('opens from a button that says whether it is open, and puts focus in the form', async () => {
+  it('opens from a button, which gives way to the form, and puts focus in the form', async () => {
     const { user } = show()
     const button = screen.getByRole('button', { name: 'Start a run' })
     expect(button).toHaveAttribute('aria-expanded', 'false')
     await user.click(button)
-    expect(button).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.queryByRole('button', { name: 'Start a run' })).toBeNull()
     expect(screen.getByRole('radio', { name: 'Official run' })).toHaveFocus()
   })
 
-  it('closes with Escape or Close and returns focus to the button', async () => {
+  it('closes with Escape or Close and brings the button back with focus', async () => {
     const { user } = show()
-    const button = screen.getByRole('button', { name: 'Start a run' })
-    await user.click(button)
+    await open(user)
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('radio')).toBeNull()
-    expect(button).toHaveFocus()
-    await user.click(button)
+    expect(screen.getByRole('button', { name: 'Start a run' })).toHaveFocus()
+    await open(user)
     await user.click(screen.getByRole('button', { name: 'Close' }))
     expect(screen.queryByRole('radio')).toBeNull()
-    expect(button).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Start a run' })).toHaveFocus()
+  })
+
+  it('moves focus to Cancel once the run has started', async () => {
+    stubApi(ROUTES)
+    function Starting() {
+      const [job, setJob] = useState<Job | null>(null)
+      return (
+        <Harness
+          job={job}
+          error={null}
+          start={async () => setJob(job_({}))}
+          cancel={async () => undefined}
+        />
+      )
+    }
+    const job_ = job
+    render(<Starting />)
+    const user = userEvent.setup()
+    await open(user)
+    await user.click(screen.getByRole('button', { name: 'Start' }))
+    expect(await screen.findByRole('button', { name: 'Cancel' })).toHaveFocus()
+  })
+
+  it('shows a 422 at the field it names and the rest as a form message', async () => {
+    const { user, start } = show()
+    start.mockRejectedValueOnce(
+      new ApiError(
+        'VALIDATION_ERROR',
+        "unknown strata ['H9']; unknown seeds [2029]; kind: Input should be 'smoke' or 'official'",
+        false,
+        422,
+      ),
+    )
+    await open(user)
+    await user.click(screen.getByRole('radio', { name: 'Chosen kinds' }))
+    await user.click(screen.getByRole('checkbox', { name: /Multi-hop/ }))
+    await user.click(screen.getByRole('button', { name: 'Start' }))
+    const worlds = screen.getByRole('group', { name: 'Worlds' })
+    expect(within(worlds).getByText(/unknown seeds \[2029\]/)).toBeVisible()
+    const kinds = screen.getByRole('group', { name: 'Kinds of question' })
+    expect(within(kinds).getByText(/unknown strata \['H9'\]/)).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveTextContent('kind: Input should be')
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+    // Editing the form clears what the server said about it.
+    await user.click(screen.getByRole('checkbox', { name: '2026' }))
+    expect(within(worlds).queryByText(/unknown seeds/)).toBeNull()
+  })
+
+  it('follows the minimum when the kind changes, but keeps Repeats the reader typed', async () => {
+    const { user } = show()
+    await open(user)
+    const repeats = screen.getByRole('spinbutton', { name: 'Repeats' })
+    await user.click(screen.getByRole('radio', { name: 'Quick check' }))
+    expect(repeats).toHaveValue(1)
+    await user.click(screen.getByRole('radio', { name: 'Official run' }))
+    expect(repeats).toHaveValue(3)
+    await user.clear(repeats)
+    await user.type(repeats, '5')
+    await user.click(screen.getByRole('radio', { name: 'Quick check' }))
+    expect(repeats).toHaveValue(5)
   })
 
   it('offers the kinds of question only under Chosen kinds, and needs one', async () => {
