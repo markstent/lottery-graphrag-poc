@@ -3307,17 +3307,14 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "INC_010",
+     "reason": "slot_limit",
      "rerank_score": 0.307692,
      "score": 0.547479,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.230892,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
@@ -3805,17 +3802,14 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_02",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.449497,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.141421,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
@@ -3832,17 +3826,14 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_04",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.446359,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.132453,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
@@ -3871,32 +3862,26 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_01",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.442857,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.122449,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_05",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.44284,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.4,
-     "weight_semantic_relevance": 0.193829,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
@@ -3961,17 +3946,14 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_03",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.435355,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.101015,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
@@ -4555,17 +4537,17 @@
     "event_type": "graph.evidence_path.completed",
     "payload": {
      "max_hops": 2,
-     "paths": 12
+     "paths": 6
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.context.assembled",
     "payload": {
-     "context_tokens": 963,
+     "context_tokens": 479,
      "document_chunks": 0,
      "evidence_slots": 12,
-     "structured_nodes": 12
+     "structured_nodes": 6
     },
     "pipeline": "C"
    },
@@ -4580,7 +4562,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 963,
+     "context_tokens": 479,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -4651,75 +4633,15 @@
       "source_record_id": "GAME_GR_05",
       "source_system": "warehouse",
       "title": "games: GAME_GR_05"
-     },
-     {
-      "chunk_id": "INC_010",
-      "document_id": "INC_010",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "incidents",
-      "source_record_id": "INC_010",
-      "source_system": "incident_management",
-      "title": "incidents: INC_010"
-     },
-     {
-      "chunk_id": "GAME_AT_01",
-      "document_id": "GAME_AT_01",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_01",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_01"
-     },
-     {
-      "chunk_id": "GAME_AT_02",
-      "document_id": "GAME_AT_02",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_02",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_02"
-     },
-     {
-      "chunk_id": "GAME_AT_03",
-      "document_id": "GAME_AT_03",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_03",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_03"
-     },
-     {
-      "chunk_id": "GAME_AT_04",
-      "document_id": "GAME_AT_04",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_04",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_04"
-     },
-     {
-      "chunk_id": "GAME_AT_05",
-      "document_id": "GAME_AT_05",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_05",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_05"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 963,
+    "context_tokens": 479,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].\"}",
-    "text": "[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].\"}",
+    "text": "[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -4975,25 +4897,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "incident_id": "INC_010",
-      "incident_type": "ITYPE_GR_PLIROMES",
-      "market_id": "MKT_GR",
-      "resolved_at": "2025-11-27 19:04:14",
-      "root_cause_code": "-",
-      "severity": "LOW",
-      "source_record_id": "INC_010",
-      "source_table": "incidents",
-      "started_at": "2025-11-24 19:45:14",
-      "summary": "Payment provider degraded; transactions failing. Seen on platform version 2024.1.0 (PLV_PAYMENTS_1)."
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.6,
       "semantic_relevance": 0.230892,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "INC_010",
      "node_label": "Incident",
@@ -5004,7 +4915,7 @@
      "rel_type": "AFFECTS_MARKET",
      "rerank_score": 0.307692,
      "score": 0.547479,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -5897,24 +5808,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_LAENDER_JACKPOT",
-      "game_id": "GAME_AT_02",
-      "game_name": "Alpen Jackpot",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_02",
-      "source_table": "games",
-      "ticket_price": "2.50"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.141421,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_02",
      "node_label": "Game",
@@ -5926,7 +5827,7 @@
      "rel_type": "RUNS_ON",
      "rerank_score": 0.230769,
      "score": 0.449497,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -5951,24 +5852,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_ZUSATZSPIEL",
-      "game_id": "GAME_AT_04",
-      "game_name": "Alpen Star",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_04",
-      "source_table": "games",
-      "ticket_price": "1.00"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.132453,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_04",
      "node_label": "Game",
@@ -5980,7 +5871,7 @@
      "rel_type": "RUNS_ON",
      "rerank_score": 0.230769,
      "score": 0.446359,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -6027,24 +5918,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_ZAHLENZIEHUNG",
-      "game_id": "GAME_AT_01",
-      "game_name": "Danube Classic",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_01",
-      "source_table": "games",
-      "ticket_price": "2.50"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.122449,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_01",
      "node_label": "Game",
@@ -6056,27 +5937,17 @@
      "rel_type": "RUNS_ON",
      "rerank_score": 0.230769,
      "score": 0.442857,
-     "selected": true
+     "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_RUBBELLOS",
-      "game_id": "GAME_AT_05",
-      "game_name": "Edelweiss Instant",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_05",
-      "source_table": "games",
-      "ticket_price": "2.00"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.4,
       "semantic_relevance": 0.193829,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_05",
      "node_label": "Game",
@@ -6088,7 +5959,7 @@
      "rel_type": "SIMILAR_TO",
      "rerank_score": 0.230769,
      "score": 0.44284,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -6201,24 +6072,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_SCHNELLZIEHUNG",
-      "game_id": "GAME_AT_03",
-      "game_name": "Wiener Zahlen",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_03",
-      "source_table": "games",
-      "ticket_price": "1.00"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.101015,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_03",
      "node_label": "Game",
@@ -6230,7 +6091,7 @@
      "rel_type": "RUNS_ON",
      "rerank_score": 0.230769,
      "score": 0.435355,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -10632,77 +10493,62 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "SUP_00002",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.537694,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.274365,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "INC_006",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.51586,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.140553,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "INC_022",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.513329,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.133322,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "INC_002",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.510572,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.125445,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "SUP_00006",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.508749,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.191663,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
@@ -10719,17 +10565,14 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "SUP_00010",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.496328,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.156174,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "C"
    },
@@ -11352,17 +11195,17 @@
     "event_type": "graph.evidence_path.completed",
     "payload": {
      "max_hops": 2,
-     "paths": 12
+     "paths": 6
     },
     "pipeline": "C"
    },
    {
     "event_type": "graph.context.assembled",
     "payload": {
-     "context_tokens": 1054,
+     "context_tokens": 483,
      "document_chunks": 0,
      "evidence_slots": 12,
-     "structured_nodes": 12
+     "structured_nodes": 6
     },
     "pipeline": "C"
    },
@@ -11377,7 +11220,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 1054,
+     "context_tokens": 483,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -11450,75 +11293,15 @@
       "source_record_id": "INC_010",
       "source_system": "incident_management",
       "title": "incidents: INC_010"
-     },
-     {
-      "chunk_id": "INC_002",
-      "document_id": "INC_002",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "incidents",
-      "source_record_id": "INC_002",
-      "source_system": "incident_management",
-      "title": "incidents: INC_002"
-     },
-     {
-      "chunk_id": "INC_006",
-      "document_id": "INC_006",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "incidents",
-      "source_record_id": "INC_006",
-      "source_system": "incident_management",
-      "title": "incidents: INC_006"
-     },
-     {
-      "chunk_id": "INC_022",
-      "document_id": "INC_022",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "incidents",
-      "source_record_id": "INC_022",
-      "source_system": "incident_management",
-      "title": "incidents: INC_022"
-     },
-     {
-      "chunk_id": "SUP_00002",
-      "document_id": "SUP_00002",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "support_cases",
-      "source_record_id": "SUP_00002",
-      "source_system": "support_platform",
-      "title": "support_cases: SUP_00002"
-     },
-     {
-      "chunk_id": "SUP_00006",
-      "document_id": "SUP_00006",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "support_cases",
-      "source_record_id": "SUP_00006",
-      "source_system": "support_platform",
-      "title": "support_cases: SUP_00006"
-     },
-     {
-      "chunk_id": "SUP_00010",
-      "document_id": "SUP_00010",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "support_cases",
-      "source_record_id": "SUP_00010",
-      "source_system": "support_platform",
-      "title": "support_cases: SUP_00010"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 1054,
+    "context_tokens": 483,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: games: GAME_GR_01, games: GAME_GR_02 [1].\"}",
-    "text": "[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: games: GAME_GR_01, games: GAME_GR_02 [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: games: GAME_GR_01, games: GAME_GR_02 [1].\"}",
+    "text": "[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: games: GAME_GR_01, games: GAME_GR_02 [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -11755,22 +11538,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "category_code": "SUPC_GR_LOGARIASMOS",
-      "market_id": "MKT_GR",
-      "opened_at": "2025-08-29 13:02:48",
-      "source_record_id": "SUP_00002",
-      "source_table": "support_cases",
-      "summary_text": "Synthetic support contact describing a player-reported issue.",
-      "support_case_id": "SUP_00002"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.5,
       "semantic_relevance": 0.274365,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "SUP_00002",
      "node_label": "SupportCase",
@@ -11781,28 +11556,17 @@
      "rel_type": "FROM_MARKET",
      "rerank_score": 0.230769,
      "score": 0.537694,
-     "selected": true
+     "selected": false
     },
     {
-     "authoritative": {
-      "incident_id": "INC_006",
-      "incident_type": "ITYPE_GR_EFARMOGI",
-      "market_id": "MKT_GR",
-      "resolved_at": "2025-12-21 00:47:37",
-      "root_cause_code": "-",
-      "severity": "HIGH",
-      "source_record_id": "INC_006",
-      "source_table": "incidents",
-      "started_at": "2025-12-20 01:01:37",
-      "summary": "Application crashes reported on launch. Seen on platform version 2024.1.0 (PLV_APP_IOS_1)."
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.6,
       "semantic_relevance": 0.140553,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "INC_006",
      "node_label": "Incident",
@@ -11813,28 +11577,17 @@
      "rel_type": "AFFECTS_MARKET",
      "rerank_score": 0.230769,
      "score": 0.51586,
-     "selected": true
+     "selected": false
     },
     {
-     "authoritative": {
-      "incident_id": "INC_022",
-      "incident_type": "ITYPE_GR_SYNDESI",
-      "market_id": "MKT_GR",
-      "resolved_at": "2025-03-07 11:07:31",
-      "root_cause_code": "RC_61",
-      "severity": "HIGH",
-      "source_record_id": "INC_022",
-      "source_table": "incidents",
-      "started_at": "2025-03-06 22:30:31",
-      "summary": "Identity service latency causing timeouts. Seen on platform version 2024.2.0 (PLV_IDENTITY_2)."
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.6,
       "semantic_relevance": 0.133322,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "INC_022",
      "node_label": "Incident",
@@ -11845,28 +11598,17 @@
      "rel_type": "AFFECTS_MARKET",
      "rerank_score": 0.230769,
      "score": 0.513329,
-     "selected": true
+     "selected": false
     },
     {
-     "authoritative": {
-      "incident_id": "INC_002",
-      "incident_type": "ITYPE_GR_EFARMOGI",
-      "market_id": "MKT_GR",
-      "resolved_at": "-",
-      "root_cause_code": "-",
-      "severity": "CRITICAL",
-      "source_record_id": "INC_002",
-      "source_table": "incidents",
-      "started_at": "2025-10-15 07:16:15",
-      "summary": "Reporting pipelines delayed; no customer impact. Seen on platform version 2024.2.0 (PLV_ANALYTICS_2)."
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.6,
       "semantic_relevance": 0.125445,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "INC_002",
      "node_label": "Incident",
@@ -11877,25 +11619,17 @@
      "rel_type": "AFFECTS_MARKET",
      "rerank_score": 0.230769,
      "score": 0.510572,
-     "selected": true
+     "selected": false
     },
     {
-     "authoritative": {
-      "category_code": "SUPC_GR_TECHNIKO",
-      "market_id": "MKT_GR",
-      "opened_at": "2025-05-26 01:56:45",
-      "source_record_id": "SUP_00006",
-      "source_table": "support_cases",
-      "summary_text": "Synthetic support contact describing a player-reported issue.",
-      "support_case_id": "SUP_00006"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.5,
       "semantic_relevance": 0.191663,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "SUP_00006",
      "node_label": "SupportCase",
@@ -11906,7 +11640,7 @@
      "rel_type": "FROM_MARKET",
      "rerank_score": 0.230769,
      "score": 0.508749,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -11930,22 +11664,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "category_code": "SUPC_GR_TECHNIKO",
-      "market_id": "MKT_GR",
-      "opened_at": "2025-08-06 00:50:51",
-      "source_record_id": "SUP_00010",
-      "source_table": "support_cases",
-      "summary_text": "Synthetic support contact describing a player-reported issue.",
-      "support_case_id": "SUP_00010"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.5,
       "semantic_relevance": 0.156174,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "SUP_00010",
      "node_label": "SupportCase",
@@ -11956,7 +11682,7 @@
      "rel_type": "FROM_MARKET",
      "rerank_score": 0.230769,
      "score": 0.496328,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": {

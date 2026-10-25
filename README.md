@@ -33,11 +33,11 @@ They showed B and C no better than A.
 B and C were level with A on three of the four questions.
 On the ontology question B and C wrote a slightly better answer and found less of the needed evidence.
 
-A method question is open for the project owner before the official run.
-Decision D-025 makes all three approaches choose what the model sees through one shared re-ranker.
+The selection rule has changed since those runs (decision D-081, 2026-10-25, after the CP3 proposal).
+Decision D-025 had made all three approaches choose what the model sees through one shared re-ranker.
 On the multi-hop question, B's graph search found the record that carries the claim the answer needed, and the shared re-ranker kept that record out of the prompt.
-This is the designed behaviour, and the rule and the questions were not changed, because that would favour one approach.
-The project owner decides whether to keep the rule or change how the graph's selection reaches the prompt.
+Now half of the 12 evidence slots go to the graph's own selection in B and C, and A keeps all 12 for documents.
+The pilot runs described here used the old rule.
 The detail is in [docs/retrieval.md](docs/retrieval.md) and [docs/evaluation.md](docs/evaluation.md).
 
 ## Run it

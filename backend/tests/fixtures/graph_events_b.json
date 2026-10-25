@@ -1621,17 +1621,14 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "INC_017",
+     "reason": "slot_limit",
      "rerank_score": 0.285714,
      "score": 0.541667,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.8,
-     "weight_semantic_relevance": 0.071429,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
@@ -1660,17 +1657,14 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "MECH_UK_NUMBER_MATCH",
+     "reason": "slot_limit",
      "rerank_score": 0.285714,
      "score": 0.521834,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.157622,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
@@ -1867,17 +1861,14 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_UK_04",
+     "reason": "slot_limit",
      "rerank_score": 0.142857,
      "score": 0.449225,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.140642,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
@@ -1918,17 +1909,14 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "FAM_UK_ANNUITY",
+     "reason": "slot_limit",
      "rerank_score": 0.142857,
      "score": 0.447847,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.4,
-     "weight_semantic_relevance": 0.089087,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
@@ -2260,17 +2248,17 @@
     "event_type": "graph.evidence_path.completed",
     "payload": {
      "max_hops": 2,
-     "paths": 10
+     "paths": 6
     },
     "pipeline": "B"
    },
    {
     "event_type": "graph.context.assembled",
     "payload": {
-     "context_tokens": 1120,
+     "context_tokens": 837,
      "document_chunks": 2,
      "evidence_slots": 12,
-     "structured_nodes": 10
+     "structured_nodes": 6
     },
     "pipeline": "B"
    },
@@ -2285,7 +2273,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 1120,
+     "context_tokens": 837,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -2376,55 +2364,15 @@
       "source_record_id": "GAME_UK_02",
       "source_system": "warehouse",
       "title": "games: GAME_UK_02"
-     },
-     {
-      "chunk_id": "INC_017",
-      "document_id": "INC_017",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "record_table": "incidents",
-      "source_record_id": "INC_017",
-      "source_system": "incident_management",
-      "title": "incidents: INC_017"
-     },
-     {
-      "chunk_id": "MECH_UK_NUMBER_MATCH",
-      "document_id": "MECH_UK_NUMBER_MATCH",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "record_table": "game_mechanics",
-      "source_record_id": "MECH_UK_NUMBER_MATCH",
-      "source_system": "warehouse",
-      "title": "game_mechanics: MECH_UK_NUMBER_MATCH"
-     },
-     {
-      "chunk_id": "FAM_UK_ANNUITY",
-      "document_id": "FAM_UK_ANNUITY",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "record_table": "game_families",
-      "source_record_id": "FAM_UK_ANNUITY",
-      "source_system": "warehouse",
-      "title": "game_families: FAM_UK_ANNUITY"
-     },
-     {
-      "chunk_id": "GAME_UK_04",
-      "document_id": "GAME_UK_04",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "record_table": "games",
-      "source_record_id": "GAME_UK_04",
-      "source_system": "warehouse",
-      "title": "games: GAME_UK_04"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 1120,
+    "context_tokens": 837,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_003, incidents: INC_007 [1].\"}",
-    "text": "[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_003, incidents: INC_007 [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 8 retrieved source(s), the strongest evidence for the question is in: incidents: INC_003, incidents: INC_007 [1].\"}",
+    "text": "[fake-model] Based on 8 retrieved source(s), the strongest evidence for the question is in: incidents: INC_003, incidents: INC_007 [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -2609,25 +2557,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "incident_id": "INC_017",
-      "incident_type": "ITYPE_UK_APP_STABILITY",
-      "market_id": "MKT_UK",
-      "resolved_at": "2025-04-23 21:37:14",
-      "root_cause_code": "-",
-      "severity": "MEDIUM",
-      "source_record_id": "INC_017",
-      "source_table": "incidents",
-      "started_at": "2025-04-23 15:21:14",
-      "summary": "Reporting pipelines delayed; no customer impact. Seen on platform version 2024.3.0 (PLV_ANALYTICS_3)."
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.8,
       "semantic_relevance": 0.071429,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "INC_017",
      "node_label": "Incident",
@@ -2638,7 +2575,7 @@
      "rel_type": "AFFECTS",
      "rerank_score": 0.285714,
      "score": 0.541667,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -2683,22 +2620,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "description": "Match your numbers against the draw",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "mechanic_code": "NUMBER_MATCH",
-      "mechanic_id": "MECH_UK_NUMBER_MATCH",
-      "source_record_id": "MECH_UK_NUMBER_MATCH",
-      "source_table": "game_mechanics"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.6,
       "semantic_relevance": 0.157622,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "MECH_UK_NUMBER_MATCH",
      "node_label": "GameMechanic",
@@ -2709,7 +2638,7 @@
      "rel_type": "HAS_MECHANIC",
      "rerank_score": 0.285714,
      "score": 0.521834,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -3083,24 +3012,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "GBP",
-      "game_family_id": "FAM_UK_FIXED_PRIZE",
-      "game_id": "GAME_UK_04",
-      "game_name": "Union Raffle",
-      "market_id": "MKT_UK",
-      "retirement_date": "-",
-      "source_record_id": "GAME_UK_04",
-      "source_table": "games",
-      "ticket_price": "1.50"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.140642,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_UK_04",
      "node_label": "Game",
@@ -3112,7 +3031,7 @@
      "rel_type": "INSTANCE_OF",
      "rerank_score": 0.142857,
      "score": 0.449225,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -3181,21 +3100,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "family_id": "FAM_UK_ANNUITY",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "name": "Annuity Draw",
-      "source_record_id": "FAM_UK_ANNUITY",
-      "source_table": "game_families"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.4,
       "semantic_relevance": 0.089087,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "FAM_UK_ANNUITY",
      "node_label": "GameFamily",
@@ -3206,7 +3118,7 @@
      "rel_type": "BELONGS_TO",
      "rerank_score": 0.142857,
      "score": 0.447847,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -6222,17 +6134,14 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 1,
      "node_id": "INC_010",
+     "reason": "slot_limit",
      "rerank_score": 0.307692,
      "score": 0.525502,
-     "seed": false,
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.1681,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
@@ -6561,32 +6470,26 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_02",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.454913,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.156893,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_04",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.45143,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.146944,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
@@ -6771,32 +6674,26 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_01",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.441602,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.118864,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_AT_03",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.441184,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.11767,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
@@ -6885,17 +6782,14 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "hops": 2,
      "node_id": "GAME_UK_01",
+     "reason": "slot_limit",
      "rerank_score": 0.230769,
      "score": 0.42141,
-     "seed": false,
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.4,
-     "weight_semantic_relevance": 0.132599,
-     "weight_temporal_validity": 1.0
+     "seed": false
     },
     "pipeline": "B"
    },
@@ -7119,17 +7013,17 @@
     "event_type": "graph.evidence_path.completed",
     "payload": {
      "max_hops": 2,
-     "paths": 12
+     "paths": 6
     },
     "pipeline": "B"
    },
    {
     "event_type": "graph.context.assembled",
     "payload": {
-     "context_tokens": 981,
+     "context_tokens": 479,
      "document_chunks": 0,
      "evidence_slots": 12,
-     "structured_nodes": 12
+     "structured_nodes": 6
     },
     "pipeline": "B"
    },
@@ -7144,7 +7038,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 981,
+     "context_tokens": 479,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -7215,75 +7109,15 @@
       "source_record_id": "GAME_GR_05",
       "source_system": "warehouse",
       "title": "games: GAME_GR_05"
-     },
-     {
-      "chunk_id": "INC_010",
-      "document_id": "INC_010",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "incidents",
-      "source_record_id": "INC_010",
-      "source_system": "incident_management",
-      "title": "incidents: INC_010"
-     },
-     {
-      "chunk_id": "GAME_AT_01",
-      "document_id": "GAME_AT_01",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_01",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_01"
-     },
-     {
-      "chunk_id": "GAME_AT_02",
-      "document_id": "GAME_AT_02",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_02",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_02"
-     },
-     {
-      "chunk_id": "GAME_AT_03",
-      "document_id": "GAME_AT_03",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_03",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_03"
-     },
-     {
-      "chunk_id": "GAME_AT_04",
-      "document_id": "GAME_AT_04",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_04",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_04"
-     },
-     {
-      "chunk_id": "GAME_UK_01",
-      "document_id": "GAME_UK_01",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "record_table": "games",
-      "source_record_id": "GAME_UK_01",
-      "source_system": "warehouse",
-      "title": "games: GAME_UK_01"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 981,
+    "context_tokens": 479,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].\"}",
-    "text": "[fake-model] Based on 12 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].\"}",
+    "text": "[fake-model] Based on 6 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, games: GAME_GR_01 [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -7594,25 +7428,14 @@
      "selected": true
     },
     {
-     "authoritative": {
-      "incident_id": "INC_010",
-      "incident_type": "ITYPE_GR_PLIROMES",
-      "market_id": "MKT_GR",
-      "resolved_at": "2025-11-27 19:04:14",
-      "root_cause_code": "-",
-      "severity": "LOW",
-      "source_record_id": "INC_010",
-      "source_table": "incidents",
-      "started_at": "2025-11-24 19:45:14",
-      "summary": "Payment provider degraded; transactions failing. Seen on platform version 2024.1.0 (PLV_PAYMENTS_1)."
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.6,
       "semantic_relevance": 0.1681,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 1,
      "node_id": "INC_010",
      "node_label": "Incident",
@@ -7623,7 +7446,7 @@
      "rel_type": "AFFECTS_MARKET",
      "rerank_score": 0.307692,
      "score": 0.525502,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -8227,24 +8050,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_LAENDER_JACKPOT",
-      "game_id": "GAME_AT_02",
-      "game_name": "Alpen Jackpot",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_02",
-      "source_table": "games",
-      "ticket_price": "2.50"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.156893,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_02",
      "node_label": "Game",
@@ -8256,27 +8069,17 @@
      "rel_type": "RUNS_ON",
      "rerank_score": 0.230769,
      "score": 0.454913,
-     "selected": true
+     "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_ZUSATZSPIEL",
-      "game_id": "GAME_AT_04",
-      "game_name": "Alpen Star",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_04",
-      "source_table": "games",
-      "ticket_price": "1.00"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.146944,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_04",
      "node_label": "Game",
@@ -8288,7 +8091,7 @@
      "rel_type": "RUNS_ON",
      "rerank_score": 0.230769,
      "score": 0.45143,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -8621,24 +8424,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_ZAHLENZIEHUNG",
-      "game_id": "GAME_AT_01",
-      "game_name": "Danube Classic",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_01",
-      "source_table": "games",
-      "ticket_price": "2.50"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.118864,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_01",
      "node_label": "Game",
@@ -8650,27 +8443,17 @@
      "rel_type": "RUNS_ON",
      "rerank_score": 0.230769,
      "score": 0.441602,
-     "selected": true
+     "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_SCHNELLZIEHUNG",
-      "game_id": "GAME_AT_03",
-      "game_name": "Wiener Zahlen",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_03",
-      "source_table": "games",
-      "ticket_price": "1.00"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.5,
       "semantic_relevance": 0.11767,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_AT_03",
      "node_label": "Game",
@@ -8682,7 +8465,7 @@
      "rel_type": "RUNS_ON",
      "rerank_score": 0.230769,
      "score": 0.441184,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,
@@ -8839,24 +8622,14 @@
      "selected": false
     },
     {
-     "authoritative": {
-      "currency_code": "GBP",
-      "game_family_id": "FAM_UK_NATIONAL_DRAW",
-      "game_id": "GAME_UK_01",
-      "game_name": "Albion Millions",
-      "market_id": "MKT_UK",
-      "retirement_date": "-",
-      "source_record_id": "GAME_UK_01",
-      "source_table": "games",
-      "ticket_price": "2.50"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.4,
       "semantic_relevance": 0.132599,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "slot_limit",
      "hops": 2,
      "node_id": "GAME_UK_01",
      "node_label": "Game",
@@ -8868,7 +8641,7 @@
      "rel_type": "AVAILABLE_IN",
      "rerank_score": 0.230769,
      "score": 0.42141,
-     "selected": true
+     "selected": false
     },
     {
      "authoritative": null,

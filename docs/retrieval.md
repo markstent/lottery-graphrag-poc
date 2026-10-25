@@ -31,7 +31,9 @@ D-025 was presented with CP1 part 2, which the project owner approved.
 DECISIONS.md records it as a controller ruling, and the owner has the method question open before CP3.
 Whether it is still the rule the owner wants, or whether the graph's selection should reach the prompt in some other way, is a method question to settle before CP3, the official run.
 Changing it is a method change that needs the owner's approval first.
-Until then this page describes the rule as built.
+
+Update, 2026-10-25: the owner chose to change the rule after the CP3 proposal, and it is now the graph share (D-081, described under "The graph share" below).
+The four pilot runs above were made under D-025, so they describe the old rule and are history, not results of the current one.
 
 ## Purpose
 
@@ -118,7 +120,7 @@ The expanded text drives C's document search, the fallback seed search and the s
 The judge and the generator always see the raw question, and A and B use the raw question everywhere.
 
 **Seeds** are the resolved entities.
-A seed has no reserved slot and is judged like any other candidate.
+A seed has no slot of its own and is judged like any other candidate, then competes for the graph share with the other nodes.
 When nothing resolves, the fallback seed is the graph node of the best record hit in the shared vector layer, found with A's own models (D-027).
 When there is no record hit there is no seed, and B and C then run on the document channel alone.
 A seed is never invented.
@@ -190,13 +192,35 @@ One selection walks the judged list under one token budget and one slot count (D
 |---|---|---|
 | `RAG_CONTEXT_TOKEN_BUDGET` | 2000 | Total tokens for all selected blocks, estimated at 4 characters per token |
 | `RAG_EVIDENCE_SLOTS` | 12 | The most evidence items any pipeline may place in the prompt |
+| `RAG_GRAPH_SLOTS` | 6 | Of those slots, how many graph nodes may take in B and C (0 to `RAG_EVIDENCE_SLOTS`) |
 | `RAG_DEDUPE_THRESHOLD` | 0.85 | Jaccard overlap at which a document chunk is a near-duplicate |
 
 For each candidate the first failing check is its discard reason, in this order: `context_budget` (a smaller later candidate may still fit), `slot_limit`, `duplicate`.
 The near-duplicate check applies to document chunks only, because two distinct rows with similar columns are different facts.
-No channel has reserved slots.
+Graph nodes and documents each have their own slots (D-081, below), but the token budget is shared and is checked in judge order, so neither channel reserves any of it.
 The budget counts block text only, not titles.
 The selection comes back in judge order, and that single list is what the generator receives.
+
+#### The graph share (D-081)
+
+Of the 12 slots, 6 are for the graph's own selection and the rest are for documents.
+The reason is in the 2026-10-25 diagnostic: the graph found many of the facts a correct answer needs, but the shared re-ranker scores the graph's record text low against the question, so nearly all of them fell below the cut at 12.
+With one cut, the experiment measured mostly the re-ranker's view of record text, not what the graph adds.
+The rule is fixed at half, before anything was measured, and no other value has been tried.
+It is option 3 in [the official run proposal](evaluation/official-run-proposal.md).
+
+How it works, in one walk of the judged list:
+
+- the first 6 usable graph nodes in judge order are given a graph slot, and a node is usable when its own tokens fit the whole budget;
+- every other node is refused as `slot_limit`;
+- a document is admitted only while the items selected, plus the graph slots still waiting for their node, leave room, so documents never take a graph slot;
+- a graph slot with no node to fill it (fewer than 6 usable nodes) goes to documents;
+- a node that holds a slot but does not fit the remaining token budget is refused as `context_budget` and releases its slot to the documents still to come, while documents already refused as `slot_limit` stay refused because the walk never revisits a decision;
+- A has no graph nodes, so it keeps all 12 slots for documents and its selection is exactly what D-025 gave.
+
+Before 2026-10-25 the rule was D-025: one cut at 12 across both channels (recorded as `shared-reranker-12-slots`).
+The development pilot runs used it.
+The recorded rule is now `reranker-graph-share-6-of-12`, and `graph_slots` is part of the recorded context settings, so runs made under different rules never compare or resume as one experiment.
 
 ### Answers
 
@@ -288,7 +312,7 @@ Never edit the generated file.
 | `RERANK_PROVIDER`, `RERANK_MODEL` | `cross_encoder`, `BAAI/bge-reranker-v2-m3` | The one judge. `lexical` is the CI judge. |
 | `QDRANT_URL`, `QDRANT_COLLECTION` | `http://localhost:6333`, `semantic_context_lab` | The shared collection |
 | `RAG_TOP_K` | 40 | Dense and sparse hits each before fusion |
-| `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_EVIDENCE_SLOTS`, `RAG_DEDUPE_THRESHOLD` | 2000, 12, 0.85 | The shared budget |
+| `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_EVIDENCE_SLOTS`, `RAG_GRAPH_SLOTS`, `RAG_DEDUPE_THRESHOLD` | 2000, 12, 6, 0.85 | The shared budget and slots, and the graph's share of them |
 | `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S` | `fake`, `fake-answer-v1`, 0, 1200, 120 | The answer model. `fake` is the deterministic CI generator. |
 | `GENERATION_API_BASE`, `GENERATION_MODEL_FAMILY`, `GENERATION_MODEL_QUANTISATION`, `GENERATION_REASONING` | unset, unset, unset, `default` | Gateway address, and the facts recorded with each benchmark run. `off` asks a thinking model not to think. |
 | `GRAPH_*` | see [graph-and-ontology.md](graph-and-ontology.md) | Traversal caps and the reference date |

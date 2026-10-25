@@ -587,8 +587,13 @@ class TestSourceLookup:
         )
         connection.close()
 
+        # The test is about facts attached to a selected node, so the graph
+        # share (D-081) is widened to keep the low-ranked incident selected.
+        base = make_settings(dataset_dir=str(source_dir))
         pipeline = build_pipeline(
-            settings=make_settings(dataset_dir=str(source_dir)),
+            settings=dataclasses.replace(
+                base, context=dataclasses.replace(base.context, graph_slots=12)
+            ),
         )
         pipeline.source_lookup = SourceLookup(source_dir, {})
         result = pipeline.run("Why did checkout fail in Greece?")

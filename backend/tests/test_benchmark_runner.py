@@ -660,6 +660,7 @@ def test_reproducibility_payload_carries_every_field(
     assert payload["judge_prompt_hash"] == judge_prompt_hash()
     assert payload["generation_reasoning"] == settings.generation.reasoning
     assert payload["selection_rule"] == SELECTION_RULE
+    assert payload["context"]["graph_slots"] == settings.context.graph_slots
     assert payload["judge_reasoning"] is None  # the fake judge calls no model
     assert payload["judge_temperature"] is None
     assert payload["graph_label_version"] == LABEL_VERSION

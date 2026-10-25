@@ -12,7 +12,8 @@ from __future__ import annotations
 import dataclasses
 from pathlib import Path
 
-from app.config import ContextSettings
+import pytest
+from app.config import SELECTION_RULE, ContextSettings, from_env
 from app.events import GRAPH_CANDIDATE_DISCARDED
 from app.evidence import EvidenceChunk
 from app.retrieval.graph.pipeline import GraphRagPipeline
@@ -78,8 +79,13 @@ def doc_chunk(chunk_id: str, words: int) -> EvidenceChunk:
     )
 
 
-def settings(budget: int, slots: int = 12) -> ContextSettings:
-    return ContextSettings(budget_tokens=budget, dedupe_threshold=0.85, evidence_slots=slots)
+def settings(budget: int, slots: int = 12, graph_slots: int = 6) -> ContextSettings:
+    return ContextSettings(
+        budget_tokens=budget,
+        dedupe_threshold=0.85,
+        evidence_slots=slots,
+        graph_slots=graph_slots,
+    )
 
 
 def test_nodes_and_documents_count_against_the_same_budget() -> None:
@@ -94,7 +100,7 @@ def test_nodes_and_documents_count_against_the_same_budget() -> None:
 
 def test_a_higher_ranked_document_takes_a_slot_ahead_of_a_node() -> None:
     reranked = [doc_chunk("d0", words=5), node_chunk("n0", words=5), node_chunk("n1", words=5)]
-    result = assemble_context(reranked, settings(10_000, slots=2))
+    result = assemble_context(reranked, settings(10_000, slots=2, graph_slots=1))
     assert [chunk.chunk_id for chunk in result.document_selected] == ["d0"]
     assert [chunk.chunk_id for chunk in result.structured_selected] == ["n0"]
     assert {chunk.chunk_id: chunk.discard_reason for chunk in result.discarded} == {
@@ -330,3 +336,170 @@ def test_game_mechanic_node_supersedes_its_record_block(tmp_path: Path) -> None:
     assert reasons["REC_game_mechanics_MECH_GR_EPILOGI"] == SELECTION_SUPERSEDED
     node = next(c for c in reranker.calls[0][1] if c.chunk_id == "MECH_GR_EPILOGI")
     assert node.kind == "node" and node.text == MECHANIC_TEXT
+
+
+def _ids(chunks: list[EvidenceChunk]) -> list[str]:
+    return [chunk.chunk_id for chunk in chunks]
+
+
+def _old_rule(
+    candidates: list[EvidenceChunk], budget: int, slots: int
+) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
+    """D-025 as it was built: budget, then slots, then duplicates, one walk."""
+    selected: list[EvidenceChunk] = []
+    discarded: list[EvidenceChunk] = []
+    used = 0
+    for candidate in candidates:
+        tokens = estimate_tokens(candidate.text)
+        if used + tokens > budget:
+            reason = SELECTION_BUDGET
+        elif len(selected) >= slots:
+            reason = SELECTION_SLOT_LIMIT
+        elif candidate.kind == "chunk" and any(
+            len(set(candidate.text.split()) & set(kept.text.split()))
+            / len(set(candidate.text.split()) | set(kept.text.split()))
+            >= 0.85
+            for kept in selected
+            if kept.kind == "chunk"
+        ):
+            reason = SELECTION_DUPLICATE
+        else:
+            selected.append(candidate.model_copy(update={"selected": True}))
+            used += tokens
+            continue
+        discarded.append(candidate.model_copy(update={"discard_reason": reason}))
+    return selected, discarded
+
+
+def test_documents_only_selection_is_unchanged() -> None:
+    first = doc_chunk("d0", words=10)
+    cases = [
+        [doc_chunk(f"d{i}", words=5) for i in range(20)],
+        [doc_chunk("d0", 30), doc_chunk("big", 400), doc_chunk("d1", 30), doc_chunk("d2", 5)],
+        [first, first.model_copy(update={"chunk_id": "copy"}), doc_chunk("d1", 10)],
+        [
+            record_chunk("GAME_GR_01", 40),
+            doc_chunk("d0", 120),
+            record_chunk("GAME_GR_02", 5),
+            doc_chunk("d1", 200),
+        ],
+        [],
+    ]
+    for candidates in cases:
+        for budget, slots in [(10_000, 12), (200, 12), (10_000, 3), (100, 2)]:
+            for graph_slots in (0, 6):
+                new = select_context(
+                    candidates,
+                    budget_tokens=budget,
+                    dedupe_threshold=0.85,
+                    max_items=slots,
+                    graph_slots=graph_slots,
+                )
+                assert new == _old_rule(candidates, budget, slots)
+
+
+def _mixed(nodes_first: int, nodes: int, documents: int) -> list[EvidenceChunk]:
+    """Nodes n0.. and documents d0.. with the first `nodes_first` nodes on top."""
+    node_list = [node_chunk(f"n{i}", 5) for i in range(nodes)]
+    doc_list = [doc_chunk(f"d{i}", 5) for i in range(documents)]
+    return [*node_list[:nodes_first], *doc_list, *node_list[nodes_first:]]
+
+
+def test_graph_candidates_get_their_share() -> None:
+    result = assemble_context(_mixed(0, 8, 12), settings(10_000))
+    assert _ids(result.structured_selected) == [f"n{i}" for i in range(6)]
+    assert _ids(result.document_selected) == [f"d{i}" for i in range(6)]
+    reasons = {c.chunk_id: c.discard_reason for c in result.discarded}
+    assert reasons["n6"] == reasons["d6"] == SELECTION_SLOT_LIMIT
+
+
+def test_unused_graph_slots_go_to_documents() -> None:
+    result = assemble_context(_mixed(0, 2, 20), settings(10_000))
+    assert len(result.structured_selected) == 2
+    assert len(result.document_selected) == 10
+
+
+def test_nodes_never_take_more_than_their_share() -> None:
+    result = assemble_context(_mixed(15, 15, 20), settings(10_000))
+    assert len(result.structured_selected) == 6
+    assert len(result.document_selected) == 6
+    assert len(result.selected) == 12
+
+
+def test_selected_list_is_in_judge_order() -> None:
+    reranked = [
+        doc_chunk("d0", 5),
+        node_chunk("n0", 5),
+        doc_chunk("d1", 5),
+        node_chunk("n1", 5),
+        record_chunk("GAME_GR_01", 5),
+    ]
+    result = assemble_context(reranked, settings(10_000))
+    assert _ids(result.selected) == _ids(reranked)
+
+
+def test_budget_is_shared_in_judge_order() -> None:
+    # Each candidate costs the same, and the budget holds four. Candidates
+    # enter in judge order across both channels; neither reserves budget for
+    # its share, so the fifth is refused whatever its channel.
+    reranked = [
+        doc_chunk("d0", 20),
+        doc_chunk("d1", 20),
+        node_chunk("n0", 20),
+        node_chunk("n1", 20),
+        doc_chunk("d2", 20),
+    ]
+    budget = 4 * estimate_tokens(reranked[0].text)
+    result = assemble_context(reranked, settings(budget))
+    assert _ids(result.selected) == ["d0", "d1", "n0", "n1"]
+    assert {c.chunk_id: c.discard_reason for c in result.discarded} == {"d2": SELECTION_BUDGET}
+
+
+def test_nodes_that_never_fit_do_not_take_a_graph_slot() -> None:
+    reranked = [node_chunk("big", 400), *[doc_chunk(f"d{i}", 5) for i in range(12)]]
+    result = assemble_context(reranked, settings(200))
+    assert {c.chunk_id: c.discard_reason for c in result.discarded}["big"] == SELECTION_BUDGET
+    assert len(result.document_selected) == 12
+
+
+def test_a_budget_refused_node_releases_its_slot_to_later_documents() -> None:
+    # n0 holds a graph slot but the budget, spent by d0, refuses it. The slot
+    # is released at that point, so d2 may take it. d1 was walked while the
+    # slot was still held and stays refused: a decision is never revisited.
+    d0, n0 = doc_chunk("d0", 20), node_chunk("n0", 20)
+    small = [doc_chunk("d1", 2), doc_chunk("d2", 2)]
+    budget = estimate_tokens(d0.text) + estimate_tokens(small[0].text) * 2
+    assert estimate_tokens(n0.text) > budget - estimate_tokens(d0.text)
+    result = assemble_context(
+        [d0, small[0], n0, small[1]], settings(budget, slots=2, graph_slots=1)
+    )
+    reasons = {c.chunk_id: c.discard_reason for c in result.discarded}
+    assert reasons == {"d1": SELECTION_SLOT_LIMIT, "n0": SELECTION_BUDGET}
+    assert _ids(result.selected) == ["d0", "d2"]
+
+
+def test_share_discard_reason() -> None:
+    reranked = [node_chunk(f"n{i}", 5) for i in range(3)] + [
+        doc_chunk(f"d{i}", 5) for i in range(3)
+    ]
+    result = assemble_context(reranked, settings(10_000, slots=4, graph_slots=2))
+    reasons = {c.chunk_id: c.discard_reason for c in result.discarded}
+    assert reasons == {"n2": SELECTION_SLOT_LIMIT, "d2": SELECTION_SLOT_LIMIT}
+    assert _ids(result.selected) == ["n0", "n1", "d0", "d1"]
+
+
+def test_selection_rule_is_recorded() -> None:
+    assert SELECTION_RULE == "reranker-graph-share-6-of-12"
+    context = from_env().context
+    assert (context.evidence_slots, context.graph_slots) == (12, 6)
+
+
+def test_graph_slots_must_lie_within_the_evidence_slots(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RAG_GRAPH_SLOTS", "13")
+    with pytest.raises(ValueError, match="RAG_GRAPH_SLOTS"):
+        from_env()
+    monkeypatch.setenv("RAG_GRAPH_SLOTS", "-1")
+    with pytest.raises(ValueError, match="RAG_GRAPH_SLOTS"):
+        from_env()
+    monkeypatch.setenv("RAG_GRAPH_SLOTS", "0")
+    assert from_env().context.graph_slots == 0

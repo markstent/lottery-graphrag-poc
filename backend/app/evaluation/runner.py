@@ -138,6 +138,7 @@ def settings_fields(
         "context": {
             "dedupe_threshold": settings.context.dedupe_threshold,
             "evidence_slots": settings.context.evidence_slots,
+            "graph_slots": settings.context.graph_slots,
         },
         "graph_limits": {
             "depth": settings.graph.max_depth,

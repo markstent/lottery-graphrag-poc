@@ -17,6 +17,7 @@ The Overview screen therefore reads "No official run yet", and no number on this
 Evidence that exists is development evidence:
 
 - four recorded live runs in the Live Lab (one question each from H1, H2, H3 and H5, one model, one repeat), which showed B and C no better than A;
+- the selection rule changed on 2026-10-25, after the CP3 proposal: half of the 12 evidence slots now go to the graph's own selection (D-081, see [retrieval.md](retrieval.md)), and the development pilot runs below used the old rule (D-025);
 - on the multi-hop question, the shared re-ranker kept the graph's claim record out of the prompt (decision D-025), which is an open method question for the owner before CP3 (see [retrieval.md](retrieval.md));
 - the selection diagnostic of 2026-10-25 found that the graph finds 55 (B) and 88 (C) of the 122 claims of seed 2026, but only 38 and 39 reach the prompt, against 43 for A, because the 12 prompt slots cut them; the options and the recommendation are in [the official run proposal](evaluation/official-run-proposal.md);
 - local pilot and smoke runs of the harness (two subset runs with a local model and one scorer smoke test, kept under `data/`, which is not committed).
@@ -274,7 +275,7 @@ A sweep or official run refuses the stand-in generator and needs a gateway judge
 
 ### What the shared re-ranker keeps
 
-`make diagnose-selection` measures D-025 with no answer model.
+`make diagnose-selection` measured D-025 with no answer model; its recorded numbers are for that old rule, and under D-081 it reports where the graph share now puts the graph candidates.
 The embedding model and the re-ranking model still run, because they are part of what it measures.
 For every seed 2026 instance that has claims, it runs retrieval for A, B and C and stops where the answer model would start.
 The lab is given a generator that refuses, and every candidate and selection event is emitted before a pipeline calls it.

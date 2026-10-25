@@ -53,11 +53,13 @@ class VectorSettings:
     collection: str
 
 
-# The rule that picks the evidence items placed in context, as built: one
-# re-ranker over every candidate, then the first `evidence_slots` that fit the
-# budget. A run records it, so runs made under different rules never compare
-# or resume as one experiment; change this value with the rule.
-SELECTION_RULE = "shared-reranker-12-slots"
+# The rule that picks the evidence items placed in context, as built (D-081):
+# one re-ranker over every candidate, `graph_slots` of the `evidence_slots`
+# reserved for graph nodes and the rest for documents, one token budget in
+# judge order. A run records it, so runs made under different rules never
+# compare or resume as one experiment; change this value with the rule.
+# The pilot runs used "shared-reranker-12-slots" (D-025).
+SELECTION_RULE = "reranker-graph-share-6-of-12"
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,6 +71,9 @@ class ContextSettings:
     # Evidence items (structured graph blocks plus document chunks) any
     # pipeline may place in context: the same count for A, B and C.
     evidence_slots: int = 12
+    # How many of the evidence slots graph nodes may take (D-081); documents
+    # get the rest, and any slot the graph does not fill. A has no nodes.
+    graph_slots: int = 6
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,6 +286,13 @@ def from_env() -> RetrievalSettings:
     )
     generation_model = os.environ.get("GENERATION_MODEL", "fake-answer-v1")
     generation_provider = os.environ.get("GENERATION_PROVIDER", "fake")
+    evidence_slots = _env_int("RAG_EVIDENCE_SLOTS", 12)
+    graph_slots = _env_int("RAG_GRAPH_SLOTS", 6)
+    if not 0 <= graph_slots <= evidence_slots:
+        raise ValueError(
+            f"RAG_GRAPH_SLOTS must be between 0 and RAG_EVIDENCE_SLOTS ({evidence_slots}), "
+            f"got {graph_slots}"
+        )
     return RetrievalSettings(
         dataset_dir=os.environ.get("DATASET_DIR", str(DEFAULT_DATASET_DIR)),
         top_k=_env_int("RAG_TOP_K", 40),
@@ -299,7 +311,8 @@ def from_env() -> RetrievalSettings:
         context=ContextSettings(
             budget_tokens=_env_int("RAG_CONTEXT_TOKEN_BUDGET", 2000),
             dedupe_threshold=_env_float("RAG_DEDUPE_THRESHOLD", 0.85),
-            evidence_slots=_env_int("RAG_EVIDENCE_SLOTS", 12),
+            evidence_slots=evidence_slots,
+            graph_slots=graph_slots,
         ),
         rerank=RerankSettings(
             provider=os.environ.get("RERANK_PROVIDER", default_rerank_provider),

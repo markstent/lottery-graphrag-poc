@@ -199,7 +199,7 @@ A key shown commented in that file must stay unset, not empty, to get its defaul
 | World | `DATASET_DIR`, `TRUTH_LEDGER_PATH` | `data/generated/dev-seed2026`, `data/truth/ledger.json` |
 | Embeddings | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `OLLAMA_HOST` | `ollama`, `bge-m3`, 1024, `http://localhost:11434` |
 | Sparse | `SPARSE_PROVIDER`, `SPARSE_MODEL`, `FASTEMBED_CACHE` | unset, `Qdrant/bm25`, `~/.cache/fastembed` |
-| Retrieval | `RAG_TOP_K`, `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_EVIDENCE_SLOTS`, `RAG_DEDUPE_THRESHOLD` | 40, 2000, 12, 0.85 |
+| Retrieval | `RAG_TOP_K`, `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_EVIDENCE_SLOTS`, `RAG_GRAPH_SLOTS`, `RAG_DEDUPE_THRESHOLD` | 40, 2000, 12, 6, 0.85 |
 | Re-ranker | `RERANK_PROVIDER`, `RERANK_MODEL` | `cross_encoder`, `BAAI/bge-reranker-v2-m3` |
 | Generation | `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_API_BASE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S`, `GENERATION_MODEL_FAMILY`, `GENERATION_MODEL_QUANTISATION`, `GENERATION_REASONING` | `fake`, `fake-answer-v1`, 0, unset, 1200, 120, unset, unset, `default` |
 | Judge | `JUDGE_PROVIDER`, `JUDGE_MODEL`, `JUDGE_MODEL_FAMILY`, `JUDGE_API_BASE`, `JUDGE_TEMPERATURE`, `JUDGE_REASONING` | `fake`, `fake-judge-v1`, unset, unset, 0, `default` |
