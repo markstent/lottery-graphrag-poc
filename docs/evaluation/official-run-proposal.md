@@ -10,7 +10,7 @@ Nothing here is approved until the owner says so.
   With `GENERATION_REASONING=off` or `JUDGE_REASONING=off`, Ollama models get `think=false` and OpenRouter models get `reasoning.enabled=false`.
   A model that reasons anyway fails loudly instead of returning an empty answer.
   Any other provider is refused at start-up when "off" is asked for.
-- `compare` refuses two runs whose settings differ in anything but the generation model, its family and quantisation, and the code revision, and names every field that differs.
+- `compare` refuses two runs whose settings differ in anything but the generation model, its family and quantisation, the code revision and whether the tree was clean, and names every field that differs.
   The code revision is shown when it differs, and the evidence selection rule is part of the record, so runs under different rules never pair.
 - A run keeps each finished world in `worlds/<seed>.json`.
   If a later world fails, `make run-benchmark OUT=<dir> RESUME=1` runs only the missing worlds, after checking that every setting is the same and, for an official run, that the code is committed and unchanged.
