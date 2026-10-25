@@ -20,7 +20,7 @@ type Split = Schemas['SplitCell']
 
 export const STRATUM_ORDER = ['H1', 'H2', 'H2_name', 'H3', 'H5', 'overall']
 
-/** The kinds of question in the words of docs/evaluation/statistics.md. */
+/** The kinds of question in the words of docs/reference/evaluation/statistics.md. */
 export const STRATUM_LABELS: Record<string, string> = {
   H1: 'Multi-hop questions',
   H2: 'Ontology-dependent questions, by id',
@@ -58,7 +58,7 @@ export const GROUP_LABELS: Record<string, string> = {
 
 /**
  * An untested sub-group with fewer groups than this has no interval and no
- * delta: docs/evaluation/statistics.md (name-anchored sub-group) prints the
+ * delta: docs/reference/evaluation/statistics.md (name-anchored sub-group) prints the
  * mean alone below six groups, because a bootstrap over so few says little.
  * Runs made before the harness applied the rule still carry the interval.
  */

@@ -1,7 +1,7 @@
 """Generation configuration and dataset profiles.
 
-Profiles and volumes are specified in docs/01-synthetic-data-spec.md section 3.
-Determinism contract (docs/01 section 4): identical
+Profiles and volumes are specified in docs/reference/01-synthetic-data-spec.md section 3.
+Determinism contract (docs/reference/01 section 4): identical
 generator_version + world_seed + scenario_seed + configuration
 must reproduce an equivalent dataset.
 """

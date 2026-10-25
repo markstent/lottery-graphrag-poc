@@ -2,7 +2,7 @@
 
 One place builds the embedding model, vector store, corpus, source lookup
 and the three pipelines so the trace CLI and the benchmark harness run
-byte-identical retrieval configurations (docs/retrieval/retrieval-fairness.md).
+byte-identical retrieval configurations (docs/reference/retrieval/retrieval-fairness.md).
 """
 
 from __future__ import annotations

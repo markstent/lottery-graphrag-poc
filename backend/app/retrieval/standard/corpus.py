@@ -2,7 +2,7 @@
 
 Chunks are the generation-time chunks (datasets/util.py chunk_text): one
 source of truth for the corpus, shared by A/B/C for fairness
-(docs/retrieval/retrieval-fairness.md). This module joins chunk rows with
+(docs/reference/retrieval/retrieval-fairness.md). This module joins chunk rows with
 their document metadata into retrieval-ready payloads.
 """
 

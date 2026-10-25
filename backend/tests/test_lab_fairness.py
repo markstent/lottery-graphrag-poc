@@ -1,4 +1,4 @@
-"""Lab fairness tests (docs/08 Phase 12): the B/C contract is structural.
+"""Lab fairness tests (docs/reference/08 Phase 12): the B/C contract is structural.
 
 Pipeline B must be exactly pipeline C minus ontology traversal, so any
 measured B/C difference is attributable to the ontology layer and not to

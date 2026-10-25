@@ -1,4 +1,4 @@
-"""The stages of the graph pipeline (docs/retrieval/graph-rag.md).
+"""The stages of the graph pipeline (docs/reference/retrieval/graph-rag.md).
 
 ``GraphRagPipeline.run`` composes them in this order:
 

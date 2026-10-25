@@ -1,5 +1,5 @@
 """Persisted runs: the worker, per-pipeline status, cancellation, history and
-the run routes (docs/07 sections 3-6, ADR-007).
+the run routes (docs/reference/07 sections 3-6, ADR-007).
 
 Two labs are used, both offline. The offline lab (hashing embedders, an
 in-memory store holding the SCN-007 corpus, the fake generator) runs A, B and

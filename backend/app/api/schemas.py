@@ -1,6 +1,6 @@
 """Request and response models for the versioned public API.
 
-Contracts follow docs/07-api-event-spec.md. Evidence DTOs reuse the typed
+Contracts follow docs/reference/07-api-event-spec.md. Evidence DTOs reuse the typed
 domain models in app.evidence directly: they are the retrieval layer's own
 public record (provenance included) and are already Pydantic.
 """
@@ -28,7 +28,7 @@ ScoreStatus = Literal["not_applicable", "pending", "scored", "failed"]
 LiveScoreLabel = Literal["scored against the answer key"]
 LIVE_SCORE_LABEL: LiveScoreLabel = "scored against the answer key"
 
-# Run history page size (docs/07): a larger limit is a 422, never a clamp.
+# Run history page size (docs/reference/07): a larger limit is a 422, never a clamp.
 HISTORY_LIMIT_DEFAULT = 20
 HISTORY_LIMIT_MAX = 100
 
@@ -59,7 +59,7 @@ class Readiness(BaseModel):
 
 
 class QueryRequest(BaseModel):
-    """Request for POST /api/v1/queries (docs/07 section 4).
+    """Request for POST /api/v1/queries (docs/reference/07 section 4).
 
     Unknown fields are refused, so a client still sending the retired
     ``profile`` gets a 422 rather than a silently ignored field.

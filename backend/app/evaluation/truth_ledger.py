@@ -28,7 +28,7 @@ class WorldRef(BaseModel):
 
 
 class TruthScenario(BaseModel):
-    """One scenario's truth record (docs/04 sections 2 and 19)."""
+    """One scenario's truth record (docs/reference/04 sections 2 and 19)."""
 
     scenario_id: str
     scenario_type: str

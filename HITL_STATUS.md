@@ -8,11 +8,11 @@
 | HITL-04 Ontology and Graph Model | APPROVED | 2026-10-07 | Approved by project owner ("APPROVE EVERYTHING"). |
 | HITL-05 Scenario / Truth Ledger | APPROVED | 2026-10-07 | Standing blanket approval; scenario engine, 4 planted scenarios, ledger + isolation tests verified. |
 | HITL-06 UX Information Architecture | APPROVED | 2026-10-07 | Standing blanket approval; IA, user flows, journeys, wireframes committed. |
-| HITL-07 High-Fidelity UX Prototype | APPROVED | 2026-10-07 | Standing blanket approval; all seven IA screens implemented with mocked docs/07 event telemetry, replay/rewind, presentation mode; visual baselines committed (frontend/e2e/visual.spec.ts-snapshots/); vitest 13, smoke e2e, tsc, oxlint, prettier, build green. |
-| HITL-08 Retrieval Behaviour | APPROVED | 2026-10-08 | Standing blanket approval. Conventional RAG + GraphRAG B/C implemented with evidence tracking, traversal telemetry, context assembly; real side-by-side A/B/C traces for SCN-007/015/003 in docs/retrieval/example-traces.md; specs docs/retrieval/graph-rag.md + evidence-ranking.md; 17 offline + 4 live GraphRAG tests, truth-ledger isolation verified; known limitations recorded (see gate notes). |
+| HITL-07 High-Fidelity UX Prototype | APPROVED | 2026-10-07 | Standing blanket approval; all seven IA screens implemented with mocked docs/reference/07 event telemetry, replay/rewind, presentation mode; visual baselines committed (frontend/e2e/visual.spec.ts-snapshots/); vitest 13, smoke e2e, tsc, oxlint, prettier, build green. |
+| HITL-08 Retrieval Behaviour | APPROVED | 2026-10-08 | Standing blanket approval. Conventional RAG + GraphRAG B/C implemented with evidence tracking, traversal telemetry, context assembly; real side-by-side A/B/C traces for SCN-007/015/003 in docs/reference/retrieval/example-traces.md; specs docs/reference/retrieval/graph-rag.md + evidence-ranking.md; 17 offline + 4 live GraphRAG tests, truth-ledger isolation verified; known limitations recorded (see gate notes). |
 | HITL-09 Benchmark / Scoring | APPROVED | 2026-10-08 | Standing blanket approval. 30-question bank grounded deterministically into the dev world (20 scored; 8 not planted, 2 not groundable, all reported); deterministic scoring (answer checks, evidence precision/recall, failure taxonomy); fairness by shared lab construction; harness + CLI with reproducibility record; demo profile enabled and timed. See gate notes. |
-| HITL-10 Testing / Quality | APPROVED | 2026-10-09 | Standing blanket approval. CI green end to end (backend ruff/mypy/pytest with Neo4j+Qdrant services, frontend prettier/oxlint/tsc/vitest/build, Playwright smoke); three long-standing CI defects fixed (Neo4j health-check port, Qdrant image without shell tools, fixtures depending on machine-local ledger); test matrix + critical coverage report committed (docs/testing/coverage.md); failure-mode tests added (gateway/embedder/store propagation; runner records generation_failure instead of crashing); B/C fairness contract pinned offline. See gate notes. |
-| HITL-11 Presentation Readiness | APPROVED | 2026-10-09 | Standing blanket approval. Live backend wired: versioned query API (POST /queries background execution, results, recorded-event replay, fixed demo questions, published benchmark summary) per docs/07 §20; frontend Live Lab runs real A/B/C executions against the demo world with Demo story / Live backend sources, loading/error/disabled states, honest evaluation (published benchmark scores only, never per-run fabrication); demo/reset/recovery operationalised (Makefile ingest-demo-graph, index-demo-vector, serve-demo-api, demo-reset) with separate Qdrant collection so demo never overwrites dev; demo script + recovery procedure (docs/demo/presentation.md); final architecture explanation appended to docs/architecture/system-architecture.md. See gate notes. |
+| HITL-10 Testing / Quality | APPROVED | 2026-10-09 | Standing blanket approval. CI green end to end (backend ruff/mypy/pytest with Neo4j+Qdrant services, frontend prettier/oxlint/tsc/vitest/build, Playwright smoke); three long-standing CI defects fixed (Neo4j health-check port, Qdrant image without shell tools, fixtures depending on machine-local ledger); test matrix + critical coverage report committed (docs/reference/testing/coverage.md); failure-mode tests added (gateway/embedder/store propagation; runner records generation_failure instead of crashing); B/C fairness contract pinned offline. See gate notes. |
+| HITL-11 Presentation Readiness | APPROVED | 2026-10-09 | Standing blanket approval. Live backend wired: versioned query API (POST /queries background execution, results, recorded-event replay, fixed demo questions, published benchmark summary) per docs/reference/07 §20; frontend Live Lab runs real A/B/C executions against the demo world with Demo story / Live backend sources, loading/error/disabled states, honest evaluation (published benchmark scores only, never per-run fabrication); demo/reset/recovery operationalised (Makefile ingest-demo-graph, index-demo-vector, serve-demo-api, demo-reset) with separate Qdrant collection so demo never overwrites dev; demo script + recovery procedure (docs/reference/demo/presentation.md); final architecture explanation appended to docs/reference/architecture/system-architecture.md. See gate notes. |
 | HITL-12 Overhaul v2 | APPROVED | 2026-10-18 | Design approved by project owner ("build it"): `docs/superpowers/specs/2026-10-18-overhaul-design.md`. Supersedes gates HITL-03 to HITL-09 for the v2 work. Checkpoints CP1 (experiment), CP2 (product), CP3 (official run) are recorded below as they are reached. |
 
 Only the project owner may mark a gate `APPROVED`.
@@ -22,11 +22,11 @@ Only the project owner may mark a gate `APPROVED`.
 | Checkpoint | Status | Date | Notes |
 |---|---|---|---|
 | CP1 Experiment (part 1: data layer) | APPROVED | 2026-10-19 | World v2, ontology v2, eight scenarios, graph model v2 and the B/C allow-list split delivered on `overhaul/v2` at 50196a4; approved by the project owner in session ("approve") with product names changed to generic terms (20fcb7e); merged to main. Pipelines v2, bank 2.0.0 and the harness follow as Phase 2 and 3 before CP1 closes. |
-| CP1 Experiment (part 2: pipelines v2) | APPROVED | 2026-10-19 | Pipelines v2 delivered on `overhaul/v2` (branch head 42ce69e after the final review fix wave): hybrid retrieval with record blocks, one shared reranker as judge, one budget and slot cap, one prompt list in judge order, judge and model text limited to what A could index, structured answers. Decisions D-021 to D-028 (D-025 to D-028 are controller rulings open to the owner); fairness contract `backend/tests/test_lab_fairness.py`; live traces `docs/retrieval/example-traces.md`. Approved by the project owner in session ("approve"); merged to main. Bank 2.0.0, judge and statistics follow as Phase 3 before CP1 closes. |
-| CP1 Experiment (part 3: benchmark v2) | APPROVED | 2026-10-20 | Bank 2.0.0 (22 logical questions, hashed anchors frozen per world), deterministic answer, evidence and citation scoring, the blinded LLM judge, clustered paired statistics with Holm, `summary.json` v2, and the three-seed harness with the depth sweep and model comparison, on `overhaul/v2`. Docs: `docs/evaluation/scoring.md`, `statistics.md`, `reproducibility.md`, `docs/05-benchmark-spec.md` (as built). Decisions D-029 to D-032 are controller rulings, approved by the project owner with this checkpoint. Approved by the project owner in session ("approve") at branch head 3b6e0c0, after the final review fix wave; merged to main; the open owner questions below stand as built until the owner revisits them. Open owner questions: L16 and L17 expected sets include baseline players; L22 scores 0.5 when an answer also quotes the stale price; the cluster-level test (D-032). Known: the saved demo questions in `backend/app/api/queries.py` are stale v1 questions, replaced in the product phase; Results and Live Lab show a plain v2 notice until then. Owner items: `docs/08-implementation-phases.md:226` and `docs/product/product-requirements.md:24` still say "30-question" (original plan and requirements, left for the owner). Scorer smoke test `20261019T164733Z-smoke` (fake generator and judge, seeds 2026 to 2028): 150 instances (50 per world), none unavailable, presentation graph restored at 36,888 nodes. Local pilot `pilot-2026-nothink` (seed 2026, 2 instances per question, 3 repeats, 324 cells; qwen3.6 generator, gemma4:31b judge, `GENERATION_REASONING=off`, `JUDGE_REASONING=off`) is a subset and not a result: 0 generation and 0 judge failures, strict JSON contract 324 of 324, judge agreement 0.59 with kappa 0.18, 25.1 s per cell, so a full three-seed official run projects to about 9.5 hours. Finding for CP3 from the first pilot `pilot-2026` (reasoning on): thinking models spend the token caps on hidden reasoning and return empty answers (159 of 198 generations, every judge call). |
-| Phase 4 Product API | BUILT | 2026-10-20 | The backend as a product API on `overhaul/v2`: run store, event stream with resume, cancellation, readiness, Data Model, graph, ontology, scenario, model and benchmark routes, live scoring of bank questions, benchmark jobs, and the live end-to-end test (`tests/test_api_live.py`); described in `docs/07-api-event-spec.md`, decisions D-033 to D-038 (proposed). No checkpoint: CP2 follows Phases 5 and 6. Owner items for CP2: (1) `ConceptOut.relationships` is derived from ingestion; should the ontology declare its allowed relationships, as `docs/03` asks? (2) The Help screen's DEMO-01..04 table and story chips in `docs/ux` are stale until Phase 6, because the demo questions are now the first bank instance of H1, H2, H3 and H5 (D-036). |
-| Phase 5 Frontend foundation | BUILT | 2026-10-23 | The five-destination shell, light design system, typed API client and run stream, replayable run state, graph canvas, chart primitives, evidence drawer, presentation mode, copy rules and visual baselines on `overhaul/v2`, decisions D-039 to D-045. No checkpoint: CP2 follows Phase 6. For CP2 the owner should look at: (1) the default fit frames the evidence path, not the whole graph, with an out-of-view note for what falls outside; (2) the replay layout comes from the final graph, because positions are known before events (the path is still drawn only after its event); (3) the visible-node cap of 24 is a legibility choice, set from a 14 px label floor; (4) the StatTile hero uses tabular numerals, as spec 7.2 requires, which overrides the dataviz anti-pattern. Phase 6 items: wire `nodeCap` into the Live Lab canvas; an off-screen indicator for evidence nodes is already built, so check it in Live Lab; the ontology overlay compares C against B at the same cursor; remove the v1 views, mocks and `src/api/backend-run.ts`; rewrite `docs/ux/screen-specifications.md`. |
-| Phase 6 Product screens | BUILT | 2026-10-24 | Overview, Live Lab, Data Model (Warehouse, Graph, Ontology, Scenarios tabs) and Help (eight sections) are built on the live API on `overhaul/v2`, with a stopgap Results list (the full Results screen is Phase 7). Live Lab runs a question through A, B and C from a recorded run or live, with a graph canvas, three approach panels, a docked timeline, a scorecard, answers with citations, evidence paths and a market coverage table. The first-version views, mocks and `backend-run.ts` are removed. Four real runs are recorded as fixtures. Decisions D-046 to D-059 are proposed. `docs/ux/screen-specifications.md` is rewritten as built. Gates at this commit: see the CP2 package below. |
+| CP1 Experiment (part 2: pipelines v2) | APPROVED | 2026-10-19 | Pipelines v2 delivered on `overhaul/v2` (branch head 42ce69e after the final review fix wave): hybrid retrieval with record blocks, one shared reranker as judge, one budget and slot cap, one prompt list in judge order, judge and model text limited to what A could index, structured answers. Decisions D-021 to D-028 (D-025 to D-028 are controller rulings open to the owner); fairness contract `backend/tests/test_lab_fairness.py`; live traces `docs/reference/retrieval/example-traces.md`. Approved by the project owner in session ("approve"); merged to main. Bank 2.0.0, judge and statistics follow as Phase 3 before CP1 closes. |
+| CP1 Experiment (part 3: benchmark v2) | APPROVED | 2026-10-20 | Bank 2.0.0 (22 logical questions, hashed anchors frozen per world), deterministic answer, evidence and citation scoring, the blinded LLM judge, clustered paired statistics with Holm, `summary.json` v2, and the three-seed harness with the depth sweep and model comparison, on `overhaul/v2`. Docs: `docs/reference/evaluation/scoring.md`, `statistics.md`, `reproducibility.md`, `docs/reference/05-benchmark-spec.md` (as built). Decisions D-029 to D-032 are controller rulings, approved by the project owner with this checkpoint. Approved by the project owner in session ("approve") at branch head 3b6e0c0, after the final review fix wave; merged to main; the open owner questions below stand as built until the owner revisits them. Open owner questions: L16 and L17 expected sets include baseline players; L22 scores 0.5 when an answer also quotes the stale price; the cluster-level test (D-032). Known: the saved demo questions in `backend/app/api/queries.py` are stale v1 questions, replaced in the product phase; Results and Live Lab show a plain v2 notice until then. Owner items: `docs/reference/08-implementation-phases.md:226` and `docs/reference/product/product-requirements.md:24` still say "30-question" (original plan and requirements, left for the owner). Scorer smoke test `20261019T164733Z-smoke` (fake generator and judge, seeds 2026 to 2028): 150 instances (50 per world), none unavailable, presentation graph restored at 36,888 nodes. Local pilot `pilot-2026-nothink` (seed 2026, 2 instances per question, 3 repeats, 324 cells; qwen3.6 generator, gemma4:31b judge, `GENERATION_REASONING=off`, `JUDGE_REASONING=off`) is a subset and not a result: 0 generation and 0 judge failures, strict JSON contract 324 of 324, judge agreement 0.59 with kappa 0.18, 25.1 s per cell, so a full three-seed official run projects to about 9.5 hours. Finding for CP3 from the first pilot `pilot-2026` (reasoning on): thinking models spend the token caps on hidden reasoning and return empty answers (159 of 198 generations, every judge call). |
+| Phase 4 Product API | BUILT | 2026-10-20 | The backend as a product API on `overhaul/v2`: run store, event stream with resume, cancellation, readiness, Data Model, graph, ontology, scenario, model and benchmark routes, live scoring of bank questions, benchmark jobs, and the live end-to-end test (`tests/test_api_live.py`); described in `docs/reference/07-api-event-spec.md`, decisions D-033 to D-038 (proposed). No checkpoint: CP2 follows Phases 5 and 6. Owner items for CP2: (1) `ConceptOut.relationships` is derived from ingestion; should the ontology declare its allowed relationships, as `docs/reference/03` asks? (2) The Help screen's DEMO-01..04 table and story chips in `docs/ux` are stale until Phase 6, because the demo questions are now the first bank instance of H1, H2, H3 and H5 (D-036). |
+| Phase 5 Frontend foundation | BUILT | 2026-10-23 | The five-destination shell, light design system, typed API client and run stream, replayable run state, graph canvas, chart primitives, evidence drawer, presentation mode, copy rules and visual baselines on `overhaul/v2`, decisions D-039 to D-045. No checkpoint: CP2 follows Phase 6. For CP2 the owner should look at: (1) the default fit frames the evidence path, not the whole graph, with an out-of-view note for what falls outside; (2) the replay layout comes from the final graph, because positions are known before events (the path is still drawn only after its event); (3) the visible-node cap of 24 is a legibility choice, set from a 14 px label floor; (4) the StatTile hero uses tabular numerals, as spec 7.2 requires, which overrides the dataviz anti-pattern. Phase 6 items: wire `nodeCap` into the Live Lab canvas; an off-screen indicator for evidence nodes is already built, so check it in Live Lab; the ontology overlay compares C against B at the same cursor; remove the v1 views, mocks and `src/api/backend-run.ts`; rewrite `docs/reference/ux/screen-specifications.md`. |
+| Phase 6 Product screens | BUILT | 2026-10-24 | Overview, Live Lab, Data Model (Warehouse, Graph, Ontology, Scenarios tabs) and Help (eight sections) are built on the live API on `overhaul/v2`, with a stopgap Results list (the full Results screen is Phase 7). Live Lab runs a question through A, B and C from a recorded run or live, with a graph canvas, three approach panels, a docked timeline, a scorecard, answers with citations, evidence paths and a market coverage table. The first-version views, mocks and `backend-run.ts` are removed. Four real runs are recorded as fixtures. Decisions D-046 to D-059 are proposed. `docs/reference/ux/screen-specifications.md` is rewritten as built. Gates at this commit: see the CP2 package below. |
 | CP2 Product | APPROVED | 2026-10-24 | Approved by the project owner in session ("approve") at branch head 76df299, with the package below as presented and no changes requested; merged to main. Decisions D-033 to D-059 are controller rulings, approved with this checkpoint. The open owner questions below stand as built until the owner revisits them; question 1 (D-025 and how the graph's selection reaches the prompt) is a method question to settle before CP3. Phase 7 (the full Results screen, the documentation cut and the copy pass) may start. |
 | CP3 Official run | PENDING | | model and cost choice, dry run, then official run and Results |
 
@@ -38,7 +38,7 @@ The rulings it names are approved in `DECISIONS.md`; the open questions stand as
 ### Where to look
 
 - Screenshots: `frontend/e2e/visual.spec.ts-snapshots/`.
-  `docs/ux/screen-specifications.md` names the baseline for each state of each screen.
+  `docs/reference/ux/screen-specifications.md` names the baseline for each state of each screen.
 - Baselines whose names contain `fixture-official` show test fixture numbers and headlines, not results.
   No full official run exists yet, so those screens are drawn from a made-up test run.
   Its counts agree with the question bank and its headlines are neutral, but none of it is a measurement.
@@ -79,8 +79,8 @@ What to do about it is an owner decision, listed under the open questions.
 
 Each is one line, with where to look.
 
-1. `ConceptOut.relationships` is derived from ingestion (IS_A, MAPS_TO) and the ontology declares no allowed relationships, although `docs/03` line 476 asks for it. Data Model, Ontology tab, concept card.
-2. Overview tiles show no interval for one approach, because `docs/evaluation/statistics.md` defines intervals for differences only, while spec 7.3 says tiles carry "the interval". Overview; D-048.
+1. `ConceptOut.relationships` is derived from ingestion (IS_A, MAPS_TO) and the ontology declares no allowed relationships, although `docs/reference/03` line 476 asks for it. Data Model, Ontology tab, concept card.
+2. Overview tiles show no interval for one approach, because `docs/reference/evaluation/statistics.md` defines intervals for differences only, while spec 7.3 says tiles carry "the interval". Overview; D-048.
 3. Live Lab layout: graph on the left, the three approach panels on the right, a collapsed question bar, a compact scorecard and a docked timeline. Live Lab baselines; D-046.
 4. "Evidence score" (0 to 1, two decimals, signed deltas) and "Answer writing time" are the names on Overview, Live Lab and Help. Overview, Live Lab, Help "How scoring works"; D-047.
 5. In a replay, the layout comes from the final graph with the evidence path placed first in each layer, so the future path sits at the top of each layer before its event (nothing is styled as on the path until the event). `live-lab-h1-mid-replay-paused`; D-049.
@@ -103,7 +103,7 @@ Each is one line, with where to look.
 
 1. Is the D-025 shared re-ranker still what you want, given that it kept the claim record out of the prompt on the multi-hop question? Options sit with CP2 and CP3: keep it, or change how the graph's selection reaches the prompt (a method change that needs your approval before an official run).
 2. Should Overview tiles gain a per-approach interval (a new field in `summary.json`), or stay as built, with intervals on differences only?
-3. Should the ontology declare its allowed relationships, as `docs/03` asks, or keep the derived field?
+3. Should the ontology declare its allowed relationships, as `docs/reference/03` asks, or keep the derived field?
 4. Do you accept the Live Lab layout and the replay and fit behaviour (items 3, 5, 6 and 9)?
 5. Which world is the presentation world, and should Help's recovery steps include `make demo-reset`?
 6. Do you want a per-label neighbourhood map in the Graph tab in place of, or beside, the dense full map?
@@ -121,10 +121,10 @@ artefacts exist and all checks pass, under this standing approval.
 
 Artefacts: pipelines A/B/C (`app/retrieval/standard`, `app/retrieval/graph`),
 evidence tracking with per-candidate components and discard reasons,
-traversal telemetry on the docs/07 section 8 event names, shared context
+traversal telemetry on the docs/reference/07 section 8 event names, shared context
 assembly, side-by-side trace CLI (`app/retrieval/graph/traces.py`; note: moved to `app/traces.py` in Phase 4), three
 captured traces with real retrieval telemetry and local-model generation
-(`docs/retrieval/example-traces.md`).
+(`docs/reference/retrieval/example-traces.md`).
 
 Key implementation decisions (documented in the retrieval specs): traversal
 covers the structured-record subgraph; documents stay in the shared vector
@@ -162,7 +162,7 @@ Demo dataset profile enabled for generation (HITL-03 scaling approval) with
 a separate evaluator ledger required, so demo worlds cannot overwrite the
 development truth ledger.
 
-Validation artefact: `docs/evaluation/harness-validation.md` holds verbatim
+Validation artefact: `docs/reference/evaluation/harness-validation.md` holds verbatim
 reports for the full-bank fake-generator run and a real-model subset
 (Q01/Q25/Q28/Q30 on a local Qwen via the gateway, temperature 0), plus the
 demo-profile performance verification. That verification found and fixed a
@@ -185,7 +185,7 @@ Scoring is deterministic: answer checks (number with decimal normalisation,
 word-boundary token, set recall), evidence precision/recall against grounded
 required evidence (nodes plus cited chunk `document_id`s), and a failure
 taxonomy derived from retrieval telemetry. LLM-as-judge is deliberately not
-used; docs/evaluation/scoring.md records the rule that a later judge must be
+used; docs/reference/evaluation/scoring.md records the rule that a later judge must be
 versioned and identified per result.
 
 Benchmark status in the development world: 20 of 30 questions scored; 8 map
@@ -202,7 +202,7 @@ Residual risks and known limitations:
   absolute recall on those questions is bounded low by design.
 - The harness validation run uses the deterministic fake generator, so
   answer-correctness scores in that report exercise the scorer, not a model.
-  The committed real-model subset (docs/evaluation/harness-validation.md)
+  The committed real-model subset (docs/reference/evaluation/harness-validation.md)
   provides answer-quality evidence on four scenario questions; a full
   official 30x3 real-model run is presentation-phase work (HITL-11), not
   needed to approve the methodology.
@@ -216,7 +216,7 @@ Residual risks and known limitations:
 ## HITL-10 notes (2026-10-09)
 
 Artefacts: test matrix and critical coverage report
-(docs/testing/coverage.md); failure-mode tests
+(docs/reference/testing/coverage.md); failure-mode tests
 (backend/tests/test_failure_modes.py: gateway, embedder and vector-store
 failures propagate out of both pipelines; no fabricated success); runner
 resilience (a gateway error inside an official benchmark run is recorded per
@@ -242,7 +242,7 @@ mypy strict clean; frontend prettier/oxlint/tsc/vitest (13)/build green;
 Playwright smoke green; 5 visual baselines green on the owning machine. Dev
 graph re-ingested after live tests.
 
-Residual gaps (recorded in docs/testing/coverage.md): no automated
+Residual gaps (recorded in docs/reference/testing/coverage.md): no automated
 performance gates (timings recorded, not enforced); frontend unit coverage
 deliberately thin until presentation mode defines the components; visual
 regression is owner-machine only; single-browser E2E.
@@ -251,12 +251,12 @@ regression is owner-machine only; single-browser E2E.
 
 Delivered at this commit:
 
-- **Query API (docs/07 §20).** `POST /api/v1/queries` accepts a typed
+- **Query API (docs/reference/07 §20).** `POST /api/v1/queries` accepts a typed
   request, returns 202 immediately and executes the selected pipelines in a
   worker thread; `GET /queries/{id}` returns status plus the typed
   RagRunResult/GraphRunResult records; `GET /queries/{id}/events` returns
   the recorded sequence for replay (never re-execution). Failures map to
-  docs/07 §11 error classes (GenerationError→MODEL_ERROR etc.) and emit a
+  docs/reference/07 §11 error classes (GenerationError→MODEL_ERROR etc.) and emit a
   run.error event; the store keeps the last 50 runs of the process.
   Contract tests: 11 offline (validation, lifecycle, ordering, replay
   identity, 404s, error mapping, demo questions, benchmark 404/publish) + 1
@@ -274,7 +274,7 @@ Delivered at this commit:
   now backed by the harness's own `summary.json` aggregate, so no client-side
   re-computation); with no published run it shows the committed validation
   run labelled as such, hides sections without a bank dimension, and marks
-  unscored questions "not scored" (docs/ux/screen-specifications.md §6
+  unscored questions "not scored" (docs/reference/ux/screen-specifications.md §6
   live-data note). Vitest 22, tsc, oxlint, prettier, build, smoke e2e and
   all 5 visual baselines green.
 - **Demo operations.** `make ingest-demo-graph`, `index-demo-vector`,
@@ -285,9 +285,9 @@ Delivered at this commit:
   after the demo corpus (2,905 chunks) exceeded the single-call client
   timeout; covered by VECTOR_E2E in CI.
 - **Documents.** Demo script and recovery procedures
-  (docs/demo/presentation.md); final architecture explanation appended to
-  docs/architecture/system-architecture.md §11; API implementation status
-  recorded in docs/07 §20.
+  (docs/reference/demo/presentation.md); final architecture explanation appended to
+  docs/reference/architecture/system-architecture.md §11; API implementation status
+  recorded in docs/reference/07 §20.
 
 - **Benchmark aggregation.** The harness now writes `summary.json` next to
   `results.json` and `report.md`, produced by one `summarize()` policy
@@ -300,6 +300,6 @@ as above; demo state restored after live tests (make demo-reset).
 
 Residual gaps: replay events are in-memory (bounded, process lifetime);
 `GET /queries/{id}/evidence` and SSE progressive delivery intentionally
-deferred (docs/07 §20); benchmark execution stays a CLI operation, the API
+deferred (docs/reference/07 §20); benchmark execution stays a CLI operation, the API
 only publishes results; presentation-state run history does not survive an
 API restart (regenerating state is one demo-reset).

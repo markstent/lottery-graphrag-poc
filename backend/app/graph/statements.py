@@ -1,6 +1,6 @@
 """Centralised Cypher for the Neo4j overlay.
 
-All Cypher lives here (docs/02-graph-schema-spec.md section 11; AGENTS.md
+All Cypher lives here (docs/reference/02-graph-schema-spec.md section 11; AGENTS.md
 "Centralise Cypher"). Statements are static strings driven by parameters;
 labels and relationship types come only from the fixed registries below,
 never from user input.
@@ -12,7 +12,7 @@ Node and relationship statements follow one shape each:
     SET n += row, n.label_version = $label_version, n.ingestion_version = $ingestion_version
 
 Rows carry their own ``source_system`` / ``source_record_id`` provenance so
-every node satisfies docs/02 section 4.
+every node satisfies docs/reference/02 section 4.
 """
 
 from __future__ import annotations
@@ -230,7 +230,7 @@ def relationship_count_statement(rel_type: str, label_a: str, label_b: str) -> s
 
 
 def schema_statements() -> list[str]:
-    """Constraints and indexes (docs/02-graph-schema-spec.md section 10)."""
+    """Constraints and indexes (docs/reference/02-graph-schema-spec.md section 10)."""
     return list(_SCHEMA_STATEMENTS)
 
 
@@ -244,7 +244,7 @@ def example_query(name: str) -> str:
 # Read-side queries for graph retrieval. Static strings, parameter-driven;
 # relationship types and limits always come from configured values, never
 # from user input. Traversal is per-hop so the pipeline can emit one
-# telemetry event per traversed edge (docs/07 section 8).
+# telemetry event per traversed edge (docs/reference/07 section 8).
 
 RETRIEVAL_NEIGHBOURS = """
 UNWIND $ids AS fid

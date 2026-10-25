@@ -1,4 +1,4 @@
-"""The server-sent event stream of a run (docs/07 section 6, ADR-004).
+"""The server-sent event stream of a run (docs/reference/07 section 6, ADR-004).
 
 ``sse_frames`` is driven directly over a real run store with injected waits,
 so no test depends on wall-clock pacing: a wait either returns at once or is

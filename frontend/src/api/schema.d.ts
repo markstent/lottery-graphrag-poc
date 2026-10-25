@@ -535,7 +535,7 @@ export interface components {
         };
         /**
          * ApiErrorBody
-         * @description The error object every failure carries (docs/07 section 11).
+         * @description The error object every failure carries (docs/reference/07 section 11).
          */
         ApiErrorBody: {
             error_code: components["schemas"]["ErrorCode"];
@@ -826,7 +826,7 @@ export interface components {
         /**
          * ErrorPayload
          * @description ``pipeline.failed``, ``pipeline.cancelled``, ``run.failed`` and
-         *     ``run.cancelled`` carry the docs/07 section 11 error envelope.
+         *     ``run.cancelled`` carry the docs/reference/07 section 11 error envelope.
          */
         ErrorPayload: {
             error_code: components["schemas"]["ErrorCode"];
@@ -2089,7 +2089,7 @@ export interface components {
         };
         /**
          * QueryRequest
-         * @description Request for POST /api/v1/queries (docs/07 section 4).
+         * @description Request for POST /api/v1/queries (docs/reference/07 section 4).
          *
          *     Unknown fields are refused, so a client still sending the retired
          *     ``profile`` gets a 422 rather than a silently ignored field.
@@ -2668,7 +2668,7 @@ export interface components {
         /**
          * RecordedEvent
          * @description One execution event: the envelope shared by replay and the stream
-         *     (docs/07 section 6). ``pipeline`` is ``run`` for run lifecycle events.
+         *     (docs/reference/07 section 6). ``pipeline`` is ``run`` for run lifecycle events.
          */
         RecordedEvent: components["schemas"]["RunStarted"] | components["schemas"]["PipelineStarted"] | components["schemas"]["PipelineCompleted"] | components["schemas"]["PipelineFailed"] | components["schemas"]["PipelineCancelled"] | components["schemas"]["RunCompleted"] | components["schemas"]["RunFailed"] | components["schemas"]["RunCancelled"] | components["schemas"]["RagQueryReceivedEvent"] | components["schemas"]["RagEmbeddingStartedEvent"] | components["schemas"]["RagEmbeddingCompletedEvent"] | components["schemas"]["RagVectorSearchStartedEvent"] | components["schemas"]["RagCandidateRetrievedEvent"] | components["schemas"]["RagRerankStartedEvent"] | components["schemas"]["RagCandidateRerankedEvent"] | components["schemas"]["RagEvidenceSelectedEvent"] | components["schemas"]["RagEvidenceDiscardedEvent"] | components["schemas"]["RagContextAssembledEvent"] | components["schemas"]["RagGenerationStartedEvent"] | components["schemas"]["RagGenerationCompletedEvent"] | components["schemas"]["GraphEntityResolutionStartedEvent"] | components["schemas"]["GraphEntityResolvedEvent"] | components["schemas"]["GraphQueryExpandedEvent"] | components["schemas"]["GraphSeedSelectedEvent"] | components["schemas"]["GraphTraversalStartedEvent"] | components["schemas"]["GraphNodeDiscoveredEvent"] | components["schemas"]["GraphRelationshipTraversedEvent"] | components["schemas"]["GraphOntologyExpandedEvent"] | components["schemas"]["GraphRerankStartedEvent"] | components["schemas"]["GraphCandidateRerankedEvent"] | components["schemas"]["GraphCandidateSelectedEvent"] | components["schemas"]["GraphCandidateDiscardedEvent"] | components["schemas"]["GraphEvidencePathCompletedEvent"] | components["schemas"]["GraphContextAssembledEvent"] | components["schemas"]["GraphGenerationStartedEvent"] | components["schemas"]["GraphGenerationCompletedEvent"];
         /**

@@ -1,7 +1,7 @@
 """World assembly: builds every table for one deterministic generation run.
 
-Table schemas follow docs/01-synthetic-data-spec.md section 6 and 7.
-Provenance (docs/01 section 10) is recorded per table in the manifest:
+Table schemas follow docs/reference/01-synthetic-data-spec.md section 6 and 7.
+Provenance (docs/reference/01 section 10) is recorded per table in the manifest:
 source identity is (source_system, source_table, primary key), and
 ingestion_version is stamped when Phase 4 materialises graph nodes.
 """
@@ -59,7 +59,7 @@ class World:
 
 
 def build_data_dictionary() -> dict[str, Any]:
-    """Machine-readable data dictionary (docs/data/data-dictionary.md).
+    """Machine-readable data dictionary (docs/reference/data/data-dictionary.md).
 
     Derived from TABLE_SCHEMAS and TABLE_PROVENANCE so the dictionary can
     never drift from the generated schema. Foreign keys and ID formats are

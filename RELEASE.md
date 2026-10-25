@@ -21,7 +21,7 @@ evaluator-only truth ledger that retrieval can never read (ADR-008).
 | Bank size | 30 questions (22 scored on the dev world; 2 not groundable; 8 not planted and never scored) |
 | Scoring | Deterministic (answer checks, evidence precision/recall, failure taxonomy); no LLM judge |
 | Generator version | 0.1.0 (deterministic, world seed 2026) |
-| Validation runs | `docs/evaluation/harness-validation.md` (fake full bank 2026-10-08; real-model subset Q01/Q25/Q28/Q30 2026-10-08) |
+| Validation runs | `docs/reference/evaluation/harness-validation.md` (fake full bank 2026-10-08; real-model subset Q01/Q25/Q28/Q30 2026-10-08) |
 
 Headline validation results: full bank evidence recall A 0.02 vs B/C 0.62
 (fake generator, deterministic); real-model subset answer score B/C 0.66 vs
@@ -47,7 +47,7 @@ answers vary only with the configured gateway model (temperature 0).
 
 ## How to run
 
-Full run-of-show and recovery: `docs/demo/presentation.md`. Short form:
+Full run-of-show and recovery: `docs/reference/demo/presentation.md`. Short form:
 
 ```bash
 make services-up      # Neo4j + Qdrant (Docker/OrbStack)
@@ -60,7 +60,7 @@ Live Lab defaults to the committed demo story (offline-safe). Switch the
 composer to "Live backend" to execute real A/B/C runs; saved demo questions
 load from the API. For model-generated answers set `GENERATION_PROVIDER=litellm`
 and the model/base URL when starting `serve-demo-api` (see
-`docs/demo/presentation.md` §2). `make demo-reset` restores the demo state
+`docs/reference/demo/presentation.md` §2). `make demo-reset` restores the demo state
 at any time; `make ingest-graph && make index-vector` returns the
 development world.
 
@@ -69,7 +69,7 @@ development world.
 - Replay state is in-memory (last 50 runs of the API process); `demo-reset`
   plus an API restart regenerates everything.
 - SSE progressive delivery and `GET /queries/{id}/evidence` are deferred
-  (docs/07 §20); the UI paces playback from recorded `t_ms`.
+  (docs/reference/07 §20); the UI paces playback from recorded `t_ms`.
 - The benchmark executes via CLI (`make run-benchmark`); the API only
   publishes results.
 - Visual regression baselines are owner-machine only; E2E is Chromium-only.

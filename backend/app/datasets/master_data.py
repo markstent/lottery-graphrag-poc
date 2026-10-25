@@ -1,7 +1,7 @@
 """Fixed master data and the synthetic product catalogue.
 
 All names, suppliers and concepts are fictional. Market profiles follow
-docs/01-synthetic-data-spec.md section 5; product categories section 10.
+docs/reference/01-synthetic-data-spec.md section 5; product categories section 10.
 """
 
 from __future__ import annotations

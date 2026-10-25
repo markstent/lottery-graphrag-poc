@@ -58,12 +58,12 @@ Use this precedence when requirements conflict:
 
 1. `AGENTS.md`
 2. explicit instructions from the project owner
-3. `docs/product/`
-4. `docs/architecture/`
-5. `docs/data/`
-6. `docs/retrieval/`
-7. `docs/evaluation/`
-8. `docs/ux/`
+3. `docs/reference/product/`
+4. `docs/reference/architecture/`
+5. `docs/reference/data/`
+6. `docs/reference/retrieval/`
+7. `docs/reference/evaluation/`
+8. `docs/reference/ux/`
 9. existing implementation
 
 If implementation conflicts with a written specification, do not silently preserve the implementation.
@@ -498,10 +498,10 @@ The application must remain visually coherent.
 Follow:
 
 ```text
-docs/ux/visual-language.md
-docs/ux/screen-specifications.md
-docs/ux/interaction-specification.md
-docs/ux/animation-specification.md
+docs/reference/ux/visual-language.md
+docs/reference/ux/screen-specifications.md
+docs/reference/ux/interaction-specification.md
+docs/reference/ux/animation-specification.md
 ```
 
 Primary target is a 16:9 desktop presentation.

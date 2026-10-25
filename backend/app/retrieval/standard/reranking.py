@@ -1,4 +1,4 @@
-"""The one judge of context selection (docs/retrieval/reranking.md).
+"""The one judge of context selection (docs/reference/retrieval/reranking.md).
 
 One reranker instance scores every candidate of every pipeline against the
 raw question: A's hybrid hits, and in B and C the same document channel

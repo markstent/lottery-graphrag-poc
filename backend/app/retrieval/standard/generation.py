@@ -10,7 +10,7 @@ Every pipeline shares one prompt (PROMPT_VERSION), one generator, one
 parser (`parse_answer`) and one citation builder (`citations_for`), and
 hands the generator one list of selected evidence in judge order, so the
 same selected evidence gives the same prompt in A, B and C
-(docs/retrieval/retrieval-fairness.md). The model is asked for a JSON object
+(docs/reference/retrieval/retrieval-fairness.md). The model is asked for a JSON object
 with a verdict and a prose answer citing numbered sources as [n]; the parser
 keeps only citations that point at a block actually shown to the model.
 """

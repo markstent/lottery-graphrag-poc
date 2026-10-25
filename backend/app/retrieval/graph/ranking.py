@@ -1,4 +1,4 @@
-"""Transparent graph evidence ranking (docs/retrieval/evidence-ranking.md).
+"""Transparent graph evidence ranking (docs/reference/retrieval/evidence-ranking.md).
 
 Score components (all normalised, all recorded per candidate):
 
@@ -120,7 +120,7 @@ def semantic_scores(
 
     Computed as the plain dot product, which is the cosine only because
     every ``EmbeddingFunction`` returns unit vectors (its contract;
-    ``OllamaEmbedder`` normalises, docs/retrieval/embeddings.md).
+    ``OllamaEmbedder`` normalises, docs/reference/retrieval/embeddings.md).
     """
     if not node_texts:
         return {}

@@ -1,11 +1,11 @@
 """Idempotent ingestion from a generated dataset into the Neo4j overlay.
 
-Pipeline (docs/data/graph-ingestion.md): read source tables, map to graph
+Pipeline (docs/reference/data/graph-ingestion.md): read source tables, map to graph
 rows with provenance (``node_rows``, ``relationship_rows``), apply schema,
 merge nodes, merge typed relationships, verify counts. High-volume
 transactional facts (tickets, prizes, sessions, raw exposures) stay in the
 structured layer; the graph holds aggregated relationship properties that
-reference them (docs/02 section 8).
+reference them (docs/reference/02 section 8).
 """
 
 from __future__ import annotations

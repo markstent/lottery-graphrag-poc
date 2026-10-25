@@ -1,4 +1,4 @@
-"""Truth-ledger construction and writing (docs/04 section 19, ADR-008).
+"""Truth-ledger construction and writing (docs/reference/04 section 19, ADR-008).
 
 The ledger is written once per generation to ``DEFAULT_TRUTH_PATH``
 (gitignored) and is the only artefact that carries scenario truth. This

@@ -1,4 +1,6 @@
-"""Graph-enhanced retrieval pipeline (docs/08 Phase 9; docs/retrieval/graph-rag.md).
+"""Graph-enhanced retrieval pipeline.
+
+Specified in docs/reference/08 (Phase 9) and docs/reference/retrieval/graph-rag.md.
 
     question -> entity resolution (+ query expansion for pipeline C)
              -> seed selection (record-anchored vector fallback)
@@ -15,7 +17,7 @@ Pipeline B runs the identical pipeline with `ontology_expansion=False`
 (MAPS_TO excluded from the traversal allow-list), an id-and-market resolver
 and no query expansion; pipeline C adds the ontology term resolver and the
 expanded query text. Everything else is shared, isolating the ontology
-contribution (docs/retrieval/retrieval-fairness.md). Every candidate and
+contribution (docs/reference/retrieval/retrieval-fairness.md). Every candidate and
 selected node is recorded with its score components; final quantitative
 claims come from the structured layer, not the graph. The stages and
 their typed results live in ``stages.py``; ``run`` composes them in order.

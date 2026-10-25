@@ -1,4 +1,4 @@
-"""Benchmark runner v2 (docs/05-benchmark-spec.md; Phase 3 benchmark v2).
+"""Benchmark runner v2 (docs/reference/05-benchmark-spec.md; Phase 3 benchmark v2).
 
 Runs the instances of one frozen bank through pipelines A, B and C against
 the world the bank was grounded in, ``repeats`` times each, and scores every
@@ -108,7 +108,7 @@ def _git_dirty() -> bool | None:
 
 @dataclass(frozen=True, slots=True)
 class ReproducibilityRecord:
-    """The docs/05 section 11 provenance block stored with every run."""
+    """The docs/reference/05 section 11 provenance block stored with every run."""
 
     git_sha: str
     # True when the checkout had uncommitted changes; None when git was unavailable.

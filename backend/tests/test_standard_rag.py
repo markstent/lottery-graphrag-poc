@@ -1,4 +1,4 @@
-"""Standard RAG tests (docs/08 Phase 8): retrieval correctness, context
+"""Standard RAG tests (docs/reference/08 Phase 8): retrieval correctness, context
 limits and deterministic fake-model integration."""
 
 from __future__ import annotations

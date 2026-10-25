@@ -1,4 +1,4 @@
-"""Shared planting context for scenario injectors (docs/04-scenario-catalogue.md).
+"""Shared planting context for scenario injectors (docs/reference/04-scenario-catalogue.md).
 
 `ScenarioPlanter` bundles one scenario's outcome fields with the lookups every
 injector needs. Planted ids come from `next_id`, which continues each table's

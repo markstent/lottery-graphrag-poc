@@ -1,4 +1,4 @@
-"""Server-sent event framing of a run's stored events (docs/07 section 6, ADR-004).
+"""Server-sent event framing of a run's stored events (docs/reference/07 section 6, ADR-004).
 
 The stream reads the run store, the same events replay serves, so a client
 that reconnects with ``Last-Event-ID`` (or ``?after=``) resumes exactly where

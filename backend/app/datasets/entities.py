@@ -276,7 +276,7 @@ def generate_players_and_devices(
             )
 
             # Devices: one primary per player; some also use a second device, so a
-            # minority of devices is shared (docs/01 distribution rules).
+            # minority of devices is shared (docs/reference/01 distribution rules).
             primary = market_devices[rng.randrange(len(market_devices))]
             player_device.append(
                 PlayerDeviceRow(

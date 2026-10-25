@@ -40,7 +40,7 @@
         "type": "object"
       },
       "ApiErrorBody": {
-        "description": "The error object every failure carries (docs/07 section 11).",
+        "description": "The error object every failure carries (docs/reference/07 section 11).",
         "properties": {
           "error_code": {
             "$ref": "#/components/schemas/ErrorCode"
@@ -733,7 +733,7 @@
       },
       "ErrorPayload": {
         "additionalProperties": false,
-        "description": "``pipeline.failed``, ``pipeline.cancelled``, ``run.failed`` and\n``run.cancelled`` carry the docs/07 section 11 error envelope.",
+        "description": "``pipeline.failed``, ``pipeline.cancelled``, ``run.failed`` and\n``run.cancelled`` carry the docs/reference/07 section 11 error envelope.",
         "properties": {
           "error_code": {
             "$ref": "#/components/schemas/ErrorCode"
@@ -3779,7 +3779,7 @@
       },
       "QueryRequest": {
         "additionalProperties": false,
-        "description": "Request for POST /api/v1/queries (docs/07 section 4).\n\nUnknown fields are refused, so a client still sending the retired\n``profile`` gets a 422 rather than a silently ignored field.",
+        "description": "Request for POST /api/v1/queries (docs/reference/07 section 4).\n\nUnknown fields are refused, so a client still sending the retired\n``profile`` gets a 422 rather than a silently ignored field.",
         "properties": {
           "benchmark_instance_id": {
             "anyOf": [
@@ -5171,7 +5171,7 @@
         "type": "object"
       },
       "RecordedEvent": {
-        "description": "One execution event: the envelope shared by replay and the stream\n(docs/07 section 6). ``pipeline`` is ``run`` for run lifecycle events.",
+        "description": "One execution event: the envelope shared by replay and the stream\n(docs/reference/07 section 6). ``pipeline`` is ``run`` for run lifecycle events.",
         "discriminator": {
           "mapping": {
             "graph.candidate.discarded": "#/components/schemas/GraphCandidateDiscardedEvent",

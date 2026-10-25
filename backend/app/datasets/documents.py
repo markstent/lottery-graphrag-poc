@@ -1,6 +1,6 @@
 """Synthetic document corpus and chunking.
 
-Documents are multilingual per market profiles (docs/01 section 5/9/20):
+Documents are multilingual per market profiles (docs/reference/01 section 5/9/20):
 market documents use the market language most of the time, corporate
 documents use English. Each document has one subject entity (a game,
 incident, campaign, app version, experiment or platform version) and its

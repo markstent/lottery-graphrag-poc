@@ -2,7 +2,7 @@
 
 Each member pairs an event type with its payload model (``app.events.payloads``),
 so the OpenAPI contract, and the frontend types generated from it, carry the
-payload of every event the API can replay or stream (docs/07 sections 6 to 11).
+payload of every event the API can replay or stream (docs/reference/07 sections 6 to 11).
 """
 
 from __future__ import annotations
@@ -278,4 +278,4 @@ class RecordedEvent(
     ]
 ):
     """One execution event: the envelope shared by replay and the stream
-    (docs/07 section 6). ``pipeline`` is ``run`` for run lifecycle events."""
+    (docs/reference/07 section 6). ``pipeline`` is ``run`` for run lifecycle events."""

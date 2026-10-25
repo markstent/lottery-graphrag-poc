@@ -1,4 +1,4 @@
-"""Scenario planting acceptance tests (docs/04 section 20, design 10a.5).
+"""Scenario planting acceptance tests (docs/reference/04 section 20, design 10a.5).
 
 Planted ids never encode a scenario and continue each table's id sequence;
 targets are drawn from the scenario seed; the truth ledger records the

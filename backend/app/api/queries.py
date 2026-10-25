@@ -1,4 +1,4 @@
-"""Query execution endpoints (docs/07 sections 3-6, 15) plus the demo
+"""Query execution endpoints (docs/reference/07 sections 3-6, 15) plus the demo
 questions, drawn from the presentation world's frozen bank. The benchmark
 routes are in app.api.benchmarks.
 

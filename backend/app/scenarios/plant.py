@@ -1,4 +1,4 @@
-"""Scenario injector registry (docs/04-scenario-catalogue.md).
+"""Scenario injector registry (docs/reference/04-scenario-catalogue.md).
 
 Maps each enabled scenario id to its injector. Injectors plant into an
 already generated world through a `ScenarioPlanter`, drawing every target

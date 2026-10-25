@@ -1,7 +1,7 @@
 """FastAPI application entry point.
 
 Wires the presentation surface: health, persisted query runs over pipelines
-A/B/C with recorded replayable events and run history (docs/07 sections 3-6,
+A/B/C with recorded replayable events and run history (docs/reference/07 sections 3-6,
 ADR-007), the fixed demo question set, the benchmark routes (published
 runs, the question catalogue and benchmark jobs), the Data Model reads
 (worlds, dictionary, rows and records), the graph reads (schema, ingestion

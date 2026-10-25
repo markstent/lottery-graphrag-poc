@@ -1,4 +1,4 @@
-"""Entity resolution and query expansion for graph seeds (docs/retrieval/graph-rag.md).
+"""Entity resolution and query expansion for graph seeds (docs/reference/retrieval/graph-rag.md).
 
 Pipeline B resolves exact graph ids and market names (`IdEntityResolver`).
 Pipeline C adds the ontology layer (`TermEntityResolver`): every concept

@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens (docs/ux/visual-language.md).
+ * Design tokens (docs/reference/ux/visual-language.md).
  * Light theme: white and near-white surfaces, one cool neutral scale, one fixed
  * colour per pipeline, status colours reserved for status.
  * src/design/tokens.ts holds typed copies; tokens.test.ts keeps both equal.
@@ -141,7 +141,7 @@ body {
 }
 
 /* Reduced motion: transitions collapse to opacity-only, near-instant
-   (docs/ux/accessibility.md). Applied for the media query and the manual
+   (docs/reference/ux/accessibility.md). Applied for the media query and the manual
    settings toggle alike. */
 @media (prefers-reduced-motion: reduce) {
   .skeleton-bar {
@@ -163,7 +163,7 @@ body {
   animation-duration: 1ms !important;
 }
 
-/* Graph canvas nodes (docs/ux/animation-specification.md: 180-300ms): a new
+/* Graph canvas nodes (docs/reference/ux/animation-specification.md: 180-300ms): a new
    node fades in to whatever opacity it ends at; the focus ring is the
    focus token at 3px so it reads against every node shape. */
 @keyframes graph-node-enter {

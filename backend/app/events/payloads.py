@@ -37,12 +37,12 @@ class Empty(Payload):
 
 class ErrorPayload(ApiErrorBody):
     """``pipeline.failed``, ``pipeline.cancelled``, ``run.failed`` and
-    ``run.cancelled`` carry the docs/07 section 11 error envelope."""
+    ``run.cancelled`` carry the docs/reference/07 section 11 error envelope."""
 
     model_config = ConfigDict(extra="forbid")
 
 
-# -- standard RAG (docs/07 section 7) ----------------------------------------
+# -- standard RAG (docs/reference/07 section 7) ----------------------------------------
 
 
 class RagQueryReceived(Payload):
@@ -116,7 +116,7 @@ class GenerationCompleted(Payload):
     cited_blocks: int
 
 
-# -- graph (docs/07 section 8) ------------------------------------------------
+# -- graph (docs/reference/07 section 8) ------------------------------------------------
 
 
 class GraphEntityResolutionStarted(Payload):

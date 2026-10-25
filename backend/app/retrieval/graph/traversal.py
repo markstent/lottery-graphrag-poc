@@ -1,4 +1,4 @@
-"""Bounded graph traversal (docs/02 section 11; AGENTS.md Neo4j Rules).
+"""Bounded graph traversal (docs/reference/02 section 11; AGENTS.md Neo4j Rules).
 
 Traversal is a breadth-first walk with hard caps: depth, per-hop fan-out and
 total nodes. Every traversed edge is returned so the pipeline can emit one

@@ -1,4 +1,4 @@
-"""The blinded, versioned LLM judge (benchmark v2, docs/05 section 9).
+"""The blinded, versioned LLM judge (benchmark v2, docs/reference/05 section 9).
 
 The judge scores one answer on five dimensions (0 wrong or absent, 1 partly,
 2 fully) beside the deterministic scores; it never replaces them. It sees

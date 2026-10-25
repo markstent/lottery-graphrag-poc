@@ -5,7 +5,7 @@ Modules:
 - reader: Parquet dataset reader
 - node_rows: source tables and ontology to node rows (provenance, validity)
 - relationship_rows: source tables, aggregates and ontology to relationship rows
-- statements: centralised Cypher (docs/02-graph-schema-spec.md section 11)
+- statements: centralised Cypher (docs/reference/02-graph-schema-spec.md section 11)
 - ingest: idempotent ingestion pipeline, count verification and run stats
 """
 

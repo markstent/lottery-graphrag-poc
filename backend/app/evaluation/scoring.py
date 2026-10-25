@@ -1,5 +1,5 @@
 """Evidence metrics over discoveries and failure classes (benchmark v2;
-docs/05-benchmark-spec.md sections 8 and 14; docs/evaluation/scoring.md).
+docs/reference/05-benchmark-spec.md sections 8 and 14; docs/reference/evaluation/scoring.md).
 
 The question's anchor is removed from both the required claims and the
 selected evidence, so the metric scores what a pipeline discovered beyond
@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from app.evaluation.claims import Claim, exclude_anchor
 
-# A score below this marks a weak answer or weak evidence (docs/05 section 14).
+# A score below this marks a weak answer or weak evidence (docs/reference/05 section 14).
 FAILURE_THRESHOLD = 0.5
 
 

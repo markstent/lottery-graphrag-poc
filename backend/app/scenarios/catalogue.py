@@ -1,4 +1,4 @@
-"""Scenario catalogue (docs/04-scenario-catalogue.md section 2).
+"""Scenario catalogue (docs/reference/04-scenario-catalogue.md section 2).
 
 Static scenario configuration. Which scenarios are planted is not secret;
 the truth ledger (what exactly was planted where) is evaluator-only.
@@ -21,7 +21,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True, slots=True)
 class ScenarioSpec:
-    """Configuration for one scenario type (docs/04 section 2)."""
+    """Configuration for one scenario type (docs/reference/04 section 2)."""
 
     scenario_id: str
     scenario_type: str

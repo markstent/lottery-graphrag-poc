@@ -1,5 +1,5 @@
 """Persisted query runs: the worker, the recording sink, cancellation and the
-lab start-up (docs/07 sections 3-6, ADR-007).
+lab start-up (docs/reference/07 sections 3-6, ADR-007).
 
 POST /queries stores a queued run and starts one worker thread for it. The
 worker runs the requested pipelines in order A, B, C. Every event goes

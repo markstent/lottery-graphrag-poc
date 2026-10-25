@@ -17,9 +17,9 @@ All data, brands, products, people, incidents, documents and systems are synthet
 
 ## Start here
 
-1. Read `START_HERE.md`.
+1. Read `docs/reference/START_HERE.md`.
 2. Read `AGENTS.md`.
-3. Read `MASTER_SPECIFICATION.md`.
+3. Read `docs/reference/MASTER_SPECIFICATION.md`.
 4. Read all files under `/docs`.
 5. Begin Phase 0 only.
 6. Stop at every human-in-the-loop checkpoint.
@@ -80,4 +80,4 @@ make run-benchmark      # the evaluation harness
 ```
 
 Presentation run-of-show and recovery procedures:
-`docs/demo/presentation.md`. Release record: `RELEASE.md`.
+`docs/reference/demo/presentation.md`. Release record: `RELEASE.md`.

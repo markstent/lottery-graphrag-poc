@@ -1,4 +1,4 @@
-/** How scoring works, as docs/evaluation/scoring.md and statistics.md state it. */
+/** How scoring works, as docs/reference/evaluation/scoring.md and statistics.md state it. */
 
 import type { ReactNode } from 'react'
 

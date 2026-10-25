@@ -1,4 +1,4 @@
-"""Standard RAG pipeline (docs/retrieval/standard-rag.md).
+"""Standard RAG pipeline (docs/reference/retrieval/standard-rag.md).
 
 Modules:
 

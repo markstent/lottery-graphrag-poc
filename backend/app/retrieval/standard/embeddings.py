@@ -1,4 +1,4 @@
-"""Embedding functions (docs/retrieval/embeddings.md).
+"""Embedding functions (docs/reference/retrieval/embeddings.md).
 
 Two adapters:
 

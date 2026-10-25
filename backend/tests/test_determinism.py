@@ -1,4 +1,4 @@
-"""Deterministic generation contract (docs/01 section 4)."""
+"""Deterministic generation contract (docs/reference/01 section 4)."""
 
 from __future__ import annotations
 

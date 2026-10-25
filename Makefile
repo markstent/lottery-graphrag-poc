@@ -1,4 +1,4 @@
-# Stable command surface defined in docs/development/commands.md.
+# Stable command surface defined in docs/reference/development/commands.md.
 # Targets for later phases fail loudly instead of faking success.
 
 BACKEND := backend
@@ -73,8 +73,8 @@ index-vector: ## Build the document vector index in Qdrant (Phase 8)
 	$(UV) run python -m app.retrieval.standard
 
 traces: ## Write side-by-side A/B/C example traces (fake generator; needs the dev graph and index)
-	$(UV) run python -m app.traces --generator fake > docs/retrieval/example-traces.md.tmp
-	mv docs/retrieval/example-traces.md.tmp docs/retrieval/example-traces.md
+	$(UV) run python -m app.traces --generator fake > docs/reference/retrieval/example-traces.md.tmp
+	mv docs/reference/retrieval/example-traces.md.tmp docs/reference/retrieval/example-traces.md
 
 pull-models: ## Pull the local embedding model
 	ollama pull bge-m3
@@ -101,7 +101,7 @@ demo-reset: ## Reset the presentation demo state (re-ingest graph + rebuild vect
 	$(MAKE) ingest-demo-graph index-demo-vector
 	@echo "demo reset complete: restart serve-demo-api to clear in-memory runs"
 
-# Benchmark v2 (docs/evaluation/reproducibility.md). Runs are written to
+# Benchmark v2 (docs/reference/evaluation/reproducibility.md). Runs are written to
 # data/evaluation/runs/<run id>; worlds 2027 and 2028 are generated, indexed
 # and grounded on first use, and the seed 2026 graph is restored afterwards.
 SEEDS = 2026,2027,2028

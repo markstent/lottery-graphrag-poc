@@ -1,4 +1,4 @@
-"""Failure-mode tests (docs/08 Phase 12): pipelines surface real errors.
+"""Failure-mode tests (docs/reference/08 Phase 12): pipelines surface real errors.
 
 A failing gateway, embedder or vector store must raise out of ``run()``
 instead of producing a fabricated success.

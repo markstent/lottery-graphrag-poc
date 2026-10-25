@@ -1,4 +1,4 @@
-"""World validation per docs/01-synthetic-data-spec.md section 11.
+"""World validation per docs/reference/01-synthetic-data-spec.md section 11.
 
 Checks: referential integrity, market/currency consistency, time-order
 consistency, volume targets and provenance coverage. Deterministic

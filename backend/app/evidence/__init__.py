@@ -2,7 +2,7 @@
 
 Evidence is what the pipelines record about every candidate and selected
 chunk: provenance, scores and the selected/discarded outcome
-(docs/retrieval/evidence-ranking.md, docs/retrieval/reranking.md).
+(docs/reference/retrieval/evidence-ranking.md, docs/reference/retrieval/reranking.md).
 """
 
 from __future__ import annotations

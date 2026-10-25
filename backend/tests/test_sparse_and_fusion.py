@@ -1,4 +1,4 @@
-"""Sparse embeddings and reciprocal rank fusion (docs/retrieval/standard-rag.md)."""
+"""Sparse embeddings and reciprocal rank fusion (docs/reference/retrieval/standard-rag.md)."""
 
 from __future__ import annotations
 

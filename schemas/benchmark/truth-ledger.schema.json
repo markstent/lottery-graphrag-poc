@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "schemas/benchmark/truth-ledger.schema.json",
   "title": "Truth Ledger",
-  "description": "Evaluator-only truth records for one generated world (docs/04-scenario-catalogue.md sections 2 and 19; ADR-008). Written by the scenario package to data/truth/ledger.json; loadable only from app/evaluation/.",
+  "description": "Evaluator-only truth records for one generated world (docs/reference/04-scenario-catalogue.md sections 2 and 19; ADR-008). Written by the scenario package to data/truth/ledger.json; loadable only from app/evaluation/.",
   "type": "object",
   "required": ["ledger_version", "scenario_seed", "world", "scenarios"],
   "additionalProperties": false,

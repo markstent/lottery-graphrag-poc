@@ -1,4 +1,4 @@
-"""API contract tests for CORS and the demo questions (docs/07 section 18),
+"""API contract tests for CORS and the demo questions (docs/reference/07 section 18),
 without external services.
 
 The run routes are tested in tests/test_api_runs.py and the benchmark routes

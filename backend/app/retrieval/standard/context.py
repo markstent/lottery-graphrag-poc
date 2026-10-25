@@ -1,4 +1,4 @@
-"""Context budget selection (docs/retrieval/context-budgeting.md).
+"""Context budget selection (docs/reference/retrieval/context-budgeting.md).
 
 Every pipeline answers from one total token budget and one evidence-slot
 count (retrieval fairness), and one judge decides what fills them: the

@@ -204,7 +204,7 @@ def _document_conflict(truth: Mapping[str, Any]) -> str:
     )
 
 
-# One sentence builder per scenario type of the catalogue (docs/04).
+# One sentence builder per scenario type of the catalogue (docs/reference/04).
 _SENTENCES: dict[str, Callable[[Mapping[str, Any]], str]] = {
     "app_release_conversion_failure": _app_release,
     "shared_device_cluster": _shared_devices,

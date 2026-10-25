@@ -1,4 +1,4 @@
-"""Side-by-side A/B/C execution traces (docs/08 HITL-08).
+"""Side-by-side A/B/C execution traces (docs/reference/08 HITL-08).
 
 Runs the demo questions (``app.api.scoring.demo_questions``: the first
 instance of each demo stratum in the presentation world's frozen bank) through
@@ -6,7 +6,7 @@ pipeline A (conventional RAG), B (graph, no ontology) and C (graph plus
 ontology) against the live development world: Qdrant (shared hybrid index),
 Neo4j (dev graph), Ollama embeddings and the configured generator. Prints a
 markdown document so the output can be committed verbatim as
-docs/retrieval/example-traces.md.
+docs/reference/retrieval/example-traces.md.
 
 Usage:
     uv run python -m app.traces [--generator fake|litellm]

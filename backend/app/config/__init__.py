@@ -33,7 +33,7 @@ DEFAULT_REFERENCE_DATE = WINDOW_START + timedelta(days=WINDOW_DAYS)
 
 @dataclass(frozen=True, slots=True)
 class EmbeddingSettings:
-    """Embedding model selection (docs/retrieval/embeddings.md)."""
+    """Embedding model selection (docs/reference/retrieval/embeddings.md)."""
 
     provider: str  # "ollama" | "hashing"
     model: str
@@ -55,7 +55,7 @@ class VectorSettings:
 
 @dataclass(frozen=True, slots=True)
 class ContextSettings:
-    """Context budget (docs/retrieval/context-budgeting.md)."""
+    """Context budget (docs/reference/retrieval/context-budgeting.md)."""
 
     budget_tokens: int
     dedupe_threshold: float
@@ -66,7 +66,7 @@ class ContextSettings:
 
 @dataclass(frozen=True, slots=True)
 class RerankSettings:
-    """One reranker shared by every pipeline (docs/retrieval/reranking.md)."""
+    """One reranker shared by every pipeline (docs/reference/retrieval/reranking.md)."""
 
     provider: str  # "lexical" | "cross_encoder"
     model: str  # cross-encoder model (fastembed)
@@ -91,7 +91,7 @@ class GenerationSettings:
 
 @dataclass(frozen=True, slots=True)
 class RankingWeights:
-    """Transparent evidence-ranking signals (docs/retrieval/evidence-ranking.md).
+    """Transparent evidence-ranking signals (docs/reference/retrieval/evidence-ranking.md).
 
     The score is a weighted sum of normalised components; every component is
     recorded per candidate so no hidden rule favours one pipeline.
@@ -105,7 +105,7 @@ class RankingWeights:
 
 @dataclass(frozen=True, slots=True)
 class GraphRagSettings:
-    """Bounded graph traversal and evidence settings (docs/02 section 11).
+    """Bounded graph traversal and evidence settings (docs/reference/02 section 11).
 
     Traversal limits are hard caps: depth, per-hop fan-out, per-node
     per-relationship-type edges and total nodes. Pipeline B excludes
@@ -348,7 +348,7 @@ class GraphConfig:
 
 @dataclass(frozen=True, slots=True)
 class ApiSettings:
-    """Presentation API settings (docs/07-api-event-spec.md)."""
+    """Presentation API settings (docs/reference/07-api-event-spec.md)."""
 
     cors_origins: tuple[str, ...]
     db_path: Path

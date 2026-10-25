@@ -1,4 +1,4 @@
-"""Typed retrieval telemetry events (docs/07-api-event-spec.md sections 7-11).
+"""Typed retrieval telemetry events (docs/reference/07-api-event-spec.md sections 7-11).
 
 Events are the sole driver of UI visuals and the record used for replay.
 Every pipeline emits into an EventSink; nothing else observes execution.
@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
-# Standard RAG event types (docs/07 section 7).
+# Standard RAG event types (docs/reference/07 section 7).
 RAG_QUERY_RECEIVED = "rag.query.received"
 RAG_EMBEDDING_STARTED = "rag.embedding.started"
 RAG_EMBEDDING_COMPLETED = "rag.embedding.completed"
@@ -27,7 +27,7 @@ RAG_CONTEXT_ASSEMBLED = "rag.context.assembled"
 RAG_GENERATION_STARTED = "rag.generation.started"
 RAG_GENERATION_COMPLETED = "rag.generation.completed"
 
-# Graph pipeline event types (docs/07 section 8) are declared alongside so
+# Graph pipeline event types (docs/reference/07 section 8) are declared alongside so
 # both pipelines share one sink contract from the start.
 GRAPH_ENTITY_RESOLUTION_STARTED = "graph.entity_resolution.started"
 GRAPH_ENTITY_RESOLVED = "graph.entity.resolved"

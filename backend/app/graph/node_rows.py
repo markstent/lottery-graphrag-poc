@@ -3,7 +3,7 @@
 Every row carries provenance (``source_system``, ``source_table``,
 ``source_record_id``), a ``source_timestamp`` where the source table records
 when the entity came into being, and a validity window (``valid_from`` /
-``valid_to``) where the entity is time-bounded (docs/02-graph-schema-spec.md
+``valid_to``) where the entity is time-bounded (docs/reference/02-graph-schema-spec.md
 section 4). None values are never stored.
 """
 

@@ -1,6 +1,6 @@
 """Dense embeddings: Ollama vectors are unit length and of the configured
 dimension, and the lab refuses a collection of another size
-(spec 6.3, docs/retrieval/embeddings.md)."""
+(spec 6.3, docs/reference/retrieval/embeddings.md)."""
 
 from __future__ import annotations
 

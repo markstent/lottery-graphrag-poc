@@ -1,4 +1,4 @@
-"""Graph-enhanced retrieval (docs/08 Phase 9).
+"""Graph-enhanced retrieval (docs/reference/08 Phase 9).
 
 Modules:
 

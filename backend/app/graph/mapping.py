@@ -2,7 +2,7 @@
 
 No I/O here: every function maps source rows (dicts) to graph rows so the
 mappings are unit-testable and the derivation methods stay explicit
-(docs/02-graph-schema-spec.md section 7, docs/03-ontology-spec.md section 6).
+(docs/reference/02-graph-schema-spec.md section 7, docs/reference/03-ontology-spec.md section 6).
 Every concept, binding and similarity edge is derived from the ontology
 (``app.ontology``); this module holds no concept maps of its own.
 """

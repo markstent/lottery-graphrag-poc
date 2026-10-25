@@ -3,7 +3,7 @@
 Structured graph candidates (pipelines B and C) and document candidates are
 reranked together and selected from one list into one token budget and one
 evidence-slot count, so A, B and C answer from the same amount of context
-(docs/retrieval/retrieval-fairness.md). Record blocks of structured
+(docs/reference/retrieval/retrieval-fairness.md). Record blocks of structured
 candidates are superseded before judging (design 10a.8).
 """
 

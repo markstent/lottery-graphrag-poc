@@ -621,7 +621,7 @@ V2_FIELDS = {
 def test_reproducibility_payload_carries_every_field(
     runner_smoke: BenchmarkRunner, offline_lab: Lab, world_dir: Path
 ) -> None:
-    """Every record field reaches the stored payload (docs/05 section 11)."""
+    """Every record field reaches the stored payload (docs/reference/05 section 11)."""
     record = runner_smoke.record()
     payload = record.to_payload()
     assert set(payload) == {field.name for field in dataclasses.fields(record)}

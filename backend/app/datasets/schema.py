@@ -1,8 +1,8 @@
 """Relational contract: table DDL, provenance, foreign keys and id formats.
 
 This is the single source of truth for the generated warehouse. Table schemas
-follow docs/01-synthetic-data-spec.md sections 6 and 7; provenance follows
-docs/data/source-system-contracts.md. Foreign keys are declared by column name
+follow docs/reference/01-synthetic-data-spec.md sections 6 and 7; provenance follows
+docs/reference/data/source-system-contracts.md. Foreign keys are declared by column name
 so validation and graph ingestion never depend on column positions.
 """
 
@@ -54,7 +54,7 @@ TABLE_SCHEMAS: dict[str, str] = {
     "document_chunks": "chunk_id VARCHAR, document_id VARCHAR, chunk_index INTEGER, text VARCHAR, token_count INTEGER, embedding_version VARCHAR",
 }
 
-# Source-system provenance per table (docs/data/source-system-contracts.md).
+# Source-system provenance per table (docs/reference/data/source-system-contracts.md).
 TABLE_PROVENANCE: dict[str, tuple[str, str]] = {
     table: (system, table)
     for table, system in {

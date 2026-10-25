@@ -1,4 +1,4 @@
-"""GraphRAG pipeline tests (docs/08 Phase 9) without Neo4j.
+"""GraphRAG pipeline tests (docs/reference/08 Phase 9) without Neo4j.
 
 The bounded walk runs over a static neighbour provider modelling the planted
 SCN-007 neighbourhood from the development world; ranking, limits, ontology

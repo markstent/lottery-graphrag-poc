@@ -8,7 +8,7 @@ type JsonValue = Schemas['JsonValue']
 
 const NOT_RECORDED = 'Not recorded'
 
-/** Every field of docs/evaluation/reproducibility.md in the order it is shown, by the name the record gives it. */
+/** Every field of docs/reference/evaluation/reproducibility.md in the order it is shown, by the name the record gives it. */
 export const REPRO_KEYS = [
   'git_sha',
   'git_dirty',

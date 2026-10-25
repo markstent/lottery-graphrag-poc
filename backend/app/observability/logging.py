@@ -20,7 +20,7 @@ from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
 
-# Stage names of docs/07 and the evaluation scorer; "pipeline_run" times a
+# Stage names of docs/reference/07 and the evaluation scorer; "pipeline_run" times a
 # whole pipeline call where the stages cannot be split.
 STAGES = (
     "embedding",
