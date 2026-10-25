@@ -108,7 +108,7 @@ describe('pathPosition', () => {
 describe('otherWorldNotice', () => {
   it('names both worlds in plain words when a recording is not on the active one', () => {
     expect(otherWorldNotice('dev-seed2026', 'dev-seed2027')).toBe(
-      'This run was recorded on dev world, 2026. The active dataset is dev world, 2027, so its records cannot be opened here.',
+      'Recorded on dev world, 2026; the active dataset is dev world, 2027, so these records cannot be opened.',
     )
   })
 
@@ -119,7 +119,7 @@ describe('otherWorldNotice', () => {
 
   it("holds a recording's record back until the active dataset is known", () => {
     expect(otherWorldNotice('dev-seed2026', null)).toBe(
-      'The active dataset is still loading, so this record cannot be opened yet.',
+      'The dataset is still loading.',
     )
   })
 })

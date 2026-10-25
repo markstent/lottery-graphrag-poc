@@ -238,9 +238,7 @@ describe('OntologyTab', () => {
     )
     renderAt(`&concept=${NATIONAL_DRAW}&market=MKT_GR`)
     expect(
-      await screen.findByText(
-        'No local terms from this market are bound to this concept.',
-      ),
+      await screen.findByText('No local terms from this market.'),
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Greece' })).toHaveAttribute(
       'aria-pressed',
@@ -268,9 +266,7 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt('&concept=CONCEPT_LOTTERY_PRODUCT')
     expect(
-      await screen.findByText(
-        'No local terms are bound directly to this concept.',
-      ),
+      await screen.findByText('No local terms are bound directly.'),
     ).toBeVisible()
   })
 

@@ -271,9 +271,7 @@ describe('panels', () => {
       await screen.findByRole('region', { name: 'Efficiency' }),
     )
     expect(
-      await panel.findByText(
-        'Means per question; no intervals are computed for time or size.',
-      ),
+      await panel.findByText('Means per question, without intervals.'),
     ).toBeVisible()
     expect(panel.getAllByRole('figure')).toHaveLength(2)
   })

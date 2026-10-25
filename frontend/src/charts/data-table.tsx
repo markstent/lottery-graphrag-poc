@@ -40,7 +40,10 @@ export function DataTable({
         <tbody>
           {rows.map((row) => (
             <tr key={row.key} className="border-b border-hairline">
-              <th scope="row" className="py-2 pr-4 text-left font-normal">
+              <th
+                scope="row"
+                className="whitespace-nowrap py-2 pr-4 text-left font-normal"
+              >
                 {row.label}
               </th>
               {row.cells.map((cell, i) => (

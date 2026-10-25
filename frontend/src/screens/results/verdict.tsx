@@ -43,7 +43,7 @@ export function Verdict({
     <div className="space-y-4">
       {kind === 'subset' && (
         <p className="text-sm font-medium text-text-primary">
-          <span className="rounded-chip border border-border px-2 py-0.5">
+          <span className="mr-1 rounded-chip border border-border px-2 py-0.5">
             Subset run
           </span>{' '}
           {selectionText(run.selection)}

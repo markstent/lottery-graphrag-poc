@@ -94,8 +94,19 @@ function textsOf(node: ts.Node | undefined): string[] {
     return textsOf(node.expression)
   if (ts.isConditionalExpression(node))
     return [...textsOf(node.whenTrue), ...textsOf(node.whenFalse)]
-  if (ts.isBinaryExpression(node))
-    return [...textsOf(node.left), ...textsOf(node.right)]
+  if (ts.isBinaryExpression(node)) {
+    // `a === 'ready'` compares and shows nothing; `cond && 'text'` shows its right side.
+    switch (node.operatorToken.kind) {
+      case ts.SyntaxKind.AmpersandAmpersandToken:
+        return textsOf(node.right)
+      case ts.SyntaxKind.BarBarToken:
+      case ts.SyntaxKind.QuestionQuestionToken:
+      case ts.SyntaxKind.PlusToken:
+        return [...textsOf(node.left), ...textsOf(node.right)]
+      default:
+        return []
+    }
+  }
   return []
 }
 
@@ -358,6 +369,18 @@ describe('copy budget outside Help', () => {
       'Two words',
       'Hello there',
       'Two words',
+    ])
+  })
+})
+
+describe('copy in expressions', () => {
+  it('counts what a condition shows, not what it compares', () => {
+    const sample = `export const X = () => <p>{ready && 'Shown text'}{status === 'ready' ? 'Yes now' : 'No'}{a || 'Fallback words'}</p>`
+    expect(copyIn(sample).map(({ text }) => text)).toEqual([
+      'Shown text',
+      'Yes now',
+      'No',
+      'Fallback words',
     ])
   })
 })

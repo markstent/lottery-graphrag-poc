@@ -23,7 +23,7 @@ export function liveUnavailableReason(
     case 'ready':
       return null
     case 'checking':
-      return 'Checking whether the backend is ready.'
+      return 'Checking the backend.'
     case 'starting':
       return 'The backend is still starting.'
     case 'not-ready': {

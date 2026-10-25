@@ -57,8 +57,11 @@ const BUTTON =
 
 const classCounts = (classes: Record<string, number>) =>
   Object.entries(classes)
-    .map(([cls, count]) => `${failureWords(cls)}: ${count}`)
-    .join(', ') || 'None'
+    .map(([cls, count]) => {
+      const words = failureWords(cls)
+      return `${words.charAt(0).toUpperCase()}${words.slice(1)}: ${count}`
+    })
+    .join('; ') || 'None'
 
 /** The scores of one question in one world, a column per approach. */
 function Details({ row }: { row: Row }) {

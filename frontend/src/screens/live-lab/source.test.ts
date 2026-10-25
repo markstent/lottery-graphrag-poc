@@ -10,7 +10,7 @@ describe('liveUnavailableReason', () => {
 
   it('says in plain words why Live is off', () => {
     expect(liveUnavailableReason('checking', null)).toBe(
-      'Checking whether the backend is ready.',
+      'Checking the backend.',
     )
     expect(liveUnavailableReason('starting', null)).toBe(
       'The backend is still starting.',

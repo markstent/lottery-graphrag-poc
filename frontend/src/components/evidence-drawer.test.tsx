@@ -184,9 +184,9 @@ describe('EvidenceDrawer', () => {
   })
 
   it.each([
-    ['GRAPH_QUERY_ERROR', 'The graph could not be queried for this record.'],
-    ['OTHER_WORLD', 'The graph holds a different world than this record.'],
-    ['SOMETHING_NEW', 'The graph could not be read for this record.'],
+    ['GRAPH_QUERY_ERROR', 'The graph could not be queried.'],
+    ['OTHER_WORLD', 'The graph holds a different world.'],
+    ['SOMETHING_NEW', 'The graph could not be read.'],
   ])('says in words why the graph is missing (%s)', async (code, words) => {
     stubApi({
       '/api/v1/datasets/dev-seed2026/tables/incidents/rows/INC_S007_GR': {

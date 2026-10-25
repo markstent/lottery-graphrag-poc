@@ -74,13 +74,13 @@ function Facts({ fields }: { fields: Fields }) {
 }
 
 const GRAPH_ERRORS: Record<string, string> = {
-  GRAPH_QUERY_ERROR: 'The graph could not be queried for this record.',
-  OTHER_WORLD: 'The graph holds a different world than this record.',
+  GRAPH_QUERY_ERROR: 'The graph could not be queried.',
+  OTHER_WORLD: 'The graph holds a different world.',
 }
 
 /** Words for a graph error code; a code from a newer server still reads as a sentence. */
 const graphErrorWords = (code: string): string =>
-  GRAPH_ERRORS[code] ?? 'The graph could not be read for this record.'
+  GRAPH_ERRORS[code] ?? 'The graph could not be read.'
 
 type Fetched = Extract<EvidenceSource, { kind: 'record' | 'node' }>
 

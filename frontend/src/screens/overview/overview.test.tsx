@@ -197,9 +197,7 @@ describe('Overview panel states', () => {
   it('shows an empty state when there are no demo questions', async () => {
     stubApi({ ...base(OFFICIAL), '/api/v1/demo/questions': [] })
     render(<Overview />)
-    expect(
-      await screen.findByText('No demo questions are available.'),
-    ).toBeVisible()
+    expect(await screen.findByText('No demo questions.')).toBeVisible()
   })
 
   it('shows an error for the questions and for the configuration', async () => {

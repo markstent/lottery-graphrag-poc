@@ -167,7 +167,7 @@ export function evidenceSummary(
     : text
 }
 
-const CONNECTION_LOST = 'The live connection stopped before the run ended.'
+const CONNECTION_LOST = 'The live connection stopped.'
 
 /** One sentence on where the run stands and, for a replay, its position. */
 export function runStatusLine({

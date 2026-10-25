@@ -248,7 +248,7 @@ describe('runStatusLine', () => {
       'The run is in progress.',
     )
     expect(view('interrupted', 'live', idle, { replaying: false })).toBe(
-      'The live connection stopped before the run ended.',
+      'The live connection stopped.',
     )
   })
 
@@ -274,7 +274,7 @@ describe('runStatusLine', () => {
   it('does not call a live run in progress when its stream ended without a final event', () => {
     const mid = upTo(h1.events, 'rag.vector_search.started')
     expect(view('finished', 'live', mid, { replaying: false })).toBe(
-      'The live connection stopped before the run ended.',
+      'The live connection stopped.',
     )
   })
 

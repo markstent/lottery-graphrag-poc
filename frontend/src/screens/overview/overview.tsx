@@ -118,7 +118,7 @@ function RunAQuestion() {
     <Panel
       title="Run a question"
       state={stateOf(load, empty)}
-      message="No demo questions are available."
+      message="No demo questions."
       error={errorOf(load)}
       onRetry={load.retry}
     >

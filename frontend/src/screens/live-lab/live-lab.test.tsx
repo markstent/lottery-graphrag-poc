@@ -1025,7 +1025,7 @@ describe('Live Lab, results', () => {
     await user.keyboard('{Enter}')
     const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
     expect(dialog).toHaveTextContent(
-      'This run was recorded on dev world, 2026. The active dataset is dev world, 2027, so its records cannot be opened here.',
+      'Recorded on dev world, 2026; the active dataset is dev world, 2027, so these records cannot be opened.',
     )
     expect(
       fetchMock.mock.calls.some(([url]) =>

@@ -75,8 +75,8 @@ function BoundTerms({
   ]
   const none =
     chosen === null
-      ? 'No local terms are bound directly to this concept.'
-      : 'No local terms from this market are bound to this concept.'
+      ? 'No local terms are bound directly.'
+      : 'No local terms from this market.'
   return (
     <div className="space-y-3">
       {bound.length > 0 && (

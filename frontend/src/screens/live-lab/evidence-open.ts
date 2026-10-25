@@ -30,9 +30,8 @@ export function otherWorldNotice(
   active: string | null,
 ): string | null {
   if (recorded === null || recorded === active) return null
-  if (active === null)
-    return 'The active dataset is still loading, so this record cannot be opened yet.'
-  return `This run was recorded on ${datasetName(recorded)}. The active dataset is ${datasetName(active)}, so its records cannot be opened here.`
+  if (active === null) return 'The dataset is still loading.'
+  return `Recorded on ${datasetName(recorded)}; the active dataset is ${datasetName(active)}, so these records cannot be opened.`
 }
 
 export function sourceFor(
