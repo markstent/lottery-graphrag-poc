@@ -1,6 +1,11 @@
 # Stable command surface defined in docs/reference/development/commands.md.
 # Targets for later phases fail loudly instead of faking success.
 
+# A root .env (git-ignored) sets the backend's variables for every target. Write
+# KEY=value with no quotes: make reads the file, and a $ in a value is expanded.
+-include .env
+export
+
 BACKEND := backend
 FRONTEND := frontend
 UV := uv --directory $(BACKEND)
@@ -63,13 +68,13 @@ services-up: ## Start Neo4j and Qdrant via Docker Compose
 services-down: ## Stop and remove local services
 	docker compose down
 
-generate-dev-data: ## Generate the development dataset (Phase 3)
+generate-dev-data: ## Generate the development dataset
 	$(UV) run python -m app.datasets --profile dev --world-seed 2026
 
-ingest-graph: ## Ingest the development dataset into Neo4j (Phase 4)
+ingest-graph: ## Ingest the development dataset into Neo4j
 	$(UV) run python -m app.graph --wipe
 
-index-vector: ## Build the document vector index in Qdrant (Phase 8)
+index-vector: ## Build the document vector index in Qdrant
 	$(UV) run python -m app.retrieval.standard
 
 traces: ## Write side-by-side A/B/C example traces (fake generator; needs the dev graph and index)
@@ -99,7 +104,7 @@ serve-demo-api: ## Serve the API against the demo world
 
 demo-reset: ## Reset the presentation demo state (re-ingest graph + rebuild vector index)
 	$(MAKE) ingest-demo-graph index-demo-vector
-	@echo "demo reset complete: restart serve-demo-api to clear in-memory runs"
+	@echo "demo reset complete: restart serve-demo-api to load the new world"
 
 # Benchmark v2 (docs/reference/evaluation/reproducibility.md). Runs are written to
 # data/evaluation/runs/<run id>; worlds 2027 and 2028 are generated, indexed

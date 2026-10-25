@@ -1,9 +1,7 @@
-# Phase 0 skeleton: local service dependencies only.
-# The backend and frontend run directly on the host during development
-# (make dev). Application services are not containerised in Phase 0.
-#
-# Neo4j and Qdrant are consumed from later phases (graph ingestion,
-# vector retrieval). Image versions are pinned; bump deliberately.
+# Local service dependencies only: Neo4j (the graph) and Qdrant (the vector
+# index). The backend and frontend run directly on the host (make dev), and
+# nothing in the application is containerised. Image versions are pinned;
+# bump deliberately.
 
 services:
   neo4j:
