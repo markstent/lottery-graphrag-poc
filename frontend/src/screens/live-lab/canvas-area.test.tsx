@@ -48,6 +48,7 @@ function show(run: Recording, options: Options = {}) {
         onOpenNode={options.onOpenNode ?? vi.fn()}
         onOpenGroup={options.onOpenGroup ?? vi.fn()}
         openGroup={null}
+        onCloseGroup={vi.fn()}
       />
     </SettingsProvider>,
   )
@@ -312,6 +313,7 @@ describe('CanvasArea', () => {
           onOpenNode={vi.fn()}
           onOpenGroup={vi.fn()}
           openGroup={null}
+          onCloseGroup={vi.fn()}
         />
       </SettingsProvider>,
     )
@@ -392,6 +394,32 @@ describe('CanvasArea', () => {
         }
       },
     )
+  })
+
+  it('asks to close the open group when the replay moves to before it was drawn', async () => {
+    window.localStorage.setItem('visible-node-cap', '12')
+    const onCloseGroup = vi.fn()
+    const final = finalOf(h3)
+    const element = (state: typeof final) => (
+      <SettingsProvider>
+        <CanvasArea
+          state={state}
+          finalState={final}
+          results={h3.results}
+          mode="replay"
+          settled
+          onOpenNode={vi.fn()}
+          onOpenGroup={vi.fn()}
+          openGroup={{ pipeline: 'B', id: 'cluster:2:Incident' }}
+          onCloseGroup={onCloseGroup}
+        />
+      </SettingsProvider>
+    )
+    const { rerender } = render(element(final))
+    await placed()
+    expect(onCloseGroup).not.toHaveBeenCalled()
+    rerender(element(initialRunState()))
+    await waitFor(() => expect(onCloseGroup).toHaveBeenCalled())
   })
 
   it('draws a live run in live mode from the state so far', async () => {

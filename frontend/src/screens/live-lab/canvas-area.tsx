@@ -95,6 +95,7 @@ export function CanvasArea({
   onOpenNode,
   onOpenGroup,
   openGroup,
+  onCloseGroup,
 }: {
   /** The run as far as the replay or stream has got. */
   state: RunState
@@ -109,6 +110,8 @@ export function CanvasArea({
   onOpenGroup: (pipeline: GraphPipeline, group: FoldedGroup) => void
   /** The group the drawer is showing, if any: it is sent again as its members arrive. */
   openGroup: { pipeline: GraphPipeline; id: string } | null
+  /** The open group is no longer drawn (the replay moved before it), so the drawer should close. */
+  onCloseGroup: () => void
 }) {
   const { nodeCap, presentation, reducedMotion } = useSettings()
   const [tab, setTab] = useState<GraphPipeline>('B')
@@ -180,9 +183,11 @@ export function CanvasArea({
   const refreshGroup = useEffectEvent((group: GraphCluster) =>
     onOpenGroup(tab, foldedOf(view, group)),
   )
+  const closeGroup = useEffectEvent(() => onCloseGroup())
   useEffect(() => {
     const group = shown.clusters.find((c) => c.id === openedId)
     if (group) refreshGroup(group)
+    else if (openedId !== null) closeGroup()
   }, [shown, openedId])
 
   const marksOntology = tab === 'C' && view.nodes.some((n) => n.addedByOntology)

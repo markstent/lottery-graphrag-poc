@@ -244,6 +244,7 @@ export function LiveLab() {
             onOpenNode={openNode}
             onOpenGroup={openGroup}
             openGroup={inDrawer?.group ?? null}
+            onCloseGroup={() => setInDrawer(null)}
           />
         ) : (
           <CanvasPlaceholder />
