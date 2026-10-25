@@ -1,7 +1,7 @@
 # Screen Specifications
 
 > Note.
-> This file describes the five screens as built in Phase 6, on the branch `overhaul/v2`.
+> This file describes the five screens as built in Phases 6 and 7, on the branch `overhaul/v2`.
 > It was written from the code, not from the wireframes of the first version of the product, which it replaces.
 > The design intent is section 7 of `docs/superpowers/specs/2026-10-18-overhaul-design.md`.
 > Where this file and that section differ, the difference is a decision for the owner and is listed in `DECISIONS.md` (D-046 onwards) as "Proposed".
@@ -88,7 +88,7 @@ The intervals reach the screen through the headline sentences.
 - Loading: a skeleton of three tiles, and a skeleton in each other panel that is still loading.
 - Error: the panel that failed shows its message and a Retry button.
   The other panels still draw.
-- Empty: "Run a question" says "No demo questions are available." when the list is empty.
+- Empty: "Run a question" says "No demo questions." when the list is empty.
   The tiles have no separate empty state, because "No official run yet" is that state.
 - Disabled: not used.
 
@@ -219,49 +219,117 @@ The overlay of the other approach's path needs the run's stored results, so duri
 
 Purpose: every official run, every question, every score, with intervals.
 
-This is a stopgap in Phase 6.
-The full screen is Phase 7, and the purpose sentence promises more than the stopgap shows.
+### 3.1 Layout
 
-### 3.1 What the stopgap list shows
+The screen is one column of panels, top to bottom.
+A run of the whole bank, or a subset, shows all of them.
+A quick check shows only Verdict and Reproducibility.
 
-- A list of published benchmark runs, newest first, as cards.
-- Each card shows the date, the kind (Official run, Quick check run, Depth sweep), the label, a "Subset" line when the run did not cover every stratum or instance, the run's headline sentences, and a link "Reproducibility record (JSON)".
-- That link goes to the raw JSON from the API in a new tab.
+1. **Benchmark runs.**
+   A "Run" select that lists every published run, newest first, as "date - kind - label".
+   Beside it, the run's standing in words: Result, Subset run or Quick check.
+   An "All runs" disclosure repeats the list as links.
+   A "Start a run" button sits in the panel header (section 3.2).
+2. **Verdict.**
+   Three tiles, one per approach, each with the evidence score (two decimals) and the answer score (percentage).
+   The run's headline sentences follow, as the harness wrote them.
+   A subset run adds a "Subset run" label and what it covered, for example "All strata; at most 2 instances per question".
+   A quick check shows its headline and one line saying that a quick check tests the scoring code with a stand-in model and its numbers are not results.
+3. **Scores by kind of question.**
+   A switch between Evidence score and Answer score, then three charts for the chosen score.
+   Grouped bars per kind of question, with A, B and C in their own colours and the difference of B over A drawn where it is tested.
+   An interval plot of the paired differences, Graph against Text search and Graph + Ontology against Graph, per kind of question.
+   An interval plot of the Ontology-dependent split, B against A and C against B on the questions that need the ontology and on all others, marked "Descriptive: not part of the tested family."
+   Every chart has a "Show as table" twin.
+4. **Questions.**
+   One row per question and world, with Kind and World filters, and the answer, evidence and judge score of each approach.
+   A row opens a table of every measure for that question in that world: recall, precision, citation accuracy, latency, context size, evidence per 1,000 tokens, five judge scores, failures and repeats with no score.
+   "Open" goes to the question in Live Lab when its world is the one loaded, otherwise the cell says "Not loaded" with the reason.
+   The table shows 50 rows a page, with Previous, Next and a count such as "1 to 50 of 81".
+5. **Efficiency.**
+   Two charts, latency and context size, with one bar per approach for all questions, and a table of time, context size and evidence per 1,000 tokens for every kind of question.
+   Means only: no intervals are computed.
+6. **Failures.**
+   A table of failure kinds by approach.
+   Each non-zero count is a button that filters the Questions table to those failures.
+   The last row counts repeats that have no score because generation failed.
+7. **Judge.**
+   The judge's five scores (0 to 2) per kind of question and approach, then how often the judge agrees with the answer score, with pairs judged, agreement and kappa.
+8. **Reproducibility.**
+   Every field of the run's record, with its name as the API sends it (`world_seed`, `scenario_seed` and so on), then a disclosure for each world.
+   A "Raw record" link opens the JSON.
 
-### 3.2 What is not built yet (Phase 7)
+A cell with fewer than six groups shows no interval and says "Too few groups for an interval".
+Single facts show "No evidence score by design", because those questions have no evidence set.
+A run that has no judge shows "No judge in this run" in the Judge panel.
+While a run is a subset or a quick check, every chart and table carries its label.
+The three approaches are always written with their letters: A · Text search, B · Graph, C · Graph + Ontology.
 
-- Starting a benchmark run.
-- Charts of the scores and intervals.
-- The per-question table.
-- The efficiency panel (time, context size, cost).
-- The failure classes.
-- A reproducibility panel in place of the raw JSON link.
+### 3.2 Starting a run
+
+"Start a run" opens a form above the run list.
+It asks for the kind (Official run or Quick check), the worlds (2026, 2027 and 2028, all on by default), the repeats (3 or more for an official run, 1 or more for a quick check), the scope (Whole bank or Chosen kinds) and, optionally, at most N instances per question.
+It also shows, without letting the reader change them, the question bank and the generation and judge models, and where each is set.
+A wrong entry is named beside its field before anything is sent, and a message from the server is split onto the field it names.
+Start sends the request and the form gives way to a progress line, "World 2027 (2 of 3): 12 of 40 questions", a progress bar and a Cancel button with the line "Cancelling stops after the current question."
+A job already running when the page loads is followed the same way, so a reload reattaches.
+When the job completes, the run list reloads and the new run is the one shown.
+A cancelled job says "Cancelled. No results were written." and a failed one says "The run failed." with the server's reason.
+The end-to-end tests use a mocked job and never start a live run.
 
 ### 3.3 Data sources
 
-`GET /api/v1/benchmarks` only.
-Headlines come with each run in that list, so there is no per-run fetch.
+- `GET /api/v1/benchmarks`: the run list.
+- `GET /api/v1/benchmarks/{run_id}`: the summary of one run (tiles, headlines, scores, intervals, efficiency, failures, judge agreement and the reproducibility record).
+- `GET /api/v1/benchmarks/{run_id}/instances`: the per-question scores.
+- `GET /api/v1/datasets`: the loaded world, to tell which questions can open in Live Lab.
+- `POST /api/v1/benchmarks`, `GET /api/v1/benchmarks/jobs`, `GET /api/v1/benchmarks/jobs/{job_id}` and `POST /api/v1/benchmarks/jobs/{job_id}/cancel`: starting, finding and following a job.
+  The job is asked for every two seconds until it ends.
+
+The screen computes no statistic.
+Every mean, interval, difference and agreement figure is read from the summary the server wrote.
+The address holds the screen's state: `#/results?run=<id>`, with `stratum`, `world` and `failure=<approach>:<kind>` for the Questions filters.
+A link that names a run that is not published shows "This run is not published."
 
 ### 3.4 States
 
-- Normal: the cards.
-- Loading: a skeleton, with "Loading Benchmark runs" as text.
-- Empty: "No benchmark runs yet."
-- Error: the server's message, with Retry when it is retryable.
-- Disabled: not used.
+- Normal: the panels of section 3.1.
+- Loading: a skeleton, with "Loading Benchmark runs" as text, and one for each panel while its data loads.
+- Empty: "No benchmark runs yet." with "Start a run" still available.
+  The Judge panel says "No judge in this run" when there is none.
+- Error: the server's message with Retry when it is retryable, in the panel that failed.
+  A failure of the per-question scores leaves the charts in place.
+- Disabled: "Start a run" is hidden while a job runs, and Previous and Next are disabled at the ends of the table.
+- Running: the progress line, bar and Cancel button of section 3.2.
 
 ### 3.5 Keyboard and presentation
 
-Cards are articles with their date as the heading, and the link is a native link.
-In presentation mode the type is larger.
+Every control is a native control: the Run select, the Start form, the metric switch (`aria-pressed`), the chart and table toggles, the failure count buttons, the row toggles (`aria-expanded`) and the paging buttons.
+Enter and Space open and close a question row.
+A failure count button moves focus to the Questions table after it sets the filter.
+Closing the start form returns focus to "Start a run".
+The progress line is a status message and the progress bar is a `progressbar` named "Run progress".
+Every chart has a table twin.
+In presentation mode the sidebar is hidden and the type is larger, and no replay is registered, so Space and the arrow keys do nothing here.
 
 ### 3.6 Baselines
 
-- `results-list`
+The runs behind these images are captured from the real API, except the whole-bank run in `results-official`, `results-table-expanded` and `results-failure-filter`, which is generated and labelled "Fixture run (test values)".
+Its numbers are test values, not results.
+
+- `results-official`
+- `results-subset`
+- `results-quick-check`
+- `results-table-expanded`
+- `results-failure-filter`
+- `results-start-form`
+- `results-job-running`
 - `results-empty`
 - `results-error`
 - `results-loading`
 - `presentation-results`
+
+The end-to-end tests are `frontend/e2e/results.spec.ts` (reading a run) and `frontend/e2e/results-run.spec.ts` (starting, following, cancelling and reattaching to a job).
 
 ## 4. Data Model
 
@@ -414,4 +482,6 @@ The gallery shows sample values, labelled "Sample values, not results".
 ## 7. Copy budget
 
 Product copy is counted from the text a person can see, outside tests, fixtures, development pages and text from the API.
-The cap is 1,300 words outside Help and 1,650 words in Help prose, and the counts at the time of writing are 1,200 and 1,073 (D-055).
+The cap is 1,300 words outside Help and 1,650 words in Help prose, and the counts at the time of writing are 1,298 and 1,081 (D-055).
+The count outside Help includes the Results screen and its start form, and it leaves out the operands of comparisons in code (`status === 'ready'`), which are never drawn.
+The spec's target of about 1,200 words outside Help is not met: the remaining copy is purpose sentences, state messages, form labels and axis and legend labels, which are required.

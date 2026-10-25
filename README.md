@@ -49,7 +49,7 @@ The product has five screens, and each is a link:
 |---|---|---|
 | Overview | `http://localhost:5173/#/overview` | The verdict from the latest official run, how the approaches differ, and a way into Live Lab |
 | Live Lab | `http://localhost:5173/#/live-lab` | Run one question through A, B and C and watch them work |
-| Results | `http://localhost:5173/#/results` | The published benchmark runs (a stopgap list until Phase 7) |
+| Results | `http://localhost:5173/#/results` | Published benchmark runs with their scores, questions and reproducibility record, and a form to start a run |
 | Data Model | `http://localhost:5173/#/data-model` | The warehouse, graph, ontology and scenarios, with live counts. Tabs are `?tab=warehouse`, `?tab=graph`, `?tab=ontology` and `?tab=scenarios` |
 | Help | `http://localhost:5173/#/help` | How it works, every benchmark question with its answer key, the glossary and how to run it. Sections are `?section=what`, `approaches`, `data`, `stories`, `questions`, `scoring`, `glossary` and `running` |
 
