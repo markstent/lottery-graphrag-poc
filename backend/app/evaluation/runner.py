@@ -492,7 +492,7 @@ class BenchmarkRunner:
         gateway judge from the JUDGE_* environment otherwise."""
         _check_run(lab, kind, repeats, pipelines)
         self.judge = _check_judge(lab, kind, judge)
-        self.world_manifest = _check_bank(bank, world_dir, lab)
+        self.world_manifest = check_bank(bank, world_dir, lab)
         self.lab = lab
         self.graph_config = graph_config
         self.bank = bank
@@ -762,7 +762,7 @@ def _check_judge(lab: Lab, kind: str, judge: Judge | None) -> Judge:
     return judge
 
 
-def _check_bank(bank: FrozenBank, world_dir: Path, lab: Lab) -> dict[str, Any]:
+def check_bank(bank: FrozenBank, world_dir: Path, lab: Lab) -> dict[str, Any]:
     """Refuse a bank this world and lab cannot score; return the world manifest."""
     dataset_dir = Path(lab.settings.dataset_dir).resolve()
     if dataset_dir != world_dir.resolve():

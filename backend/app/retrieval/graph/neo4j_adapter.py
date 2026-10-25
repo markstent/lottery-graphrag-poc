@@ -19,7 +19,10 @@ from app.retrieval.graph.traversal import NeighbourEdge
 
 
 class GraphReader:
-    """Read access used by retrieval; one session per call, small results."""
+    """Read access used by retrieval; one session per call, small results.
+
+    Every call asks the driver for read access, so a write statement added
+    here by mistake would be refused by the database."""
 
     def __init__(self, config: GraphConfig) -> None:
         from neo4j import GraphDatabase  # imported lazily: heavy import
@@ -32,19 +35,24 @@ class GraphReader:
 
     def _records(self, statement: str, params: dict[str, Any]) -> list[Any]:
         """Run one statement under the configured transaction timeout."""
-        from neo4j import Query
+        from neo4j import Query, RoutingControl
 
         result = self._driver.execute_query(
-            Query(statement, timeout=self._timeout_s), params, database_=self._database
+            Query(statement, timeout=self._timeout_s),
+            params,
+            database_=self._database,
+            routing_=RoutingControl.READ,
         )
         return list(result.records)
 
     def _records_once(self, statement: str, params: dict[str, Any]) -> list[Any]:
         """Run one statement once under the configured timeout, without the
         driver's retries, so an unreachable database fails within it."""
-        from neo4j import Query
+        from neo4j import READ_ACCESS, Query
 
-        with self._driver.session(database=self._database) as session:
+        with self._driver.session(
+            database=self._database, default_access_mode=READ_ACCESS
+        ) as session:
             return list(session.run(Query(statement, timeout=self._timeout_s), params))
 
     def ping(self) -> None:

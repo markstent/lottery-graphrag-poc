@@ -369,6 +369,15 @@ class QdrantVectorStore:
         """Release the client's connections."""
         self._client.close()
 
+    def exists(self) -> bool:
+        """Whether the collection exists; unlike ``ensure_collection`` it never creates it."""
+        try:
+            return self._collection in [
+                collection.name for collection in self._client.get_collections().collections
+            ]
+        except Exception as error:
+            raise VectorStoreError(f"Qdrant collection check failed: {error}") from error
+
     def ensure_collection(self) -> None:
         from qdrant_client import models
 

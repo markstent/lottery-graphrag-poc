@@ -69,6 +69,20 @@ def build_store(settings: VectorSettings, dimensions: int, provider: str) -> Vec
     return store
 
 
+def collection_exists(settings: RetrievalSettings) -> bool:
+    """Whether the persistent collection already holds points, checked without
+    creating it (``build_store`` creates a missing collection). The in-memory
+    store of the hashing provider is never persistent, so it is empty."""
+    if not persists_index(settings.embedding.provider):
+        return False
+    store = QdrantVectorStore(
+        url=settings.vector.url,
+        collection=settings.vector.collection,
+        dimensions=settings.embedding.dimensions,
+    )
+    return store.exists() and store.count() > 0
+
+
 def load_indexed_corpus(dataset_dir: Path) -> IndexedCorpus:
     """Document chunks then record blocks, keyed by chunk id."""
     chunks = [
