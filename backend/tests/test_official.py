@@ -1081,6 +1081,52 @@ def test_compare_refuses_runs_of_different_selections(tmp_path: Path) -> None:
         compare_runs(small, large)
 
 
+def _official_with(model: str, **changes: Any) -> BenchmarkRun:
+    run = _official(model)
+    return dataclasses.replace(run, record=dataclasses.replace(run.record, **changes))
+
+
+def _compare_with(tmp_path: Path, **changes: Any) -> dict[str, Any]:
+    small = _write_run(tmp_path / "small", _official("small-model"))
+    large = _write_run(tmp_path / "large", _official_with("large-model", **changes))
+    return compare_runs(small, large)
+
+
+def test_compare_refuses_different_max_tokens(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="max_tokens"):
+        _compare_with(tmp_path, max_tokens=4096)
+
+
+def test_compare_refuses_different_reasoning(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="generation_reasoning"):
+        _compare_with(tmp_path, generation_reasoning="off")
+
+
+def test_compare_refuses_different_judge(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="judge_model") as error:
+        _compare_with(tmp_path, judge_model="another-judge")
+    assert "fake-judge-v1" in str(error.value) and "another-judge" in str(error.value)
+
+
+def test_compare_names_every_differing_field(tmp_path: Path) -> None:
+    with pytest.raises(ValueError) as error:
+        _compare_with(tmp_path, max_tokens=4096, top_k=3, judge_temperature=0.7)
+    for name in ("max_tokens", "top_k", "judge_temperature"):
+        assert name in str(error.value)
+
+
+def test_compare_accepts_runs_that_differ_only_in_the_model(tmp_path: Path) -> None:
+    comparison = _compare_with(
+        tmp_path,
+        git_sha="other",
+        git_dirty=True,
+        started_at="2026-11-01T00:00:00+00:00",
+        generation_model_family="another",
+        generation_quantisation="q4",
+    )
+    assert comparison["large"]["generation_model"] == "large-model"
+
+
 @pytest.mark.parametrize(
     ("kind", "repeats", "env", "match"),
     [

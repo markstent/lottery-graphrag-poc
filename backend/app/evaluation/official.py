@@ -76,6 +76,12 @@ from app.evaluation.runner import (
     WorldRun,
     check_run_config,
 )
+from app.evaluation.settings_check import (
+    COMPARE_MAY_DIFFER,
+    PER_WORLD_FIELDS,
+    describe_differences,
+    settings_differences,
+)
 from app.evaluation.statistics import cluster_bootstrap, points
 from app.graph import __main__ as graph_cli
 from app.lab import build_generator, build_lab
@@ -628,6 +634,7 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
         raise ValueError(
             f"the runs were scored on different banks: {banks['small']} and {banks['large']}"
         )
+    _require_equal_settings(runs["small"]["reproducibility"], runs["large"]["reproducibility"])
     values = {name: instance_means(p) for name, p in runs.items()}
     cells = []
     for tag in PIPELINES:
@@ -664,6 +671,27 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
         "note": "Large minus small, as a clustered 95 percent interval; no test is run.",
         "cells": cells,
     }
+
+
+def _require_equal_settings(small: dict[str, Any], large: dict[str, Any]) -> None:
+    """Refuse two runs whose recorded settings differ beyond the model, the
+    code revision and where they ran; name every differing field."""
+    pairs = [("the run records", small["run"], large["run"], COMPARE_MAY_DIFFER | PER_WORLD_FIELDS)]
+    if len(small["worlds"]) != len(large["worlds"]):
+        raise ValueError("the runs record a different number of worlds")
+    pairs += [
+        (f"world {a.get('world_seed')}", a, b, COMPARE_MAY_DIFFER)
+        for a, b in zip(small["worlds"], large["worlds"], strict=True)
+    ]
+    problems = []
+    for where, a, b, allowed in pairs:
+        names = settings_differences(a, b, allowed)
+        if names:
+            problems.append(
+                f"{where} differ in {describe_differences(names, a, b, ('small', 'large'))}"
+            )
+    if problems:
+        raise ValueError("the runs were made with different settings: " + "; ".join(problems))
 
 
 def render_comparison(comparison: dict[str, Any]) -> str:
