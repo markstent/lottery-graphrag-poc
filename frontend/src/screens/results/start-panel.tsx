@@ -37,6 +37,10 @@ const NOT_KNOWN = 'Not known'
 const SET_IN_CONFIGURATION = 'Set in configuration'
 
 const KINDS: StartForm['kind'][] = ['official', 'smoke']
+const NOTHING_FROM_SERVER: ReturnType<typeof serverErrors> = {
+  fields: {},
+  rest: null,
+}
 
 const toggled = <T,>(list: T[], item: T) =>
   list.includes(item) ? list.filter((x) => x !== item) : [...list, item]
@@ -164,19 +168,19 @@ function Form({
   const [form, setForm] = useState(DEFAULT_FORM)
   const [sending, setSending] = useState(false)
   const [problem, setProblem] = useState<Error | null>(null)
-  const [fromServer, setFromServer] = useState<
-    ReturnType<typeof serverErrors>['fields']
-  >({})
+  // What a 422 said about this form; editing the form clears it.
+  const [fromServer, setFromServer] =
+    useState<ReturnType<typeof serverErrors>>(NOTHING_FROM_SERVER)
   const errors = errorsOf(form)
-  const shown = { ...fromServer, ...errors }
+  const shown = { ...fromServer.fields, ...errors }
   const change = (part: Partial<StartForm>) => {
-    setFromServer({})
+    setFromServer(NOTHING_FROM_SERVER)
     setForm({ ...form, ...part })
   }
 
   const submit = async () => {
     setProblem(null)
-    setFromServer({})
+    setFromServer(NOTHING_FROM_SERVER)
     setSending(true)
     try {
       await start(startBody(form))
@@ -184,9 +188,7 @@ function Form({
       const error = asError(failure)
       if (error instanceof ApiError && error.status === 422) {
         // Parts of the message that name a field show at that field.
-        const { fields, rest } = serverErrors(error.message)
-        setFromServer(fields)
-        setProblem(rest === null ? null : new Error(rest))
+        setFromServer(serverErrors(error.message))
       } else setProblem(error)
     } finally {
       setSending(false)
@@ -217,7 +219,7 @@ function Form({
             inputRef={kind === KINDS[0] ? first : undefined}
             checked={form.kind === kind}
             onChange={() => {
-              setFromServer({})
+              setFromServer(NOTHING_FROM_SERVER)
               setForm(withKind(form, kind))
             }}
           >
@@ -320,6 +322,7 @@ function Form({
           onRetry={retryable ? () => void submit() : undefined}
         />
       )}
+      {fromServer.rest !== null && <Problem message={fromServer.rest} />}
       <div className="flex items-center gap-3">
         <button
           type="submit"

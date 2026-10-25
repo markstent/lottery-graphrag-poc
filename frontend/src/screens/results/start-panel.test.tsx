@@ -182,6 +182,7 @@ describe('StartPanel', () => {
     // Editing the form clears what the server said about it.
     await user.click(screen.getByRole('checkbox', { name: '2026' }))
     expect(within(worlds).queryByText(/unknown seeds/)).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('follows the minimum when the kind changes, but keeps Repeats the reader typed', async () => {
