@@ -943,6 +943,45 @@ describe('Live Lab, results', () => {
     await waitFor(() => expect(group).toHaveFocus())
   })
 
+  it('group drawer updates while a replay plays', async () => {
+    // In H3, B's group of incidents has a few members when the 217th event has played and 15 at the end.
+    const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!
+    window.localStorage.setItem('visible-node-cap', '12')
+    api({ '/api/v1/health/ready': DOWN })
+    open(`#/live-lab?question=${h3.instance_id}`)
+    await screen.findByText('Playing the recorded run.')
+    fireEvent.click(screen.getByRole('button', { name: 'Pause' }))
+    const slider = screen.getByRole('slider', {
+      name: 'Position',
+    }) as HTMLInputElement
+    const seek = (value: number | string) =>
+      fireEvent.change(slider, { target: { value: String(value) } })
+    seek(Math.ceil(h3.events[216].t_ms - h3.events[0].t_ms))
+    const canvas = await screen.findByRole('group', {
+      name: 'Graph for B · Graph',
+    })
+    const group = await waitFor(() => {
+      const found = canvas.querySelector<HTMLElement>(
+        '[data-node-id="cluster:2:Incident"]',
+      )
+      expect(found).not.toBeNull()
+      return found!
+    })
+    fireEvent.click(group)
+    const dialog = screen.getByRole('dialog', { name: 'Evidence' })
+    const members = () => within(dialog).getAllByRole('listitem').length
+    const before = members()
+    expect(before).toBeGreaterThan(1)
+    expect(before).toBeLessThan(15)
+    expect(
+      within(dialog).getByText(new RegExp(`^Group of ${before} `)),
+    ).toBeVisible()
+
+    seek(slider.max)
+    await waitFor(() => expect(members()).toBe(15))
+    expect(within(dialog).getByText(/^Group of 15 /)).toBeVisible()
+  })
+
   it('shows where a node sits on the evidence path in the drawer', async () => {
     const user = await finishRecording(userEvent.setup())
     const strip = screen.getByRole('region', {

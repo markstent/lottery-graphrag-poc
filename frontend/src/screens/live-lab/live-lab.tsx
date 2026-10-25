@@ -89,6 +89,8 @@ function useLinkedQuestions(linkedId: string | null) {
 }
 
 interface Opened {
+  /** Set when the drawer shows a folded group, which the canvas keeps current. */
+  group?: { pipeline: 'B' | 'C'; id: string }
   source: EvidenceSource
   position: PathPosition | null
 }
@@ -156,6 +158,7 @@ export function LiveLab() {
 
   const openGroup = (pipeline: 'B' | 'C', group: FoldedGroup) =>
     setInDrawer({
+      group: { pipeline, id: group.id },
       source: {
         kind: 'group',
         title: group.title,
@@ -240,6 +243,7 @@ export function LiveLab() {
             }
             onOpenNode={openNode}
             onOpenGroup={openGroup}
+            openGroup={inDrawer?.group ?? null}
           />
         ) : (
           <CanvasPlaceholder />

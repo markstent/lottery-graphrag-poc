@@ -7,7 +7,14 @@
  * final graph sets the layout); a live run grows with its stream.
  */
 
-import { useId, useMemo, useState, type KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useMemo,
+  useState,
+  type KeyboardEvent,
+} from 'react'
 
 import type { Schemas } from '../../api/client'
 import { useSettings } from '../../app/use-settings'
@@ -15,14 +22,33 @@ import { pipeline } from '../../design/pipelines'
 import { EvidencePathList } from '../../graph/evidence-path-list'
 import { GraphCanvas } from '../../graph/graph-canvas'
 import { GraphLegend } from '../../graph/graph-legend'
-import type { GraphCluster } from '../../graph/model'
+import {
+  withClustersOf,
+  type GraphCluster,
+  type GraphView,
+} from '../../graph/model'
 import { countedLabel } from '../../design/node-labels'
 import type { RunState } from '../../run/reduce'
 import { otherOf, pipelineView, type GraphPipeline } from './graph-views'
 
+/** The members of a folded group that the graph has drawn so far, with their labels. */
+function foldedOf(view: GraphView, group: GraphCluster): FoldedGroup {
+  const present = new Map(view.nodes.map((n) => [n.id, n]))
+  return {
+    id: group.id,
+    title: `Group of ${countedLabel(group.count, group.label)}`,
+    members: group.members.flatMap((m) => {
+      const node = present.get(m)
+      return node ? [{ id: m, label: node.label }] : []
+    }),
+  }
+}
+
 const TABS: readonly GraphPipeline[] = ['B', 'C']
 
 export interface FoldedGroup {
+  /** The group's id in the graph model, which stays the same as the replay adds members. */
+  id: string
   /** "Group of 12 incident types". */
   title: string
   members: { id: string; label: string }[]
@@ -68,6 +94,7 @@ export function CanvasArea({
   settled,
   onOpenNode,
   onOpenGroup,
+  openGroup,
 }: {
   /** The run as far as the replay or stream has got. */
   state: RunState
@@ -80,6 +107,8 @@ export function CanvasArea({
   onOpenNode: (pipeline: GraphPipeline, nodeId: string) => void
   /** A group of folded nodes was opened: its recorded members, by id and kind. */
   onOpenGroup: (pipeline: GraphPipeline, group: FoldedGroup) => void
+  /** The group the drawer is showing, if any: it is sent again as its members arrive. */
+  openGroup: { pipeline: GraphPipeline; id: string } | null
 }) {
   const { nodeCap, presentation, reducedMotion } = useSettings()
   const [tab, setTab] = useState<GraphPipeline>('B')
@@ -141,22 +170,28 @@ export function CanvasArea({
     document.getElementById(`${ids}-tab-${next}`)?.focus()
   }
 
+  // The drawer's group follows the graph as the canvas draws it.
+  const shown = useMemo(
+    () =>
+      mode === 'replay' && finalView ? withClustersOf(view, finalView) : view,
+    [mode, view, finalView],
+  )
+  const openedId = openGroup?.pipeline === tab ? openGroup.id : null
+  const refreshGroup = useEffectEvent((group: GraphCluster) =>
+    onOpenGroup(tab, foldedOf(view, group)),
+  )
+  useEffect(() => {
+    const group = shown.clusters.find((c) => c.id === openedId)
+    if (group) refreshGroup(group)
+  }, [shown, openedId])
+
   const marksOntology = tab === 'C' && view.nodes.some((n) => n.addedByOntology)
   const settledView = mode === 'live' && settled
   const canvasProps = {
     view,
     // A group is opened as the canvas draws it: its count is its label's.
-    onSelectNode: (id: string, group?: GraphCluster) => {
-      if (!group) return onOpenNode(tab, id)
-      const present = new Map(view.nodes.map((n) => [n.id, n]))
-      onOpenGroup(tab, {
-        title: `Group of ${countedLabel(group.count, group.label)}`,
-        members: group.members.flatMap((m) => {
-          const node = present.get(m)
-          return node ? [{ id: m, label: node.label }] : []
-        }),
-      })
-    },
+    onSelectNode: (id: string, group?: GraphCluster) =>
+      group ? onOpenGroup(tab, foldedOf(view, group)) : onOpenNode(tab, id),
     focusMode: focus,
     presentation,
     reducedMotion,
