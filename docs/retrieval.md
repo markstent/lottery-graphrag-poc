@@ -183,7 +183,7 @@ There is no cut inside the judge.
 
 Record blocks of structured candidates are judged with the other documents, each candidate once.
 A record block is refused as `superseded_by_structured_fact` only when its node holds a graph slot, because then the node is the authoritative copy and one fact never takes two slots.
-A node refused by the share leaves its record block to compete as a document under its own rank, so the fact is not lost.
+A node refused by the share leaves its record block, when the document search retrieved it, to compete for a document slot under its own rank, exactly as it would in A.
 
 One selection walks the judged list under one token budget and one slot count (D-023, in part superseded by D-081):
 
