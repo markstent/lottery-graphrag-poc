@@ -185,7 +185,8 @@ A whole-bank run or a subset shows all panels, and a quick check shows only the 
 7. **Judge.** The five judge scores and the agreement with the answer score.
 8. **Reproducibility.** Every field of the run's record with its API name, and a raw JSON link.
 
-A cell with fewer than six groups shows "Too few groups for an interval".
+A tested comparison with fewer pairs than the minimum shows "Too few pairs", with no interval and no delta.
+An untested cell with fewer than six groups shows "Too few groups for an interval".
 Single facts show "No evidence score by design".
 While a run is a subset or a quick check, every chart and table carries its label.
 
@@ -379,7 +380,7 @@ Browser storage holds only per-reader preferences: the collapsed sidebar, reduce
 
 ## Known gaps and open owner questions
 
-Recorded at CP2 (`HITL_STATUS.md`) and standing as built until the owner revisits them:
+Recorded at CP2 (`docs/reference/hitl-history.md`) and standing as built until the owner revisits them:
 
 - Overview tiles show no per-approach interval (D-048).
 - The replay layout comes from the final graph, and the default fit frames the evidence path with an out-of-view note (D-049, D-050).

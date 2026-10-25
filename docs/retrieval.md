@@ -27,7 +27,8 @@ Four items reached the prompt: INC_037 and three support cases.
 The model answered that the sources do not contain the answer.
 This is the designed behaviour of D-025, not a defect, and neither the rule nor the questions were changed, because that would favour one approach.
 
-D-025 is approved (CP1 part 2).
+D-025 was presented with CP1 part 2, which the project owner approved.
+DECISIONS.md records it as a controller ruling, and the owner has the method question open before CP3.
 Whether it is still the rule the owner wants, or whether the graph's selection should reach the prompt in some other way, is a method question to settle before CP3, the official run.
 Changing it is a method change that needs the owner's approval first.
 Until then this page describes the rule as built.

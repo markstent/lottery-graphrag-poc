@@ -28,6 +28,7 @@ Offline tests need neither data nor services, because they build a tiny world in
 The backend reads settings from the process environment only.
 The Makefile reads a root `.env` when it exists (it is git-ignored), so copy `.env.example` to `.env` and change what you need, and every `make` target sees it.
 Write `KEY=value` with no quotes, because make reads the file and expands a `$` in a value.
+Make also treats `#` as the start of a comment, so a value containing `#` is cut there without a warning.
 A key left empty is exported as an empty string, and a few settings treat that differently from unset, so delete a line to get its default.
 A process started without `make` (for example `uv run uvicorn` directly) needs the variables exported in its shell.
 The demo targets set `DATASET_DIR`, `TRUTH_LEDGER_PATH` and `QDRANT_COLLECTION` on the command line, which wins over `.env`.
@@ -80,7 +81,6 @@ The demo environment sets `DATASET_DIR=../data/generated/demo-seed2026`, `TRUTH_
 Neo4j holds one world at a time, so after a demo reset the development API reports that the graph holds another world, and the reverse.
 Return to development with `make ingest-graph` and `make index-vector`.
 The benchmark cannot run in the demo environment (see [evaluation.md](evaluation.md)).
-The `demo-reset` command prints "restart serve-demo-api to clear in-memory runs", which is out of date: runs are stored in SQLite and survive a restart.
 
 Which world is the presentation world is an open owner question.
 It is defined by `DATASET_DIR`, which defaults to the dev world, and the four recorded runs were captured on the dev world.
@@ -141,7 +141,6 @@ An official run requires `GENERATION_MODEL_FAMILY`, `JUDGE_MODEL_FAMILY` (differ
 | `make run-smoke`, `run-benchmark`, `run-sweep` | The benchmark runs (see [evaluation.md](evaluation.md)) |
 
 The Makefile is the stable command surface.
-Targets for later phases fail loudly and do not fake success.
 
 ## Recovery and troubleshooting
 
@@ -193,12 +192,13 @@ A key shown commented in that file must stay unset, not empty, to get its defaul
 | Judge | `JUDGE_PROVIDER`, `JUDGE_MODEL`, `JUDGE_MODEL_FAMILY`, `JUDGE_API_BASE`, `JUDGE_TEMPERATURE`, `JUDGE_REASONING` | `fake`, `fake-judge-v1`, unset, unset, 0, `default` |
 | Graph | `GRAPH_DEPTH`, `GRAPH_MAX_NODES_PER_HOP`, `GRAPH_MAX_EDGES_PER_NODE_TYPE`, `GRAPH_MAX_TOTAL_NODES`, `GRAPH_REFERENCE_DATE` | 2, 100, 4, 200, end of the dataset window |
 | API | `CORS_ORIGINS`, `BENCHMARK_DIR`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `LOG_LEVEL` | the two `localhost:5173` and `127.0.0.1:5173` origins, `data/evaluation/runs`, `data/app.db`, 500, 15, `INFO` |
-| Test flags | `GRAPH_E2E`, `VECTOR_E2E`, `LIVE_WORLD_E2E` | unset |
+| Test flags | `GRAPH_E2E`, `VECTOR_E2E`, `LIVE_WORLD_E2E` | unset. `make test` runs pytest with `GRAPH_E2E` unset even when `.env` sets it, so the live graph tests, which wipe Neo4j, run only through `make test-graph`. |
 
 The API settings in the last two groups are read once when the app is created, and a change needs a restart.
 `.env.example` sets `RERANK_PROVIDER=cross_encoder` explicitly, although its own comment says an unset value means the lexical judge under the hashing embedder.
 Exporting the whole file in a hashing setup therefore keeps the cross-encoder.
-`docker-compose.yml` reads `NEO4J_PASSWORD` (default `devpassword`), so a changed password must be exported before `make services-up` and before the backend.
+`docker-compose.yml` reads `NEO4J_PASSWORD` (default `devpassword`), so a changed password set in `.env` reaches `make services-up` and every other `make` target.
+A process started without `make` needs it exported.
 
 ## Testing and CI
 

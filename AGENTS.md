@@ -58,7 +58,7 @@ Use this precedence when requirements conflict:
 
 1. `AGENTS.md`
 2. explicit instructions from the project owner
-3. `README.md`
+3. `docs/superpowers/specs/2026-10-18-overhaul-design.md`
 4. `docs/architecture.md`
 5. `docs/data.md`
 6. `docs/graph-and-ontology.md`
@@ -68,7 +68,8 @@ Use this precedence when requirements conflict:
 10. `docs/api.md`
 11. `docs/ux.md`
 12. `docs/operations.md`
-13. existing implementation
+13. `README.md`
+14. existing implementation
 
 `docs/reference/` is an archive of earlier specifications.
 It records history and is not a source of truth.
@@ -285,9 +286,9 @@ The project owner approved the overhaul design on 2026-10-18.
 For the v2 work the approval model is one design document, then three checkpoints.
 
 - The design document is `docs/superpowers/specs/2026-10-18-overhaul-design.md`.
-- CP1 Experiment: stop after the data layer, pipelines, question bank and harness are built.
+- CP1 Experiment: stop after world v2, ontology v2, eight planted scenarios, pipelines v2, bank 2.0.0, harness v2 and a small real-model smoke run.
 - CP2 Product: stop after Overview, Live Lab, Data Model and Help are built against the live API.
-- CP3 Official run: stop after the Results screen is built and a model and cost choice is ready, before any official run.
+- CP3 Official run: stop after the Results screen, the model and cost choice for the official run, and a dry run on four questions, before the full run.
 
 HITL-12 supersedes gates HITL-03 to HITL-09 for the v2 work.
 The agent stops at each checkpoint and reports with artefacts and screenshots, as in "What to Provide at Every HITL Gate".
@@ -519,14 +520,7 @@ Use design tokens.
 
 The application must remain visually coherent.
 
-Follow:
-
-```text
-docs/reference/ux/visual-language.md
-docs/reference/ux/screen-specifications.md
-docs/reference/ux/interaction-specification.md
-docs/reference/ux/animation-specification.md
-```
+Follow `docs/ux.md`, which holds the screens, visual language, interaction, animation and accessibility rules.
 
 Primary target is a 16:9 desktop presentation.
 
