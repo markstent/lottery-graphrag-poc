@@ -314,7 +314,7 @@ In presentation mode the sidebar is hidden and the type is larger, and no replay
 
 ### 3.6 Baselines
 
-The runs behind these images are captured from the real API, except the whole-bank run in `results-official`, `results-table-expanded` and `results-failure-filter`, which is generated and labelled "Fixture run (test values)".
+The runs behind these images are captured from the API of the development world, except the whole-bank run in `results-official`, `results-table-expanded` and `results-failure-filter`, which is generated and labelled "Fixture run (test values)".
 Its numbers are test values, not results.
 
 - `results-official`
@@ -485,3 +485,5 @@ Product copy is counted from the text a person can see, outside tests, fixtures,
 The cap is 1,300 words outside Help and 1,650 words in Help prose, and the counts at the time of writing are 1,298 and 1,081 (D-055).
 The count outside Help includes the Results screen and its start form, and it leaves out the operands of comparisons in code (`status === 'ready'`), which are never drawn.
 The spec's target of about 1,200 words outside Help is not met: the remaining copy is purpose sentences, state messages, form labels and axis and legend labels, which are required.
+The banned-word check covers the same text.
+Text from the API, such as a run's headline sentences, is shown verbatim and is outside both the count and the check; a smoke run's headline therefore says "the fake generator" on screen, because it describes what produced the numbers.

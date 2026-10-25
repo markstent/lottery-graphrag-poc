@@ -96,6 +96,7 @@ function textsOf(node: ts.Node | undefined): string[] {
     return [...textsOf(node.whenTrue), ...textsOf(node.whenFalse)]
   if (ts.isBinaryExpression(node)) {
     // `a === 'ready'` compares and shows nothing; `cond && 'text'` shows its right side.
+    // Any other operator, and the left of `&&`, is not counted: no source draws text from one.
     switch (node.operatorToken.kind) {
       case ts.SyntaxKind.AmpersandAmpersandToken:
         return textsOf(node.right)
