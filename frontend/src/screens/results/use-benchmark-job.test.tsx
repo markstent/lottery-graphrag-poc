@@ -166,15 +166,36 @@ describe('useBenchmarkJob', () => {
     expect(result.current.job?.status).toBe('cancelled')
   })
 
-  it('reports a job that cannot be read and stops polling it', async () => {
+  it('retries a failed poll with a short backoff and carries on', async () => {
+    let failures = 2
+    const fetchMock = stubApi({
+      '/api/v1/benchmarks/jobs': [running()],
+      '/api/v1/benchmarks/jobs/J2': () =>
+        failures-- > 0 ? json({}, 503) : json(running()),
+    })
+    const { result } = renderHook(() => useBenchmarkJob(() => {}))
+    await settle()
+    await tick(2000)
+    await tick(1000)
+    await tick(2000)
+    expect(result.current.error).toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    await tick(2000)
+    expect(fetchMock).toHaveBeenCalledTimes(5)
+  })
+
+  it('reports a job that cannot be read after three tries and stops', async () => {
     const fetchMock = stubApi({
       '/api/v1/benchmarks/jobs': [running()],
     })
     const { result } = renderHook(() => useBenchmarkJob(() => {}))
     await settle()
     await tick(2000)
+    await tick(1000)
+    expect(result.current.error).toBeNull()
+    await tick(2000)
     expect(result.current.error).toBeInstanceOf(Error)
     await tick(10_000)
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
   })
 })

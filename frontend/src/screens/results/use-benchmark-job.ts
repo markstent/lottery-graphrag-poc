@@ -1,7 +1,8 @@
 /**
  * The benchmark job the screen follows. On mount it looks for a job that is
  * still running (the server lists every job since it started, newest first)
- * and follows that one; it asks again every two seconds until the job ends,
+ * and follows that one; it asks again every two seconds until the job ends (a
+ * failed poll is tried again with a short backoff before the error shows),
  * and stops when the screen goes away.
  */
 
@@ -18,6 +19,9 @@ import {
 type Job = Schemas['BenchmarkJob']
 
 export const POLL_MS = 2000
+/** A failed poll is tried again this many times in all, each after a longer wait, before the error shows. */
+export const POLL_TRIES = 3
+export const RETRY_MS = 1000
 
 const asError = (error: unknown) =>
   error instanceof Error ? error : new Error(String(error))
@@ -50,15 +54,20 @@ export function useBenchmarkJob(onCompleted: (runId: string) => void) {
     if (jobId === null || !running) return
     const controller = new AbortController()
     let timer: ReturnType<typeof setTimeout>
+    let failures = 0
     const poll = async () => {
       try {
         const next = await getJob(jobId, controller.signal)
+        failures = 0
         setJob(next)
         if (next.status === 'completed' && next.run_id)
           completed.current(next.run_id)
         if (next.status === 'running') timer = setTimeout(poll, POLL_MS)
       } catch (failure) {
-        if (!controller.signal.aborted) setError(asError(failure))
+        if (controller.signal.aborted) return
+        failures += 1
+        if (failures < POLL_TRIES) timer = setTimeout(poll, RETRY_MS * failures)
+        else setError(asError(failure))
       }
     }
     timer = setTimeout(poll, POLL_MS)
