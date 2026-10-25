@@ -198,4 +198,39 @@ describe('useBenchmarkJob', () => {
     await tick(10_000)
     expect(fetchMock).toHaveBeenCalledTimes(4)
   })
+
+  it('attaches to the running job when a start meets a 409 for it', async () => {
+    let listed: Job[] = []
+    stubApi({
+      '/api/v1/benchmarks/jobs': () => json(listed),
+      '/api/v1/benchmarks/jobs/J2': () => json(running()),
+      '/api/v1/benchmarks': () => {
+        listed = [running()]
+        return json(
+          {
+            error: {
+              error_code: 'CONFLICT',
+              message: 'A benchmark is already running.',
+              retryable: false,
+            },
+          },
+          409,
+        )
+      },
+    })
+    const { result } = renderHook(() => useBenchmarkJob(() => {}))
+    await settle()
+    expect(result.current.job).toBeNull()
+    await act(() =>
+      result.current.start({
+        kind: 'smoke',
+        seeds: [2026],
+        repeats: 1,
+        strata: null,
+        limit: null,
+      }),
+    )
+    expect(result.current.job?.job_id).toBe('J2')
+    expect(result.current.error).toBeNull()
+  })
 })

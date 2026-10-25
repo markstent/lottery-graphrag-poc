@@ -15,6 +15,7 @@ import {
   startBenchmark,
   type Schemas,
 } from '../../api/client'
+import { ApiError } from '../../api/http'
 
 type Job = Schemas['BenchmarkJob']
 
@@ -77,10 +78,22 @@ export function useBenchmarkJob(onCompleted: (runId: string) => void) {
     }
   }, [jobId, running])
 
-  /** Starts a run; a refusal (409, 422, 503) reaches the caller. */
+  /**
+   * Starts a run; a refusal (409, 422, 503) reaches the caller. A 409 because
+   * a job is already running (started in another tab, say) attaches to that
+   * job instead.
+   */
   const start = useCallback(async (body: Schemas['BenchmarkStart']) => {
     setError(null)
-    setJob(await startBenchmark(body))
+    try {
+      setJob(await startBenchmark(body))
+    } catch (failure) {
+      if (!(failure instanceof ApiError) || failure.status !== 409)
+        throw failure
+      const attached = (await listJobs()).find((j) => j.status === 'running')
+      if (attached === undefined) throw failure
+      setJob(attached)
+    }
   }, [])
 
   /** Asks the job to stop; it stops before its next question, and polling shows when it has. */
