@@ -179,11 +179,15 @@ def no_ollama_without_the_live_world(monkeypatch: pytest.MonkeyPatch) -> Iterato
 
 
 @pytest.fixture(autouse=True)
-def hashing_embeddings(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Tests embed with the deterministic hashing embedder, so the embedding
-    readiness check and the lab never need a running Ollama. A live test
-    that needs the real model calls ``live.use_the_real_world``."""
+def offline_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Tests embed with the deterministic hashing embedder and generate and
+    judge with the fake providers, whatever the shell or ``.env`` holds, so
+    the readiness checks and the lab never need a running Ollama. A live
+    test that needs the real model calls ``live.use_the_real_world``; a test
+    of litellm configuration sets it itself."""
     monkeypatch.setenv("EMBEDDING_PROVIDER", "hashing")
+    monkeypatch.setenv("GENERATION_PROVIDER", "fake")
+    monkeypatch.setenv("JUDGE_PROVIDER", "fake")
 
 
 @pytest.fixture(autouse=True)
