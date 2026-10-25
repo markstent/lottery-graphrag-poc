@@ -5,6 +5,7 @@
 // are a chunk of their own, fetched when that recording is chosen.
 import type { components } from '../api/schema'
 import index from './fixtures/recorded/index.json'
+import { EVENT_TYPES } from '../api/stream'
 import type { RunEvent } from './reduce'
 
 export interface RecordedRunSummary {
@@ -30,10 +31,31 @@ const FILES = import.meta.glob<RecordedRun>(
   { import: 'default' },
 )
 
-/** Fetches one recording; rejects when the chunk cannot be loaded or has no such recording. */
+export class UnknownEventTypeError extends Error {
+  constructor(instanceId: string, eventType: string, position: number) {
+    super(
+      `Recording ${instanceId} has an event of unknown type "${eventType}" at position ${position}.`,
+    )
+    this.name = 'UnknownEventTypeError'
+  }
+}
+
+/** Returns the recording when every event is of a type the contract knows, so a stale capture fails here, not part way through a replay. */
+export function checkRecording(run: RecordedRun): RecordedRun {
+  const position = run.events.findIndex((e) => !(e.event_type in EVENT_TYPES))
+  if (position >= 0)
+    throw new UnknownEventTypeError(
+      run.instance_id,
+      run.events[position].event_type,
+      position,
+    )
+  return run
+}
+
+/** Fetches one recording; rejects when the chunk cannot be loaded, has no such recording or holds an event the contract does not know. */
 export function loadRecording(instanceId: string): Promise<RecordedRun> {
   const load = FILES[`./fixtures/recorded/${instanceId}.json`]
   return load
-    ? load()
+    ? load().then(checkRecording)
     : Promise.reject(new Error(`No recording for ${instanceId}.`))
 }

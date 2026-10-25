@@ -47,6 +47,7 @@ function show(run: Recording, options: Options = {}) {
         settled
         onOpenNode={options.onOpenNode ?? vi.fn()}
         onOpenGroup={options.onOpenGroup ?? vi.fn()}
+        openGroup={null}
       />
     </SettingsProvider>,
   )
@@ -310,6 +311,7 @@ describe('CanvasArea', () => {
           settled
           onOpenNode={vi.fn()}
           onOpenGroup={vi.fn()}
+          openGroup={null}
         />
       </SettingsProvider>,
     )

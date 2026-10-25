@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { loadRecording, RECORDED_INDEX } from './recorded'
+import {
+  checkRecording,
+  loadRecording,
+  RECORDED_INDEX,
+  UnknownEventTypeError,
+} from './recorded'
 import { reduceAll } from './reduce'
 import { RECORDINGS } from '../test/recordings'
 
@@ -56,6 +61,22 @@ describe('recorded runs', () => {
     expect((await loadRecording(first.instance_id)).run_id).toBe(first.run_id)
     await expect(loadRecording('L99-unknown')).rejects.toThrow(
       'No recording for L99-unknown.',
+    )
+  })
+
+  it('a recording with an unknown event type is refused', () => {
+    const [first] = RECORDINGS
+    expect(checkRecording(first)).toBe(first)
+    const forged = {
+      ...first,
+      events: [
+        ...first.events.slice(0, 2),
+        { ...first.events[2], event_type: 'graph.teleported' },
+      ],
+    }
+    expect(() => checkRecording(forged as never)).toThrow(UnknownEventTypeError)
+    expect(() => checkRecording(forged as never)).toThrow(
+      `Recording ${first.instance_id} has an event of unknown type "graph.teleported" at position 2.`,
     )
   })
 })

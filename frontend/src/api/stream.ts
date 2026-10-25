@@ -35,7 +35,7 @@ export const UNREADABLE_MESSAGE =
 const CLOSED = 2
 
 // tsc fails here when the contract gains or loses an event type.
-const EVENT_TYPES = {
+export const EVENT_TYPES = {
   'run.started': true,
   'pipeline.started': true,
   'pipeline.completed': true,
