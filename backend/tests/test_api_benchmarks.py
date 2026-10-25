@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import shutil
 import threading
 import time
@@ -399,6 +400,21 @@ def test_the_resume_message_names_a_root_relative_out_that_the_cli_resolves(
     shown = body.message.split(" --out ")[1].removesuffix(" --resume")
     assert shown == "data/evaluation/runs/20261025T000000Z-smoke"
     assert cli._resolved(Path(shown)) == out_dir
+
+
+def test_the_resume_command_runs_from_the_repository_root_and_parses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    out_dir = REPO_ROOT / "data" / "evaluation" / "runs" / "20261025T000000Z-smoke"
+    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    monkeypatch.setattr(benchmarks, "kept_world_count", lambda _dir: 1)
+    body = benchmarks._with_kept_worlds(RuntimeError("x"), request, out_dir)
+    assert body is not None
+    command = shlex.split(body.message.split("resume with: ")[1])
+    # The Makefile's own form: uv is pointed at the backend project, not run from inside it.
+    assert command[:7] == ["uv", "--directory", "backend", "run", "python", "-m", "app.evaluation"]
+    args = cli.build_parser().parse_args(command[7:])
+    assert args.resume is True and args.out == Path("data/evaluation/runs/20261025T000000Z-smoke")
 
 
 def test_cancelling_a_finished_job_is_refused(

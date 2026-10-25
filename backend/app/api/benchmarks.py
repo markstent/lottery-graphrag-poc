@@ -459,7 +459,11 @@ def _with_kept_worlds(
         options.append(f"--limit {request.limit}")
     # Relative to the repository root when inside it: the CLI resolves --out from there.
     shown = out_dir.relative_to(REPO_ROOT) if out_dir.is_relative_to(REPO_ROOT) else out_dir
-    command = f"uv run python -m app.evaluation run {' '.join(options)} --out {shown} --resume"
+    # The form the Makefile uses, so the command works pasted at the repository root.
+    command = (
+        "uv --directory backend run python -m app.evaluation run "
+        f"{' '.join(options)} --out {shown} --resume"
+    )
     worlds = "world was" if kept == 1 else "worlds were"
     return body.model_copy(
         update={"message": f"{body.message} {kept} finished {worlds} kept; resume with: {command}"}
