@@ -20,7 +20,39 @@ EXCLUDED_PREFIXES = ("docs/reference/", "docs/superpowers/", ".superpowers/")
 EXCLUDED_PARTS = ("node_modules",)
 EXCLUDED_FILES = ("CHANGELOG.md",)
 
-LINK = re.compile(r"\[[^\]]*\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+LINKS = (
+    re.compile(r"\[[^\]]*\]\(<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\)"),  # inline, optional <...>
+    re.compile(r"^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)>?", re.MULTILINE),  # reference-style
+)
+PRIMARY_FILES = {
+    "README.md",
+    "docs/architecture.md",
+    "docs/data.md",
+    "docs/graph-and-ontology.md",
+    "docs/scenarios.md",
+    "docs/retrieval.md",
+    "docs/evaluation.md",
+    "docs/api.md",
+    "docs/ux.md",
+    "docs/operations.md",
+}
+# Governance files outside the ten: a few planning documents are replaced by these.
+GOVERNANCE_FILES = {"AGENTS.md", "HITL_STATUS.md"}
+MOVED_FOLDERS = (
+    "ux",
+    "product",
+    "architecture",
+    "data",
+    "retrieval",
+    "testing",
+    "development",
+    "demo",
+)
+# A moved folder as whole path segments, with or without a trailing slash, but not a
+# primary file such as docs/ux.md; and a numbered specification by its short form.
+OLD_FORMS = re.compile(rf"(?<![/\w])docs/(?:(?:{'|'.join(MOVED_FOLDERS)})(?![\w-]|\.md)|0[1-8]-)")
+ARCHIVE_LINE = re.compile(r"^- `(docs/reference/[^`]+)`.* Replaced by (.+)\.$", re.MULTILINE)
+
 SCHEME = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 ARCHIVE_ENTRY = re.compile(r"^- `(docs/reference/[^`]+)`", re.MULTILINE)
 
@@ -60,7 +92,8 @@ def test_every_relative_markdown_link_resolves() -> None:
     broken: list[str] = []
     for path in _markdown_files():
         text = _fenced_free((REPO / path).read_text(encoding="utf-8"))
-        for target in LINK.findall(text):
+        targets = [t for pattern in LINKS for t in pattern.findall(text)]
+        for target in targets:
             if SCHEME.match(target) or target.startswith("#"):
                 continue
             file_part = target.split("#", 1)[0]
@@ -87,3 +120,30 @@ def test_no_code_names_a_moved_document() -> None:
             if not _is_excluded(file) and pattern.search(rest):
                 still_named.append(f"{original} (now {archived}): {file}:{rest.strip()[:80]}")
     assert not still_named, "documents named at their old path:\n" + "\n".join(still_named)
+
+    forms = [
+        f"{file}:{rest.strip()[:80]}"
+        for line in _git(
+            "grep",
+            "-nIE",
+            r"docs/(0[1-8]-|[a-z]+)",
+            "--",
+            ".",
+            allow_no_match=True,
+        )
+        for file, _, rest in [line.split(":", 2)]
+        if not _is_excluded(file) and OLD_FORMS.search(rest)
+    ]
+    assert not forms, "moved folders or short numbered forms still named:\n" + "\n".join(forms)
+
+
+def test_archive_entries_name_a_primary_replacement() -> None:
+    text = ARCHIVE_README.read_text(encoding="utf-8")
+    entries = ARCHIVE_LINE.findall(text)
+    assert len(entries) == len(ARCHIVE_ENTRY.findall(text)), "an entry has no 'Replaced by' clause"
+    for archived, replacement in entries:
+        named = set(re.findall(r"`([^`]+)`", replacement))
+        assert named, f"{archived}: no replacement named"
+        assert named & (PRIMARY_FILES | GOVERNANCE_FILES), (
+            f"{archived}: replacement is not a primary or governance file: {named}"
+        )

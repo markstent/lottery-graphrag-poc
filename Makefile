@@ -73,8 +73,8 @@ index-vector: ## Build the document vector index in Qdrant (Phase 8)
 	$(UV) run python -m app.retrieval.standard
 
 traces: ## Write side-by-side A/B/C example traces (fake generator; needs the dev graph and index)
-	$(UV) run python -m app.traces --generator fake > docs/reference/retrieval/example-traces.md.tmp
-	mv docs/reference/retrieval/example-traces.md.tmp docs/reference/retrieval/example-traces.md
+	$(UV) run python -m app.traces --generator fake > docs/evaluation/example-traces.md.tmp
+	mv docs/evaluation/example-traces.md.tmp docs/evaluation/example-traces.md
 
 pull-models: ## Pull the local embedding model
 	ollama pull bge-m3

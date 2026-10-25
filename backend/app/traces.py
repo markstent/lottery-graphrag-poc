@@ -6,7 +6,7 @@ pipeline A (conventional RAG), B (graph, no ontology) and C (graph plus
 ontology) against the live development world: Qdrant (shared hybrid index),
 Neo4j (dev graph), Ollama embeddings and the configured generator. Prints a
 markdown document so the output can be committed verbatim as
-docs/reference/retrieval/example-traces.md.
+docs/evaluation/example-traces.md.
 
 Usage:
     uv run python -m app.traces [--generator fake|litellm]
