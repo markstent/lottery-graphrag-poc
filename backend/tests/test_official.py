@@ -1370,6 +1370,29 @@ def test_a_smoke_run_may_resume_across_a_dirty_checkout(
     assert [r["seed"] for r in fresh.runners] == [2027, 2028]
 
 
+def test_a_smoke_resume_uses_the_stand_in_generators_name(
+    tmp_path: Path, data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+    # What the real smoke runner records, whatever the environment names.
+    _edit_kept(
+        failing, 2026, lambda saved: saved["record"].update(generation_model="fake-answer-v1")
+    )
+    monkeypatch.setenv("GENERATION_MODEL", "ollama/qwen3.6:latest")
+    assert official.current_settings("smoke", 1, 2026, 2)["generation_model"] == "fake-answer-v1"
+    _run(fresh, resume=True)
+    assert [r["seed"] for r in fresh.runners] == [2027, 2028]
+
+
+def test_cli_joins_a_relative_out_to_the_repository_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli, "REPO_ROOT", tmp_path)
+    assert cli._resolved(Path("data/runs/x")) == tmp_path / "data/runs/x"
+    assert cli._resolved(tmp_path / "abs") == tmp_path / "abs"
+    assert cli._resolved(None) is None
+
+
 def test_resume_refuses_a_directory_that_does_not_exist(recorder: Recorder) -> None:
     with pytest.raises(FileNotFoundError, match="no run to resume"):
         _run(recorder, resume=True)

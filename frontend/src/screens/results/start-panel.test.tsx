@@ -323,6 +323,30 @@ describe('StartPanel', () => {
     expect(screen.getByRole('button', { name: 'Start a run' })).toBeVisible()
   })
 
+  it('shows what a cancelled job kept, below its own words', () => {
+    show({
+      job: job({
+        status: 'cancelled',
+        error: {
+          error_code: 'CANCELLED',
+          message: 'The run was cancelled. 1 finished world was kept.',
+          retryable: true,
+        },
+      }),
+    })
+    expect(
+      screen.getByText('Cancelled. No results were written.'),
+    ).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The run was cancelled. 1 finished world was kept.',
+    )
+  })
+
+  it('shows no alert for a cancelled job without an error', () => {
+    show({ job: job({ status: 'cancelled' }) })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('shows the message of a failed job', () => {
     show({
       job: job({

@@ -453,9 +453,12 @@ export function StartArea({
   const running = job?.status === 'running'
   const note =
     job?.status === 'cancelled' ? (
-      <p role="status" className="text-sm text-text-primary">
-        Cancelled. No results were written.
-      </p>
+      <>
+        <p role="status" className="text-sm text-text-primary">
+          Cancelled. No results were written.
+        </p>
+        {job.error && <Problem message={job.error.message} />}
+      </>
     ) : job?.status === 'failed' ? (
       <Problem message={job.error?.message ?? 'The run failed.'} />
     ) : null

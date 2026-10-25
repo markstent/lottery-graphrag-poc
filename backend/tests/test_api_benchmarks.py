@@ -26,6 +26,7 @@ from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
+from app.evaluation import __main__ as cli
 from app.evaluation import official
 from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
@@ -382,6 +383,22 @@ def test_a_cancelled_job_with_kept_worlds_names_the_resume_command(tmp_path: Pat
     assert body is not None and body.error_code == "CANCELLED"
     assert "1 finished world was kept" in body.message and "--resume" in body.message
     assert benchmarks._with_kept_worlds(None, request, tmp_path / "none") is None
+
+
+def test_the_resume_message_names_a_root_relative_out_that_the_cli_resolves(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(benchmarks, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(cli, "REPO_ROOT", tmp_path)
+    out_dir = tmp_path / "data" / "evaluation" / "runs" / "20261025T000000Z-smoke"
+    (out_dir / "worlds").mkdir(parents=True)
+    (out_dir / "worlds" / "2026.json").write_text("{}")
+    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    body = benchmarks._with_kept_worlds(RuntimeError("x"), request, out_dir)
+    assert body is not None
+    shown = body.message.split(" --out ")[1].removesuffix(" --resume")
+    assert shown == "data/evaluation/runs/20261025T000000Z-smoke"
+    assert cli._resolved(Path(shown)) == out_dir
 
 
 def test_cancelling_a_finished_job_is_refused(

@@ -89,6 +89,7 @@ from app.evaluation.settings_check import (
 from app.evaluation.statistics import cluster_bootstrap, points
 from app.graph import __main__ as graph_cli
 from app.lab import build_generator, build_lab
+from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.index import MANIFEST_NAME, build_index, build_store
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 from app.scenarios.ledger import DEFAULT_TRUTH_PATH
@@ -628,7 +629,11 @@ def _load_kept_worlds(
 def current_settings(kind: str, repeats: int, seed: int, depth: int) -> dict[str, Any]:
     """The record fields this process would write for a run, with no world prepared."""
     judge = FakeJudge() if kind == "smoke" else GatewayJudge(judge_settings_from_env())
-    return settings_fields(world_settings(world_paths(seed), depth), judge, kind, repeats)
+    fields = settings_fields(world_settings(world_paths(seed), depth), judge, kind, repeats)
+    if kind == "smoke":
+        # A smoke run always uses the stand-in generator, whatever GENERATION_MODEL says.
+        fields["generation_model"] = FakeAnswerGenerator().model_name
+    return fields
 
 
 def _require_same_settings(
