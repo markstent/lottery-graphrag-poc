@@ -154,7 +154,7 @@ class Recorder:
             }
         )
         fail = paths.seed == self.fail_on
-        return FakeRunner(paths.seed, bank, kind, depth, pipelines, fail)
+        return FakeRunner(paths.seed, bank, kind, depth, pipelines, fail, repeats)
 
 
 class FakeRunner:
@@ -166,8 +166,10 @@ class FakeRunner:
         depth: int,
         pipelines: tuple[str, ...],
         fail: bool,
+        repeats: int = 3,
     ) -> None:
         self.seed, self.bank, self.kind, self.depth = seed, bank, kind, depth
+        self.repeats = repeats
         self.pipelines, self.fail = pipelines, fail
 
     def run(self, on_instance: InstanceHook | None = None) -> WorldRun:
@@ -183,6 +185,7 @@ class FakeRunner:
             world_dir=f"data/generated/dev-seed{self.seed}",
             bank_hash=self.bank.bank_hash,
             graph_limits={"depth": self.depth},
+            repeats=self.repeats,
         )
         results = [
             _result(instance, {t: v for t, v in _graded(k).items() if t in self.pipelines})
@@ -722,13 +725,14 @@ def test_run_files_are_written_atomically(
     )
     targets = [target.name for _, target in replaced]
     # summary.json, the file the API reads, lands last.
-    assert targets == ["results.json", "report.md", "summary.json"]
-    assert all(source.parent == target.parent == recorder.tmp for source, target in replaced)
+    assert targets == ["2026.json", "results.json", "report.md", "summary.json"]
+    assert all(source.parent == target.parent for source, target in replaced)
     assert all(source.name != target.name for source, target in replaced)
     assert sorted(p.name for p in recorder.tmp.iterdir()) == [
         "report.md",
         "results.json",
         "summary.json",
+        "worlds",
     ]
 
 
@@ -748,7 +752,7 @@ def test_a_failed_write_leaves_no_partial_file(
             steps=recorder.steps,
             runner_factory=recorder.runner,
         )
-    assert list(recorder.tmp.iterdir()) == []
+    assert list(recorder.tmp.rglob("*")) == [recorder.tmp / "worlds"]
 
 
 def test_a_run_refuses_a_directory_that_holds_a_run(recorder: Recorder) -> None:
@@ -923,7 +927,13 @@ def test_cli_run_passes_its_options(captured: dict[str, Any], tmp_path: Path) ->
     assert code == 0
     args, kwargs = captured["run"]
     assert args == ("official", (2026, 2027))
-    assert kwargs == {"repeats": 3, "out_dir": out, "strata": ["H1", "H3"], "limit": 2}
+    assert kwargs == {
+        "repeats": 3,
+        "out_dir": out,
+        "strata": ["H1", "H3"],
+        "limit": 2,
+        "resume": False,
+    }
 
 
 def test_cli_run_defaults_to_three_seeds_and_a_run_directory(
@@ -1171,3 +1181,156 @@ def test_settings_are_checked_before_any_world_is_prepared(
                 runner_factory=recorder.runner,
             )
     assert recorder.generated == recorder.ingested == []
+
+
+# --- Kept worlds and resume ------------------------------------------------------
+
+
+def _run(recorder: Recorder, seeds: tuple[int, ...] = (2026, 2027, 2028), **options: Any) -> Any:
+    options = {"kind": "smoke", "repeats": 1, **options}
+    return run_benchmark(
+        options.pop("kind"),
+        seeds,
+        out_dir=recorder.tmp,
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+        **options,
+    )
+
+
+def _kept(recorder: Recorder, seed: int) -> dict[str, Any]:
+    return json.loads((recorder.tmp / "worlds" / f"{seed}.json").read_text())
+
+
+def _edit_kept(recorder: Recorder, seed: int, edit: Callable[[dict[str, Any]], None]) -> None:
+    saved = _kept(recorder, seed)
+    edit(saved)
+    (recorder.tmp / "worlds" / f"{seed}.json").write_text(json.dumps(saved))
+
+
+def _failed_then_fresh(tmp_path: Path, **options: Any) -> tuple[Recorder, Recorder]:
+    """A run that kept world 2026 and failed in 2027, and a recorder to resume it."""
+    failing = Recorder(tmp_path, fail_on=2027)
+    with pytest.raises(RuntimeError, match="world 2027 failed"):
+        _run(failing, **options)
+    return failing, Recorder(tmp_path)
+
+
+def test_failed_world_keeps_completed_worlds(recorder_failing_on_2027: Recorder) -> None:
+    recorder = recorder_failing_on_2027
+    with pytest.raises(RuntimeError, match="world 2027 failed"):
+        _run(recorder)
+    saved = _kept(recorder, 2026)
+    assert saved["kind"] == "smoke" and saved["selection"] == {"strata": None, "limit": None}
+    assert saved["world"]["world_seed"] == 2026 and saved["world"]["results"]
+    assert saved["record"]["world_seed"] == 2026
+    assert not (recorder.tmp / "worlds" / "2027.json").exists()
+    for name in ("summary.json", "results.json", "report.md"):
+        assert not (recorder.tmp / name).exists()
+    assert recorder.ingested[-1] == 2026
+
+
+def test_resume_skips_kept_worlds(tmp_path: Path, data_dir: Path) -> None:
+    _, fresh = _failed_then_fresh(tmp_path)
+    _run(fresh, resume=True)
+    assert [r["seed"] for r in fresh.runners] == [2027, 2028]
+    clean = Recorder(tmp_path / "clean")
+    _run(clean)
+    resumed = json.loads((fresh.tmp / "results.json").read_text())
+    expected = json.loads((clean.tmp / "results.json").read_text())
+    for payload in (resumed, expected):
+        for record in (payload["reproducibility"]["run"], *payload["reproducibility"]["worlds"]):
+            record.pop("started_at")
+    assert resumed == expected
+    assert sorted(p.name for p in (fresh.tmp / "worlds").iterdir()) == [
+        "2026.json",
+        "2027.json",
+        "2028.json",
+    ]
+
+
+def test_resume_refuses_different_settings(
+    tmp_path: Path, gateway_env: None, data_dir: Path
+) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
+    # The fake runner's record is not the environment's; make the kept one match it.
+    expected = official._expected_settings("official", 3)
+    _edit_kept(failing, 2026, lambda saved: saved["record"].update(expected))
+    _edit_kept(failing, 2026, lambda saved: saved["record"].update(max_tokens=4096))
+    with pytest.raises(ValueError, match="max_tokens") as error:
+        _run(fresh, kind="official", repeats=3, resume=True)
+    assert "4096" in str(error.value)
+    assert fresh.generated == fresh.ingested == [] and fresh.runners == []
+
+
+def test_resume_refuses_settings_that_differ_in_the_first_new_world(
+    tmp_path: Path, data_dir: Path
+) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+    _edit_kept(failing, 2026, lambda saved: saved["record"].update(top_k=3))
+    with pytest.raises(ValueError, match="top_k"):
+        _run(fresh, resume=True)
+    assert not (fresh.tmp / "worlds" / "2027.json").exists()
+    assert fresh.ingested[-1] == 2026
+
+
+def test_resume_refuses_kept_worlds_that_disagree(tmp_path: Path, data_dir: Path) -> None:
+    failing = Recorder(tmp_path, fail_on=2028)
+    with pytest.raises(RuntimeError):
+        _run(failing)
+    _edit_kept(failing, 2027, lambda saved: saved["record"].update(max_tokens=4096))
+    fresh = Recorder(tmp_path)
+    with pytest.raises(ValueError, match="max_tokens"):
+        _run(fresh, resume=True)
+    assert fresh.generated == []
+
+
+def test_resume_refuses_a_kept_world_of_another_bank(tmp_path: Path, data_dir: Path) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+    _edit_kept(failing, 2026, lambda saved: saved["world"].update(bank_hash="stale"))
+    with pytest.raises(ValueError, match="bank"):
+        _run(fresh, resume=True)
+    assert fresh.generated == []
+
+
+def test_resume_refuses_a_different_selection(tmp_path: Path, data_dir: Path) -> None:
+    _, fresh = _failed_then_fresh(tmp_path)
+    with pytest.raises(ValueError, match="kept world 2026 was a smoke run"):
+        _run(fresh, resume=True, strata=("H1",))
+    assert fresh.generated == []
+
+
+def test_resume_refuses_a_different_kind(tmp_path: Path, data_dir: Path, gateway_env: None) -> None:
+    _, fresh = _failed_then_fresh(tmp_path)
+    with pytest.raises(ValueError, match="kept world 2026 was a smoke run"):
+        _run(fresh, resume=True, kind="official", repeats=3)
+    assert fresh.generated == []
+
+
+def test_resume_without_kept_worlds_is_an_ordinary_run(recorder: Recorder) -> None:
+    _run(recorder, resume=True)
+    assert [r["seed"] for r in recorder.runners] == [2026, 2027, 2028]
+    assert (recorder.tmp / "summary.json").exists()
+
+
+def test_kept_worlds_without_resume_are_refused(tmp_path: Path, data_dir: Path) -> None:
+    _, fresh = _failed_then_fresh(tmp_path)
+    with pytest.raises(FileExistsError, match="resume"):
+        _run(fresh)
+    assert fresh.generated == []
+
+
+@pytest.mark.parametrize("resume", [False, True])
+def test_used_dir_still_refused_without_resume(recorder: Recorder, resume: bool) -> None:
+    _run(recorder)
+    with pytest.raises(FileExistsError, match=r"results\.json"):
+        _run(recorder, resume=resume)
+    assert recorder.generated == [2026, 2027, 2028]
+
+
+def test_cli_resume_needs_out(captured: dict[str, Any], tmp_path: Path) -> None:
+    with pytest.raises(SystemExit):
+        cli.main(["run", "--kind", "smoke", "--resume"])
+    assert "run" not in captured
+    cli.main(["run", "--kind", "smoke", "--resume", "--out", str(tmp_path / "out")])
+    assert captured["run"][1]["resume"] is True

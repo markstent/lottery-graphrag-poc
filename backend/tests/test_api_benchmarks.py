@@ -350,6 +350,29 @@ def test_a_failed_job_reports_the_error_and_publishes_nothing(
     assert failing.ingested == [2026, 2026]
 
 
+def test_failed_job_keeps_worlds_and_publishes_nothing(
+    client: TestClient, tmp_path: Path, runs_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    failing = Recorder(tmp_path, fail_on=2027)
+    monkeypatch.setattr(official, "default_steps", lambda: failing.steps)
+    monkeypatch.setattr(official, "build_runner", failing.runner)
+    job = client.post("/api/v1/benchmarks", json=smoke(seeds=[2026, 2027])).json()
+    finished = wait_job(client, job["job_id"])
+    assert finished["status"] == "failed" and finished["run_id"] is None
+    (kept_dir,) = runs_dir.iterdir()
+    assert [p.name for p in (kept_dir / "worlds").iterdir()] == ["2026.json"]
+    assert not list(runs_dir.glob("*/summary.json"))
+    message = finished["error"]["message"]
+    assert "1 finished world was kept" in message
+    assert (
+        f"--seeds 2026,2027 --repeats 1 --out data/evaluation/runs/{kept_dir.name} --resume"
+        in message
+    )
+    assert "world 2027 failed" not in message
+    assert str(tmp_path) not in message
+    assert client.get("/api/v1/benchmarks").json() == []
+
+
 def test_cancelling_a_finished_job_is_refused(
     client_with_blocking_benchmark: TestClient, gate: threading.Event
 ) -> None:

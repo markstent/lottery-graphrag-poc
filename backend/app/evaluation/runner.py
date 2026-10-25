@@ -284,6 +284,39 @@ class WorldRun:
     unavailable: tuple[Unavailable, ...]
     record: ReproducibilityRecord | None = None
 
+    def to_payload(self) -> dict[str, Any]:
+        """The world as ``results.json`` lists it (without its record, which
+        the run publishes under ``reproducibility``)."""
+        return {
+            "world_seed": self.world_seed,
+            "bank_hash": self.bank_hash,
+            "unavailable": [dataclasses.asdict(u) for u in self.unavailable],
+            "results": [
+                {
+                    "instance": result.instance.to_payload(),
+                    "runs": {
+                        tag: [run.to_payload() for run in runs] for tag, runs in result.runs.items()
+                    },
+                    "scores": {
+                        tag: [None if s is None else s.to_payload() for s in scores]
+                        for tag, scores in result.scores.items()
+                    },
+                }
+                for result in self.results
+            ],
+        }
+
+
+def world_run_from_payload(payload: dict[str, Any], record: dict[str, Any]) -> WorldRun:
+    """A world read back from :meth:`WorldRun.to_payload` and its record payload."""
+    return WorldRun(
+        world_seed=payload["world_seed"],
+        bank_hash=payload["bank_hash"],
+        results=[instance_result_from_payload(result) for result in payload["results"]],
+        unavailable=tuple(Unavailable(**item) for item in payload["unavailable"]),
+        record=ReproducibilityRecord(**record),
+    )
+
 
 @dataclass(frozen=True, slots=True)
 class Selection:
@@ -344,28 +377,7 @@ class BenchmarkRun:
             "label": self.label,
             "selection": self.selection.to_payload(),
             "reproducibility": self.reproducibility(),
-            "worlds": [
-                {
-                    "world_seed": world.world_seed,
-                    "bank_hash": world.bank_hash,
-                    "unavailable": [dataclasses.asdict(u) for u in world.unavailable],
-                    "results": [
-                        {
-                            "instance": result.instance.to_payload(),
-                            "runs": {
-                                tag: [run.to_payload() for run in runs]
-                                for tag, runs in result.runs.items()
-                            },
-                            "scores": {
-                                tag: [None if s is None else s.to_payload() for s in scores]
-                                for tag, scores in result.scores.items()
-                            },
-                        }
-                        for result in world.results
-                    ],
-                }
-                for world in self.worlds
-            ],
+            "worlds": [world.to_payload() for world in self.worlds],
         }
 
 

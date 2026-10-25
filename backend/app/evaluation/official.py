@@ -11,7 +11,8 @@ last world (or a failure) the presentation world's graph is ingested again.
 ``os.replace`` so the API never reads a half-written summary. A run is
 cancelled cooperatively: between instances and before each world it checks
 its ``cancelled`` flag, and a cancelled run raises :class:`BenchmarkCancelled`
-after restoring the presentation graph, writing nothing.
+after restoring the presentation graph, publishing nothing. Each finished
+world is kept in ``worlds/<seed>.json``, so a failed run can be resumed.
 :func:`run_sweep` runs the multi-hop questions with B and C at each graph
 depth and reports descriptive means only. :func:`compare_runs` pairs two
 official runs of different generation models over the same banks.
@@ -75,10 +76,12 @@ from app.evaluation.runner import (
     Selection,
     WorldRun,
     check_run_config,
+    world_run_from_payload,
 )
 from app.evaluation.settings_check import (
     COMPARE_MAY_DIFFER,
     PER_WORLD_FIELDS,
+    RESUME_MAY_DIFFER,
     describe_differences,
     settings_differences,
 )
@@ -104,6 +107,8 @@ SWEEP_DEPTHS = (0, 1, 2, 3)
 SWEEP_STRATUM = "H1"
 SWEEP_PIPELINES = ("B", "C")
 DATA_DIR = REPO_ROOT / "data"
+# Finished worlds of a run, kept beside it so a failed run can resume.
+WORLDS_DIR = "worlds"
 
 logger = logging.getLogger(__name__)
 
@@ -463,9 +468,16 @@ def run_benchmark(
     runner_factory: RunnerFactory | None = None,
     cancelled: threading.Event | None = None,
     on_progress: ProgressHook | None = None,
+    resume: bool = False,
 ) -> BenchmarkRun:
     """Prepare and run each world in turn, restore the presentation graph,
     then write the run's three files into ``out_dir``.
+
+    Each finished world is also kept in ``out_dir/worlds/<seed>.json``, so a
+    run that fails or is cancelled in a later world keeps the earlier ones
+    and publishes nothing. With ``resume`` the kept worlds are loaded and
+    skipped after their settings are checked (:func:`_load_kept_worlds`);
+    without it, a directory that holds kept worlds is refused.
 
     ``cancelled`` is checked before each world and between instances; once
     it is set the run raises :class:`BenchmarkCancelled`. ``on_progress``
@@ -474,26 +486,157 @@ def run_benchmark(
     _refuse_used_dir(out_dir)
     preflight(kind, repeats)
     selection = Selection(None if strata is None else tuple(strata), limit)
+    kept = _load_kept_worlds(out_dir, seeds, kind, repeats, selection, resume)
     steps = steps or default_steps()
     factory: RunnerFactory = runner_factory or build_runner
-    worlds: list[WorldRun] = []
+    done: dict[int, WorldRun] = dict(kept)
     with _presentation_graph_restored(steps):
         for seed in seeds:
             _stop_if_cancelled(cancelled)
+            if seed in kept:
+                continue
             paths = prepare_world(seed, steps)
             bank = select_instances(load_frozen_bank(paths.bank_path), strata, limit)
             runner = factory(
                 paths, bank, kind=kind, repeats=repeats, pipelines=PIPELINES, depth=depth
             )
-            worlds.append(runner.run(_instance_hook(seed, cancelled, on_progress)))
+            world = runner.run(_instance_hook(seed, cancelled, on_progress))
+            if kept and not done.keys() - kept.keys():
+                _require_same_settings(_record_of(next(iter(kept.values()))), _record_of(world))
+            done[seed] = world
+            _keep_world(out_dir, kind, selection, world)
     _stop_if_cancelled(cancelled)
+    worlds = [done[seed] for seed in seeds]
     run = BenchmarkRun(kind, run_label(kind, selection), _first_record(worlds), worlds, selection)
-    out_dir.mkdir(parents=True, exist_ok=True)
     _write_atomic(out_dir / "results.json", _json(run.to_payload()))
     _write_atomic(out_dir / "report.md", render_report(run))
     # Last: the API publishes summary.json, so the other files exist once it does.
     _write_atomic(out_dir / "summary.json", _json(summarize(run)))
     return run
+
+
+def kept_world_count(out_dir: Path) -> int:
+    """How many finished worlds a run directory holds."""
+    return len(list((out_dir / WORLDS_DIR).glob("*.json")))
+
+
+def _record_of(world: WorldRun) -> dict[str, Any]:
+    if world.record is None:
+        raise RuntimeError(f"world {world.world_seed} has no reproducibility record")
+    return world.record.to_payload()
+
+
+def _keep_world(out_dir: Path, kind: str, selection: Selection, world: WorldRun) -> None:
+    """Write one finished world beside the run, atomically."""
+    (out_dir / WORLDS_DIR).mkdir(parents=True, exist_ok=True)
+    payload = {
+        "kind": kind,
+        "selection": selection.to_payload(),
+        "world": world.to_payload(),
+        "record": _record_of(world),
+    }
+    _write_atomic(out_dir / WORLDS_DIR / f"{world.world_seed}.json", _json(payload))
+
+
+def _load_kept_worlds(
+    out_dir: Path,
+    seeds: Sequence[int],
+    kind: str,
+    repeats: int,
+    selection: Selection,
+    resume: bool,
+) -> dict[int, WorldRun]:
+    """The worlds a resumed run skips; empty for a fresh run in a clean directory.
+
+    Refused before any world is prepared: kept worlds without ``resume``, a
+    kept world outside ``seeds``, another kind or selection, settings that
+    differ from this process's (the run-level fields the environment fixes,
+    and the kept worlds among themselves), or a bank other than the seed's
+    current frozen bank. The first newly run world is checked against the
+    full record afterwards (:func:`_require_same_settings`).
+    """
+    files = {int(path.stem): path for path in (out_dir / WORLDS_DIR).glob("*.json")}
+    if not resume:
+        if files:
+            raise FileExistsError(
+                f"{out_dir} holds {len(files)} kept worlds; resume that run or choose another --out"
+            )
+        return {}
+    stray = sorted(files.keys() - set(seeds))
+    if stray:
+        raise ValueError(f"{out_dir} holds kept worlds {stray} outside the seeds of this run")
+    expected = _expected_settings(kind, repeats)
+    kept: dict[int, WorldRun] = {}
+    for seed, path in sorted(files.items()):
+        saved = json.loads(path.read_text(encoding="utf-8"))
+        if saved["kind"] != kind or saved["selection"] != selection.to_payload():
+            raise ValueError(
+                f"kept world {seed} was a {saved['kind']} run over {saved['selection']}, "
+                f"not a {kind} run over {selection.to_payload()}"
+            )
+        _require_same_settings(
+            {k: saved["record"].get(k) for k in expected}, expected, f"kept world {seed}"
+        )
+        if kept:
+            _require_same_settings(
+                _record_of(next(iter(kept.values()))), saved["record"], f"kept world {seed}"
+            )
+        world = world_run_from_payload(saved["world"], saved["record"])
+        _require_current_bank(world)
+        kept[seed] = world
+    return kept
+
+
+def _require_same_settings(
+    a: dict[str, Any], b: dict[str, Any], where: str = "the first new world"
+) -> None:
+    """Refuse a resume whose settings differ from the kept worlds' beyond
+    when and where they ran (and, between worlds, their own seeds and bank)."""
+    names = settings_differences(a, b, RESUME_MAY_DIFFER | PER_WORLD_FIELDS)
+    if names:
+        raise ValueError(
+            f"{where} was made with different settings than this run, so it cannot be "
+            f"resumed: {describe_differences(names, a, b, ('kept', 'now'))}"
+        )
+
+
+def _expected_settings(kind: str, repeats: int) -> dict[str, Any]:
+    """The run-level record fields this process's environment fixes.
+
+    A smoke run's generator and judge are fakes, so only its kind and
+    repeats are fixed; anything else is checked against the first new world.
+    """
+    expected: dict[str, Any] = {"run_kind": kind, "repeats": repeats}
+    if kind == "smoke":
+        return expected
+    generation = from_env().generation
+    judge = judge_settings_from_env()
+    return {
+        **expected,
+        "generation_model": generation.model,
+        "generation_model_family": generation.model_family,
+        "generation_quantisation": generation.quantisation,
+        "generation_temperature": generation.temperature,
+        "generation_reasoning": generation.reasoning,
+        "max_tokens": generation.max_tokens,
+        "judge_model": judge.model,
+        "judge_model_family": judge.model_family,
+        "judge_temperature": judge.temperature,
+        "judge_reasoning": judge.reasoning,
+    }
+
+
+def _require_current_bank(world: WorldRun) -> None:
+    """A kept world must have been scored on the seed's current frozen bank."""
+    path = world_paths(world.world_seed).bank_path
+    if not path.exists():
+        raise ValueError(f"the frozen bank of kept world {world.world_seed} is missing: {path}")
+    current = load_frozen_bank(path).bank_hash
+    if current != world.bank_hash:
+        raise ValueError(
+            f"kept world {world.world_seed} was scored on bank {world.bank_hash}, "
+            f"but its frozen bank is now {current}"
+        )
 
 
 def _stop_if_cancelled(cancelled: threading.Event | None) -> None:

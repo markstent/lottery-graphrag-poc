@@ -119,6 +119,13 @@ Never commit a key or write it to a log.
 The generation model and the judge for the official run are chosen at CP3, with an estimated cost and duration.
 An official run requires `GENERATION_MODEL_FAMILY`, `JUDGE_MODEL_FAMILY` (different), `GENERATION_PROVIDER=litellm` and `JUDGE_PROVIDER=litellm`.
 
+**A failed official run.**
+Each finished world is kept in `worlds/<seed>.json` inside the run directory, so a failure in world 3 does not lose worlds 1 and 2.
+Nothing is published until the whole run finishes.
+Continue it with `make run-benchmark OUT=data/evaluation/runs/<run id> RESUME=1`, with the same model, judge and options.
+Resume refuses any setting that differs from the kept worlds and says which (see [evaluation.md](evaluation.md)).
+A job started from the API never resumes; its failure message names the command to run.
+
 ## Command reference
 
 | Command | What it does |

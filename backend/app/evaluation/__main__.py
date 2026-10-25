@@ -60,6 +60,11 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--strata", type=_names, default=None, help="Strata to run, e.g. H1,H3.")
     _limit_argument(run)
     _out_argument(run)
+    run.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue the failed run in --out: skip its kept worlds (needs --out).",
+    )
     sweep = commands.add_parser("sweep", help="Run B and C on H1 at each graph depth.")
     _seeds_argument(sweep)
     sweep.add_argument(
@@ -76,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
     compare.add_argument("large", type=Path, help="Run directory of the large model.")
     compare.add_argument("--out", type=Path, default=None, help="Directory for comparison.json.")
     args = parser.parse_args(argv)
+    if args.command == "run" and args.resume and args.out is None:
+        parser.error("--resume needs --out, the directory of the run to continue")
 
     try:
         return _dispatch(args)
@@ -97,6 +104,7 @@ def _dispatch(args: argparse.Namespace) -> int:
             out_dir=out,
             strata=args.strata,
             limit=args.limit,
+            resume=args.resume,
         )
         print(f"wrote {out}")
         return 0

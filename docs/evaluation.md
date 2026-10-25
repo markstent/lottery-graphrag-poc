@@ -256,7 +256,7 @@ make run-sweep
 Direct form, from `backend/`:
 
 ```bash
-uv run python -m app.evaluation run --kind smoke|official [--seeds 2026,2027,2028] [--repeats N] [--strata H1,H3] [--limit N] [--out DIR]
+uv run python -m app.evaluation run --kind smoke|official [--seeds 2026,2027,2028] [--repeats N] [--strata H1,H3] [--limit N] [--out DIR] [--resume]
 uv run python -m app.evaluation sweep [--seeds ...] [--depths 0,1,2,3] [--repeats N] [--limit N] [--out DIR]
 uv run python -m app.evaluation compare SMALL_RUN_DIR LARGE_RUN_DIR [--out DIR]
 uv run python -m app.evaluation bank-doc --bank FILE --out FILE
@@ -265,6 +265,30 @@ uv run python -m app.evaluation bank-doc --bank FILE --out FILE
 Before any world is prepared, the run checks its kind, its repeats and the generator and judge settings, so a wrong setting fails in seconds.
 `--repeats` defaults to 1 for a smoke run and 3 otherwise, and an official run refuses fewer than 3.
 A sweep or official run refuses the stand-in generator and needs a gateway judge.
+
+### Kept worlds and resume
+
+A run writes each finished world to `worlds/<seed>.json` inside its run directory.
+These files stay after a successful run as part of its record.
+If a run fails or is cancelled in a later world, the earlier worlds are already on disk, and nothing is published, because the API publishes only a directory that holds `summary.json`.
+The failed run is continued with the same command and `--out DIR --resume`, or `make run-benchmark OUT=DIR RESUME=1`.
+`--resume` needs `--out`, and it skips the worlds already kept.
+The API never resumes a run; a failed job says how many worlds were kept and names this command.
+
+Resume refuses to mix worlds made under different settings.
+Before any world is prepared, it checks each kept world against this run and against the other kept worlds:
+
+- the run kind and the selection of the bank (`--strata`, `--limit`);
+- the repeats, and for an official run the generation model, its family, quantisation, temperature, reasoning mode and token limit, and the judge model, family, temperature and reasoning mode;
+- the frozen bank of that seed, which must be the one the world was scored on;
+- every other recorded setting, between the kept worlds themselves.
+
+The first newly run world is then checked against the full record of the kept worlds, and the run stops before keeping it if any setting differs.
+Only when the run started, where its world directory is and whether the checkout was dirty may differ.
+A directory that already holds `summary.json` or `results.json` is never resumed, and a directory that holds kept worlds is refused unless `--resume` is given.
+
+`compare` applies the same rule to two runs.
+It refuses runs whose recorded settings differ in anything except the generation model, its family and quantisation, the code revision and where the run happened, and it names every field that differs with both values.
 
 Each world is brought up to date before it is scored:
 

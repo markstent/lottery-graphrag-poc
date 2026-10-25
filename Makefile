@@ -119,10 +119,11 @@ ground-demo-bank: ## Ground bank 2.0.0 into the demo world and its ledger
 run-smoke: ## Scorer smoke test on three worlds (fake generator and judge; needs services)
 	$(UV) run python -m app.evaluation run --kind smoke --seeds $(SEEDS)
 
-run-benchmark: ## Official run on three worlds, 3 repeats (reads GENERATION_* and JUDGE_*)
+run-benchmark: ## Official run on three worlds, 3 repeats (reads GENERATION_* and JUDGE_*); OUT=DIR names the run, OUT=DIR RESUME=1 continues a failed one
+	@test -z "$(RESUME)" || test -n "$(OUT)" || { echo "RESUME=1 needs OUT=<the run directory to continue>"; exit 1; }
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
-	$(UV) run python -m app.evaluation run --kind official --seeds $(SEEDS) --repeats 3
+	$(UV) run python -m app.evaluation run --kind official --seeds $(SEEDS) --repeats 3 $(if $(OUT),--out $(OUT)) $(if $(and $(OUT),$(RESUME)),--resume)
 
 run-sweep: ## H1 depth sweep 0 to 3 for B and C on three worlds (reads JUDGE_* and GENERATION_*)
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
