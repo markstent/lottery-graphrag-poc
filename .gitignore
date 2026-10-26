@@ -22,3 +22,6 @@ backend/data/
 
 # The API run store (its default path)
 data/app.db*
+
+# Browser automation scratch output
+.playwright-mcp/
