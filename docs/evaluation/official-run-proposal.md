@@ -127,6 +127,21 @@ It wipes Neo4j, ingests the presentation world again, runs 36 answers, and resto
 It checks: the reasoning switch holds (no empty answers and no reasoning-token errors), the judge answers in its JSON contract, the run writes its files and publishes on the Results screen, and the graph is back at 36,888 nodes.
 Expected time: about 15 minutes locally.
 
+### Dry run result
+
+The owner gave the go-ahead with the local models on 2026-10-26, and the dry run ran from 11:07 to 11:25 UTC at commit e27f6c2 with a clean tree (output `data/evaluation/runs/dry-run-2026-10-26/`, not in git).
+The graph was back at 36,888 nodes afterwards.
+
+- Mechanics: 36 answers and 36 judge calls, no generation failure, no judge failure, no empty answer and no reasoning-token error.
+- The record carries `selection_rule` `reranker-graph-share`, 6 graph slots of 12, reasoning off for both models, and three repeats.
+- The run published as a subset run, labelled with its four questions.
+- Speed: about 11 s per answer, and about 29 s per answer and judge call including the two graph loads, close to the pilot's 25 s.
+- Scores, four questions only and not a result: every approach answered the single-fact question (L01) right and the other three wrong.
+  On the multi-hop question (L05) all three said the sources did not contain the answer; B's and C's graph slots went to the anchor incident and support cases, and the claim record INC_024 again did not reach the prompt.
+
+The tooling is ready for the full run.
+The dry run also shows, on one question, what the diagnostic showed on all of them: under D-081 the graph's selection reaches the prompt, but the re-ranker does not pick the graph records the answers need.
+
 ## 5. Order after approval
 
 1. The owner rules on D-025; if option 2 or 3, the change is built and reviewed, and the diagnostic runs once.
