@@ -210,3 +210,20 @@ test('the sidebar stays in view when a long page is scrolled', async ({
     page.getByRole('navigation', { name: 'Primary' }),
   ).toBeInViewport({ ratio: 1 })
 })
+
+test('the tab icon loads, so the browser logs no missing file', async ({
+  page,
+}) => {
+  await mockApi(page)
+  const missing: string[] = []
+  page.on('response', (response) => {
+    if (response.status() === 404) missing.push(response.url())
+  })
+  await page.goto('/#/overview')
+  const href = await page.locator('link[rel="icon"]').getAttribute('href')
+  expect(href).toBe('/favicon.svg')
+  const icon = await page.request.get(href ?? '')
+  expect(icon.status()).toBe(200)
+  expect(icon.headers()['content-type']).toContain('image/svg+xml')
+  expect(missing).toEqual([])
+})
