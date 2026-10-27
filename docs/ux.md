@@ -67,15 +67,19 @@ Baselines: `shell-overview`, `shell-live-lab`, `shell-results`, `shell-data-mode
 
 Purpose: the verdict from the latest official run, how the three approaches differ, and a button to run a question.
 
-1. "Latest official run": one tile for each approach in its own tint, each showing the mean evidence score for all questions with the number of questions and runs behind it.
-   A key line explains the score.
+1. "Latest official run": the run's method badge first, "Method v0.3" or "Method v0.2 (old method)", read from the API's `method_version`.
+   A v0.3 run's `method_note`, its declaration of the method change, stands beside the badge as plain text; a v0.2 run has none.
+   Then one tile for each approach in its own tint, each showing the mean of the method's evidence metric over the questions with claims, with the number of those questions and the runs behind it.
+   The tile reads "Evidence score, questions with claims" for a v0.2 run (its F1) and "Evidence recall, questions with claims" for a v0.3 run (owner, 2026-10-27).
+   The number of questions comes from the summary, never from the screen.
    The run's headline sentences follow, verbatim and unedited.
-2. "How the three approaches differ": a flow diagram.
-   The question fans out to one shared "Search passages" lane.
-   B adds "Find starting points" and "Follow relationships".
-   C adds "Find starting points", "Add ontology terms", "Follow relationships" and "Add linked records".
-   All lanes join at "Re-order and pick", then "Answer with sources".
-   The lane order comes from one module (`run/lanes.ts`), and a test pins it to the order of events in the four recordings.
+2. "How the three approaches differ": a flow diagram of method v0.3, the code as it runs.
+   The question fans out to one shared lane, "Search passages" then "Re-order passages": only passages are re-ranked.
+   B adds "Find starting points", "Follow relationships" and "Rank by the graph".
+   C adds "Find starting points", "Add ontology terms", "Follow relationships", "Add linked records" and "Rank by the graph".
+   All lanes join at "Fill one budget", then "Answer with sources", and a caption says "B and C take turns: a passage, then a graph record."
+   The diagram always describes the current method; a v0.2 run above it carries its own old-method badge.
+   The lane order comes from one module (`run/lanes.ts`), and a test pins it to the order of events in the recordings and the run fixture.
 3. "Run a question" and "Configuration" side by side.
    The first has a button to Live Lab and the four demo questions as links.
    The second lists the active dataset and the four model roles with their configured names.
@@ -87,7 +91,7 @@ With none, the screen says "No official run yet" and links to Results, and a new
 The tiles carry no interval of their own, because the statistics define intervals for differences (D-048).
 Intervals reach the screen through the headline sentences, and one line says so.
 
-Baselines: `overview-fixture-official`, `overview-no-official-run`, `overview-smoke-only`, `overview-error`, `overview-loading`, `presentation-overview-fixture-official`.
+Baselines: `overview-fixture-official`, `overview-fixture-v03`, `overview-no-official-run`, `overview-smoke-only`, `overview-error`, `overview-loading`, `presentation-overview-fixture-official`.
 
 ### Live Lab
 
@@ -105,11 +109,19 @@ At 1920 by 1080, the first screen of a running run holds the question bar, the g
    A question with no answer key shows only what can be measured.
 3. **Graph canvas** with a tab for B and a tab for C, a toggle that overlays the other approach's evidence path, and "Focus on the path".
    **Three panels** show each approach's status, its steps in order with a word, an icon and a time, and its evidence found, used and set aside.
+   The re-rank step says what method v0.3 does: "Re-order and pick passages" in A, and "Re-order passages, take turns" in B and C, where the graph has already ranked its own records and the two lists take turns filling one budget.
+   A recording of the old method keeps the old name, "Re-order and pick".
+   B and C also show the question's target types ("Question's target: incident, market, platform version", or "none named") and the context against its budget ("Context: 1,996 of 2,000 tokens"); both are silent for an old recording, which recorded neither.
+   Each graph record carries its place in the graph's order: "starting point", "question's target" or "other", and "graph rank n".
+   A record set aside says why in plain words: "the same record is already in the context", "the context was full", "a duplicate", "outside the markets asked about" or "a kind of record this question does not use".
+   A reason only the old method gave (`slot_limit`, `superseded_by_structured_fact`) reads "Set aside under the old method".
 4. **Timeline**, docked under both: rewind, play or pause, replay, a position slider, the time, speeds 0.5x to 4x, and one track for each approach.
 5. After the run: the three answers as the model wrote them, with each citation marker a button, the evidence path rows for B and C, and the market coverage table.
 
 Sources: a **recorded run** replays one of four real captures through the API on the dev world, with qwen3.6 through Ollama and reasoning off (`frontend/src/run/fixtures/recorded/`, D-056).
 They need no model, and they are not edited.
+All four were made under the old method (v0.2), and the question bar says "recorded under the old method (v0.2)" beside the source; a recording names its method, and one that names none was made before the field existed, so it is of the old method.
+The tests' own live runs (`frontend/src/run/fixtures/run-*.json`) are runs of typed questions through the API on the tiny world with the fake model, written by `backend/tests/test_run_fixtures.py`, so every selection and budget in them is what the code did.
 A **live run** posts to `/queries`, follows the event stream, resumes with `?after=` if the connection drops, and reads the stored results.
 A bank question is scored after the run (D-035).
 Your own question can only run live.
@@ -172,9 +184,11 @@ Purpose: every official run, every question, every score, with intervals.
 A whole-bank run or a subset shows all panels, and a quick check shows only the Verdict and Reproducibility.
 
 1. **Benchmark runs.** A select of every published run, newest first, with its standing in words (Result, Subset run or Quick check), and a "Start a run" button.
-2. **Verdict.** Three tiles, each with the evidence score and the answer score, then the run's headline sentences as the harness wrote them.
+2. **Verdict.** The method badge, "Method v0.3" or "Method v0.2 (old method)", with a v0.3 run's `method_note` beside it as plain text (none for v0.2).
+   Three tiles, each with the method's evidence metric ("Evidence score" for v0.2, its F1; "Evidence recall" for v0.3) and the answer score, then the run's headline sentences as the harness wrote them.
    A subset run says what it covered, and a quick check says its numbers are not results.
-3. **Scores by kind of question.** A switch between Evidence score and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
+3. **Scores by kind of question.** A switch between the method's evidence metric and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
+   A v0.3 run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
 4. **Questions.** One row per question and world, with filters, the answer, evidence and judge score of each approach, and an expanding table of every measure.
    "Open" goes to the question in Live Lab when its world is loaded.
@@ -183,6 +197,10 @@ A whole-bank run or a subset shows all panels, and a quick check shows only the 
 6. **Failures.** Failure kinds by approach.
    Each non-zero count filters the Questions table.
 7. **Judge.** The five judge scores and the agreement with the answer score.
+   A v0.3 run splits each group into answers that answered and answers that abstained ("All questions, answered", "All questions, abstained" and so on), with "Pairs judged", "Agreement" and "Weighted kappa", and one line explains the levels.
+   A v0.2 run keeps its one row per group with "Kappa".
+   Every row shows its number of judged answers and the exact agreement; a kappa is shown only from 10 judged answers, and below that, or with none judged, the cell reads "Too few to say" (owner, 2026-10-27).
+   **Groundedness**, for a v0.3 run only: "Descriptive, not tested.", with each kind and approach's share of its answers' ids, dates and numbers "Held by cited blocks" and "In no shown block", and the questions behind them.
 8. **Reproducibility.** Every field of the run's record with its API name, and a raw JSON link.
 
 A tested comparison with fewer pairs than the minimum shows "Too few pairs", with no interval and no delta.
@@ -192,7 +210,10 @@ For that run the Verdict adds one note under the headlines saying the charts omi
 Single facts show "No evidence score by design".
 While a run is a subset or a quick check, every chart and table carries its label.
 
-**Starting a run.** The form asks for the kind (Official run or Quick check), the worlds, the repeats (3 or more for official), the scope and optionally a limit of instances per question.
+**Starting a run.** The form asks for the kind, "Development run" (the default) or "Quick check", the worlds, the repeats (at least 1), the scope and optionally a limit of instances per question.
+A development run uses world 2026 only, so 2027 and 2028 are disabled with "World 2026 only" beside them; a quick check may use any seen world.
+There is no "Official run" choice, and a line says why: "Neither is a result. Official runs use the unseen worlds 2029 to 2034, from the command line." (D-091).
+The default request is one the API accepts as it stands, and a backend test posts it.
 It shows, without letting the reader change them, the question bank and the generation and judge models.
 A wrong entry is named beside its field before anything is sent.
 After Start, a progress line such as "World 2027 (2 of 3): 12 of 40 questions", a progress bar and Cancel replace the form, and a job already running when the page loads is followed the same way.
@@ -202,8 +223,9 @@ The end-to-end tests use a mocked job and never start a live run.
 The screen computes no statistic.
 Its state lives in the address: `#/results?run=<id>` with `stratum`, `world` and `failure=<approach>:<kind>`.
 
-Baselines: `results-official`, `results-subset`, `results-quick-check`, `results-table-expanded`, `results-failure-filter`, `results-start-form`, `results-job-running`, `results-empty`, `results-error`, `results-loading`, `presentation-results`.
-The whole-bank run in `results-official`, `results-table-expanded` and `results-failure-filter` is generated and labelled "Fixture run (test values)".
+Baselines: `results-official`, `results-v03`, `results-v03-agreement-and-groundedness`, `results-subset`, `results-quick-check`, `results-table-expanded`, `results-failure-filter`, `results-start-form`, `results-job-running`, `results-empty`, `results-error`, `results-loading`, `presentation-results`.
+The whole-bank run in `results-official`, `results-table-expanded` and `results-failure-filter` is a v0.2 run generated by `backend/scripts/fixture_official.py` and labelled "Fixture run (test values)".
+The v0.3 run in `results-v03` is the report tests' synthetic run through `summarize`, written by `backend/tests/test_benchmark_report.py`, with the same label.
 
 ### Data Model
 
