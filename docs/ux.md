@@ -41,6 +41,7 @@ The routes of the first version of the product (`#/lab`, `#/experiment`, `#/dict
 Overview is the default.
 
 - A left sidebar lists the five destinations, and collapses to icons.
+Below 768 px wide it stays collapsed and the toggle is hidden, so the page keeps its width.
   The active one carries a heavy bar and bold text, so it does not rely on colour.
 - The header carries the product name, the active dataset in plain words (for example "dev world, 2026"), the model status, the presentation toggle and Settings.
 - The model status is one button with a dot and a word: Checking, Ready, Starting or Not ready.
@@ -252,6 +253,8 @@ Now comes from `GET /api/v1/settings`, which returns the same fields a run recor
 A setting that differs between the two carries a "Differs" mark, a run that did not record one reads "Not recorded", and a failed load reads "Not available" with a retry.
 A number stated in prose is a `{setting_key}` placeholder filled from the same source.
 It falls back to the newest official run's recorded value, and then to "not available".
+While either load is under way a placeholder reads "…" and the evidence diagram says its settings are loading, so no value is shown that a later load could change; "not available" appears only after both loads have settled.
+A test resolves every placeholder and settings-table key against `frontend/src/test/settings.fixture.json`, and a backend test checks that the fixture names exactly the fields `GET /settings` serves.
 No setting is typed into Help by hand.
 A past measurement, such as the pilot or the dry run, is typed with its date and source record.
 
@@ -266,7 +269,7 @@ The banned-word scan covers the Plain text and the glossary's plain definitions,
 Technical text uses real terms, each defined where first used in the chapter or linked to the glossary.
 The Help word cap is removed (D-082).
 
-Baselines: `help-top`, `help-top-technical`, `help-stories`, `help-evidence`, `help-evidence-technical`, `help-limits-technical`, `help-glossary`, `help-questions-no-official-run`, `help-questions-fixture-official-filtered-by-story`, `help-loading`, `help-error`, `presentation-help-fixture-official`.
+Baselines: `help-top`, `help-settings-technical` (the settings table with recorded values and "Differs" marks), `help-stories`, `help-evidence`, `help-evidence-technical`, `help-limits-technical`, `help-glossary`, `help-questions-no-official-run`, `help-questions-fixture-official-filtered-by-story`, `help-loading`, `help-error`, `presentation-help-fixture-official`.
 
 ## Visual language
 
@@ -383,7 +386,7 @@ Browser storage holds only per-reader preferences: the collapsed sidebar, reduce
 
 ## Testing
 
-- Vitest with Testing Library: 91 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
+- Vitest with Testing Library: 92 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
 - Playwright: ten spec files in `frontend/e2e/`.
   The default config runs the smoke and functional specs.
   The visual config runs `visual.spec.ts` against 130 committed baselines.

@@ -406,7 +406,6 @@ test.describe('Results', () => {
 test.describe('Help', () => {
   const SECTIONS = [
     ['help-top', '#/help', 'official'],
-    ['help-top-technical', '#/help?level=technical', 'official'],
     ['help-stories', '#/help?section=stories', 'official'],
     ['help-evidence', '#/help?section=evidence', 'official'],
     [
@@ -448,6 +447,27 @@ test.describe('Help', () => {
         window.scrollBy(0, -96)
       })
     await screenShot(page, 'help-evidence-technical', 'keep')
+  })
+
+  // The generated whole-bank run records different values from the mock's settings, so the
+  // recorded column is filled and some rows carry the "Differs" badge.
+  test('help-settings-technical', async ({ page }) => {
+    await openScreen(page, '#/help?section=running&level=technical', {
+      runs: 'official',
+      latest: 'official',
+    })
+    const table = page
+      .getByRole('region', { name: '12. Running it' })
+      .getByRole('table', {
+        name: 'Settings now and in the newest official run',
+      })
+    await expect(table.getByText('Differs').first()).toBeVisible()
+    await table.evaluate((el) => {
+      el.scrollIntoView({ block: 'start' })
+      // Leave room for the sticky chapter links above the table.
+      window.scrollBy(0, -96)
+    })
+    await screenShot(page, 'help-settings-technical', 'keep')
   })
 })
 
