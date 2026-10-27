@@ -31,6 +31,7 @@ from app.evaluation.checks import SetCheck, is_abstention
 from app.evaluation.grounding import BankInstance
 from app.evaluation.judge import Agreement, JudgeItem, agreement, answer_level, blind
 from app.evaluation.official import DATA_DIR, load_results
+from app.evaluation.report import MIN_KAPPA_ITEMS, TOO_FEW_FOR_KAPPA
 from app.evaluation.runner import (
     SCORER_VERSION,
     PipelineRun,
@@ -57,10 +58,6 @@ CONSENSUS_FILE = "labels-consensus.csv"
 # The rule for acting on the labels: a measure is wrong on its cell when the
 # labels contradict it on at least this share of the cell's items.
 WRONG_SHARE_RULE = 0.80
-# The owner's rule of 2026-10-27: a weighted kappa is shown, and a cell is
-# flagged, only over at least this many items; below it the page says
-# "too few to say".
-MIN_ITEMS = 10
 # The judge's correctness sentence, verbatim from judge prompt 1.1.0.
 CORRECTNESS_RUBRIC = (
     "correctness: the answer agrees with the reference answer; an answer that says the "
@@ -450,10 +447,10 @@ def _consensus(
 def measure_cell(pairs: Sequence[tuple[int, int]]) -> dict[str, Any]:
     """Agreement of a measure's levels with the labels over one cell, its
     wrong share and whether the share meets the rule for acting on it (never
-    over fewer than MIN_ITEMS items)."""
+    over fewer than MIN_KAPPA_ITEMS items)."""
     found = _measure(pairs)
     share = found["wrong_share"]
-    enough = found["n"] >= MIN_ITEMS
+    enough = found["n"] >= MIN_KAPPA_ITEMS
     return {**found, "flagged": enough and share is not None and share >= WRONG_SHARE_RULE}
 
 
@@ -464,13 +461,13 @@ def _measure(pairs: Sequence[tuple[int, int]]) -> dict[str, Any]:
 
 
 def _agreement_fields(found: Agreement) -> dict[str, Any]:
-    """The agreement as recorded; ``kappa_shown`` is False below ``MIN_ITEMS``
+    """The agreement as recorded; ``kappa_shown`` is False below ``MIN_KAPPA_ITEMS``
     items, where the page says "too few to say" in place of the kappa."""
     return {
         "n": found.n,
         "agreement": found.agreement,
         "weighted_kappa": found.weighted_kappa,
-        "kappa_shown": found.n >= MIN_ITEMS,
+        "kappa_shown": found.n >= MIN_KAPPA_ITEMS,
     }
 
 
@@ -626,7 +623,7 @@ def render_agreement(result: dict[str, Any]) -> str:
         f"A measure is flagged on a cell when the labels show it wrong on at least"
         f" {result['wrong_share_rule']:.0%} of the cell's items, the rule for acting on the"
         " labels.",
-        f"A weighted kappa over fewer than {MIN_ITEMS} items is not shown (too few to say),"
+        f"A weighted kappa over fewer than {MIN_KAPPA_ITEMS} items is not shown (too few to say),"
         " and such a cell is never flagged.",
         f"Labelled by: {', '.join(labellers['names'])}.",
     ]
@@ -672,7 +669,7 @@ def _found(found: dict[str, Any]) -> str:
 
 
 def _kappa(found: dict[str, Any]) -> str:
-    return _number(found["weighted_kappa"]) if found["kappa_shown"] else "too few to say"
+    return _number(found["weighted_kappa"]) if found["kappa_shown"] else TOO_FEW_FOR_KAPPA
 
 
 def _number(value: float | None) -> str:

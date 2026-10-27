@@ -8,7 +8,7 @@ both with no model;
 active one, from DATASET_DIR and TRUTH_LEDGER_PATH) and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
 bank page. ``dry-run-questions`` prints the four-question dry run's questions;
-``diagnose-selection`` counts, with no answer model, what the shared re-ranker keeps;
+``diagnose-selection`` counts, with no answer model, what the selection keeps;
 ``run`` runs a smoke, dev or official benchmark over one or more
 world seeds, ``sweep`` runs the multi-hop depth sweep and ``compare`` pairs
 two official runs of different generation models (H7). All are
@@ -95,7 +95,7 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser(
         "diagnose-selection",
         help=(
-            "Read-only: what the shared re-ranker keeps of the claim records each approach "
+            "Read-only: what the selection keeps of the claim records each approach "
             "finds (no answer model; the embedding and re-ranking models run)."
         ),
     )

@@ -286,17 +286,19 @@ A sweep or official run refuses the stand-in generator and needs a gateway judge
 
 ### What the shared re-ranker keeps
 
-`make diagnose-selection` measured D-025 with no answer model; its recorded numbers are for that old rule, and under D-081 it reports where the graph share now puts the graph candidates.
+`make diagnose-selection` measured D-025 with no answer model; its recorded numbers are for the old slot rules (D-025, D-081).
+Under method v0.3 (D-083, D-084) it reports the same counts under the graph-rank interleave rule, with one token budget and no item limit.
 The embedding model and the re-ranking model still run, because they are part of what it measures.
 For every seed 2026 instance that has claims, it runs retrieval for A, B and C and stops where the answer model would start.
 The lab is given a generator that refuses, and every candidate and selection event is emitted before a pipeline calls it.
 It counts claims with the scorer's carrier notion, after the anchor is removed.
 For each stratum and approach it reports the claims to find, the claims found among the graph candidates (B and C), among the document candidates, and among the records that reached the prompt.
-Graph candidates are the seeds and the nodes the traversal discovered, less nodes of an excluded label, which are never offered to the re-ranker.
+Graph candidates are the seeds and the nodes the traversal discovered, less nodes of an excluded label, which the graph never orders.
 Document candidates are A's retrieved chunks, and for B and C the chunks they selected or discarded.
 C's document search uses the expanded question, as C does in a run.
 It also lists every claim the graph found and no selected record states.
-For each such claim it gives the discard reason, the re-ranker's score and rank, and how many records reached the prompt, so a re-ranker drop can be told from a full slot or budget.
+For each such claim it gives the discard reason, the record's tier (seed, target or other) and graph rank, and how many records reached the prompt, so a drop because the budget was full can be told from a record the graph ranked low.
+Only documents carry a re-ranker score, so the diagnostic shows none for graph records.
 It refuses unless the presentation world is the dev world, the vector collection exists, holds the whole corpus and was built by the bank's record serialiser, and the live graph's label counts equal that world's `_graph_stats.json`.
 It builds with the official run's settings (graph depth 2) and writes them into the output.
 It only reads the graph, with read-access sessions, and it writes `selection.json` and `selection.md` to `data/evaluation/diagnostics/<UTC>-selection/`.

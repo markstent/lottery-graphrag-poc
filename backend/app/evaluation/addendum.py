@@ -19,7 +19,7 @@ from app.evaluation.checks import answer_score, groundedness, is_abstention
 from app.evaluation.grounding import BankInstance
 from app.evaluation.judge import agreement, judge_pairs
 from app.evaluation.official import DATA_DIR, load_results, method_of
-from app.evaluation.report import stratum_key
+from app.evaluation.report import MIN_KAPPA_ITEMS, kappa_text, stratum_key
 from app.evaluation.runner import (
     SCORER_VERSION,
     InstanceResult,
@@ -169,7 +169,9 @@ def render(document: dict[str, Any]) -> str:
         "Evidence, citations and the judge's verdicts are as recorded.",
         f"The judge was judge prompt {document['recorded_judge_prompt_version']}, as recorded;"
         " agreement is that judge's correctness against the answer score on three levels"
-        " (0, partial, 1), with exact agreement and linearly weighted kappa.",
+        " (0, partial, 1), with exact agreement and linearly weighted kappa,"
+        f" which is shown only over at least {MIN_KAPPA_ITEMS} repeats"
+        " (below that: too few to say).",
         "Everything here is descriptive: means and counts, with no comparison tests.",
         "",
     ]
@@ -198,7 +200,7 @@ def _cell_lines(tag: str, cell: dict[str, Any]) -> list[str]:
             lines.append(
                 f"- Judge agreement on {label} repeats, {version} answer score:"
                 f" n {found['n']}, agreement {_number(found['agreement'])},"
-                f" weighted kappa {_number(found['weighted_kappa'])}."
+                f" weighted kappa {kappa_text(found['n'], found['weighted_kappa'])}."
             )
     return [*lines, ""]
 

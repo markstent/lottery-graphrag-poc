@@ -10,6 +10,7 @@ from typing import Any
 import pytest
 from app.evaluation import addendum
 from app.evaluation.addendum import rescore, write_addendum
+from app.evaluation.report import kappa_text
 from app.evaluation.runner import instance_result_from_payload
 from app.models import gateway
 
@@ -182,6 +183,18 @@ def test_addendum_header_labels_it(run_dir: Path, tmp_path: Path) -> None:
     assert "judge prompt 1.0.0" in text
     document = json.loads((out / "addendum.json").read_text(encoding="utf-8"))
     assert document["run"] == "official-2026-10-26"
+
+
+def test_addendum_shows_agreement_with_n_and_kappa_only_from_ten(
+    run_dir: Path, tmp_path: Path
+) -> None:
+    out = write_addendum(run_dir, tmp_path / "out")
+    text = (out / "addendum.md").read_text(encoding="utf-8")
+    line = next(row for row in text.splitlines() if "Judge agreement on answered repeats" in row)
+    assert "n 1, agreement 0.000, weighted kappa too few to say." in line
+    assert "weighted kappa undefined" not in text
+    assert kappa_text(10, 0.5) == "0.500"
+    assert kappa_text(9, 0.5) == "too few to say"
 
 
 def test_addendum_has_no_tests(run_dir: Path, tmp_path: Path) -> None:
