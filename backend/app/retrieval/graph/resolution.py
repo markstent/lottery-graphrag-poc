@@ -7,6 +7,31 @@ local code a concept is bound to in the question's market. `QueryExpansion`
 appends the resolved concepts' labels and synonyms to the question so C's
 document channel searches in every market language.
 
+`TargetTypeMatcher` finds the graph node types a question asks about (the
+"target type" of docs/evaluation/v0.3-method-proposal.md section 4.1, D-083).
+Its vocabulary comes from the graph schema and, in C, the ontology; never
+from the question bank, answer keys, truth ledger or hand labels.
+
+- Schema phrases (B and C, `schema_target_phrases`): for every node label
+  except `BusinessConcept`, `Document` and `DocumentChunk`, the label split
+  into lower-case words ("platform version"); its last word alone when no
+  other label ends in that word ("mechanic", "case"; not "version",
+  "category" or "type"); and the label's `NODE_SOURCES` table with "_" as a
+  space ("platform versions").
+- Ontology phrases (C only): every concept label and synonym in every
+  language names the graph labels of the binding kinds (`BINDING_KIND_LABELS`)
+  bound to that concept or any of its descendants. A concept with no
+  bindings in its subtree names nothing.
+
+A phrase matches as whole words, casefolded, with an optional plural "s" or
+"es". Matching is leftmost-longest and non-overlapping: the question is
+scanned from the left; at each position the longest phrase that matches
+wins, and the words it consumes do not also match a shorter phrase. So
+"game mechanic" names `GameMechanic` and not `Game`, and "platform version"
+names `PlatformVersion` and not `Platform`, while "platform" on its own
+names `Platform`. When the same phrase comes from several sources its labels
+are united.
+
 Resolution is deterministic and model-free, so seed selection is
 reproducible and auditable.
 """
@@ -18,9 +43,10 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.graph.statements import NODE_LABELS
 from app.ontology.model import LANGUAGES, Concept, Ontology
 from app.ontology.terms import TermMatcher
-from app.retrieval.graph.source_lookup import SEED_ID_PREFIXES
+from app.retrieval.graph.source_lookup import NODE_SOURCES, SEED_ID_PREFIXES
 
 _ID_TOKEN = re.compile(r"\b[A-Z]{2,12}(?:_[A-Z0-9]+)+\b")
 
@@ -238,3 +264,100 @@ def _concepts_of(resolved: Sequence[ResolvedEntity]) -> list[str]:
         elif entity.origin == "concept_binding" and entity.via_concept is not None:
             concepts.setdefault(entity.via_concept)
     return list(concepts)
+
+
+# ------------------------------------------------------------ target types
+
+# Graph label of the local codes of each ontology binding kind.
+BINDING_KIND_LABELS: dict[str, str] = {
+    "family": "GameFamily",
+    "category": "GameCategory",
+    "mechanic": "GameMechanic",
+    "incident_type": "IncidentType",
+    "support_category": "SupportCategory",
+    "segment": "PlayerSegment",
+    "channel": "Channel",
+}
+
+# Labels that are not record types a question asks for: concepts are the
+# ontology itself, documents reach every pipeline through the document channel.
+_NON_TARGET_LABELS = frozenset({CONCEPT_LABEL, "Document", "DocumentChunk"})
+_LABEL_WORD = re.compile(r"[A-Z][a-z]*")
+
+
+def schema_target_phrases() -> dict[str, frozenset[str]]:
+    """Casefolded schema phrase -> the graph labels it names (see the module docstring)."""
+    words = {
+        label: [w.casefold() for w in _LABEL_WORD.findall(label)]
+        for label in NODE_LABELS
+        if label not in _NON_TARGET_LABELS
+    }
+    last_word_owners: dict[str, int] = {}
+    for label_words in words.values():
+        last_word_owners[label_words[-1]] = last_word_owners.get(label_words[-1], 0) + 1
+    phrases: dict[str, set[str]] = {}
+    for label, label_words in words.items():
+        found = {" ".join(label_words)}
+        if last_word_owners[label_words[-1]] == 1:
+            found.add(label_words[-1])
+        if label in NODE_SOURCES:
+            found.add(NODE_SOURCES[label][0].replace("_", " "))
+        for phrase in found:
+            phrases.setdefault(phrase, set()).add(label)
+    return {phrase: frozenset(labels) for phrase, labels in phrases.items()}
+
+
+def _ontology_target_phrases(ontology: Ontology) -> dict[str, frozenset[str]]:
+    """Casefolded concept label or synonym -> graph labels bound in its subtree."""
+
+    def subtree_labels(concept_id: str) -> set[str]:
+        labels = {BINDING_KIND_LABELS[b.kind] for b in ontology.codes_for(concept_id)}
+        for child in ontology.children(concept_id):
+            labels |= subtree_labels(child.concept_id)
+        return labels
+
+    phrases: dict[str, set[str]] = {}
+    for concept in ontology.concepts:
+        labels = subtree_labels(concept.concept_id)
+        if not labels:
+            continue
+        terms = [*concept.labels.values(), *(s for syn in concept.synonyms.values() for s in syn)]
+        for term in terms:
+            folded = " ".join(term.casefold().split())
+            if folded:
+                phrases.setdefault(folded, set()).update(labels)
+    return {phrase: frozenset(labels) for phrase, labels in phrases.items()}
+
+
+class TargetTypeMatcher:
+    """The graph labels a question asks about: schema phrases, and in C ontology terms.
+
+    B passes no ontology. One pattern holds every phrase, longest first, so
+    the regex engine's leftmost-first alternation gives the leftmost-longest,
+    non-overlapping matching the module docstring describes.
+    """
+
+    def __init__(self, ontology: Ontology | None = None) -> None:
+        phrases: dict[str, set[str]] = {}
+        sources = [schema_target_phrases()]
+        if ontology is not None:
+            sources.append(_ontology_target_phrases(ontology))
+        for source in sources:
+            for phrase, labels in source.items():
+                phrases.setdefault(phrase, set()).update(labels)
+        # Each alternative is one named group, so a match's `lastgroup` names its phrase.
+        self._labels_by_group: dict[str | None, frozenset[str]] = {}
+        alternatives: list[str] = []
+        for index, phrase in enumerate(sorted(phrases, key=lambda p: (-len(p), p))):
+            group = f"p{index}"
+            self._labels_by_group[group] = frozenset(phrases[phrase])
+            body = r"\s+".join(re.escape(word) for word in phrase.split())
+            alternatives.append(rf"(?P<{group}>{body})(?:e?s)?")
+        self._pattern = re.compile(rf"(?<!\w)(?:{'|'.join(alternatives)})(?!\w)")
+
+    def match(self, question: str) -> frozenset[str]:
+        """Graph labels named by the question's phrases; empty when none match."""
+        found: set[str] = set()
+        for m in self._pattern.finditer(question.casefold()):
+            found |= self._labels_by_group[m.lastgroup]
+        return frozenset(found)
