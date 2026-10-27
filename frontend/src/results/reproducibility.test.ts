@@ -53,4 +53,18 @@ describe('reproFields', () => {
       'Not recorded',
     )
   })
+  it('leaves out of the run list a field only the worlds record', () => {
+    const run = { git_sha: 'abc' }
+    const worlds = [{ bank_hash: 'h1', world_dir: '/w1', git_sha: 'abc' }]
+    const keys = (fields: { key: string }[]) => fields.map((f) => f.key)
+    expect(keys(reproFields(run, worlds))).not.toContain('bank_hash')
+    expect(keys(reproFields(run, worlds))).not.toContain('world_dir')
+    expect(keys(reproFields(run, worlds))).toContain('git_dirty')
+    expect(
+      reproFields(worlds[0], worlds).find((f) => f.key === 'bank_hash'),
+    ).toEqual({
+      key: 'bank_hash',
+      value: 'h1',
+    })
+  })
 })

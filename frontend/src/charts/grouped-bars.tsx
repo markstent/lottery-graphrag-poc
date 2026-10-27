@@ -119,7 +119,8 @@ export function GroupedBars({
   const bottom = AXIS_BAND + 12 + lines * LABEL_LINE
   const plot = {
     left: MARGIN.left,
-    right: width - MARGIN.right,
+    // A panel narrower than its margins has no plot, not a negative one.
+    right: Math.max(width - MARGIN.right, MARGIN.left),
     top: MARGIN.top,
     bottom: HEIGHT - bottom,
   }
@@ -150,7 +151,7 @@ export function GroupedBars({
     (band - step * series.length) / 2 +
     s * step +
     GAP / 2
-  const barW = step - GAP
+  const barW = Math.max(step - GAP, 0)
   const blank = (group: BarGroup) =>
     series.every((id) => (group.values[id] ?? null) === null)
   const showLetters = series.length <= 4

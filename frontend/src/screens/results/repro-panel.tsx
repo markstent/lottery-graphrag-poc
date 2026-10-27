@@ -5,10 +5,16 @@ import { reproFields } from '../../results/reproducibility'
 
 type Fields = Schemas['ReproducibilityOut']['run']
 
-function FieldList({ record }: { record: Fields }) {
+function FieldList({
+  record,
+  worlds,
+}: {
+  record: Fields
+  worlds?: readonly Fields[]
+}) {
   return (
     <dl className="grid grid-cols-[minmax(0,20rem)_1fr] gap-x-6 gap-y-1 text-sm">
-      {reproFields(record).map(({ key, value }) => (
+      {reproFields(record, worlds).map(({ key, value }) => (
         <div key={key} className="contents">
           <dt className="font-mono text-text-secondary">{key}</dt>
           <dd className="break-words font-mono text-text-primary">{value}</dd>
@@ -27,7 +33,7 @@ export function ReproPanel({
 }) {
   return (
     <div className="space-y-4">
-      <FieldList record={record.run} />
+      <FieldList record={record.run} worlds={record.worlds} />
       {record.worlds.map((world, index) => (
         <details key={String(world.world_seed ?? index)}>
           <summary className="cursor-pointer text-sm font-semibold text-text-primary">

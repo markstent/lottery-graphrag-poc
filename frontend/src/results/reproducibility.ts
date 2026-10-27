@@ -65,15 +65,22 @@ function show(value: JsonValue | undefined): string {
   return text === '' ? 'None' : text
 }
 
-/** Every known field in order, then any other key, each by its record name; a field the run did not record reads "Not recorded". */
+/**
+ * Every known field in order, then any other key, each by its record name; a field the run did not record reads "Not recorded".
+ * `perWorld` are the worlds' records: a field only they hold, such as bank_hash, differs by world and is left to each world's own list.
+ */
 export function reproFields(
   record: Record<string, JsonValue>,
+  perWorld: readonly Record<string, JsonValue>[] = [],
 ): { key: string; value: string }[] {
-  const extra = Object.keys(record).filter(
-    (key) => !(REPRO_KEYS as readonly string[]).includes(key),
-  )
-  return [...REPRO_KEYS, ...extra].map((key) => ({
-    key,
-    value: show(record[key]),
-  }))
+  const known: readonly string[] = REPRO_KEYS
+  const extra = Object.keys(record).filter((key) => !known.includes(key))
+  const worldOnly = (key: string) =>
+    !(key in record) && perWorld.some((world) => key in world)
+  return [...REPRO_KEYS, ...extra]
+    .filter((key) => !worldOnly(key))
+    .map((key) => ({
+      key,
+      value: show(record[key]),
+    }))
 }

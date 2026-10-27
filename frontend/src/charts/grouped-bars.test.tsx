@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { PIPELINES } from '../design/pipelines'
 import { GroupedBars, type GroupedBarsProps } from './grouped-bars'
@@ -391,4 +391,46 @@ describe('GroupedBars', () => {
       Number(pos.getAttribute('data-bottom')),
     )
   })
+})
+
+describe('GroupedBars in a panel narrower than its margins', () => {
+  const kinds = ['H1', 'H2', 'H2_name', 'H3', 'H5', 'overall'].map((key) => ({
+    key,
+    label: key,
+    values: { A: 40, B: 60, C: 80 },
+  }))
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  it.each([0, 20, 51, 64])(
+    'never gives a mark a negative width at %i px',
+    (width) => {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          callback: ResizeObserverCallback
+          constructor(callback: ResizeObserverCallback) {
+            this.callback = callback
+          }
+          observe(target: Element) {
+            this.callback(
+              [{ target, contentRect: { width } } as ResizeObserverEntry],
+              this as unknown as ResizeObserver,
+            )
+          }
+          unobserve() {}
+          disconnect() {}
+        },
+      )
+      const { container } = render(<GroupedBars {...props} groups={kinds} />)
+      const widths = [
+        ...container.querySelectorAll('rect[width]'),
+        ...container.querySelectorAll('[data-mark="bar"]'),
+      ].map((el) =>
+        Number(el.getAttribute('width') ?? el.getAttribute('data-width')),
+      )
+      expect(widths.length).toBeGreaterThan(0)
+      expect(widths.filter((w) => w < 0)).toEqual([])
+    },
+  )
 })
