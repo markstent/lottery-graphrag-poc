@@ -18,8 +18,12 @@ export interface RecordedRunSummary {
   run_id: string
   model: string
   captured_at: string
-  /** The retrieval method the recording was made under, such as "0.2.0". */
-  method: string
+  /**
+   * The retrieval method the recording was made under, such as "0.3.0";
+   * absent from a recording made before the field existed, which is of the
+   * old method (0.2.0), as the API reads a run record without one.
+   */
+  method?: string
 }
 
 export interface RecordedRun extends RecordedRunSummary {
@@ -32,7 +36,7 @@ export const RECORDED_INDEX: readonly RecordedRunSummary[] = index
 /** What the Live Lab says beside a recording of the old method; null for a current one. */
 export function recordingNote(instanceId: string | null): string | null {
   const run = RECORDED_INDEX.find((r) => r.instance_id === instanceId)
-  return run?.method === OLD_METHOD
+  return run !== undefined && (run.method ?? OLD_METHOD) === OLD_METHOD
     ? 'recorded under the old method (v0.2)'
     : null
 }

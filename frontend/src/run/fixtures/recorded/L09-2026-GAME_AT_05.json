@@ -6,7 +6,6 @@
   "run_id": "RUN-22633B9F4043",
   "model": "ollama/qwen3.6:latest",
   "captured_at": "2026-10-23T20:18:53.780Z",
-  "method": "0.2.0",
   "results": {
     "run_id": "RUN-22633B9F4043",
     "kind": "live",
