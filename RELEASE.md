@@ -3,7 +3,7 @@
 Date: 2026-10-27.
 Code of the official run: `27a4ce4` on `overhaul/v2`, clean tree.
 Gate status: HITL-12 design approved 2026-10-18; CP1, CP2 and CP3 approved by the project owner (see `HITL_STATUS.md`).
-Release status: proposed; the tag `v0.2.0` and the merge to `main` wait for the owner's sign-off.
+Release status: signed off by the project owner on 2026-10-27, with the go-ahead to tag `v0.2.0` and merge to `main`.
 
 ## What this is
 
