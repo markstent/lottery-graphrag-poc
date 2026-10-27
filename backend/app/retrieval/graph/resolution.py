@@ -24,13 +24,19 @@ from the question bank, answer keys, truth ledger or hand labels.
   bindings in its subtree names nothing.
 
 A phrase matches as whole words, casefolded, with an optional plural "s" or
-"es". Matching is leftmost-longest and non-overlapping: the question is
-scanned from the left; at each position the longest phrase that matches
-wins, and the words it consumes do not also match a shorter phrase. So
-"game mechanic" names `GameMechanic` and not `Game`, and "platform version"
-names `PlatformVersion` and not `Platform`, while "platform" on its own
-names `Platform`. When the same phrase comes from several sources its labels
-are united.
+"es" on its last word; a last word ending in "y" also matches with "ies"
+("game categories", "currencies"). Matching is leftmost-longest and
+non-overlapping: the question is scanned from the left; at each position the
+longest phrase that matches wins, and the words it consumes do not also match
+a shorter phrase. So "game mechanic" names `GameMechanic` and not `Game`,
+and "platform version" names `PlatformVersion` and not `Platform`, while
+"platform" on its own names `Platform`.
+
+The schema phrases and the ontology phrases are matched in two separate
+passes, each leftmost-longest, and their labels are united. So C always
+names every label B names: an ontology term such as "payment incident"
+adds its bound labels without consuming the schema word "incident". Within
+one pass, a phrase given by several labels or concepts names all of them.
 
 Resolution is deterministic and model-free, so seed selection is
 reproducible and auditable.
@@ -329,35 +335,48 @@ def _ontology_target_phrases(ontology: Ontology) -> dict[str, frozenset[str]]:
     return {phrase: frozenset(labels) for phrase, labels in phrases.items()}
 
 
+def _phrase_pattern(
+    phrases: Mapping[str, frozenset[str]],
+) -> tuple[re.Pattern[str], dict[str | None, frozenset[str]]]:
+    """One leftmost-longest pattern over `phrases` and the labels of each alternative.
+
+    Alternatives are sorted longest first, so the regex engine's leftmost-first
+    alternation takes the longest phrase at each position. Alternative i is the
+    named group "p<i>" and holds no other capturing group, so a match's
+    `lastgroup` keys its labels.
+    """
+    labels: dict[str | None, frozenset[str]] = {}
+    alternatives: list[str] = []
+    for index, phrase in enumerate(sorted(phrases, key=lambda p: (-len(p), p))):
+        labels[f"p{index}"] = phrases[phrase]
+        *head, last = phrase.split()
+        if last.endswith("y"):
+            last_pattern = rf"{re.escape(last[:-1])}(?:ies|y(?:e?s)?)"
+        else:
+            last_pattern = rf"{re.escape(last)}(?:e?s)?"
+        body = r"\s+".join([*(re.escape(word) for word in head), last_pattern])
+        alternatives.append(rf"(?P<p{index}>{body})")
+    return re.compile(rf"(?<!\w)(?:{'|'.join(alternatives)})(?!\w)"), labels
+
+
 class TargetTypeMatcher:
     """The graph labels a question asks about: schema phrases, and in C ontology terms.
 
-    B passes no ontology. One pattern holds every phrase, longest first, so
-    the regex engine's leftmost-first alternation gives the leftmost-longest,
-    non-overlapping matching the module docstring describes.
+    B passes no ontology. C adds a second pass over the ontology phrases, so
+    its result always contains B's (see the module docstring).
     """
 
     def __init__(self, ontology: Ontology | None = None) -> None:
-        phrases: dict[str, set[str]] = {}
         sources = [schema_target_phrases()]
         if ontology is not None:
             sources.append(_ontology_target_phrases(ontology))
-        for source in sources:
-            for phrase, labels in source.items():
-                phrases.setdefault(phrase, set()).update(labels)
-        # Each alternative is one named group, so a match's `lastgroup` names its phrase.
-        self._labels_by_group: dict[str | None, frozenset[str]] = {}
-        alternatives: list[str] = []
-        for index, phrase in enumerate(sorted(phrases, key=lambda p: (-len(p), p))):
-            group = f"p{index}"
-            self._labels_by_group[group] = frozenset(phrases[phrase])
-            body = r"\s+".join(re.escape(word) for word in phrase.split())
-            alternatives.append(rf"(?P<{group}>{body})(?:e?s)?")
-        self._pattern = re.compile(rf"(?<!\w)(?:{'|'.join(alternatives)})(?!\w)")
+        self._passes = [_phrase_pattern(phrases) for phrases in sources if phrases]
 
     def match(self, question: str) -> frozenset[str]:
         """Graph labels named by the question's phrases; empty when none match."""
+        folded = question.casefold()
         found: set[str] = set()
-        for m in self._pattern.finditer(question.casefold()):
-            found |= self._labels_by_group[m.lastgroup]
+        for pattern, labels in self._passes:
+            for m in pattern.finditer(folded):
+                found |= labels[m.lastgroup]
         return frozenset(found)

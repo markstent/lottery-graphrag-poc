@@ -409,18 +409,59 @@ def test_c_matcher_adds_bound_kind_labels() -> None:
     expected = {"GameCategory", "GameFamily", "GameMechanic"}
     assert matcher.match("How did the scratch card sell?") == expected
     assert matcher.match("Wie lief Rubbellos?") == expected
-    assert matcher.match("How did the scratch card game sell?") == expected
     assert matcher.match("Which online scratch cards sold?") == {"GameFamily", "GameMechanic"}
     assert matcher.match("Which Aufdecken titles?") == {"GameMechanic"}
     assert matcher.match("Who won the jackpot?") == frozenset()
-    # Schema phrases still match in C.
+    # Schema phrases still match in C, in their own pass: the synonym
+    # "scratch card game" does not consume the schema word "game".
+    assert matcher.match("How did the scratch card game sell?") == {"Game", *expected}
     assert matcher.match("Which markets sold scratch cards?") == {"Market", *expected}
+
+
+def test_plural_of_a_last_word_ending_in_y() -> None:
+    matcher = TargetTypeMatcher()
+    assert matcher.match("Which game categories sold best?") == {"GameCategory"}
+    assert matcher.match("Which currencies are used?") == {"Currency"}
+    assert matcher.match("Which game category sold best?") == {"GameCategory"}
+    assert TargetTypeMatcher(_target_ontology()).match("How do online scratch cards sell?") == {
+        "GameFamily",
+        "GameMechanic",
+    }
+
+
+@pytest.mark.parametrize("question", ["Which payment incidents happened in Austria?", "draw games"])
+def test_c_keeps_what_b_names_with_the_real_ontology(question: str) -> None:
+    b = TargetTypeMatcher().match(question)
+    c = TargetTypeMatcher(load_ontology()).match(question)
+    assert b
+    assert c >= b
+    assert c > b  # the ontology adds its bound labels on top
+
+
+def test_c_contains_b_for_every_ontology_term() -> None:
+    ontology = load_ontology()
+    b_matcher, c_matcher = TargetTypeMatcher(), TargetTypeMatcher(ontology)
+    terms = {
+        term
+        for concept in ontology.concepts
+        for term in (
+            *concept.labels.values(),
+            *(synonym for synonyms in concept.synonyms.values() for synonym in synonyms),
+        )
+    }
+    missing = {
+        term: b_matcher.match(term) - c_matcher.match(term)
+        for term in sorted(terms)
+        if not b_matcher.match(term) <= c_matcher.match(term)
+    }
+    assert missing == {}
 
 
 def test_vocabulary_reads_only_schema_and_ontology() -> None:
     path = Path(inspect.getfile(resolution))
     imports = _imported_modules(_tree(path), path)
-    assert not any(name.startswith(("app.evaluation", "app.scenarios")) for name in imports)
+    forbidden = ("app.evaluation", "app.scenarios", "app.datasets.bank")
+    assert not any(name.startswith(forbidden) for name in imports)
     source = path.read_text(encoding="utf-8")
     assert not any(marker in source for marker in FORBIDDEN_STRINGS)
     assert list(inspect.signature(TargetTypeMatcher.__init__).parameters) == ["self", "ontology"]
