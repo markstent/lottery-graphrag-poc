@@ -42,7 +42,13 @@ from app.config import (
     judge_settings_from_env,
 )
 from app.evaluation.bank import BANK_VERSION
-from app.evaluation.checks import CitationMetrics, answer_score, citation_metrics
+from app.evaluation.checks import (
+    CitationMetrics,
+    GroundednessScore,
+    answer_score,
+    citation_metrics,
+    groundedness,
+)
 from app.evaluation.claims import selection_carrier
 from app.evaluation.grounding import (
     BankInstance,
@@ -282,6 +288,9 @@ class RunScore:
     citations: CitationMetrics
     failure_class: str | None
     judge: JudgeVerdict | None = None
+    # Descriptive (D-088); None in a score written before it was recorded, and
+    # in a Live Lab score, whose rebuilt blocks carry no text.
+    groundedness: GroundednessScore | None = None
 
     def to_payload(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
@@ -325,6 +334,7 @@ def instance_result_from_payload(payload: dict[str, Any]) -> InstanceResult:
 
 def _score_from_payload(payload: dict[str, Any]) -> RunScore:
     judge = payload["judge"]
+    grounded = payload.get("groundedness")
     return RunScore(
         answer=payload["answer"],
         evidence=EvidenceScore(**payload["evidence"]),
@@ -338,6 +348,7 @@ def _score_from_payload(payload: dict[str, Any]) -> RunScore:
                 "scores": None if judge["scores"] is None else JudgeScores(**judge["scores"]),
             }
         ),
+        groundedness=None if grounded is None else GroundednessScore(**grounded),
     )
 
 
@@ -694,7 +705,9 @@ def score_pipeline_run(
 
     The benchmark runner passes the judge's verdict; Live Lab scoring
     (``app.api.scoring``) runs no judge and passes none, so a live score
-    equals the deterministic part of the runner's score for the same run.
+    equals the deterministic part of the runner's score for the same run,
+    groundedness apart: a stored run keeps no block texts, so when every
+    shown block's text is empty there is no groundedness (None).
     """
     answer = answer_score(instance.checks, run.verdict, run.answer)
     evidence = evidence_score(
@@ -706,8 +719,19 @@ def score_pipeline_run(
         [frozenset({block.carrier_id}) for block in run.blocks],
         instance.claims,
     )
+    texts = [block.text for block in run.blocks]
+    grounded = (
+        None
+        if texts and not any(texts)
+        else groundedness(instance.text, run.verdict, run.answer, texts)
+    )
     return RunScore(
-        answer, evidence, citations, classify_failure(answer, evidence, run.seeded), verdict
+        answer,
+        evidence,
+        citations,
+        classify_failure(answer, evidence, run.seeded),
+        verdict,
+        grounded,
     )
 
 

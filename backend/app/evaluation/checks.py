@@ -6,7 +6,9 @@ only. Every check scores 0..1 from the text alone: no model is involved.
 
 Scorer 2.1.0 adds one rule: a token whose whole text is an ISO date also
 matches when a time follows it ("2025-10-07T09:30"). `is_abstention` reads a
-verdict that opens with the word "unknown".
+verdict that opens with the word "unknown". `groundedness` (D-088) is a
+descriptive measure of whether the ids, dates and numbers an answer states
+come from the blocks it cites; it reads no answer key.
 """
 
 from __future__ import annotations
@@ -28,6 +30,14 @@ _MONTH = (
     r"(?:January|February|March|April|May|June|July|August|September|October|November|December"
     r"|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec)\.?"
 )
+# Month number by the first three letters of any name `_MONTH` accepts.
+_MONTH_NUMBERS = {
+    name: number
+    for number, name in enumerate(
+        ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1
+    )
+}
+_MONTH_WORD = re.compile(r"[a-z]{3,}")
 _DAY = r"\d{1,2}(?:st|nd|rd|th)?"
 _DATE_PATTERNS = (
     re.compile(
@@ -166,6 +176,79 @@ def scored_numbers(text: str) -> list[str]:
     return [
         normalise(match.group()) for match in _NUMBER_PATTERN.finditer(_strip_non_numbers(text))
     ]
+
+
+@dataclass(frozen=True, slots=True)
+class GroundednessScore:
+    """Whether an answer's checkable atoms (ids, dates, numbers) come from the
+    blocks it cites; descriptive, model-free, and blind to the answer key.
+
+    An atom counts once per sentence that states it. The shares are None when
+    the answer states no atom outside the question: no atoms is never grounded.
+    """
+
+    atoms: int
+    supported_share: float | None
+    unsupported_share: float | None
+    abstained: bool
+
+
+def groundedness(
+    question: str, verdict: str, answer: str, block_texts: Sequence[str]
+) -> GroundednessScore:
+    """Groundedness of `answer` over the shown blocks (block n is `block_texts[n - 1]`).
+
+    A sentence's atoms are supported when a block that sentence cites holds
+    them, and unsupported when no shown block holds them; a sentence without
+    a citation inherits none. Atoms the question states are not counted.
+    """
+    asked = _atoms(question)
+    held = [_atoms(text) for text in block_texts]
+    shown = frozenset[tuple[str, str]]().union(*held)
+    atoms = supported = unsupported = 0
+    for sentence in _sentences(answer):
+        cited = {
+            int(number)
+            for marker in _CITATION_PATTERN.findall(sentence)
+            for number in re.findall(r"\d+", marker)
+        }
+        in_cited = frozenset[tuple[str, str]]().union(
+            *(held[n - 1] for n in cited if 1 <= n <= len(held))
+        )
+        for atom in _atoms(sentence) - asked:
+            atoms += 1
+            supported += atom in in_cited
+            unsupported += atom not in shown
+    return GroundednessScore(
+        atoms=atoms,
+        supported_share=supported / atoms if atoms else None,
+        unsupported_share=unsupported / atoms if atoms else None,
+        abstained=is_abstention(verdict) and atoms == 0,
+    )
+
+
+def _atoms(text: str) -> frozenset[tuple[str, str]]:
+    """The ids, dates (as YYYY-MM-DD) and numbers in `text`, read as the scorer reads them."""
+    text = _CITATION_PATTERN.sub(" ", text)
+    ids = {("id", match) for match in _IDENTIFIER_PATTERN.findall(text)}
+    dates = {
+        ("date", _iso_date(match.group()))
+        for pattern in _DATE_PATTERNS
+        for match in pattern.finditer(text)
+    }
+    numbers = {("number", number) for number in scored_numbers(text)}
+    return frozenset(ids | dates | numbers)
+
+
+def _iso_date(text: str) -> str:
+    """A date matched by `_DATE_PATTERNS` as YYYY-MM-DD."""
+    if _ISO_DATE.match(text):
+        return text[:10]
+    month = _MONTH_WORD.search(text.casefold())
+    if month is None:
+        raise ValueError(f"not a date: {text!r}")
+    day, year = re.findall(r"\d+", text)
+    return f"{year}-{_MONTH_NUMBERS[month.group()[:3]]:02d}-{int(day):02d}"
 
 
 def citation_metrics(

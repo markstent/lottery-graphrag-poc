@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 
 import pytest
+from app.evaluation.checks import GroundednessScore, TokenCheck
 from app.evaluation.claims import Claim
+from app.evaluation.grounding import BankInstance
+from app.evaluation.runner import (
+    PipelineRun,
+    ShownBlock,
+    _score_from_payload,
+    score_pipeline_run,
+)
 from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_score
 
 
@@ -124,3 +133,66 @@ def test_lab_reports_the_serialiser_of_the_index_it_loaded(
     lab = build_lab(make_settings(dataset_dir=str(tmp_path)), FakeAnswerGenerator())
     assert lab.index_manifest == {"record_serialiser_version": RECORD_SERIALISER_VERSION}
     assert lab.record_serialiser_version == RECORD_SERIALISER_VERSION
+
+
+# -- groundedness on the run score (method v0.3, D-088) ---------------------------
+
+_INSTANCE = BankInstance(
+    instance_id="Q01-2026-INC_024",
+    question_id="Q01",
+    stratum="H2",
+    sub_stratum=None,
+    ontology_dependent=False,
+    world_seed=2026,
+    anchor_id="INC_024",
+    text="When did INC_024 start?",
+    expected_answer="It started 2025-08-19.",
+    checks=(TokenCheck("2025-08-19"),),
+    claims=(Claim("Q01-c1", "It started 2025-08-19.", frozenset({"INC_024"})),),
+)
+
+
+def _run(answer: str, block_texts: tuple[str, ...]) -> PipelineRun:
+    blocks = tuple(
+        ShownBlock(f"REC_{n}", f"Block {n}", text) for n, text in enumerate(block_texts, 1)
+    )
+    return PipelineRun(
+        pipeline="A",
+        repeat=0,
+        verdict="2025-08-19",
+        answer=answer,
+        raw_text=answer,
+        cited_blocks=(1,),
+        blocks=blocks,
+        selected=tuple(block.carrier_id for block in blocks),
+        resolved_ids=(),
+        seeded=False,
+        context_tokens=100,
+        latency_ms=1.0,
+        generation_failed=False,
+    )
+
+
+def test_run_score_records_groundedness() -> None:
+    run = _run(
+        "It started 2025-08-19 [1]. It closed 2025-09-02 [1].",
+        ("INC_024 opened 2025-08-19.", "Other block."),
+    )
+    score = score_pipeline_run(_INSTANCE, run)
+    assert score.groundedness == GroundednessScore(
+        atoms=2, supported_share=0.5, unsupported_share=0.5, abstained=False
+    )
+    assert _score_from_payload(score.to_payload()) == score
+
+
+def test_live_lab_score_without_block_texts_has_no_groundedness() -> None:
+    # Live Lab scoring rebuilds the shown blocks without their texts (F16).
+    run = _run("It started 2025-08-19 [1].", ("", ""))
+    assert score_pipeline_run(_INSTANCE, run).groundedness is None
+
+
+def test_old_score_payload_loads_without_groundedness() -> None:
+    score = score_pipeline_run(_INSTANCE, _run("It started 2025-08-19 [1].", ("2025-08-19",)))
+    payload = score.to_payload()
+    del payload["groundedness"]
+    assert _score_from_payload(payload) == dataclasses.replace(score, groundedness=None)

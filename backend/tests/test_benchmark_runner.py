@@ -23,7 +23,7 @@ import pytest
 from app.config import LABEL_VERSION, SELECTION_RULE, GraphConfig, JudgeSettings, from_env
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
-from app.evaluation.checks import TokenCheck, answer_score, citation_metrics
+from app.evaluation.checks import TokenCheck, answer_score, citation_metrics, groundedness
 from app.evaluation.claims import Claim
 from app.evaluation.grounding import (
     BankInstance,
@@ -466,7 +466,16 @@ def test_every_repeat_is_scored_with_the_v2_scorers(runner_smoke: BenchmarkRunne
                     instance.claims,
                 )
                 expected = RunScore(
-                    answer, evidence, citations, classify_failure(answer, evidence, run.seeded)
+                    answer,
+                    evidence,
+                    citations,
+                    classify_failure(answer, evidence, run.seeded),
+                    groundedness=groundedness(
+                        instance.text,
+                        run.verdict,
+                        run.answer,
+                        [block.text for block in run.blocks],
+                    ),
                 )
                 assert dataclasses.replace(score, judge=None) == expected
 
@@ -559,8 +568,21 @@ def test_benchmark_run_payload_is_json(runner_smoke: BenchmarkRunner) -> None:
     assert [run["repeat"] for run in first["runs"]["A"]] == [0, 1]
     assert first["runs"]["A"][0]["blocks"][0].keys() == {"carrier_id", "title", "text"}
     score = first["scores"]["B"][0]
-    assert score.keys() == {"answer", "evidence", "citations", "failure_class", "judge"}
+    assert score.keys() == {
+        "answer",
+        "evidence",
+        "citations",
+        "failure_class",
+        "judge",
+        "groundedness",
+    }
     assert "recall" in score["evidence"] and "accuracy" in score["citations"]
+    assert score["groundedness"].keys() == {
+        "atoms",
+        "supported_share",
+        "unsupported_share",
+        "abstained",
+    }
 
 
 # --- Reproducibility record (Phase 2 fields kept, v2 fields added) ----------------

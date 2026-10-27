@@ -413,7 +413,11 @@ def test_a_live_score_equals_the_runner_score_for_the_same_results(
             "context_tokens",
         ):
             assert getattr(stored, field) == getattr(runner_run, field), (tag, field)
-        assert score_pipeline_run(instance, stored) == dataclasses.replace(runner_score, judge=None)
+        # A stored run keeps no block texts, so a live score has no groundedness.
+        assert runner_score.groundedness is not None
+        assert score_pipeline_run(instance, stored) == dataclasses.replace(
+            runner_score, judge=None, groundedness=None
+        )
         assert LivePipelineScore.model_validate(live["per_pipeline"][tag]) == LivePipelineScore(
             answer=runner_score.answer,
             evidence_f1=runner_score.evidence.f1,

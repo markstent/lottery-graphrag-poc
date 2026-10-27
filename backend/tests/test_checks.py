@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import inspect
+
 import pytest
 from app.evaluation.checks import (
     Check,
+    GroundednessScore,
     NumberCheck,
     SetCheck,
     TokenCheck,
@@ -13,6 +16,7 @@ from app.evaluation.checks import (
     check_from_payload,
     check_score,
     citation_metrics,
+    groundedness,
     is_abstention,
     scored_numbers,
 )
@@ -314,3 +318,79 @@ def test_verdict_ignores_leading_markdown_and_quotes() -> None:
 def test_a_verdict_payload_must_be_yes_or_no() -> None:
     with pytest.raises(ValueError, match="'yes' or 'no'"):
         check_from_payload({"kind": "verdict", "expected": "maybe"})
+
+
+# -- groundedness (method v0.3, D-088) -------------------------------------------
+
+
+def test_supported_atom_in_cited_block() -> None:
+    blocks = ["Unrelated block.", "Incident INC_024 opened on 2025-08-19."]
+    score = groundedness(
+        "When did it start?", "2025-08-19", "INC_024 started 2025-08-19 [2].", blocks
+    )
+    assert score == GroundednessScore(
+        atoms=2, supported_share=1.0, unsupported_share=0.0, abstained=False
+    )
+
+
+def test_atom_in_uncited_shown_block_is_neither() -> None:
+    blocks = ["Incident INC_024.", "Another block."]
+    score = groundedness("Which incident?", "INC_024", "It is INC_024 [2].", blocks)
+    assert (score.atoms, score.supported_share, score.unsupported_share) == (1, 0.0, 0.0)
+
+
+def test_atom_in_no_block_is_unsupported() -> None:
+    blocks = ["Incident INC_024.", "Another block."]
+    score = groundedness("Which incident?", "INC_031", "It is INC_031 [1].", blocks)
+    assert (score.atoms, score.supported_share, score.unsupported_share) == (1, 0.0, 1.0)
+
+
+def test_sentence_without_citation_does_not_inherit() -> None:
+    blocks = ["Incident INC_024 opened on 2025-08-19."]
+    answer = "INC_024 is open. It started 2025-08-19 [1]."
+    score = groundedness("Which incident is open?", "INC_024", answer, blocks)
+    assert (score.atoms, score.supported_share, score.unsupported_share) == (2, 0.5, 0.0)
+
+
+def test_question_atoms_are_excluded() -> None:
+    question = "When did INC_024 start, and was it over 250 GBP?"
+    blocks = ["Incident INC_024 opened on 2025-08-19 with 250 GBP at risk."]
+    answer = "INC_024 started on 2025-08-19 with 250 GBP at risk; see INC_031 [1]."
+    score = groundedness(question, "2025-08-19", answer, blocks)
+    # Left: the date (supported) and INC_031 (in no block).
+    assert (score.atoms, score.supported_share, score.unsupported_share) == (2, 0.5, 0.5)
+
+
+def test_normalisation_matches_the_scorer() -> None:
+    # Ids are case-sensitive, as the scorer's identifier pattern is.
+    lower = groundedness("Which incident?", "inc_024", "It is inc_024 [1].", ["INC_024"])
+    assert lower.atoms == 0
+    numbers = groundedness("Stake?", "1,000.50", "The stake is 1,000.50 GBP [1].", ["1000.5"])
+    assert (numbers.atoms, numbers.supported_share) == (1, 1.0)
+    textual = groundedness(
+        "When?", "7 October 2025", "It began 7 October 2025 [1].", ["2025-10-07"]
+    )
+    assert (textual.atoms, textual.supported_share) == (1, 1.0)
+    american = groundedness("When?", "Sept 7th", "It began Sept 7th, 2025 [1].", ["2025-09-07"])
+    assert (american.atoms, american.supported_share) == (1, 1.0)
+    timed = groundedness("When?", "2025-10-07", "It began 2025-10-07 [1].", ["2025-10-07T00:00:00"])
+    assert (timed.atoms, timed.supported_share) == (1, 1.0)
+
+
+def test_abstention_without_atoms() -> None:
+    score = groundedness("When did it start?", "unknown", "The context does not say.", ["x"])
+    assert score == GroundednessScore(
+        atoms=0, supported_share=None, unsupported_share=None, abstained=True
+    )
+
+
+def test_no_atoms_is_not_grounded() -> None:
+    score = groundedness("Is it digital?", "yes", "Yes, it is sold online [1].", ["Online."])
+    assert score == GroundednessScore(
+        atoms=0, supported_share=None, unsupported_share=None, abstained=False
+    )
+
+
+def test_groundedness_reads_no_answer_key() -> None:
+    parameters = list(inspect.signature(groundedness).parameters)
+    assert parameters == ["question", "verdict", "answer", "block_texts"]
