@@ -40,7 +40,7 @@ const SET_IN_CONFIGURATION = 'Set in configuration'
 
 /** What each kind asks, and why the official run is not offered here. */
 export const KINDS_NOTE =
-  'Neither is a result. The official run uses six unseen worlds, 2029 to 2034, and starts from the command line once the owner agrees.'
+  'Neither is a result. Official runs use the unseen worlds 2029 to 2034, from the command line.'
 
 const DEV_WORLDS_NOTE = 'World 2026 only'
 const NOTHING_FROM_SERVER: ReturnType<typeof serverErrors> = {

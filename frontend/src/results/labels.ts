@@ -32,8 +32,8 @@ export const TABLE_HEADS = {
   agreement: 'Agreement',
   kappa: 'Kappa',
   weightedKappa: 'Weighted kappa',
-  supported: 'Supported',
-  unsupported: 'Unsupported',
+  supported: 'Held by cited blocks',
+  unsupported: 'In no shown block',
   questions: 'Questions',
   total: 'in all',
 } as const

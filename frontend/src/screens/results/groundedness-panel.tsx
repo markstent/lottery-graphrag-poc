@@ -5,7 +5,7 @@ import { CAPTIONS, TABLE_HEADS } from '../../results/labels'
 import { RunBadge } from './run-badge'
 
 export const GROUNDEDNESS_NOTE =
-  'Descriptive, not tested: of the ids, dates and numbers an answer states, the share its cited blocks hold, and the share no shown block holds.'
+  "Descriptive, not tested. Shares of each answer's ids, dates and numbers."
 
 export function GroundednessPanel({
   rows,
