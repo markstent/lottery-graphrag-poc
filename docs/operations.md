@@ -149,11 +149,78 @@ A job started from the API never resumes; its failure message names the command 
 | `make ground-bank`, `ground-demo-bank` | Freezes the question bank into a world |
 | `make demo-reset` | The demo graph load and index build |
 | `make serve-demo-api` | Serves the API against the demo world |
-| `make traces` | Writes the side-by-side example traces (needs the dev graph, index and bank) |
-| `make dry-run` | Four-question dry run of the official settings; it wipes and restores the graph, and needs owner approval first |
+| `make traces` | Writes the side-by-side example traces with the fake generator (reads Neo4j and Qdrant, runs the embedding and re-ranking models) |
+| `make dry-run` | Four-question dry run of the official settings; it wipes and restores the graph, calls the answer and judge models, and needs owner approval first |
+| `make dev-run` | Development run on seed 2026, not a result; it wipes and restores the graph, calls the answer and judge models, and needs the owner's go-ahead |
+| `make diagnose-selection` | Read-only: which claim records each approach finds and the selection keeps (reads Neo4j, runs the embedding and re-ranking models, no answer model) |
+| `make addendum-v020` | Rescores official run v0.2.0 with scorer 2.1.0; no Neo4j, no model |
+| `make label-sample`, `label-agreement` | Builds the hand-labelling sample from run v0.2.0, and reports the agreement of the measures with the labels; no Neo4j, no model |
 | `make run-smoke`, `run-benchmark`, `run-sweep` | The benchmark runs (see [evaluation.md](evaluation.md)) |
 
 The Makefile is the stable command surface.
+
+## CP4 stop 1 runbook
+
+This is the controller's order of work for method v0.3 up to the first stop of the CP4 checkpoint.
+The owner decides at each step marked as needing a go-ahead; a passing command is not approval.
+The runbook is a copy of the plan's Task 17 (`docs/superpowers/plans/2026-10-27-method-v03.md`).
+
+Development uses the seed 2026 world only.
+The official seeds 2029 to 2034 are unseen: no development, dry, diagnostic or label step may run on them, and only a full-bank official run (`make run-benchmark`) does.
+
+### Setup
+
+The worktree has no `data/` and no root `.env`.
+Link the main checkout's data (`ln -s ../lottery-graphrag-poc/data data` in the worktree root; it is git-ignored).
+The API on port 8000 and the UI on port 5173 keep running from the main checkout throughout.
+
+Because there is no root `.env`, the Makefile reads no settings, so supply the environment explicitly in the shell that runs the targets.
+Start from the defaults in `.env.example`, then add the run settings:
+
+```bash
+set -a; . ./.env.example; set +a
+export GENERATION_PROVIDER=litellm GENERATION_MODEL=<model> GENERATION_MODEL_FAMILY=<family>
+export JUDGE_PROVIDER=litellm JUDGE_MODEL=<model> JUDGE_MODEL_FAMILY=<other family>
+```
+
+The two `export` lines are needed only for steps 6 to 9, which call the answer and judge models.
+Steps 1 to 5 need only the `.env.example` defaults, whose providers are fakes.
+An official run requires the judge's model family to differ from the generator's.
+
+### Safe without the owner's go-ahead
+
+These steps write no Neo4j data and call no answer or judge model.
+
+1. `make addendum-v020` rescores official run v0.2.0 with scorer 2.1.0 and writes `data/evaluation/addenda/official-2026-10-26-scorer-2.1.0/`.
+2. `make label-sample` writes `data/evaluation/labels/v0.2.0-sample/`.
+   Give `sheet.md` and `labels-owner.csv` to the owner, label `labels-controller.csv` independently, then settle disagreements into `labels-consensus.csv`.
+3. After labelling, `make label-agreement` reports how far each measure agrees with the labels.
+   Weighted kappa is shown only over 10 or more items; below that the page says "too few to say".
+
+### Reads Neo4j, runs local models
+
+4. `make diagnose-selection`, once, on seed 2026 under the new selection rule.
+   It is read-only for Neo4j: every statement is a centralised `MATCH` read, and it never ingests or wipes.
+   It refuses unless the live graph is the seed 2026 world.
+   On a single Neo4j instance the server does not enforce read routing, so its read-only status rests on the statements; record the node count (36,888) before and after.
+   It calls no answer or judge model, and it runs the embedding model and the cross-encoder.
+   No re-index is needed.
+5. `make traces` reads the dev graph and index with the fake generator and rewrites `docs/evaluation/example-traces.md`.
+   Commit it as `docs: example traces under method v0.3`.
+
+### Needs the owner's explicit go-ahead
+
+These steps wipe and restore Neo4j or call the answer or judge model.
+
+6. `make dev-run` is a development run on seed 2026, not a result.
+   Narrow it with `STRATA=` or `LIMIT=`.
+7. Optionally re-judge the labelled sample with judge 1.1.0 (judge model).
+8. `make dry-run` is the four-question dry run on seed 2026.
+   Check that the record's `method_version` is "0.3.0", check the versions, and check that the node count is back to 36,888.
+9. Re-record the four Live Lab recordings through the API under v0.3 (answer model), setting `"method": "0.3.0"` in `index.json`.
+10. Report to the owner with the artefacts, the diagnostic, the addendum, the label agreement, the dry run and the Live Lab screenshots, update `HITL_STATUS.md`, and stop at CP4 stop 1.
+
+Only the project owner marks the stop approved.
 
 ## Recovery and troubleshooting
 
