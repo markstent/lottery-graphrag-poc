@@ -70,8 +70,19 @@ export const SETTINGS = {
   },
 }
 
+/** A listed run, as `GET /benchmarks` gives it. */
+const listed = (run_id: string, run_kind: string, started_at: string) => ({
+  run_id,
+  run_kind,
+  label: null,
+  headlines: [],
+  selection: { strata: null, limit: null, questions: null },
+  started_at,
+  worlds: [2026],
+})
+
 /** An official run that recorded some of those settings, one of them with another value. */
-export const OFFICIAL_RECORDED = {
+const OFFICIAL_RECORDED = {
   ...OFFICIAL,
   run_id: 'official-recorded',
   summary: {
@@ -88,6 +99,30 @@ export const OFFICIAL_RECORDED = {
   },
 }
 
+/** The run list and run records of a published official run, older than any quick check. */
+export const RECORDED_RUNS = {
+  runs: [listed('official-recorded', 'official', '2026-10-01T00:00:00Z')],
+  details: { 'official-recorded': OFFICIAL_RECORDED },
+}
+
+/** A newer quick check listed beside the older official run, whose record has other values. */
+export const QUICK_CHECK_NEWER = {
+  runs: [
+    listed('quick', 'smoke', '2026-10-20T00:00:00Z'),
+    listed('official-recorded', 'official', '2026-10-01T00:00:00Z'),
+  ],
+  details: {
+    quick: {
+      ...SMOKE,
+      summary: {
+        ...SMOKE.summary,
+        reproducibility: { run: { top_k: 99 }, worlds: [] },
+      },
+    },
+    'official-recorded': OFFICIAL_RECORDED,
+  },
+}
+
 export const NOT_FOUND = () =>
   json(
     { error: { error_code: 'NOT_FOUND', message: 'none', retryable: false } },
@@ -101,6 +136,9 @@ export interface BankStub {
   failLatest?: boolean
   settings?: unknown
   failSettings?: boolean
+  /** The run list and the record of each run, by id. */
+  runs?: unknown[]
+  details?: Record<string, unknown>
 }
 
 /** A fetch stand-in for everything Help loads; the shell's routes are included. */
@@ -111,6 +149,8 @@ export function stubBank({
   failLatest = false,
   settings = SETTINGS,
   failSettings = false,
+  runs = [],
+  details = {},
 }: BankStub = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const path = new URL(String(input), 'http://localhost').pathname
@@ -129,6 +169,10 @@ export function stubBank({
             )
           : json(questions),
       )
+    if (path === '/api/v1/benchmarks') return Promise.resolve(json(runs))
+    const detail = /^\/api\/v1\/benchmarks\/([^/]+)$/.exec(path)?.[1]
+    if (detail && detail in details)
+      return Promise.resolve(json(details[detail]))
     if (path === '/api/v1/settings')
       return Promise.resolve(
         failSettings

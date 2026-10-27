@@ -11,6 +11,7 @@ import { useSettings as useAppSettings } from '../../app/use-settings'
 export type Level = 'plain' | 'technical'
 
 const KEY = 'help-level'
+const DEEP_LINK_PARAMS = ['section', 'story', 'stratum']
 
 const asLevel = (text: string | null): Level | null =>
   text === 'plain' || text === 'technical' ? text : null
@@ -18,9 +19,11 @@ const asLevel = (text: string | null): Level | null =>
 export function useLevel(): [Level, (level: Level) => void] {
   const { params } = useRoute()
   const { presentation } = useAppSettings()
+  // A link from another screen names a section, story or kind: it opens at Plain, whatever this browser remembers.
+  const deepLink = DEEP_LINK_PARAMS.some((name) => params.has(name))
   const level =
     asLevel(params.get('level')) ??
-    (presentation ? null : asLevel(readStored(KEY))) ??
+    (presentation || deepLink ? null : asLevel(readStored(KEY))) ??
     'plain'
   const setLevel = (next: Level) => {
     writeStored(KEY, next)

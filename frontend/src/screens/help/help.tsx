@@ -20,7 +20,7 @@ import { CHAPTERS, SECTION_ALIASES } from './chapters'
 import { CHAPTER_COPY } from './copy'
 import { HelpDataContext } from './help-data'
 import { helpHref, useLevel, type Level } from './level'
-import { useSettings } from './settings'
+import { loadRecorded, useSettings } from './settings'
 
 const LEVEL_NAMES: Record<Level, string> = {
   plain: 'Plain',
@@ -69,15 +69,13 @@ export function Help() {
   const bank = useLoad(loadBank, 'help-bank')
   const latest = useLoad(loadLatest, 'help-latest')
   const settings = useSettings()
+  const recordedRun = useLoad(loadRecorded, 'help-recorded')
   const requested = params.get('section')
   const section = requested ? (SECTION_ALIASES[requested] ?? requested) : null
   const story = params.get('story')
   const target = section === 'stories' && story ? `story-${story}` : section
   const ready = bank.status !== 'loading' && latest.status !== 'loading'
-  const recorded =
-    latest.status === 'ready' && latest.data?.run_kind === 'official'
-      ? (latest.data.summary.reproducibility?.run ?? null)
-      : null
+  const recorded = recordedRun.status === 'ready' ? recordedRun.data : null
 
   // Scroll once per target, after the bank and the newest run have drawn the stories and rows.
   const scrolled = useRef<string | null>(null)

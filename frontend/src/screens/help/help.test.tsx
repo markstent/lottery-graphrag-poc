@@ -16,7 +16,8 @@ import { SECTION_ALIASES, CHAPTERS } from './chapters'
 import { Help } from './help'
 import { BRING_UP, MODELS, RECOVERY } from './running-data'
 import {
-  OFFICIAL_RECORDED,
+  QUICK_CHECK_NEWER,
+  RECORDED_RUNS,
   OFFICIAL_STRATA,
   OFFICIAL_SUBSET,
   SCENARIOS,
@@ -577,6 +578,25 @@ describe('reading levels', () => {
     window.localStorage.removeItem('help-level')
   })
 
+  it('a deep link opens at Plain whatever storage holds, a bare Help uses storage, and ?level wins', async () => {
+    window.localStorage.setItem('help-level', 'technical')
+    for (const link of [
+      '#/help?section=scoring',
+      '#/help?story=SCN-007',
+      '#/help?stratum=H5',
+    ]) {
+      await renderHelp(link)
+      expect(radio('Plain'), link).toBeChecked()
+      cleanup()
+    }
+    await renderHelp('#/help')
+    expect(radio('Technical')).toBeChecked()
+    cleanup()
+    await renderHelp('#/help?section=scoring&level=technical')
+    expect(radio('Technical')).toBeChecked()
+    window.localStorage.removeItem('help-level')
+  })
+
   it('presentation mode ignores storage but honours ?level', async () => {
     window.localStorage.setItem('help-level', 'technical')
     await renderHelp('?present=1#/help')
@@ -649,7 +669,7 @@ describe('settings in Help', () => {
 
   it('shows the setting now beside the newest official run, and marks a difference', async () => {
     await renderHelp('#/help?section=running&level=technical', {
-      latest: OFFICIAL_RECORDED,
+      ...RECORDED_RUNS,
     })
     const row = settingsRow('generation_model')
     await within(row).findByText('model-now')
@@ -662,7 +682,7 @@ describe('settings in Help', () => {
 
   it('reads a nested setting by its dotted name', async () => {
     await renderHelp('#/help?section=running&level=technical', {
-      latest: OFFICIAL_RECORDED,
+      ...RECORDED_RUNS,
     })
     const row = settingsRow('context.graph_slots')
     expect(await within(row).findAllByText('6')).toHaveLength(2)
@@ -670,7 +690,7 @@ describe('settings in Help', () => {
 
   it('a setting the run did not record reads Not recorded', async () => {
     await renderHelp('#/help?section=running&level=technical', {
-      latest: OFFICIAL_RECORDED,
+      ...RECORDED_RUNS,
     })
     const row = settingsRow('max_tokens')
     await within(row).findByText('1024')
@@ -680,7 +700,7 @@ describe('settings in Help', () => {
 
   it('a setting that differs from the run is marked different', async () => {
     await renderHelp('#/help?section=running&level=technical', {
-      latest: OFFICIAL_RECORDED,
+      ...RECORDED_RUNS,
     })
     const row = settingsRow('context_budget_tokens')
     await within(row).findByText('2000')
@@ -688,7 +708,19 @@ describe('settings in Help', () => {
     expect(within(row).getByText('Differs')).toBeVisible()
   })
 
-  it('reads Not recorded for every setting when the newest run is not official', async () => {
+  it('takes the recorded values from the newest official run, not from a newer quick check', async () => {
+    await renderHelp('#/help?section=running&level=technical', {
+      latest: SMOKE,
+      ...QUICK_CHECK_NEWER,
+    })
+    const row = settingsRow('generation_model')
+    await within(row).findByText('model-now')
+    expect(within(row).getByText('model-then')).toBeVisible()
+    expect(within(settingsRow('top_k')).queryByText('99')).toBeNull()
+    expect(within(settingsRow('top_k')).getAllByText('20')).toHaveLength(2)
+  })
+
+  it('reads Not recorded for every setting when no run is official', async () => {
     await renderHelp('#/help?section=running&level=technical', {
       latest: SMOKE,
     })

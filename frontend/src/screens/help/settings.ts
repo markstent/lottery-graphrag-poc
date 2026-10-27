@@ -4,9 +4,15 @@
  * run was made with), so no number in Help is typed in by hand.
  */
 
-import { getSettings, type Schemas } from '../../api/client'
+import {
+  getBenchmark,
+  getSettings,
+  listBenchmarks,
+  type Schemas,
+} from '../../api/client'
 import { plainValue } from '../../app/plain-words'
 import { useLoad } from '../../app/use-load'
+import { newestResult } from '../../results/runs'
 import type { SettingKey } from './chapters'
 
 type JsonValue = Schemas['JsonValue']
@@ -22,6 +28,16 @@ export interface SettingValue {
   recorded: string | null
   /** True only when both are known and read differently. */
   differs: boolean
+}
+
+/** The settings recorded by the newest official run of the whole bank, or null when there is none. */
+export async function loadRecorded(
+  signal: AbortSignal,
+): Promise<Record<string, unknown> | null> {
+  const run = newestResult(await listBenchmarks(signal))
+  if (run === null) return null
+  const { summary } = await getBenchmark(run.run_id, signal)
+  return summary.reproducibility?.run ?? null
 }
 
 export const useSettings = () => useLoad(getSettings, 'help-settings')
