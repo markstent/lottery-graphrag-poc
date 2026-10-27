@@ -75,9 +75,9 @@ export const REGISTER: readonly RegisterRow[] = [
   },
   {
     id: 'record-texts',
-    item: 'Text search can read every record',
+    item: "Text search can read every fact the graph's records show",
     plain:
-      'A searches a short text written for each record in the main business tables, so it can find every fact the graph can show.',
+      "A searches a short text written for each record in the main business tables, so it can find every fact the graph's records can show.",
     reason:
       'The graph should add links and meaning, not facts A could not have retrieved, so A is given a record text for every row whose facts the graph can show (equal access).',
     cost: 'It narrows what the graph can add to finding the right rows. A company whose records cannot be searched as text would leave A weaker than here, which favours the graph; this design does not measure that.',
