@@ -35,6 +35,8 @@ from typing import Any
 
 from app.config import (
     LABEL_VERSION,
+    METHOD_VERSION,
+    PROMPT_EXTRAS,
     REPO_ROOT,
     SELECTION_RULE,
     GraphConfig,
@@ -86,9 +88,15 @@ from app.retrieval.standard.generation import (
     GenerationOutput,
 )
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.records import RECORD_FACTS_VERSION
 
-RUN_KINDS = ("smoke", "official", "sweep")
+# A dev run (D-091) is a development run on the presentation world: real
+# generator and judge, any repeats, never a result.
+RUN_KINDS = ("smoke", "official", "sweep", "dev")
 SMOKE_LABEL = "scorer smoke test"
+DEV_LABEL = "development run on seed 2026, not a result"
+# The label a run of each kind always carries; other kinds carry none of their own.
+KIND_LABELS = {"smoke": SMOKE_LABEL, "dev": DEV_LABEL}
 SCORER_VERSION = "2.1.0"
 PIPELINES = ("A", "B", "C")
 # An official result reports repeat variance, which needs at least three repeats.
@@ -141,11 +149,7 @@ def settings_fields(
         "prompt_version": PROMPT_VERSION,
         "top_k": settings.top_k,
         "context_budget_tokens": settings.context.budget_tokens,
-        "context": {
-            "dedupe_threshold": settings.context.dedupe_threshold,
-            "evidence_slots": settings.context.evidence_slots,
-            "graph_slots": settings.context.graph_slots,
-        },
+        "context": {"dedupe_threshold": settings.context.dedupe_threshold},
         "graph_limits": {
             "depth": settings.graph.max_depth,
             "nodes_per_hop": settings.graph.max_nodes_per_hop,
@@ -175,6 +179,9 @@ def settings_fields(
         "judge_temperature": judge.temperature,
         "judge_reasoning": judge.reasoning,
         "selection_rule": SELECTION_RULE,
+        "method_version": METHOD_VERSION,
+        "record_facts_version": RECORD_FACTS_VERSION,
+        "prompt_extras": {extra: list(tags) for extra, tags in PROMPT_EXTRAS.items()},
     }
 
 
@@ -235,6 +242,10 @@ class ReproducibilityRecord:
     judge_reasoning: str | None
     # Which rule chose the evidence in context; None in a file written before it was recorded.
     selection_rule: str | None = None
+    # Method v0.3 (D-092); None in a file written before them, which is method 0.2.0.
+    method_version: str | None = None
+    record_facts_version: str | None = None
+    prompt_extras: dict[str, list[str]] | None = None
 
     def to_payload(self) -> dict[str, Any]:
         """Every field, JSON-ready."""
@@ -514,7 +525,7 @@ class BenchmarkRunner:
         self.bank = bank
         self.world_dir = world_dir
         self.kind = kind
-        self.label = SMOKE_LABEL if kind == "smoke" else None
+        self.label = KIND_LABELS.get(kind)
         self.repeats = repeats
         self.pipelines = pipelines
         self.started_at = datetime.now(UTC).isoformat(timespec="seconds")
@@ -753,9 +764,10 @@ def check_run_config(
 ) -> None:
     """Refuse a run kind, repeat count or generator that do not fit together.
 
-    Smoke runs need the fake generator; sweep and official runs refuse it, so
-    no answer metric of theirs comes from the fake model; an official run
-    needs three repeats and the generation model family.
+    Smoke runs need the fake generator; sweep, dev and official runs refuse
+    it, so no answer metric of theirs comes from the fake model; an official
+    run needs three repeats and the generation model family. Which seeds a
+    kind may run is checked by the orchestration (``official.check_seeds``).
     """
     if kind not in RUN_KINDS:
         raise ValueError(f"unknown run kind {kind!r}; expected one of {RUN_KINDS}")

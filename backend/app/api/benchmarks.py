@@ -65,9 +65,11 @@ from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_ban
 from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
+    SEEN_SEEDS,
     BenchmarkCancelled,
     NotDevWorld,
     bank_matches_active_world,
+    check_seeds,
     ground_command,
     kept_world_count,
     load_results,
@@ -81,6 +83,13 @@ from app.evaluation.runner import WORLD_MANIFEST, instance_result_from_payload
 from app.observability.logging import run_context
 
 logger = logging.getLogger(__name__)
+
+# The summary schemas the API publishes: 2 for runs of method v0.2 (such as
+# the official run v0.2.0), the current one for method v0.3.
+PUBLISHED_SCHEMA_VERSIONS = frozenset({"2", SUMMARY_SCHEMA_VERSION})
+# Every world a benchmark job may name; which kind may use which is checked
+# by ``check_seeds``.
+JOB_SEEDS = (*SEEN_SEEDS, *OFFICIAL_SEEDS)
 
 Published = tuple[str, dict[str, Any]]
 
@@ -97,7 +106,7 @@ def published_runs(runs_dir: Path) -> list[Published]:
     runs: list[Published] = []
     for path in runs_dir.glob("*/summary.json"):
         summary = json.loads(path.read_text(encoding="utf-8"))
-        if summary.get("schema_version") == SUMMARY_SCHEMA_VERSION:
+        if summary.get("schema_version") in PUBLISHED_SCHEMA_VERSIONS:
             runs.append((path.parent.name, summary))
     return sorted(runs, key=_started, reverse=True)
 
@@ -471,15 +480,22 @@ def _with_kept_worlds(
 
 
 def _check(request: BenchmarkStart) -> None:
-    """Refuse seeds and strata the harness does not run, as a 422."""
-    if unknown := sorted(set(request.seeds) - set(OFFICIAL_SEEDS)):
+    """Refuse seeds and strata the harness does not run, and seeds the
+    request's kind may not use (the unseen worlds, D-091), as a 422."""
+    if unknown := sorted(set(request.seeds) - set(JOB_SEEDS)):
         raise ApiError(
             422,
             ErrorCode.VALIDATION_ERROR,
-            f"unknown seeds {unknown}; expected some of {list(OFFICIAL_SEEDS)}",
+            f"unknown seeds {unknown}; expected some of {list(JOB_SEEDS)}",
         )
     if len(set(request.seeds)) != len(request.seeds):
         raise ApiError(422, ErrorCode.VALIDATION_ERROR, "seeds must not repeat")
+    try:
+        check_seeds(
+            request.kind, request.seeds, full_bank=request.strata is None and request.limit is None
+        )
+    except ValueError as error:
+        raise ApiError(422, ErrorCode.VALIDATION_ERROR, f"seeds: {error}") from None
     if request.strata is not None and (unknown_strata := sorted(set(request.strata) - set(STRATA))):
         raise ApiError(
             422,

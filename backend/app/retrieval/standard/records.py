@@ -39,6 +39,10 @@ Row = dict[str, Any]
 # index must then be rebuilt (the API refuses a mismatched index).
 RECORD_SERIALISER_VERSION = "2.1.0"
 
+# Version of the structured facts a record block carries into the prompt
+# (method v0.3), recorded with every run; bump on any change to them.
+RECORD_FACTS_VERSION = "1.0.0"
+
 # Player ids listed in a shared device or payment method block.
 MAX_LISTED_PLAYERS = 12
 

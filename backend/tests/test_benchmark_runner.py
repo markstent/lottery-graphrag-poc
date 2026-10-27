@@ -17,10 +17,17 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
-from app.config import LABEL_VERSION, SELECTION_RULE, GraphConfig, JudgeSettings, from_env
+from app.config import (
+    LABEL_VERSION,
+    METHOD_VERSION,
+    SELECTION_RULE,
+    GraphConfig,
+    JudgeSettings,
+    from_env,
+)
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import TokenCheck, answer_score, citation_metrics, groundedness
@@ -40,12 +47,15 @@ from app.evaluation.judge import (
     judge_prompt_hash,
 )
 from app.evaluation.runner import (
+    DEV_LABEL,
     RUN_KINDS,
     SCORER_VERSION,
     SMOKE_LABEL,
     BenchmarkRun,
     BenchmarkRunner,
+    ReproducibilityRecord,
     RunScore,
+    settings_fields,
 )
 from app.evaluation.scoring import classify_failure, evidence_score
 from app.evidence import EvidenceChunk
@@ -62,7 +72,7 @@ from app.retrieval.standard.generation import (
     GenerationOutput,
 )
 from app.retrieval.standard.index import index_corpus
-from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+from app.retrieval.standard.records import RECORD_FACTS_VERSION, RECORD_SERIALISER_VERSION
 from app.retrieval.standard.sparse import SparseVector
 from app.retrieval.standard.vector_store import InMemoryVectorStore, SearchHit, VectorStore
 
@@ -375,7 +385,7 @@ def test_runner_refuses_an_index_of_another_serialiser_before_any_question(
 
 
 def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> None:
-    assert RUN_KINDS == ("smoke", "official", "sweep")
+    assert RUN_KINDS == ("smoke", "official", "sweep", "dev")
     fake, scripted = indexed_lab(world_dir), indexed_lab(world_dir, generator=ScriptedGenerator())
     with pytest.raises(ValueError, match="run kind"):
         BenchmarkRunner(fake, GRAPH, frozen_bank, world_dir, kind="trial", repeats=1)
@@ -409,6 +419,22 @@ def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> 
         scripted, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=1, judge=gateway_judge()
     )
     assert sweep.label is None
+
+
+def test_a_dev_run_takes_the_real_generator_and_judge_and_is_labelled(
+    frozen_bank: FrozenBank, world_dir: Path
+) -> None:
+    fake, scripted = indexed_lab(world_dir), indexed_lab(world_dir, generator=ScriptedGenerator())
+    with pytest.raises(ValueError, match="fake generator"):
+        BenchmarkRunner(fake, GRAPH, frozen_bank, world_dir, kind="dev", repeats=1)
+    with pytest.raises(ValueError, match="gateway judge"):
+        BenchmarkRunner(
+            scripted, GRAPH, frozen_bank, world_dir, kind="dev", repeats=1, judge=FakeJudge()
+        )
+    dev = BenchmarkRunner(
+        scripted, GRAPH, frozen_bank, world_dir, kind="dev", repeats=1, judge=gateway_judge()
+    )
+    assert dev.label == DEV_LABEL == "development run on seed 2026, not a result"
 
 
 def test_unknown_pipelines_are_refused(
@@ -639,6 +665,46 @@ V2_FIELDS = {
     "graph_label_version",
     "selection_rule",
 }
+V03_FIELDS = {"method_version", "record_facts_version", "prompt_extras"}
+
+
+def _has_key(value: object, name: str) -> bool:
+    """Whether ``name`` is a key anywhere in nested mappings and lists."""
+    if isinstance(value, dict):
+        return name in value or any(_has_key(v, name) for v in value.values())
+    if isinstance(value, list):
+        return any(_has_key(v, name) for v in value)
+    return False
+
+
+def test_record_carries_method_and_versions(offline_lab: Lab) -> None:
+    fields = settings_fields(offline_lab.settings, FakeJudge(), "smoke", 1)
+    assert fields["method_version"] == METHOD_VERSION == "0.3.0"
+    assert fields["selection_rule"] == SELECTION_RULE
+    assert fields["prompt_version"] == PROMPT_VERSION
+    assert fields["scorer_version"] == "2.1.0"
+    assert fields["judge_prompt_version"] == "1.1.0"
+    assert fields["record_facts_version"] == RECORD_FACTS_VERSION == "1.0.0"
+    assert fields["prompt_extras"] == {
+        "path_line": ["B", "C"],
+        "target_type_tier": ["B", "C"],
+        "ontology_target_terms": ["C"],
+    }
+    assert not _has_key(fields, "evidence_slots")
+    assert not _has_key(fields, "graph_slots")
+    json.dumps(fields)
+
+
+def test_a_record_written_before_method_v03_still_loads() -> None:
+    record = ReproducibilityRecord(**_v02_record_payload())
+    assert record.method_version is None
+    assert record.record_facts_version is None and record.prompt_extras is None
+
+
+def _v02_record_payload() -> dict[str, Any]:
+    """A v0.2 run record: every field it held, none of the v0.3 ones."""
+    names = {field.name for field in dataclasses.fields(ReproducibilityRecord)} - V03_FIELDS
+    return {name: None for name in names}
 
 
 def test_reproducibility_payload_carries_every_field(
@@ -648,7 +714,7 @@ def test_reproducibility_payload_carries_every_field(
     record = runner_smoke.record()
     payload = record.to_payload()
     assert set(payload) == {field.name for field in dataclasses.fields(record)}
-    assert set(payload) == PHASE2_FIELDS | V2_FIELDS
+    assert set(payload) == PHASE2_FIELDS | V2_FIELDS | V03_FIELDS
     settings = offline_lab.settings
     settings_b, settings_c = bc_graph_settings(settings)
     assert payload["question_bank_version"] == BANK_VERSION
@@ -682,7 +748,7 @@ def test_reproducibility_payload_carries_every_field(
     assert payload["judge_prompt_hash"] == judge_prompt_hash()
     assert payload["generation_reasoning"] == settings.generation.reasoning
     assert payload["selection_rule"] == SELECTION_RULE
-    assert payload["context"]["graph_slots"] == settings.context.graph_slots
+    assert payload["context"] == {"dedupe_threshold": settings.context.dedupe_threshold}
     assert payload["judge_reasoning"] is None  # the fake judge calls no model
     assert payload["judge_temperature"] is None
     assert payload["graph_label_version"] == LABEL_VERSION

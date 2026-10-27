@@ -319,14 +319,16 @@ class ReproducibilityOut(BaseModel):
 
 
 class SummaryOut(BaseModel):
-    """A run's ``summary.json`` (schema 2), every key the harness writes.
+    """A run's ``summary.json``, every key the harness writes: schema 2 for a
+    run of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose
+    comparisons add C_vs_A cells and test evidence recall.
 
     A key added later is ignored, so an older client keeps reading.
     """
 
     model_config = ConfigDict(extra="ignore")
 
-    schema_version: str
+    schema_version: Literal["2", "3"]
     run_kind: str
     label: str | None
     bank_version: str
@@ -348,7 +350,7 @@ class SummaryOut(BaseModel):
 class BenchmarkSummary(BaseModel):
     """Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
 
-    ``summary`` is the run's ``summary.json`` (schema 2), typed: the only
+    ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
     benchmark source the API publishes. ``run_kind`` and ``label`` are
     copied out of it so a client can tell a smoke or sweep run from an
     official result without reading the summary.

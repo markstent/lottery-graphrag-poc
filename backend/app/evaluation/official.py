@@ -1,8 +1,10 @@
-"""Three-seed orchestration, the H1 depth sweep and the H7 model comparison.
+"""Multi-seed orchestration, the H1 depth sweep and the H7 model comparison.
 
-An official benchmark runs the bank over three generated worlds in turn
-(spec 10a.6): for each seed, :func:`prepare_world` brings the world, its
-graph, its vector collection and its frozen bank up to date, then the
+An official benchmark runs the bank over the unseen generated worlds in turn
+(spec 10a.6; seeds 2029 to 2034 under method v0.3, which only a full-bank
+official run may use, :func:`check_seeds`): for each seed,
+:func:`prepare_world` brings the world, its graph, its vector collection
+and its frozen bank up to date, then the
 runner scores the world. Neo4j holds one world at a time, so after the
 last world (or a failure) the presentation world's graph is ingested again.
 
@@ -15,7 +17,8 @@ after restoring the presentation graph, publishing nothing. Each finished
 world is kept in ``worlds/<seed>.json``, so a failed run can be resumed.
 :func:`run_sweep` runs the multi-hop questions with B and C at each graph
 depth and reports descriptive means only. :func:`compare_runs` pairs two
-official runs of different generation models over the same banks.
+official runs of different generation models over the same banks, and
+refuses, like a resume, to mix runs of different methods (:func:`method_of`).
 
 Evaluator-only (ADR-008): retrieval code never imports this module.
 """
@@ -30,7 +33,7 @@ import os
 import tempfile
 import threading
 from collections import Counter, defaultdict
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -67,9 +70,9 @@ from app.evaluation.report import (
     summarize,
 )
 from app.evaluation.runner import (
+    KIND_LABELS,
     OFFICIAL_MIN_REPEATS,
     PIPELINES,
-    SMOKE_LABEL,
     WORLD_MANIFEST,
     BenchmarkRun,
     BenchmarkRunner,
@@ -102,7 +105,16 @@ DEV_ONLY_MESSAGE = (
 )
 # The presentation world's truth ledger; read only here, inside the evaluator.
 TRUTH_LEDGER_ENV = "TRUTH_LEDGER_PATH"
-OFFICIAL_SEEDS = (2026, 2027, 2028)
+# The worlds of the v0.2.0 official run: seen, so smoke runs and sweeps use them.
+SEEN_SEEDS = (2026, 2027, 2028)
+# Worlds no one has generated or looked at, kept for the full-bank official
+# run of method v0.3 (D-091): no other run may touch a seed from 2029 on.
+FIRST_UNSEEN_SEED = 2029
+OFFICIAL_SEEDS = (2029, 2030, 2031, 2032, 2033, 2034)
+# A dev run develops on the presentation world only.
+DEV_SEEDS = (PRESENTATION_SEED,)
+# A run recorded before ``method_version`` existed (D-092).
+OLD_METHOD_VERSION = "0.2.0"
 PROFILE = "dev"
 # Official cells and headline tiles use depth 2; the sweep varies it (spec 10a.7).
 OFFICIAL_DEPTH = 2
@@ -502,10 +514,51 @@ def preflight(kind: str, repeats: int) -> None:
             check_families(generation.model_family, judge.model_family)
 
 
+def default_seeds(kind: str) -> tuple[int, ...]:
+    """The seeds a run of ``kind`` uses when none are named."""
+    return {"official": OFFICIAL_SEEDS, "dev": DEV_SEEDS}.get(kind, SEEN_SEEDS)
+
+
+def check_seeds(kind: str, seeds: Sequence[int], full_bank: bool) -> None:
+    """Keep the unseen worlds unseen (D-091), before any world is prepared.
+
+    Only a full-bank official run may use a seed from ``FIRST_UNSEEN_SEED``
+    on, and it uses no other: a smoke, sweep or dev run, and an official run
+    over part of the bank (such as the dry run), are refused there. A dev
+    run uses the presentation world only.
+    """
+    unseen = sorted(seed for seed in seeds if seed >= FIRST_UNSEEN_SEED)
+    if kind == "dev" and tuple(seeds) != DEV_SEEDS:
+        raise ValueError(
+            f"a dev run uses seed {PRESENTATION_SEED} only, got {list(seeds)}; "
+            "development never touches another world"
+        )
+    if kind == "official" and full_bank:
+        if seen := sorted(seed for seed in seeds if seed < FIRST_UNSEEN_SEED):
+            raise ValueError(
+                f"a full-bank official run uses unseen worlds only (seeds {FIRST_UNSEEN_SEED} "
+                f"onwards), got seen seeds {seen}; select part of the bank for a dry run"
+            )
+        return
+    if unseen:
+        what = "an official run over part of the bank" if kind == "official" else f"a {kind} run"
+        raise ValueError(
+            f"seeds {unseen} are unseen worlds, kept for the full-bank official run; "
+            f"{what} may not use seeds from {FIRST_UNSEEN_SEED} on"
+        )
+
+
+def method_of(record: Mapping[str, Any]) -> str:
+    """The method a run record was made under: its ``method_version``, or
+    0.2.0 for a record written before the field existed."""
+    return str(record.get("method_version") or OLD_METHOD_VERSION)
+
+
 def run_label(kind: str, selection: Selection) -> str | None:
-    """Smoke runs are labelled as such; a run over part of the bank says so."""
-    if kind == "smoke":
-        return SMOKE_LABEL
+    """Smoke and dev runs carry their kind's label; a run over part of the
+    bank says so."""
+    if kind in KIND_LABELS:
+        return KIND_LABELS[kind]
     if not selection.full:
         return f"subset run ({selection.describe()})"
     return None
@@ -553,12 +606,13 @@ def run_benchmark(
     _refuse_used_dir(out_dir, resume)
     preflight(kind, repeats)
     check_selection(strata, questions)
-    check_selection_not_empty(seeds, strata, questions, limit)
     selection = Selection(
         None if strata is None else tuple(strata),
         limit,
         None if questions is None else tuple(questions),
     )
+    check_seeds(kind, seeds, selection.full)
+    check_selection_not_empty(seeds, strata, questions, limit)
     kept = _load_kept_worlds(out_dir, seeds, kind, repeats, selection, depth, resume)
     steps = steps or default_steps()
     factory: RunnerFactory = runner_factory or build_runner
@@ -707,8 +761,15 @@ def _require_same_settings(
     and where they ran (and, between worlds, their own seeds and bank).
 
     A smoke run may also differ in ``git_dirty``; an official run may not,
-    though it is refused earlier with a plainer reason.
+    though it is refused earlier with a plainer reason. A kept world of
+    another method is refused first, with the methods named.
     """
+    methods = method_of(kept), method_of(now)
+    if methods[0] != methods[1]:
+        raise ValueError(
+            f"{where} was made under method v{methods[0]} and this run is method "
+            f"v{methods[1]} (method_version), so it cannot be resumed; start a new run"
+        )
     allowed = RESUME_MAY_DIFFER | PER_WORLD_FIELDS
     if kind == "official":
         allowed -= {"git_dirty"}
@@ -768,6 +829,7 @@ def run_sweep(
     """
     _refuse_used_dir(out_dir)
     preflight("sweep", repeats)
+    check_seeds("sweep", seeds, full_bank=False)
     selection = Selection((SWEEP_STRATUM,), limit)
     steps = steps or default_steps()
     factory: RunnerFactory = runner_factory or build_runner
@@ -854,6 +916,12 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
     the clustered bootstrap interval only, with no test.
     """
     runs = {name: load_results(path) for name, path in (("small", small), ("large", large))}
+    methods = {name: method_of(p["reproducibility"]["run"]) for name, p in runs.items()}
+    if methods["small"] != methods["large"]:
+        raise ValueError(
+            f"the small run was made under method v{methods['small']} and the large run under "
+            f"method v{methods['large']}; runs of different methods are never compared"
+        )
     for name, payload in runs.items():
         if payload["kind"] != "official":
             raise ValueError(f"the {name} run is a {payload['kind']} run, not an official run")
@@ -970,29 +1038,30 @@ def write_comparison(comparison: dict[str, Any], out_dir: Path) -> Path:
     return path
 
 
-_COMPARED_VALUES: dict[str, Callable[[dict[str, Any]], float | None]] = {
+_SCORE_VALUES: dict[str, Callable[[dict[str, Any]], float | None]] = {
     "answer": lambda score: score["answer"],
+    "evidence_recall": lambda score: score["evidence"]["recall"],
     "evidence_f1": lambda score: score["evidence"]["f1"],
 }
 
 
 def instance_means(
-    payload: dict[str, Any],
+    payload: dict[str, Any], metrics: Sequence[str] = COMPARED_METRICS
 ) -> dict[str, tuple[str, str, dict[tuple[str, str], float]]]:
     """Per instance id: its stratum key, its cluster and, per pipeline and
-    compared metric, the mean over the repeats that define it."""
+    metric (by default the compared ones), the mean over the repeats that
+    define it."""
     values = {}
     for world in payload["worlds"]:
         for result in world["results"]:
             instance = instance_from_payload(result["instance"])
             means: dict[tuple[str, str], float] = {}
             for tag, scores in result["scores"].items():
-                for metric in COMPARED_METRICS:
+                for metric in metrics:
                     defined = [
                         value
                         for score in scores
-                        if score is not None
-                        and (value := _COMPARED_VALUES[metric](score)) is not None
+                        if score is not None and (value := _SCORE_VALUES[metric](score)) is not None
                     ]
                     if defined:
                         means[(tag, metric)] = sum(defined) / len(defined)

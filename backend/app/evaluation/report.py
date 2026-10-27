@@ -1,8 +1,9 @@
-"""``summary.json`` v2 and ``report.md`` for a benchmark run (Phase 3 benchmark v2).
+"""``summary.json`` schema 3 and ``report.md`` for a benchmark run (method v0.3).
 
 ``summarize`` is the only place a benchmark number is computed: per-stratum
 means, clustered paired comparisons with Holm over the declared family,
-generated headlines, judge agreement and failure counts. ``render_report``
+generated headlines, judge agreement, failure counts and the descriptive
+groundedness of answers. ``render_report``
 renders that summary as Markdown and computes nothing of its own.
 
 An observation is one bank instance in one world. Its value for a metric and
@@ -48,7 +49,9 @@ from app.evaluation.statistics import (
     wilcoxon_p,
 )
 
-SUMMARY_SCHEMA_VERSION = "2"
+# Schema 3 (method v0.3): evidence recall tested, C_vs_A cells, groundedness
+# metrics and the judge agreement split by abstention. Schema 2 is method v0.2.
+SUMMARY_SCHEMA_VERSION = "3"
 SMOKE_HEADLINE = (
     "Scorer smoke test: the fake generator answers from titles only; "
     "these numbers are not a result."
@@ -64,24 +67,41 @@ STRATUM_LABELS = {
     "H5": STRATA["H5"],
     OVERALL: "every question",
 }
-COMPARISONS = {"B_vs_A": ("B", "A"), "C_vs_B": ("C", "B")}
-COMPARED_METRICS = ("evidence_f1", "answer")
-METRIC_UNITS = {"evidence_f1": "evidence points", "answer": "answer points"}
+COMPARISONS = {"B_vs_A": ("B", "A"), "C_vs_B": ("C", "B"), "C_vs_A": ("C", "A")}
+# The comparisons in the Holm family, with headlines and the ontology split;
+# C_vs_A is reported descriptively, never tested (D-087).
+TESTED_COMPARISONS = ("B_vs_A", "C_vs_B")
+# Evidence F1 and precision are descriptive tables only (D-087).
+COMPARED_METRICS = ("evidence_recall", "answer")
+METRIC_UNITS = {"evidence_recall": "evidence points", "answer": "answer points"}
 # The headline metric of each tested stratum.
-PRIMARY_METRIC = {"H1": "evidence_f1", "H2": "evidence_f1", "H3": "answer", "H5": "evidence_f1"}
+PRIMARY_METRIC = {
+    "H1": "evidence_recall",
+    "H2": "evidence_recall",
+    "H3": "answer",
+    "H5": "evidence_recall",
+}
+# The tested cells: (comparison, stratum, metric).
 HOLM_FAMILY = frozenset(
-    {
-        ("H1", "evidence_f1"),
-        ("H2", "evidence_f1"),
-        ("H5", "evidence_f1"),
+    (comparison, stratum, metric)
+    for comparison in TESTED_COMPARISONS
+    for stratum, metric in (
+        ("H1", "evidence_recall"),
+        ("H2", "evidence_recall"),
+        ("H5", "evidence_recall"),
         ("H1", "answer"),
         ("H2", "answer"),
         ("H3", "answer"),
         ("H5", "answer"),
-    }
+    )
 )
+# Descriptive (D-088): the share of an answer's checkable atoms its cited
+# blocks hold, and the share no shown block holds.
+GROUNDEDNESS_METRICS = ("grounded_supported", "grounded_unsupported")
 # The two groups of the ontology-dependent split, by the instance flag.
 ONTOLOGY_GROUPS = {"ontology_dependent": True, "other": False}
+# Kinds whose tested cells are never a result, and the words their table says.
+NOT_A_RESULT = {"smoke": "smoke run", "dev": "development run"}
 REASON_WORDS = {
     "tested": "tested",
     "too_few": "not tested: too few pairs or groups",
@@ -114,6 +134,12 @@ METRICS: dict[str, Extractor] = {
     "latency_ms": lambda _s, r: r.latency_ms,
     "context_tokens": lambda _s, r: float(r.context_tokens),
     **{f"judge_{d}": _judge_dimension(d) for d in JUDGE_DIMENSIONS},
+    "grounded_supported": lambda s, _r: (
+        None if s.groundedness is None else s.groundedness.supported_share
+    ),
+    "grounded_unsupported": lambda s, _r: (
+        None if s.groundedness is None else s.groundedness.unsupported_share
+    ),
 }
 
 
@@ -330,7 +356,7 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
         for metric in COMPARED_METRICS:
             for comparison, (x, y) in COMPARISONS.items():
                 paired = _pairs(members, metric, x, y)
-                if (stratum, metric) not in HOLM_FAMILY:
+                if (comparison, stratum, metric) not in HOLM_FAMILY:
                     reason = "not_in_family"
                 elif paired.too_few:
                     reason = "too_few"
@@ -365,7 +391,8 @@ def _ontology_split(observations: Sequence[_Observation]) -> list[dict[str, Any]
     for group, flag in ONTOLOGY_GROUPS.items():
         members = [o for o in observations if o.ontology_dependent is flag]
         for metric in COMPARED_METRICS:
-            for comparison, (x, y) in COMPARISONS.items():
+            for comparison in TESTED_COMPARISONS:
+                x, y = COMPARISONS[comparison]
                 paired = _pairs(members, metric, x, y)
                 interval = paired.interval
                 cells.append(
@@ -391,7 +418,7 @@ def _headlines(comparisons: Sequence[_Comparison]) -> list[str]:
     cells = {(c.stratum, c.metric, c.comparison): c for c in comparisons}
     lines = []
     for stratum, metric in PRIMARY_METRIC.items():
-        for comparison in COMPARISONS:
+        for comparison in TESTED_COMPARISONS:
             cell = cells[(stratum, metric, comparison)]
             # A cell without pairs takes the "too few" form, which reads only n and clusters.
             interval = cell.interval or Interval(0.0, 0.0, 0.0, 0, 0)
@@ -400,11 +427,14 @@ def _headlines(comparisons: Sequence[_Comparison]) -> list[str]:
                     comparison, STRATUM_LABELS[stratum], METRIC_UNITS[metric], interval, cell.p_holm
                 )
             )
-    for comparison in COMPARISONS:
-        cell = cells[("H2_name", "evidence_f1", comparison)]
+    for comparison in TESTED_COMPARISONS:
+        cell = cells[("H2_name", "evidence_recall", comparison)]
         lines.append(
             subgroup_line(
-                comparison, STRATUM_LABELS["H2_name"], METRIC_UNITS["evidence_f1"], cell.interval
+                comparison,
+                STRATUM_LABELS["H2_name"],
+                METRIC_UNITS["evidence_recall"],
+                cell.interval,
             )
         )
     return lines
@@ -466,8 +496,9 @@ def render_report(run: BenchmarkRun) -> str:
     ]
     for key in (*STRATUM_KEYS, OVERALL):
         lines += _stratum_section(summary, key)
-    lines += _comparison_section(summary["comparisons"], smoke=run.kind == "smoke")
+    lines += _comparison_section(summary["comparisons"], NOT_A_RESULT.get(run.kind))
     lines += _ontology_split_section(summary["ontology_split"])
+    lines += _groundedness_section(summary)
     lines += _agreement_section(summary["judge_agreement"])
     lines += _failure_section(summary["failures"], summary["unavailable"])
     lines += reproducibility_section(summary["reproducibility"])
@@ -502,6 +533,8 @@ def _stratum_section(summary: dict[str, Any], key: str) -> list[str]:
         "|---" * (len(pipelines) + 1) + "|",
     ]
     for metric, cells in table.items():
+        if metric in GROUNDEDNESS_METRICS:
+            continue
         row = []
         for tag in pipelines:
             cell = cells[tag]
@@ -520,16 +553,21 @@ def _stratum_section(summary: dict[str, Any], key: str) -> list[str]:
     return [*lines, ""]
 
 
-def _comparison_section(comparisons: Sequence[dict[str, Any]], smoke: bool) -> list[str]:
-    """The comparisons table; a smoke run's tested cells say they are not a result."""
+def _comparison_section(
+    comparisons: Sequence[dict[str, Any]], not_a_result: str | None
+) -> list[str]:
+    """The comparisons table; the tested cells of a smoke or dev run say they are not a result."""
     words = (
-        {**REASON_WORDS, "tested": "tested (smoke run, not a result)"} if smoke else REASON_WORDS
+        REASON_WORDS
+        if not_a_result is None
+        else {**REASON_WORDS, "tested": f"tested ({not_a_result}, not a result)"}
     )
     lines = [
         "## Comparisons",
         "",
         "Differences in points (one point is 0.01 on the 0 to 1 scale); "
-        "p is Wilcoxon on group means, Holm-adjusted over the family.",
+        "p is Wilcoxon on group means, Holm-adjusted over the family. "
+        "C_vs_A is reported for reference and never tested.",
         "",
         "| Stratum | Metric | Comparison | Pairs | Groups | Mean | 95 percent interval "
         "| p | Holm p | Test |",
@@ -569,6 +607,31 @@ def _ontology_split_section(cells: Sequence[dict[str, Any]]) -> list[str]:
             f"| {c['group']} | {c['metric']} | {c['comparison']} | {c['n']} | {c['clusters']} "
             f"| {mean} | {interval} | {note} |"
         )
+    return [*lines, ""]
+
+
+def _groundedness_section(summary: dict[str, Any]) -> list[str]:
+    """Per stratum and pipeline, the mean shares of supported and unsupported atoms."""
+    lines = [
+        "## Groundedness (descriptive)",
+        "",
+        "The share of an answer's checkable atoms (ids, dates, numbers) that the blocks "
+        "it cites hold, and the share no shown block holds. "
+        "Answers with no such atom are left out; no test is run.",
+        "",
+        "| Stratum | Pipeline | Supported share | Unsupported share |",
+        "|---|---|---|---|",
+    ]
+    for key in (*STRATUM_KEYS, OVERALL):
+        table = summary["metrics"][key]
+        for tag in summary["anchor_resolution_basis"]:
+            shown = [
+                "-"
+                if (cell := table[metric][tag])["mean"] is None
+                else f"{cell['mean']:.3f} (n {cell['n']})"
+                for metric in GROUNDEDNESS_METRICS
+            ]
+            lines.append(f"| {key} | {tag} | " + " | ".join(shown) + " |")
     return [*lines, ""]
 
 

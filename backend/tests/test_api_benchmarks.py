@@ -441,6 +441,8 @@ def test_an_unknown_job_is_not_found(client: TestClient) -> None:
         {"seeds": []},
         {"seeds": [2026, 2026]},
         {"seeds": [1999]},
+        # A smoke run never touches the unseen worlds of the official run.
+        {"seeds": [2029]},
         {"repeats": 0},
         {"strata": ["H9"]},
         {"limit": 0},
@@ -784,6 +786,19 @@ def test_latest_benchmark_ignores_summaries_of_another_schema(runs_dir: Path) ->
     publish(runs_dir, "run-v1", "official", "2026-10-09T09:00:00+00:00", schema="1")
     status, _ = _latest(runs_dir)
     assert status == 404
+
+
+def test_a_schema_2_summary_of_method_v02_is_still_published(
+    client: TestClient, runs_dir: Path
+) -> None:
+    """Summary schema 3 came with method v0.3; v0.2 runs (schema 2) stay published."""
+    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00", schema="2")
+    publish(runs_dir, "v03", "official", "2026-10-28T09:00:00+00:00", schema="3")
+    runs = client.get("/api/v1/benchmarks").json()
+    assert [run["run_id"] for run in runs] == ["v03", "v02"]
+    body = client.get("/api/v1/benchmarks/v02").json()
+    assert body["summary"]["schema_version"] == "2"
+    assert client.get("/api/v1/benchmarks/v03").json()["summary"]["schema_version"] == "3"
 
 
 # -- the question catalogue -------------------------------------------------------
@@ -1134,7 +1149,9 @@ def test_summary_is_typed_for_every_run_shape(client_with_runs: TestClient) -> N
     assert len(runs) == 4
     for run in runs:
         body = client_with_runs.get(f"/api/v1/benchmarks/{run['run_id']}").json()
-        assert body["summary"]["schema_version"] == "2"
+        # The harness writes schema 3; the hand-written fixtures are v0.2 runs (schema 2).
+        written = run["run_id"] in ("official-fixture", "smoke-fixture")
+        assert body["summary"]["schema_version"] == ("3" if written else "2")
     official = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
     assert official["metrics"]["H3"]["answer"]["A"]["n"] == 12
     assert official["comparisons"][0]["comparison"] == "B_vs_A"

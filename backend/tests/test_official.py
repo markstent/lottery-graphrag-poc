@@ -40,6 +40,7 @@ from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
     PROFILE,
+    SEEN_SEEDS,
     BenchmarkCancelled,
     InstanceHook,
     NotDevWorld,
@@ -55,7 +56,13 @@ from app.evaluation.official import (
     select_instances,
     world_paths,
 )
-from app.evaluation.runner import BenchmarkRun, ReproducibilityRecord, Selection, WorldRun
+from app.evaluation.runner import (
+    DEV_LABEL,
+    BenchmarkRun,
+    ReproducibilityRecord,
+    Selection,
+    WorldRun,
+)
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
 from tests.test_benchmark_report import _graded, _instance, _record, _result, _world
@@ -385,7 +392,8 @@ def test_compare_requires_matching_banks(
 def test_world_paths_name_the_world_ledger_bank_and_collection(data_dir: Path) -> None:
     presentation = world_paths(PRESENTATION_SEED)
     other = world_paths(2028)
-    assert OFFICIAL_SEEDS == (2026, 2027, 2028)
+    assert OFFICIAL_SEEDS == (2029, 2030, 2031, 2032, 2033, 2034)
+    assert SEEN_SEEDS == (2026, 2027, 2028) and official.FIRST_UNSEEN_SEED == 2029
     assert presentation.world_dir == data_dir / "generated" / "dev-seed2026"
     assert presentation.ledger_path == data_dir / "truth" / "ledger.json"
     assert (
@@ -755,7 +763,7 @@ def test_a_run_writes_results_summary_and_report(recorder: Recorder) -> None:
     )
     summary = json.loads((recorder.tmp / "summary.json").read_text())
     results = json.loads((recorder.tmp / "results.json").read_text())
-    assert summary["schema_version"] == "2"
+    assert summary["schema_version"] == "3"
     assert summary["label"] == "scorer smoke test"
     assert summary["worlds"] == [2026, 2027]
     assert [w["world_seed"] for w in results["reproducibility"]["worlds"]] == [2026, 2027]
@@ -922,7 +930,7 @@ def test_compare_reports_large_minus_small_per_pipeline_and_stratum(tmp_path: Pa
     h1_answer = cells[("B", "H1", "answer")]
     assert h1_answer["mean"] == pytest.approx(0.1)
     assert (h1_answer["n"], h1_answer["clusters"]) == (12, 12)
-    assert cells[("C", "H1", "evidence_f1")]["mean"] == pytest.approx(0.0)
+    assert cells[("C", "H1", "evidence_recall")]["mean"] == pytest.approx(0.0)
     assert cells[("A", "overall", "answer")]["n"] == 54
     assert "p" not in h1_answer and "p_holm" not in h1_answer
 
@@ -1014,7 +1022,7 @@ def test_cli_run_defaults_to_three_seeds_and_a_run_directory(
 ) -> None:
     cli.main(["run", "--kind", "smoke"])
     args, kwargs = captured["run"]
-    assert args == ("smoke", OFFICIAL_SEEDS)
+    assert args == ("smoke", SEEN_SEEDS)
     assert kwargs["repeats"] == 1
     out_dir = kwargs["out_dir"]
     assert out_dir.parent == data_dir / "evaluation" / "runs"
@@ -1166,7 +1174,7 @@ def test_an_unknown_question_is_refused_before_any_world_is_prepared(recorder: R
 def test_a_full_official_run_has_no_label(recorder: Recorder, gateway_env: None) -> None:
     run_benchmark(
         "official",
-        (2026,),
+        (2029,),
         repeats=3,
         out_dir=recorder.tmp,
         steps=recorder.steps,
@@ -1314,6 +1322,10 @@ def test_settings_are_checked_before_any_world_is_prepared(
 # --- Kept worlds and resume ------------------------------------------------------
 
 
+# The unseen worlds a full-bank official run in these tests uses.
+UNSEEN_RUN = (2029, 2030, 2031)
+
+
 def _run(recorder: Recorder, seeds: tuple[int, ...] = (2026, 2027, 2028), **options: Any) -> Any:
     options = {"kind": "smoke", "repeats": 1, **options}
     return run_benchmark(
@@ -1337,9 +1349,16 @@ def _edit_kept(recorder: Recorder, seed: int, edit: Callable[[dict[str, Any]], N
 
 
 def _failed_then_fresh(tmp_path: Path, **options: Any) -> tuple[Recorder, Recorder]:
-    """A run that kept world 2026 and failed in 2027, and a recorder to resume it."""
-    failing = Recorder(tmp_path, fail_on=2027)
-    with pytest.raises(RuntimeError, match="world 2027 failed"):
+    """A run that kept world 2026 and failed in 2027, and a recorder to resume it.
+
+    A full-bank official run uses the unseen worlds, so it keeps 2029 and fails in 2030.
+    """
+    if options.get("kind") == "official":
+        failing = Recorder(tmp_path, fail_on=2030)
+        options = {"seeds": UNSEEN_RUN, **options}
+    else:
+        failing = Recorder(tmp_path, fail_on=2027)
+    with pytest.raises(RuntimeError, match=r"world 20(27|30) failed"):
         _run(failing, **options)
     return failing, Recorder(tmp_path)
 
@@ -1385,9 +1404,9 @@ def test_resume_refuses_different_settings(
     tmp_path: Path, gateway_env: None, data_dir: Path
 ) -> None:
     failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
-    _edit_kept(failing, 2026, lambda saved: saved["record"].update(max_tokens=4096))
+    _edit_kept(failing, 2029, lambda saved: saved["record"].update(max_tokens=4096))
     with pytest.raises(ValueError, match="max_tokens") as error:
-        _run(fresh, kind="official", repeats=3, resume=True)
+        _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
     assert "4096" in str(error.value)
     assert fresh.generated == fresh.ingested == [] and fresh.runners == []
 
@@ -1431,11 +1450,11 @@ def test_an_official_run_resumes_only_from_a_clean_checkout(
     failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
     monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
     with pytest.raises(ValueError, match="clean checkout"):
-        _run(fresh, kind="official", repeats=3, resume=True)
+        _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
     monkeypatch.setattr(runner_module, "_git_dirty", lambda: False)
-    _edit_kept(failing, 2026, lambda saved: saved["record"].update(git_dirty=True))
-    with pytest.raises(ValueError, match="kept world 2026 was run on a checkout with uncommitted"):
-        _run(fresh, kind="official", repeats=3, resume=True)
+    _edit_kept(failing, 2029, lambda saved: saved["record"].update(git_dirty=True))
+    with pytest.raises(ValueError, match="kept world 2029 was run on a checkout with uncommitted"):
+        _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
     assert fresh.generated == fresh.ingested == [] and fresh.runners == []
 
 
@@ -1538,7 +1557,7 @@ def test_a_stored_selection_without_questions_still_resumes(tmp_path: Path, data
 def test_resume_refuses_a_different_kind(tmp_path: Path, data_dir: Path, gateway_env: None) -> None:
     _, fresh = _failed_then_fresh(tmp_path)
     with pytest.raises(ValueError, match="kept world 2026 was a smoke run"):
-        _run(fresh, resume=True, kind="official", repeats=3)
+        _run(fresh, (2026,), resume=True, kind="dev")
     assert fresh.generated == []
 
 
@@ -1675,3 +1694,167 @@ def test_make_dry_run_recipe_passes_the_official_run_checks() -> None:
     assert arguments.seeds == (2026,)
     assert arguments.limit == 1
     runner_module.check_run_config(arguments.kind, arguments.repeats, False, "family")
+    official.check_seeds(arguments.kind, arguments.seeds, full_bank=False)
+
+
+def _make_run_arguments(target: str) -> Any:
+    """The CLI arguments of a make target's run line, as ``make -n`` prints it."""
+    env = {**os.environ, "GENERATION_PROVIDER": "litellm", "JUDGE_PROVIDER": "litellm"}
+    repo = Path(__file__).resolve().parents[2]
+    printed = subprocess.run(
+        ["make", "-n", target], cwd=repo, env=env, capture_output=True, text=True, check=True
+    ).stdout
+    line = next(row for row in printed.splitlines() if "app.evaluation run" in row)
+    return cli.build_parser().parse_args(shlex.split(line.split("app.evaluation", 1)[1]))
+
+
+def test_make_run_benchmark_runs_the_unseen_seeds() -> None:
+    arguments = _make_run_arguments("run-benchmark")
+    assert arguments.kind == "official" and arguments.repeats == 3
+    assert arguments.seeds == OFFICIAL_SEEDS == (2029, 2030, 2031, 2032, 2033, 2034)
+    official.check_seeds(arguments.kind, arguments.seeds, full_bank=True)
+
+
+def test_make_dev_run_is_a_dev_run_on_seed_2026() -> None:
+    arguments = _make_run_arguments("dev-run")
+    assert (arguments.kind, arguments.seeds, arguments.repeats) == ("dev", (2026,), 1)
+    assert arguments.strata is None and arguments.limit is None
+    official.check_seeds(arguments.kind, arguments.seeds, full_bank=True)
+
+
+# --- Method v0.3: the method in the record, unseen seeds and dev runs ------------
+
+
+def test_method_of_defaults_old_runs_to_0_2_0() -> None:
+    assert official.method_of({}) == "0.2.0"
+    assert official.method_of({"method_version": None}) == "0.2.0"
+    assert official.method_of({"method_version": "0.3.0"}) == "0.3.0"
+    assert official.method_of(_record("official").to_payload()) == "0.2.0"
+
+
+def test_compare_refuses_old_and_new_method(tmp_path: Path) -> None:
+    small = _write_run(tmp_path / "small", _official("small-model"))
+    large = _write_run(tmp_path / "large", _official_with("large-model", method_version="0.3.0"))
+    with pytest.raises(ValueError) as error:
+        compare_runs(small, large)
+    message = str(error.value)
+    assert "method v0.2.0" in message and "method v0.3.0" in message
+    # Refused before the settings are compared, with the plain reason only.
+    assert "different settings" not in message
+
+
+def test_resume_refuses_a_kept_world_of_the_old_method(tmp_path: Path, data_dir: Path) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+    _edit_kept(failing, 2026, lambda saved: saved["record"].pop("method_version"))
+    with pytest.raises(ValueError, match="method_version") as error:
+        _run(fresh, resume=True)
+    assert "method v0.2.0" in str(error.value) and "method v0.3.0" in str(error.value)
+    assert fresh.generated == fresh.ingested == [] and fresh.runners == []
+
+
+@pytest.mark.parametrize("seeds", [(2026,), (2028,), (2028, 2029)])
+def test_full_official_run_refuses_seen_seeds(
+    recorder: Recorder, gateway_env: None, seeds: tuple[int, ...]
+) -> None:
+    with pytest.raises(ValueError, match="2029"):
+        run_benchmark(
+            "official",
+            seeds,
+            repeats=3,
+            out_dir=recorder.tmp,
+            steps=recorder.steps,
+            runner_factory=recorder.runner,
+        )
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_the_dry_run_on_seed_2026_passes_the_seed_guard(
+    recorder: Recorder, gateway_env: None
+) -> None:
+    run_benchmark(
+        "official",
+        (2026,),
+        repeats=3,
+        out_dir=recorder.tmp,
+        limit=1,
+        questions=["L01", "L05"],
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    assert [r["seed"] for r in recorder.runners] == [2026]
+
+
+def test_a_full_official_run_on_the_unseen_seeds_passes(
+    recorder: Recorder, gateway_env: None
+) -> None:
+    run_benchmark(
+        "official",
+        (2029, 2030),
+        repeats=3,
+        out_dir=recorder.tmp,
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    assert [r["seed"] for r in recorder.runners] == [2029, 2030]
+
+
+@pytest.mark.parametrize("selection", [{"limit": 1}, {"strata": ["H1"]}, {"questions": ["L01"]}])
+@pytest.mark.parametrize("seeds", [(2029,), (2026, 2034)])
+def test_a_dry_run_refuses_unseen_seeds(
+    recorder: Recorder, gateway_env: None, seeds: tuple[int, ...], selection: dict[str, Any]
+) -> None:
+    with pytest.raises(ValueError, match="unseen"):
+        _run(recorder, seeds=seeds, kind="official", repeats=3, **selection)
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_a_smoke_run_refuses_unseen_seeds(recorder: Recorder) -> None:
+    with pytest.raises(ValueError, match="unseen"):
+        _run(recorder, seeds=(2028, 2029))
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_a_sweep_refuses_unseen_seeds(recorder: Recorder, gateway_env: None) -> None:
+    with pytest.raises(ValueError, match="unseen"):
+        run_sweep(
+            (2030,), out_dir=recorder.tmp, steps=recorder.steps, runner_factory=recorder.runner
+        )
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+@pytest.mark.parametrize("seeds", [(2027,), (2026, 2027), (2029,)])
+def test_dev_run_only_on_seed_2026(
+    recorder: Recorder, gateway_env: None, seeds: tuple[int, ...]
+) -> None:
+    with pytest.raises(ValueError, match="seed 2026 only"):
+        _run(recorder, seeds=seeds, kind="dev")
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_dev_run_accepts_one_repeat(recorder: Recorder, gateway_env: None) -> None:
+    _run(recorder, seeds=(2026,), kind="dev", repeats=1)
+    assert [(r["seed"], r["kind"]) for r in recorder.runners] == [(2026, "dev")]
+    assert _kept(recorder, 2026)["record"]["run_kind"] == "dev"
+
+
+@pytest.mark.parametrize("selection", [{}, {"strata": ["H1"]}])
+def test_dev_run_is_labelled_not_a_result(
+    recorder: Recorder, gateway_env: None, selection: dict[str, Any]
+) -> None:
+    run = _run(recorder, seeds=(2026,), kind="dev", **selection)
+    summary = json.loads((recorder.tmp / "summary.json").read_text())
+    assert run.label == summary["label"] == DEV_LABEL
+    assert summary["run_kind"] == "dev"
+
+
+def test_cli_run_defaults_its_seeds_and_repeats_by_kind(
+    captured: dict[str, Any], data_dir: Path
+) -> None:
+    for kind, seeds, repeats in (
+        ("official", OFFICIAL_SEEDS, 3),
+        ("dev", (2026,), 1),
+        ("smoke", SEEN_SEEDS, 1),
+    ):
+        cli.main(["run", "--kind", kind])
+        assert captured["run"][0] == (kind, seeds)
+        assert captured["run"][1]["repeats"] == repeats

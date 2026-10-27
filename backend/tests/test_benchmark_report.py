@@ -7,11 +7,12 @@ import json
 from typing import Any
 
 import pytest
-from app.evaluation.checks import CitationMetrics, TokenCheck
+from app.evaluation.checks import CitationMetrics, GroundednessScore, TokenCheck
 from app.evaluation.claims import Claim
 from app.evaluation.grounding import BankInstance, Unavailable
 from app.evaluation.judge import JudgeScores, JudgeVerdict
 from app.evaluation.report import (
+    HOLM_FAMILY,
     SMOKE_HEADLINE,
     SUMMARY_SCHEMA_VERSION,
     _agreement_section,
@@ -22,6 +23,7 @@ from app.evaluation.report import (
     summarize,
 )
 from app.evaluation.runner import (
+    DEV_LABEL,
     BenchmarkRun,
     InstanceResult,
     PipelineRun,
@@ -34,9 +36,9 @@ from app.evaluation.scoring import EvidenceScore
 
 SEEDS = (2026, 2027)
 FAMILY = {
-    ("H1", "evidence_f1"),
-    ("H2", "evidence_f1"),
-    ("H5", "evidence_f1"),
+    ("H1", "evidence_recall"),
+    ("H2", "evidence_recall"),
+    ("H5", "evidence_recall"),
     ("H1", "answer"),
     ("H2", "answer"),
     ("H3", "answer"),
@@ -140,7 +142,10 @@ def _score(answer: float, f1: float, judged: int | None = 2) -> RunScore:
     )
     evidence = EvidenceScore(f1, f1, f1, 1, 1, 1.0, f1 > 0.3)
     failure_class = "retrieval_failure" if f1 < 0.5 else None
-    return RunScore(answer, evidence, CitationMetrics(1.0, 0.5), failure_class, verdict)
+    grounded = GroundednessScore(
+        atoms=4, supported_share=0.75, unsupported_share=0.25, abstained=False
+    )
+    return RunScore(answer, evidence, CitationMetrics(1.0, 0.5), failure_class, verdict, grounded)
 
 
 def _result(
@@ -212,7 +217,7 @@ def smoke_run() -> BenchmarkRun:
 
 def test_observations_average_repeats_and_skip_failures(synthetic_run: BenchmarkRun) -> None:
     summary = summarize(synthetic_run)
-    assert summary["schema_version"] == SUMMARY_SCHEMA_VERSION == "2"
+    assert summary["schema_version"] == SUMMARY_SCHEMA_VERSION == "3"
     assert summary["metrics"]["H3"]["answer"]["A"]["mean"] == pytest.approx(0.75)
     cell = summary["metrics"]["H3"]["answer"]["A"]
     assert (cell["n"], cell["repeats"]) == (12, 24)
@@ -225,10 +230,51 @@ def test_comparisons_use_holm_over_the_declared_family(synthetic_run: BenchmarkR
     assert all(c["p_holm"] >= c["p"] for c in family)
 
 
+def test_tested_family_uses_evidence_recall_and_excludes_c_vs_a(
+    synthetic_summary: dict[str, Any],
+) -> None:
+    comparisons = synthetic_summary["comparisons"]
+    c_vs_a = [c for c in comparisons if c["comparison"] == "C_vs_A"]
+    assert c_vs_a and all(c["reason"] == "not_in_family" for c in c_vs_a)
+    assert all(c["p"] is None and c["p_holm"] is None for c in c_vs_a)
+    # Descriptive: C_vs_A still reports its interval.
+    h1 = next(c for c in c_vs_a if c["stratum"] == "H1" and c["metric"] == "evidence_recall")
+    assert h1["n"] == 12 and h1["low"] <= h1["mean"] <= h1["high"]
+    family = [c for c in comparisons if c["in_family"]]
+    assert {c["metric"] for c in family} == {"evidence_recall", "answer"}
+    assert {c["comparison"] for c in family} == {"B_vs_A", "C_vs_B"}
+    assert {
+        (comparison, stratum, metric)
+        for comparison in ("B_vs_A", "C_vs_B")
+        for stratum, metric in FAMILY
+    } == HOLM_FAMILY
+    assert not any("C_vs_A" in str(cell) for cell in synthetic_summary["ontology_split"])
+    assert not any(line.startswith("Ontology") for line in synthetic_summary["headlines"])
+
+
+def test_summary_reports_groundedness_descriptively(synthetic_run: BenchmarkRun) -> None:
+    summary = summarize(synthetic_run)
+    for stratum in ("H1", "overall"):
+        for tag in ("A", "B", "C"):
+            assert summary["metrics"][stratum]["grounded_supported"][tag]["mean"] == (
+                pytest.approx(0.75)
+            )
+            assert summary["metrics"][stratum]["grounded_unsupported"][tag]["mean"] == (
+                pytest.approx(0.25)
+            )
+    assert not any("grounded" in c["metric"] for c in summary["comparisons"])
+    report = render_report(synthetic_run)
+    assert "## Groundedness (descriptive)" in report
+    section = report.split("## Groundedness (descriptive)")[1].split("\n## ")[0]
+    assert "| H1 | A | 0.750 (n 12) | 0.250 (n 12) |" in section
+
+
 def test_small_strata_make_no_claim(run_with_eight_h5_pairs: BenchmarkRun) -> None:
     summary = summarize(run_with_eight_h5_pairs)
     h5 = next(
-        c for c in summary["comparisons"] if c["stratum"] == "H5" and c["metric"] == "evidence_f1"
+        c
+        for c in summary["comparisons"]
+        if c["stratum"] == "H5" and c["metric"] == "evidence_recall"
     )
     assert not h5["in_family"] and h5["p"] is None and h5["p_holm"] is None
     assert any(
@@ -271,13 +317,13 @@ def test_out_of_family_cells_run_no_test(synthetic_summary: dict[str, Any]) -> N
     assert isinstance(comparisons, list)
     name = [c for c in comparisons if c["stratum"] == "H2_name"]
     assert name and all(not c["in_family"] and c["p"] is None for c in name)
-    assert all(c["n"] == 6 and c["clusters"] == 6 for c in name if c["metric"] == "evidence_f1")
+    assert all(c["n"] == 6 and c["clusters"] == 6 for c in name if c["metric"] == "evidence_recall")
 
 
 def test_pairs_cluster_by_question_and_world(synthetic_summary: dict[str, Any]) -> None:
     comparisons = synthetic_summary["comparisons"]
     assert isinstance(comparisons, list)
-    h1 = next(c for c in comparisons if c["stratum"] == "H1" and c["metric"] == "evidence_f1")
+    h1 = next(c for c in comparisons if c["stratum"] == "H1" and c["metric"] == "evidence_recall")
     assert (h1["comparison"], h1["n"], h1["clusters"]) == ("B_vs_A", 12, 12)
     assert h1["low"] <= h1["mean"] <= h1["high"]
 
@@ -338,10 +384,11 @@ def test_comparisons_name_why_they_were_or_were_not_tested(
 ) -> None:
     comparisons = synthetic_summary["comparisons"]
     assert isinstance(comparisons, list)
-    reasons = {(c["stratum"], c["metric"]): c["reason"] for c in comparisons}
-    assert reasons[("H1", "evidence_f1")] == "tested"
-    assert reasons[("H3", "evidence_f1")] == "not_in_family"
-    assert reasons[("H2_name", "evidence_f1")] == "not_in_family"
+    reasons = {(c["stratum"], c["metric"], c["comparison"]): c["reason"] for c in comparisons}
+    assert reasons[("H1", "evidence_recall", "B_vs_A")] == "tested"
+    assert reasons[("H1", "evidence_recall", "C_vs_A")] == "not_in_family"
+    assert reasons[("H3", "evidence_recall", "B_vs_A")] == "not_in_family"
+    assert reasons[("H2_name", "evidence_recall", "C_vs_B")] == "not_in_family"
     assert all((c["reason"] == "tested") == c["in_family"] for c in comparisons)
 
 
@@ -409,7 +456,7 @@ def test_twelve_pairs_in_four_groups_make_no_claim() -> None:
     cell = next(
         c
         for c in summary["comparisons"]
-        if c["stratum"] == "H1" and c["metric"] == "evidence_f1" and c["comparison"] == "B_vs_A"
+        if c["stratum"] == "H1" and c["metric"] == "evidence_recall" and c["comparison"] == "B_vs_A"
     )
     assert (cell["n"], cell["clusters"]) == (12, 4)
     assert not cell["in_family"] and cell["p_holm"] is None and cell["reason"] == "too_few"
@@ -435,6 +482,13 @@ def test_smoke_comparisons_say_they_are_not_a_result(smoke_run: BenchmarkRun) ->
     assert "| tested (smoke run, not a result) |" in report
     assert "| tested |" not in report
     assert "| tested |" in render_report(_benchmark("official", h5_per_world=6))
+
+
+def test_dev_comparisons_say_they_are_not_a_result() -> None:
+    report = render_report(_benchmark("dev", h5_per_world=6, label=DEV_LABEL))
+    assert "| tested (development run, not a result) |" in report
+    assert "| tested |" not in report
+    assert f"Label: {DEV_LABEL}." in report
 
 
 def _with_flags(run: BenchmarkRun, flagged: set[str]) -> BenchmarkRun:
@@ -475,7 +529,7 @@ def test_ontology_split_cells_cover_both_groups_and_comparisons(
     assert {(c["group"], c["metric"], c["comparison"]) for c in cells} == {
         (g, m, k)
         for g in ("ontology_dependent", "other")
-        for m in ("evidence_f1", "answer")
+        for m in ("evidence_recall", "answer")
         for k in ("B_vs_A", "C_vs_B")
     }
     assert len(cells) == 8
@@ -491,7 +545,9 @@ def test_ontology_split_uses_the_flag_not_the_stratum(
         return next(
             c
             for c in cells
-            if c["group"] == group and c["metric"] == "evidence_f1" and c["comparison"] == "C_vs_B"
+            if c["group"] == group
+            and c["metric"] == "evidence_recall"
+            and c["comparison"] == "C_vs_B"
         )
 
     # L50 (H5) and L20 (H2) in two worlds; the other H2 questions are not flagged.
@@ -519,14 +575,14 @@ def test_instance_means_matches_the_observation(run_with_ontology_flags: Benchma
     for r in results:
         means, observed = instance_means(r), _observe(r).values
         for tag in r.scores:
-            for metric in ("evidence_f1", "answer"):
+            for metric in ("evidence_recall", "answer"):
                 assert means[tag][metric] == observed[metric][tag][0]
 
 
 def test_the_report_renders_the_ontology_split(run_with_ontology_flags: BenchmarkRun) -> None:
     report = render_report(run_with_ontology_flags)
     assert "## Ontology-dependent split" in report
-    assert "| ontology_dependent | evidence_f1 | C_vs_B | 4 | 4 |" in report
+    assert "| ontology_dependent | evidence_recall | C_vs_B | 4 | 4 |" in report
 
 
 def test_a_result_reads_back_from_results_json(synthetic_run: BenchmarkRun) -> None:

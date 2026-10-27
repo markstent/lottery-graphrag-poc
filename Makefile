@@ -11,7 +11,7 @@ UV := uv --directory $(BACKEND)
 PNPM := pnpm -C $(FRONTEND)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build api-contract e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep dry-run diagnose-selection traces
+.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build api-contract e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep dry-run dev-run diagnose-selection traces
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -106,9 +106,13 @@ demo-reset: ## Reset the presentation demo state (re-ingest graph + rebuild vect
 	@echo "demo reset complete: restart serve-demo-api to load the new world"
 
 # Benchmark v2 (docs/reference/evaluation/reproducibility.md). Runs are written to
-# data/evaluation/runs/<run id>; worlds 2027 and 2028 are generated, indexed
+# data/evaluation/runs/<run id>; worlds other than 2026 are generated, indexed
 # and grounded on first use, and the seed 2026 graph is restored afterwards.
+# SEEDS are the seen worlds, for smoke runs and sweeps. OFFICIAL_SEEDS are the
+# unseen worlds of the method v0.3 official run (D-091): only a full-bank
+# official run may use them.
 SEEDS = 2026,2027,2028
+OFFICIAL_SEEDS = 2029,2030,2031,2032,2033,2034
 
 ground-bank: ## Ground bank 2.0.0 into the active world (DATASET_DIR and TRUTH_LEDGER_PATH)
 	$(UV) run python -m app.evaluation ground
@@ -119,16 +123,21 @@ ground-demo-bank: ## Ground bank 2.0.0 into the demo world and its ledger
 run-smoke: ## Scorer smoke test on three worlds (fake generator and judge; needs services)
 	$(UV) run python -m app.evaluation run --kind smoke --seeds $(SEEDS)
 
-run-benchmark: ## Official run on three worlds, 3 repeats (reads GENERATION_* and JUDGE_*); OUT=DIR names the run, OUT=DIR RESUME=1 continues a failed one
+run-benchmark: ## Official run on the six unseen worlds, 3 repeats (reads GENERATION_* and JUDGE_*); OUT=DIR names the run, OUT=DIR RESUME=1 continues a failed one
 	@test -z "$(RESUME)" || test -n "$(OUT)" || { echo "RESUME=1 needs OUT=<the run directory to continue>"; exit 1; }
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
-	$(UV) run python -m app.evaluation run --kind official --seeds $(SEEDS) --repeats 3 $(if $(OUT),--out $(OUT)) $(if $(and $(OUT),$(RESUME)),--resume)
+	$(UV) run python -m app.evaluation run --kind official --seeds $(OFFICIAL_SEEDS) --repeats 3 $(if $(OUT),--out $(OUT)) $(if $(and $(OUT),$(RESUME)),--resume)
 
 dry-run: ## Four-question dry run of the official settings (wipes and restores the graph; owner approval required)
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
 	$(UV) run python -m app.evaluation run --kind official --seeds 2026 --repeats 3 --limit 1 --questions $$($(UV) run python -m app.evaluation dry-run-questions) $(if $(OUT),--out $(OUT))
+
+dev-run: ## Development run on seed 2026, not a result (wipes and restores the graph; owner go-ahead required)
+	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
+	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
+	$(UV) run python -m app.evaluation run --kind dev --seeds 2026 --repeats $(or $(REPEATS),1) $(if $(STRATA),--strata $(STRATA)) $(if $(LIMIT),--limit $(LIMIT)) $(if $(OUT),--out $(OUT))
 
 diagnose-selection: ## Read-only: what the shared re-ranker keeps of the claim records each approach finds (seed 2026, no answer model; the embedding and re-ranking models run)
 	$(UV) run python -m app.evaluation diagnose-selection

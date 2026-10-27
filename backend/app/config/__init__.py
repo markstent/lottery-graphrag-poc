@@ -62,6 +62,20 @@ class VectorSettings:
 # The pilot runs used "shared-reranker-12-slots" (D-025).
 SELECTION_RULE = "reranker-graph-share"
 
+# The version of the experimental method as a whole (selection, prompt,
+# scoring, judge and tested family), recorded with every run. Runs of
+# different methods never compare or resume as one experiment; a run recorded
+# before this field existed is method 0.2.0 (D-092).
+METHOD_VERSION = "0.3.0"
+
+# The prompt additions of method v0.3 and the pipelines shown each, recorded
+# with every run.
+PROMPT_EXTRAS: dict[str, tuple[str, ...]] = {
+    "path_line": ("B", "C"),
+    "target_type_tier": ("B", "C"),
+    "ontology_target_terms": ("C",),
+}
+
 
 @dataclass(frozen=True, slots=True)
 class ContextSettings:

@@ -5,7 +5,7 @@ active one, from DATASET_DIR and TRUTH_LEDGER_PATH) and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
 bank page. ``dry-run-questions`` prints the four-question dry run's questions;
 ``diagnose-selection`` counts, with no answer model, what the shared re-ranker keeps;
-``run`` runs a smoke or official benchmark over one or more
+``run`` runs a smoke, dev or official benchmark over one or more
 world seeds, ``sweep`` runs the multi-hop depth sweep and ``compare`` pairs
 two official runs of different generation models (H7). All are
 evaluator-only (ADR-008).
@@ -52,13 +52,23 @@ def build_parser() -> argparse.ArgumentParser:
     doc.add_argument("--bank", type=Path, required=True, help="Frozen bank JSON to read.")
     doc.add_argument("--out", type=Path, required=True, help="Markdown page to write.")
     run = commands.add_parser("run", help="Run the benchmark over one or more worlds.")
-    run.add_argument("--kind", choices=("smoke", "official"), required=True)
-    _seeds_argument(run)
+    run.add_argument("--kind", choices=("smoke", "dev", "official"), required=True)
+    _seeds_argument(
+        run,
+        default=None,
+        shown=(
+            f"{_joined(official.SEEN_SEEDS)} for smoke, {_joined(official.DEV_SEEDS)} for dev, "
+            f"{_joined(official.OFFICIAL_SEEDS)} for official"
+        ),
+    )
     run.add_argument(
         "--repeats",
         type=_repeats,
         default=None,
-        help=f"Repeats per pipeline (default 1 for smoke, {OFFICIAL_MIN_REPEATS} for official).",
+        help=(
+            f"Repeats per pipeline (default 1 for smoke and dev, "
+            f"{OFFICIAL_MIN_REPEATS} for official)."
+        ),
     )
     run.add_argument("--strata", type=_names, default=None, help="Strata to run, e.g. H1,H3.")
     run.add_argument(
@@ -86,7 +96,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     sweep = commands.add_parser("sweep", help="Run B and C on H1 at each graph depth.")
-    _seeds_argument(sweep)
+    _seeds_argument(sweep, default=official.SEEN_SEEDS, shown=_joined(official.SEEN_SEEDS))
     sweep.add_argument(
         "--depths",
         type=_integers,
@@ -120,11 +130,11 @@ def _dispatch(args: argparse.Namespace) -> int:
     if args.command == "run":
         repeats = args.repeats
         if repeats is None:
-            repeats = 1 if args.kind == "smoke" else OFFICIAL_MIN_REPEATS
+            repeats = OFFICIAL_MIN_REPEATS if args.kind == "official" else 1
         out = _resolved(args.out) or official.run_dir(official.run_id(args.kind))
         official.run_benchmark(
             args.kind,
-            args.seeds,
+            args.seeds or official.default_seeds(args.kind),
             repeats=repeats,
             out_dir=out,
             strata=args.strata,
@@ -203,13 +213,19 @@ def _names(text: str) -> list[str]:
     return [part.strip() for part in text.split(",")]
 
 
-def _seeds_argument(parser: argparse.ArgumentParser) -> None:
+def _seeds_argument(
+    parser: argparse.ArgumentParser, default: tuple[int, ...] | None, shown: str
+) -> None:
     parser.add_argument(
         "--seeds",
         type=_integers,
-        default=official.OFFICIAL_SEEDS,
-        help="Comma-separated world seeds (default 2026,2027,2028).",
+        default=default,
+        help=f"Comma-separated world seeds (default {shown}).",
     )
+
+
+def _joined(seeds: tuple[int, ...]) -> str:
+    return ",".join(str(seed) for seed in seeds)
 
 
 def _limit_argument(parser: argparse.ArgumentParser) -> None:

@@ -255,7 +255,7 @@
         "type": "object"
       },
       "BenchmarkSummary": {
-        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json`` (schema 2), typed: the only\nbenchmark source the API publishes. ``run_kind`` and ``label`` are\ncopied out of it so a client can tell a smoke or sweep run from an\nofficial result without reading the summary.",
+        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only\nbenchmark source the API publishes. ``run_kind`` and ``label`` are\ncopied out of it so a client can tell a smoke or sweep run from an\nofficial result without reading the summary.",
         "properties": {
           "label": {
             "anyOf": [
@@ -6024,7 +6024,7 @@
         "type": "object"
       },
       "SummaryOut": {
-        "description": "A run's ``summary.json`` (schema 2), every key the harness writes.\n\nA key added later is ignored, so an older client keeps reading.",
+        "description": "A run's ``summary.json``, every key the harness writes: schema 2 for a\nrun of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose\ncomparisons add C_vs_A cells and test evidence recall.\n\nA key added later is ignored, so an older client keeps reading.",
         "properties": {
           "anchor_resolution_basis": {
             "additionalProperties": {
@@ -6117,6 +6117,10 @@
             "type": "string"
           },
           "schema_version": {
+            "enum": [
+              "2",
+              "3"
+            ],
             "title": "Schema Version",
             "type": "string"
           },

@@ -100,7 +100,7 @@ def instance_scores(
         for world in results["worlds"]
         if world["world_seed"] == bank.world_seed and world["bank_hash"] == bank.bank_hash
     ]
-    means = instance_means({**results, "worlds": worlds})
+    means = instance_means({**results, "worlds": worlds}, ("answer", "evidence_f1"))
     return {
         instance_id: {
             tag: PipelineMeans(values.get((tag, "answer")), values.get((tag, "evidence_f1")))
