@@ -471,7 +471,14 @@ def test_agreement_reports_every_measure_per_cell(sample_dir: Path, run_dir: Pat
     for cell in result["cells"].values():
         assert list(cell["measures"]) == measures
         for found in cell["measures"].values():
-            assert set(found) == {"n", "agreement", "weighted_kappa", "wrong_share", "flagged"}
+            assert set(found) == {
+                "n",
+                "agreement",
+                "weighted_kappa",
+                "kappa_shown",
+                "wrong_share",
+                "flagged",
+            }
     overall = result["overall"]
     assert list(overall) == measures
     # Scorer 2.0.0 recorded: levels 0, 0, 1, 1, 0 against labels 0, 2, 0, 1, 0.
@@ -486,6 +493,91 @@ def test_agreement_reports_every_measure_per_cell(sample_dir: Path, run_dir: Pat
     assert abstention["judge_abstention_rule"]["agreement"] == 1.0
     assert result["abstention"]["agreement"] == 1.0
     assert result["run"] == RUN_NAME
+
+
+def test_agreement_reports_every_measure_per_approach(sample_dir: Path, run_dir: Path) -> None:
+    labels = _labels_by_cell(
+        sample_dir,
+        {
+            "abstention_judged_correct": ("0", "y"),
+            "l03_date": ("2", "n"),
+            "version_label": ("0", "n"),
+            "partial_set": ("1", "n"),
+            "agree": ("0", "n"),
+        },
+    )
+    _write_labels(sample_dir / "labels-owner.csv", labels)
+    result = label_agreement(sample_dir, run_dir)
+    approaches = result["approaches"]
+    assert list(approaches) == ["A", "B", "C"]
+    assert [approaches[tag]["n"] for tag in "ABC"] == [2, 2, 1]
+    for found in approaches.values():
+        assert list(found["measures"]) == list(result["measures"])
+        for measure in found["measures"].values():
+            assert set(measure) == {
+                "n",
+                "agreement",
+                "weighted_kappa",
+                "kappa_shown",
+                "wrong_share",
+            }
+    # Scorer 2.0.0 recorded: A abstention 0 v 0 and partial set 1 v 1; B L03 date
+    # 0 v 2 and agree 0 v 0; C version label 1 v 0.
+    recorded = {tag: approaches[tag]["measures"]["scorer_recorded"] for tag in "ABC"}
+    assert [recorded[tag]["agreement"] for tag in "ABC"] == [1.0, 0.5, 0.0]
+    assert [recorded[tag]["wrong_share"] for tag in "ABC"] == [0.0, 0.5, 1.0]
+    page = labelling.render_agreement(result)
+    assert "## Approach A (2 items)" in page
+    assert "## Approach C (1 items)" in page
+
+
+def test_kappa_below_ten_items_is_too_few_to_say(sample_dir: Path, run_dir: Path) -> None:
+    owner = _all(sample_dir, "2")
+    controller = dict(owner)
+    controller["S002"] = ("1", "n")
+    _write_labels(sample_dir / "labels-owner.csv", owner)
+    _write_labels(sample_dir / "labels-controller.csv", controller)
+    _write_labels(sample_dir / "labels-consensus.csv", {"S002": ("2", "n")})
+    write_agreement(sample_dir, run_dir)
+    result = json.loads((sample_dir / "agreement.json").read_text(encoding="utf-8"))
+    page = (sample_dir / "agreement.md").read_text(encoding="utf-8")
+    assert result["labellers"]["correctness"]["kappa_shown"] is False
+    assert all(
+        not cell["measures"][m]["kappa_shown"]
+        for cell in result["cells"].values()
+        for m in cell["measures"]
+    )
+    assert all(
+        not found["measures"][m]["kappa_shown"]
+        for found in result["approaches"].values()
+        for m in found["measures"]
+    )
+    assert "Labellers' correctness: n 5, agreement 0.800, weighted kappa too few to say." in page
+    measure_lines = [line for line in page.splitlines() if line.startswith("- ")]
+    assert measure_lines
+    assert all("weighted kappa too few to say" in line for line in measure_lines)
+
+
+def test_kappa_from_ten_items_is_shown(tmp_path: Path) -> None:
+    run = _write_run(tmp_path / RUN_NAME, _bulk_entries())
+    sample = write_sample(run, tmp_path / "out")
+    keyed = _key(sample)["items"]
+    rows = {item_id: ("0", "n") if n % 3 else ("2", "y") for n, item_id in enumerate(keyed)}
+    _write_labels(sample / "labels-owner.csv", rows)
+    result = label_agreement(sample, run)
+    cell = result["cells"]["abstention_judged_correct"]["measures"]["judge_recorded"]
+    assert cell["n"] == 25
+    assert cell["kappa_shown"] is True
+    assert result["approaches"]["A"]["measures"]["judge_recorded"]["kappa_shown"] is True
+    assert result["cells"]["l03_date"]["measures"]["judge_recorded"]["kappa_shown"] is False
+    page = labelling.render_agreement(result)
+    line = next(
+        line
+        for line in page.split("## Cell abstention_judged_correct")[1].splitlines()
+        if line.startswith("- judge 1.0.0 as recorded:")
+    )
+    assert "too few to say" not in line
+    assert re.search(r"weighted kappa (-?\d\.\d{3}|undefined),", line)
 
 
 def test_eighty_percent_rule_flags_a_cell(tmp_path: Path) -> None:
@@ -511,19 +603,38 @@ def test_eighty_percent_rule_flags_a_cell(tmp_path: Path) -> None:
         "n": 0,
         "agreement": None,
         "weighted_kappa": None,
+        "kappa_shown": False,
         "wrong_share": None,
         "flagged": False,
     }
     written = write_agreement(sample, run)
     assert written == sample
     page = (sample / "agreement.md").read_text(encoding="utf-8")
-    assert "flagged" in page
+    cell_lines = page.split("## Cell abstention_judged_correct")[1].split("\n## ")[0]
+    flags = {
+        line.split(":")[0]: line.endswith("Flagged.")
+        for line in cell_lines.splitlines()
+        if line.startswith("- ")
+    }
+    assert flags == {
+        "- scorer 2.0.0 as recorded": True,
+        "- scorer 2.1.0 rescored": True,
+        "- judge 1.0.0 as recorded": False,
+        "- judge 1.0.0 with the 1.1.0 abstention rule applied mechanically": True,
+    }
     assert json.loads((sample / "agreement.json").read_text(encoding="utf-8")) == result
 
 
 def test_wrong_share_at_exactly_eighty_percent_is_flagged() -> None:
-    assert labelling.measure_cell([(0, 2)] * 4 + [(2, 2)])["flagged"] is True
-    assert labelling.measure_cell([(0, 2)] * 3 + [(2, 2)] * 2)["flagged"] is False
+    assert labelling.measure_cell([(0, 2)] * 8 + [(2, 2)] * 2)["flagged"] is True
+    assert labelling.measure_cell([(0, 2)] * 7 + [(2, 2)] * 3)["flagged"] is False
+
+
+def test_a_cell_of_fewer_than_ten_items_is_never_flagged() -> None:
+    small = labelling.measure_cell([(0, 2)] * 9)
+    assert small["wrong_share"] == 1.0
+    assert small["flagged"] is False
+    assert small["kappa_shown"] is False
 
 
 def test_sample_writer_refuses_an_out_dir_inside_the_run(run_dir: Path, tmp_path: Path) -> None:
@@ -535,6 +646,37 @@ def test_sample_writer_refuses_an_out_dir_inside_the_run(run_dir: Path, tmp_path
     taken.mkdir()
     with pytest.raises(ValueError, match="already exists"):
         write_sample(run_dir, taken)
+
+
+def test_sample_writer_refuses_any_out_dir_under_the_runs_root(
+    run_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runs_root = tmp_path / "evaluation" / "runs"
+    other_run = runs_root / "official-2026-11-01"
+    other_run.mkdir(parents=True)
+    monkeypatch.setattr(labelling, "RUNS_ROOT", runs_root)
+    with pytest.raises(ValueError, match="inside the runs directory"):
+        write_sample(run_dir, other_run / "labels")
+    with pytest.raises(ValueError, match="inside the runs directory"):
+        write_sample(run_dir, runs_root / "labels")
+    assert sorted(path.name for path in runs_root.rglob("*")) == ["official-2026-11-01"]
+
+
+def test_agreement_writer_refuses_a_run_directory(
+    sample_dir: Path, run_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_labels(sample_dir / "labels-owner.csv", _all(sample_dir, "2"))
+    planted = run_dir / "labels"
+    planted.mkdir()
+    (planted / "key.json").write_bytes((sample_dir / "key.json").read_bytes())
+    (planted / "labels-owner.csv").write_bytes((sample_dir / "labels-owner.csv").read_bytes())
+    with pytest.raises(ValueError, match="inside the run"):
+        write_agreement(planted, run_dir)
+    assert sorted(path.name for path in planted.iterdir()) == ["key.json", "labels-owner.csv"]
+    monkeypatch.setattr(labelling, "RUNS_ROOT", tmp_path / "labels")
+    with pytest.raises(ValueError, match="inside the runs directory"):
+        write_agreement(sample_dir, run_dir)
+    assert not (sample_dir / "agreement.json").exists()
 
 
 def test_agreement_refuses_another_run(sample_dir: Path, tmp_path: Path) -> None:

@@ -38,6 +38,8 @@ from app.evaluation.runner import (
 )
 
 LABELS_ROOT = DATA_DIR / "evaluation" / "labels"
+# Where official runs live; nothing here is ever written under it.
+RUNS_ROOT = DATA_DIR / "evaluation" / "runs"
 DEFAULT_SAMPLE_DIR = LABELS_ROOT / "v0.2.0-sample"
 SAMPLE_SALT = "v0.3-labels-2026-10-27"
 # The cells in precedence order with their sizes: a repeat goes to the first it fits.
@@ -54,6 +56,10 @@ CONSENSUS_FILE = "labels-consensus.csv"
 # The rule for acting on the labels: a measure is wrong on its cell when the
 # labels contradict it on at least this share of the cell's items.
 WRONG_SHARE_RULE = 0.80
+# The owner's rule of 2026-10-27: a weighted kappa is shown, and a cell is
+# flagged, only over at least this many items; below it the page says
+# "too few to say".
+MIN_ITEMS = 10
 # The judge's correctness sentence, verbatim from judge prompt 1.1.0.
 CORRECTNESS_RUBRIC = (
     "correctness: the answer agrees with the reference answer; an answer that says the "
@@ -296,8 +302,7 @@ def write_sample(run_dir: Path, out_dir: Path) -> Path:
     """Draw the sample from the run in ``run_dir`` and write the sheet, the
     two empty label files and the key into the new directory ``out_dir``,
     which may not be inside the run or already exist. Returns ``out_dir``."""
-    if out_dir.resolve().is_relative_to(run_dir.resolve()):
-        raise ValueError(f"{out_dir} is inside the run {run_dir}; labels are never written there")
+    _refuse_runs(out_dir, run_dir)
     if out_dir.exists():
         raise ValueError(f"{out_dir} already exists; a sample is drawn once")
     payload = load_results(run_dir)
@@ -310,6 +315,17 @@ def write_sample(run_dir: Path, out_dir: Path) -> Path:
     key = _key(run_dir, payload, items, members)
     (out_dir / "key.json").write_text(json.dumps(key, indent=2) + "\n", encoding="utf-8")
     return out_dir
+
+
+def _refuse_runs(out: Path, run_dir: Path) -> None:
+    """Refuse a location inside the run or anywhere under the runs root."""
+    where = out.resolve()
+    if where.is_relative_to(run_dir.resolve()):
+        raise ValueError(f"{out} is inside the run {run_dir}; labels are never written there")
+    if where.is_relative_to(RUNS_ROOT.resolve()):
+        raise ValueError(
+            f"{out} is inside the runs directory {RUNS_ROOT}; labels are never written there"
+        )
 
 
 def shortfall_lines(sample_dir: Path) -> list[str]:
@@ -432,10 +448,12 @@ def _consensus(
 
 def measure_cell(pairs: Sequence[tuple[int, int]]) -> dict[str, Any]:
     """Agreement of a measure's levels with the labels over one cell, its
-    wrong share and whether the share meets the rule for acting on it."""
+    wrong share and whether the share meets the rule for acting on it (never
+    over fewer than MIN_ITEMS items)."""
     found = _measure(pairs)
     share = found["wrong_share"]
-    return {**found, "flagged": share is not None and share >= WRONG_SHARE_RULE}
+    enough = found["n"] >= MIN_ITEMS
+    return {**found, "flagged": enough and share is not None and share >= WRONG_SHARE_RULE}
 
 
 def _measure(pairs: Sequence[tuple[int, int]]) -> dict[str, Any]:
@@ -445,7 +463,14 @@ def _measure(pairs: Sequence[tuple[int, int]]) -> dict[str, Any]:
 
 
 def _agreement_fields(found: Agreement) -> dict[str, Any]:
-    return {"n": found.n, "agreement": found.agreement, "weighted_kappa": found.weighted_kappa}
+    """The agreement as recorded; ``kappa_shown`` is False below ``MIN_ITEMS``
+    items, where the page says "too few to say" in place of the kappa."""
+    return {
+        "n": found.n,
+        "agreement": found.agreement,
+        "weighted_kappa": found.weighted_kappa,
+        "kappa_shown": found.n >= MIN_ITEMS,
+    }
 
 
 def _binary(labels: Sequence[tuple[bool, bool]]) -> dict[str, Any]:
@@ -504,8 +529,8 @@ def _measure_levels(
 
 
 def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
-    """Agreement of every measure with the consensus label, overall and per
-    cell; refuses incomplete labels or unsettled disagreements."""
+    """Agreement of every measure with the consensus label, overall, per
+    cell and per approach; refuses incomplete labels or unsettled disagreements."""
     key = _read_key(sample_dir)
     if key["run"] != run_dir.name:
         raise ValueError(f"the sample was drawn from the run {key['run']}, not {run_dir.name}")
@@ -519,12 +544,14 @@ def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
     record = payload["reproducibility"]["run"]
     levels = _measure_levels(payload, items)
 
-    def pairs(measure: str, cell: str | None = None) -> list[tuple[int, int]]:
+    def pairs(measure: str, field: str | None = None, value: str = "") -> list[tuple[int, int]]:
         return [
             (levels[item_id][0][measure], consensus[item_id].correctness)
             for item_id in item_ids
-            if cell is None or items[item_id]["cell"] == cell
+            if field is None or items[item_id][field] == value
         ]
+
+    pipelines = sorted({item["pipeline"] for item in items.values()})
 
     return {
         "run": run_dir.name,
@@ -554,9 +581,20 @@ def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
         "cells": {
             cell: {
                 "n": sum(item["cell"] == cell for item in items.values()),
-                "measures": {measure: measure_cell(pairs(measure, cell)) for measure in MEASURES},
+                "measures": {
+                    measure: measure_cell(pairs(measure, "cell", cell)) for measure in MEASURES
+                },
             }
             for cell, _ in CELLS
+        },
+        "approaches": {
+            pipeline: {
+                "n": sum(item["pipeline"] == pipeline for item in items.values()),
+                "measures": {
+                    measure: _measure(pairs(measure, "pipeline", pipeline)) for measure in MEASURES
+                },
+            }
+            for pipeline in pipelines
         },
         "abstention": _binary(
             [(levels[item_id][1], consensus[item_id].abstained) for item_id in item_ids]
@@ -566,7 +604,8 @@ def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
 
 def write_agreement(sample_dir: Path, run_dir: Path) -> Path:
     """Write ``agreement.json`` and ``agreement.md`` into the sample
-    directory. Returns the sample directory."""
+    directory, never inside a run. Returns the sample directory."""
+    _refuse_runs(sample_dir, run_dir)
     result = label_agreement(sample_dir, run_dir)
     (sample_dir / "agreement.json").write_text(
         json.dumps(result, indent=2) + "\n", encoding="utf-8"
@@ -586,6 +625,8 @@ def render_agreement(result: dict[str, Any]) -> str:
         f"A measure is flagged on a cell when the labels show it wrong on at least"
         f" {result['wrong_share_rule']:.0%} of the cell's items, the rule for acting on the"
         " labels.",
+        f"A weighted kappa over fewer than {MIN_ITEMS} items is not shown (too few to say),"
+        " and such a cell is never flagged.",
         f"Labelled by: {', '.join(labellers['names'])}.",
     ]
     if labellers["correctness"] is not None:
@@ -613,14 +654,24 @@ def render_agreement(result: dict[str, Any]) -> str:
                 f"- {result['measures'][measure]}: {_found(found)},"
                 f" wrong share {_number(found['wrong_share'])}.{flag}"
             )
+    for pipeline, found_approach in result["approaches"].items():
+        lines += ["", f"## Approach {pipeline} ({found_approach['n']} items)", ""]
+        for measure, found in found_approach["measures"].items():
+            lines.append(
+                f"- {result['measures'][measure]}: {_found(found)},"
+                f" wrong share {_number(found['wrong_share'])}."
+            )
     return "\n".join(lines) + "\n"
 
 
 def _found(found: dict[str, Any]) -> str:
     return (
-        f"n {found['n']}, agreement {_number(found['agreement'])},"
-        f" weighted kappa {_number(found['weighted_kappa'])}"
+        f"n {found['n']}, agreement {_number(found['agreement'])}, weighted kappa {_kappa(found)}"
     )
+
+
+def _kappa(found: dict[str, Any]) -> str:
+    return _number(found["weighted_kappa"]) if found["kappa_shown"] else "too few to say"
 
 
 def _number(value: float | None) -> str:
