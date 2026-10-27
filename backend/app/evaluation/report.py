@@ -26,6 +26,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from app.config import METHOD_VERSION
 from app.evaluation.bank import STRATA
 from app.evaluation.grounding import BankInstance
 from app.evaluation.judge import JUDGE_DIMENSIONS, agreement, judge_pairs
@@ -58,6 +59,12 @@ SMOKE_HEADLINE = (
     "these numbers are not a result."
 )
 DEV_HEADLINE = f"{DEV_LABEL.capitalize()}: the tables are descriptive and no claim is made."
+# Declared wherever v0.3.0 is reported (proposal section 3, item 6; D-093): in
+# the header of every method v0.3 report and as ``method_note`` in its summary.
+METHOD_NOTE = (
+    "Method v0.3 was made after seeing the v0.2.0 result, in which the graph did not win; "
+    "the reasons are in docs/evaluation/v0.3-method-proposal.md (D-093)."
+)
 # Kinds whose headlines are one fixed line in place of the generated ones.
 FIXED_HEADLINES = {"smoke": SMOKE_HEADLINE, "dev": DEV_HEADLINE}
 # H2 splits into its id-anchored cell ("H2") and its name-anchored sub-group.
@@ -208,8 +215,11 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
     observations = [_observe(result) for result in results]
     comparisons = _comparisons(observations)
     smoke = run.kind == "smoke"
+    reproducibility = run.reproducibility()
+    run_record = reproducibility["run"]
     return {
         "schema_version": SUMMARY_SCHEMA_VERSION,
+        "method_note": METHOD_NOTE if run_record.get("method_version") == METHOD_VERSION else None,
         "run_kind": run.kind,
         "label": SMOKE_LABEL if smoke else run.label,
         "bank_version": run.record.bank_version,
@@ -235,7 +245,7 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
         "judge_agreement": _judge_agreement(results, pipelines),
         "failures": _failures(results, pipelines),
         "selection": run.selection.to_payload(),
-        "reproducibility": run.reproducibility(),
+        "reproducibility": reproducibility,
     }
 
 
@@ -494,6 +504,7 @@ def render_report(run: BenchmarkRun) -> str:
     lines = [
         "# Benchmark run",
         "",
+        *([summary["method_note"], ""] if summary["method_note"] else []),
         f"Run kind: {summary['run_kind']}.",
         *([f"Label: {summary['label']}."] if summary["label"] else []),
         f"Selection: {run.selection.describe()}.",

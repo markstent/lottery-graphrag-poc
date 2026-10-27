@@ -80,6 +80,7 @@ from app.evaluation.runner import (
     Selection,
     WorldRun,
     check_run_config,
+    require_clean_checkout,
     settings_fields,
     world_run_from_payload,
 )
@@ -501,13 +502,16 @@ def preflight(kind: str, repeats: int) -> None:
     dev world: the demo environment would write dev truth to the demo ledger.
 
     A smoke run always gets the fake generator and the fake judge
-    (:func:`build_runner`); other kinds need the gateway for both.
+    (:func:`build_runner`); other kinds need the gateway for both. An
+    official run, the dry run included, starts only from a clean checkout
+    (:func:`require_clean_checkout`).
     """
     if not on_dev_world():
         raise NotDevWorld(DEV_ONLY_MESSAGE)
     generation = from_env().generation
     fake = kind == "smoke" or generation.provider == "fake"
     check_run_config(kind, repeats, fake, generation.model_family)
+    require_clean_checkout(kind)
     if kind != "smoke":
         judge = GatewayJudge(judge_settings_from_env())
         if kind == "official":
@@ -709,11 +713,7 @@ def _load_kept_worlds(
     if stray:
         raise ValueError(f"{out_dir} holds kept worlds {stray} outside the seeds of this run")
     expected = current_settings(kind, repeats, seeds[0], depth)
-    if kind == "official" and expected["git_dirty"] is not False:
-        raise ValueError(
-            "an official run resumes only from a clean checkout, and this one has uncommitted "
-            "changes (or git is unavailable); commit them and start a new run"
-        )
+    require_clean_checkout(kind)
     kept: dict[int, WorldRun] = {}
     for seed, path in sorted(files.items()):
         try:

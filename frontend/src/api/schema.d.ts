@@ -3158,6 +3158,8 @@ export interface components {
             judge_agreement: components["schemas"]["JudgeAgreementOut"] | components["schemas"]["ThresholdJudgeAgreementOut"] | null;
             /** Label */
             label: string | null;
+            /** Method Note */
+            method_note?: string | null;
             /** Metrics */
             metrics: {
                 [key: string]: {

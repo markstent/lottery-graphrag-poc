@@ -128,6 +128,19 @@ def _git_dirty() -> bool | None:
     return None if output is None else bool(output.strip())
 
 
+def require_clean_checkout(kind: str) -> None:
+    """Refuse an official run, over the whole bank or part of it (the dry
+    run, the official settings rehearsal), unless the checkout is known to be
+    clean (D-091): uncommitted code must never reach an official result, and
+    a checkout git cannot read is not known to be clean. Other kinds only
+    record git_dirty."""
+    if kind == "official" and _git_dirty() is not False:
+        raise ValueError(
+            "an official run starts or resumes only from a clean checkout, and this one has "
+            "uncommitted changes (or git is unavailable); commit them first"
+        )
+
+
 def settings_fields(
     settings: RetrievalSettings, judge: Judge, kind: str, repeats: int
 ) -> dict[str, Any]:

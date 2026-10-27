@@ -7,12 +7,14 @@ import json
 from typing import Any
 
 import pytest
+from app.config import METHOD_VERSION
 from app.evaluation.checks import CitationMetrics, GroundednessScore, TokenCheck
 from app.evaluation.claims import Claim
 from app.evaluation.grounding import BankInstance, Unavailable
 from app.evaluation.judge import JudgeScores, JudgeVerdict
 from app.evaluation.report import (
     HOLM_FAMILY,
+    METHOD_NOTE,
     SMOKE_HEADLINE,
     SUMMARY_SCHEMA_VERSION,
     _agreement_section,
@@ -213,6 +215,31 @@ def run_with_eight_h5_pairs() -> BenchmarkRun:
 def smoke_run() -> BenchmarkRun:
     # The label comes from the run kind, whatever the run carries.
     return _benchmark("smoke", h5_per_world=6)
+
+
+def _of_method(run: BenchmarkRun, method_version: str | None) -> BenchmarkRun:
+    return dataclasses.replace(
+        run, record=dataclasses.replace(run.record, method_version=method_version)
+    )
+
+
+@pytest.mark.parametrize("kind", ["official", "dev", "smoke", "sweep"])
+def test_every_v03_report_declares_the_method_change(kind: str) -> None:
+    """D-093: a method v0.3 run of any kind says, in its report header and its
+    summary, that the method was made after seeing v0.2.0."""
+    run = _of_method(_benchmark(kind, h5_per_world=6), METHOD_VERSION)
+    assert summarize(run)["method_note"] == METHOD_NOTE
+    assert "after seeing the v0.2.0 result" in METHOD_NOTE and "D-093" in METHOD_NOTE
+    header = render_report(run).split("## Headlines")[0]
+    assert header.startswith(f"# Benchmark run\n\n{METHOD_NOTE}\n\nRun kind: {kind}.")
+    assert render_report(run).count(METHOD_NOTE) == 1
+
+
+def test_a_v02_report_carries_no_method_note(synthetic_run: BenchmarkRun) -> None:
+    run = _of_method(synthetic_run, None)
+    assert summarize(run)["method_note"] is None
+    assert METHOD_NOTE not in render_report(run)
+    assert "after seeing" not in render_report(run)
 
 
 def test_observations_average_repeats_and_skip_failures(synthetic_run: BenchmarkRun) -> None:

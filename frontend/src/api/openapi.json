@@ -6541,6 +6541,17 @@
             ],
             "title": "Label"
           },
+          "method_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Note"
+          },
           "metrics": {
             "additionalProperties": {
               "additionalProperties": {

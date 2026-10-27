@@ -329,6 +329,9 @@ class SummaryOut(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     schema_version: Literal["2", "3"]
+    # Method v0.3's declaration that it was made after seeing v0.2.0 (D-093);
+    # None for a run of method v0.2.
+    method_note: str | None = None
     run_kind: str
     label: str | None
     bank_version: str

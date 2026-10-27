@@ -483,6 +483,37 @@ def test_the_dev_world_is_accepted_for_a_benchmark(data_dir: Path) -> None:
     preflight("smoke", 1)
 
 
+@pytest.mark.parametrize("dirty", [True, None], ids=["dirty", "git-unavailable"])
+def test_an_official_run_starts_only_from_a_known_clean_checkout(
+    recorder: Recorder,
+    gateway_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    dirty: bool | None,
+) -> None:
+    """D-091: a fresh official run, the full run and the dry run alike, is
+    refused before anything is prepared unless git says the tree is clean."""
+    monkeypatch.setattr(runner_module, "_git_dirty", lambda: dirty)
+    with pytest.raises(ValueError, match="starts or resumes only from a clean checkout"):
+        preflight("official", 3)
+    for seeds, questions in ((UNSEEN_RUN, None), ((2026,), ["L05"])):
+        with pytest.raises(ValueError, match="clean checkout"):
+            _run(recorder, seeds, kind="official", repeats=3, questions=questions)
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_an_official_run_starts_from_a_clean_checkout(gateway_env: None, data_dir: Path) -> None:
+    # The autouse ``clean_checkout`` fixture fakes git reporting a clean tree.
+    preflight("official", 3)
+
+
+@pytest.mark.parametrize("kind", ["dev", "sweep", "smoke"])
+def test_other_run_kinds_only_record_a_dirty_checkout(
+    gateway_env: None, data_dir: Path, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
+    preflight(kind, 1)
+
+
 def test_the_presentation_world_is_dataset_dir_and_the_truth_ledger_path(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

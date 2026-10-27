@@ -9,6 +9,7 @@ temporary data directory, so nothing is generated, ingested or indexed.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import shlex
@@ -22,7 +23,7 @@ from typing import Any
 import pytest
 from app.api import benchmarks
 from app.api.graph_world import GraphLease
-from app.config import REPO_ROOT
+from app.config import METHOD_VERSION, REPO_ROOT
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
@@ -32,7 +33,7 @@ from app.evaluation import official
 from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
 from app.evaluation.official import InstanceHook, WorldPaths, world_paths
-from app.evaluation.report import summarize
+from app.evaluation.report import METHOD_NOTE, summarize
 from app.evaluation.runner import WorldRun
 from app.evaluation.truth_ledger import load_ledger
 from app.events import TERMINAL_EVENT_TYPES
@@ -1221,6 +1222,20 @@ def test_older_run_without_split_or_new_reproducibility_fields_reads(
     assert body["ontology_split"] is None
     assert "judge_temperature" not in body["reproducibility"]["run"]
     assert "a_key_added_later" not in body
+
+
+def test_the_method_note_passes_through_the_api(client: TestClient, runs_dir: Path) -> None:
+    """D-093: a v0.3 summary's method_note reaches the client; a v0.2 summary has none."""
+    run = _benchmark("official", h5_per_world=6)
+    run = dataclasses.replace(
+        run, record=dataclasses.replace(run.record, method_version=METHOD_VERSION)
+    )
+    run_dir = runs_dir / "v03"
+    run_dir.mkdir(parents=True)
+    (run_dir / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
+    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
+    assert client.get("/api/v1/benchmarks/v03").json()["summary"]["method_note"] == METHOD_NOTE
+    assert client.get("/api/v1/benchmarks/v02").json()["summary"]["method_note"] is None
 
 
 def test_a_summary_that_does_not_fit_is_a_server_error_naming_the_run(
