@@ -13,9 +13,13 @@
  *
  * The count leaves out what a comparison reads (`status === 'ready'`), which
  * is not shown. The Phase 7 copy pass brought it from 1,362 to 1,300, so the
- * raise to 1,375 made for the start form is withdrawn.
+ * raise to 1,375 made for the start form was withdrawn. Method v0.3 added 73
+ * words (the method badge, evidence recall, the split judge agreement, the
+ * groundedness table, the graph order in Live Lab and the start form's reason
+ * for not starting the official run), so the cap is 1,375 again, for the
+ * owner to confirm or cut back.
  */
-export const OUTSIDE_HELP_WORD_CAP = 1300
+export const OUTSIDE_HELP_WORD_CAP = 1375
 
 /** Help prose, leaving out text from the API. */
 export const HELP_WORD_CAP = 1650

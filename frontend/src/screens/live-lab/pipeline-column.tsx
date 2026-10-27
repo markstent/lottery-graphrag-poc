@@ -11,10 +11,12 @@ import { pipeline, type PipelineId } from '../../design/pipelines'
 import type { PipelineStatus, RunState } from '../../run/reduce'
 import type { Schemas } from '../../api/client'
 import {
+  contextLine,
   evidenceRows,
   evidenceSummary,
   pipelineNotice,
   stageRows,
+  targetLine,
 } from './columns'
 import { StageTracker } from './stage-tracker'
 
@@ -46,6 +48,8 @@ export function PipelineColumn({
   const state = run.pipelines[id]
   const rows = evidenceRows(id, run, results)
   const notice = pipelineNotice(state)
+  const target = targetLine(id, run)
+  const context = contextLine(state)
 
   return (
     <section
@@ -85,6 +89,12 @@ export function PipelineColumn({
           <p className="tabular text-sm text-text-secondary">
             {evidenceSummary(rows, state.status)}
           </p>
+          {target !== null && (
+            <p className="text-sm text-text-secondary">{target}</p>
+          )}
+          {context !== null && (
+            <p className="tabular text-sm text-text-secondary">{context}</p>
+          )}
           {rows.length === 0 ? (
             <p className="text-sm text-text-muted">Nothing found yet.</p>
           ) : (
@@ -116,6 +126,11 @@ export function PipelineColumn({
                         {row.id}
                       </span>
                       <span className="text-text-muted">{` · ${row.kind}`}</span>
+                      {row.place !== null && (
+                        <span className="block text-text-muted">
+                          {row.place}
+                        </span>
+                      )}
                       {row.detail !== null && (
                         <span className="block text-text-muted">
                           {row.detail}

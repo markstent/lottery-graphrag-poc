@@ -4,6 +4,7 @@ import {
   checkRecording,
   loadRecording,
   RECORDED_INDEX,
+  recordingNote,
   UnknownEventTypeError,
 } from './recorded'
 import { reduceAll } from './reduce'
@@ -54,6 +55,17 @@ describe('recorded runs', () => {
     expect(RECORDINGS.map((r) => r.dataset_id)).toEqual(
       RECORDED_INDEX.map((r) => r.dataset_id),
     )
+  })
+
+  it('reads all four recordings, which name no method, as made under the old method', () => {
+    expect(RECORDED_INDEX.map((r) => r.method)).toEqual(
+      Array(4).fill(undefined),
+    )
+    for (const run of RECORDED_INDEX)
+      expect(recordingNote(run.instance_id)).toBe(
+        'recorded under the old method (v0.2)',
+      )
+    expect(recordingNote('L99-unknown')).toBeNull()
   })
 
   it('loads a recording by its question, and refuses one it does not have', async () => {

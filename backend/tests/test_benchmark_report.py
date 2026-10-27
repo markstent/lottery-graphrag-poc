@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -193,7 +194,9 @@ def _world(seed: int, h5_questions: int) -> WorldRun:
 
 
 def _benchmark(kind: str, h5_per_world: int, label: str | None = None) -> BenchmarkRun:
-    return BenchmarkRun(kind, label, _record(kind), [_world(s, h5_per_world) for s in SEEDS])
+    """A run of method v0.3, the only method that writes summary schema 3."""
+    record = dataclasses.replace(_record(kind), method_version=METHOD_VERSION)
+    return BenchmarkRun(kind, label, record, [_world(s, h5_per_world) for s in SEEDS])
 
 
 @pytest.fixture(scope="module")
@@ -641,3 +644,35 @@ def test_a_result_reads_back_from_results_json(synthetic_run: BenchmarkRun) -> N
         for result in world["results"]
     ]
     assert read == written
+
+
+# The Results screen's fixtures of a method v0.3 run (frontend/e2e/fixtures/
+# results-v03-summary.json and results-v03-instances.json): this module's
+# synthetic run through ``summarize`` and the API's own builders, so they are
+# real output with test values. Rewrite them from backend/ with
+#     uv run python -m tests.test_benchmark_report
+# then run prettier --write on them in frontend/.
+V03_FIXTURES = Path(__file__).parents[2] / "frontend" / "e2e" / "fixtures"
+V03_FIXTURE_RUN = "fixture-v03"
+V03_FIXTURE_LABEL = "Fixture run (test values)"
+
+if __name__ == "__main__":
+    import tempfile
+
+    from app.api.benchmarks import _instances, _published, _summary_out
+
+    run = _benchmark("official", h5_per_world=6, label=V03_FIXTURE_LABEL)
+    with tempfile.TemporaryDirectory() as directory:
+        run_dir = Path(directory) / V03_FIXTURE_RUN
+        run_dir.mkdir()
+        (run_dir / "results.json").write_text(json.dumps(run.to_payload()), encoding="utf-8")
+        (run_dir / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
+        served = _summary_out(_published(Path(directory), V03_FIXTURE_RUN))
+        instances = _instances(Path(directory), V03_FIXTURE_RUN)
+    (V03_FIXTURES / "results-v03-summary.json").write_text(
+        json.dumps(served.model_dump(mode="json"), indent=2) + "\n", encoding="utf-8"
+    )
+    (V03_FIXTURES / "results-v03-instances.json").write_text(
+        json.dumps([row.model_dump(mode="json") for row in instances], indent=2) + "\n",
+        encoding="utf-8",
+    )

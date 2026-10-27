@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import defaultRequest from '../../e2e/fixtures/start-default-request.json'
 import {
   DEFAULT_FORM,
   errorsOf,
@@ -17,11 +18,11 @@ const form = (change: Partial<StartForm> = {}): StartForm => ({
 })
 
 describe('errorsOf', () => {
-  it('official run needs three repeats', () => {
-    expect(errorsOf(form({ kind: 'official', repeats: '2' })).repeats).toBe(
-      'Use a whole number, at least 3.',
+  it('a development run needs one repeat', () => {
+    expect(errorsOf(form({ kind: 'dev', repeats: '1' }))).toEqual({})
+    expect(errorsOf(form({ kind: 'dev', repeats: '0' })).repeats).toBe(
+      'Use a whole number, at least 1.',
     )
-    expect(errorsOf(form({ kind: 'official', repeats: '3' }))).toEqual({})
   })
 
   it('a quick check needs one repeat', () => {
@@ -56,11 +57,12 @@ describe('errorsOf', () => {
 })
 
 describe('startBody', () => {
-  it('sends the whole bank when no kind of question is chosen', () => {
+  it('sends by default the request the API accepts as it stands (test_api_benchmarks.py posts the same)', () => {
+    expect(startBody(form())).toEqual(defaultRequest)
     expect(startBody(form())).toEqual({
-      kind: 'official',
-      seeds: [2026, 2027, 2028],
-      repeats: 3,
+      kind: 'dev',
+      seeds: [2026],
+      repeats: 1,
       strata: null,
       limit: null,
     })
@@ -140,17 +142,20 @@ describe('progress', () => {
 })
 
 describe('withKind', () => {
-  it('sets Repeats to the minimum of the kind while it is untouched', () => {
-    expect(withKind(form(), 'smoke').repeats).toBe('1')
-    expect(withKind(withKind(form(), 'smoke'), 'official').repeats).toBe('3')
+  it('keeps the chosen worlds the kind may use, and Repeats as typed', () => {
+    const smoke = withKind(form({ repeats: '5' }), 'smoke')
+    expect(smoke).toMatchObject({ kind: 'smoke', worlds: [2026], repeats: '5' })
+    const three = { ...smoke, worlds: [2026, 2027, 2028] }
+    expect(withKind(three, 'dev').worlds).toEqual([2026])
   })
 
-  it('leaves Repeats alone once the reader has typed in it', () => {
-    const typed = form({ repeats: '5', repeatsEdited: true })
-    expect(withKind(typed, 'smoke')).toMatchObject({
-      kind: 'smoke',
-      repeats: '5',
-    })
+  it('gives a kind all the worlds it may use when none of the chosen ones fit', () => {
+    expect(
+      withKind(form({ kind: 'smoke', worlds: [2027] }), 'dev').worlds,
+    ).toEqual([2026])
+    expect(withKind(form({ worlds: [] }), 'smoke').worlds).toEqual([
+      2026, 2027, 2028,
+    ])
   })
 })
 

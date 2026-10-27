@@ -28,6 +28,8 @@ import pilotInstances from './fixtures/results-pilot-instances.json' with { type
 import pilotSummary from './fixtures/results-pilot-summary.json' with { type: 'json' }
 import runsFixture from './fixtures/results-runs.json' with { type: 'json' }
 import smokeSummary from './fixtures/results-smoke-summary.json' with { type: 'json' }
+import v03Instances from './fixtures/results-v03-instances.json' with { type: 'json' }
+import v03Summary from './fixtures/results-v03-summary.json' with { type: 'json' }
 import world from './fixtures/world-shell.json' with { type: 'json' }
 
 /** The captured bank: its instance count (Help shows it) and the repeats of an official run. */
@@ -62,6 +64,7 @@ const FIXTURE_OFFICIAL = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: null,
+  method_version: '0.2.0',
   summary: {
     bank_version: 'fixture-bank (test value)',
     selection: { strata: null, limit: null },
@@ -81,20 +84,39 @@ const FIXTURE_OFFICIAL = {
   },
 }
 
+/** The same test values as a whole-bank run of method v0.3, which compares evidence recall. */
+const FIXTURE_OFFICIAL_V03 = {
+  ...FIXTURE_OFFICIAL,
+  run_id: 'fixture-official-v03',
+  method_version: '0.3.0',
+  summary: {
+    ...FIXTURE_OFFICIAL.summary,
+    metrics: {
+      overall: {
+        evidence_recall: FIXTURE_OFFICIAL.summary.metrics.overall.evidence_f1,
+      },
+    },
+  },
+}
+
 /**
- * What GET /benchmarks/latest answers: the invented official run, the newest
- * smoke run, or the newest published run as captured (a subset run, so
- * Overview says there is no official run yet).
+ * What GET /benchmarks/latest answers: the invented official run of either
+ * method, the newest smoke run, or the newest published run as captured (a
+ * subset run, so Overview says there is no official run yet).
  */
 const LATEST = {
   official: FIXTURE_OFFICIAL,
+  v03: FIXTURE_OFFICIAL_V03,
   smoke: world.latest_smoke,
   none: world.latest,
 } as const
 
-/** The run list Results sees: as published, with the generated whole-bank run too, none, or failing. */
+/**
+ * The run list Results sees: as published, with the generated whole-bank run
+ * too, with the generated method v0.3 run as well, none, or failing.
+ */
 export type RunsMode =
-  'published' | 'official' | 'none' | 'unavailable' | 'pending'
+  'published' | 'official' | 'v03' | 'none' | 'unavailable' | 'pending'
 
 export type LatestRun = keyof typeof LATEST | 'unavailable' | 'pending'
 
@@ -108,10 +130,12 @@ const RUN_SUMMARIES: Record<string, unknown> = {
   'pilot-2026-nothink': pilotSummary,
   '20261019T164733Z-smoke': smokeSummary,
   [officialSummary.run_id]: officialSummary,
+  [v03Summary.run_id]: v03Summary,
 }
 const RUN_INSTANCES: Record<string, unknown> = {
   'pilot-2026-nothink': pilotInstances,
   [officialSummary.run_id]: officialInstances,
+  [v03Summary.run_id]: v03Instances,
 }
 
 /** The generated whole-bank run as the run list shows it, newest of all. */
@@ -119,10 +143,23 @@ const OFFICIAL_RUN = {
   run_id: officialSummary.run_id,
   run_kind: officialSummary.run_kind,
   label: officialSummary.label,
+  method_version: officialSummary.method_version,
   started_at: '2026-10-20T09:00:00+00:00',
   selection: officialSummary.summary.selection,
   worlds: [2026],
   headlines: officialSummary.summary.headlines,
+}
+
+/** The generated method v0.3 run as the run list shows it, newest of all. */
+const V03_RUN = {
+  run_id: v03Summary.run_id,
+  run_kind: v03Summary.run_kind,
+  label: v03Summary.label,
+  method_version: v03Summary.method_version,
+  started_at: '2026-10-20T09:30:00+00:00',
+  selection: v03Summary.summary.selection,
+  worlds: v03Summary.summary.worlds,
+  headlines: v03Summary.summary.headlines,
 }
 
 /** The models as captured, with a judge, which the capture ran without. */
@@ -228,6 +265,8 @@ export async function mockApi(
       return new Promise<void>(() => undefined)
     if (path === '/api/v1/benchmarks' && runs === 'official')
       return route.fulfill(json([OFFICIAL_RUN, ...RUNS]))
+    if (path === '/api/v1/benchmarks' && runs === 'v03')
+      return route.fulfill(json([V03_RUN, OFFICIAL_RUN, ...RUNS]))
     if (path === '/api/v1/benchmarks' && runs !== 'published')
       return route.fulfill(
         runs === 'none'

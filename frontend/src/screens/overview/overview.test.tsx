@@ -14,6 +14,7 @@ const OFFICIAL = {
   run_id: 'official-1',
   run_kind: 'official',
   label: null,
+  method_version: '0.2.0',
   summary: {
     selection: { strata: null, limit: null },
     headlines: [
@@ -83,7 +84,10 @@ describe('Overview', () => {
     render(<Overview />)
     const a = await screen.findByTestId('tile-A')
     expect(within(a).getByText('A · Text search')).toBeVisible()
-    expect(within(a).getByText('Evidence score, all questions')).toBeVisible()
+    // F1 is defined only for questions with claims: the tile says so and gives their count.
+    expect(
+      within(a).getByText('Evidence score, questions with claims'),
+    ).toBeVisible()
     expect(within(a).getByText('0.25')).toBeVisible()
     expect(within(a).getByText('114 questions, 342 runs')).toBeVisible()
     const b = screen.getByTestId('tile-B')
@@ -93,6 +97,43 @@ describe('Overview', () => {
     expect(
       within(screen.getByTestId('tile-C')).getByText('C · Graph + Ontology'),
     ).toBeVisible()
+  })
+
+  it('names the method of the run, the old one as old', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    await screen.findByTestId('tile-A')
+    const panel = screen.getByRole('region', { name: 'Latest official run' })
+    expect(within(panel).getByText('Method v0.2 (old method)')).toBeVisible()
+  })
+
+  it('reads evidence recall, by name, from a run of method v0.3', async () => {
+    stubApi(
+      base({
+        ...OFFICIAL,
+        method_version: '0.3.0',
+        summary: {
+          ...OFFICIAL.summary,
+          metrics: {
+            overall: {
+              evidence_recall: {
+                A: cell(0.4, 120, 360),
+                B: cell(0.6, 120, 360),
+                C: cell(0.7, 120, 360),
+              },
+            },
+          },
+        },
+      }),
+    )
+    render(<Overview />)
+    const a = await screen.findByTestId('tile-A')
+    expect(
+      within(a).getByText('Evidence recall, questions with claims'),
+    ).toBeVisible()
+    expect(within(a).getByText('0.40')).toBeVisible()
+    expect(within(a).getByText('120 questions, 360 runs')).toBeVisible()
+    expect(screen.getByText('Method v0.3')).toBeVisible()
   })
 
   it('renders the headline sentences verbatim', async () => {

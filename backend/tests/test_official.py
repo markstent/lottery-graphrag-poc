@@ -961,7 +961,7 @@ def test_compare_reports_large_minus_small_per_pipeline_and_stratum(tmp_path: Pa
     h1_answer = cells[("B", "H1", "answer")]
     assert h1_answer["mean"] == pytest.approx(0.1)
     assert (h1_answer["n"], h1_answer["clusters"]) == (12, 12)
-    assert cells[("C", "H1", "evidence_recall")]["mean"] == pytest.approx(0.0)
+    assert cells[("C", "H1", "evidence_f1")]["mean"] == pytest.approx(0.0)
     assert cells[("A", "overall", "answer")]["n"] == 54
     assert "p" not in h1_answer and "p_holm" not in h1_answer
 
@@ -1772,6 +1772,24 @@ def test_compare_refuses_old_and_new_method(tmp_path: Path) -> None:
     assert "method v0.2.0" in message and "method v0.3.0" in message
     # Refused before the settings are compared, with the plain reason only.
     assert "different settings" not in message
+
+
+@pytest.mark.parametrize(
+    ("method_version", "evidence_metric", "other_metric"),
+    [(None, "evidence_f1", "evidence_recall"), ("0.3.0", "evidence_recall", "evidence_f1")],
+)
+def test_compare_uses_the_evidence_metric_of_the_runs_method(
+    tmp_path: Path, method_version: str | None, evidence_metric: str, other_metric: str
+) -> None:
+    small = _write_run(
+        tmp_path / "small", _official_with("small-model", method_version=method_version)
+    )
+    large = _write_run(
+        tmp_path / "large", _official_with("large-model", method_version=method_version)
+    )
+    metrics = {cell["metric"] for cell in compare_runs(small, large)["cells"]}
+    assert metrics == {evidence_metric, "answer"}
+    assert other_metric not in metrics
 
 
 def test_resume_refuses_a_kept_world_of_the_old_method(tmp_path: Path, data_dir: Path) -> None:

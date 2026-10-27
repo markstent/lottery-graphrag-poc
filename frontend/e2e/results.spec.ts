@@ -82,3 +82,45 @@ test('a failure count filters the question table, and a row opens by keyboard', 
   await page.keyboard.press('Space')
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
 })
+
+test('a run of method v0.3 names its method and shows recall, C against A, split agreement and groundedness', async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await page.goto('/#/results?run=fixture-v03')
+  const verdict = page.getByRole('region', { name: 'Verdict' })
+  await expect(verdict.getByText('Method v0.3', { exact: true })).toBeVisible()
+  const charts = page.getByRole('region', {
+    name: 'Scores by kind of question',
+  })
+  await expect(
+    charts.getByRole('button', { name: 'Evidence recall' }),
+  ).toHaveAttribute('aria-pressed', 'true')
+  await expect(charts.getByText(/C against A/).first()).toBeAttached()
+  const judge = page.getByRole('region', { name: 'Judge' })
+  await expect(
+    judge.getByRole('rowheader', { name: 'All questions, abstained' }),
+  ).toBeVisible()
+  await expect(judge.getByText('Too few to say').first()).toBeVisible()
+  await expect(
+    page
+      .getByRole('region', { name: 'Groundedness' })
+      .getByText(/Descriptive, not tested/),
+  ).toBeVisible()
+})
+
+test('a run of method v0.2 says it is of the old method, and has no groundedness', async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await page.goto('/#/results?run=fixture-official')
+  await expect(
+    page
+      .getByRole('region', { name: 'Verdict' })
+      .getByText('Method v0.2 (old method)'),
+  ).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Judge' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Groundedness' })).toHaveCount(
+    0,
+  )
+})

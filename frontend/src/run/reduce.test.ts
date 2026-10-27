@@ -522,3 +522,131 @@ describe('graph node outcome before the verdict', () => {
     expect(state.graph.B.nodes).toEqual([])
   })
 })
+
+describe('method v0.3 graph outcomes', () => {
+  const state: RunState = reduceAll([
+    event(1, 'graph.target_types.resolved', 'B', {
+      labels: 'Incident,PlatformVersion',
+    }),
+    event(2, 'graph.target_types.resolved', 'C', { labels: '' }),
+    event(3, 'graph.candidate.selected', 'B', {
+      node_id: 'INC_1',
+      score: 0.9,
+      hops: 0,
+      seed: true,
+      tier: 'seed',
+      graph_rank: 1,
+      weight_graph_distance: 1,
+      weight_relationship_type: 1,
+      weight_semantic_relevance: 1,
+      weight_temporal_validity: 1,
+    }),
+    event(4, 'graph.candidate.discarded', 'B', {
+      node_id: 'PLV_1',
+      score: 0.6,
+      hops: 1,
+      seed: false,
+      tier: 'target',
+      graph_rank: 2,
+      reason: 'same_record',
+    }),
+    event(5, 'graph.candidate.discarded', 'B', {
+      node_id: 'MKT_1',
+      score: 0.2,
+      hops: 1,
+      seed: false,
+      tier: null,
+      graph_rank: null,
+      reason: 'out_of_scope_market',
+    }),
+    event(6, 'graph.candidate.selected', 'B', {
+      chunk_id: 'DOC_1',
+      rank: 1,
+      rerank_score: 0.7,
+    }),
+    event(7, 'graph.context.assembled', 'B', {
+      structured_nodes: 1,
+      document_chunks: 1,
+      context_tokens: 1840,
+      budget_tokens: 2000,
+      stated_links: 12,
+    }),
+    event(8, 'rag.context.assembled', 'A', {
+      selected: 3,
+      discarded: 1,
+      context_tokens: 900,
+      budget_tokens: 2000,
+    }),
+  ])
+
+  it('keeps the tier and graph rank of each node outcome, and no re-rank score', () => {
+    expect(state.pipelines.B.selected[0]).toEqual({
+      id: 'INC_1',
+      kind: 'node',
+      rank: null,
+      rerankScore: null,
+      tier: 'seed',
+      graphRank: 1,
+    })
+    expect(state.pipelines.B.discarded).toEqual([
+      {
+        id: 'PLV_1',
+        reason: 'same_record',
+        rerankScore: null,
+        tier: 'target',
+        graphRank: 2,
+      },
+      {
+        id: 'MKT_1',
+        reason: 'out_of_scope_market',
+        rerankScore: null,
+        tier: null,
+        graphRank: null,
+      },
+    ])
+  })
+
+  it('keeps the re-rank score of a document and gives it no tier', () => {
+    expect(state.pipelines.B.selected[1]).toEqual({
+      id: 'DOC_1',
+      kind: 'chunk',
+      rank: 1,
+      rerankScore: 0.7,
+      tier: null,
+      graphRank: null,
+    })
+  })
+
+  it('keeps the target types the question named, none when it named none', () => {
+    expect(state.graph.B.targetTypes).toEqual(['Incident', 'PlatformVersion'])
+    expect(state.graph.C.targetTypes).toEqual([])
+    expect(initialRunState().graph.B.targetTypes).toBeNull()
+  })
+
+  it('keeps the context size and its budget', () => {
+    expect(state.pipelines.B.context).toEqual({
+      tokens: 1840,
+      budgetTokens: 2000,
+    })
+    expect(state.pipelines.A.context).toEqual({
+      tokens: 900,
+      budgetTokens: 2000,
+    })
+    expect(initialRunState().pipelines.A.context).toBeNull()
+  })
+
+  it('reads an old-method context, which had no budget, as tokens alone', () => {
+    const old = reduceAll([
+      event(1, 'rag.context.assembled', 'A', {
+        selected: 12,
+        discarded: 28,
+        context_tokens: 1444,
+        evidence_slots: 12,
+      }),
+    ])
+    expect(old.pipelines.A.context).toEqual({
+      tokens: 1444,
+      budgetTokens: null,
+    })
+  })
+})

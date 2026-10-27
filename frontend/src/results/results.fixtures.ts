@@ -10,6 +10,7 @@ import pilotInstances from '../../e2e/fixtures/results-pilot-instances.json'
 import pilotSummary from '../../e2e/fixtures/results-pilot-summary.json'
 import runsJson from '../../e2e/fixtures/results-runs.json'
 import smokeSummary from '../../e2e/fixtures/results-smoke-summary.json'
+import v03Summary from '../../e2e/fixtures/results-v03-summary.json'
 
 export const RUNS = runsJson as Schemas['BenchmarkRunOut'][]
 export const PILOT = (pilotSummary as Schemas['BenchmarkSummary']).summary
@@ -19,3 +20,6 @@ export const OFFICIAL = (officialSummary as Schemas['BenchmarkSummary']).summary
 export const OFFICIAL_INSTANCES =
   officialInstances as unknown as Schemas['InstanceResultOut'][]
 export const SMOKE = (smokeSummary as Schemas['BenchmarkSummary']).summary
+/** A method v0.3 run: the report tests' synthetic run through `summarize` (test values). */
+export const V03_RUN = v03Summary as Schemas['BenchmarkSummary']
+export const V03 = V03_RUN.summary

@@ -48,6 +48,19 @@ from tests.test_benchmark_report import _benchmark
 from tests.test_official import FakeRunner, Recorder
 
 GRAPH_BUSY = "a benchmark run is using the graph; try again when it finishes"
+# The request the Results screen's start form sends unless the reader changes it
+# (frontend/src/results/start.test.ts checks the form sends exactly this).
+DEFAULT_START = (
+    Path(__file__).parents[2] / "frontend" / "e2e" / "fixtures" / "start-default-request.json"
+)
+GATEWAY_MODELS = {
+    "GENERATION_PROVIDER": "litellm",
+    "GENERATION_MODEL": "ollama/qwen3.6:latest",
+    "GENERATION_MODEL_FAMILY": "qwen",
+    "JUDGE_PROVIDER": "litellm",
+    "JUDGE_MODEL": "ollama/gemma4:31b",
+    "JUDGE_MODEL_FAMILY": "gemma",
+}
 DEADLINE_S = 15.0
 FINISHED = frozenset({"completed", "failed", "cancelled"})
 
@@ -268,14 +281,7 @@ def test_an_official_start_on_the_unseen_seeds_is_refused(
     seeds: list[int],
 ) -> None:
     """The unseen worlds are run only through make run-benchmark (D-091)."""
-    for name, value in {
-        "GENERATION_PROVIDER": "litellm",
-        "GENERATION_MODEL": "ollama/qwen3.6:latest",
-        "GENERATION_MODEL_FAMILY": "qwen",
-        "JUDGE_PROVIDER": "litellm",
-        "JUDGE_MODEL": "ollama/gemma4:31b",
-        "JUDGE_MODEL_FAMILY": "gemma",
-    }.items():
+    for name, value in GATEWAY_MODELS.items():
         monkeypatch.setenv(name, value)
     response = client.post(
         "/api/v1/benchmarks", json={"kind": "official", "seeds": seeds, "repeats": 3}
@@ -286,6 +292,19 @@ def test_an_official_start_on_the_unseen_seeds_is_refused(
     assert client.get("/api/v1/benchmarks/jobs").json() == []
     assert not (data_dir / "generated" / "dev-seed2029").exists()
     assert not list(runs_dir.iterdir())
+
+
+def test_the_start_forms_default_request_is_accepted(
+    client_with_blocking_benchmark: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The form opens on a request the API takes as it stands: a dev run on
+    the presentation world, never the unseen worlds of the official run."""
+    for name, value in GATEWAY_MODELS.items():
+        monkeypatch.setenv(name, value)
+    body = json.loads(DEFAULT_START.read_text(encoding="utf-8"))
+    assert body["kind"] == "dev" and body["seeds"] == list(official.DEV_SEEDS)
+    response = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=body)
+    assert response.status_code == 202, response.json()
 
 
 # -- jobs -----------------------------------------------------------------------
@@ -668,6 +687,7 @@ def publish(
     schema: str = "2",
     selection: dict[str, Any] | None = None,
     results: dict[str, Any] | None = None,
+    method_version: str | None = None,
 ) -> None:
     run_dir = root / name
     run_dir.mkdir(parents=True)
@@ -688,6 +708,8 @@ def publish(
         "selection": selection or {"strata": None, "limit": None},
         "reproducibility": {"run": {"started_at": started_at}, "worlds": []},
     }
+    if method_version is not None:
+        summary["reproducibility"]["run"]["method_version"] = method_version
     if selection is not None:
         summary["label"] = "subset run"
     (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
@@ -716,6 +738,7 @@ def test_runs_are_listed_newest_first(client: TestClient, runs_dir: Path) -> Non
         "selection": {"strata": None, "limit": None},
         "worlds": [2026],
         "headlines": ["new headline"],
+        "method_version": "0.2.0",
     }
 
 
@@ -829,6 +852,45 @@ def test_a_schema_2_summary_of_method_v02_is_still_published(
     body = client.get("/api/v1/benchmarks/v02").json()
     assert body["summary"]["schema_version"] == "2"
     assert client.get("/api/v1/benchmarks/v03").json()["summary"]["schema_version"] == "3"
+
+
+def test_old_run_summary_is_served_with_method_0_2_0(client: TestClient, runs_dir: Path) -> None:
+    """A run recorded before ``method_version`` existed was made under method v0.2.0."""
+    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
+    assert client.get("/api/v1/benchmarks/v02").json()["method_version"] == "0.2.0"
+    assert client.get("/api/v1/benchmarks/latest").json()["method_version"] == "0.2.0"
+    assert client.get("/api/v1/benchmarks").json()[0]["method_version"] == "0.2.0"
+
+
+def test_v03_summary_schema_3_validates(client: TestClient, runs_dir: Path) -> None:
+    """The harness's own output (``summarize``) is served as schema 3 of method v0.3.0."""
+    publish_run(runs_dir, "v03", kind="dev")
+    body = client.get("/api/v1/benchmarks/v03").json()
+    assert (body["method_version"], body["run_kind"]) == ("0.3.0", "dev")
+    summary = body["summary"]
+    assert summary["schema_version"] == "3"
+    assert {cell["metric"] for cell in summary["comparisons"]} == {"evidence_recall", "answer"}
+    assert "abstained" in summary["judge_agreement"]["overall"]
+    assert client.get("/api/v1/benchmarks").json()[0]["method_version"] == "0.3.0"
+
+
+@pytest.mark.parametrize(
+    ("v02_started", "v03_started", "latest"),
+    [
+        ("2026-10-26T09:00:00+00:00", "2026-11-02T09:00:00+00:00", "v03"),
+        ("2026-11-03T09:00:00+00:00", "2026-11-02T09:00:00+00:00", "v02"),
+    ],
+)
+def test_latest_official_is_the_newest_official_run_whatever_its_method(
+    runs_dir: Path, v02_started: str, v03_started: str, latest: str
+) -> None:
+    """v0.2.0 stays the default until a newer official run exists, of whatever method."""
+    publish(runs_dir, "v02", "official", v02_started)
+    publish(runs_dir, "v03", "official", v03_started, schema="3", method_version="0.3.0")
+    publish(runs_dir, "dev", "dev", "2026-11-04T09:00:00+00:00", schema="3", method_version="0.3.0")
+    status, body = _latest(runs_dir)
+    assert (status, body["run_id"]) == (200, latest)
+    assert body["method_version"] == ("0.3.0" if latest == "v03" else "0.2.0")
 
 
 # -- the question catalogue -------------------------------------------------------

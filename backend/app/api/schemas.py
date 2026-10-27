@@ -356,22 +356,27 @@ class BenchmarkSummary(BaseModel):
     ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
     benchmark source the API publishes. ``run_kind`` and ``label`` are
     copied out of it so a client can tell a smoke or sweep run from an
-    official result without reading the summary.
+    official result without reading the summary. ``method_version`` is the
+    method the run was made under, from its record: 0.2.0 for a run recorded
+    before the field existed (such as v0.2.0).
     """
 
     run_id: str
     run_kind: str
     label: str | None
+    method_version: str
     summary: SummaryOut
 
 
 class BenchmarkRunOut(BaseModel):
     """One published run in GET /api/v1/benchmarks, from its ``summary.json``:
-    ``selection`` is the part of the bank it scored, ``worlds`` its seeds."""
+    ``selection`` is the part of the bank it scored, ``worlds`` its seeds,
+    ``method_version`` the method it was made under."""
 
     run_id: str
     run_kind: str
     label: str | None
+    method_version: str
     started_at: str
     selection: dict[str, Any]
     worlds: list[int]
@@ -448,11 +453,14 @@ class InstanceResultOut(BaseModel):
 
 class BenchmarkStart(BaseModel):
     """Request for POST /api/v1/benchmarks; the seeds, strata and kind are
-    checked against the harness's own before a job starts."""
+    checked against the harness's own before a job starts. A dev run uses
+    seed 2026 only; a full-bank official run uses the unseen seeds, which
+    the API never accepts (D-091), so an official job covers part of the
+    bank on a seen seed, as the dry run does."""
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["smoke", "official"]
+    kind: Literal["smoke", "dev", "official"]
     seeds: list[int] = Field(min_length=1)
     repeats: int = Field(ge=1)
     strata: list[str] | None = Field(default=None, min_length=1)

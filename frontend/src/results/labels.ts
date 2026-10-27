@@ -31,6 +31,10 @@ export const TABLE_HEADS = {
   pairs: 'Pairs judged',
   agreement: 'Agreement',
   kappa: 'Kappa',
+  weightedKappa: 'Weighted kappa',
+  supported: 'Held by cited blocks',
+  unsupported: 'In no shown block',
+  questions: 'Questions',
   total: 'in all',
 } as const
 
@@ -41,4 +45,5 @@ export const CAPTIONS = {
   failures: 'Failures',
   judge: 'Judge',
   agreement: 'Agreement',
+  groundedness: 'Groundedness',
 } as const

@@ -2,8 +2,10 @@
   "run_id": "20261019T164733Z-smoke",
   "run_kind": "smoke",
   "label": "scorer smoke test",
+  "method_version": "0.2.0",
   "summary": {
     "schema_version": "2",
+    "method_note": null,
     "run_kind": "smoke",
     "label": "scorer smoke test",
     "bank_version": "2.0.0",
@@ -44,7 +46,11 @@
         }
       }
     },
-    "unavailable": { "2026": [], "2027": [], "2028": [] },
+    "unavailable": {
+      "2026": [],
+      "2027": [],
+      "2028": []
+    },
     "anchor_resolution_basis": {
       "A": "selection",
       "B": "resolution",
@@ -53,464 +59,1544 @@
     "metrics": {
       "H1": {
         "evidence_f1": {
-          "A": { "mean": 0.10829249941092046, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.1006205417389628, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.10728581603581604, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.10829249941092046,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.1006205417389628,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.10728581603581604,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "evidence_recall": {
-          "A": { "mean": 0.3597222222222222, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.3435185185185185, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.3875, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.3597222222222222,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.3435185185185185,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.3875,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "evidence_precision": {
-          "A": { "mean": 0.06734006734006734, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.06228956228956229, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.06481481481481481, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.06734006734006734,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.06228956228956229,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.06481481481481481,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "efficiency_per_1k": {
-          "A": { "mean": 0.8654271185079042, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.8312390327394737, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.8883511853200118, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.8654271185079042,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.8312390327394737,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.8883511853200118,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "anchor_resolution": {
-          "A": { "mean": 0.75, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.75,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "answer": {
-          "A": { "mean": 0.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "citation_accuracy": {
-          "A": { "mean": 0.2777777777777778, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.2777777777777778, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.3333333333333333, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.2777777777777778,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.2777777777777778,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.3333333333333333,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "numeric_citation_rate": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "latency_ms": {
-          "A": { "mean": 2405.262123889012, "n": 36, "repeats": 36 },
-          "B": { "mean": 5059.2801748056845, "n": 36, "repeats": 36 },
-          "C": { "mean": 5868.88611336139, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 2405.262123889012,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 5059.2801748056845,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 5868.88611336139,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "context_tokens": {
-          "A": { "mean": 1316.9166666666667, "n": 36, "repeats": 36 },
-          "B": { "mean": 1295.0277777777778, "n": 36, "repeats": 36 },
-          "C": { "mean": 1317.4166666666667, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1316.9166666666667,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1295.0277777777778,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1317.4166666666667,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_correctness": {
-          "A": { "mean": 0.7222222222222222, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.7222222222222222, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.7222222222222222, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.7222222222222222,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.7222222222222222,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.7222222222222222,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_completeness": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_faithfulness": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_citation_accuracy": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_abstention": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         }
       },
       "H2": {
         "evidence_f1": {
-          "A": { "mean": 0.08814878701387653, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.03676081543728603, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.04793222844693433, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.08814878701387653,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.03676081543728603,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.04793222844693433,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "evidence_recall": {
-          "A": { "mean": 0.11666666666666667, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.07129629629629629, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.09351851851851851, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.11666666666666667,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.07129629629629629,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.09351851851851851,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "evidence_precision": {
-          "A": { "mean": 0.0808080808080808, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.025252525252525252, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.03282828282828283, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.0808080808080808,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.025252525252525252,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.03282828282828283,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "efficiency_per_1k": {
-          "A": { "mean": 0.31407340162658015, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.20212460150947686, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.2598179850987844, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.31407340162658015,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.20212460150947686,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.2598179850987844,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "anchor_resolution": {
-          "A": { "mean": 0.75, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.75, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.75, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.75,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "answer": {
-          "A": { "mean": 0.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.013888888888888888, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.013888888888888888,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "citation_accuracy": {
-          "A": { "mean": 0.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "numeric_citation_rate": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "latency_ms": {
-          "A": { "mean": 2269.6415266667223, "n": 36, "repeats": 36 },
-          "B": { "mean": 6136.121746527553, "n": 36, "repeats": 36 },
-          "C": { "mean": 8047.57184147219, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 2269.6415266667223,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 6136.121746527553,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 8047.57184147219,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "context_tokens": {
-          "A": { "mean": 1069.888888888889, "n": 36, "repeats": 36 },
-          "B": { "mean": 1066.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1079.4444444444443, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1069.888888888889,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1066.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1079.4444444444443,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_correctness": {
-          "A": { "mean": 0.6944444444444444, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.6944444444444444, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.6666666666666666, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.6944444444444444,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.6944444444444444,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.6666666666666666,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_completeness": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_faithfulness": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_citation_accuracy": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_abstention": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         }
       },
       "H2_name": {
         "evidence_f1": {
-          "A": { "mean": 0.6072258250971732, "n": 18, "repeats": 18 },
-          "B": { "mean": 0.5898667521480382, "n": 18, "repeats": 18 },
-          "C": { "mean": 0.6452186288117684, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 0.6072258250971732,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.5898667521480382,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.6452186288117684,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "evidence_recall": {
-          "A": { "mean": 0.6018518518518519, "n": 18, "repeats": 18 },
-          "B": { "mean": 0.5833333333333334, "n": 18, "repeats": 18 },
-          "C": { "mean": 0.7083333333333334, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 0.6018518518518519,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.5833333333333334,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.7083333333333334,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "evidence_precision": {
-          "A": { "mean": 0.6578282828282829, "n": 18, "repeats": 18 },
-          "B": { "mean": 0.6376262626262627, "n": 18, "repeats": 18 },
-          "C": { "mean": 0.6565656565656566, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 0.6578282828282829,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.6376262626262627,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.6565656565656566,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "efficiency_per_1k": {
-          "A": { "mean": 1.5862066032360673, "n": 18, "repeats": 18 },
-          "B": { "mean": 1.5359409781339979, "n": 18, "repeats": 18 },
-          "C": { "mean": 1.7851841646351672, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 1.5862066032360673,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1.5359409781339979,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1.7851841646351672,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "anchor_resolution": {
-          "A": { "mean": 0.9444444444444444, "n": 18, "repeats": 18 },
-          "B": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "C": { "mean": 1.0, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 0.9444444444444444,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "answer": {
-          "A": { "mean": 0.5055555555555555, "n": 18, "repeats": 18 },
-          "B": { "mean": 0.5055555555555555, "n": 18, "repeats": 18 },
-          "C": { "mean": 0.5055555555555555, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 0.5055555555555555,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.5055555555555555,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.5055555555555555,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "citation_accuracy": {
-          "A": { "mean": 0.7777777777777778, "n": 18, "repeats": 18 },
-          "B": { "mean": 0.7777777777777778, "n": 18, "repeats": 18 },
-          "C": { "mean": 0.7777777777777778, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 0.7777777777777778,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.7777777777777778,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.7777777777777778,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "numeric_citation_rate": {
-          "A": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "B": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "C": { "mean": 1.0, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "latency_ms": {
-          "A": { "mean": 2230.094407389111, "n": 18, "repeats": 18 },
-          "B": { "mean": 3710.3362383334875, "n": 18, "repeats": 18 },
-          "C": { "mean": 4861.012236055406, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 2230.094407389111,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 3710.3362383334875,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 4861.012236055406,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "context_tokens": {
-          "A": { "mean": 1160.5, "n": 18, "repeats": 18 },
-          "B": { "mean": 1164.7777777777778, "n": 18, "repeats": 18 },
-          "C": { "mean": 1157.388888888889, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 1160.5,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1164.7777777777778,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1157.388888888889,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "judge_correctness": {
-          "A": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "B": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "C": { "mean": 1.0, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "judge_completeness": {
-          "A": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "B": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "C": { "mean": 1.0, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "judge_faithfulness": {
-          "A": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "B": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "C": { "mean": 1.0, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "judge_citation_accuracy": {
-          "A": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "B": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "C": { "mean": 1.0, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          }
         },
         "judge_abstention": {
-          "A": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "B": { "mean": 1.0, "n": 18, "repeats": 18 },
-          "C": { "mean": 1.0, "n": 18, "repeats": 18 }
+          "A": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 18,
+            "repeats": 18
+          }
         }
       },
       "H3": {
         "evidence_f1": {
-          "A": { "mean": null, "n": 0, "repeats": 0 },
-          "B": { "mean": null, "n": 0, "repeats": 0 },
-          "C": { "mean": null, "n": 0, "repeats": 0 }
+          "A": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "B": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "C": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          }
         },
         "evidence_recall": {
-          "A": { "mean": null, "n": 0, "repeats": 0 },
-          "B": { "mean": null, "n": 0, "repeats": 0 },
-          "C": { "mean": null, "n": 0, "repeats": 0 }
+          "A": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "B": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "C": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          }
         },
         "evidence_precision": {
-          "A": { "mean": null, "n": 0, "repeats": 0 },
-          "B": { "mean": null, "n": 0, "repeats": 0 },
-          "C": { "mean": null, "n": 0, "repeats": 0 }
+          "A": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "B": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "C": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          }
         },
         "efficiency_per_1k": {
-          "A": { "mean": null, "n": 0, "repeats": 0 },
-          "B": { "mean": null, "n": 0, "repeats": 0 },
-          "C": { "mean": null, "n": 0, "repeats": 0 }
+          "A": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "B": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "C": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          }
         },
         "anchor_resolution": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "answer": {
-          "A": { "mean": 0.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 0.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 0.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 0.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "citation_accuracy": {
-          "A": { "mean": null, "n": 0, "repeats": 0 },
-          "B": { "mean": null, "n": 0, "repeats": 0 },
-          "C": { "mean": null, "n": 0, "repeats": 0 }
+          "A": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "B": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          },
+          "C": {
+            "mean": null,
+            "n": 0,
+            "repeats": 0
+          }
         },
         "numeric_citation_rate": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "latency_ms": {
-          "A": { "mean": 2140.9283437779372, "n": 36, "repeats": 36 },
-          "B": { "mean": 5696.478484999868, "n": 36, "repeats": 36 },
-          "C": { "mean": 7514.215613389044, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 2140.9283437779372,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 5696.478484999868,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 7514.215613389044,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "context_tokens": {
-          "A": { "mean": 1132.0555555555557, "n": 36, "repeats": 36 },
-          "B": { "mean": 1120.1944444444443, "n": 36, "repeats": 36 },
-          "C": { "mean": 1102.9444444444443, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1132.0555555555557,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1120.1944444444443,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1102.9444444444443,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_correctness": {
-          "A": { "mean": 1.75, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.75, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.75, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.75,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.75,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.75,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_completeness": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_faithfulness": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_citation_accuracy": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         },
         "judge_abstention": {
-          "A": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "B": { "mean": 1.0, "n": 36, "repeats": 36 },
-          "C": { "mean": 1.0, "n": 36, "repeats": 36 }
+          "A": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 36,
+            "repeats": 36
+          }
         }
       },
       "H5": {
         "evidence_f1": {
-          "A": { "mean": 0.14391763732724278, "n": 24, "repeats": 24 },
-          "B": { "mean": 0.13546637946560755, "n": 24, "repeats": 24 },
-          "C": { "mean": 0.14078762503123624, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 0.14391763732724278,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.13546637946560755,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.14078762503123624,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "evidence_recall": {
-          "A": { "mean": 0.37083333333333335, "n": 24, "repeats": 24 },
-          "B": { "mean": 0.3625, "n": 24, "repeats": 24 },
-          "C": { "mean": 0.37083333333333335, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 0.37083333333333335,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.3625,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.37083333333333335,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "evidence_precision": {
-          "A": { "mean": 0.0928030303030303, "n": 24, "repeats": 24 },
-          "B": { "mean": 0.08522727272727272, "n": 24, "repeats": 24 },
-          "C": { "mean": 0.08901515151515152, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 0.0928030303030303,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.08522727272727272,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.08901515151515152,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "efficiency_per_1k": {
-          "A": { "mean": 1.7155907064975793, "n": 24, "repeats": 24 },
-          "B": { "mean": 1.7020331588856168, "n": 24, "repeats": 24 },
-          "C": { "mean": 1.732225683619716, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 1.7155907064975793,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.7020331588856168,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.732225683619716,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "anchor_resolution": {
-          "A": { "mean": 0.875, "n": 24, "repeats": 24 },
-          "B": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "C": { "mean": 1.0, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 0.875,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "answer": {
-          "A": { "mean": 0.0, "n": 24, "repeats": 24 },
-          "B": { "mean": 0.0, "n": 24, "repeats": 24 },
-          "C": { "mean": 0.0, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 0.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.0,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "citation_accuracy": {
-          "A": { "mean": 0.16666666666666666, "n": 24, "repeats": 24 },
-          "B": { "mean": 0.16666666666666666, "n": 24, "repeats": 24 },
-          "C": { "mean": 0.16666666666666666, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 0.16666666666666666,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.16666666666666666,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.16666666666666666,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "numeric_citation_rate": {
-          "A": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "B": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "C": { "mean": 1.0, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "latency_ms": {
-          "A": { "mean": 2233.1953905835085, "n": 24, "repeats": 24 },
-          "B": { "mean": 5026.859374999958, "n": 24, "repeats": 24 },
-          "C": { "mean": 6404.150315958304, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 2233.1953905835085,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 5026.859374999958,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 6404.150315958304,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "context_tokens": {
-          "A": { "mean": 1038.2916666666667, "n": 24, "repeats": 24 },
-          "B": { "mean": 1032.2916666666667, "n": 24, "repeats": 24 },
-          "C": { "mean": 1038.0, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 1038.2916666666667,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1032.2916666666667,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1038.0,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "judge_correctness": {
-          "A": { "mean": 0.75, "n": 24, "repeats": 24 },
-          "B": { "mean": 0.75, "n": 24, "repeats": 24 },
-          "C": { "mean": 0.75, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 0.75,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "judge_completeness": {
-          "A": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "B": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "C": { "mean": 1.0, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "judge_faithfulness": {
-          "A": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "B": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "C": { "mean": 1.0, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "judge_citation_accuracy": {
-          "A": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "B": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "C": { "mean": 1.0, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          }
         },
         "judge_abstention": {
-          "A": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "B": { "mean": 1.0, "n": 24, "repeats": 24 },
-          "C": { "mean": 1.0, "n": 24, "repeats": 24 }
+          "A": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 24,
+            "repeats": 24
+          }
         }
       },
       "overall": {
         "evidence_f1": {
-          "A": { "mean": 0.18821030227101435, "n": 114, "repeats": 114 },
-          "B": { "mean": 0.16503967986126514, "n": 114, "repeats": 114 },
-          "C": { "mean": 0.18053235018193434, "n": 114, "repeats": 114 }
+          "A": {
+            "mean": 0.18821030227101435,
+            "n": 114,
+            "repeats": 114
+          },
+          "B": {
+            "mean": 0.16503967986126514,
+            "n": 114,
+            "repeats": 114
+          },
+          "C": {
+            "mean": 0.18053235018193434,
+            "n": 114,
+            "repeats": 114
+          }
         },
         "evidence_recall": {
-          "A": { "mean": 0.32353801169590646, "n": 114, "repeats": 114 },
-          "B": { "mean": 0.2994152046783626, "n": 114, "repeats": 114 },
-          "C": { "mean": 0.341812865497076, "n": 114, "repeats": 114 }
+          "A": {
+            "mean": 0.32353801169590646,
+            "n": 114,
+            "repeats": 114
+          },
+          "B": {
+            "mean": 0.2994152046783626,
+            "n": 114,
+            "repeats": 114
+          },
+          "C": {
+            "mean": 0.341812865497076,
+            "n": 114,
+            "repeats": 114
+          }
         },
         "evidence_precision": {
-          "A": { "mean": 0.17018872939925572, "n": 114, "repeats": 114 },
-          "B": { "mean": 0.14626528442317915, "n": 114, "repeats": 114 },
-          "C": { "mean": 0.15324295587453482, "n": 114, "repeats": 114 }
+          "A": {
+            "mean": 0.17018872939925572,
+            "n": 114,
+            "repeats": 114
+          },
+          "B": {
+            "mean": 0.14626528442317915,
+            "n": 114,
+            "repeats": 114
+          },
+          "C": {
+            "mean": 0.15324295587453482,
+            "n": 114,
+            "repeats": 114
+          }
         },
         "efficiency_per_1k": {
-          "A": { "mean": 0.9841045135002856, "n": 114, "repeats": 114 },
-          "B": { "mean": 0.9271651250230613, "n": 114, "repeats": 114 },
-          "C": { "mean": 1.0091300132051129, "n": 114, "repeats": 114 }
+          "A": {
+            "mean": 0.9841045135002856,
+            "n": 114,
+            "repeats": 114
+          },
+          "B": {
+            "mean": 0.9271651250230613,
+            "n": 114,
+            "repeats": 114
+          },
+          "C": {
+            "mean": 1.0091300132051129,
+            "n": 114,
+            "repeats": 114
+          }
         },
         "anchor_resolution": {
-          "A": { "mean": 0.8533333333333334, "n": 150, "repeats": 150 },
-          "B": { "mean": 0.94, "n": 150, "repeats": 150 },
-          "C": { "mean": 0.94, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 0.8533333333333334,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 0.94,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 0.94,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "answer": {
-          "A": { "mean": 0.06066666666666667, "n": 150, "repeats": 150 },
-          "B": { "mean": 0.06066666666666667, "n": 150, "repeats": 150 },
-          "C": { "mean": 0.064, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 0.06066666666666667,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 0.06066666666666667,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 0.064,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "citation_accuracy": {
-          "A": { "mean": 0.24561403508771928, "n": 114, "repeats": 114 },
-          "B": { "mean": 0.24561403508771928, "n": 114, "repeats": 114 },
-          "C": { "mean": 0.2631578947368421, "n": 114, "repeats": 114 }
+          "A": {
+            "mean": 0.24561403508771928,
+            "n": 114,
+            "repeats": 114
+          },
+          "B": {
+            "mean": 0.24561403508771928,
+            "n": 114,
+            "repeats": 114
+          },
+          "C": {
+            "mean": 0.2631578947368421,
+            "n": 114,
+            "repeats": 114
+          }
         },
         "numeric_citation_rate": {
-          "A": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "B": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "C": { "mean": 1.0, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "latency_ms": {
-          "A": { "mean": 2260.722270020136, "n": 150, "repeats": 150 },
-          "B": { "mean": 5303.589146119957, "n": 150, "repeats": 150 },
-          "C": { "mean": 6751.347175253407, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 2260.722270020136,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 5303.589146119957,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 6751.347175253407,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "context_tokens": {
-          "A": { "mean": 1149.9133333333334, "n": 150, "repeats": 150 },
-          "B": { "mean": 1140.4333333333334, "n": 150, "repeats": 150 },
-          "C": { "mean": 1144.92, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 1149.9133333333334,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 1140.4333333333334,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 1144.92,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "judge_correctness": {
-          "A": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "B": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "C": { "mean": 0.9933333333333333, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 0.9933333333333333,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "judge_completeness": {
-          "A": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "B": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "C": { "mean": 1.0, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "judge_faithfulness": {
-          "A": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "B": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "C": { "mean": 1.0, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "judge_citation_accuracy": {
-          "A": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "B": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "C": { "mean": 1.0, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          }
         },
         "judge_abstention": {
-          "A": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "B": { "mean": 1.0, "n": 150, "repeats": 150 },
-          "C": { "mean": 1.0, "n": 150, "repeats": 150 }
+          "A": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 150,
+            "repeats": 150
+          }
         }
       }
     },
@@ -807,8 +1893,16 @@
         "kappa": -0.10190052567731543
       },
       "pipelines": {
-        "A": { "n": 150, "agreement": 0.76, "kappa": -0.09890109890109923 },
-        "B": { "n": 150, "agreement": 0.76, "kappa": -0.09890109890109923 },
+        "A": {
+          "n": 150,
+          "agreement": 0.76,
+          "kappa": -0.09890109890109923
+        },
+        "B": {
+          "n": 150,
+          "agreement": 0.76,
+          "kappa": -0.09890109890109923
+        },
         "C": {
           "n": 150,
           "agreement": 0.7533333333333333,
@@ -817,11 +1911,26 @@
       }
     },
     "failures": {
-      "repeats": { "A": 150, "B": 150, "C": 150 },
-      "generation": { "A": 0, "B": 0, "C": 0 },
-      "judge": { "A": 0, "B": 0, "C": 0 },
+      "repeats": {
+        "A": 150,
+        "B": 150,
+        "C": 150
+      },
+      "generation": {
+        "A": 0,
+        "B": 0,
+        "C": 0
+      },
+      "judge": {
+        "A": 0,
+        "B": 0,
+        "C": 0
+      },
       "classes": {
-        "A": { "generation_failure": 69, "retrieval_failure": 72 },
+        "A": {
+          "generation_failure": 69,
+          "retrieval_failure": 72
+        },
         "B": {
           "entity_resolution_failure": 9,
           "generation_failure": 68,
@@ -834,7 +1943,11 @@
         }
       }
     },
-    "selection": { "strata": null, "limit": null },
+    "selection": {
+      "strata": null,
+      "limit": null,
+      "questions": null
+    },
     "reproducibility": {
       "run": {
         "git_sha": "9578037d4bbb4e264ab549c19606b905306c5c7a",
@@ -853,7 +1966,10 @@
         "reranker": "BAAI/bge-reranker-v2-m3",
         "top_k": 40,
         "context_budget_tokens": 2000,
-        "context": { "dedupe_threshold": 0.85, "evidence_slots": 12 },
+        "context": {
+          "dedupe_threshold": 0.85,
+          "evidence_slots": 12
+        },
         "graph_limits": {
           "depth": 2,
           "nodes_per_hop": 100,
@@ -950,7 +2066,10 @@
           "reranker": "BAAI/bge-reranker-v2-m3",
           "top_k": 40,
           "context_budget_tokens": 2000,
-          "context": { "dedupe_threshold": 0.85, "evidence_slots": 12 },
+          "context": {
+            "dedupe_threshold": 0.85,
+            "evidence_slots": 12
+          },
           "graph_limits": {
             "depth": 2,
             "nodes_per_hop": 100,
@@ -1047,7 +2166,10 @@
           "reranker": "BAAI/bge-reranker-v2-m3",
           "top_k": 40,
           "context_budget_tokens": 2000,
-          "context": { "dedupe_threshold": 0.85, "evidence_slots": 12 },
+          "context": {
+            "dedupe_threshold": 0.85,
+            "evidence_slots": 12
+          },
           "graph_limits": {
             "depth": 2,
             "nodes_per_hop": 100,
@@ -1144,7 +2266,10 @@
           "reranker": "BAAI/bge-reranker-v2-m3",
           "top_k": 40,
           "context_budget_tokens": 2000,
-          "context": { "dedupe_threshold": 0.85, "evidence_slots": 12 },
+          "context": {
+            "dedupe_threshold": 0.85,
+            "evidence_slots": 12
+          },
           "graph_limits": {
             "depth": 2,
             "nodes_per_hop": 100,

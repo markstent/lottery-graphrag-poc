@@ -7,20 +7,29 @@
 import { getLatestBenchmark, type Schemas } from '../api/client'
 import { ApiError } from '../api/http'
 import type { PipelineId } from '../design/pipelines'
+import { evidenceMetric, type EvidenceMetric } from './method'
 import { kindWord } from './run-kinds'
 
 export interface TileFigures {
   pipeline: PipelineId
-  /** Evidence F1 overall, or null when the run scored nothing for this pipeline. */
+  /** The run's evidence metric overall, or null when the run scored nothing for this pipeline. */
   mean: number | null
-  /** Questions scored. */
+  /** Questions the metric is defined for: those with claims. */
   n: number
   /** Scored runs behind the mean. */
   repeats: number
 }
 
 export type Verdict =
-  | { kind: 'official'; tiles: TileFigures[]; headlines: string[] }
+  | {
+      kind: 'official'
+      /** The method the run was made under, as the API reports it. */
+      method: string
+      /** The evidence metric that method compares, which the tiles show. */
+      metric: EvidenceMetric
+      tiles: TileFigures[]
+      headlines: string[]
+    }
   | { kind: 'none'; otherRun: string | null }
 
 const PIPELINE_IDS: readonly PipelineId[] = ['A', 'B', 'C']
@@ -28,11 +37,15 @@ const PIPELINE_IDS: readonly PipelineId[] = ['A', 'B', 'C']
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-function figures(summary: Record<string, unknown>, id: PipelineId) {
+function figures(
+  summary: Record<string, unknown>,
+  metric: EvidenceMetric,
+  id: PipelineId,
+) {
   const metrics = summary.metrics
   const overall = isRecord(metrics) ? metrics.overall : undefined
-  const f1 = isRecord(overall) ? overall.evidence_f1 : undefined
-  const cell = isRecord(f1) ? f1[id] : undefined
+  const evidence = isRecord(overall) ? overall[metric] : undefined
+  const cell = isRecord(evidence) ? evidence[id] : undefined
   const read = (key: string) =>
     isRecord(cell) && typeof cell[key] === 'number' ? cell[key] : null
   return {
@@ -65,9 +78,12 @@ export function verdictFrom(
       otherRun: latest.label ?? kindWord(latest.run_kind),
     }
   const { headlines } = latest.summary
+  const metric = evidenceMetric(latest.method_version)
   return {
     kind: 'official',
-    tiles: PIPELINE_IDS.map((id) => figures(latest.summary, id)),
+    method: latest.method_version,
+    metric,
+    tiles: PIPELINE_IDS.map((id) => figures(latest.summary, metric, id)),
     headlines: Array.isArray(headlines)
       ? headlines.filter((line): line is string => typeof line === 'string')
       : [],

@@ -3,8 +3,12 @@
     "run_id": "pilot-2026-nothink",
     "run_kind": "official",
     "label": "subset run (at most 2 instances per question)",
+    "method_version": "0.2.0",
     "started_at": "2026-10-19T19:58:50+00:00",
-    "selection": { "strata": null, "limit": 2 },
+    "selection": {
+      "strata": null,
+      "limit": 2
+    },
     "worlds": [2026],
     "headlines": [
       "Too few pairs to say for Graph and text search on multi-hop questions (8 pairs in 4 groups).",
@@ -23,8 +27,12 @@
     "run_id": "pilot-2026",
     "run_kind": "official",
     "label": "subset run (at most 1 instance per question)",
+    "method_version": "0.2.0",
     "started_at": "2026-10-19T18:24:47+00:00",
-    "selection": { "strata": null, "limit": 1 },
+    "selection": {
+      "strata": null,
+      "limit": 1
+    },
     "worlds": [2026],
     "headlines": [
       "Too few pairs to say for Graph and text search on multi-hop questions (0 pairs in 0 groups).",
@@ -43,8 +51,12 @@
     "run_id": "20261019T164733Z-smoke",
     "run_kind": "smoke",
     "label": "scorer smoke test",
+    "method_version": "0.2.0",
     "started_at": "2026-10-19T16:47:50+00:00",
-    "selection": { "strata": null, "limit": null },
+    "selection": {
+      "strata": null,
+      "limit": null
+    },
     "worlds": [2026, 2027, 2028],
     "headlines": [
       "Scorer smoke test: the fake generator answers from titles only; these numbers are not a result."

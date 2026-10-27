@@ -72,6 +72,7 @@ from app.evaluation.official import (
     ground_command,
     kept_world_count,
     load_results,
+    method_of,
     preflight,
     run_benchmark,
     run_id,
@@ -152,7 +153,13 @@ def _summary_out(run: Published) -> BenchmarkSummary:
         raise RuntimeError(
             f"the summary of benchmark run {name!r} is malformed: {error}"
         ) from error
-    return BenchmarkSummary(run_id=name, run_kind=typed.run_kind, label=typed.label, summary=typed)
+    return BenchmarkSummary(
+        run_id=name,
+        run_kind=typed.run_kind,
+        label=typed.label,
+        method_version=method_of(summary["reproducibility"]["run"]),
+        summary=typed,
+    )
 
 
 def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
@@ -516,6 +523,7 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
                 run_id=name,
                 run_kind=summary["run_kind"],
                 label=summary["label"],
+                method_version=method_of(summary["reproducibility"]["run"]),
                 started_at=summary["reproducibility"]["run"]["started_at"],
                 selection=summary["selection"],
                 worlds=summary["worlds"],
