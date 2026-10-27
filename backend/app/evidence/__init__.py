@@ -65,6 +65,23 @@ class EvidenceChunk(BaseModel):
             " (INC_1 -AFFECTS-> GAME_1); None for a seed and for documents"
         ),
     )
+    graph_seed: str | None = Field(
+        default=None,
+        description=(
+            "The seed id a graph node's walked path starts at; set exactly when graph_path is"
+        ),
+    )
+    facts_heading: str | None = Field(
+        default=None,
+        description=(
+            "Heading of a record's compact facts (Incident INC_024), for a record block"
+            " and a graph node with one; None for documents and nodes without a record block"
+        ),
+    )
+    facts: list[tuple[str, str]] = Field(
+        default_factory=list,
+        description="A record's compact facts as (name, value), in prompt order",
+    )
     discovered_via: str = Field(
         default="vector",
         description=(

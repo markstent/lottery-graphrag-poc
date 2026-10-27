@@ -42,6 +42,7 @@ from app.retrieval.graph import stages
 from app.retrieval.graph.resolution import EntityResolver, QueryExpansion, TargetTypeMatcher
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import NeighbourProvider
+from app.retrieval.standard.corpus import RecordFacts
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator
 from app.retrieval.standard.reranking import Reranker
@@ -63,6 +64,7 @@ class GraphRagPipeline:
         generator: AnswerGenerator,
         settings: RetrievalSettings,
         reranker: Reranker,
+        record_facts: RecordFacts,
         source_lookup: SourceLookup | None = None,
         pipeline: str = "C",
         sink: EventSink | None = None,
@@ -85,6 +87,8 @@ class GraphRagPipeline:
         self.emitter = EventEmitter(pipeline, self.sink)
         # The same reranker instance as pipeline A (retrieval fairness).
         self.reranker = reranker
+        # The same record facts as pipeline A (D-085).
+        self.record_facts = record_facts
 
     @property
     def events(self) -> list[RetrievalEvent]:
@@ -100,7 +104,7 @@ class GraphRagPipeline:
             raise ValueError("Question must not be empty")
         scope = list(markets) if markets else None
         graph, emitter = self.settings.graph, self.emitter
-        vectors = stages.VectorLayer(self.store, self.embeddings, self.sparse)
+        vectors = stages.VectorLayer(self.store, self.embeddings, self.sparse, self.record_facts)
         nodes = stages.NodeReader(self.source_lookup, self.ontology, self.embeddings)
         # Target types from the schema words, and in C the ontology's terms:
         # built from the ontology in use for this run (about a millisecond).

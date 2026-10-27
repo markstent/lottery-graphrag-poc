@@ -1,7 +1,9 @@
-"""Structured answer contract v2: prompt, parser and generator output."""
+"""Structured answer contract: prompt 3.0.0, the rendered blocks, the
+parser and generator output."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 
 import pytest
@@ -10,10 +12,12 @@ from app.evidence import EvidenceChunk
 from app.models.gateway import GatewayError
 from app.retrieval.standard.generation import (
     PROMPT_VERSION,
+    SYSTEM_PROMPT,
     FakeAnswerGenerator,
     GenerationError,
     GenerationOutput,
     LiteLLMAnswerGenerator,
+    context_block,
     parse_answer,
 )
 
@@ -125,8 +129,104 @@ def test_parse_answer_reads_grouped_citations() -> None:
     assert parsed.cited_blocks == [1, 2, 3]
 
 
-def test_prompt_version_is_v2() -> None:
-    assert PROMPT_VERSION == "2.0.0"
+def test_prompt_3_0_0_hash() -> None:
+    assert PROMPT_VERSION == "3.0.0"
+    assert (
+        hashlib.sha256(SYSTEM_PROMPT.encode("utf-8")).hexdigest()
+        == "ac71b7bebd16b82f96fa0988c535966973bb5abb94c819a2b9424fa790b98daa"
+    )
+
+
+def _record(**update: object) -> EvidenceChunk:
+    return _chunk().model_copy(
+        update={
+            "kind": "record",
+            "chunk_id": "REC_incidents_INC_024",
+            "document_id": "INC_024",
+            "title": "incidents: INC_024",
+            "market_id": "MKT_CZ",
+            "language_code": "en",
+            "source_system": "incident_management",
+            "record_table": "incidents",
+            "facts_heading": "Incident INC_024",
+            "facts": [("market", "MKT_CZ (Czech Republic)"), ("severity", "MEDIUM")],
+            **update,
+        }
+    )
+
+
+def test_a_document_is_its_title_line_and_text() -> None:
+    assert context_block(_chunk()) == "Price Notice (GR, el)\nThe ticket price is 2.50."
+
+
+def test_a_record_is_its_heading_with_source_and_one_line_per_fact() -> None:
+    assert context_block(_record()) == (
+        "Incident INC_024 (source: incident_management.incidents, record INC_024)\n"
+        "- market: MKT_CZ (Czech Republic)\n"
+        "- severity: MEDIUM"
+    )
+
+
+def test_a_graph_record_adds_its_path_from_the_seed() -> None:
+    path = "INC_037 -RELATED_TO_VERSION-> PLV_IDENTITY_2 <-RELATED_TO_VERSION- INC_024"
+    node = _record(kind="node", chunk_id="INC_024", graph_path=path, graph_seed="INC_037")
+    assert context_block(node) == (f"{context_block(_record())}\n- reached from INC_037: {path}")
+
+
+def _bare_node(**update: object) -> EvidenceChunk:
+    return _chunk().model_copy(
+        update={
+            "kind": "node",
+            "chunk_id": "DEV_UK_000009",
+            "document_id": "DEV_UK_000009",
+            "title": "Device: DEV_UK_000009",
+            "document_type": "Device",
+            "market_id": "",
+            "language_code": "-",
+            "text": "Device DEV_UK_000009",
+            **update,
+        }
+    )
+
+
+def test_a_graph_node_without_a_record_is_its_label_and_id_and_path() -> None:
+    node = _bare_node(
+        graph_path="PLAYER_UK_000001 -USES-> DEV_UK_000009", graph_seed="PLAYER_UK_000001"
+    )
+    assert context_block(node) == (
+        "Device DEV_UK_000009\n"
+        "- reached from PLAYER_UK_000001: PLAYER_UK_000001 -USES-> DEV_UK_000009"
+    )
+    assert context_block(_bare_node()) == "Device DEV_UK_000009"
+
+
+def test_a_concept_node_is_its_label_and_id_then_its_ontology_text() -> None:
+    concept = _bare_node(
+        chunk_id="CONCEPT_PLATFORM_INCIDENT",
+        document_id="CONCEPT_PLATFORM_INCIDENT",
+        document_type="BusinessConcept",
+        text="Concept Platform incident: an outage of a shared platform.",
+    )
+    assert context_block(concept) == (
+        "BusinessConcept CONCEPT_PLATFORM_INCIDENT\n"
+        "Concept Platform incident: an outage of a shared platform."
+    )
+
+
+def test_a_document_without_a_market_has_no_empty_scope() -> None:
+    assert context_block(_chunk().model_copy(update={"market_id": ""})) == (
+        "Price Notice (el)\nThe ticket price is 2.50."
+    )
+
+
+def test_a_path_without_its_seed_is_refused() -> None:
+    with pytest.raises(ValueError, match="DEV_UK_000009"):
+        context_block(_bare_node(graph_path="PLAYER_UK_000001 -USES-> DEV_UK_000009"))
+
+
+def test_a_record_without_facts_is_refused() -> None:
+    with pytest.raises(ValueError, match="REC_incidents_INC_024"):
+        context_block(_record(facts_heading=None, facts=[]))
 
 
 def test_litellm_generator_records_usage_and_passes_max_tokens(stub_litellm: StubLiteLLM) -> None:

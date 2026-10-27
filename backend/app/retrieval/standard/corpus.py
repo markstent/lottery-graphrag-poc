@@ -4,17 +4,30 @@ Chunks are the generation-time chunks (datasets/util.py chunk_text): one
 source of truth for the corpus, shared by A/B/C for fairness
 (docs/reference/retrieval/retrieval-fairness.md). This module joins chunk rows with
 their document metadata into retrieval-ready payloads.
+
+A record block also carries the compact facts the prompt shows for it
+(D-085). They live in memory only, never in the payload: every pipeline
+looks a record hit's facts up by chunk id in one ``RecordFacts`` map,
+built once from the loaded corpus.
 """
 
 from __future__ import annotations
 
+import dataclasses
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 import duckdb
 
 from app.evidence import EvidenceChunk
-from app.retrieval.standard.vector_store import SearchHit
+from app.retrieval.standard.vector_store import SearchHit, VectorStoreError
+
+# One named fact of a record, (name, value): ("severity", "HIGH").
+Fact = tuple[str, str]
+
+# Record chunk id -> (heading, facts), for every record block of the corpus.
+RecordFacts = Mapping[str, tuple[str, tuple[Fact, ...]]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +47,9 @@ class CorpusChunk:
     valid_to: str | None
     kind: str = "chunk"
     record_table: str | None = None
+    # A record's prompt facts (records.FACT_SERIALISERS); not in the payload.
+    facts_heading: str | None = None
+    facts: tuple[Fact, ...] = ()
 
     def to_payload(self) -> dict[str, str | int | None]:
         return {
@@ -79,14 +95,26 @@ class CorpusChunk:
             discovered_via=discovered_via,
             kind=self.kind,
             record_table=self.record_table,
+            facts_heading=self.facts_heading,
+            facts=list(self.facts),
         )
 
 
-def hit_to_evidence(hit: SearchHit, rank: int) -> EvidenceChunk:
-    """Evidence from a search hit's payload alone (no corpus lookup).
+def record_facts_of(chunks: Iterable[CorpusChunk]) -> dict[str, tuple[str, tuple[Fact, ...]]]:
+    """Every record block's heading and facts, by chunk id."""
+    return {
+        chunk.chunk_id: (chunk.facts_heading, chunk.facts)
+        for chunk in chunks
+        if chunk.facts_heading is not None
+    }
+
+
+def hit_to_evidence(hit: SearchHit, rank: int, facts: RecordFacts) -> EvidenceChunk:
+    """Evidence from a search hit's payload, plus a record's facts from ``facts``.
 
     Shared by every pipeline so a hit always becomes evidence the same way;
-    ``similarity`` is the fused score.
+    ``similarity`` is the fused score. A record hit without facts means the
+    index holds a record the loaded corpus does not, and is refused.
     """
     payload = hit.payload
     chunk = CorpusChunk(
@@ -104,6 +132,14 @@ def hit_to_evidence(hit: SearchHit, rank: int) -> EvidenceChunk:
         kind=str(payload.get("kind", "chunk")),
         record_table=_optional_text(payload.get("record_table")),
     )
+    if chunk.kind == "record":
+        if chunk.chunk_id not in facts:
+            raise VectorStoreError(
+                f"record {chunk.chunk_id} is in the index but not in the loaded corpus;"
+                " rebuild the index (make index-vector)"
+            )
+        heading, record_facts = facts[chunk.chunk_id]
+        chunk = dataclasses.replace(chunk, facts_heading=heading, facts=record_facts)
     return chunk.to_evidence(
         similarity=hit.score, rank=rank, dense_rank=hit.dense_rank, sparse_rank=hit.sparse_rank
     )

@@ -72,7 +72,7 @@ from app.retrieval.standard.context import (
     SELECTION_SAME_RECORD,
     ContextAssembly,
 )
-from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.corpus import CorpusChunk, record_facts_of
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import (
     FakeAnswerGenerator,
@@ -223,6 +223,7 @@ def build_pipeline(
         generator=FakeAnswerGenerator(),
         settings=settings,
         reranker=build_reranker(settings),
+        record_facts=record_facts_of(corpus.values()),
         expansion=expansion,
     )
 
@@ -751,7 +752,7 @@ class TestMarketScope:
         pipeline.source_lookup = SourceLookup(
             source_dir, {(r.record_table or "", r.document_id): r for r in records}
         )
-        index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, records)
+        index_records(pipeline, records)
         lab_a = StandardRagPipeline(
             embeddings=pipeline.embeddings,
             sparse=pipeline.sparse,
@@ -759,6 +760,7 @@ class TestMarketScope:
             generator=pipeline.generator,
             settings=dataclasses.replace(pipeline.settings, top_k=10),
             reranker=pipeline.reranker,
+            record_facts=pipeline.record_facts,
         )
         pipeline.settings = dataclasses.replace(pipeline.settings, top_k=10)
         result_a = lab_a.run(QUESTION, markets=["MKT_GR"])
@@ -807,7 +809,7 @@ class TestTelemetryAndDeterminism:
                 expansion=QueryExpansion(load_ontology()),
             )
             pipeline.ontology = load_ontology()
-            index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+            index_records(pipeline, [record])
             pipeline.source_lookup = SourceLookup(tmp_path, {("incidents", "INC_S007_GR"): record})
             result = pipeline.run(QUESTION, markets=markets)
             runs.append(
@@ -915,7 +917,16 @@ def record_corpus_chunk(
         valid_to=None,
         kind="record",
         record_table=table,
+        facts_heading=f"Record {record_id}",
+        facts=(("summary", text),),
     )
+
+
+def index_records(pipeline: GraphRagPipeline, records: list[CorpusChunk]) -> None:
+    """Index record blocks into the pipeline's store with their prompt
+    facts, as the lab does for its corpus."""
+    index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, records)
+    pipeline.record_facts = {**pipeline.record_facts, **record_facts_of(records)}
 
 
 QUESTION = "Why did checkout fail in Greece?"
@@ -1032,7 +1043,7 @@ class TestFallbackSeed:
         record = record_corpus_chunk(
             "incidents", "INC_S007_GR", "Incident INC_S007_GR in Greece: checkout failed."
         )
-        index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+        index_records(pipeline, [record])
         result = pipeline.run("checkout regression in Greece")
         seeds = [
             e.payload["node_id"] for e in pipeline.events if e.event_type == GRAPH_SEED_SELECTED
@@ -1153,7 +1164,7 @@ class TestNodeText:
         for indexed in (True, False):
             pipeline = build_pipeline()
             if indexed:
-                index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+                index_records(pipeline, [record])
             pipeline.source_lookup = lookup
             result, channel = graph_channel(pipeline, QUESTION, monkeypatch)
             # Indexed, the row is in both channels and reaches the prompt once.

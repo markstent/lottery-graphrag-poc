@@ -108,9 +108,15 @@ def _provider(
 
 
 def tiny_world_pipelines(dataset_dir: Path) -> dict[str, GraphRagPipeline]:
-    """B and C over the tiny world: its indexed corpus, Parquet source
-    lookup, graph rows and resolvers; hashing embedders, the lexical judge
-    and the fake generator, so every run is deterministic and offline."""
+    """B and C over the tiny world (see :func:`tiny_world_lab`)."""
+    return tiny_world_lab(dataset_dir)[1]
+
+
+def tiny_world_lab(dataset_dir: Path) -> tuple[Lab, dict[str, GraphRagPipeline]]:
+    """The lab (pipeline A) and B and C over the tiny world: its indexed
+    corpus, Parquet source lookup, graph rows and resolvers; hashing
+    embedders, the lexical judge and the fake generator, so every run is
+    deterministic and offline."""
     tables = load_dataset(dataset_dir)
     base = build_lab_offline()
     nodes = build_node_rows(tables, base.ontology)
@@ -126,7 +132,7 @@ def tiny_world_pipelines(dataset_dir: Path) -> dict[str, GraphRagPipeline]:
     reader = _TinyWorldReader(labels, nodes["Market"])
     ids, terms = build_resolvers(reader, lab.ontology, lab.term_matcher)  # type: ignore[arg-type]
     provider = _provider(build_relationship_rows(tables, lab.ontology))
-    return dict(graph_pipelines(lab, provider, ids, terms))
+    return lab, dict(graph_pipelines(lab, provider, ids, terms))
 
 
 def _plain(value: dict[str, Any]) -> dict[str, Any]:

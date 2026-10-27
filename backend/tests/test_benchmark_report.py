@@ -428,12 +428,21 @@ def test_agreement_section_reports_answered_and_abstained() -> None:
     }
     section = "\n".join(_agreement_section(agreements))
     assert "| Pipeline | Answers | Judged repeats | Agreement | Weighted kappa |" in section
-    assert "| all | answered | 3 | 1.000 | 1.000 |" in section
-    assert "| all | abstained | 1 | 0.000 | 0.000 |" in section
-    assert "| B | abstained | 0 | - | - |" in section
+    assert "| all | answered | 3 | 1.000 | too few to say |" in section
+    assert "| all | abstained | 1 | 0.000 | too few to say |" in section
+    assert "| B | abstained | 0 | - | too few to say |" in section
     for level in ("Level 0", "Level 1", "Level 2"):
         assert level in section
     assert "0.5" not in section
+
+
+def test_agreement_table_shows_kappa_only_from_ten_repeats() -> None:
+    cell = {"agreement": 0.9, "weighted_kappa": 0.75}
+    split = {"answered": {"n": 10, **cell}, "abstained": {"n": 9, **cell}}
+    section = "\n".join(_agreement_section({"overall": split, "pipelines": {}}))
+    assert "| all | answered | 10 | 0.900 | 0.750 |" in section
+    assert "| all | abstained | 9 | 0.900 | too few to say |" in section
+    assert "shown only over at least 10 judged repeats" in section
 
 
 def test_report_reads_counts_and_reasons_from_the_summary(synthetic_run: BenchmarkRun) -> None:

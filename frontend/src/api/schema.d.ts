@@ -899,10 +899,28 @@ export interface components {
             /** Document Type */
             document_type: string;
             /**
+             * Facts
+             * @description A record's compact facts as (name, value), in prompt order
+             */
+            facts?: [
+                string,
+                string
+            ][];
+            /**
+             * Facts Heading
+             * @description Heading of a record's compact facts (Incident INC_024), for a record block and a graph node with one; None for documents and nodes without a record block
+             */
+            facts_heading?: string | null;
+            /**
              * Graph Path
              * @description A graph node's walked path from its seed, one line (INC_1 -AFFECTS-> GAME_1); None for a seed and for documents
              */
             graph_path?: string | null;
+            /**
+             * Graph Seed
+             * @description The seed id a graph node's walked path starts at; set exactly when graph_path is
+             */
+            graph_seed?: string | null;
             /**
              * Kind
              * @description chunk (document text) | record (table row) | node (graph block)

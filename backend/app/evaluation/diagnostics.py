@@ -1,10 +1,11 @@
-"""Read-only diagnostic of what the shared re-ranker keeps (D-025, D-081).
+"""Read-only diagnostic of what the selection keeps (D-025, D-081, D-083, D-084).
 
-Every pipeline hands its candidates to one shared re-ranker, which orders
-them; the slots and the graph share then pick what reaches the prompt. This
-module runs retrieval only, for every bank instance that has claims, and counts
-per pipeline how many claims had a carrier among the graph candidates, among the
-document candidates and among the selected evidence. The carrier notion is the
+Under method v0.3 the graph orders its own records (tier, then score) and the
+shared re-ranker orders the documents; the two lists take turns filling one
+token budget, documents first. This module runs retrieval only, for every bank
+instance that has claims, and counts per pipeline how many claims had a carrier
+among the graph candidates, among the document candidates and among the selected
+evidence. The carrier notion is the
 scorer's: a claim is found by a set of ids when one of its carriers is among
 them, after the question's anchor is removed (``exclude_anchor``).
 
@@ -28,7 +29,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from app.config import SELECTION_RULE, GraphConfig
+from app.config import METHOD_VERSION, SELECTION_RULE, GraphConfig
 from app.evaluation import official
 from app.evaluation.bank import STRATA
 from app.evaluation.claims import exclude_anchor, selection_carrier
@@ -36,7 +37,6 @@ from app.evaluation.grounding import BankInstance, FrozenBank, GroundingError, l
 from app.evaluation.runner import check_bank
 from app.events import (
     GRAPH_CANDIDATE_DISCARDED,
-    GRAPH_CANDIDATE_RERANKED,
     GRAPH_CANDIDATE_SELECTED,
     GRAPH_NODE_DISCOVERED,
     GRAPH_SEED_SELECTED,
@@ -93,11 +93,11 @@ class Retriever(Protocol):
 
 @dataclass(frozen=True, slots=True)
 class Fate:
-    """What the re-ranker and the context budget did with one graph node."""
+    """What the graph's ordering and the token budget did with one graph node."""
 
     reason: str | None  # the discard reason, or None when it was selected
-    rerank_score: float | None
-    rank: int | None
+    tier: str | None  # seed, target or other; None for a node the graph did not order
+    graph_rank: int | None  # 1-based place in the graph's own order
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,8 +119,8 @@ class DroppedCarrier:
 
     carrier: str
     reason: str | None
-    rerank_score: float | None
-    rank: int | None
+    tier: str | None
+    graph_rank: int | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,9 +135,11 @@ class DroppedClaim:
 
     @property
     def reason(self) -> str:
-        """The reason of the best-ranked carrier, the one closest to being kept."""
-        best = min(self.carriers, key=lambda c: (c.rank is None, c.rank or 0, c.carrier))
-        return best.reason or "not judged"
+        """The reason of the carrier with the lowest graph rank, the one closest to being kept."""
+        best = min(
+            self.carriers, key=lambda c: (c.graph_rank is None, c.graph_rank or 0, c.carrier)
+        )
+        return best.reason or "not offered"
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,8 +207,8 @@ def read_candidates(
     """Carrier ids from one run's events.
 
     Graph candidates are the seeds and every node the traversal discovered
-    (B and C), less the nodes of an excluded label, which are never offered to
-    the re-ranker. Document candidates are the chunk ids of the document
+    (B and C), less the nodes of an excluded label, which the graph never
+    orders. Document candidates are the chunk ids of the document
     channel: A's retrieved candidates, and for B and C the selected and
     discarded chunks, which include the record blocks superseded by their
     nodes. Selected evidence is A's selected chunks, or B's and C's selected
@@ -222,8 +224,8 @@ def read_candidates(
     documents: set[str] = set()
     selected: set[str] = set()
     reasons: dict[str, str] = {}
-    scores: dict[str, float | None] = {}
-    ranks: dict[str, int] = {}
+    tiers: dict[str, str | None] = {}
+    ranks: dict[str, int | None] = {}
     for event in events:
         payload = event.payload
         kind = event.event_type
@@ -233,8 +235,6 @@ def read_candidates(
             documents.add(carrier(str(payload["chunk_id"])))
         elif kind == RAG_EVIDENCE_SELECTED:
             selected.add(carrier(str(payload["chunk_id"])))
-        elif kind == GRAPH_CANDIDATE_RERANKED:
-            ranks[str(payload["candidate_id"])] = int(str(payload["rank"]))
         elif kind in (GRAPH_CANDIDATE_SELECTED, GRAPH_CANDIDATE_DISCARDED):
             discarded = kind == GRAPH_CANDIDATE_DISCARDED
             if "chunk_id" in payload:
@@ -243,15 +243,17 @@ def read_candidates(
                     selected.add(carrier(str(payload["chunk_id"])))
                 continue
             node_id = str(payload["node_id"])
-            score = payload.get("rerank_score")
-            scores[node_id] = None if score is None else float(score)
+            tier = payload.get("tier")
+            tiers[node_id] = None if tier is None else str(tier)
+            rank = payload.get("graph_rank")
+            ranks[node_id] = None if rank is None else int(str(rank))
             if discarded:
                 reasons[node_id] = str(payload["reason"])
             else:
                 selected.add(node_id)
     graph -= {node for node, reason in reasons.items() if reason == EXCLUDED_LABEL}
     fates = {
-        node: Fate(reasons.get(node), scores.get(node), ranks.get(node)) for node in sorted(graph)
+        node: Fate(reasons.get(node), tiers.get(node), ranks.get(node)) for node in sorted(graph)
     }
     return Candidates(
         graph=frozenset(graph) if tag in GRAPH_PIPELINES else frozenset(),
@@ -322,8 +324,10 @@ GLOSSARY = (
     "The record the question itself names is left out, as the scorer leaves it out.",
     "This diagnostic runs the search, the graph walk and the re-ranker, and stops before the "
     "language model writes an answer.",
-    "The re-ranker orders every candidate; the slots, with a share of them kept for the graph's "
-    "own selection in B and C, decide what reaches the prompt.",
+    "The graph orders its own records (seeds, then records of the types the question asks "
+    "about, then the rest), and the re-ranker orders the documents.",
+    "The two lists take turns filling one token budget, documents first, and what fits "
+    "reaches the prompt.",
 )
 COLUMNS = (
     "| Approach | Questions | Claims to find | Found by the graph "
@@ -334,7 +338,7 @@ COLUMNS = (
 def render_markdown(diagnostic: SelectionDiagnostic) -> str:
     """A table per stratum, the totals, why graph finds were dropped, and the settings."""
     lines = [
-        "# What the shared re-ranker keeps",
+        "# What the selection keeps",
         "",
         f"World seed {diagnostic.world_seed}, bank hash `{diagnostic.bank_hash}`.",
         *GLOSSARY,
@@ -357,8 +361,10 @@ def render_markdown(diagnostic: SelectionDiagnostic) -> str:
             "Reasons: `context_budget` means the token budget was full,",
             "`same_record` means the same record was already kept through the other channel,",
             "`duplicate` means a near copy was already kept,",
-            "and `not judged` means the record was not offered to the re-ranker.",
-            "The score is the re-ranker's relevance score and rank 1 is its best candidate.",
+            "and `not offered` means the graph found the record,",
+            "but it never reached the selection, so no reason was recorded.",
+            "The tier is seed, target or other,",
+            "and graph rank 1 is the graph's most relevant record.",
             "",
         ]
         for tag, counter in diagnostic.dropped_by_reason().items():
@@ -367,8 +373,8 @@ def render_markdown(diagnostic: SelectionDiagnostic) -> str:
         lines.append("")
     for drop in diagnostic.dropped:
         carriers = "; ".join(
-            f"`{c.carrier}` (reason {c.reason or 'not judged'}, score {_number(c.rerank_score)}, "
-            f"rank {c.rank if c.rank is not None else 'none'})"
+            f"`{c.carrier}` (reason {c.reason or 'not offered'}, tier {c.tier or 'none'}, "
+            f"graph rank {c.graph_rank if c.graph_rank is not None else 'none'})"
             for c in drop.carriers
         )
         lines.append(
@@ -382,10 +388,6 @@ def render_markdown(diagnostic: SelectionDiagnostic) -> str:
 
 
 _RULE = "|---|---|---|---|---|---|"
-
-
-def _number(value: float | None) -> str:
-    return "none" if value is None else f"{value:.3f}"
 
 
 def _row(tag: str, counts: PipelineCounts) -> str:
@@ -421,6 +423,7 @@ def settings_record(lab: Lab, node_count: int) -> dict[str, Any]:
         "record_serialiser_version": lab.record_serialiser_version,
         "top_k": settings.top_k,
         "context_budget_tokens": settings.context.budget_tokens,
+        "method_version": METHOD_VERSION,
         "selection_rule": SELECTION_RULE,
         "graph_depth": settings.graph.max_depth,
         "graph_nodes_per_hop": settings.graph.max_nodes_per_hop,

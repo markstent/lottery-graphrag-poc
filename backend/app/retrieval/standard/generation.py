@@ -10,7 +10,9 @@ Every pipeline shares one prompt (PROMPT_VERSION), one generator, one
 parser (`parse_answer`) and one citation builder (`citations_for`), and
 hands the generator one list of selected evidence in prompt order, so the
 same selected evidence in the same order gives the same prompt in A, B and C
-(docs/reference/retrieval/retrieval-fairness.md). The model is asked for a JSON object
+(docs/reference/retrieval/retrieval-fairness.md), apart from one declared
+addition: a graph record reached by a walk shows its "reached from" path line
+in B and C (D-085). The model is asked for a JSON object
 with a verdict and a prose answer citing numbered sources as [n]; the parser
 keeps only citations that point at a block actually shown to the model.
 """
@@ -26,15 +28,18 @@ from typing import Protocol
 from app.evidence import Citation, EvidenceChunk
 from app.models.gateway import CompletionRequest, GatewayError, complete
 
-PROMPT_VERSION = "2.0.0"
+PROMPT_VERSION = "3.0.0"
 
 SYSTEM_PROMPT = (
     "You are an enterprise analyst. Answer using only the numbered context "
     "sources; do not use outside knowledge. Respond with exactly one JSON object "
-    'and nothing else: {"verdict": "<one line, or \'unknown\' when the sources do '
-    'not answer>", "answer": "<prose with [n] citations>"}. Cite every claim as [n] '
-    "matching the source numbers given. If the sources do not answer the question, "
-    'set verdict to "unknown" and say so plainly in the answer.'
+    'and nothing else: {"verdict": "<the answer itself in one line, such as a name, '
+    "an id, a number, a date or yes or no; 'unknown' when the sources do not "
+    'answer>", "answer": "<prose with [n] citations>"}. The verdict is never a '
+    "status word such as 'success' or 'ok'. Cite every claim as [n] matching the "
+    "source numbers given. A source line that starts with 'reached from' shows how "
+    "that record connects to an entity named in the question. If the sources do not "
+    'answer the question, set verdict to "unknown" and say so plainly in the answer.'
 )
 
 FENCED_JSON = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
@@ -76,9 +81,36 @@ class AnswerGenerator(Protocol):
 
 
 def context_block(chunk: EvidenceChunk) -> str:
-    """One context block: a title line, then the text. Every pipeline renders
-    documents, records and structured graph nodes with this one format."""
-    return f"{chunk.title} ({chunk.market_id}, {chunk.language_code})\n{chunk.text}"
+    """One context block, rendered the same way in every pipeline (D-085).
+
+    A record, whether a record block or a graph node with one, is its facts
+    heading with its source, then one "- name: value" line per fact. A
+    document chunk is a title line, "{title} ({market}, {language})" without
+    empty parts, then its text. A graph node without a record block is its
+    heading "<Label> <id>", then its text when the text says more (a
+    concept's ontology text in C); a bare node's text is that heading. A
+    graph node reached by a walk (B and C, hops > 0) adds
+    "- reached from <seed id>: <path>" (``PROMPT_EXTRAS["path_line"]``).
+    """
+    if chunk.facts_heading is not None:
+        lines = [
+            f"{chunk.facts_heading} (source: {chunk.source_system}.{chunk.record_table},"
+            f" record {chunk.document_id})",
+            *(f"- {name}: {value}" for name, value in chunk.facts),
+        ]
+    elif chunk.kind == "record":
+        raise ValueError(f"record block {chunk.chunk_id} has no facts to show")
+    elif chunk.kind == "node":
+        heading = f"{chunk.document_type} {chunk.document_id}"
+        lines = [heading] if chunk.text == heading else [heading, chunk.text]
+    else:
+        scope = ", ".join(part for part in (chunk.market_id, chunk.language_code) if part)
+        lines = [f"{chunk.title} ({scope})" if scope else chunk.title, chunk.text]
+    if chunk.graph_path is not None:
+        if chunk.graph_seed is None:
+            raise ValueError(f"graph node {chunk.chunk_id} has a path but no seed")
+        lines.append(f"- reached from {chunk.graph_seed}: {chunk.graph_path}")
+    return "\n".join(lines)
 
 
 def build_user_prompt(question: str, contexts: list[EvidenceChunk]) -> str:

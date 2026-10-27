@@ -8,11 +8,17 @@ are shuffled by a hashed seed and renumbered, the answer's citations are
 rewritten to the new numbers, and the prompt never names the pipeline or
 how the context was retrieved.
 
-Blinding removes the systematic tell, block titles: a graph node without a
-record block is titled "<Label>: <id>" where a record block of pipeline A is
-titled "<table>: <id>", so the judge sees block text only. A residual tell
-remains: the text of such a node reads "<Label> <id>", which can differ in
-form from the text of the record block A retrieves for the same record.
+The judge reads each block's ``ShownBlock.judge_text``: the
+rendered prompt block less a document chunk's title line. A record reads
+the same in A, B and C (its facts heading, source and facts), so record
+blocks carry no tell of their own. Two tells remain, both declared (D-085):
+a graph record reached by a walk ends with its "reached from" path line,
+which only B and C show; and a graph node without a record block, which
+only B and C can select. Such a node shows exactly "<Label> <id>" (for
+example "Device DEV_UK_000009", as the v0.2 judge saw it), followed in C by
+a concept's ontology text for a BusinessConcept node, and by its path line
+when it was reached by a walk. The judge is secondary to the deterministic
+scores (D-031).
 
 A judge failure (gateway error or unusable reply) is recorded as
 a verdict without scores.
@@ -182,14 +188,15 @@ def _blind_answer(answer: str, renumber: dict[int, int]) -> str:
 
 
 def build_judge_prompt(item: JudgeItem) -> tuple[str, str]:
-    """(system, user) for one blinded item: block text only, no titles, and
-    nothing that names how the context was retrieved."""
+    """(system, user) for one blinded item: each block's shown text (no
+    document title line), and nothing that names how the context was
+    retrieved beyond the declared tells in the module docstring."""
     order, renumber = _blinding(item)
     shown = [item.blocks[old] for old in order]
     answer = _blind_answer(item.answer, renumber)
     facts = "\n".join(f"- {statement}" for statement in item.claim_statements) or "- (none)"
     sources = (
-        "\n\n".join(f"[{n}] {block.text}" for n, block in enumerate(shown, start=1))
+        "\n\n".join(f"[{n}] {block.judge_text}" for n, block in enumerate(shown, start=1))
         or "(no context was shown)"
     )
     cited = [str(renumber[n]) for n in item.cited_blocks if n in renumber]

@@ -77,7 +77,7 @@ from app.lab import Lab, bc_graph_settings, wired_pipelines
 from app.observability.logging import run_context, stage_timer
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.pipeline import GraphRagPipeline
-from app.retrieval.standard.context import estimate_tokens
+from app.retrieval.standard.context import block_tokens
 from app.retrieval.standard.fusion import RRF_K
 from app.retrieval.standard.generation import (
     PROMPT_VERSION,
@@ -86,6 +86,7 @@ from app.retrieval.standard.generation import (
     FakeAnswerGenerator,
     GenerationError,
     GenerationOutput,
+    context_block,
 )
 from app.retrieval.standard.pipeline import StandardRagPipeline
 from app.retrieval.standard.records import RECORD_FACTS_VERSION
@@ -254,11 +255,30 @@ class ReproducibilityRecord:
 
 @dataclass(frozen=True, slots=True)
 class ShownBlock:
-    """One context block the generator was shown, with the carrier it is."""
+    """One context block the generator was shown, with the carrier it is.
+
+    ``text`` is exactly what the model was shown for the source: the
+    rendered ``context_block`` without its [n], so groundedness measures
+    support against everything the model saw. ``kind`` is the evidence kind
+    (chunk, record, node); None in a block recorded before method v0.3,
+    whose ``text`` is the bare chunk text.
+    """
 
     carrier_id: str
     title: str
     text: str
+    kind: str | None = None
+
+    @property
+    def judge_text(self) -> str:
+        """What the judge and the labelling sheet read (F12): ``text`` less a
+        document chunk's "{title} ({market}, {language})" line. A record's
+        heading with its source, a graph node's "<Label> <id>" heading and a
+        graph record's path line stay; a block recorded before v0.3 holds no
+        title line and is read as is."""
+        if self.kind == "chunk":
+            return self.text.partition("\n")[2]
+        return self.text
 
 
 @dataclass(frozen=True, slots=True)
@@ -679,7 +699,12 @@ class BenchmarkRunner:
         latency_ms = (time.perf_counter() - started) * 1000
         contexts = self._shown.contexts
         blocks = tuple(
-            ShownBlock(selection_carrier(c.kind, c.chunk_id, c.document_id), c.title, c.text)
+            ShownBlock(
+                selection_carrier(c.kind, c.chunk_id, c.document_id),
+                c.title,
+                context_block(c),
+                c.kind,
+            )
             for c in contexts
         )
         resolved = tuple(
@@ -699,9 +724,8 @@ class BenchmarkRunner:
             resolved_ids=resolved,
             seeded=isinstance(pipeline, GraphRagPipeline),
             context_tokens=(
-                sum(estimate_tokens(c.text) for c in contexts)
-                if answer is None
-                else answer.context_tokens
+                # The selection's rendered-block tokens, as a pipeline records them.
+                sum(block_tokens(c) for c in contexts) if answer is None else answer.context_tokens
             ),
             latency_ms=latency_ms,
             generation_failed=answer is None,

@@ -45,7 +45,7 @@ from app.retrieval.standard.context import (
     estimate_tokens,
     interleave_by_budget,
 )
-from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.corpus import CorpusChunk, record_facts_of
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import FakeAnswerGenerator, context_block
 from app.retrieval.standard.index import index_corpus
@@ -101,8 +101,15 @@ def doc_chunk(chunk_id: str, words: int) -> EvidenceChunk:
 
 
 def record_chunk(record_id: str, words: int) -> EvidenceChunk:
-    return doc_chunk(f"REC_games_{record_id}", words).model_copy(
-        update={"kind": "record", "document_id": record_id, "record_table": "games"}
+    chunk = doc_chunk(f"REC_games_{record_id}", words)
+    return chunk.model_copy(
+        update={
+            "kind": "record",
+            "document_id": record_id,
+            "record_table": "games",
+            "facts_heading": f"Game {record_id}",
+            "facts": [("summary", chunk.text)],
+        }
     )
 
 
@@ -387,6 +394,23 @@ def test_budget_counts_the_rendered_block() -> None:
     assert result.context_tokens == block_tokens(chunk)
 
 
+def test_a_record_and_a_walked_node_pay_for_their_fact_blocks() -> None:
+    """D-085: a record costs its facts block in every pipeline; a graph
+    record reached by a walk also pays for its path line."""
+    record = record_chunk("GAME_GR_01", 5)
+    assert context_block(record).startswith("Game GAME_GR_01 (source: ")
+    assert block_tokens(record) == estimate_tokens(context_block(record))
+    walked = record.model_copy(
+        update={
+            "kind": "node",
+            "graph_path": "MKT_GR -AVAILABLE_IN-> GAME_GR_01",
+            "graph_seed": "MKT_GR",
+        }
+    )
+    assert context_block(walked).startswith(context_block(record) + "\n- reached from MKT_GR: ")
+    assert block_tokens(walked) > block_tokens(record)
+
+
 # -- settings -----------------------------------------------------------------------------
 
 
@@ -432,6 +456,8 @@ def _record_block() -> CorpusChunk:
         valid_to=None,
         kind="record",
         record_table="games",
+        facts_heading="Game GAME_GR_01",
+        facts=(("market", "MKT_GR (Greece)"), ("ticket price", "2.00 EUR"), ("name", "Greek Draw")),
     )
 
 
@@ -440,7 +466,8 @@ def _record_pipeline() -> GraphRagPipeline:
     embeddings = HashingEmbedder(dimensions=retrieval.embedding.dimensions)
     sparse = HashingSparseEmbedder()
     store = InMemoryVectorStore()
-    index_corpus(store, embeddings, sparse, [*build_corpus().values(), _record_block()])
+    corpus = [*build_corpus().values(), _record_block()]
+    index_corpus(store, embeddings, sparse, corpus)
     adjacency = {
         "MKT_GR": [
             NeighbourEdge(
@@ -464,6 +491,7 @@ def _record_pipeline() -> GraphRagPipeline:
         generator=FakeAnswerGenerator(),
         settings=retrieval,
         reranker=build_reranker(retrieval),
+        record_facts=record_facts_of(corpus),
     )
 
 
