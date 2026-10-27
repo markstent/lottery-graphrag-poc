@@ -131,12 +131,30 @@ describe('chapters 1 to 6', () => {
     expect(label).not.toMatch(/\b(?:12|2000|2,000)\b/)
     cleanup()
 
-    const unknown: HelpData = {
-      ...helpData('plain', null),
+    const loading: HelpData = {
+      ...helpData('plain', RECORDED),
       settings: { status: 'loading', retry: () => undefined },
     }
     render(
-      <HelpDataContext.Provider value={unknown}>
+      <HelpDataContext.Provider value={loading}>
+        <Blocks blocks={[{ kind: 'diagram', name: 'evidence' }]} />
+      </HelpDataContext.Provider>,
+    )
+    const loadingLabel = screen.getByRole('img').getAttribute('aria-label')!
+    expect(loadingLabel).toMatch(/settings it quotes are loading/)
+    expect(loadingLabel).not.toMatch(/not available|\b(?:10|12|1,500|2,000)\b/)
+    cleanup()
+
+    const failed: HelpData = {
+      ...helpData('plain', null),
+      settings: {
+        status: 'error',
+        error: new Error('down'),
+        retry: () => undefined,
+      },
+    }
+    render(
+      <HelpDataContext.Provider value={failed}>
         <Blocks blocks={[{ kind: 'diagram', name: 'evidence' }]} />
       </HelpDataContext.Provider>,
     )

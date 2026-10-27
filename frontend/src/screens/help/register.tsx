@@ -7,7 +7,7 @@
 
 import { REGISTER } from './copy/limits'
 import { useHelpData } from './help-data'
-import { fillSettings } from './settings'
+import { fillSettings, useSettingValues } from './settings'
 
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
 
@@ -19,48 +19,49 @@ const TECHNICAL_COLUMNS = [
 ] as const
 
 export function Register() {
-  const { level, settings, recorded: recordedRun } = useHelpData()
-  const current = settings.status === 'ready' ? settings.data.values : null
-  const recorded = recordedRun.status === 'ready' ? recordedRun.data : null
-  const fill = (text: string) => fillSettings(text, current, recorded)
+  const { level } = useHelpData()
+  const values = useSettingValues()
+  const fill = (text: string) => fillSettings(text, values)
   const technical = level === 'technical'
   const columns = technical
     ? [...PLAIN_COLUMNS, ...TECHNICAL_COLUMNS]
     : PLAIN_COLUMNS
   return (
-    <table className="w-full text-left text-sm">
-      <caption className="sr-only">Assumptions and limits</caption>
-      <thead className="text-text-muted">
-        <tr>
-          {columns.map((name) => (
-            <th key={name} scope="col" className={CELL}>
-              {name}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {REGISTER.map((row) => (
-          <tr key={row.id} id={`limit-${row.id}`}>
-            <th
-              scope="row"
-              className={`${CELL} w-48 font-semibold text-text-primary`}
-            >
-              {fill(row.item)}
-            </th>
-            <td className={CELL}>{fill(row.plain)}</td>
-            {technical && (
-              <>
-                <td className={CELL}>{fill(row.reason)}</td>
-                <td className={CELL}>{fill(row.cost)}</td>
-                <td className={`${CELL} w-40`}>
-                  {row.decision ? fill(row.decision) : 'None'}
-                </td>
-              </>
-            )}
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm">
+        <caption className="sr-only">Assumptions and limits</caption>
+        <thead className="text-text-muted">
+          <tr>
+            {columns.map((name) => (
+              <th key={name} scope="col" className={CELL}>
+                {name}
+              </th>
+            ))}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {REGISTER.map((row) => (
+            <tr key={row.id} id={`limit-${row.id}`}>
+              <th
+                scope="row"
+                className={`${CELL} w-48 font-semibold text-text-primary`}
+              >
+                {fill(row.item)}
+              </th>
+              <td className={CELL}>{fill(row.plain)}</td>
+              {technical && (
+                <>
+                  <td className={CELL}>{fill(row.reason)}</td>
+                  <td className={CELL}>{fill(row.cost)}</td>
+                  <td className={`${CELL} w-40`}>
+                    {row.decision ? fill(row.decision) : 'None'}
+                  </td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }

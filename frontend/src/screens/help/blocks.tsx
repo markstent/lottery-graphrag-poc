@@ -19,6 +19,7 @@ import {
   NOT_AVAILABLE,
   NOT_RECORDED,
   settingValue,
+  useSettingValues,
 } from './settings'
 import { Stories } from './stories'
 
@@ -42,66 +43,65 @@ const CELL = 'border-b border-hairline px-3 py-2 align-top'
 
 function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
   const { settings, recorded: recordedRun } = useHelpData()
-  const current = settings.status === 'ready' ? settings.data.values : null
-  const recorded = recordedRun.status === 'ready' ? recordedRun.data : null
-  const failed = settings.status === 'error' || recordedRun.status === 'error'
+  const { current, recorded } = useSettingValues()
+  const errors = [settings, recordedRun].flatMap((load) =>
+    load.status === 'error' ? [load.error.message] : [],
+  )
   return (
     <>
-      <table className="w-full text-left text-sm">
-        <caption className="sr-only">
-          Settings now and in the newest official run
-        </caption>
-        <thead className="text-text-muted">
-          <tr>
-            {['Setting', 'Now', 'Newest official run'].map((name) => (
-              <th key={name} scope="col" className={CELL}>
-                {name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {keys.map((key) => {
-            const value = settingValue(key, current, recorded)
-            return (
-              <tr key={key}>
-                <th
-                  scope="row"
-                  className={`${CELL} font-mono font-normal text-text-primary`}
-                >
-                  {key}
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">
+            Settings now and in the newest official run
+          </caption>
+          <thead className="text-text-muted">
+            <tr>
+              {['Setting', 'Now', 'Newest official run'].map((name) => (
+                <th key={name} scope="col" className={CELL}>
+                  {name}
                 </th>
-                <td className={`${CELL} font-mono text-text-primary`}>
-                  {settings.status === 'loading'
-                    ? 'Loading'
-                    : (value.current ?? NOT_AVAILABLE)}
-                </td>
-                <td className={`${CELL} font-mono text-text-primary`}>
-                  {recordedRun.status === 'loading'
-                    ? 'Loading'
-                    : recordedRun.status === 'error'
-                      ? NOT_AVAILABLE
-                      : (value.recorded ?? NOT_RECORDED)}
-                  {value.differs && (
-                    <span className="ml-2 rounded-chip border border-border px-1.5 py-0.5 font-sans text-xs font-semibold">
-                      Differs
-                    </span>
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-      {failed && (
-        <p className="flex flex-wrap items-center gap-3">
-          <span>
-            {settings.status === 'error'
-              ? settings.error.message
-              : recordedRun.status === 'error'
-                ? recordedRun.error.message
-                : ''}
-          </span>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {keys.map((key) => {
+              const value = settingValue(key, current, recorded)
+              return (
+                <tr key={key}>
+                  <th
+                    scope="row"
+                    className={`${CELL} font-mono font-normal text-text-primary`}
+                  >
+                    {key}
+                  </th>
+                  <td className={`${CELL} font-mono text-text-primary`}>
+                    {settings.status === 'loading'
+                      ? 'Loading'
+                      : (value.current ?? NOT_AVAILABLE)}
+                  </td>
+                  <td className={`${CELL} font-mono text-text-primary`}>
+                    {recordedRun.status === 'loading'
+                      ? 'Loading'
+                      : recordedRun.status === 'error'
+                        ? NOT_AVAILABLE
+                        : (value.recorded ?? NOT_RECORDED)}
+                    {value.differs && (
+                      <span className="ml-2 rounded-chip border border-border px-1.5 py-0.5 font-sans text-xs font-semibold">
+                        Differs
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+      {errors.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          {errors.map((message) => (
+            <p key={message}>{message}</p>
+          ))}
           <button
             type="button"
             onClick={() => {
@@ -112,17 +112,15 @@ function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
           >
             Retry loading settings
           </button>
-        </p>
+        </div>
       )}
     </>
   )
 }
 
 export function Blocks({ blocks }: { blocks: readonly Block[] }) {
-  const { settings, recorded: recordedRun } = useHelpData()
-  const current = settings.status === 'ready' ? settings.data.values : null
-  const recorded = recordedRun.status === 'ready' ? recordedRun.data : null
-  const fill = (text: string) => fillSettings(text, current, recorded)
+  const values = useSettingValues()
+  const fill = (text: string) => fillSettings(text, values)
   return blocks.map((block, index) => {
     if (typeof block === 'string') return <p key={index}>{fill(block)}</p>
     if (!('kind' in block))

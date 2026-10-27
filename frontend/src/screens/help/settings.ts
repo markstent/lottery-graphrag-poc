@@ -14,6 +14,7 @@ import { plainValue } from '../../app/plain-words'
 import { useLoad } from '../../app/use-load'
 import { newestResult } from '../../results/runs'
 import type { SettingKey } from './chapters'
+import { useHelpData } from './help-data'
 
 type JsonValue = Schemas['JsonValue']
 type Values = Record<string, unknown>
@@ -41,6 +42,23 @@ export async function loadRecorded(
 }
 
 export const useSettings = () => useLoad(getSettings, 'help-settings')
+
+/** What Help reads settings from: both sides, and whether either is still loading. */
+export interface SettingValues {
+  current: Values | null
+  recorded: Values | null
+  loading: boolean
+}
+
+/** The settings now and the newest official run's, from the loads Help provides. */
+export function useSettingValues(): SettingValues {
+  const { settings, recorded } = useHelpData()
+  return {
+    current: settings.status === 'ready' ? settings.data.values : null,
+    recorded: recorded.status === 'ready' ? recorded.data : null,
+    loading: settings.status === 'loading' || recorded.status === 'loading',
+  }
+}
 
 /** A value by its name, following dots into nested settings: `context.graph_slots`. */
 function lookup(values: Values | null, key: SettingKey): unknown {
@@ -94,18 +112,23 @@ export function settingValue(
 
 const PLACEHOLDER = /\{([a-z0-9_.]+)\}/g
 
-/** Fills each `{setting_key}` from the current settings, else the newest official run's, else "not available". */
-export function fillSettings(
-  text: string,
-  current: Values | null,
-  recorded: Values | null,
-): string {
+/** What a placeholder reads while either load is under way. */
+export const LOADING_TOKEN = '…'
+
+/**
+ * Fills each `{setting_key}` from the current settings, else the newest
+ * official run's, else "not available" once both loads have settled. While
+ * either is loading it writes `LOADING_TOKEN`, so no value is shown that a
+ * later load could change.
+ */
+export function fillSettings(text: string, values: SettingValues): string {
   return text.replace(PLACEHOLDER, (_, key: string) => {
-    const { current: now, recorded: then } = settingValue(
+    if (values.loading) return LOADING_TOKEN
+    const { current, recorded } = settingValue(
       key,
-      current,
-      recorded,
+      values.current,
+      values.recorded,
     )
-    return now ?? then ?? 'not available'
+    return current ?? recorded ?? 'not available'
   })
 }

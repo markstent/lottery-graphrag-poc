@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { fillSettings, settingValue } from './settings'
+import { fillSettings, LOADING_TOKEN, settingValue } from './settings'
+
+const values = (
+  current: Record<string, unknown> | null,
+  recorded: Record<string, unknown> | null,
+  loading = false,
+) => ({ current, recorded, loading })
 
 const NOW = { top_k: 20, context: { graph_slots: 6 }, judge_model: null }
 const THEN = { top_k: 10, context: { graph_slots: 6 } }
@@ -41,14 +47,13 @@ describe('fillSettings', () => {
     expect(
       fillSettings(
         'Up to {top_k} items, {context.graph_slots} for the graph.',
-        NOW,
-        THEN,
+        values(NOW, THEN),
       ),
     ).toBe('Up to 20 items, 6 for the graph.')
   })
 
   it('falls back to the newest official run, then to "not available"', () => {
-    expect(fillSettings('{top_k} and {nothing}', null, THEN)).toBe(
+    expect(fillSettings('{top_k} and {nothing}', values(null, THEN))).toBe(
       '10 and not available',
     )
   })
@@ -57,8 +62,7 @@ describe('fillSettings', () => {
     expect(
       fillSettings(
         '{context_budget_tokens} tokens',
-        { context_budget_tokens: 2000 },
-        null,
+        values({ context_budget_tokens: 2000 }, null),
       ),
     ).toBe('2,000 tokens')
     expect(settingValue('budget', { budget: 12500 }, { budget: 999 })).toEqual({
@@ -69,8 +73,15 @@ describe('fillSettings', () => {
   })
 
   it('leaves text without a placeholder alone', () => {
-    expect(fillSettings('Use { braces } freely.', NOW, THEN)).toBe(
+    expect(fillSettings('Use { braces } freely.', values(NOW, THEN))).toBe(
       'Use { braces } freely.',
     )
+  })
+
+  it('writes the loading token, never a value, while either load is under way', () => {
+    expect(fillSettings('{top_k} of {nothing}', values(null, null, true))).toBe(
+      `${LOADING_TOKEN} of ${LOADING_TOKEN}`,
+    )
+    expect(fillSettings('{top_k}', values(NOW, null, true))).toBe(LOADING_TOKEN)
   })
 })

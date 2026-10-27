@@ -148,7 +148,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A search that combines matching by meaning with matching by exact words.',
     technical:
-      'A dense top-k (bge-m3) and a sparse top-k (Qdrant/bm25) fused on the client by reciprocal rank fusion with k = 60 (D-022).',
+      'A dense top-k (bge-m3) and a sparse top-k (Qdrant/bm25) fused on the client by reciprocal rank fusion with k = {rrf_k} (D-022).',
   },
   {
     term: 'Hypothesis',

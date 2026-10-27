@@ -9,8 +9,12 @@
 
 import { useId } from 'react'
 
-import { useHelpData } from '../help-data'
-import { rawSetting, showNumber } from '../settings'
+import {
+  rawSetting,
+  showNumber,
+  useSettingValues,
+  type SettingValues,
+} from '../settings'
 
 const WIDTH = 360
 const PAD = 8
@@ -32,12 +36,13 @@ const SHARED = {
   text: 'var(--color-text-primary)',
 }
 
-/** A whole number from the settings now, else the newest official run's, else null. */
-function useNumber(key: string): number | null {
-  const { settings, recorded } = useHelpData()
-  const current = settings.status === 'ready' ? settings.data.values : null
-  const record = recorded.status === 'ready' ? recorded.data : null
-  const value = rawSetting(key, current, record)
+/** A whole number from the settings now, else the newest official run's, else null (and null while loading). */
+const wholeNumber = (
+  key: string,
+  { current, recorded, loading }: SettingValues,
+): number | null => {
+  if (loading) return null
+  const value = rawSetting(key, current, recorded)
   return typeof value === 'number' && Number.isInteger(value) && value >= 0
     ? value
     : null
@@ -125,9 +130,12 @@ function Note({ y, text }: { y: number; text: string }) {
 }
 
 export function EvidenceDiagram() {
-  const slots = useNumber('context.evidence_slots')
-  const graph = useNumber('context.graph_slots')
-  const budget = useNumber('context_budget_tokens')
+  const values = useSettingValues()
+  const { loading } = values
+  const slots = wholeNumber('context.evidence_slots', values)
+  const graph = wholeNumber('context.graph_slots', values)
+  const budget = wholeNumber('context_budget_tokens', values)
+  const unknown = loading ? 'loading' : 'not available'
   const known = slots !== null && slots > 0
   const share = known && graph !== null && graph <= slots ? graph : null
   const marker = `${useId().replace(/[^\w-]/g, '')}-arrow`
@@ -146,21 +154,23 @@ export function EvidenceDiagram() {
       markerEnd={`url(#${marker})`}
     />
   )
-  const places = known ? `${slots}` : 'not available'
-  const description = [
-    'How evidence is chosen.',
-    'The pieces found are passages and record texts, and in B and C also the records the graph reached.',
-    'One re-ordering model scores every piece against the question.',
-    known
-      ? `The answer model sees at most ${slots} pieces. In A all ${slots} places go to passages and record texts.`
-      : 'The number of places is not available.',
-    share !== null && known
-      ? `In B and C, ${share} places are kept for graph records and ${slots - share} go to passages and record texts.`
-      : 'The number of places kept for graph records is not available.',
-    budget !== null
-      ? `All the pieces picked share one budget of ${showNumber(budget)} tokens.`
-      : 'The token budget is not available.',
-  ].join(' ')
+  const places = known ? `${slots}` : unknown
+  const description = loading
+    ? 'How evidence is chosen. The settings it quotes are loading.'
+    : [
+        'How evidence is chosen.',
+        'The pieces found are passages and record texts, and in B and C also the records the graph reached.',
+        'One re-ordering model scores every piece against the question.',
+        known
+          ? `The answer model sees at most ${slots} pieces. In A all ${slots} places go to passages and record texts.`
+          : 'The number of places is not available.',
+        share !== null && known
+          ? `In B and C, ${share} places are kept for graph records and ${slots - share} go to passages and record texts.`
+          : 'The number of places kept for graph records is not available.',
+        budget !== null
+          ? `All the pieces picked share one budget of ${showNumber(budget)} tokens.`
+          : 'The token budget is not available.',
+      ].join(' ')
 
   return (
     <figure className="text-sm">
@@ -231,12 +241,12 @@ export function EvidenceDiagram() {
           {known ? (
             <Places y={rowA} slots={slots} graph={0} />
           ) : (
-            <Note y={rowA} text="Places not available" />
+            <Note y={rowA} text={`Places ${unknown}`} />
           )}
           {known && share !== null ? (
             <Places y={rowBC} slots={slots} graph={share} />
           ) : (
-            <Note y={rowBC} text="Places not available" />
+            <Note y={rowBC} text={`Places ${unknown}`} />
           )}
           <rect
             x={SLOTS_X}
@@ -258,7 +268,7 @@ export function EvidenceDiagram() {
           >
             {budget !== null
               ? `All picked pieces share ${showNumber(budget)} tokens`
-              : 'Token budget not available'}
+              : `Token budget ${unknown}`}
           </text>
           {arrow(budgetY + SLOT_H, answerY)}
           <rect
