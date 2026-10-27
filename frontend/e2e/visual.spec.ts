@@ -406,7 +406,14 @@ test.describe('Results', () => {
 test.describe('Help', () => {
   const SECTIONS = [
     ['help-top', '#/help', 'official'],
+    ['help-top-technical', '#/help?level=technical', 'official'],
     ['help-stories', '#/help?section=stories', 'official'],
+    ['help-evidence', '#/help?section=evidence', 'official'],
+    [
+      'help-limits-technical',
+      '#/help?section=limits&level=technical',
+      'official',
+    ],
     ['help-questions-no-official-run', '#/help?section=questions', 'none'],
     [
       'help-questions-fixture-official-filtered-by-story',
@@ -423,6 +430,25 @@ test.describe('Help', () => {
       ).toBeVisible()
       await screenShot(page, name, 'keep')
     })
+
+  // At Technical the Plain text and its diagram come first, so the shot starts at the technical detail.
+  test('help-evidence-technical', async ({ page }) => {
+    await openScreen(page, '#/help?section=evidence&level=technical', {
+      latest: 'official',
+    })
+    await expect(
+      page.getByRole('table', { name: 'Benchmark questions' }),
+    ).toBeVisible()
+    await page
+      .locator('#evidence')
+      .getByRole('heading', { name: 'Technical detail' })
+      .evaluate((el) => {
+        el.scrollIntoView({ block: 'start' })
+        // Leave room for the sticky chapter links above the heading.
+        window.scrollBy(0, -96)
+      })
+    await screenShot(page, 'help-evidence-technical', 'keep')
+  })
 })
 
 test.describe('Help, bank not loaded', () => {
@@ -829,7 +855,7 @@ test.describe('presentation mode', () => {
     ],
     ['results', '#/results', 'This run predates the split.'],
     ['data-model', '#/data-model', 'Incident management'],
-    ['help-fixture-official', '#/help', 'What we are testing'],
+    ['help-fixture-official', '#/help', 'Why this exists'],
   ] as const
   for (const [name, hash, text] of OTHERS)
     test(`${name} in presentation mode`, async ({ page }) => {

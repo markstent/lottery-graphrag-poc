@@ -204,11 +204,10 @@ for (const width of [960, 768])
     await shot(page, `approaches-${width}`)
   })
 
-test('Help shows vendor names in Running it only', async ({ page }) => {
-  await open(page, '#/help')
+test('Help names vendors at the Technical level only', async ({ page }) => {
   const vendors = /Neo4j|Qdrant|Ollama/
-  const text = await page.locator('#main').innerText()
-  const running = await page.locator('#running').innerText()
-  expect(running).toMatch(vendors)
-  expect(text.replace(running, '')).not.toMatch(vendors)
+  await open(page, '#/help')
+  expect(await page.locator('#main').innerText()).not.toMatch(vendors)
+  await open(page, '#/help?level=technical')
+  expect(await page.locator('#running').innerText()).toMatch(vendors)
 })
