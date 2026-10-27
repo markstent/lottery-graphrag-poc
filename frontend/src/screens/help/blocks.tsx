@@ -50,7 +50,7 @@ function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">
             Settings now and in the newest official run
           </caption>

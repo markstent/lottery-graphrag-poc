@@ -8,8 +8,10 @@ import type { ChapterCopy } from '../chapters'
 
 export const running: ChapterCopy = {
   plain: [
-    'This chapter is for operators: the people who install the system, load the made-up company and start the runs. Choose Technical at the top of Help to see the commands, the model settings, and how to repeat or resume an official run.',
+    'This chapter is for operators: the people who install the system, load the made-up company and start the runs.',
   ],
+  plainHint:
+    'Choose Technical at the top of Help to see the commands, the model settings, and how to repeat or resume an official run.',
   technical: [
     { kind: 'component', name: 'running' },
     'The settings this system runs with now, beside those recorded by the newest official run:',

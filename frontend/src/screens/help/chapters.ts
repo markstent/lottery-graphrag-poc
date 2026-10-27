@@ -92,6 +92,8 @@ export type Block =
 export interface ChapterCopy {
   plain: readonly Block[]
   technical: readonly Block[]
+  /** A sentence shown at Plain only, pointing to what the Technical level adds. */
+  plainHint?: string
   /**
    * The glossary terms the chapter uses, as the glossary spells them. A test
    * checks that each is in the glossary and appears in the chapter's text.

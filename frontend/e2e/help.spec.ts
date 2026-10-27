@@ -218,6 +218,7 @@ test.describe('at phone width', () => {
   for (const [name, hash] of [
     ['top', '#/help'],
     ['limits-technical', '#/help?section=limits&level=technical'],
+    ['register', '#/help?section=limits'],
     ['running-technical', '#/help?section=running&level=technical'],
   ] as const)
     test(`${name} fits the page, and wide tables scroll inside their own box`, async ({

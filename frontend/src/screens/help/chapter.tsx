@@ -14,7 +14,7 @@ import { CHAPTERS, type ChapterCopy, type ChapterId } from './chapters'
 import { useHelpData } from './help-data'
 
 const BODY =
-  'space-y-3 break-words [&>ol]:max-w-4xl [&>p]:max-w-4xl [&>ul]:max-w-4xl'
+  'space-y-3 break-words [&_ol]:max-w-4xl [&_p]:max-w-4xl [&_ul]:max-w-4xl'
 
 export function Chapter({
   id,
@@ -37,6 +37,7 @@ export function Chapter({
       >
         <div className={`${BODY} text-base text-text-secondary`}>
           <Blocks blocks={copy.plain} />
+          {level === 'plain' && copy.plainHint && <p>{copy.plainHint}</p>}
           {level === 'technical' && copy.technical.length > 0 && (
             <div className={`${BODY} border-t border-hairline pt-3`}>
               <h3 className="text-base font-semibold text-text-primary">

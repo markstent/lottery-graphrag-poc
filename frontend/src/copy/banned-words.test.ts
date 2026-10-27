@@ -389,10 +389,12 @@ describe('copy in expressions', () => {
 })
 
 /** The sentences of the Plain blocks of a chapter: paragraphs and list items. Technical blocks are not read. */
-const plainTexts = ({ plain }: ChapterCopy): string[] =>
-  plain.flatMap((block: Block) =>
+const plainTexts = ({ plain, plainHint }: ChapterCopy): string[] => [
+  ...plain.flatMap((block: Block) =>
     typeof block === 'string' ? [block] : 'kind' in block ? [] : [...block],
-  )
+  ),
+  ...(plainHint ? [plainHint] : []),
+]
 
 describe('Help chapters', () => {
   it('reads the Plain blocks and skips the Technical blocks', () => {

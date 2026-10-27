@@ -626,6 +626,15 @@ describe('reading levels', () => {
     expect(radio('Technical')).toBeChecked()
   })
 
+  it('points to Technical at Plain only, and not once Technical is chosen', async () => {
+    await renderHelp('#/help?section=running')
+    expect(section('12. Running it')).toHaveTextContent(/Choose Technical/)
+    cleanup()
+    await renderHelp('#/help?section=running&level=technical')
+    expect(section('12. Running it')).not.toHaveTextContent(/Choose Technical/)
+    expect(document.body).not.toHaveTextContent(/Choose Technical/)
+  })
+
   it('the switch is a labelled radio group operable by keyboard', async () => {
     const user = userEvent.setup()
     await renderHelp()

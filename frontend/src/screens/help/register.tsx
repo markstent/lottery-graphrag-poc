@@ -28,7 +28,9 @@ export function Register() {
     : PLAIN_COLUMNS
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left text-sm">
+      <table
+        className={`w-full text-left text-sm ${technical ? 'min-w-[64rem]' : 'min-w-[36rem]'}`}
+      >
         <caption className="sr-only">Assumptions and limits</caption>
         <thead className="text-text-muted">
           <tr>

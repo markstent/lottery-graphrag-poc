@@ -15,7 +15,7 @@ const Command = ({ children }: { children: string }) => (
 
 export function Running() {
   return (
-    <>
+    <div className="space-y-3 [&>h3]:pt-3">
       <h3 className="text-base font-semibold text-text-primary">Bring-up</h3>
       <ol className="list-decimal space-y-1 pl-6">
         {BRING_UP.map(([command, line]) => (
@@ -26,7 +26,7 @@ export function Running() {
       </ol>
       <h3 className="text-base font-semibold text-text-primary">Recovery</h3>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Recovery</caption>
           <thead className="text-text-muted">
             <tr>
@@ -60,7 +60,7 @@ export function Running() {
         model and the judge, so they run without a language model.
       </p>
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm">
+        <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Model configuration</caption>
           <thead className="text-text-muted">
             <tr>
@@ -97,7 +97,7 @@ export function Running() {
       </h3>
       {COMMAND_GROUPS.map(({ group, rows }) => (
         <div key={group} className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="w-full min-w-[36rem] text-left text-sm">
             <caption className="py-2 text-left font-semibold text-text-primary">
               {group}
             </caption>
@@ -120,6 +120,6 @@ export function Running() {
           </table>
         </div>
       ))}
-    </>
+    </div>
   )
 }
