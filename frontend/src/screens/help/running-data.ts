@@ -9,7 +9,7 @@ export const BRING_UP: readonly [string, string][] = [
   ['make pull-models', 'Pull the embedding model into Ollama.'],
   ['make generate-dev-data', 'Generate the synthetic world.'],
   ['make ingest-graph', 'Load the world into Neo4j.'],
-  ['make index-vector', 'Build the passage index in Qdrant.'],
+  ['make index-vector', 'Build the passage and record-text index in Qdrant.'],
   ['make ground-bank', 'Fit the question bank to this world.'],
   [
     'make dev',
@@ -111,7 +111,7 @@ export const COMMAND_GROUPS: readonly {
       ],
       [
         'make traces',
-        'Write docs/evaluation/example-traces.md with the stand-in answer model; needs the dev graph and index.',
+        'Write docs/evaluation/example-traces.md with the fixed program in place of the answer model; needs the dev graph and index.',
       ],
     ],
   },
@@ -144,7 +144,7 @@ export const COMMAND_GROUPS: readonly {
       ],
       [
         'make run-smoke',
-        'Quick check: score three worlds with the stand-in models; needs the services.',
+        'Quick check: score three worlds with fixed programs in place of the answer model and the judge; needs the services.',
       ],
       [
         'make dry-run',

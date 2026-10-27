@@ -84,7 +84,7 @@ describe('chapters 1 to 6', () => {
       .join(' ')
     expect(plain).toContain('at most 10 pieces')
     expect(plain).toContain('4 of the 10 places')
-    expect(plain).toContain('a budget of 1500 tokens')
+    expect(plain).toContain('a budget of 1,500 tokens')
     // The current settings win over the run's, and no number is typed in.
     expect(plain).not.toMatch(/\b(?:12|6|2000|2,000)\b/)
     cleanup()
@@ -99,7 +99,7 @@ describe('chapters 1 to 6', () => {
       .map((node) => node.textContent!)
       .join(' ')
     expect(sentences).toContain('the first 4 graph nodes')
-    expect(sentences).toContain('the 1500-token budget')
+    expect(sentences).toContain('the 1,500-token budget')
     expect(sentences).toContain('leave room within 10')
   })
 
@@ -127,8 +127,8 @@ describe('chapters 1 to 6', () => {
     const label = screen.getByRole('img').getAttribute('aria-label')!
     expect(label).toContain('at most 10 pieces')
     expect(label).toContain('4 places are kept for graph records and 6 go to')
-    expect(label).toContain('1500 tokens')
-    expect(label).not.toMatch(/\b(?:12|2000)\b/)
+    expect(label).toContain('1,500 tokens')
+    expect(label).not.toMatch(/\b(?:12|2000|2,000)\b/)
     cleanup()
 
     const unknown: HelpData = {

@@ -10,7 +10,7 @@
 import { useId } from 'react'
 
 import { useHelpData } from '../help-data'
-import { settingValue } from '../settings'
+import { rawSetting, showNumber } from '../settings'
 
 const WIDTH = 360
 const PAD = 8
@@ -37,9 +37,10 @@ function useNumber(key: string): number | null {
   const { settings, recorded } = useHelpData()
   const current = settings.status === 'ready' ? settings.data.values : null
   const record = recorded.status === 'ready' ? recorded.data : null
-  const { current: now, recorded: then } = settingValue(key, current, record)
-  const value = Number(now ?? then ?? Number.NaN)
-  return Number.isInteger(value) && value >= 0 ? value : null
+  const value = rawSetting(key, current, record)
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+    ? value
+    : null
 }
 
 function Box({
@@ -157,7 +158,7 @@ export function EvidenceDiagram() {
       ? `In B and C, ${share} places are kept for graph records and ${slots - share} go to passages and record texts.`
       : 'The number of places kept for graph records is not available.',
     budget !== null
-      ? `All the pieces picked share one budget of ${budget} tokens.`
+      ? `All the pieces picked share one budget of ${showNumber(budget)} tokens.`
       : 'The token budget is not available.',
   ].join(' ')
 
@@ -256,7 +257,7 @@ export function EvidenceDiagram() {
             fill={SHARED.text}
           >
             {budget !== null
-              ? `All picked pieces share ${budget} tokens`
+              ? `All picked pieces share ${showNumber(budget)} tokens`
               : 'Token budget not available'}
           </text>
           {arrow(budgetY + SLOT_H, answerY)}

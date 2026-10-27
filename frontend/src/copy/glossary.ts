@@ -61,7 +61,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A number in an answer, such as [2], that points to the piece of evidence a statement comes from.',
     technical:
-      'Parsed as [n] or [n, m]; a range such as [1-3] cites nothing. Citation accuracy is the share of cited blocks whose item carries one of the claims; a citation of a block that was not shown counts as inaccurate.',
+      'Parsed as [n] or [n, m]; a range such as [1-3] cites nothing. Citation accuracy is the share of cited blocks whose item carries one of the claims; a citation of a block that was not shown is dropped and does not count.',
   },
   {
     term: 'Claim',
@@ -96,7 +96,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A difference between two approaches larger than chance would explain, after allowing for how many comparisons were made at once.',
     technical:
-      'A Holm-adjusted p-value below 0.05 from a two-sided Wilcoxon signed-rank test on the mean difference of each question group (backend/app/evaluation/statistics.py).',
+      'A Holm-adjusted p-value below 0.05 from a two-sided Wilcoxon signed-rank test on the per-group mean differences, with the 95 percent interval wholly above or below 0, in a cell of at least 10 pairs and 6 groups (backend/app/evaluation/statistics.py).',
   },
   {
     term: 'Enterprise ontology',
@@ -167,7 +167,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Judge',
     meaning:
-      'A second language model, from another model family, that marks each answer from 0 to 2 on five points. Its marks are a second opinion.',
+      'A second language model, from another model family, that marks each answer from 0 to 2 on five counts. Its marks are a second opinion.',
     technical:
       'JUDGE_MODEL, prompt version 1.0.0. It sees block text only, shuffled and renumbered, and no word of its prompt names an approach (D-031).',
   },
@@ -251,9 +251,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Quick check',
     meaning:
-      'A run that tests the scoring with a stand-in model. Its numbers are not results.',
+      'A run that tests the scoring code with fixed programs in place of the answer model and the judge. Its numbers are not results.',
     technical:
-      'Run kind smoke (make run-smoke), with the stand-in generator and judge.',
+      'Run kind smoke (make run-smoke), with FakeAnswerGenerator and FakeJudge, which write template text.',
   },
   {
     term: 'Re-ordering model',
@@ -265,8 +265,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Reasoning',
     meaning:
-      'Hidden thinking that some models do before they answer. It is switched off for the answer model and the judge.',
-    technical: 'GENERATION_REASONING and JUDGE_REASONING, set to off (D-076).',
+      'Hidden thinking that some models do before they answer. It was switched off for the answer model and the judge in the official run.',
+    technical:
+      'GENERATION_REASONING and JUDGE_REASONING (default or off); the official run set both to off (D-076).',
   },
   {
     term: 'Record',
@@ -276,7 +277,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Record text',
     meaning:
-      "A short text written for each record in the company's tables, so that text search can find the record.",
+      'A short text written for each record in the main business tables, such as a game or an incident, so that text search can find it.',
     technical:
       'A record block, written by one template per table (backend/app/retrieval/standard/records.py, serialiser 2.1.0) and indexed beside the passages (D-028).',
   },
@@ -297,7 +298,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Starting record',
     meaning:
-      'The record the question names, which the evidence must start from. Not the graph’s starting point.',
+      'The record the question names. The evidence score leaves it out, because the approach was given it. Not the graph’s starting point.',
     technical: 'The anchor in the code and in docs/evaluation.md.',
   },
   {

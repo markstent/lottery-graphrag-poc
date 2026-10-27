@@ -428,7 +428,7 @@ describe('one name for the record a question names', () => {
     const meaning = (term: string) =>
       within(glossary).getByText(term).nextElementSibling!.textContent
     expect(meaning('Starting record')).toMatch(
-      /^The record the question names, which the evidence must start from\./,
+      /^The record the question names\. The evidence score leaves it out, because the approach was given it\./,
     )
     expect(meaning('Starting record')).toContain('Not the graph')
     expect(meaning('Starting point')).toContain('Where the graph walk begins')
@@ -715,7 +715,7 @@ describe('settings in Help', () => {
       ...RECORDED_RUNS,
     })
     const row = settingsRow('max_tokens')
-    await within(row).findByText('1024')
+    await within(row).findByText('1,024')
     expect(within(row).getByText('Not recorded')).toBeVisible()
     expect(within(row).queryByText('Differs')).toBeNull()
   })
@@ -725,8 +725,8 @@ describe('settings in Help', () => {
       ...RECORDED_RUNS,
     })
     const row = settingsRow('context_budget_tokens')
-    await within(row).findByText('2000')
-    expect(within(row).getByText('1500')).toBeVisible()
+    await within(row).findByText('2,000')
+    expect(within(row).getByText('1,500')).toBeVisible()
     expect(within(row).getByText('Differs')).toBeVisible()
   })
 

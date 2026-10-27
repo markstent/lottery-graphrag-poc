@@ -3,7 +3,7 @@ import type { ChapterCopy } from '../chapters'
 export const approaches: ChapterCopy = {
   plain: [
     'All three approaches answer the same question from the same data with the same answer model. They differ only in how they look for evidence. How the evidence is then chosen and answered is the same for all three (chapters 5 and 6).',
-    "A, text search, looks for the passages that best match the question's words and meaning. A passage is a short piece of a document. The search also covers a record text: a short text written for each record in the company's tables, such as a game or an incident. So A can reach the same records as B and C, by search.",
+    "A, text search, looks for the passages that best match the question's words and meaning. A passage is a short piece of a document. The search also covers a record text: a short text written for each record in the main business tables, such as a game or an incident. So A can reach, by search, the records whose facts B and C can show.",
     { kind: 'diagram', name: 'approachA' },
     "B, graph, does everything A does. It also picks its starting points from the question, such as an incident the question names, and follows the graph's links from them to related records: the platform version the incident happened on, other incidents on that version, the markets they affected. The records it reaches compete with the passages for a place in front of the answer model.",
     { kind: 'diagram', name: 'approachB' },
@@ -42,7 +42,7 @@ export const approaches: ChapterCopy = {
       'concept expansion: each concept reached brings in up to {graph_limits.edges_per_node_type} of its bound records, one hop behind it, the most relevant to the expanded question first, within the node cap;',
       'concept text: a concept node reads as its canonical name, definition, labels and synonyms. That text is part of the layer under test and has no counterpart in A.',
     ],
-    "Candidate pools: A's re-ranker sees up to {top_k} search hits. B and C hand it the same search hits (C's from its expanded question) together with every graph node the walk reached, up to {graph_limits.total_nodes}, less excluded labels. The pools differ in size, so a count of facts in them measures reach, not precision.",
+    "Candidate pools: A's re-ranker sees up to {top_k} search hits. B and C hand it the same search hits (C's from its expanded question) together with every graph node the walk reached, up to {graph_limits.total_nodes}, less excluded labels and, when a Live Lab run is limited to some markets, nodes whose record carries another market (out_of_scope_market; a benchmark run sets no market limit). The pools differ in size, so a count of facts in them measures reach, not precision.",
     "Equal access: a graph node is shown with exactly its row's record text from A's index, and a node whose row has none reads '<Label> <id>' and nothing more (D-028). The graph can bring in a row A did not rank, but not a fact A could not have retrieved. backend/tests/test_lab_fairness.py pins that A, B and C share the embedders, re-ranker, index, answer model and settings, and that B is C without the ontology.",
   ],
   terms: [

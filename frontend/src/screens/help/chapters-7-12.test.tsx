@@ -185,7 +185,7 @@ describe('chapters 7 to 12', () => {
       name: /^The evidence limits/,
     })
     expect(limits).toHaveTextContent('at most 10 pieces')
-    expect(limits).toHaveTextContent('1500 tokens')
+    expect(limits).toHaveTextContent('1,500 tokens')
     const share = within(table).getByRole('row', { name: /^The graph's share/ })
     expect(share).toHaveTextContent('4 of the 10 places')
     expect(table).not.toHaveTextContent(/not available/)

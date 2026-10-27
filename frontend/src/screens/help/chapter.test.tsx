@@ -56,7 +56,7 @@ describe('Chapter', () => {
   it('falls back to the newest official run for a setting not known now', () => {
     const chapter = show('technical', { context_budget_tokens: 1500 })
     expect(
-      within(chapter).getByText('The budget is 1500 tokens.'),
+      within(chapter).getByText('The budget is 1,500 tokens.'),
     ).toBeVisible()
   })
 

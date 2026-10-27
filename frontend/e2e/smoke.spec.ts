@@ -32,7 +32,7 @@ const DESTINATIONS = [
     name: 'Help',
     hash: '#/help',
     purpose:
-      'How it works in plain language, every benchmark question with its answer key, glossary, how to run it',
+      'How it works, every benchmark question with its answer key, glossary, how to run it',
   },
 ] as const
 

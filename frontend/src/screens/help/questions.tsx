@@ -174,10 +174,6 @@ function QuestionTable({
   const columns = 2 + PIPELINES.length
   return (
     <>
-      <p>
-        The answer key is the correct answer written for each question.
-        {scores === 'shown' && ' Scores come from the latest official run.'}
-      </p>
       {(scores === 'none' || scores === 'unreadable') && (
         <p>
           {scores === 'none'

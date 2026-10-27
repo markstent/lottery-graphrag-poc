@@ -54,8 +54,8 @@ export function Running() {
       <p>
         All three approaches use the same answer model and settings. Models are
         set in <code className={CODE}>.env</code>, and the example file lists
-        every setting. The example answer and judge are stand-ins that need no
-        model.
+        every setting. Its defaults put fixed programs in place of the answer
+        model and the judge, so they run without a language model.
       </p>
       <table className="w-full text-left text-sm">
         <caption className="sr-only">Model configuration</caption>
@@ -86,7 +86,7 @@ export function Running() {
         <code className={CODE}>litellm</code>. Then{' '}
         <Command>make run-benchmark</Command> runs every question on three
         worlds, three times each. <Command>make run-smoke</Command> checks the
-        scoring with stand-ins and is not a result.
+        scoring with those fixed programs and is not a result.
       </p>
       <h3 className="text-base font-semibold text-text-primary">
         Every command

@@ -52,8 +52,25 @@ function lookup(values: Values | null, key: SettingKey): unknown {
   return value
 }
 
+/** A number as Help's typed text writes it: from 1,000 up with a thousands separator. */
+export const showNumber = (value: number): string =>
+  Math.abs(value) >= 1000
+    ? value.toLocaleString('en-GB', { maximumFractionDigits: 20 })
+    : String(value)
+
 // Both sides are JSON from the API, which `JsonValue` describes.
-const show = (value: unknown): string => plainValue(value as JsonValue)
+const show = (value: unknown): string =>
+  typeof value === 'number' ? showNumber(value) : plainValue(value as JsonValue)
+
+/** The setting's value now, else the newest official run's, unformatted. */
+export function rawSetting(
+  key: SettingKey,
+  current: Values | null,
+  recorded: Values | null,
+): unknown {
+  const now = lookup(current, key)
+  return now !== undefined ? now : lookup(recorded, key)
+}
 
 /** What the setting reads now and in the newest official run, and whether the two differ. */
 export function settingValue(

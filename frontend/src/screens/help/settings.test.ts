@@ -53,6 +53,21 @@ describe('fillSettings', () => {
     )
   })
 
+  it('groups the thousands of a number of 1,000 or more, as the typed text does', () => {
+    expect(
+      fillSettings(
+        '{context_budget_tokens} tokens',
+        { context_budget_tokens: 2000 },
+        null,
+      ),
+    ).toBe('2,000 tokens')
+    expect(settingValue('budget', { budget: 12500 }, { budget: 999 })).toEqual({
+      current: '12,500',
+      recorded: '999',
+      differs: true,
+    })
+  })
+
   it('leaves text without a placeholder alone', () => {
     expect(fillSettings('Use { braces } freely.', NOW, THEN)).toBe(
       'Use { braces } freely.',

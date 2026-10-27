@@ -59,7 +59,7 @@ export const REGISTER: readonly RegisterRow[] = [
     plain:
       'In B and C, {context.graph_slots} of the {context.evidence_slots} places are kept for graph records. The share was fixed before it was measured, and no other share was tried.',
     reason:
-      'The diagnostic of 2026-10-25 showed one shared cut dropped the claims the graph found. Half was chosen in advance so that it could not be tuned to the question bank.',
+      'The diagnostic of 2026-10-25 showed one shared cut dropped about half of the claims the graph found (26 of 55 for B, 53 of 88 for C). Half was chosen in advance so that it could not be tuned to the question bank.',
     cost: 'Another share might help or hurt B and C, and no run has measured one.',
     decision: 'D-081',
   },
@@ -77,9 +77,9 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'record-texts',
     item: 'Text search can read every record',
     plain:
-      'A searches a short text written for every record, so it can reach the same records that the graph holds.',
+      'A searches a short text written for each record in the main business tables, so it can find every fact the graph can show.',
     reason:
-      'The graph should add links and meaning, not facts A could not have retrieved, so A is given a record text for each row (equal access).',
+      'The graph should add links and meaning, not facts A could not have retrieved, so A is given a record text for every row whose facts the graph can show (equal access).',
     cost: 'It narrows what the graph can add to finding the right rows. A company whose records cannot be searched as text would leave A weaker than here, which favours the graph; this design does not measure that.',
     decision: 'D-028',
   },
@@ -119,7 +119,7 @@ export const REGISTER: readonly RegisterRow[] = [
     plain:
       'Each question is asked {repeats} times and the scores are averaged, because a model can answer differently each time.',
     reason:
-      'Even at temperature 0 a model can vary between calls; {repeats} repeats average this out within a run time the owner accepted (the official run took 15 hours 39 minutes).',
+      'Even at temperature 0 a model can vary between calls; {repeats} repeats average this out within a run time the owner accepted (about 9.5 hours estimated; the official run took 15 hours 39 minutes, about three of them with the machine asleep).',
     cost: '{repeats} tries may not settle an answer that varies a lot, which adds noise to the answer score.',
     decision: 'docs/evaluation.md, "Reproducibility"',
   },

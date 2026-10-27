@@ -170,7 +170,7 @@ test('chapter 5 draws and states its places and budget from the settings', async
   ).toBeVisible()
   await shot(page, 'evidence-plain')
   await page.getByRole('radio', { name: 'Technical' }).click()
-  await expect(chapter).toContainText('the 2000-token budget')
+  await expect(chapter).toContainText('the 2,000-token budget')
   await shot(page, 'evidence-technical')
 })
 
