@@ -6,11 +6,12 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { SettingsProvider } from '../../app/settings'
 import { RECORDINGS } from '../../test/recordings'
+import { warmLayout } from '../../test/warm-layout'
 import { initialRunState, reduceAll, type RunEvent } from '../../run/reduce'
 import { CanvasArea, type FoldedGroup } from './canvas-area'
 
@@ -60,6 +61,7 @@ const nodes = () =>
     .filter((el) => el.hasAttribute('data-node-id'))
 const placed = () => waitFor(() => expect(nodes().length).toBeGreaterThan(0))
 
+beforeAll(warmLayout)
 beforeEach(() => window.localStorage.clear())
 
 describe('CanvasArea', () => {

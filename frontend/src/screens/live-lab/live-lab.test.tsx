@@ -7,7 +7,15 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest'
 
 import type { RunStreamHandlers } from '../../api/stream'
 import { SettingsProvider } from '../../app/settings'
@@ -16,6 +24,7 @@ import { loadRecording } from '../../run/recorded'
 import { RECORDINGS } from '../../test/recordings'
 import type { RunEvent } from '../../run/reduce'
 import { DOWN, failure, json, READY, stubApi } from '../../test/api-stub'
+import { warmLayout } from '../../test/warm-layout'
 import { LiveLab } from './live-lab'
 
 const stream = vi.hoisted(() => ({ subscribeRun: vi.fn() }))
@@ -70,6 +79,8 @@ const reduceMotion = () => window.localStorage.setItem('reduced-motion', 'true')
 const column = (label: string) => screen.getByRole('region', { name: label })
 const steps = (label: string) =>
   within(within(column(label)).getByRole('list', { name: 'Steps' }))
+
+beforeAll(warmLayout)
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -206,7 +217,11 @@ describe('Live Lab', () => {
     vi.useFakeTimers({ shouldAdvanceTime: false })
     api({ '/api/v1/health/ready': DOWN })
     open(`#/live-lab?question=${h1.instance_id}`)
-    await act(async () => {})
+    // The recording is a chunk loaded on demand, which no fake timer drives:
+    // wait for that load itself, not for one turn of the event loop.
+    await act(async () => {
+      await loadRecording(h1.instance_id)
+    })
     act(() => {
       vi.advanceTimersByTime(5000)
     })

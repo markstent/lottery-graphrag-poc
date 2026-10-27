@@ -7,11 +7,12 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import type { components } from '../api/schema'
 import { EvidenceDrawer } from '../components/evidence-drawer'
 import { stubApi } from '../test/api-stub'
+import { warmLayout } from '../test/warm-layout'
 import { EVIDENCE_STATES } from '../design/evidence-states'
 import { TOKENS } from '../design/tokens'
 import fixture from '../run/fixtures/run-abc.json'
@@ -109,6 +110,8 @@ const transformOf = (id: string) => {
   if (!wrapper) throw new Error(`no node ${id} on the page`)
   return wrapper.style.transform
 }
+
+beforeAll(warmLayout)
 
 describe('GraphCanvas', () => {
   it('flags the canvas ready only once the layout is placed and the fit applied', async () => {
