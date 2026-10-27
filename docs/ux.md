@@ -379,11 +379,11 @@ The only invented state is the "fixture-official" run.
 The frontend has no environment variables.
 It calls relative paths (`/api/v1/...`), so it reaches the API on the page's own origin.
 Both the dev server (`make dev-frontend`) and `vite preview` forward `/api` to `http://localhost:8000` (`frontend/vite.config.ts`), so the API must be on that port.
-Browser storage holds only per-reader preferences: the collapsed sidebar, reduced motion and the node cap.
+Browser storage holds only per-reader preferences: the collapsed sidebar, reduced motion, the node cap and the Help reading level.
 
 ## Testing
 
-- Vitest with Testing Library: 86 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
+- Vitest with Testing Library: 91 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
 - Playwright: ten spec files in `frontend/e2e/`.
   The default config runs the smoke and functional specs.
   The visual config runs `visual.spec.ts` against 130 committed baselines.
