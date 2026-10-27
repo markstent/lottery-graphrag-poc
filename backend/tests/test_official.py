@@ -1174,7 +1174,7 @@ def test_an_unknown_question_is_refused_before_any_world_is_prepared(recorder: R
 def test_a_full_official_run_has_no_label(recorder: Recorder, gateway_env: None) -> None:
     run_benchmark(
         "official",
-        (2029,),
+        OFFICIAL_SEEDS,
         repeats=3,
         out_dir=recorder.tmp,
         steps=recorder.steps,
@@ -1322,8 +1322,8 @@ def test_settings_are_checked_before_any_world_is_prepared(
 # --- Kept worlds and resume ------------------------------------------------------
 
 
-# The unseen worlds a full-bank official run in these tests uses.
-UNSEEN_RUN = (2029, 2030, 2031)
+# A full-bank official run uses exactly the six unseen worlds.
+UNSEEN_RUN = OFFICIAL_SEEDS
 
 
 def _run(recorder: Recorder, seeds: tuple[int, ...] = (2026, 2027, 2028), **options: Any) -> Any:
@@ -1752,7 +1752,21 @@ def test_resume_refuses_a_kept_world_of_the_old_method(tmp_path: Path, data_dir:
     assert fresh.generated == fresh.ingested == [] and fresh.runners == []
 
 
-@pytest.mark.parametrize("seeds", [(2026,), (2028,), (2028, 2029)])
+@pytest.mark.parametrize(
+    "seeds",
+    [
+        (2026,),
+        (2028,),
+        (2028, 2029),
+        # A subset of the unseen worlds would use them up before the frozen run.
+        (2029,),
+        (2029, 2030),
+        OFFICIAL_SEEDS[:-1],
+        # A seed outside the plan, alone or beside the six.
+        (2035,),
+        (*OFFICIAL_SEEDS, 2035),
+    ],
+)
 def test_full_official_run_refuses_seen_seeds(
     recorder: Recorder, gateway_env: None, seeds: tuple[int, ...]
 ) -> None:
@@ -1784,18 +1798,18 @@ def test_the_dry_run_on_seed_2026_passes_the_seed_guard(
     assert [r["seed"] for r in recorder.runners] == [2026]
 
 
-def test_a_full_official_run_on_the_unseen_seeds_passes(
+def test_a_full_official_run_on_exactly_the_six_unseen_seeds_passes(
     recorder: Recorder, gateway_env: None
 ) -> None:
     run_benchmark(
         "official",
-        (2029, 2030),
+        OFFICIAL_SEEDS,
         repeats=3,
         out_dir=recorder.tmp,
         steps=recorder.steps,
         runner_factory=recorder.runner,
     )
-    assert [r["seed"] for r in recorder.runners] == [2029, 2030]
+    assert [r["seed"] for r in recorder.runners] == list(OFFICIAL_SEEDS)
 
 
 @pytest.mark.parametrize("selection", [{"limit": 1}, {"strata": ["H1"]}, {"questions": ["L01"]}])

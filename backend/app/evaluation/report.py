@@ -30,6 +30,7 @@ from app.evaluation.bank import STRATA
 from app.evaluation.grounding import BankInstance
 from app.evaluation.judge import JUDGE_DIMENSIONS, agreement, judge_pairs
 from app.evaluation.runner import (
+    DEV_LABEL,
     PIPELINES,
     SMOKE_LABEL,
     BenchmarkRun,
@@ -56,6 +57,9 @@ SMOKE_HEADLINE = (
     "Scorer smoke test: the fake generator answers from titles only; "
     "these numbers are not a result."
 )
+DEV_HEADLINE = f"{DEV_LABEL.capitalize()}: the tables are descriptive and no claim is made."
+# Kinds whose headlines are one fixed line in place of the generated ones.
+FIXED_HEADLINES = {"smoke": SMOKE_HEADLINE, "dev": DEV_HEADLINE}
 # H2 splits into its id-anchored cell ("H2") and its name-anchored sub-group.
 STRATUM_KEYS = ("H1", "H2", "H2_name", "H3", "H5")
 OVERALL = "overall"
@@ -219,7 +223,9 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
         "metrics": metric_tables(results),
         "comparisons": [c.to_payload() for c in comparisons],
         "ontology_split": _ontology_split(observations),
-        "headlines": [SMOKE_HEADLINE] if smoke else _headlines(comparisons),
+        "headlines": (
+            [FIXED_HEADLINES[run.kind]] if run.kind in FIXED_HEADLINES else _headlines(comparisons)
+        ),
         "judge_agreement": _judge_agreement(results, pipelines),
         "failures": _failures(results, pipelines),
         "selection": run.selection.to_payload(),

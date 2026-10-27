@@ -63,7 +63,6 @@ from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
 from app.evaluation.official import (
-    OFFICIAL_SEEDS,
     PRESENTATION_SEED,
     SEEN_SEEDS,
     BenchmarkCancelled,
@@ -87,9 +86,11 @@ logger = logging.getLogger(__name__)
 # The summary schemas the API publishes: 2 for runs of method v0.2 (such as
 # the official run v0.2.0), the current one for method v0.3.
 PUBLISHED_SCHEMA_VERSIONS = frozenset({"2", SUMMARY_SCHEMA_VERSION})
-# Every world a benchmark job may name; which kind may use which is checked
-# by ``check_seeds``.
-JOB_SEEDS = (*SEEN_SEEDS, *OFFICIAL_SEEDS)
+# The worlds a benchmark job may name: the seen ones only. The official run on
+# the unseen seeds goes through ``make run-benchmark`` after the owner's
+# go-ahead, never through the API (D-091); ``check_seeds`` still refuses a
+# full-bank official start on them.
+JOB_SEEDS = SEEN_SEEDS
 
 Published = tuple[str, dict[str, Any]]
 

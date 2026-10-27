@@ -258,6 +258,35 @@ def test_official_start_runs_preflight_before_accepting(client: TestClient) -> N
     )
 
 
+@pytest.mark.parametrize("seeds", [[2029], list(official.OFFICIAL_SEEDS)])
+def test_an_official_start_on_the_unseen_seeds_is_refused(
+    client: TestClient,
+    data_dir: Path,
+    runs_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    seeds: list[int],
+) -> None:
+    """The unseen worlds are run only through make run-benchmark (D-091)."""
+    for name, value in {
+        "GENERATION_PROVIDER": "litellm",
+        "GENERATION_MODEL": "ollama/qwen3.6:latest",
+        "GENERATION_MODEL_FAMILY": "qwen",
+        "JUDGE_PROVIDER": "litellm",
+        "JUDGE_MODEL": "ollama/gemma4:31b",
+        "JUDGE_MODEL_FAMILY": "gemma",
+    }.items():
+        monkeypatch.setenv(name, value)
+    response = client.post(
+        "/api/v1/benchmarks", json={"kind": "official", "seeds": seeds, "repeats": 3}
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    assert "2029" in response.json()["error"]["message"]
+    assert client.get("/api/v1/benchmarks/jobs").json() == []
+    assert not (data_dir / "generated" / "dev-seed2029").exists()
+    assert not list(runs_dir.iterdir())
+
+
 # -- jobs -----------------------------------------------------------------------
 
 

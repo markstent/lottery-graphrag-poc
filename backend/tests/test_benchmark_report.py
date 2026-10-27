@@ -491,6 +491,17 @@ def test_dev_comparisons_say_they_are_not_a_result() -> None:
     assert f"Label: {DEV_LABEL}." in report
 
 
+def test_dev_runs_make_no_headline_claims() -> None:
+    summary = summarize(_benchmark("dev", h5_per_world=6, label=DEV_LABEL))
+    assert summary["headlines"] == [
+        "Development run on seed 2026, not a result: the tables are descriptive and no claim "
+        "is made."
+    ]
+    assert not any("Holm" in line or "p " in line for line in summary["headlines"])
+    # The descriptive tables stay.
+    assert summary["comparisons"] and summary["metrics"]["H1"]["evidence_recall"]["B"]["n"]
+
+
 def _with_flags(run: BenchmarkRun, flagged: set[str]) -> BenchmarkRun:
     """The run with ontology_dependent set exactly on the named questions."""
     worlds = [

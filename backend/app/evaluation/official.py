@@ -523,7 +523,8 @@ def check_seeds(kind: str, seeds: Sequence[int], full_bank: bool) -> None:
     """Keep the unseen worlds unseen (D-091), before any world is prepared.
 
     Only a full-bank official run may use a seed from ``FIRST_UNSEEN_SEED``
-    on, and it uses no other: a smoke, sweep or dev run, and an official run
+    on, and it runs exactly ``OFFICIAL_SEEDS``, so no unseen world is used
+    up before the frozen run: a smoke, sweep or dev run, and an official run
     over part of the bank (such as the dry run), are refused there. A dev
     run uses the presentation world only.
     """
@@ -534,10 +535,10 @@ def check_seeds(kind: str, seeds: Sequence[int], full_bank: bool) -> None:
             "development never touches another world"
         )
     if kind == "official" and full_bank:
-        if seen := sorted(seed for seed in seeds if seed < FIRST_UNSEEN_SEED):
+        if set(seeds) != set(OFFICIAL_SEEDS):
             raise ValueError(
-                f"a full-bank official run uses unseen worlds only (seeds {FIRST_UNSEEN_SEED} "
-                f"onwards), got seen seeds {seen}; select part of the bank for a dry run"
+                f"a full-bank official run uses exactly the unseen seeds {list(OFFICIAL_SEEDS)}, "
+                f"got {list(seeds)}; select part of the bank for a dry run on a seen seed"
             )
         return
     if unseen:
