@@ -11,7 +11,7 @@ UV := uv --directory $(BACKEND)
 PNPM := pnpm -C $(FRONTEND)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build api-contract e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep dry-run dev-run diagnose-selection traces
+.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build api-contract e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep dry-run dev-run diagnose-selection traces addendum-v020
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-16s %s\n", $$1, $$2}'
@@ -141,6 +141,9 @@ dev-run: ## Development run on seed 2026, not a result (wipes and restores the g
 
 diagnose-selection: ## Read-only: what the shared re-ranker keeps of the claim records each approach finds (seed 2026, no answer model; the embedding and re-ranking models run)
 	$(UV) run python -m app.evaluation diagnose-selection
+
+addendum-v020: ## Model-free addendum: rescore official run v0.2.0 with scorer 2.1.0 and groundedness
+	$(UV) run python -m app.evaluation addendum --run ../data/evaluation/runs/official-2026-10-26
 
 run-sweep: ## H1 depth sweep 0 to 3 for B and C on three worlds (reads JUDGE_* and GENERATION_*)
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }

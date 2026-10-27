@@ -1,5 +1,6 @@
 """CLI entry point: ``uv run python -m app.evaluation``.
 
+``addendum`` rescores a stored run with no model into a directory beside it;
 ``ground`` grounds bank 2.0.0 into one generated world (by default the
 active one, from DATASET_DIR and TRUTH_LEDGER_PATH) and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
@@ -18,7 +19,7 @@ from collections import Counter
 from pathlib import Path
 
 from app.config import REPO_ROOT
-from app.evaluation import diagnostics, official
+from app.evaluation import addendum, diagnostics, official
 from app.evaluation.bank import BANK, NAME_ANCHORED, STRATA, LogicalQuestion
 from app.evaluation.grounding import (
     BankInstance,
@@ -110,6 +111,16 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("small", type=Path, help="Run directory of the small model.")
     compare.add_argument("large", type=Path, help="Run directory of the large model.")
     compare.add_argument("--out", type=Path, default=None, help="Directory for comparison.json.")
+    rescored = commands.add_parser(
+        "addendum", help="Model-free: rescore a stored run into an addendum beside it."
+    )
+    rescored.add_argument("--run", type=Path, required=True, help="Run directory to rescore.")
+    rescored.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="New addendum directory (default data/evaluation/addenda/<run>-scorer-<version>).",
+    )
     return parser
 
 
@@ -156,6 +167,13 @@ def _dispatch(args: argparse.Namespace) -> int:
             args.seeds, out_dir=out, depths=args.depths, repeats=args.repeats, limit=args.limit
         )
         print(f"wrote {out}")
+        return 0
+    if args.command == "addendum":
+        out = _resolved(args.out) or addendum.addendum_dir(args.run)
+        try:
+            print(f"wrote {addendum.write_addendum(args.run, out)}")
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
         return 0
     if args.command == "compare":
         comparison = official.compare_runs(args.small, args.large)
