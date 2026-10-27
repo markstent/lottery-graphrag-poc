@@ -89,7 +89,7 @@ export const REGISTER: readonly RegisterRow[] = [
     plain:
       'The graph is followed at most {graph_limits.depth} links from where it starts, and other depths have not been tried.',
     reason:
-      'Every run but the depth sweep uses depth 2, inside fixed node and edge caps, so the walk stays bounded and comparable.',
+      'Every run but the depth sweep uses depth {graph_limits.depth}, inside fixed node and edge caps, so the walk stays bounded and comparable.',
     cost: 'H1 asks how evidence changes with depth; the depth sweep that tests it had not been run by 2026-10-27.',
     decision: 'docs/evaluation.md, "Run kinds"',
   },
@@ -119,8 +119,8 @@ export const REGISTER: readonly RegisterRow[] = [
     plain:
       'Each question is asked {repeats} times and the scores are averaged, because a model can answer differently each time.',
     reason:
-      'Even at temperature 0 a model can vary between calls; three repeats average this out within a run time the owner accepted (the official run took 15 hours 39 minutes).',
-    cost: 'Three tries may not settle an answer that varies a lot, which adds noise to the answer score.',
+      'Even at temperature 0 a model can vary between calls; {repeats} repeats average this out within a run time the owner accepted (the official run took 15 hours 39 minutes).',
+    cost: '{repeats} tries may not settle an answer that varies a lot, which adds noise to the answer score.',
     decision: 'docs/evaluation.md, "Reproducibility"',
   },
   {

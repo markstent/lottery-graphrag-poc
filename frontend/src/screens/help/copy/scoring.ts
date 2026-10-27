@@ -46,7 +46,7 @@ export const scoring: ChapterCopy = {
       'a difference is significant when its Holm-adjusted p-value is below 0.05; a cell is tested only with at least 10 pairs and 6 groups, the fewest at which a two-sided signed-rank test can reach p below 0.05;',
       'outside the family and untested: the name-anchored sub-group H2_name, shown with an interval, and the ontology-dependent split (D-060), which is descriptive only. H3 has no evidence pairs by design.',
     ],
-    'Each tested cell gets one headline on its main metric, the evidence score for H1, H2 and H5 and the answer score for H3, in one of four forms: "Graph exceeds text search by n points" or "trails" by n points, each with its 95 percent interval and its pairs and groups; "No detectable difference"; or "Too few pairs to say". The harness writes the headlines and the screens show them unedited (D-067).',
+    'Headlines (_headlines in report.py). Each kind of question gets one headline per comparison on its main metric, the evidence score for H1, H2 and H5 and the answer score for H3, whether or not the cell was tested, in one of four forms: "Graph exceeds text search by n points" or "trails" by n points, each with its 95 percent interval and its pairs and groups; "No detectable difference"; or "Too few pairs to say" (including a cell with no pairs). Then the H2_name sub-group gets one descriptive line per comparison on the evidence score (subgroup_line in statistics.py): the difference with its interval, or the mean alone below 6 groups, or "no pairs", each ending "no test is run on this sub-group". The harness writes the headlines and the screens show them unedited (D-067).',
   ],
   terms: [
     'Answer key',

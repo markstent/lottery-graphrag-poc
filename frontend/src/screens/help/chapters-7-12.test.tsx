@@ -189,8 +189,16 @@ describe('chapters 7 to 12', () => {
     const share = within(table).getByRole('row', { name: /^The graph's share/ })
     expect(share).toHaveTextContent('4 of the 10 places')
     expect(table).not.toHaveTextContent(/not available/)
-    const rows = REGISTER.flatMap((row) => [row.item, row.plain]).join(' ')
-    expect(rows).not.toMatch(/\b(?:12 places|2,?000 tokens|6 of)\b/)
+    // Every cell the register fills, at both levels, takes current settings from placeholders.
+    const cells = REGISTER.flatMap((row) => [
+      row.item,
+      row.plain,
+      row.reason,
+      row.cost,
+    ]).join(' ')
+    expect(cells).not.toMatch(
+      /\b(?:12 places|2,?000 tokens|6 of|depth 2|(?:three|3) (?:repeats|tries))\b/i,
+    )
   })
 
   it('every command in Help is a Makefile target, and every target is listed in Running it', () => {
