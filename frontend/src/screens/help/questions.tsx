@@ -73,12 +73,13 @@ function Filters({
   summary: string
 }) {
   const { params: route } = useRoute()
+  const { level } = useHelpData()
   const strata = [...new Set(bank.questions.map((q) => q.stratum))].sort()
   const go = (next: { stratum: string; story: string }) => {
     const params: Record<string, string> = { section: 'questions' }
     if (next.stratum) params.stratum = next.stratum
     if (next.story) params.story = next.story
-    window.location.hash = helpHref(route, params)
+    window.location.hash = helpHref(route, params, level)
   }
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
@@ -143,6 +144,7 @@ function QuestionTable({
   story: string
 }) {
   const { params: route } = useRoute()
+  const { level } = useHelpData()
   // A kind or story the bank does not have is ignored, not an empty table.
   const stratum = bank.questions.some((q) => q.stratum === wantedStratum)
     ? wantedStratum
@@ -240,11 +242,15 @@ function QuestionTable({
                         {' · Story: '}
                         <a
                           className={LINK}
-                          href={helpHref(route, {
-                            section: 'stories',
-                            story: head.scenario_id,
-                            ...(stratum && { stratum }),
-                          })}
+                          href={helpHref(
+                            route,
+                            {
+                              section: 'stories',
+                              story: head.scenario_id,
+                              ...(stratum && { stratum }),
+                            },
+                            level,
+                          )}
                         >
                           {titles.get(head.scenario_id) ?? head.scenario_id}
                         </a>
@@ -274,7 +280,10 @@ function QuestionTable({
       {shown.length === 0 && (
         <p>
           No question matches these filters.{' '}
-          <a href={helpHref(route, { section: 'questions' })} className={LINK}>
+          <a
+            href={helpHref(route, { section: 'questions' }, level)}
+            className={LINK}
+          >
             Clear the filters
           </a>
         </p>

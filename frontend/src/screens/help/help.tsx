@@ -75,7 +75,6 @@ export function Help() {
   const story = params.get('story')
   const target = section === 'stories' && story ? `story-${story}` : section
   const ready = bank.status !== 'loading' && latest.status !== 'loading'
-  const recorded = recordedRun.status === 'ready' ? recordedRun.data : null
 
   // Scroll once per target, after the bank and the newest run have drawn the stories and rows.
   const scrolled = useRef<string | null>(null)
@@ -120,7 +119,7 @@ export function Help() {
           {CHAPTERS.map(({ id, nav }) => (
             <a
               key={id}
-              href={helpHref(params, { section: id })}
+              href={helpHref(params, { section: id }, level)}
               aria-current={section === id ? 'location' : undefined}
               className="text-sm text-text-secondary underline aria-[current=location]:font-semibold aria-[current=location]:text-text-primary"
             >
@@ -137,7 +136,7 @@ export function Help() {
           scores: scoreState(latest, bank),
           story: section === 'stories' ? story : null,
           settings,
-          recorded,
+          recorded: recordedRun,
         }}
       >
         {CHAPTERS.map(({ id }) => (

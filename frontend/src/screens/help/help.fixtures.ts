@@ -139,6 +139,7 @@ export interface BankStub {
   /** The run list and the record of each run, by id. */
   runs?: unknown[]
   details?: Record<string, unknown>
+  failRuns?: boolean
 }
 
 /** A fetch stand-in for everything Help loads; the shell's routes are included. */
@@ -151,6 +152,7 @@ export function stubBank({
   failSettings = false,
   runs = [],
   details = {},
+  failRuns = false,
 }: BankStub = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const path = new URL(String(input), 'http://localhost').pathname
@@ -169,7 +171,21 @@ export function stubBank({
             )
           : json(questions),
       )
-    if (path === '/api/v1/benchmarks') return Promise.resolve(json(runs))
+    if (path === '/api/v1/benchmarks')
+      return Promise.resolve(
+        failRuns
+          ? json(
+              {
+                error: {
+                  error_code: 'RUN_ERROR',
+                  message: 'The run list is unavailable.',
+                  retryable: true,
+                },
+              },
+              503,
+            )
+          : json(runs),
+      )
     const detail = /^\/api\/v1\/benchmarks\/([^/]+)$/.exec(path)?.[1]
     if (detail && detail in details)
       return Promise.resolve(json(details[detail]))

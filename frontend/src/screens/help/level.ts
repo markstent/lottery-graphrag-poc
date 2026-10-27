@@ -35,11 +35,13 @@ export function useLevel(): [Level, (level: Level) => void] {
   return [level, setLevel]
 }
 
-/** A Help link that keeps the level when the address names one. */
+/** A Help link that keeps the level: named when the address names one or the reader is at Technical, so a deep link never drops it. */
 export const helpHref = (
   params: URLSearchParams,
   next: Record<string, string>,
-): string => {
-  const level = params.get('level')
-  return hrefFor('help', level ? { ...next, level } : next)
-}
+  level: Level,
+): string =>
+  hrefFor(
+    'help',
+    params.has('level') || level === 'technical' ? { ...next, level } : next,
+  )

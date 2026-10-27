@@ -15,7 +15,10 @@ const copy: ChapterCopy = {
   technical: ['The budget is {context_budget_tokens} tokens.'],
 }
 
-function show(level: HelpData['level'], recorded: HelpData['recorded']) {
+function show(
+  level: HelpData['level'],
+  recorded: Record<string, unknown> | null,
+) {
   const data: HelpData = {
     level,
     bank: { status: 'loading', retry: () => undefined },
@@ -32,7 +35,7 @@ function show(level: HelpData['level'], recorded: HelpData['recorded']) {
         },
       },
     },
-    recorded,
+    recorded: { status: 'ready', retry: () => undefined, data: recorded },
   }
   render(
     <HelpDataContext.Provider value={data}>

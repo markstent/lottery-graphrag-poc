@@ -37,8 +37,10 @@ const COMPONENTS: Record<ComponentName, ReactElement> = {
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
 
 function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
-  const { settings, recorded } = useHelpData()
+  const { settings, recorded: recordedRun } = useHelpData()
   const current = settings.status === 'ready' ? settings.data.values : null
+  const recorded = recordedRun.status === 'ready' ? recordedRun.data : null
+  const failed = settings.status === 'error' || recordedRun.status === 'error'
   return (
     <>
       <table className="w-full text-left text-sm">
@@ -71,7 +73,11 @@ function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
                     : (value.current ?? NOT_AVAILABLE)}
                 </td>
                 <td className={`${CELL} font-mono text-text-primary`}>
-                  {value.recorded ?? NOT_RECORDED}
+                  {recordedRun.status === 'loading'
+                    ? 'Loading'
+                    : recordedRun.status === 'error'
+                      ? NOT_AVAILABLE
+                      : (value.recorded ?? NOT_RECORDED)}
                   {value.differs && (
                     <span className="ml-2 rounded-chip border border-border px-1.5 py-0.5 font-sans text-xs font-semibold">
                       Differs
@@ -83,12 +89,21 @@ function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
           })}
         </tbody>
       </table>
-      {settings.status === 'error' && (
+      {failed && (
         <p className="flex flex-wrap items-center gap-3">
-          <span>{settings.error.message}</span>
+          <span>
+            {settings.status === 'error'
+              ? settings.error.message
+              : recordedRun.status === 'error'
+                ? recordedRun.error.message
+                : ''}
+          </span>
           <button
             type="button"
-            onClick={settings.retry}
+            onClick={() => {
+              if (settings.status === 'error') settings.retry()
+              if (recordedRun.status === 'error') recordedRun.retry()
+            }}
             className="rounded-chip border border-border px-3 py-1 text-text-primary hover:bg-surface-raised"
           >
             Retry loading settings
@@ -100,8 +115,9 @@ function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
 }
 
 export function Blocks({ blocks }: { blocks: readonly Block[] }) {
-  const { settings, recorded } = useHelpData()
+  const { settings, recorded: recordedRun } = useHelpData()
   const current = settings.status === 'ready' ? settings.data.values : null
+  const recorded = recordedRun.status === 'ready' ? recordedRun.data : null
   const fill = (text: string) => fillSettings(text, current, recorded)
   return blocks.map((block, index) => {
     if (typeof block === 'string') return <p key={index}>{fill(block)}</p>

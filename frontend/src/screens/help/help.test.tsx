@@ -597,6 +597,36 @@ describe('reading levels', () => {
     window.localStorage.removeItem('help-level')
   })
 
+  it('keeps a level that came from storage through a chapter link, a filter and a story link', async () => {
+    const user = userEvent.setup()
+    window.localStorage.setItem('help-level', 'technical')
+    await renderHelp('#/help')
+    const nav = screen.getByRole('navigation', { name: 'Help sections' })
+    const link = within(nav).getByRole('link', { name: 'The questions' })
+    expect(link).toHaveAttribute(
+      'href',
+      '#/help?section=questions&level=technical',
+    )
+    await user.click(link)
+    await waitFor(() => expect(radio('Technical')).toBeChecked())
+    await user.selectOptions(
+      screen.getByRole('combobox', { name: 'Kind of question' }),
+      'H5',
+    )
+    await waitFor(() =>
+      expect(window.location.hash).toContain('level=technical'),
+    )
+    expect(radio('Technical')).toBeChecked()
+    const story = within(questionTable()).getAllByRole('link', {
+      name: 'App release conversion failure',
+    })[0]
+    expect(story.getAttribute('href')).toContain('level=technical')
+    await user.click(story)
+    await waitFor(() => expect(window.location.hash).toContain('story=SCN-001'))
+    expect(radio('Technical')).toBeChecked()
+    window.localStorage.removeItem('help-level')
+  })
+
   it('presentation mode ignores storage but honours ?level', async () => {
     window.localStorage.setItem('help-level', 'technical')
     await renderHelp('?present=1#/help')
@@ -718,6 +748,23 @@ describe('settings in Help', () => {
     expect(within(row).getByText('model-then')).toBeVisible()
     expect(within(settingsRow('top_k')).queryByText('99')).toBeNull()
     expect(within(settingsRow('top_k')).getAllByText('20')).toHaveLength(2)
+  })
+
+  it('reads Not available, with a retry, when the recorded settings cannot be loaded', async () => {
+    const user = userEvent.setup()
+    await renderHelp('#/help?section=running&level=technical', {
+      failRuns: true,
+    })
+    const row = settingsRow('top_k')
+    await within(row).findByText('20')
+    expect(within(row).getByText('Not available')).toBeVisible()
+    expect(within(row).queryByText('Not recorded')).toBeNull()
+    expect(
+      screen.getByRole('button', { name: 'Retry loading settings' }),
+    ).toBeVisible()
+    await user.click(
+      screen.getByRole('button', { name: 'Retry loading settings' }),
+    )
   })
 
   it('reads Not recorded for every setting when no run is official', async () => {

@@ -19,7 +19,7 @@ export interface HelpData {
   story: string | null
   settings: Load<Schemas['ExperimentSettings']>
   /** The newest official run's record of its settings, or null when there is none. */
-  recorded: Record<string, unknown> | null
+  recorded: Load<Record<string, unknown> | null>
 }
 
 export const HelpDataContext = createContext<HelpData | null>(null)
