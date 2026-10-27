@@ -290,7 +290,7 @@ The graph is 2D and led by evidence.
   A node fades in over 200 ms, and the whole product collapses to near-instant under `prefers-reduced-motion` or the Settings switch.
   Evidence is never delayed for effect.
 - Copy is plain and short.
-  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 1,300 words outside Help and 1,650 in Help prose (D-055).
+  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 1,360 words outside Help and 1,650 in Help prose (D-055; raised from 1,300 by the owner on 2026-10-27 because method v0.3 labels two methods).
   Text from the API, such as headline sentences, is shown verbatim and is outside both.
 
 ## Accessibility

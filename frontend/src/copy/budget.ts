@@ -12,14 +12,13 @@
  * which renders in Help and counts there.
  *
  * The count leaves out what a comparison reads (`status === 'ready'`), which
- * is not shown. The Phase 7 copy pass brought it from 1,362 to 1,300, so the
- * raise to 1,375 made for the start form was withdrawn. Method v0.3 added 73
- * words (the method badge, evidence recall, the split judge agreement, the
- * groundedness table, the graph order in Live Lab and the start form's reason
- * for not starting the official run), so the cap is 1,375 again, for the
- * owner to confirm or cut back.
+ * is not shown. The Phase 7 copy pass brought it from 1,362 to 1,300. The
+ * owner raised it to 1,360 on 2026-10-27 (D-055), because method v0.3 labels
+ * two methods: the method badge, evidence recall, the split judge agreement,
+ * the groundedness table, the graph order in Live Lab and the start form's
+ * reason for not starting the official run.
  */
-export const OUTSIDE_HELP_WORD_CAP = 1375
+export const OUTSIDE_HELP_WORD_CAP = 1360
 
 /** Help prose, leaving out text from the API. */
 export const HELP_WORD_CAP = 1650
