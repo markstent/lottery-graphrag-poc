@@ -22,6 +22,7 @@ from typing import Any
 import pytest
 from app.api import benchmarks
 from app.api.graph_world import GraphLease
+from app.api.schemas import BenchmarkStart
 from app.config import REPO_ROOT, from_env
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
@@ -382,7 +383,7 @@ def test_a_cancelled_job_with_kept_worlds_names_the_resume_command(tmp_path: Pat
     out_dir = tmp_path / "20261025T000000Z-smoke"
     (out_dir / "worlds").mkdir(parents=True)
     (out_dir / "worlds" / "2026.json").write_text("{}")
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     body = benchmarks._with_kept_worlds(None, request, out_dir)
     assert body is not None and body.error_code == "CANCELLED"
     assert "1 finished world was kept" in body.message and "--resume" in body.message
@@ -397,7 +398,7 @@ def test_the_resume_message_names_a_root_relative_out_that_the_cli_resolves(
     out_dir = tmp_path / "data" / "evaluation" / "runs" / "20261025T000000Z-smoke"
     (out_dir / "worlds").mkdir(parents=True)
     (out_dir / "worlds" / "2026.json").write_text("{}")
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     body = benchmarks._with_kept_worlds(RuntimeError("x"), request, out_dir)
     assert body is not None
     shown = body.message.split(" --out ")[1].removesuffix(" --resume")
@@ -409,7 +410,7 @@ def test_the_resume_command_runs_from_the_repository_root_and_parses(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     out_dir = REPO_ROOT / "data" / "evaluation" / "runs" / "20261025T000000Z-smoke"
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     monkeypatch.setattr(benchmarks, "kept_world_count", lambda _dir: 1)
     body = benchmarks._with_kept_worlds(RuntimeError("x"), request, out_dir)
     assert body is not None
@@ -1244,6 +1245,22 @@ JUDGE_ENV = (
     "JUDGE_REASONING",
 )
 NOT_RECORDED = frozenset({"git_sha", "git_dirty"})
+SECRET_ENV = (
+    "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GENERATION_API_KEY",
+    "JUDGE_API_KEY",
+    "GENERATION_API_BASE",
+    "JUDGE_API_BASE",
+)
+SENTINEL = "sentinel-3f9c1d7a-secret"
+
+
+def _without_judge_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Whatever the shell exports, the judge is not configured."""
+    for name in JUDGE_ENV:
+        monkeypatch.delenv(name, raising=False)
 
 
 def _recorded_keys() -> set[str]:
@@ -1251,7 +1268,10 @@ def _recorded_keys() -> set[str]:
     return set(fields) - NOT_RECORDED
 
 
-def test_settings_returns_the_recorded_fields(client: TestClient) -> None:
+def test_settings_returns_the_recorded_fields(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _without_judge_env(monkeypatch)
     response = client.get("/api/v1/settings")
     assert response.status_code == 200
     values = response.json()["values"]
@@ -1277,18 +1297,48 @@ def test_settings_makes_no_model_call(client: TestClient, monkeypatch: pytest.Mo
 
 
 def test_settings_without_a_judge(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in JUDGE_ENV:
-        monkeypatch.delenv(name, raising=False)
+    _without_judge_env(monkeypatch)
     body = client.get("/api/v1/settings").json()
     assert body["judge_configured"] is False
     assert body["values"]["judge_model"] is None
     assert body["values"]["judge_temperature"] is None
 
 
-def test_settings_has_no_secret(client: TestClient) -> None:
-    values = client.get("/api/v1/settings").json()["values"]
+def test_settings_has_no_secret(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in SECRET_ENV:
+        monkeypatch.setenv(name, f"https://user:{SENTINEL}@host" if "BASE" in name else SENTINEL)
+    monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
+    monkeypatch.setenv("JUDGE_MODEL", "judge-x")
+    monkeypatch.setenv("JUDGE_MODEL_FAMILY", "family-j")
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 200
+    assert SENTINEL not in response.text
+    values = response.json()["values"]
     assert not [key for key in values if key.endswith(("_key", "_token", "_password"))]
     assert not NOT_RECORDED & set(values)
+
+
+SETTINGS_FIXTURE = REPO_ROOT / "frontend/src/test/settings.fixture.json"
+
+
+def _flatten(values: dict[str, Any], prefix: str = "") -> set[str]:
+    keys: set[str] = set()
+    for name, value in values.items():
+        if isinstance(value, dict):
+            keys |= _flatten(value, f"{prefix}{name}.")
+        else:
+            keys.add(f"{prefix}{name}")
+    return keys
+
+
+def test_the_frontend_settings_fixture_has_the_recorded_fields() -> None:
+    """Help resolves its setting keys against this file, so it names the fields the API serves."""
+    fixture = json.loads(SETTINGS_FIXTURE.read_text())
+    expected = (
+        _flatten(settings_fields(from_env(), FakeJudge(), "official", OFFICIAL_MIN_REPEATS))
+        - NOT_RECORDED
+    )
+    assert _flatten(fixture["values"]) == expected
 
 
 def test_settings_invalid_judge_is_a_configuration_error(
