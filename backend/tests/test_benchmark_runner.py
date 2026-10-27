@@ -313,7 +313,7 @@ def test_smoke_runs_are_labelled_and_official_runs_refuse_the_fake_generator(
 
 def test_reproducibility_record_names_the_bank_and_scorer(runner_smoke: BenchmarkRunner) -> None:
     payload = runner_smoke.record().to_payload()
-    assert payload["bank_version"] == "2.0.0" and payload["scorer_version"] == "2.0.0"
+    assert payload["bank_version"] == "2.0.0" and payload["scorer_version"] == "2.1.0"
     assert payload["repeats"] == 2
 
 

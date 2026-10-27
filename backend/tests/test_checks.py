@@ -13,6 +13,7 @@ from app.evaluation.checks import (
     check_from_payload,
     check_score,
     citation_metrics,
+    is_abstention,
     scored_numbers,
 )
 from app.evaluation.claims import Claim
@@ -120,6 +121,47 @@ def test_token_check_accepts_an_alias() -> None:
     check = TokenCheck("MKT_CZ", ("Czech Republic",))
     assert check_score(check, "", "Only the czech republic.") == 1.0
     assert check_score(check, "", "Only MKT_CZX.") == 0.0
+
+
+def test_token_date_matches_with_midnight_time() -> None:
+    assert check_score(TokenCheck("2025-10-07"), "", "It started 2025-10-07T00:00:00 [1].") == 1.0
+
+
+def test_token_date_matches_with_time_without_seconds() -> None:
+    assert check_score(TokenCheck("2025-10-07"), "", "It started 2025-10-07T09:30 [1].") == 1.0
+
+
+def test_token_date_matches_with_any_time() -> None:
+    assert check_score(TokenCheck("2025-10-07"), "", "It started 2025-10-07T13:59:28 [1].") == 1.0
+
+
+@pytest.mark.parametrize("answer", ["On 2025-10-07: the outage began.", "2025-10-07-2025-10-09"])
+def test_token_date_keeps_scorer_2_0_0_matches(answer: str) -> None:
+    assert check_score(TokenCheck("2025-10-07"), "", answer) == 1.0
+
+
+def test_different_date_with_same_prefix_does_not_match() -> None:
+    assert check_score(TokenCheck("2025-10-07"), "", "It started 2025-10-071.") == 0.0
+
+
+def test_time_suffix_rule_applies_only_to_iso_dates() -> None:
+    assert check_score(TokenCheck("INC_024"), "", "INC_024T00:00") == 0.0
+
+
+@pytest.mark.parametrize(
+    ("verdict", "expected"),
+    [
+        ("unknown", True),
+        ("Unknown.", True),
+        (" UNKNOWN - the sources do not say", True),
+        ("unknowns", False),
+        ("known", False),
+        ("INC_024", False),
+        ("", False),
+    ],
+)
+def test_is_abstention(verdict: str, expected: bool) -> None:
+    assert is_abstention(verdict) is expected
 
 
 def test_answer_score_is_the_mean_and_none_without_checks() -> None:

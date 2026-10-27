@@ -83,7 +83,7 @@ from app.retrieval.standard.pipeline import StandardRagPipeline
 
 RUN_KINDS = ("smoke", "official", "sweep")
 SMOKE_LABEL = "scorer smoke test"
-SCORER_VERSION = "2.0.0"
+SCORER_VERSION = "2.1.0"
 PIPELINES = ("A", "B", "C")
 # An official result reports repeat variance, which needs at least three repeats.
 OFFICIAL_MIN_REPEATS = 3

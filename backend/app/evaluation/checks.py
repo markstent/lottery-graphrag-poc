@@ -3,6 +3,10 @@
 Number, set and token checks read the verdict and the answer together, so a
 fact stated only in the verdict counts; the verdict check reads the verdict
 only. Every check scores 0..1 from the text alone: no model is involved.
+
+Scorer 2.1.0 adds one rule: a token whose whole text is an ISO date also
+matches when a time follows it ("2025-10-07T09:30"). `is_abstention` reads a
+verdict that opens with the word "unknown".
 """
 
 from __future__ import annotations
@@ -43,6 +47,11 @@ _THOUSANDS_SEPARATOR = re.compile(r",(?=\d{3}(?!\d))")
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+|\s*\n\s*")
 UNIT_SYMBOLS = {"GBP": "£", "EUR": "€", "CZK": "Kč", "%": "%"}
 _VERDICTS = ("yes", "no")
+_ABSTENTION_PATTERN = re.compile(r"unknown(?!\w)")
+# Scorer 2.1.0: an expected ISO date token also matches when a time follows it
+# ("2025-10-07T00:00:00"), on casefolded text; every 2.0.0 match still matches.
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+_TIME_SUFFIX = r"(?:t\d{2}:\d{2}(?::\d{2})?(?!\d))?"
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,8 +250,17 @@ def _set_score(check: SetCheck, text: str) -> float:
     return 2 * precision * recall / (precision + recall)
 
 
+def is_abstention(verdict: str) -> bool:
+    """True when the verdict opens with the whole word "unknown"."""
+    return _ABSTENTION_PATTERN.match(verdict.strip().casefold()) is not None
+
+
 def _mentions(text: str, name: str) -> bool:
-    return word_pattern(name).search(text.casefold()) is not None
+    if _ISO_DATE.fullmatch(name):
+        pattern = re.compile(rf"(?<!\w){re.escape(name)}{_TIME_SUFFIX}(?!\w)")
+    else:
+        pattern = word_pattern(name)
+    return pattern.search(text.casefold()) is not None
 
 
 def normalise(number: str | int | float | Decimal) -> str:
