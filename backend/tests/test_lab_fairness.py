@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from app.config import PROMPT_EXTRAS, ContextSettings, RetrievalSettings, from_env
+from app.config import PROMPT_EXTRAS, RetrievalSettings, from_env
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
@@ -494,14 +494,19 @@ def _scn007_pipelines(
 
 
 def test_a_b_c_select_under_the_same_budget() -> None:
-    """F20: each pipeline holds its own context settings, built separately,
-    and they are equal: one 2,000-token budget, one near-duplicate threshold."""
-    a, b, c = _scn007_pipelines(indexed_lab(list(build_corpus().values())))
-    contexts = [pipeline.settings.context for pipeline in (a, b, c)]
-    assert len({id(context) for context in contexts}) == 3
-    expected = ContextSettings(budget_tokens=2000, dedupe_threshold=0.85)
-    assert contexts[0] == contexts[1] == contexts[2] == expected
-    assert from_env().context == expected
+    """F20: A, B and C hold the one frozen context settings object loaded
+    with the lab's settings: one 2,000-token budget, one near-duplicate
+    threshold, which no pipeline can change."""
+    settings = from_env()
+    lab = dataclasses.replace(build_lab_offline(), settings=settings)
+    a, b, c = _scn007_pipelines(lab)
+    context = settings.context
+    assert a.settings.context is context
+    assert b.settings.context is context
+    assert c.settings.context is context
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        context.budget_tokens = 1  # type: ignore[misc]
+    assert (context.budget_tokens, context.dedupe_threshold) == (2000, 0.85)
 
 
 class _QuestionSpy(FakeAnswerGenerator):
