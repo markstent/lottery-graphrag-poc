@@ -20,7 +20,14 @@ import {
   Presentation,
   Settings as SettingsIcon,
 } from 'lucide-react'
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react'
 
 import { listDatasets } from '../api/client'
 import { datasetName } from './plain-words'
@@ -41,9 +48,23 @@ const ICONS: Record<RouteName, LucideIcon> = {
 const BUTTON =
   'flex items-center gap-2 rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-raised hover:text-text-primary'
 
+/** Below this width the expanded sidebar would leave the page a sliver, so the sidebar stays collapsed. */
+const NARROW = '(max-width: 767px)'
+
+const subscribeNarrow = (notify: () => void) => {
+  const query = window.matchMedia(NARROW)
+  query.addEventListener('change', notify)
+  return () => query.removeEventListener('change', notify)
+}
+
 function Sidebar() {
   const route = useRoute()
-  const { sidebarCollapsed, toggleSidebar } = useSettings()
+  const { sidebarCollapsed: chosen, toggleSidebar } = useSettings()
+  const narrow = useSyncExternalStore(
+    subscribeNarrow,
+    () => window.matchMedia(NARROW).matches,
+  )
+  const sidebarCollapsed = chosen || narrow
   const descriptions = useId()
   const Toggle = sidebarCollapsed ? PanelLeftOpen : PanelLeftClose
 
@@ -87,7 +108,7 @@ function Sidebar() {
           })}
         </ul>
       </nav>
-      <div className="border-t border-hairline p-2">
+      <div className="border-t border-hairline p-2" hidden={narrow}>
         <button
           type="button"
           onClick={toggleSidebar}
@@ -224,15 +245,15 @@ function ActiveDataset() {
 function Header() {
   const { presentation, togglePresentation, setSettingsOpen } = useSettings()
   return (
-    <header className="flex items-center gap-6 border-b border-hairline bg-surface px-4 py-2.5">
+    <header className="flex flex-wrap items-center gap-x-6 gap-y-2 border-b border-hairline bg-surface px-4 py-2.5">
       <a
         href={hrefFor('overview')}
-        className="text-base font-semibold tracking-tight text-text-primary"
+        className="whitespace-nowrap text-base font-semibold tracking-tight text-text-primary"
       >
         Semantic Context Lab
       </a>
       <ActiveDataset />
-      <div className="ml-auto flex items-center gap-2">
+      <div className="ml-auto flex flex-wrap items-center gap-2">
         <ModelStatusMenu />
         <button
           type="button"

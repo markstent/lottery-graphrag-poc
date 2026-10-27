@@ -211,3 +211,29 @@ test('Help names vendors at the Technical level only', async ({ page }) => {
   await open(page, '#/help?level=technical')
   expect(await page.locator('#running').innerText()).toMatch(vendors)
 })
+
+test.describe('at phone width', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  for (const [name, hash] of [
+    ['top', '#/help'],
+    ['limits-technical', '#/help?section=limits&level=technical'],
+    ['running-technical', '#/help?section=running&level=technical'],
+  ] as const)
+    test(`${name} fits the page, and wide tables scroll inside their own box`, async ({
+      page,
+    }) => {
+      await open(page, hash)
+      await shot(page, `phone-${name}`)
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+      ).toBe(true)
+      expect(
+        await page
+          .getByRole('navigation', { name: 'Primary' })
+          .evaluate((nav) => nav.getBoundingClientRect().width),
+      ).toBeLessThan(100)
+    })
+})

@@ -13,7 +13,7 @@ import { Blocks } from './blocks'
 import { CHAPTERS, type ChapterCopy, type ChapterId } from './chapters'
 import { useHelpData } from './help-data'
 
-const BODY = 'space-y-3 [&>p]:max-w-4xl'
+const BODY = 'space-y-3 break-words [&>p]:max-w-4xl'
 
 export function Chapter({
   id,

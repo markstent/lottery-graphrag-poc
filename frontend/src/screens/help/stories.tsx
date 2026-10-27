@@ -48,7 +48,11 @@ function Story({
         </p>
       ) : (
         truths.map((truth) => (
-          <p key={truth} data-api className="mt-2 text-text-primary">
+          <p
+            key={truth}
+            data-api
+            className="mt-2 break-words text-text-primary"
+          >
             {truth}
           </p>
         ))
@@ -59,13 +63,13 @@ function Story({
             A correct answer names the markets that shared the platform version
             with the incident, and the market that did not.
           </p>
-          <dl className="grid grid-cols-[8rem_1fr] gap-y-1">
+          <dl className="grid grid-cols-1 gap-y-1 md:grid-cols-[8rem_minmax(0,1fr)]">
             <dt className="text-text-muted">Question</dt>
-            <dd data-api className="text-text-primary">
+            <dd data-api className="break-words text-text-primary">
               {example.text}
             </dd>
             <dt className="text-text-muted">Answer key</dt>
-            <dd data-api className="text-text-primary">
+            <dd data-api className="break-words text-text-primary">
               {example.expected_answer}
             </dd>
           </dl>

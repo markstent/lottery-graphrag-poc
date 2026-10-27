@@ -116,7 +116,7 @@ export function Help() {
 
   return (
     <Screen destination="help">
-      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-hairline bg-background py-2">
+      <div className="top-0 z-10 flex flex-wrap md:sticky items-center justify-between gap-x-6 gap-y-2 border-b border-hairline bg-background py-2">
         <nav
           aria-label="Help sections"
           className="flex flex-wrap gap-x-4 gap-y-1"

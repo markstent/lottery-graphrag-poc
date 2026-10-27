@@ -25,29 +25,31 @@ export function Running() {
         ))}
       </ol>
       <h3 className="text-base font-semibold text-text-primary">Recovery</h3>
-      <table className="w-full text-left text-sm">
-        <caption className="sr-only">Recovery</caption>
-        <thead className="text-text-muted">
-          <tr>
-            {['What you see', 'Run', 'Note'].map((name) => (
-              <th key={name} scope="col" className={CELL}>
-                {name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {RECOVERY.map(([symptom, command, note]) => (
-            <tr key={command}>
-              <td className={CELL}>{symptom}</td>
-              <td className={CELL}>
-                <Command>{command}</Command>
-              </td>
-              <td className={CELL}>{note}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">Recovery</caption>
+          <thead className="text-text-muted">
+            <tr>
+              {['What you see', 'Run', 'Note'].map((name) => (
+                <th key={name} scope="col" className={CELL}>
+                  {name}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {RECOVERY.map(([symptom, command, note]) => (
+              <tr key={command}>
+                <td className={CELL}>{symptom}</td>
+                <td className={CELL}>
+                  <Command>{command}</Command>
+                </td>
+                <td className={CELL}>{note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <h3 className="text-base font-semibold text-text-primary">
         Model configuration
       </h3>
@@ -57,29 +59,31 @@ export function Running() {
         every setting. Its defaults put fixed programs in place of the answer
         model and the judge, so they run without a language model.
       </p>
-      <table className="w-full text-left text-sm">
-        <caption className="sr-only">Model configuration</caption>
-        <thead className="text-text-muted">
-          <tr>
-            {['Role', 'Settings', 'Note'].map((name) => (
-              <th key={name} scope="col" className={CELL}>
-                {name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {MODELS.map(([role, settings, note]) => (
-            <tr key={role}>
-              <td className={CELL}>{role}</td>
-              <td className={CELL}>
-                <code className={CODE}>{settings}</code>
-              </td>
-              <td className={CELL}>{note}</td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">Model configuration</caption>
+          <thead className="text-text-muted">
+            <tr>
+              {['Role', 'Settings', 'Note'].map((name) => (
+                <th key={name} scope="col" className={CELL}>
+                  {name}
+                </th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {MODELS.map(([role, settings, note]) => (
+              <tr key={role}>
+                <td className={CELL}>{role}</td>
+                <td className={CELL}>
+                  <code className={CODE}>{settings}</code>
+                </td>
+                <td className={CELL}>{note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p>
         An official run needs <code className={CODE}>GENERATION_PROVIDER</code>{' '}
         and <code className={CODE}>JUDGE_PROVIDER</code> set to{' '}
@@ -92,27 +96,29 @@ export function Running() {
         Every command
       </h3>
       {COMMAND_GROUPS.map(({ group, rows }) => (
-        <table key={group} className="w-full text-left text-sm">
-          <caption className="py-2 text-left font-semibold text-text-primary">
-            {group}
-          </caption>
-          <thead className="sr-only">
-            <tr>
-              <th scope="col">Command</th>
-              <th scope="col">What it does</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(([command, line]) => (
-              <tr key={command}>
-                <th scope="row" className={`${CELL} w-56 font-normal`}>
-                  <Command>{command}</Command>
-                </th>
-                <td className={CELL}>{line}</td>
+        <div key={group} className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <caption className="py-2 text-left font-semibold text-text-primary">
+              {group}
+            </caption>
+            <thead className="sr-only">
+              <tr>
+                <th scope="col">Command</th>
+                <th scope="col">What it does</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map(([command, line]) => (
+                <tr key={command}>
+                  <th scope="row" className={`${CELL} w-56 font-normal`}>
+                    <Command>{command}</Command>
+                  </th>
+                  <td className={CELL}>{line}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ))}
     </>
   )
