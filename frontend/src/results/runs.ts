@@ -29,18 +29,24 @@ export const standingWord = (run: Run): string => STANDING_WORDS[standing(run)]
 
 const startedAt = (run: Run) => Date.parse(run.started_at)
 
+const newest = (candidates: readonly Run[]) =>
+  candidates.reduce<Run | null>(
+    (best, run) =>
+      best === null || startedAt(run) > startedAt(best) ? run : best,
+    null,
+  )
+const of = (runs: readonly Run[], kind: RunStanding) =>
+  runs.filter((run) => standing(run) === kind)
+
+/** The newest result: an official run of the whole bank, never a subset or a quick check; null with none. */
+export const newestResult = (runs: readonly Run[]): Run | null =>
+  newest(of(runs, 'result'))
+
 /** The newest result, else the newest subset, else the newest run; null with no runs. */
 export function defaultRun(runs: readonly Run[]): string | null {
-  const newest = (candidates: readonly Run[]) =>
-    candidates.reduce<Run | null>(
-      (best, run) =>
-        best === null || startedAt(run) > startedAt(best) ? run : best,
-      null,
-    )
-  const of = (kind: RunStanding) => runs.filter((run) => standing(run) === kind)
   return (
-    (newest(of('result')) ?? newest(of('subset')) ?? newest(runs))?.run_id ??
-    null
+    (newestResult(runs) ?? newest(of(runs, 'subset')) ?? newest(runs))
+      ?.run_id ?? null
   )
 }
 

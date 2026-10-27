@@ -1,0 +1,45 @@
+import type { ChapterCopy } from '../chapters'
+
+export const why: ChapterCopy = {
+  plain: [
+    'A large company keeps what it knows in many systems: sales tables, incident logs, release records, support cases and documents, often in several languages. An AI model that answers questions about the business has to find the right facts across all of them. This experiment asks whether adding a knowledge graph and an ontology on top of the existing data helps that model, the answer model, find those facts and answer correctly.',
+    'A knowledge graph records how things are linked: this incident happened on that platform version, this game belongs to that family, this player used that device. The facts stay in the existing systems. The graph holds the links between them and where each fact came from, so a search can follow a link from one record to the next.',
+    "An ontology (here an enterprise ontology, one for the whole company) is a shared dictionary. Each market names things in its own way and its own language: the United Kingdom's National Draw is Austria's Zahlenziehung. The ontology says both are the same kind of game, so a question about one market can reach the matching things in the others.",
+    'Why they might help: many business questions cross systems or markets, such as "which other markets used the platform version behind this incident?". Text search finds the passages whose words and meaning best match the question. It does not follow links, and it does not know that two local names mean the same thing. The graph adds the first; the ontology adds the second.',
+    "Evidence, here, means the records and passages that state the facts a correct answer needs. The experiment can show whether, for this made-up company and these questions, the graph (B against A) and the ontology (C against B) get more of the needed evidence to the answer model, and whether its answers are more often right. It cannot show how a graph would do on another company's data, with other questions or with another answer model: the company is made up, and the questions were written by the people who built the system.",
+    "The result so far: the first official run, from 2026-10-26 to 2026-10-27, found no detectable difference between the three approaches. The evidence score (how much of the needed evidence an approach found, without padding, from 0 to 1) was 0.19 for A, 0.17 for B and 0.19 for C. The answer score (how far the answers matched the answer key, from 0 to 1) was 0.44 for all three. Source: that run's record, shown on Results.",
+    'This does not show that a graph or an ontology cannot help. It shows that, with these settings, this answer model and these questions, they did not measurably help. Chapter 5 gives the likely reason: the graph found many of the needed facts, but about half of them did not reach the answer model.',
+  ],
+  technical: [
+    'Each hypothesis, as the overhaul design (docs/superpowers/specs/2026-10-18-overhaul-design.md, section 5.5) and docs/evaluation.md state it:',
+    [
+      'H1: graph retrieval improves evidence recall as relationship depth increases. Measured on the multi-hop questions, and by a depth sweep from 0 to 3 for B and C.',
+      'H2: the ontology improves cross-market concept matching beyond graph structure alone. Measured on the ontology-dependent questions, C against B.',
+      'H3: single facts show little or no advantage from the graph. Measured on the single-fact questions, by the answer score.',
+      'H4: the graph improves provenance and explainability. Measured by citation accuracy and by the share of sentences stating a number that carry a citation; path explainability has no metric.',
+      'H5: the graph improves discovery of planted multi-entity patterns. Measured on the planted-pattern questions.',
+      'H6: the graph may increase latency but improve quality and context efficiency. Measured as latency, context tokens and claims found per 1,000 context tokens, each on its own.',
+      'H7: a smaller local model with richer context may approach a larger model. Measured by comparing two official runs that differ only in the answer model.',
+    ],
+    'H4, H6 and H7 are metrics or run kinds over the same questions, with no question group of their own. The official run tests H1, H2, H3 and H5 at graph depth 2. The depth sweep and the model comparison are separate run kinds, and neither had been run by 2026-10-27.',
+    "The design in one paragraph. Three approaches answer the same questions over the same synthetic world. A is retrieval-augmented generation (RAG): a search over document passages and one text per structured record, whose best results are handed to a language model that writes the answer. B is A plus the graph's relationships, and C is B plus the ontology. Everything else is held equal, because all three are built from one configuration (backend/app/lab.py): the question, the world, the source corpus, the embedding models, the re-ranker, the answer model and its parameters, the token budget, the number of evidence places and the prompt. No approach can read the truth ledger (chapter 3). B against A therefore measures the graph layer and C against B the ontology layer; it is not a comparison of databases. backend/tests/test_lab_fairness.py pins the shared parts. The question bank, the scoring and the statistics are in chapters 7 and 8.",
+  ],
+  terms: [
+    'Answer model',
+    'Answer score',
+    'Approach',
+    'Enterprise ontology',
+    'Evidence',
+    'Evidence score',
+    'Hypothesis',
+    'Knowledge graph',
+    'Language model',
+    'Market',
+    'Official run',
+    'Passage',
+    'Question bank',
+    'Text search',
+    'Truth ledger',
+    'World',
+  ],
+}

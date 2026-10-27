@@ -36,6 +36,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | `GET /queries/{run_id}/events` | The recorded events, for replay |
 | `GET /queries/{run_id}/events/stream` | The same events as server-sent events |
 | `GET /demo/questions` | The four demo questions |
+| `GET /settings` | The settings an official run records, as the system would record them now |
 | `GET /benchmarks` | Published benchmark runs, newest first |
 | `GET /benchmarks/latest` | The run Overview shows |
 | `GET /benchmarks/questions` | The bank's questions with answer keys, hidden truths and scores |
@@ -273,6 +274,14 @@ A malformed `summary.json` is a server error and is never silently skipped.
   A run without `results.json` is a 404.
 - `GET /benchmarks/questions` lists the presentation world's bank for the Help screen, with each question's expected answer, the hidden truth of a planted question, and per-pipeline scores from the run named by the optional `run_id`, else the newest official run.
   A missing or stale bank is a 503 `CONFIGURATION_ERROR`.
+
+### Settings
+
+`GET /settings` returns `{values, judge_configured}`.
+`values` holds the reproducibility fields of an official run of the default repeats, read from the environment and the code at the time of the request, without the git fields `git_sha` and `git_dirty`.
+It holds no secret, and the route makes no model call.
+When no judge model is set, `judge_configured` is false and the four judge model fields (`judge_model`, `judge_model_family`, `judge_reasoning` and `judge_temperature`) are null.
+An invalid setting is a 503 `CONFIGURATION_ERROR`.
 
 ### Jobs
 

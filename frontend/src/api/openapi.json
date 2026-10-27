@@ -954,6 +954,26 @@
         "title": "EvidenceChunk",
         "type": "object"
       },
+      "ExperimentSettings": {
+        "description": "The settings a run records, as the system would record them now.\n\nNo secret and no git state.",
+        "properties": {
+          "judge_configured": {
+            "title": "Judge Configured",
+            "type": "boolean"
+          },
+          "values": {
+            "additionalProperties": true,
+            "title": "Values",
+            "type": "object"
+          }
+        },
+        "required": [
+          "values",
+          "judge_configured"
+        ],
+        "title": "ExperimentSettings",
+        "type": "object"
+      },
       "FailuresOut": {
         "description": "Per pipeline: scored repeats, generation and judge failures, and the\nrepeats per failure class.",
         "properties": {
@@ -8070,6 +8090,44 @@
           }
         },
         "summary": "Read Scenarios"
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "operationId": "read_settings_api_v1_settings_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExperimentSettings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "summary": "Read Settings"
       }
     }
   }

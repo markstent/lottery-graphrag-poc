@@ -41,6 +41,7 @@ The routes of the first version of the product (`#/lab`, `#/experiment`, `#/dict
 Overview is the default.
 
 - A left sidebar lists the five destinations, and collapses to icons.
+  Below 768 px wide it stays collapsed and the toggle is hidden, so the page keeps its width.
   The active one carries a heavy bar and bold text, so it does not rely on colour.
 - The header carries the product name, the active dataset in plain words (for example "dev world, 2026"), the model status, the presentation toggle and Settings.
 - The model status is one button with a dot and a word: Checking, Ready, Starting or Not ready.
@@ -231,17 +232,44 @@ Baselines: `data-model-warehouse-map`, `data-model-rows-filtered`, `data-model-r
 
 ### Help
 
-Purpose: how it works in plain language, every benchmark question with its answer key, the glossary and how to run it.
+Purpose: the one place that explains the whole experiment, at two reading levels, with every benchmark question and its answer key, the glossary and how to run it.
 
-Eight sections, each a link: What we are testing, The approaches, The data, The planted stories, The questions, How scoring works, Glossary and Running it.
-`?section=` scrolls to a section, and `?story=` marks one story and filters the questions.
+A labelled two-option control at the top sets the reading level, Plain or Technical.
+Plain is the default and the level used in presentation mode.
+Technical shows each chapter's Plain text first and its technical detail after it, so a technical reader still sees the framing.
+The level is in the address (`?level=technical`) and is remembered per browser, with a fallback when storage fails.
+Presentation mode ignores the remembered level, and an explicit `?level=` always wins.
+A link with `?section=`, `?story=` or `?stratum=` opens at Plain, and a bare `#/help` uses the remembered level.
+Switching level keeps the chapter in view.
+
+Twelve chapters, each a link in the Help navigation: 1 Why this exists, 2 The made-up company, 3 The planted stories, 4 The three approaches, 5 How evidence is chosen, 6 The answer and the judge, 7 How scoring works, 8 Reading the results, 9 Assumptions and limits, 10 The questions, 11 Glossary, 12 Running it.
+`?section=` scrolls to a chapter by its id.
+The eight ids of the first Help stay as aliases: `what` to chapter 1, `data` to 2, `stories` to 3, `approaches` to 4, `scoring` to 7, `questions` to 10, `glossary` to 11 and `running` to 12.
+`?story=` marks one story and filters the questions.
+Chapters 4 and 5 draw a diagram of each approach and of how evidence is chosen, and chapter 9 holds the assumptions and limits register, with its reasons, costs if wrong and sources at Technical.
+
+Settings panel: a chapter's settings table lists each setting with its value now and its value in the newest official run.
+Now comes from `GET /api/v1/settings`, which returns the same fields a run records, so the two are the same schema.
+A setting that differs between the two carries a "Differs" mark, a run that did not record one reads "Not recorded", and a failed load reads "Not available" with a retry.
+A number stated in prose is a `{setting_key}` placeholder filled from the same source.
+It falls back to the newest official run's recorded value, and then to "not available".
+While either load is under way a placeholder reads "…" and the evidence diagram says its settings are loading, so no value is shown that a later load could change; "not available" appears only after both loads have settled.
+A test resolves every placeholder and settings-table key against `frontend/src/test/settings.fixture.json`, and a backend test checks that the fixture names exactly the fields `GET /settings` serves.
+No setting is typed into Help by hand.
+A past measurement, such as the pilot or the dry run, is typed with its date and source record.
+
 Help is the one screen that shows answer keys and hidden truths, because they are the scoring reference and not an input to any approach.
-It is also the one screen that names vendors and commands, and every command in it is a Makefile target, which a test checks.
+It is also the one screen that names vendors, models and commands at Technical, and every command in it is a Makefile target, which a test checks.
 Scores appear only when the newest run is a whole-bank official run that scored at least one question.
 Otherwise a score cell reads "No official run yet".
 The screen never averages scores.
 
-Baselines: `help-top`, `help-stories`, `help-glossary`, `help-questions-no-official-run`, `help-questions-fixture-official-filtered-by-story`, `help-loading`, `help-error`, `presentation-help-fixture-official`.
+Copy: each chapter holds its Plain and its Technical text as separate fields.
+The banned-word scan covers the Plain text and the glossary's plain definitions, and not the Technical text.
+Technical text uses real terms, each defined where first used in the chapter or linked to the glossary.
+The Help word cap is removed (D-082).
+
+Baselines: `help-top`, `help-settings-technical` (the settings table with recorded values and "Differs" marks), `help-stories`, `help-evidence`, `help-evidence-technical`, `help-limits-technical`, `help-glossary`, `help-questions-no-official-run`, `help-questions-fixture-official-filtered-by-story`, `help-loading`, `help-error`, `presentation-help-fixture-official`.
 
 ## Visual language
 
@@ -290,7 +318,8 @@ The graph is 2D and led by evidence.
   A node fades in over 200 ms, and the whole product collapses to near-instant under `prefers-reduced-motion` or the Settings switch.
   Evidence is never delayed for effect.
 - Copy is plain and short.
-  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 1,300 words outside Help and 1,650 in Help prose (D-055).
+  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 1,300 words outside Help (D-055, D-066).
+  Help has no word cap since D-082, and the scan covers Help's Plain text and not its Technical text, where real terms, vendor and model names and dated historical figures (such as the single cut at 12 places of D-025, typed in chapter 5) are allowed.
   Text from the API, such as headline sentences, is shown verbatim and is outside both.
 
 ## Accessibility
@@ -353,14 +382,14 @@ The only invented state is the "fixture-official" run.
 The frontend has no environment variables.
 It calls relative paths (`/api/v1/...`), so it reaches the API on the page's own origin.
 Both the dev server (`make dev-frontend`) and `vite preview` forward `/api` to `http://localhost:8000` (`frontend/vite.config.ts`), so the API must be on that port.
-Browser storage holds only per-reader preferences: the collapsed sidebar, reduced motion and the node cap.
+Browser storage holds only per-reader preferences: the collapsed sidebar, reduced motion, the node cap and the Help reading level.
 
 ## Testing
 
-- Vitest with Testing Library: 86 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
+- Vitest with Testing Library: 92 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
 - Playwright: ten spec files in `frontend/e2e/`.
   The default config runs the smoke and functional specs.
-  The visual config runs `visual.spec.ts` against 126 committed baselines.
+  The visual config runs `visual.spec.ts` against 130 committed baselines.
 - `pnpm api:check` for the generated types.
 
 ## Extension points

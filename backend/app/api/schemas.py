@@ -434,6 +434,16 @@ class BenchmarkStart(BaseModel):
 JobStatus = Literal["running", "completed", "failed", "cancelled"]
 
 
+class ExperimentSettings(BaseModel):
+    """The settings a run records, as the system would record them now.
+
+    No secret and no git state.
+    """
+
+    values: dict[str, Any]
+    judge_configured: bool
+
+
 class JobProgress(BaseModel):
     """The world a job is running and how far through its instances it is."""
 

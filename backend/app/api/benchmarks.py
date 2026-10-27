@@ -48,6 +48,7 @@ from app.api.schemas import (
     BenchmarkRunOut,
     BenchmarkStart,
     BenchmarkSummary,
+    ExperimentSettings,
     InstancePipelineOut,
     InstanceResultOut,
     JobProgress,
@@ -58,10 +59,11 @@ from app.api.schemas import (
     error_responses,
 )
 from app.api.scoring import require_bank
-from app.config import REPO_ROOT
+from app.config import REPO_ROOT, from_env, judge_settings_from_env
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
+from app.evaluation.judge import FakeJudge, GatewayJudge
 from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
@@ -77,12 +79,22 @@ from app.evaluation.official import (
     world_paths,
 )
 from app.evaluation.report import SUMMARY_SCHEMA_VERSION, instance_means
-from app.evaluation.runner import WORLD_MANIFEST, instance_result_from_payload
+from app.evaluation.runner import (
+    OFFICIAL_MIN_REPEATS,
+    WORLD_MANIFEST,
+    instance_result_from_payload,
+    settings_fields,
+)
 from app.observability.logging import run_context
 
 logger = logging.getLogger(__name__)
 
 Published = tuple[str, dict[str, Any]]
+
+# What a run records about the checkout, which is not a setting.
+_GIT_FIELDS = frozenset({"git_sha", "git_dirty"})
+# The fields that name the judge model; the offline judge is no model.
+_JUDGE_MODEL_FIELDS = ("judge_model", "judge_model_family", "judge_reasoning", "judge_temperature")
 
 
 def stale_bank_message() -> str:
@@ -488,9 +500,31 @@ def _check(request: BenchmarkStart) -> None:
         )
 
 
+def _experiment_settings() -> ExperimentSettings:
+    """The fields an official run records, from the environment now. The judge is
+    built without a model call; with no judge model set its fields are None."""
+    try:
+        judge_settings = judge_settings_from_env()
+        configured = judge_settings.provider != "fake"
+        judge = GatewayJudge(judge_settings) if configured else FakeJudge()
+        fields = settings_fields(from_env(), judge, "official", OFFICIAL_MIN_REPEATS)
+    except ValueError as error:
+        raise ApiError(
+            503, ErrorCode.CONFIGURATION_ERROR, f"invalid configuration: {error}"
+        ) from error
+    values = {key: value for key, value in fields.items() if key not in _GIT_FIELDS}
+    if not configured:
+        values.update({key: None for key in _JUDGE_MODEL_FIELDS})
+    return ExperimentSettings(values=values, judge_configured=configured)
+
+
 def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
     """The benchmark routes over ``runs_dir`` (ApiSettings.benchmark_dir)."""
     router = APIRouter()
+
+    @router.get("/settings", response_model=ExperimentSettings, responses=error_responses(503))
+    def read_settings() -> ExperimentSettings:
+        return _experiment_settings()
 
     @router.get("/benchmarks", response_model=list[BenchmarkRunOut], responses=error_responses())
     def list_benchmarks() -> list[BenchmarkRunOut]:

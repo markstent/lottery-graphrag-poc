@@ -96,6 +96,12 @@ const nodeButton = (id: string) =>
     (el) => el.getAttribute('data-node-id') === id,
   ) as HTMLElement
 
+/**
+ * The ready flag waits for the layout and the animated fit, which can pass
+ * waitFor's default second when the whole suite runs in parallel.
+ */
+const READY = { timeout: 5000 }
+
 /** Waits for the async layout to place every node. */
 async function placed(count: number) {
   await waitFor(() => expect(nodeButtons()).toHaveLength(count))
@@ -115,8 +121,9 @@ describe('GraphCanvas', () => {
     const view = viewAt('B')
     render(canvas(view))
     const group = screen.getByRole('group', { name: 'Evidence graph' })
-    await waitFor(() =>
-      expect(group).toHaveAttribute('data-layout-ready', 'true'),
+    await waitFor(
+      () => expect(group).toHaveAttribute('data-layout-ready', 'true'),
+      READY,
     )
     expect(nodeButtons()).toHaveLength(view.nodes.length)
   })
@@ -141,7 +148,7 @@ describe('GraphCanvas', () => {
       group.querySelector<HTMLElement>('.react-flow__viewport')!.style.transform
     await waitFor(
       () => expect(group).toHaveAttribute('data-layout-ready', 'true'),
-      { interval: 5 },
+      { ...READY, interval: 5 },
     )
     const atReady = viewport()
     await new Promise((resolve) => setTimeout(resolve, 400))
@@ -152,8 +159,9 @@ describe('GraphCanvas', () => {
     const view = viewAt('B')
     render(canvas(view, { reducedMotion: true }))
     const group = screen.getByRole('group', { name: 'Evidence graph' })
-    await waitFor(() =>
-      expect(group).toHaveAttribute('data-layout-ready', 'true'),
+    await waitFor(
+      () => expect(group).toHaveAttribute('data-layout-ready', 'true'),
+      READY,
     )
   })
 
