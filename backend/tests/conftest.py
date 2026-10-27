@@ -4,6 +4,7 @@ the check that no run worker or benchmark job thread outlives its test."""
 
 from __future__ import annotations
 
+import os
 import socket
 import sys
 import threading
@@ -11,6 +12,7 @@ import types
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 from app.datasets.config import GenerationConfig
@@ -153,29 +155,87 @@ def litellm_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 
-OLLAMA_PORT = 11434
+# The services an ungated test must never reach, each with the flag that
+# opts a live test in (tests/live.py) and its ports: the defaults, and any
+# port the environment names for it (read at collection and at each test).
+SERVICE_DEFAULT_PORTS = {
+    "Neo4j": (live.GRAPH, {7474, 7473, 7687}),
+    "Qdrant": (live.VECTOR, {6333, 6334}),
+    "Ollama or a model server": (live.WORLD, {11434}),
+}
+SERVICE_URL_VARIABLES = {
+    "Neo4j": ("NEO4J_URI",),
+    "Qdrant": ("QDRANT_URL",),
+    "Ollama or a model server": ("OLLAMA_HOST", "GENERATION_API_BASE", "JUDGE_API_BASE"),
+}
+SERVICE_GUARD_ERROR = "tests must not reach real services"
+
+
+def _url_ports(variables: tuple[str, ...]) -> set[int]:
+    ports = set()
+    for name in variables:
+        value = os.environ.get(name)
+        if not value:
+            continue
+        try:
+            port = urlsplit(value if "://" in value else f"//{value}").port
+        except ValueError:
+            continue
+        if port is not None:
+            ports.add(port)
+    return ports
+
+
+_COLLECTION_PORTS = {name: _url_ports(names) for name, names in SERVICE_URL_VARIABLES.items()}
+
+
+def guarded_ports() -> dict[int, str]:
+    """Port to service, for every service whose live flag is unset now."""
+    ports: dict[int, str] = {}
+    for service, (flag, defaults) in SERVICE_DEFAULT_PORTS.items():
+        if live.enabled(flag):
+            continue
+        named = _COLLECTION_PORTS[service] | _url_ports(SERVICE_URL_VARIABLES[service])
+        for port in defaults | named:
+            ports[port] = service
+    return ports
+
+
+# The connect the guard falls through to for any other address; a module
+# attribute so the guard's own test can replace it with a recorder.
+_real_connect = socket.socket.connect
 
 
 @pytest.fixture(autouse=True)
-def no_ollama_without_the_live_world(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """An ungated test never opens a socket to Ollama: it is refused, and the
-    attempt fails the test even where the code under test swallows the error
-    (a readiness probe reports it as a failed check)."""
-    if live.enabled(live.WORLD):
-        yield
-        return
-    attempts: list[object] = []
-    real_connect = socket.socket.connect
+def no_real_services(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
+    """An ungated test never opens a socket to Neo4j, Qdrant, Ollama or a
+    model server (fix round T4-R3): the connect is refused before it reaches
+    the network, and the attempt fails the test even where the code under
+    test swallows the error (a benchmark job thread, a readiness probe). A
+    live test keeps its opt-in: its flag lifts the guard for its service.
+    Yields the attempts, so the guard's own test can consume them."""
+    attempts: list[str] = []
+    ports = guarded_ports()
 
-    def guarded(self: socket.socket, address: Any) -> None:
-        if isinstance(address, tuple) and len(address) >= 2 and address[1] == OLLAMA_PORT:
-            attempts.append(address)
-            raise ConnectionRefusedError(f"a test tried to reach Ollama at {address}")
-        real_connect(self, address)
+    def refuse(address: Any) -> None:
+        if isinstance(address, tuple) and len(address) >= 2 and address[1] in ports:
+            attempt = f"{ports[address[1]]} at {address[0]}:{address[1]}"
+            attempts.append(attempt)
+            raise ConnectionRefusedError(f"{SERVICE_GUARD_ERROR}: a test tried to reach {attempt}")
 
-    monkeypatch.setattr(socket.socket, "connect", guarded)
-    yield
-    assert not attempts, f"an ungated test contacted Ollama: {attempts}"
+    def connect(self: socket.socket, address: Any) -> None:
+        refuse(address)
+        _real_connect(self, address)
+
+    def connect_ex(self: socket.socket, address: Any) -> int:
+        refuse(address)
+        return int(real_connect_ex(self, address))
+
+    real_connect_ex = socket.socket.connect_ex
+    monkeypatch.setattr(socket.socket, "connect", connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
+    yield attempts
+    assert not attempts, f"an ungated test tried to reach real services: {attempts}"
 
 
 @pytest.fixture(autouse=True)
