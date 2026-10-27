@@ -1,6 +1,9 @@
 """CLI entry point: ``uv run python -m app.evaluation``.
 
 ``addendum`` rescores a stored run with no model into a directory beside it;
+``label-sample`` draws the blind hand-labelling sample from a stored run and
+``label-agreement`` measures the answer measures against the returned labels,
+both with no model;
 ``ground`` grounds bank 2.0.0 into one generated world (by default the
 active one, from DATASET_DIR and TRUTH_LEDGER_PATH) and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
@@ -19,7 +22,7 @@ from collections import Counter
 from pathlib import Path
 
 from app.config import REPO_ROOT
-from app.evaluation import addendum, diagnostics, official
+from app.evaluation import addendum, diagnostics, labelling, official
 from app.evaluation.bank import BANK, NAME_ANCHORED, STRATA, LogicalQuestion
 from app.evaluation.grounding import (
     BankInstance,
@@ -121,6 +124,26 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="New addendum directory (default data/evaluation/addenda/<run>-scorer-<version>).",
     )
+    sample = commands.add_parser(
+        "label-sample", help="Model-free: draw the blind hand-labelling sample from a stored run."
+    )
+    sample.add_argument("--run", type=Path, required=True, help="Run directory to sample.")
+    sample.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="New sample directory (default data/evaluation/labels/v0.2.0-sample).",
+    )
+    agreed = commands.add_parser(
+        "label-agreement", help="Model-free: agreement of the answer measures with the labels."
+    )
+    agreed.add_argument("--run", type=Path, required=True, help="Run directory sampled.")
+    agreed.add_argument(
+        "--sample",
+        type=Path,
+        default=None,
+        help="Sample directory (default data/evaluation/labels/v0.2.0-sample).",
+    )
     return parser
 
 
@@ -172,6 +195,23 @@ def _dispatch(args: argparse.Namespace) -> int:
         out = _resolved(args.out) or addendum.addendum_dir(args.run)
         try:
             print(f"wrote {addendum.write_addendum(args.run, out)}")
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
+        return 0
+    if args.command == "label-sample":
+        out = _resolved(args.out) or labelling.DEFAULT_SAMPLE_DIR
+        try:
+            labelling.write_sample(args.run, out)
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
+        for line in labelling.shortfall_lines(out):
+            print(f"shortfall: {line}")
+        print(f"wrote {out}")
+        return 0
+    if args.command == "label-agreement":
+        sample_dir = _resolved(args.sample) or labelling.DEFAULT_SAMPLE_DIR
+        try:
+            print(f"wrote {labelling.write_agreement(sample_dir, args.run)}")
         except ValueError as error:
             raise SystemExit(str(error)) from None
         return 0

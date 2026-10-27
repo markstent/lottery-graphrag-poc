@@ -58,6 +58,8 @@ FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "TRUTH_LEDGER"
 # The only API modules that may import app.evaluation (Phase 4).
 EVALUATION_API_MODULES = frozenset({"benchmarks.py", "scoring.py"})
 LEDGER_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "TRUTH_LEDGER")
+# The hand-label files and their directory (D-089).
+LABEL_STRINGS = ("labels-", "evaluation/labels")
 API_DIR = APP_DIR / "api"
 
 
@@ -116,6 +118,16 @@ def test_isolated_namespaces_never_reference_evaluator_truth() -> None:
         imports = _imported_modules(_tree(path), path)
         assert not any(name.startswith("app.evaluation") for name in imports), (
             f"{where} imports app.evaluation"
+        )
+
+
+def test_retrieval_never_names_the_labels_directory() -> None:
+    """The hand labels (D-089) are evaluator-only, as the ledger is: no
+    isolated module names their directory or their files."""
+    for path in _isolated_paths():
+        source = path.read_text(encoding="utf-8")
+        assert not any(marker in source for marker in LABEL_STRINGS), (
+            f"{path.relative_to(APP_DIR)} names the hand labels"
         )
 
 

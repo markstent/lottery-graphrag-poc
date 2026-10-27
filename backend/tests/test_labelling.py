@@ -1,0 +1,569 @@
+"""The hand-labelling sample of v0.2.0 answers and its agreement analysis
+(D-089): a blind sheet, empty label templates for two labellers, a key the
+labellers do not open, and the agreement of each measure with the labels."""
+
+from __future__ import annotations
+
+import csv
+import hashlib
+import json
+import re
+from pathlib import Path
+from typing import Any
+
+import pytest
+from app.evaluation import labelling
+from app.evaluation.judge import JUDGE_SYSTEM_PROMPT, JudgeItem, blind
+from app.evaluation.labelling import (
+    CELLS,
+    build_sample,
+    label_agreement,
+    write_agreement,
+    write_sample,
+)
+from app.evaluation.runner import ShownBlock
+from app.models import gateway
+
+RUN_NAME = "official-2026-10-26"
+# Distinctive recorded values, so a leak into the sheet is visible.
+PARTIAL = 0.6667
+LOW = 0.3333
+TOKEN_CHECK = {"kind": "token", "expected": "2025-10-07", "aliases": []}
+SET_CHECK = {
+    "kind": "set",
+    "expected": ["MKT_GR", "MKT_UK"],
+    "universe": {"MKT_AT": [], "MKT_GR": [], "MKT_UK": []},
+}
+
+
+def _check_payloads(question_id: str) -> list[dict[str, Any]]:
+    return [SET_CHECK] if question_id == "SET" else [TOKEN_CHECK]
+
+
+def _blocks(instance_id: str, pipeline: str) -> list[dict[str, str]]:
+    return [
+        {
+            "carrier_id": f"REC_{n}",
+            "title": f"incidents: TITLE_{pipeline}_{n}",
+            "text": f"Block {n} of {instance_id}: incident started 2025-10-0{n}.",
+        }
+        for n in range(1, 5)
+    ]
+
+
+def _run(instance_id: str, pipeline: str, repeat: int, verdict: str, answer: str) -> dict[str, Any]:
+    return {
+        "pipeline": pipeline,
+        "repeat": repeat,
+        "verdict": verdict,
+        "answer": answer,
+        "raw_text": "",
+        "cited_blocks": [1, 2],
+        "blocks": _blocks(instance_id, pipeline),
+        "selected": ["REC_1"],
+        "resolved_ids": [],
+        "seeded": pipeline != "A",
+        "context_tokens": 30,
+        "latency_ms": 5.0,
+        "generation_failed": False,
+        "generation_error": None,
+    }
+
+
+def _score(answer: float | None, correctness: int | None) -> dict[str, Any]:
+    judge = (
+        None
+        if correctness is None
+        else {
+            "scores": {
+                "correctness": correctness,
+                "completeness": 1,
+                "faithfulness": 1,
+                "citation_accuracy": 1,
+                "abstention": 1,
+            },
+            "failure": None,
+            "model": "ollama/judge-model",
+            "latency_ms": 9.0,
+        }
+    )
+    return {
+        "answer": answer,
+        "evidence": {
+            "recall": None,
+            "precision": None,
+            "f1": None,
+            "claims_found": None,
+            "claims_total": 0,
+            "efficiency_per_1k": None,
+            "anchor_resolved": True,
+        },
+        "citations": {"accuracy": None, "numeric_citation_rate": None},
+        "failure_class": None,
+        "judge": judge,
+    }
+
+
+# One repeat: (pipeline, repeat, verdict, answer text, recorded score, judge correctness).
+Repeat = tuple[str, int, str, str, float | None, int | None]
+
+
+def _entry(question_id: str, anchor: str, repeats: list[Repeat]) -> dict[str, Any]:
+    checks_id = "SET" if question_id.startswith("SET") else question_id
+    bank_question = "L05" if checks_id == "SET" else question_id
+    instance_id = f"{bank_question}-2026-{anchor}"
+    runs: dict[str, list[dict[str, Any]]] = {}
+    scores: dict[str, list[dict[str, Any] | None]] = {}
+    for pipeline, repeat, verdict, answer, score, correctness in repeats:
+        runs.setdefault(pipeline, []).append(_run(instance_id, pipeline, repeat, verdict, answer))
+        scores.setdefault(pipeline, []).append(
+            None if score is None and correctness is None else _score(score, correctness)
+        )
+    return {
+        "instance": {
+            "instance_id": instance_id,
+            "question_id": bank_question,
+            "stratum": "H3",
+            "sub_stratum": None,
+            "ontology_dependent": False,
+            "world_seed": 2026,
+            "anchor_id": anchor,
+            "text": f"When did incident {anchor} start?",
+            "expected_answer": f"Incident {anchor} started on 2025-10-07.",
+            "checks": _check_payloads(checks_id),
+            "claims": [
+                {
+                    "claim_id": f"{anchor}-c1",
+                    "statement": f"{anchor} started on 2025-10-07",
+                    "carriers": ["REC_1"],
+                }
+            ],
+        },
+        "runs": runs,
+        "scores": scores,
+    }
+
+
+def _payload(entries: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "kind": "official",
+        "label": None,
+        "selection": {"strata": None, "limit": None},
+        "reproducibility": {
+            "run": {"scorer_version": "2.0.0", "judge_prompt_version": "1.0.0"},
+            "worlds": [],
+        },
+        "worlds": [{"world_seed": 2026, "bank_hash": "abc", "unavailable": [], "results": entries}],
+    }
+
+
+ABSTAIN = "unknown"
+DATE_WITH_TIME = "It started on 2025-10-07T00:00:00 [1]."
+DATE_WRONG = "It started on 2025-10-09 [2]."
+SOURCES_SILENT = "The sources do not say when it started."
+
+
+def _small_entries() -> list[dict[str, Any]]:
+    """One member per cell, a repeat that fits two cells, and three that fit none."""
+    return [
+        # Abstention judged correct; also an L03 below 1: the first cell wins.
+        _entry("L03", "INC_001", [("A", 0, ABSTAIN, SOURCES_SILENT, 0.0, 2)]),
+        # L03 below 1 with a set-like partial score: l03_date, not partial_set.
+        _entry("L03", "INC_002", [("B", 0, "success", DATE_WITH_TIME, 0.0, 2)]),
+        # Version label.
+        _entry("L02", "INC_003", [("C", 1, "success", DATE_WRONG, LOW, 2)]),
+        # Partial set.
+        _entry("SET1", "INC_004", [("A", 2, "success", "MKT_UK only [1].", PARTIAL, 1)]),
+        # Agree, at 0 and 0.
+        _entry("L01", "INC_005", [("B", 0, "success", DATE_WRONG, 0.0, 0)]),
+        # Fits nothing: a partial token score judged 1.
+        _entry("L01", "INC_006", [("C", 0, "success", DATE_WRONG, 0.5, 1)]),
+        # Not judged: the judge gave no verdict.
+        _entry("L01", "INC_007", [("A", 0, "success", DATE_WITH_TIME, 1.0, None)]),
+        # An abstention judged 2 and scored 0 is no agree member either way.
+        _entry("L01", "INC_008", [("A", 1, ABSTAIN, SOURCES_SILENT, 1.0, 0)]),
+    ]
+
+
+def _bulk_entries() -> list[dict[str, Any]]:
+    """30 abstentions judged correct and 3 L03 dates below 1."""
+    entries = [
+        _entry("L01", f"INC_{100 + n}", [("A", 0, ABSTAIN, SOURCES_SILENT, 0.0, 2)])
+        for n in range(30)
+    ]
+    entries += [
+        _entry("L03", f"INC_{200 + n}", [("B", 0, "success", DATE_WRONG, 0.0, 0)]) for n in range(3)
+    ]
+    return entries
+
+
+def _write_run(directory: Path, entries: list[dict[str, Any]]) -> Path:
+    directory.mkdir(parents=True)
+    (directory / "results.json").write_text(json.dumps(_payload(entries)), encoding="utf-8")
+    return directory
+
+
+@pytest.fixture
+def run_dir(tmp_path: Path) -> Path:
+    return _write_run(tmp_path / RUN_NAME, _small_entries())
+
+
+@pytest.fixture
+def sample_dir(run_dir: Path, tmp_path: Path) -> Path:
+    return write_sample(run_dir, tmp_path / "labels" / "v0.2.0-sample")
+
+
+def _key(sample: Path) -> dict[str, Any]:
+    document: dict[str, Any] = json.loads((sample / "key.json").read_text(encoding="utf-8"))
+    return document
+
+
+def _item_ids_by_cell(sample: Path) -> dict[str, str]:
+    return {item["cell"]: item_id for item_id, item in _key(sample)["items"].items()}
+
+
+def _write_labels(path: Path, rows: dict[str, tuple[str, str]], notes: str = "") -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
+        writer.writerow(["item_id", "correctness", "abstained", "notes"])
+        for item_id, (correctness, abstained) in rows.items():
+            writer.writerow([item_id, correctness, abstained, notes])
+
+
+def _all(sample: Path, correctness: str, abstained: str = "n") -> dict[str, tuple[str, str]]:
+    return {item_id: (correctness, abstained) for item_id in _key(sample)["items"]}
+
+
+def test_cells_follow_the_precedence_order() -> None:
+    items = build_sample(_payload(_small_entries()))
+    cells = {item.instance.anchor_id: item.cell for item in items}
+    assert cells == {
+        "INC_001": "abstention_judged_correct",
+        "INC_002": "l03_date",
+        "INC_003": "version_label",
+        "INC_004": "partial_set",
+        "INC_005": "agree",
+    }
+    assert [name for name, _ in CELLS] == [
+        "abstention_judged_correct",
+        "l03_date",
+        "version_label",
+        "partial_set",
+        "agree",
+    ]
+    assert dict(CELLS) == {
+        "abstention_judged_correct": 25,
+        "l03_date": 15,
+        "version_label": 10,
+        "partial_set": 25,
+        "agree": 25,
+    }
+
+
+def test_items_are_numbered_in_hashed_order_across_cells() -> None:
+    items = build_sample(_payload(_small_entries()))
+    assert [item.item_id for item in items] == [f"S{n:03d}" for n in range(1, 6)]
+    hashes = [
+        labelling.sample_hash(item.instance.instance_id, item.run.pipeline, item.run.repeat)
+        for item in items
+    ]
+    assert hashes == sorted(hashes)
+
+
+def test_cell_sizes_and_shortfall_reported(tmp_path: Path) -> None:
+    payload = _payload(_bulk_entries())
+    items = build_sample(payload)
+    by_cell: dict[str, list[str]] = {}
+    for item in items:
+        by_cell.setdefault(item.cell, []).append(item.instance.instance_id)
+    assert len(by_cell["abstention_judged_correct"]) == 25
+    assert len(by_cell["l03_date"]) == 3
+    # The first 25 by hash, never backfilled from another cell.
+    members = sorted(
+        (labelling.sample_hash(instance_id, "A", 0), instance_id)
+        for instance_id in (f"L01-2026-INC_{100 + n}" for n in range(30))
+    )
+    assert sorted(by_cell["abstention_judged_correct"]) == sorted(i for _, i in members[:25])
+    assert (
+        labelling.sample_hash("L01-2026-INC_100", "A", 0)
+        == hashlib.sha256(b"v0.3-labels-2026-10-27:L01-2026-INC_100:A:0").hexdigest()
+    )
+    sample = write_sample(_write_run(tmp_path / RUN_NAME, _bulk_entries()), tmp_path / "out")
+    cells = _key(sample)["cells"]
+    assert cells["abstention_judged_correct"] == {
+        "size": 25,
+        "members": 30,
+        "taken": 25,
+        "shortfall": 0,
+    }
+    assert cells["l03_date"] == {"size": 15, "members": 3, "taken": 3, "shortfall": 12}
+    assert cells["agree"] == {"size": 25, "members": 0, "taken": 0, "shortfall": 25}
+
+
+def test_sample_is_deterministic(run_dir: Path, tmp_path: Path) -> None:
+    payload = _payload(_small_entries())
+    reordered = _payload(list(reversed(_small_entries())))
+    assert build_sample(payload) == build_sample(payload) == build_sample(reordered)
+    first = write_sample(run_dir, tmp_path / "first")
+    second = write_sample(run_dir, tmp_path / "second")
+    names = sorted(path.name for path in first.iterdir())
+    assert names == ["key.json", "labels-controller.csv", "labels-owner.csv", "sheet.md"]
+    assert names == sorted(path.name for path in second.iterdir())
+    for name in names:
+        assert (first / name).read_bytes() == (second / name).read_bytes()
+
+
+def test_sheet_hides_approach_cell_and_scores(sample_dir: Path) -> None:
+    sheet = (sample_dir / "sheet.md").read_text(encoding="utf-8")
+    folded = sheet.casefold()
+    assert "pipeline" not in folded
+    assert "approach" not in folded
+    assert "judge" not in folded
+    assert "TITLE_" not in sheet
+    assert "incidents:" not in sheet
+    for cell, _ in CELLS:
+        assert not re.search(rf"\b{cell}\b", sheet), cell
+    for value in ("0.6667", "0.667", "0.67", "0.3333", "0.333", "0.33"):
+        assert value not in sheet
+    assert "Do not open key.json before labelling." in sheet
+    assert "abstained: y or n" in sheet
+    assert labelling.CORRECTNESS_RUBRIC in sheet
+    assert labelling.CORRECTNESS_RUBRIC in JUDGE_SYSTEM_PROMPT
+
+
+def _section(sheet: str, item_id: str) -> str:
+    start = sheet.index(f"## {item_id}\n")
+    end = sheet.find("\n## ", start + 1)
+    return sheet[start : None if end == -1 else end]
+
+
+def test_blocks_are_blinded_like_the_judge(sample_dir: Path, run_dir: Path) -> None:
+    sheet = (sample_dir / "sheet.md").read_text(encoding="utf-8")
+    payload = json.loads((run_dir / "results.json").read_text(encoding="utf-8"))
+    entries = {e["instance"]["instance_id"]: e for e in payload["worlds"][0]["results"]}
+    for item_id, keyed in _key(sample_dir)["items"].items():
+        entry = entries[keyed["instance_id"]]
+        run = next(r for r in entry["runs"][keyed["pipeline"]] if r["repeat"] == keyed["repeat"])
+        blocks = tuple(ShownBlock(**block) for block in run["blocks"])
+        shown, answer = blind(
+            JudgeItem(
+                question=entry["instance"]["text"],
+                expected_answer=entry["instance"]["expected_answer"],
+                claim_statements=(),
+                blocks=blocks,
+                answer=run["answer"],
+                cited_blocks=tuple(run["cited_blocks"]),
+                blind_seed=item_id,
+            )
+        )
+        section = _section(sheet, item_id)
+        found = re.findall(r"^\[(\d+)\] (.*)$", section, flags=re.MULTILINE)
+        assert found == [(str(n), block.text) for n, block in enumerate(shown, start=1)]
+        assert f"> {answer}" in section
+        assert f"Verdict: {run['verdict']}" in section
+        assert entry["instance"]["text"] in section
+        assert entry["instance"]["expected_answer"] in section
+        assert entry["instance"]["claims"][0]["statement"] in section
+
+
+def test_label_files_are_empty_templates(sample_dir: Path) -> None:
+    ids = list(_key(sample_dir)["items"])
+    for name in ("labels-owner.csv", "labels-controller.csv"):
+        with (sample_dir / name).open(encoding="utf-8", newline="") as handle:
+            rows = list(csv.reader(handle))
+        assert rows[0] == ["item_id", "correctness", "abstained", "notes"]
+        assert [row[0] for row in rows[1:]] == ids
+        assert all(row[1:] == ["", "", ""] for row in rows[1:])
+        assert len(rows) - 1 <= 100
+
+
+def test_agreement_refuses_missing_or_invalid_labels(sample_dir: Path, run_dir: Path) -> None:
+    with pytest.raises(ValueError, match="S001, S002, S003, S004, S005"):
+        label_agreement(sample_dir, run_dir)
+    rows = _all(sample_dir, "2")
+    rows["S002"] = ("3", "n")
+    rows["S004"] = ("1", "maybe")
+    _write_labels(sample_dir / "labels-owner.csv", rows)
+    with pytest.raises(ValueError, match="S002, S004") as refused:
+        label_agreement(sample_dir, run_dir)
+    assert "S001" not in str(refused.value)
+    del rows["S005"]
+    rows["S002"] = ("2", "n")
+    rows["S004"] = ("1", "Y")
+    _write_labels(sample_dir / "labels-owner.csv", rows)
+    with pytest.raises(ValueError, match="S005"):
+        label_agreement(sample_dir, run_dir)
+
+
+def test_a_half_filled_second_labeller_is_refused(sample_dir: Path, run_dir: Path) -> None:
+    _write_labels(sample_dir / "labels-owner.csv", _all(sample_dir, "2"))
+    controller = {item_id: ("", "") for item_id in _key(sample_dir)["items"]}
+    controller["S003"] = ("2", "n")
+    _write_labels(sample_dir / "labels-controller.csv", controller)
+    with pytest.raises(ValueError, match=r"labels-controller\.csv.*S001, S002, S004, S005"):
+        label_agreement(sample_dir, run_dir)
+
+
+def test_agreement_needs_consensus_for_disagreements(sample_dir: Path, run_dir: Path) -> None:
+    owner = _all(sample_dir, "2")
+    controller = dict(owner)
+    controller["S002"] = ("1", "n")
+    controller["S004"] = ("2", "y")
+    _write_labels(sample_dir / "labels-owner.csv", owner)
+    _write_labels(sample_dir / "labels-controller.csv", controller)
+    with pytest.raises(ValueError, match=r"labels-consensus\.csv.*S002, S004"):
+        label_agreement(sample_dir, run_dir)
+    _write_labels(sample_dir / "labels-consensus.csv", {"S002": ("1", "n")})
+    with pytest.raises(ValueError, match="S004"):
+        label_agreement(sample_dir, run_dir)
+    _write_labels(
+        sample_dir / "labels-consensus.csv",
+        {"S002": ("1", "n"), "S004": ("2", "n"), "S001": ("2", "n")},
+    )
+    with pytest.raises(ValueError, match=r"not disputed.*S001"):
+        label_agreement(sample_dir, run_dir)
+    _write_labels(sample_dir / "labels-consensus.csv", {"S002": ("1", "n"), "S004": ("2", "n")})
+    result = label_agreement(sample_dir, run_dir)
+    labellers = result["labellers"]
+    assert labellers["names"] == ["owner", "controller"]
+    assert labellers["disputed"] == ["S002", "S004"]
+    assert labellers["correctness"]["n"] == 5
+    assert labellers["correctness"]["agreement"] == pytest.approx(0.8)
+    assert labellers["abstained"]["agreement"] == pytest.approx(0.8)
+
+
+def test_one_labeller_needs_no_consensus(sample_dir: Path, run_dir: Path) -> None:
+    _write_labels(sample_dir / "labels-owner.csv", _all(sample_dir, "2"))
+    result = label_agreement(sample_dir, run_dir)
+    assert result["labellers"]["names"] == ["owner"]
+    assert result["labellers"]["correctness"] is None
+
+
+def _labels_by_cell(sample: Path, labels: dict[str, tuple[str, str]]) -> dict[str, tuple[str, str]]:
+    ids = _item_ids_by_cell(sample)
+    return {ids[cell]: label for cell, label in labels.items()}
+
+
+def test_agreement_reports_every_measure_per_cell(sample_dir: Path, run_dir: Path) -> None:
+    labels = _labels_by_cell(
+        sample_dir,
+        {
+            "abstention_judged_correct": ("0", "y"),
+            "l03_date": ("2", "n"),
+            "version_label": ("0", "n"),
+            "partial_set": ("1", "n"),
+            "agree": ("0", "n"),
+        },
+    )
+    _write_labels(sample_dir / "labels-owner.csv", labels)
+    result = label_agreement(sample_dir, run_dir)
+    measures = [
+        "scorer_recorded",
+        "scorer_rescored",
+        "judge_recorded",
+        "judge_abstention_rule",
+    ]
+    assert list(result["measures"]) == measures
+    assert "scorer 2.0.0" in result["measures"]["scorer_recorded"]
+    assert "scorer 2.1.0" in result["measures"]["scorer_rescored"]
+    assert "judge 1.0.0" in result["measures"]["judge_recorded"]
+    assert set(result["cells"]) == {name for name, _ in CELLS}
+    for cell in result["cells"].values():
+        assert list(cell["measures"]) == measures
+        for found in cell["measures"].values():
+            assert set(found) == {"n", "agreement", "weighted_kappa", "wrong_share", "flagged"}
+    overall = result["overall"]
+    assert list(overall) == measures
+    # Scorer 2.0.0 recorded: levels 0, 0, 1, 1, 0 against labels 0, 2, 0, 1, 0.
+    assert overall["scorer_recorded"]["agreement"] == pytest.approx(3 / 5)
+    # Scorer 2.1.0 counts the date with a time: L03 rescored to 1, level 2.
+    cells = result["cells"]
+    assert cells["l03_date"]["measures"]["scorer_recorded"]["agreement"] == 0.0
+    assert cells["l03_date"]["measures"]["scorer_rescored"]["agreement"] == 1.0
+    # Judge 1.0.0 called the abstention correct; the 1.1.0 rule makes it 0.
+    abstention = cells["abstention_judged_correct"]["measures"]
+    assert abstention["judge_recorded"]["agreement"] == 0.0
+    assert abstention["judge_abstention_rule"]["agreement"] == 1.0
+    assert result["abstention"]["agreement"] == 1.0
+    assert result["run"] == RUN_NAME
+
+
+def test_eighty_percent_rule_flags_a_cell(tmp_path: Path) -> None:
+    run = _write_run(tmp_path / RUN_NAME, _bulk_entries())
+    sample = write_sample(run, tmp_path / "out")
+    keyed = _key(sample)["items"]
+    # Every abstention labelled correct at 2 (the judge right, the scorer and
+    # the abstention rule wrong); the three L03 dates labelled 0.
+    rows = {
+        item_id: ("2", "y") if item["cell"] == "abstention_judged_correct" else ("0", "n")
+        for item_id, item in keyed.items()
+    }
+    _write_labels(sample / "labels-owner.csv", rows)
+    result = label_agreement(sample, run)
+    abstention = result["cells"]["abstention_judged_correct"]["measures"]
+    assert abstention["scorer_recorded"]["wrong_share"] == 1.0
+    assert abstention["scorer_recorded"]["flagged"] is True
+    assert abstention["judge_abstention_rule"]["flagged"] is True
+    assert abstention["judge_recorded"]["wrong_share"] == 0.0
+    assert abstention["judge_recorded"]["flagged"] is False
+    agree = result["cells"]["agree"]["measures"]["judge_recorded"]
+    assert agree == {
+        "n": 0,
+        "agreement": None,
+        "weighted_kappa": None,
+        "wrong_share": None,
+        "flagged": False,
+    }
+    written = write_agreement(sample, run)
+    assert written == sample
+    page = (sample / "agreement.md").read_text(encoding="utf-8")
+    assert "flagged" in page
+    assert json.loads((sample / "agreement.json").read_text(encoding="utf-8")) == result
+
+
+def test_wrong_share_at_exactly_eighty_percent_is_flagged() -> None:
+    assert labelling.measure_cell([(0, 2)] * 4 + [(2, 2)])["flagged"] is True
+    assert labelling.measure_cell([(0, 2)] * 3 + [(2, 2)] * 2)["flagged"] is False
+
+
+def test_sample_writer_refuses_an_out_dir_inside_the_run(run_dir: Path, tmp_path: Path) -> None:
+    before = sorted(path.name for path in run_dir.iterdir())
+    with pytest.raises(ValueError, match="inside the run"):
+        write_sample(run_dir, run_dir / "labels")
+    assert sorted(path.name for path in run_dir.iterdir()) == before
+    taken = tmp_path / "taken"
+    taken.mkdir()
+    with pytest.raises(ValueError, match="already exists"):
+        write_sample(run_dir, taken)
+
+
+def test_agreement_refuses_another_run(sample_dir: Path, tmp_path: Path) -> None:
+    _write_labels(sample_dir / "labels-owner.csv", _all(sample_dir, "2"))
+    other = _write_run(tmp_path / "official-2026-11-01", _small_entries())
+    with pytest.raises(ValueError, match="official-2026-10-26"):
+        label_agreement(sample_dir, other)
+
+
+def test_labelling_calls_no_model(
+    run_dir: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def refuse(*args: object, **kwargs: object) -> None:
+        raise AssertionError("labelling called a model")
+
+    monkeypatch.setattr(gateway, "complete", refuse)
+    sample = write_sample(run_dir, tmp_path / "out")
+    _write_labels(sample / "labels-owner.csv", _all(sample, "2"))
+    assert write_agreement(sample, run_dir) == sample
+
+
+def test_cli_writes_the_sample_and_the_agreement(run_dir: Path, tmp_path: Path) -> None:
+    from app.evaluation.__main__ import main
+
+    out = tmp_path / "cli-sample"
+    assert main(["label-sample", "--run", str(run_dir), "--out", str(out)]) == 0
+    assert (out / "sheet.md").is_file()
+    _write_labels(out / "labels-owner.csv", _all(out, "2"))
+    assert main(["label-agreement", "--run", str(run_dir), "--sample", str(out)]) == 0
+    assert (out / "agreement.md").is_file()
+    with pytest.raises(SystemExit, match="already exists"):
+        main(["label-sample", "--run", str(run_dir), "--out", str(out)])
