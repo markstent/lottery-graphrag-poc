@@ -105,7 +105,7 @@ class RagAnswer(BaseModel):
     """Generated answer plus its cost and grounded citations.
 
     `citations` lists every block shown to the model in prompt order (the
-    selected evidence in judge order, whatever its kind), so
+    selection's order, whatever its kind), so
     `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
     """
 

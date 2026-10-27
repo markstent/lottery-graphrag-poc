@@ -73,8 +73,6 @@ class GraphRagPipeline:
         self.expansion = expansion
         # Concept node texts (pipeline C); B has none and never meets a concept.
         self.ontology = ontology
-        # Target types from the schema words; in C also the ontology's terms.
-        self.target_types = TargetTypeMatcher(ontology)
         self.neighbours = neighbours
         self.embeddings = embeddings
         self.sparse = sparse
@@ -104,8 +102,11 @@ class GraphRagPipeline:
         graph, emitter = self.settings.graph, self.emitter
         vectors = stages.VectorLayer(self.store, self.embeddings, self.sparse)
         nodes = stages.NodeReader(self.source_lookup, self.ontology, self.embeddings)
+        # Target types from the schema words, and in C the ontology's terms:
+        # built from the ontology in use for this run (about a millisecond).
+        targets = TargetTypeMatcher(self.ontology)
         resolution = stages.resolve(
-            question, scope, self.resolver, self.expansion, self.target_types, vectors, emitter
+            question, scope, self.resolver, self.expansion, targets, vectors, emitter
         )
         traversal = stages.traverse(resolution, self.neighbours, graph, nodes, emitter)
         ranked = stages.rank_and_scope(resolution, traversal, scope, graph, nodes, emitter)

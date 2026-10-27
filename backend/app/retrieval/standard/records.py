@@ -7,9 +7,8 @@ the planted-pattern carriers (shared devices, shared payment methods and the
 players taking part in a share, design 10a.2) are rendered as short English
 sentences and indexed next to document chunks. Local names are joined from
 the taxonomy tables so a block names a game's family, category and
-mechanics the way the market does. A graph node is judged and shown on
-these blocks only, so the judge and the model never see warehouse text A
-could not index (D-028).
+mechanics the way the market does. A graph node is shown as these blocks
+only, so the model never sees warehouse text A could not index (D-028).
 
 This serialiser is a fixed, published function: one template per table in
 ``SERIALISERS``, no tuning hooks, versioned by ``RECORD_SERIALISER_VERSION``

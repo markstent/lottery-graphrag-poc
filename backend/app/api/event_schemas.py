@@ -33,10 +33,12 @@ from app.events.payloads import (
     GraphTargetTypesResolved,
     GraphTraversalStarted,
     ModelStarted,
+    OldMethodGraphChunkDiscarded,
     OldMethodGraphContextAssembled,
     OldMethodGraphNodeDiscarded,
     OldMethodGraphNodeSelected,
     OldMethodRagContextAssembled,
+    OldMethodRagEvidenceDiscarded,
     RagCandidateReranked,
     RagCandidateRetrieved,
     RagContextAssembled,
@@ -142,7 +144,7 @@ class RagEvidenceSelectedEvent(_Envelope):
 
 class RagEvidenceDiscardedEvent(_Envelope):
     event_type: Literal["rag.evidence.discarded"]
-    payload: RagEvidenceDiscarded
+    payload: RagEvidenceDiscarded | OldMethodRagEvidenceDiscarded
 
 
 class RagContextAssembledEvent(_Envelope):
@@ -222,7 +224,12 @@ class GraphCandidateSelectedEvent(_Envelope):
 
 class GraphCandidateDiscardedEvent(_Envelope):
     event_type: Literal["graph.candidate.discarded"]
-    payload: GraphNodeDiscarded | OldMethodGraphNodeDiscarded | GraphChunkDiscarded
+    payload: (
+        GraphNodeDiscarded
+        | OldMethodGraphNodeDiscarded
+        | GraphChunkDiscarded
+        | OldMethodGraphChunkDiscarded
+    )
 
 
 class GraphEvidencePathCompletedEvent(_Envelope):

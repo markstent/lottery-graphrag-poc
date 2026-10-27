@@ -8,8 +8,8 @@
 
 Every pipeline shares one prompt (PROMPT_VERSION), one generator, one
 parser (`parse_answer`) and one citation builder (`citations_for`), and
-hands the generator one list of selected evidence in judge order, so the
-same selected evidence gives the same prompt in A, B and C
+hands the generator one list of selected evidence in prompt order, so the
+same selected evidence in the same order gives the same prompt in A, B and C
 (docs/reference/retrieval/retrieval-fairness.md). The model is asked for a JSON object
 with a verdict and a prose answer citing numbered sources as [n]; the parser
 keeps only citations that point at a block actually shown to the model.
@@ -69,7 +69,7 @@ class AnswerGenerator(Protocol):
     def generate(self, question: str, contexts: list[EvidenceChunk]) -> GenerationOutput:
         """Return the model output grounded in the given contexts.
 
-        ``contexts`` is the pipeline's selected evidence in judge order:
+        ``contexts`` is the pipeline's selected evidence in prompt order:
         document chunks, record blocks and graph nodes alike.
         """
         ...
@@ -82,7 +82,7 @@ def context_block(chunk: EvidenceChunk) -> str:
 
 
 def build_user_prompt(question: str, contexts: list[EvidenceChunk]) -> str:
-    """Numbered context in the order given (judge order); [n] in answers
+    """Numbered context in the order given (prompt order); [n] in answers
     maps to the n-th block."""
     blocks = [f"[{index}] {context_block(chunk)}" for index, chunk in enumerate(contexts, start=1)]
     joined = "\n\n".join(blocks) if blocks else "(no context retrieved)"

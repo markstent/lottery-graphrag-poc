@@ -7,10 +7,11 @@ frontend's types) and a test validates every stored event against them.
 failure rather than silent drift.
 
 Stored Live Lab runs of the old method (v0.2, the slot rule of D-081) replay
-through these models: the reasons only that method gave stay in
-DiscardReason, and the payloads whose fields changed keep an
-OldMethod... model beside the current one (the union accepts either, and
-extra="forbid" lets exactly one match). Method v0.3 code never emits them.
+through these models: every payload whose fields or discard reasons changed
+keeps an OldMethod... model beside the current one, and the union accepts
+either. The current models accept only the current reasons
+(DiscardReason); the old ones also accept the reasons only v0.2 gave
+(OldMethodDiscardReason). Method v0.3 code never emits an old shape.
 """
 
 from __future__ import annotations
@@ -28,7 +29,11 @@ DiscardReason = Literal[
     "same_record",
     "context_budget",
     "duplicate",
-    # Old method (v0.2) only, accepted for stored runs.
+]
+# Every reason a stored old-method (v0.2) run may carry: the current ones and
+# the two the slot rule gave.
+OldMethodDiscardReason = Literal[
+    DiscardReason,
     "superseded_by_structured_fact",
     "slot_limit",
 ]
@@ -106,6 +111,13 @@ class RagEvidenceSelected(Payload):
 class RagEvidenceDiscarded(Payload):
     chunk_id: str
     reason: DiscardReason
+
+
+class OldMethodRagEvidenceDiscarded(Payload):
+    """Old method (v0.2) only: a discard with a reason of the slot rule."""
+
+    chunk_id: str
+    reason: OldMethodDiscardReason
 
 
 class RagContextAssembled(Payload):
@@ -267,13 +279,21 @@ class OldMethodGraphNodeDiscarded(Payload):
     rerank_score: float | None
     hops: int
     seed: bool
-    reason: DiscardReason
+    reason: OldMethodDiscardReason
 
 
 class GraphChunkDiscarded(Payload):
     chunk_id: str
     rerank_score: float | None
     reason: DiscardReason
+
+
+class OldMethodGraphChunkDiscarded(Payload):
+    """Old method (v0.2) only: a discard with a reason of the slot rule."""
+
+    chunk_id: str
+    rerank_score: float | None
+    reason: OldMethodDiscardReason
 
 
 class GraphEvidencePathCompleted(Payload):

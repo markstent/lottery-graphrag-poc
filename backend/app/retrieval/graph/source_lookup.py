@@ -1,12 +1,12 @@
-"""Authoritative source lookup and judged text for graph evidence.
+"""Authoritative source lookup and shown text for graph evidence.
 
 The graph guides retrieval; quantitative facts come from the structured
 layer (AGENTS.md Graph Augmentation Principle). For each structured node
 this module reads the authoritative warehouse row from the dataset Parquet
 via DuckDB (for citations, ranking validity, market scope and the UI), and
-gives the block the node is judged and shown on: the exact record block
-pipeline A indexes for the same row when one exists, else "<Label> <id>"
-only. The judge and the model never see warehouse text A could not index
+gives the block the node is shown as: the exact record block pipeline A
+indexes for the same row when one exists, else "<Label> <id>" only. The
+model never sees warehouse text A could not index
 (D-028).
 """
 
@@ -235,10 +235,10 @@ class SourceLookup:
         return self._record_blocks.get((table, node_id)) if table is not None else None
 
     def node_text(self, node_label: str, node_id: str) -> str:
-        """The text a node is judged and shown on.
+        """The text a node is scored on (semantic relevance) and shown as.
 
-        The node's record block, byte for byte, so the judge scores the same
-        text for the same record in every pipeline; "<Label> <id>" for a
+        The node's record block, byte for byte, so the same record reads the
+        same in every pipeline; "<Label> <id>" for a
         node whose row has no block.
         """
         record = self.record_block(node_label, node_id)

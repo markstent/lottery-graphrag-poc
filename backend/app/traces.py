@@ -76,9 +76,10 @@ HEADER_LINES: tuple[str, ...] = (
         "- **B, graph relationships**: an id and market resolver seeds a bounded "
         "traversal over the structured-record subgraph (when nothing resolves, the "
         "graph node of the best-matching record block); every traversal node joins A's "
-        "document channel as a structured candidate, judged and shown as the record "
-        "block A indexes for its row (or only `<Label> <id>` when the row has none); "
-        "nodes carry authoritative facts from the source tables for citations."
+        "graph channel, ordered by graph relevance (seeds, then nodes holding what "
+        "the question asks for, then the rest), and is shown as the record block A "
+        "indexes for its row (or only `<Label> <id>` when the row has none); nodes "
+        "carry authoritative facts from the source tables for citations."
     ),
     "  No ontology: no concept seeds, no `MAPS_TO` expansion, no query expansion.",
     (
@@ -89,9 +90,9 @@ HEADER_LINES: tuple[str, ...] = (
     ),
     "",
     (
-        "Same question, same synthetic world, same embedding model, one reranker that "
-        "judges every candidate against the raw question, same generator and prompt "
-        "(the selection in judge order), one context budget and slot count."
+        "Same question, same synthetic world, same embedding model, one re-ranker that "
+        "orders the document candidates against the raw question, same generator and "
+        "prompt, and one token budget with no item limit (the selection in prompt order)."
     ),
     "Only the retrieval layers differ.",
     "",
@@ -221,10 +222,6 @@ def _fmt_timings(
         judged = sum(1 for e in events if e.event_type == reranked_type)
         line += f", judge {first.t_ms - started.t_ms:.0f} ms over {judged} candidates"
     return line
-
-
-def _fmt_score(score: float | None) -> str:
-    return "-" if score is None else f"{score:.3f}"
 
 
 def _fmt_answer(answer: RagAnswer) -> list[str]:

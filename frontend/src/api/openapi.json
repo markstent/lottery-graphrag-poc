@@ -1108,6 +1108,9 @@
               },
               {
                 "$ref": "#/components/schemas/GraphChunkDiscarded"
+              },
+              {
+                "$ref": "#/components/schemas/OldMethodGraphChunkDiscarded"
               }
             ],
             "title": "Payload"
@@ -1328,9 +1331,7 @@
               "out_of_scope_market",
               "same_record",
               "context_budget",
-              "duplicate",
-              "superseded_by_structured_fact",
-              "slot_limit"
+              "duplicate"
             ],
             "title": "Reason",
             "type": "string"
@@ -2014,9 +2015,7 @@
               "out_of_scope_market",
               "same_record",
               "context_budget",
-              "duplicate",
-              "superseded_by_structured_fact",
-              "slot_limit"
+              "duplicate"
             ],
             "title": "Reason",
             "type": "string"
@@ -3611,6 +3610,47 @@
         "title": "NodeOut",
         "type": "object"
       },
+      "OldMethodGraphChunkDiscarded": {
+        "additionalProperties": false,
+        "description": "Old method (v0.2) only: a discard with a reason of the slot rule.",
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "excluded_label",
+              "out_of_scope_market",
+              "same_record",
+              "context_budget",
+              "duplicate",
+              "superseded_by_structured_fact",
+              "slot_limit"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "rerank_score",
+          "reason"
+        ],
+        "title": "OldMethodGraphChunkDiscarded",
+        "type": "object"
+      },
       "OldMethodGraphContextAssembled": {
         "additionalProperties": false,
         "description": "Old method (v0.2) only: it recorded its evidence-slot count.",
@@ -3787,6 +3827,35 @@
           "evidence_slots"
         ],
         "title": "OldMethodRagContextAssembled",
+        "type": "object"
+      },
+      "OldMethodRagEvidenceDiscarded": {
+        "additionalProperties": false,
+        "description": "Old method (v0.2) only: a discard with a reason of the slot rule.",
+        "properties": {
+          "chunk_id": {
+            "title": "Chunk Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "excluded_label",
+              "out_of_scope_market",
+              "same_record",
+              "context_budget",
+              "duplicate",
+              "superseded_by_structured_fact",
+              "slot_limit"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "chunk_id",
+          "reason"
+        ],
+        "title": "OldMethodRagEvidenceDiscarded",
         "type": "object"
       },
       "OntologyOut": {
@@ -4440,7 +4509,7 @@
         "type": "object"
       },
       "RagAnswer": {
-        "description": "Generated answer plus its cost and grounded citations.\n\n`citations` lists every block shown to the model in prompt order (the\nselected evidence in judge order, whatever its kind), so\n`cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.",
+        "description": "Generated answer plus its cost and grounded citations.\n\n`citations` lists every block shown to the model in prompt order (the\nselection's order, whatever its kind), so\n`cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.",
         "properties": {
           "citations": {
             "items": {
@@ -4946,9 +5015,7 @@
               "out_of_scope_market",
               "same_record",
               "context_budget",
-              "duplicate",
-              "superseded_by_structured_fact",
-              "slot_limit"
+              "duplicate"
             ],
             "title": "Reason",
             "type": "string"
@@ -4974,7 +5041,15 @@
             "type": "string"
           },
           "payload": {
-            "$ref": "#/components/schemas/RagEvidenceDiscarded"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RagEvidenceDiscarded"
+              },
+              {
+                "$ref": "#/components/schemas/OldMethodRagEvidenceDiscarded"
+              }
+            ],
+            "title": "Payload"
           },
           "pipeline": {
             "enum": [

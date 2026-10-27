@@ -27,6 +27,7 @@ from app.events import (
 )
 from app.evidence import EvidenceChunk
 from app.graph.statements import STATED_LINKS_LIMIT
+from app.ontology.loader import load_ontology
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import ResolvedEntity, StaticEntityResolver
 from app.retrieval.graph.traversal import (
@@ -591,3 +592,23 @@ def test_a_refused_stated_links_read_fails_the_run() -> None:
     # Without a target type no read is made, so the same provider cannot fail it.
     pipeline.run("What is the price of GAME_GR_01?")
     assert provider.reads == 1
+
+
+def test_target_types_follow_the_ontology_in_use() -> None:
+    """The matcher is built from the pipeline's ontology at each run, so an
+    ontology set after construction adds its terms (C) and removing it gives
+    the schema words only (B); a matcher built once would keep the old one."""
+    question = "Was there a payment failure in INC_S007_GR's market?"
+
+    def labels(pipeline: GraphRagPipeline) -> object:
+        pipeline.run(question)
+        events = [e for e in pipeline.events if e.event_type == GRAPH_TARGET_TYPES_RESOLVED]
+        return events[-1].payload["labels"]
+
+    pipeline = build_pipeline()
+    assert pipeline.ontology is None
+    assert labels(pipeline) == "Market"
+    pipeline.ontology = load_ontology()
+    assert labels(pipeline) == "IncidentType,Market"
+    pipeline.ontology = None
+    assert labels(pipeline) == "Market"

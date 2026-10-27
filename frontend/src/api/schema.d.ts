@@ -1007,7 +1007,7 @@ export interface components {
              */
             event_type: "graph.candidate.discarded";
             /** Payload */
-            payload: components["schemas"]["GraphNodeDiscarded"] | components["schemas"]["OldMethodGraphNodeDiscarded"] | components["schemas"]["GraphChunkDiscarded"];
+            payload: components["schemas"]["GraphNodeDiscarded"] | components["schemas"]["OldMethodGraphNodeDiscarded"] | components["schemas"]["GraphChunkDiscarded"] | components["schemas"]["OldMethodGraphChunkDiscarded"];
             /**
              * Pipeline
              * @enum {string}
@@ -1097,7 +1097,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate" | "superseded_by_structured_fact" | "slot_limit";
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate";
             /** Rerank Score */
             rerank_score: number | null;
         };
@@ -1376,7 +1376,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate" | "superseded_by_structured_fact" | "slot_limit";
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate";
             /** Score */
             score: number;
             /** Seed */
@@ -2023,6 +2023,21 @@ export interface components {
             provenance: components["schemas"]["ProvenanceOut"] | null;
         };
         /**
+         * OldMethodGraphChunkDiscarded
+         * @description Old method (v0.2) only: a discard with a reason of the slot rule.
+         */
+        OldMethodGraphChunkDiscarded: {
+            /** Chunk Id */
+            chunk_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate" | "superseded_by_structured_fact" | "slot_limit";
+            /** Rerank Score */
+            rerank_score: number | null;
+        };
+        /**
          * OldMethodGraphContextAssembled
          * @description Old method (v0.2) only: it recorded its evidence-slot count.
          */
@@ -2094,6 +2109,19 @@ export interface components {
             evidence_slots: number;
             /** Selected */
             selected: number;
+        };
+        /**
+         * OldMethodRagEvidenceDiscarded
+         * @description Old method (v0.2) only: a discard with a reason of the slot rule.
+         */
+        OldMethodRagEvidenceDiscarded: {
+            /** Chunk Id */
+            chunk_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate" | "superseded_by_structured_fact" | "slot_limit";
         };
         /** OntologyOut */
         OntologyOut: {
@@ -2362,7 +2390,7 @@ export interface components {
          * @description Generated answer plus its cost and grounded citations.
          *
          *     `citations` lists every block shown to the model in prompt order (the
-         *     selected evidence in judge order, whatever its kind), so
+         *     selection's order, whatever its kind), so
          *     `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
          */
         RagAnswer: {
@@ -2575,7 +2603,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate" | "superseded_by_structured_fact" | "slot_limit";
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate";
         };
         /** RagEvidenceDiscardedEvent */
         RagEvidenceDiscardedEvent: {
@@ -2586,7 +2614,8 @@ export interface components {
              * @enum {string}
              */
             event_type: "rag.evidence.discarded";
-            payload: components["schemas"]["RagEvidenceDiscarded"];
+            /** Payload */
+            payload: components["schemas"]["RagEvidenceDiscarded"] | components["schemas"]["OldMethodRagEvidenceDiscarded"];
             /**
              * Pipeline
              * @enum {string}

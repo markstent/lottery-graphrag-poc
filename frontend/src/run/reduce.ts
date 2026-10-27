@@ -19,7 +19,9 @@ export type PipelineId = NonNullable<
 export type GraphPipelineId = Exclude<PipelineId, 'A'>
 export type ErrorPayload = Schemas['ErrorPayload']
 export type CandidateKind = Schemas['GraphCandidateReranked']['kind']
-export type DiscardReason = Schemas['GraphNodeDiscarded']['reason']
+/** Every discard reason a run may carry: the current ones, and the two only
+ * stored old-method (v0.2) runs gave, which still replay. */
+export type DiscardReason = Schemas['OldMethodGraphNodeDiscarded']['reason']
 
 export type RunStatus =
   'pending' | 'running' | 'completed' | 'failed' | 'cancelled'

@@ -23,12 +23,18 @@ from app.api.errors import UNEXPECTED_MESSAGE
 from app.api.event_schemas import RecordedEvent
 from app.api.runs import EventPayloadError, QueryService, RecordingSink
 from app.events import RetrievalEvent
-from app.events.payloads import Payload
+from app.events.payloads import (
+    GraphChunkDiscarded,
+    GraphNodeDiscarded,
+    Payload,
+    RagEvidenceDiscarded,
+)
 from app.lab import Lab
 from app.main import create_app
 from app.persistence.store import RunStore
 from app.retrieval.standard.index import index_corpus
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from tests.conftest import build_lab_offline
 from tests.helpers import (
@@ -203,6 +209,9 @@ def test_a_stored_old_method_run_still_replays() -> None:
             {"selected": 12, "discarded": 28, "context_tokens": 1130, "evidence_slots": 12},
         ),
         _old_method_event(
+            "rag.evidence.discarded", "A", {"chunk_id": "CHNK_1", "reason": "slot_limit"}
+        ),
+        _old_method_event(
             "graph.candidate.reranked",
             "B",
             {"candidate_id": "INC_1", "kind": "node", "rerank_score": 0.7, "rank": 1},
@@ -254,12 +263,28 @@ def test_a_stored_old_method_run_still_replays() -> None:
         assert dumped == {k: v for k, v in event["payload"].items() if v is not None}
     assert models == [
         "OldMethodRagContextAssembled",
+        "OldMethodRagEvidenceDiscarded",
         "GraphCandidateReranked",
         "OldMethodGraphNodeSelected",
         "OldMethodGraphNodeDiscarded",
-        "GraphChunkDiscarded",
+        "OldMethodGraphChunkDiscarded",
         "OldMethodGraphContextAssembled",
     ]
+
+
+@pytest.mark.parametrize("reason", sorted(OLD_METHOD_REASONS))
+def test_a_current_model_rejects_an_old_method_reason(reason: str) -> None:
+    """Only the old-method models accept the slot rule's reasons, so a v0.3
+    emitter that gave one would fail its event rather than store it."""
+    node = {"node_id": "N", "score": 0.5, "hops": 1, "seed": False, "tier": "other"}
+    for model, payload in (
+        (RagEvidenceDiscarded, {"chunk_id": "C"}),
+        (GraphChunkDiscarded, {"chunk_id": "C", "rerank_score": 0.1}),
+        (GraphNodeDiscarded, node | {"graph_rank": 3}),
+    ):
+        model.model_validate(payload | {"reason": "context_budget"})
+        with pytest.raises(ValidationError, match="reason"):
+            model.model_validate(payload | {"reason": reason})
 
 
 def _old_method_keys(stored: list[dict[str, Any]]) -> list[tuple[str, str]]:

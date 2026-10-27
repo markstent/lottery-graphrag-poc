@@ -819,14 +819,15 @@ class TestTelemetryAndDeterminism:
                 )
             )
         assert runs[0] == runs[1]
-        # The incident's row reaches the prompt once: as its block or as its node.
+        # The incident's row reaches the prompt once. Its record block is
+        # admitted first (the document channel opens the alternation and the
+        # block is admitted on that first turn), so the seed node is the copy
+        # refused.
         refused = [
             outcome for outcome in [*runs[0][1], *runs[0][2]] if outcome[2] == SELECTION_SAME_RECORD
         ]
-        assert refused in (
-            [("INC_S007_GR", False, SELECTION_SAME_RECORD)],
-            [(record.chunk_id, False, SELECTION_SAME_RECORD)],
-        )
+        assert refused == [("INC_S007_GR", False, SELECTION_SAME_RECORD)]
+        assert (record.chunk_id, True, None) in runs[0][2]
 
     def test_empty_question_rejected(self) -> None:
         with pytest.raises(ValueError, match="empty"):
