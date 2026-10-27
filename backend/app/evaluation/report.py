@@ -114,6 +114,12 @@ REASON_WORDS = {
 # Pipeline A resolves no entities, so its anchor resolution reads the selection only.
 ANCHOR_RESOLUTION_BASIS = {"A": "selection", "B": "resolution", "C": "resolution"}
 
+# The owner's rule of 2026-10-27: a weighted kappa is shown only over at least
+# this many items; below it the page says "too few to say". Exact agreement is
+# always shown, with its n.
+MIN_KAPPA_ITEMS = 10
+TOO_FEW_FOR_KAPPA = "too few to say"
+
 Extractor = Callable[[RunScore, PipelineRun], float | None]
 
 
@@ -653,6 +659,8 @@ def _agreement_section(agreements: dict[str, Any]) -> list[str]:
         "",
         "Agreement is the share of judged repeats on the same level; the weighted kappa "
         "(linear weights) discounts chance and counts a one-level gap as half a disagreement.",
+        f"The weighted kappa is shown only over at least {MIN_KAPPA_ITEMS} judged repeats; "
+        f"below that the table says {TOO_FEW_FOR_KAPPA}.",
         "Answers that say the sources do not answer are reported apart from answers that answer.",
         "",
         "| Pipeline | Answers | Judged repeats | Agreement | Weighted kappa |",
@@ -664,7 +672,7 @@ def _agreement_section(agreements: dict[str, Any]) -> list[str]:
             row = split[answers]
             lines.append(
                 f"| {name} | {answers} | {row['n']} | {_ratio(row['agreement'])} "
-                f"| {_ratio(row['weighted_kappa'])} |"
+                f"| {kappa_text(row['n'], row['weighted_kappa'], undefined='-')} |"
             )
     return [*lines, ""]
 
@@ -697,6 +705,13 @@ def _number(metric: str, value: float) -> str:
 
 def _p(value: float | None) -> str:
     return "-" if value is None else f"{value:.4f}"
+
+
+def kappa_text(n: int, kappa: float | None, undefined: str = "undefined") -> str:
+    """A weighted kappa as shown: only over :data:`MIN_KAPPA_ITEMS` items or more."""
+    if n < MIN_KAPPA_ITEMS:
+        return TOO_FEW_FOR_KAPPA
+    return undefined if kappa is None else f"{kappa:.3f}"
 
 
 def _ratio(value: float | None) -> str:

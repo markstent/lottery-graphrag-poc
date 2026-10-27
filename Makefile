@@ -139,7 +139,7 @@ dev-run: ## Development run on seed 2026, not a result (wipes and restores the g
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
 	$(UV) run python -m app.evaluation run --kind dev --seeds 2026 --repeats $(or $(REPEATS),1) $(if $(STRATA),--strata $(STRATA)) $(if $(LIMIT),--limit $(LIMIT)) $(if $(OUT),--out $(OUT))
 
-diagnose-selection: ## Read-only: what the shared re-ranker keeps of the claim records each approach finds (seed 2026, no answer model; the embedding and re-ranking models run)
+diagnose-selection: ## Read-only: which claim records each approach finds and the selection keeps (seed 2026; no answer model; reads Neo4j, runs the embedding and re-ranking models)
 	$(UV) run python -m app.evaluation diagnose-selection
 
 addendum-v020: ## Model-free addendum: rescore official run v0.2.0 with scorer 2.1.0 and groundedness
