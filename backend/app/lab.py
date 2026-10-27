@@ -232,10 +232,14 @@ def bc_graph_settings(
     C is the base configuration. B is derived from it by
     :meth:`GraphRagSettings.without_ontology`, which drops every ontology
     relationship type and concept expansion; limits, budgets and every other
-    relationship type are identical.
+    relationship type are identical. Each gets its own copy of the base
+    context settings, so the fairness tests compare A's, B's and C's budget
+    by value rather than one shared object with itself.
     """
     graph_c = dataclasses.replace(base.graph, ontology_expansion=True)
     return (
-        dataclasses.replace(base, graph=graph_c.without_ontology()),
-        dataclasses.replace(base, graph=graph_c),
+        dataclasses.replace(
+            base, graph=graph_c.without_ontology(), context=dataclasses.replace(base.context)
+        ),
+        dataclasses.replace(base, graph=graph_c, context=dataclasses.replace(base.context)),
     )

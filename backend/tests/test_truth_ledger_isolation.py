@@ -33,6 +33,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from app.evaluation import load_ledger
 from app.scenarios.catalogue import ENABLED
 from app.scenarios.engine import apply_scenarios
@@ -162,14 +163,16 @@ def _retrieval_modules() -> list[str]:
     return [m.name for m in pkgutil.walk_packages(app.retrieval.__path__, "app.retrieval.")]
 
 
-def _evaluation_modules_loaded_by(modules: list[str]) -> list[str]:
-    """The ``app.evaluation`` modules a fresh interpreter has loaded after
+def _evaluation_modules_loaded_by(
+    modules: list[str], prefixes: tuple[str, ...] = ("app.evaluation",)
+) -> list[str]:
+    """The modules under ``prefixes`` a fresh interpreter has loaded after
     importing ``modules``; run in a subprocess so nothing else has loaded them."""
     code = (
         "import importlib, sys\n"
         f"for name in {modules!r}:\n"
         "    importlib.import_module(name)\n"
-        "print('\\n'.join(sorted(n for n in sys.modules if n.startswith('app.evaluation'))))\n"
+        f"print('\\n'.join(sorted(n for n in sys.modules if n.startswith({prefixes!r}))))\n"
     )
     done = subprocess.run(
         [sys.executable, "-c", code], capture_output=True, text=True, check=True, timeout=120
@@ -186,6 +189,33 @@ def test_the_lab_and_every_retrieval_module_load_no_evaluation_module() -> None:
 def test_the_runtime_check_sees_an_evaluation_module_when_one_is_loaded() -> None:
     """The check is not vacuous: a module that does load the evaluator is caught."""
     assert "app.evaluation.grounding" in _evaluation_modules_loaded_by(["app.api.scoring"])
+
+
+# The modules method v0.3 added or rewrote, and what none of them may load:
+# the evaluator (bank, answer keys, truth ledger, hand labels) and the
+# scenario engine, which plants the truth and writes the ledger.
+V03_RETRIEVAL_MODULES = (
+    "app.retrieval.graph.resolution",
+    "app.retrieval.graph.ranking",
+    "app.retrieval.standard.context",
+    "app.retrieval.standard.records",
+    "app.retrieval.standard.corpus",
+    "app.retrieval.standard.generation",
+)
+TRUTH_PREFIXES = ("app.evaluation", "app.scenarios")
+
+
+@pytest.mark.parametrize("module", V03_RETRIEVAL_MODULES)
+def test_new_retrieval_modules_load_no_evaluation_module(module: str) -> None:
+    """Each module alone, in a fresh interpreter, loads no evaluator or
+    scenario module, so its isolation does not lean on what else is imported."""
+    assert _evaluation_modules_loaded_by([module], TRUTH_PREFIXES) == []
+
+
+def test_the_runtime_check_sees_a_scenario_module_when_one_is_loaded() -> None:
+    assert "app.scenarios.planter" in _evaluation_modules_loaded_by(
+        ["app.scenarios.engine"], TRUTH_PREFIXES
+    )
 
 
 def test_retrieval_imports_nothing_from_api() -> None:
