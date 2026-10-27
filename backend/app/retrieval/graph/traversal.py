@@ -69,6 +69,16 @@ class NeighbourEdge:
 
 
 @dataclass(frozen=True, slots=True)
+class StatedLink:
+    """A schema-stated relationship between two reached nodes, in its
+    stored (schema) direction: ``from_id``'s own record states it."""
+
+    from_id: str
+    rel_type: str
+    to_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class TraversalResult:
     """Everything the walk touched, in discovery order."""
 
@@ -82,9 +92,10 @@ class TraversalResult:
     path_strengths: dict[str, float] = field(default_factory=dict)
     depth_reached: int = 0
     # Every schema-stated relationship between two reached nodes, in its
-    # stored direction (``with_stated_links``); empty until fetched. The
-    # walk's ``edges`` are only its discovery edges (a spanning tree).
-    stated_links: list[NeighbourEdge] = field(default_factory=list)
+    # stored direction (``with_stated_links``). None means not fetched:
+    # a consumer refuses it rather than read it as "no links". The walk's
+    # ``edges`` are only its discovery edges (a spanning tree).
+    stated_links: list[StatedLink] | None = None
 
     def path_to(self, node_id: str) -> list[str]:
         """Seed-to-node path through parent links (for replay and drawing)."""
@@ -171,7 +182,7 @@ class NeighbourProvider(Protocol):
 
     def stated_links(
         self, ids: list[str], rel_types: tuple[str, ...], limit: int
-    ) -> list[NeighbourEdge]:
+    ) -> list[StatedLink]:
         """Relationships of the given types whose two ends are both in
         ``ids``, in stored direction, ordered by (from, type, to), at most
         ``limit`` rows. Reads relationships only: never adds a node."""
@@ -244,14 +255,14 @@ class StaticNeighbourProvider:
 
     def stated_links(
         self, ids: list[str], rel_types: tuple[str, ...], limit: int
-    ) -> list[NeighbourEdge]:
+    ) -> list[StatedLink]:
         among = set(ids)
         links = [
-            edge
+            StatedLink(edge.from_id, edge.rel_type, edge.to_id)
             for edge in self._stored
             if edge.rel_type in rel_types and edge.from_id in among and edge.to_id in among
         ]
-        links.sort(key=lambda edge: (edge.from_id, edge.rel_type, edge.to_id))
+        links.sort(key=lambda link: (link.from_id, link.rel_type, link.to_id))
         return links[:limit]
 
 
@@ -356,10 +367,10 @@ def with_stated_links(
     its paths and its limits untouched. Bound: the ids are at most
     ``settings.max_total_nodes``; the rows at most ``STATED_LINKS_LIMIT``,
     and a result over that limit is refused rather than silently cut. With
-    no reached node no query is issued.
+    no reached node no query is issued and the links are empty.
     """
     if not traversal.node_ids:
-        return traversal
+        return replace(traversal, stated_links=[])
     if len(traversal.node_ids) > settings.max_total_nodes:
         raise StatedLinksError(
             f"{len(traversal.node_ids)} reached nodes exceed the total node limit "
@@ -452,6 +463,9 @@ def expand_ontology(
             parents=parents,
             relationships=relationships,
             path_strengths=strengths,
+            # A new node set: links fetched before expansion are stale, so
+            # they are reset to "not fetched" and must be read again.
+            stated_links=None,
             depth_reached=max(
                 [traversal.depth_reached, *[hops[node] for node in node_ids]], default=0
             ),

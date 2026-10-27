@@ -282,7 +282,7 @@ RETRIEVAL_STATED_LINKS = """
 UNWIND $ids AS fid
 MATCH (a {id: fid})-[r]->(b)
 WHERE type(r) IN $rel_types AND b.id IN $ids
-RETURN a.id AS from_id, type(r) AS rel_type, b.id AS to_id, labels(b)[0] AS to_label
+RETURN a.id AS from_id, type(r) AS rel_type, b.id AS to_id
 ORDER BY from_id, rel_type, to_id
 LIMIT $limit
 """

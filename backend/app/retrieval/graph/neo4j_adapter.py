@@ -15,7 +15,7 @@ from app.graph import statements
 from app.ontology.model import Ontology
 from app.ontology.terms import TermMatcher
 from app.retrieval.graph.resolution import IdEntityResolver, TermEntityResolver
-from app.retrieval.graph.traversal import NeighbourEdge
+from app.retrieval.graph.traversal import NeighbourEdge, StatedLink
 
 
 class GraphReader:
@@ -160,7 +160,7 @@ class GraphReader:
 
     def stated_links(
         self, ids: list[str], rel_types: tuple[str, ...], limit: int
-    ) -> list[NeighbourEdge]:
+    ) -> list[StatedLink]:
         """Relationships of the given types between two of the given ids,
         in stored direction (bounds in ``with_stated_links``)."""
         records = self._records(
@@ -168,11 +168,10 @@ class GraphReader:
             {"ids": ids, "rel_types": list(rel_types), "limit": limit},
         )
         return [
-            NeighbourEdge(
+            StatedLink(
                 from_id=str(record["from_id"]),
                 rel_type=str(record["rel_type"]),
                 to_id=str(record["to_id"]),
-                to_label=str(record["to_label"]),
             )
             for record in records
         ]
