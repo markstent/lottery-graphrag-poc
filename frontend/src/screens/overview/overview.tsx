@@ -5,6 +5,7 @@
  */
 
 import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
+import { EVIDENCE_LABELS, methodBadge } from '../../app/method'
 import { datasetName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { MISSING } from '../../app/score-words'
@@ -35,7 +36,14 @@ async function loadConfiguration(signal: AbortSignal) {
   return { dataset: datasets.find((d) => d.active) ?? null, models }
 }
 
-function Tile({ figures }: { figures: TileFigures }) {
+function Tile({
+  figures,
+  label,
+}: {
+  figures: TileFigures
+  /** What the tile measures, such as "Evidence score, questions with claims". */
+  label: string
+}) {
   const pipeline = PIPELINES.find((p) => p.id === figures.pipeline)!
   return (
     <div
@@ -50,7 +58,7 @@ function Tile({ figures }: { figures: TileFigures }) {
         {pipeline.label}
       </h3>
       <StatTile
-        label="Evidence score, all questions"
+        label={label}
         value={figures.mean}
         unit=""
         decimals={2}
@@ -73,7 +81,7 @@ function LatestRun() {
       error={errorOf(load)}
       onRetry={load.retry}
       skeleton={
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {PIPELINES.map((p) => (
             <div key={p.id} className="skeleton-bar h-24 rounded-card" />
           ))}
@@ -82,9 +90,18 @@ function LatestRun() {
     >
       {verdict?.kind === 'official' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <p>
+            <span className="inline-block rounded-chip border border-border px-2 py-0.5 text-sm font-medium text-text-primary">
+              {methodBadge(verdict.method)}
+            </span>
+          </p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {verdict.tiles.map((figures) => (
-              <Tile key={figures.pipeline} figures={figures} />
+              <Tile
+                key={figures.pipeline}
+                figures={figures}
+                label={`${EVIDENCE_LABELS[verdict.metric]}, questions with claims`}
+              />
             ))}
           </div>
           <ul className="list-disc space-y-1 pl-5 text-base text-text-primary">
@@ -188,7 +205,7 @@ export function Overview() {
       <Panel title={FLOW_TITLE} state="ready">
         <FlowDiagram />
       </Panel>
-      <div className="grid grid-cols-2 items-start gap-4">
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
         <RunAQuestion />
         <Configuration />
       </div>

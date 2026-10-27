@@ -24,6 +24,7 @@ const OFFICIAL_RUN: Schemas['BenchmarkRunOut'] = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: 'Fixture run (test values)',
+  method_version: '0.2.0',
   started_at: '2026-10-20T09:00:00Z',
   selection: { strata: null, limit: null },
   worlds: [2026],
@@ -35,7 +36,7 @@ const summaryOf = (
   run_id: string,
   run_kind: string,
   summary: Schemas['SummaryOut'],
-) => ({ run_id, run_kind, label: null, summary })
+) => ({ run_id, run_kind, label: null, method_version: '0.2.0', summary })
 
 const ROUTES = {
   '/api/v1/benchmarks/jobs': [],

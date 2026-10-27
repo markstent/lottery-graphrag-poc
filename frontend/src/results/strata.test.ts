@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../api/client'
-import { OFFICIAL, PILOT, SMOKE } from './results.fixtures'
+import { OFFICIAL, PILOT, SMOKE, V03 } from './results.fixtures'
 import {
   agreement,
+  groundednessRows,
   comparisonRows,
   efficiencyRows,
   failureTotals,
@@ -215,7 +216,7 @@ describe('splitRows', () => {
 
 describe('tiles', () => {
   it('has one tile per pipeline from the overall cells', () => {
-    const rows = tiles(PILOT)
+    const rows = tiles(PILOT, 'evidence_f1')
     expect(rows.map((t) => t.pipeline)).toEqual(['A', 'B', 'C'])
     expect(rows[1].evidence).toEqual(PILOT.metrics.overall.evidence_f1.B)
     expect(rows[1].answer).toEqual(PILOT.metrics.overall.answer.B)
@@ -407,5 +408,105 @@ describe('a cell with no pairs', () => {
     )
     expect(row).toMatchObject({ mean: null, low: null, high: null })
     expect(row.note).toBe('No pairs')
+  })
+})
+
+describe('a method v0.3 run', () => {
+  it('compares evidence recall, and C against A without a test', () => {
+    const rows = comparisonRows(V03, 'evidence_recall')
+    expect(rows.length).toBeGreaterThan(0)
+    expect(comparisonRows(V03, 'evidence_f1')).toEqual([])
+    const cAgainstA = rows.filter((row) => row.key.endsWith(':C_vs_A'))
+    expect(cAgainstA.length).toBeGreaterThan(0)
+    for (const row of cAgainstA) {
+      expect(row.label).toMatch(/: C against A$/)
+      expect(row.note).toBe('Not tested')
+      expect(row.inFamily).toBe(false)
+      expect(row.pipeline).toBe('C')
+    }
+  })
+
+  it('draws the evidence recall bars, single facts with no evidence score by design', () => {
+    const { groups, gapNotes } = strataBars(V03, 'evidence_recall')
+    expect(groups.find((g) => g.key === 'H1')?.values.A).toBe(
+      V03.metrics.H1.evidence_recall.A.mean,
+    )
+    expect(Object.keys(gapNotes)).toEqual(
+      groups.some((g) => g.key === 'H3' && g.values.A == null) ? ['H3'] : [],
+    )
+  })
+
+  it('reads the tiles from the evidence metric it is given', () => {
+    const [a] = tiles(V03, 'evidence_recall')
+    expect(a.evidence).toEqual(V03.metrics.overall.evidence_recall.A)
+    expect(tiles(PILOT, 'evidence_f1')[0].evidence).toEqual(
+      PILOT.metrics.overall.evidence_f1.A,
+    )
+  })
+
+  it('splits judge agreement into answers that answered and answers that abstained', () => {
+    const rows = agreement(V03)!
+    expect(rows.map((r) => r.label)).toEqual([
+      'All questions, answered',
+      'All questions, abstained',
+      'A · Text search, answered',
+      'A · Text search, abstained',
+      'B · Graph, answered',
+      'B · Graph, abstained',
+      'C · Graph + Ontology, answered',
+      'C · Graph + Ontology, abstained',
+    ])
+    const overall = V03.judge_agreement as Schemas['JudgeAgreementOut']
+    const answered = overall.overall.answered
+    expect(rows[0].cells).toEqual([
+      answered.n.toLocaleString('en-GB'),
+      `${Math.round(answered.agreement! * 100)}%`,
+      answered.weighted_kappa!.toFixed(2),
+    ])
+    // No answer abstained: nothing was judged, so nothing can be said.
+    expect(rows[1].cells).toEqual(['0', 'Too few to say', 'Too few to say'])
+  })
+
+  it('shows a weighted kappa only over ten or more judged repeats, the agreement always', () => {
+    const split = (n: number) => ({
+      answered: { n, agreement: 0.5, weighted_kappa: 0.3 },
+      abstained: { n: 0, agreement: null, weighted_kappa: null },
+    })
+    const summary: Summary = {
+      ...V03,
+      judge_agreement: { overall: split(9), pipelines: { A: split(10) } },
+    }
+    const rows = agreement(summary)!
+    expect(rows[0].cells).toEqual(['9', '50%', 'Too few to say'])
+    expect(rows[2].cells).toEqual(['10', '50%', '0.30'])
+  })
+
+  it('has a descriptive groundedness table, and none for a run without groundedness', () => {
+    const rows = groundednessRows(V03)!
+    expect(rows[0]).toMatchObject({
+      key: 'H1-A',
+      label: 'Multi-hop questions - A · Text search',
+    })
+    const supported = V03.metrics.H1.grounded_supported.A
+    const unsupported = V03.metrics.H1.grounded_unsupported.A
+    expect(rows[0].cells).toEqual([
+      `${Math.round(supported.mean! * 100)}%`,
+      `${Math.round(unsupported.mean! * 100)}%`,
+      supported.n.toLocaleString('en-GB'),
+    ])
+    expect(groundednessRows(PILOT)).toBeNull()
+  })
+})
+
+describe('the threshold agreement of a method v0.2 run', () => {
+  it('keeps its kappa, and gives none over fewer than ten judged repeats', () => {
+    const cell = (n: number) => ({ n, agreement: 0.418, kappa: 0.104 })
+    const summary: Summary = {
+      ...PILOT,
+      judge_agreement: { overall: cell(1092), pipelines: { A: cell(4) } },
+    }
+    const rows = agreement(summary)!
+    expect(rows[0].cells).toEqual(['1,092', '42%', '0.10'])
+    expect(rows[1].cells).toEqual(['4', '42%', 'Too few to say'])
   })
 })

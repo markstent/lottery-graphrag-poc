@@ -296,8 +296,13 @@ async function screenShot(
 
 test.describe('Overview', () => {
   const STATES = [
-    ['overview-fixture-official', 'official', 'Evidence score, all questions'],
+    [
+      'overview-fixture-official',
+      'official',
+      'Evidence score, questions with claims',
+    ],
     ['overview-no-official-run', 'none', 'No official run yet'],
+    ['overview-fixture-v03', 'v03', 'Evidence recall, questions with claims'],
     ['overview-smoke-only', 'smoke', 'Latest run: scorer smoke test'],
     ['overview-error', 'unavailable', 'The latest run is unavailable.'],
   ] as const
@@ -336,6 +341,20 @@ test.describe('Results', () => {
     await openScreen(page, '#/results?run=pilot-2026-nothink')
     await expect(page.getByText('This run predates the split.')).toBeVisible()
     await screenShot(page, 'results-subset')
+  })
+
+  test('results-v03', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-v03', { runs: 'v03' })
+    await expect(page.getByText('Method v0.3', { exact: true })).toBeVisible()
+    await screenShot(page, 'results-v03')
+  })
+
+  test('results-v03-agreement-and-groundedness', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-v03', { runs: 'v03' })
+    const grounded = page.getByRole('region', { name: 'Groundedness' })
+    await expect(grounded.getByText(/Descriptive, not tested/)).toBeVisible()
+    await grounded.evaluate((el) => el.scrollIntoView({ block: 'end' }))
+    await screenShot(page, 'results-v03-agreement-and-groundedness', 'keep')
   })
 
   test('results-quick-check', async ({ page }) => {
@@ -825,7 +844,7 @@ test.describe('presentation mode', () => {
     [
       'overview-fixture-official',
       '#/overview',
-      'Evidence score, all questions',
+      'Evidence score, questions with claims',
     ],
     ['results', '#/results', 'This run predates the split.'],
     ['data-model', '#/data-model', 'Incident management'],

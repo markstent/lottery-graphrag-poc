@@ -10,6 +10,7 @@ import {
   PILOT,
   PILOT_INSTANCES,
   RUNS as CAPTURED_RUNS,
+  V03_RUN,
 } from '../../results/results.fixtures'
 import { DATASETS, failure, stubApi } from '../../test/api-stub'
 import { Results } from './results'
@@ -18,6 +19,7 @@ const OFFICIAL_RUN: Schemas['BenchmarkRunOut'] = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: 'Fixture run (test values)',
+  method_version: '0.2.0',
   started_at: '2026-10-20T09:00:00Z',
   selection: { strata: null, limit: null },
   worlds: [2026, 2027, 2028],
@@ -28,6 +30,7 @@ const summaryOf = (run_id: string, summary: Schemas['SummaryOut']) => ({
   run_id,
   run_kind: 'official',
   label: null,
+  method_version: '0.2.0',
   summary,
 })
 
@@ -287,5 +290,84 @@ describe('panels', () => {
       await screen.findByRole('region', { name: 'Efficiency' }),
     )
     expect(await panel.findAllByRole('figure')).toHaveLength(2)
+  })
+})
+
+describe('two methods', () => {
+  const V03_LISTED: Schemas['BenchmarkRunOut'] = {
+    run_id: V03_RUN.run_id,
+    run_kind: V03_RUN.run_kind,
+    label: V03_RUN.label,
+    method_version: V03_RUN.method_version,
+    started_at: '2026-11-02T09:00:00Z',
+    selection: { strata: null, limit: null },
+    worlds: V03_RUN.summary.worlds,
+    headlines: V03_RUN.summary.headlines,
+  }
+  const routes = {
+    ...ROUTES,
+    '/api/v1/benchmarks': [V03_LISTED, OFFICIAL_RUN, ...CAPTURED_RUNS],
+    [`/api/v1/benchmarks/${V03_RUN.run_id}`]: V03_RUN,
+    [`/api/v1/benchmarks/${V03_RUN.run_id}/instances`]: [],
+  }
+  const verdict = async () =>
+    within(await screen.findByRole('region', { name: 'Verdict' }))
+
+  it('a v0.3 run names its method, compares evidence recall and C against A without a test', async () => {
+    stubApi(routes)
+    open(`run=${V03_RUN.run_id}`)
+    expect(await (await verdict()).findByText('Method v0.3')).toBeVisible()
+    expect(
+      (await verdict()).getByText('Evidence recall: A · Text search'),
+    ).toBeVisible()
+    const scores = within(
+      screen.getByRole('region', { name: 'Scores by kind of question' }),
+    )
+    expect(
+      scores.getByRole('button', { name: 'Evidence recall' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      scores.getAllByText(/: C against A$/, { exact: false }).length,
+    ).toBeGreaterThan(0)
+  })
+
+  it('a v0.3 run splits judge agreement and shows groundedness', async () => {
+    stubApi(routes)
+    open(`run=${V03_RUN.run_id}`)
+    const judge = within(await screen.findByRole('region', { name: 'Judge' }))
+    expect(
+      judge.getByRole('rowheader', { name: 'All questions, abstained' }),
+    ).toBeVisible()
+    expect(
+      judge.getByRole('columnheader', { name: 'Weighted kappa' }),
+    ).toBeVisible()
+    expect(judge.queryByRole('columnheader', { name: 'Kappa' })).toBeNull()
+    expect(judge.getAllByText('Too few to say').length).toBeGreaterThan(0)
+    const grounded = within(
+      screen.getByRole('region', { name: 'Groundedness' }),
+    )
+    expect(grounded.getByText(/Descriptive, not tested/)).toBeVisible()
+    expect(
+      grounded.getByRole('rowheader', {
+        name: 'All questions - C · Graph + Ontology',
+      }),
+    ).toBeVisible()
+  })
+
+  it('a v0.2 run reads as before, with the old method named and no groundedness', async () => {
+    stubApi(routes)
+    open('run=fixture-official')
+    expect(
+      await (await verdict()).findByText('Method v0.2 (old method)'),
+    ).toBeVisible()
+    expect(
+      (await verdict()).getByText('Evidence score: A · Text search'),
+    ).toBeVisible()
+    const judge = within(await screen.findByRole('region', { name: 'Judge' }))
+    expect(judge.getByRole('columnheader', { name: 'Kappa' })).toBeVisible()
+    expect(
+      judge.getByRole('rowheader', { name: 'All questions' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('region', { name: 'Groundedness' })).toBeNull()
   })
 })

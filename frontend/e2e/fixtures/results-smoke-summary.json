@@ -2,6 +2,7 @@
   "run_id": "20261019T164733Z-smoke",
   "run_kind": "smoke",
   "label": "scorer smoke test",
+  "method_version": "0.2.0",
   "summary": {
     "schema_version": "2",
     "run_kind": "smoke",

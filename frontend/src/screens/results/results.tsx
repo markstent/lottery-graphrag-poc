@@ -6,14 +6,17 @@
 import { useRef, useState } from 'react'
 
 import { getBenchmark, listBenchmarks, type Schemas } from '../../api/client'
+import { evidenceMetric } from '../../app/method'
 import { hrefFor, useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
 import { filterFromParams, paramsWithFilter } from '../../results/questions'
 import { defaultRun, standing, standingWord } from '../../results/runs'
+import { groundednessRows } from '../../results/strata'
 import { Screen } from '../screen'
 import { EfficiencyPanel } from './efficiency-panel'
 import { FailurePanel } from './failure-panel'
+import { GroundednessPanel } from './groundedness-panel'
 import { JudgePanel } from './judge-panel'
 import { QuestionsPanel } from './question-table'
 import { ReproPanel } from './repro-panel'
@@ -34,6 +37,7 @@ function RunView({ run }: { run: Run }) {
   )
   const kind = standing(run)
   const ready = load.status === 'ready'
+  const grounded = ready ? groundednessRows(load.data.summary) : null
   const badge = kind === 'subset' ? standingWord(run) : undefined
   const { params } = useRoute()
   const tableRef = useRef<HTMLDivElement>(null)
@@ -55,12 +59,23 @@ function RunView({ run }: { run: Run }) {
         error={load.status === 'error' ? load.error : undefined}
         onRetry={load.retry}
       >
-        {ready && <Verdict run={run} summary={load.data.summary} kind={kind} />}
+        {ready && (
+          <Verdict
+            run={run}
+            summary={load.data.summary}
+            method={load.data.method_version}
+            kind={kind}
+          />
+        )}
       </Panel>
       {ready && kind !== 'quick-check' && (
         <>
           <Panel title="Scores by kind of question" state="ready">
-            <StrataCharts summary={load.data.summary} badge={badge} />
+            <StrataCharts
+              summary={load.data.summary}
+              evidence={evidenceMetric(load.data.method_version)}
+              badge={badge}
+            />
           </Panel>
           <QuestionsPanel
             runId={run.run_id}
@@ -84,6 +99,11 @@ function RunView({ run }: { run: Run }) {
           >
             <JudgePanel summary={load.data.summary} badge={badge} />
           </Panel>
+          {grounded && (
+            <Panel title="Groundedness" state="ready">
+              <GroundednessPanel rows={grounded} badge={badge} />
+            </Panel>
+          )}
         </>
       )}
       {ready && (

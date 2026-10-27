@@ -15,6 +15,7 @@ const run = (
   run_id,
   run_kind,
   label: null,
+  method_version: '0.2.0',
   started_at,
   selection,
   worlds: [2026],

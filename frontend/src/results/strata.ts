@@ -7,6 +7,7 @@
 
 import type { Schemas } from '../api/client'
 import { PIPELINES, type PipelineId } from '../design/pipelines'
+import type { EvidenceMetric } from '../app/method'
 import { evidenceScore, percent } from '../app/score-words'
 import type { BarGroup, GroupedBarsProps } from '../charts/grouped-bars'
 import type { DataTableRow } from '../charts/data-table'
@@ -43,13 +44,19 @@ export const STRATUM_SHORT: Record<string, string> = {
 export const COMPARISON_LABELS: Record<string, string> = {
   B_vs_A: 'Graph against text search',
   C_vs_B: 'Graph + Ontology against Graph',
+  // Reported since method v0.3, never tested (D-087).
+  C_vs_A: 'C against A',
 }
 
 /** The pipeline each comparison is about: the first of the pair. */
 const COMPARISON_PIPELINES: Record<string, PipelineId> = {
   B_vs_A: 'B',
   C_vs_B: 'C',
+  C_vs_A: 'C',
 }
+
+/** A metric a chart or table of this folder shows: the run's evidence metric, or the answer score. */
+export type ShownMetric = EvidenceMetric | 'answer'
 
 export const GROUP_LABELS: Record<string, string> = {
   ontology_dependent: 'Questions that need the ontology',
@@ -123,7 +130,7 @@ export function printsIntervalBelowFloor(summary: Summary): boolean {
 /** Grouped bars of a metric per stratum, with B minus A as the delta; a cell with too few pairs or groups has none. */
 export function strataBars(
   summary: Summary,
-  metric: 'evidence_f1' | 'answer',
+  metric: ShownMetric,
 ): {
   groups: BarGroup[]
   delta: GroupedBarsProps['delta']
@@ -150,7 +157,7 @@ export function strataBars(
   )
   // Single facts are scored on the answer alone, so they have no evidence bars.
   const gapNotes: Record<string, string> =
-    metric === 'evidence_f1' &&
+    metric !== 'answer' &&
     groups.some(({ key, values }) => key === 'H3' && !hasBar(values))
       ? { H3: NO_EVIDENCE }
       : {}
@@ -210,7 +217,7 @@ const intervalRow = (
 /** One row per stratum and comparison for the metric, in points. */
 export function comparisonRows(
   summary: Summary,
-  metric: 'evidence_f1' | 'answer',
+  metric: ShownMetric,
 ): IntervalRow[] {
   return summary.comparisons
     .filter((c) => c.metric === metric)
@@ -222,7 +229,7 @@ export function comparisonRows(
 /** The ontology-dependent split of the metric, in points; null for a run that has none. */
 export function splitRows(
   summary: Summary,
-  metric: 'evidence_f1' | 'answer',
+  metric: ShownMetric,
 ): IntervalRow[] | null {
   if (!summary.ontology_split) return null
   return summary.ontology_split
@@ -232,13 +239,14 @@ export function splitRows(
 
 const EMPTY: MetricCell = { mean: null, n: 0, repeats: 0 }
 
-/** The overall evidence and answer cells of each pipeline. */
+/** The overall cells of the run's evidence metric and of the answer score, per pipeline. */
 export function tiles(
   summary: Summary,
+  evidence: EvidenceMetric,
 ): { pipeline: string; evidence: MetricCell; answer: MetricCell }[] {
   return PIPELINES.map(({ id }) => ({
     pipeline: id,
-    evidence: cellOf(summary, 'overall', 'evidence_f1', id) ?? EMPTY,
+    evidence: cellOf(summary, 'overall', evidence, id) ?? EMPTY,
     answer: cellOf(summary, 'overall', 'answer', id) ?? EMPTY,
   }))
 }
@@ -279,38 +287,102 @@ export function judgeRows(summary: Summary): DataTableRow[] {
 }
 
 const UNDEFINED = 'Undefined'
+const TOO_FEW_TO_SAY = 'Too few to say'
 
-function isThresholdAgreement(
-  judged: Schemas['JudgeAgreementOut'] | Schemas['ThresholdJudgeAgreementOut'],
+/**
+ * Below this many judged repeats a kappa says nothing worth reading, so none
+ * is shown; the agreement always is, with its count (owner, 2026-10-27).
+ */
+export const MIN_PAIRS_FOR_KAPPA = 10
+
+type Judged = NonNullable<Summary['judge_agreement']>
+type AgreementCell = {
+  n: number
+  agreement: number | null
+  kappa: number | null
+}
+
+export function isThresholdAgreement(
+  judged: Judged,
 ): judged is Schemas['ThresholdJudgeAgreementOut'] {
   return 'n' in judged.overall
 }
 
-/** How often the judge and the answer score agree, overall and per pipeline; null without a judge. */
-export function agreement(summary: Summary): DataTableRow[] | null {
-  const judged = summary.judge_agreement
-  // Only the threshold agreement of runs before method v0.3 is shown so far;
-  // the answered and abstained agreement of v0.3 is rendered by a later task.
-  if (!judged || !isThresholdAgreement(judged)) return null
-  const row = (
-    key: string,
-    label: string,
-    cell: Schemas['ThresholdAgreementOut'],
-  ) => ({
-    key,
-    label,
-    cells: [
-      cell.n.toLocaleString('en-GB'),
-      percent(cell.agreement),
-      cell.kappa === null ? UNDEFINED : evidenceScore(cell.kappa),
-    ],
-  })
+const agreementCells = ({ n, agreement, kappa }: AgreementCell) => [
+  n.toLocaleString('en-GB'),
+  n === 0 ? TOO_FEW_TO_SAY : percent(agreement),
+  n < MIN_PAIRS_FOR_KAPPA
+    ? TOO_FEW_TO_SAY
+    : kappa === null
+      ? UNDEFINED
+      : evidenceScore(kappa),
+]
+
+/** The groups of an agreement table: all questions, then each pipeline the run judged. */
+function groups<T>(judged: { overall: T; pipelines: Record<string, T> }) {
   return [
-    row('overall', STRATUM_LABELS.overall, judged.overall),
+    { key: 'overall', label: STRATUM_LABELS.overall, cell: judged.overall },
     ...PIPELINES.flatMap(({ id, label }) =>
-      id in judged.pipelines ? [row(id, label, judged.pipelines[id])] : [],
+      id in judged.pipelines
+        ? [{ key: id, label, cell: judged.pipelines[id] }]
+        : [],
     ),
   ]
+}
+
+/**
+ * How often the judge and the answer score agree, overall and per pipeline;
+ * null without a judge. A run of method v0.3 splits each group into answers
+ * that answered and answers that abstained, with a weighted kappa; a v0.2 run
+ * has one row per group, with Cohen's kappa.
+ */
+export function agreement(summary: Summary): DataTableRow[] | null {
+  const judged = summary.judge_agreement
+  if (!judged) return null
+  if (isThresholdAgreement(judged))
+    return groups(judged).map(({ key, label, cell }) => ({
+      key,
+      label,
+      cells: agreementCells(cell),
+    }))
+  return groups(judged).flatMap(({ key, label, cell }) =>
+    (['answered', 'abstained'] as const).map((answers) => ({
+      key: `${key}-${answers}`,
+      label: `${label}, ${answers}`,
+      cells: agreementCells({
+        ...cell[answers],
+        kappa: cell[answers].weighted_kappa,
+      }),
+    })),
+  )
+}
+
+/**
+ * The groundedness of the answers per stratum and pipeline: the mean share of
+ * checkable details the cited blocks hold, the share no shown block holds, and
+ * the questions behind them. Descriptive, never tested; null for a run that
+ * did not measure it (every run before method v0.3).
+ */
+export function groundednessRows(summary: Summary): DataTableRow[] | null {
+  const rows = strataIn(summary).flatMap((stratum) =>
+    PIPELINES.flatMap(({ id, label }) => {
+      const supported = cellOf(summary, stratum, 'grounded_supported', id)
+      const unsupported = cellOf(summary, stratum, 'grounded_unsupported', id)
+      if (!supported || !unsupported) return []
+      return [
+        {
+          key: `${stratum}-${id}`,
+          label: `${STRATUM_LABELS[stratum]} - ${label}`,
+          cells: [
+            percent(supported.mean),
+            percent(unsupported.mean),
+            supported.n.toLocaleString('en-GB'),
+          ],
+        },
+      ]
+    }),
+  )
+  return rows.length === 0 ? null : rows
 }
 
 /** Every failure class of every pipeline with its count, pipelines in order. */

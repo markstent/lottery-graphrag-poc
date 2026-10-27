@@ -2,6 +2,7 @@
   "run_id": "pilot-2026-nothink",
   "run_kind": "official",
   "label": "subset run (at most 2 instances per question)",
+  "method_version": "0.2.0",
   "summary": {
     "schema_version": "2",
     "run_kind": "official",
