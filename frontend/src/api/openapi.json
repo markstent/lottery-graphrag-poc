@@ -136,7 +136,7 @@
         "type": "object"
       },
       "BenchmarkRunOut": {
-        "description": "One published run in GET /api/v1/benchmarks, from its ``summary.json``:\n``selection`` is the part of the bank it scored, ``worlds`` its seeds.",
+        "description": "One published run in GET /api/v1/benchmarks, from its ``summary.json``:\n``selection`` is the part of the bank it scored, ``worlds`` its seeds,\n``method_version`` the method it was made under.",
         "properties": {
           "headlines": {
             "items": {
@@ -155,6 +155,10 @@
               }
             ],
             "title": "Label"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
           },
           "run_id": {
             "title": "Run Id",
@@ -185,6 +189,7 @@
           "run_id",
           "run_kind",
           "label",
+          "method_version",
           "started_at",
           "selection",
           "worlds",
@@ -195,11 +200,12 @@
       },
       "BenchmarkStart": {
         "additionalProperties": false,
-        "description": "Request for POST /api/v1/benchmarks; the seeds, strata and kind are\nchecked against the harness's own before a job starts.",
+        "description": "Request for POST /api/v1/benchmarks; the seeds, strata and kind are\nchecked against the harness's own before a job starts. A dev run uses\nseed 2026 only; a full-bank official run uses the unseen seeds, which\nthe API never accepts (D-091), so an official job covers part of the\nbank on a seen seed, as the dry run does.",
         "properties": {
           "kind": {
             "enum": [
               "smoke",
+              "dev",
               "official"
             ],
             "title": "Kind",
@@ -255,7 +261,7 @@
         "type": "object"
       },
       "BenchmarkSummary": {
-        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only\nbenchmark source the API publishes. ``run_kind`` and ``label`` are\ncopied out of it so a client can tell a smoke or sweep run from an\nofficial result without reading the summary.",
+        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only\nbenchmark source the API publishes. ``run_kind`` and ``label`` are\ncopied out of it so a client can tell a smoke or sweep run from an\nofficial result without reading the summary. ``method_version`` is the\nmethod the run was made under, from its record: 0.2.0 for a run recorded\nbefore the field existed (such as v0.2.0).",
         "properties": {
           "label": {
             "anyOf": [
@@ -267,6 +273,10 @@
               }
             ],
             "title": "Label"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
           },
           "run_id": {
             "title": "Run Id",
@@ -284,6 +294,7 @@
           "run_id",
           "run_kind",
           "label",
+          "method_version",
           "summary"
         ],
         "title": "BenchmarkSummary",

@@ -577,13 +577,16 @@ export interface components {
         /**
          * BenchmarkRunOut
          * @description One published run in GET /api/v1/benchmarks, from its ``summary.json``:
-         *     ``selection`` is the part of the bank it scored, ``worlds`` its seeds.
+         *     ``selection`` is the part of the bank it scored, ``worlds`` its seeds,
+         *     ``method_version`` the method it was made under.
          */
         BenchmarkRunOut: {
             /** Headlines */
             headlines: string[];
             /** Label */
             label: string | null;
+            /** Method Version */
+            method_version: string;
             /** Run Id */
             run_id: string;
             /** Run Kind */
@@ -600,14 +603,17 @@ export interface components {
         /**
          * BenchmarkStart
          * @description Request for POST /api/v1/benchmarks; the seeds, strata and kind are
-         *     checked against the harness's own before a job starts.
+         *     checked against the harness's own before a job starts. A dev run uses
+         *     seed 2026 only; a full-bank official run uses the unseen seeds, which
+         *     the API never accepts (D-091), so an official job covers part of the
+         *     bank on a seen seed, as the dry run does.
          */
         BenchmarkStart: {
             /**
              * Kind
              * @enum {string}
              */
-            kind: "smoke" | "official";
+            kind: "smoke" | "dev" | "official";
             /** Limit */
             limit?: number | null;
             /** Repeats */
@@ -624,11 +630,15 @@ export interface components {
          *     ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
          *     benchmark source the API publishes. ``run_kind`` and ``label`` are
          *     copied out of it so a client can tell a smoke or sweep run from an
-         *     official result without reading the summary.
+         *     official result without reading the summary. ``method_version`` is the
+         *     method the run was made under, from its record: 0.2.0 for a run recorded
+         *     before the field existed (such as v0.2.0).
          */
         BenchmarkSummary: {
             /** Label */
             label: string | null;
+            /** Method Version */
+            method_version: string;
             /** Run Id */
             run_id: string;
             /** Run Kind */

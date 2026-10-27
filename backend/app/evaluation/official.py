@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any, Protocol, cast
 
 from app.config import (
+    METHOD_VERSION,
     REPO_ROOT,
     GraphConfig,
     RetrievalSettings,
@@ -115,6 +116,12 @@ OFFICIAL_SEEDS = (2029, 2030, 2031, 2032, 2033, 2034)
 DEV_SEEDS = (PRESENTATION_SEED,)
 # A run recorded before ``method_version`` existed (D-092).
 OLD_METHOD_VERSION = "0.2.0"
+# The metrics H7 compares under each method: method v0.2 tested evidence F1,
+# method v0.3 tests evidence recall (D-087, D-092).
+COMPARED_METRICS_BY_METHOD: dict[str, tuple[str, ...]] = {
+    OLD_METHOD_VERSION: ("evidence_f1", "answer"),
+    METHOD_VERSION: COMPARED_METRICS,
+}
 PROFILE = "dev"
 # Official cells and headline tiles use depth 2; the sweep varies it (spec 10a.7).
 OFFICIAL_DEPTH = 2
@@ -914,7 +921,8 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
     over the same frozen banks (the same bank hash per world). Instances pair
     by ``instance_id``; an instance's value is the mean over its scored
     repeats; pairs cluster by logical question and world. Each cell reports
-    the clustered bootstrap interval only, with no test.
+    the clustered bootstrap interval only, with no test. The compared
+    metrics are those of the runs' method (``COMPARED_METRICS_BY_METHOD``).
     """
     runs = {name: load_results(path) for name, path in (("small", small), ("large", large))}
     methods = {name: method_of(p["reproducibility"]["run"]) for name, p in runs.items()}
@@ -941,11 +949,14 @@ def compare_runs(small: Path, large: Path) -> dict[str, Any]:
             f"the runs were scored on different banks: {banks['small']} and {banks['large']}"
         )
     _require_equal_settings(runs["small"]["reproducibility"], runs["large"]["reproducibility"])
-    values = {name: instance_means(p) for name, p in runs.items()}
+    metrics = COMPARED_METRICS_BY_METHOD.get(methods["small"])
+    if metrics is None:
+        raise ValueError(f"the runs were made under unknown method v{methods['small']}")
+    values = {name: instance_means(p, metrics) for name, p in runs.items()}
     cells = []
     for tag in PIPELINES:
         for stratum in (*STRATUM_KEYS, OVERALL):
-            for metric in COMPARED_METRICS:
+            for metric in metrics:
                 diffs, clusters = [], []
                 for instance_id, (key, cluster, small_value) in values["small"].items():
                     large_value = values["large"].get(instance_id)

@@ -56,6 +56,13 @@ describe('recorded runs', () => {
     )
   })
 
+  it('names the method each recording was made under: all four predate method v0.3', () => {
+    expect(RECORDED_INDEX.map((r) => r.method)).toEqual(Array(4).fill('0.2.0'))
+    expect(RECORDINGS.map((r) => r.method)).toEqual(
+      RECORDED_INDEX.map((r) => r.method),
+    )
+  })
+
   it('loads a recording by its question, and refuses one it does not have', async () => {
     const [first] = RECORDED_INDEX
     expect((await loadRecording(first.instance_id)).run_id).toBe(first.run_id)

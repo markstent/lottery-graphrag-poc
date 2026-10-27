@@ -6,7 +6,8 @@
     "dataset_id": "dev-seed2026",
     "run_id": "RUN-2842BCE7997C",
     "model": "ollama/qwen3.6:latest",
-    "captured_at": "2026-10-23T20:19:17.863Z"
+    "captured_at": "2026-10-23T20:19:17.863Z",
+    "method": "0.2.0"
   },
   {
     "instance_id": "L05-2026-INC_037",
@@ -15,7 +16,8 @@
     "dataset_id": "dev-seed2026",
     "run_id": "RUN-69A108F89DFB",
     "model": "ollama/qwen3.6:latest",
-    "captured_at": "2026-10-23T20:18:21.690Z"
+    "captured_at": "2026-10-23T20:18:21.690Z",
+    "method": "0.2.0"
   },
   {
     "instance_id": "L09-2026-GAME_AT_05",
@@ -24,7 +26,8 @@
     "dataset_id": "dev-seed2026",
     "run_id": "RUN-22633B9F4043",
     "model": "ollama/qwen3.6:latest",
-    "captured_at": "2026-10-23T20:18:53.780Z"
+    "captured_at": "2026-10-23T20:18:53.780Z",
+    "method": "0.2.0"
   },
   {
     "instance_id": "L15-2026-INC_041",
@@ -33,6 +36,7 @@
     "dataset_id": "dev-seed2026",
     "run_id": "RUN-0B6A3B82B797",
     "model": "ollama/qwen3.6:latest",
-    "captured_at": "2026-10-23T20:19:41.988Z"
+    "captured_at": "2026-10-23T20:19:41.988Z",
+    "method": "0.2.0"
   }
 ]

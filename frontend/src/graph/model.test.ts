@@ -84,6 +84,7 @@ const graphOf = (nodes: GraphNode[]): GraphEvents => ({
   relationships: [],
   concepts: [],
   evidencePath: { paths: 1, maxHops: 1 },
+  targetTypes: null,
 })
 
 describe('the recorded run', () => {
@@ -155,10 +156,37 @@ describe('state: role first (seed, concept), then outcome (selected, discarded, 
     expect(stateOf(view, 'CONCEPT_APPLICATION_INCIDENT')).toBe('traversed')
   })
 
-  it('a node the reranker judged, with no verdict yet, is a candidate', () => {
-    const seq = sequenceOf('graph.candidate.reranked', 'C', 'SUP_00113')
-    const view = graphView(graphAt('C', seq), options)
-    expect(stateOf(view, 'SUP_00113')).toBe('candidate')
+  it('a node the reranker judged, with no verdict yet, is a candidate (old-method runs only)', () => {
+    // Method v0.3 never re-ranks graph nodes; a recording of the old method did.
+    const envelope = {
+      timestamp: '2026-01-01T10:00:00+00:00',
+      run_id: 'RUN-TEST',
+      pipeline: 'C',
+    }
+    const graph = reduceAll([
+      {
+        ...envelope,
+        event_id: 'e1',
+        sequence: 1,
+        t_ms: 1,
+        event_type: 'graph.node.discovered',
+        payload: { node_id: 'SUP_00113', node_label: 'SupportCase', hop: 1 },
+      },
+      {
+        ...envelope,
+        event_id: 'e2',
+        sequence: 2,
+        t_ms: 2,
+        event_type: 'graph.candidate.reranked',
+        payload: {
+          candidate_id: 'SUP_00113',
+          kind: 'node',
+          rank: 1,
+          rerank_score: 0.4,
+        },
+      },
+    ] as unknown as RunEvent[]).graph.C
+    expect(stateOf(graphView(graph, options), 'SUP_00113')).toBe('candidate')
   })
 
   it('a node with a verdict shows it', () => {
@@ -177,7 +205,7 @@ describe('state: role first (seed, concept), then outcome (selected, discarded, 
       'CONCEPT_APPLICATION_INCIDENT',
     )
     const judged = sequenceOf(
-      'graph.candidate.reranked',
+      'graph.candidate.discarded',
       'C',
       'CONCEPT_APPLICATION_INCIDENT',
     )
@@ -609,7 +637,7 @@ describe('path steps', () => {
 
 describe('withClustersOf', () => {
   const finalView = graphView(full.graph.C, { ...options, cap: 20 })
-  const partial = graphView(graphAt('C', 405), { ...options, cap: 1000 })
+  const partial = graphView(graphAt('C', 366), { ...options, cap: 1000 })
   const shown = withClustersOf(partial, finalView)
 
   it('keeps the nodes, edges and paths of the view it is given', () => {

@@ -173,9 +173,12 @@ def test_every_stored_event_of_a_real_run_validates_against_its_model(
         service.store.close()
     assert {"pipeline.cancelled", "run.cancelled"} <= seen
 
-    # The run captured through the API for the frontend, with the nulls a live run has.
+    # The frontend's run fixture, live-shaped with the nulls a live run has, in
+    # method v0.3 events: no slot count and no reason only the old method gave.
     recorded = json.loads(FRONTEND_RUN.read_text())["events"]
-    assert len(recorded) > 700
+    assert len(recorded) > 600
+    assert not any("evidence_slots" in event["payload"] for event in recorded)
+    assert not {event["payload"].get("reason") for event in recorded} & OLD_METHOD_REASONS
     seen |= validate(recorded)
 
     # The golden graph streams reach the events SCN-007 does not.

@@ -210,7 +210,7 @@
             "chunk_id": "REC_incidents_INC_027",
             "document_id": "INC_027",
             "chunk_index": 0,
-            "text": "Incident INC_027 in Austria: Application crashes reported on launch. Seen on platform version 2024.3.0 (PLV_APP_IOS_3). Type App-Instabilität (ITYPE_AT_APP). Severity LOW. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.3.0 (PLV_APP_IOS_3). App version 5.4.0 (APPV_CZ_540). Affected games: Danube Classic (GAME_AT_01), Wiener Zahlen (GAME_AT_03). Started 2025-12-20T20:23:13. Resolved 2025-12-23T18:46:13. Source: incident_management table incidents, record INC_027.",
+            "text": "Incident INC_027 in Austria: Application crashes reported on launch. Seen on platform version 2024.3.0 (PLV_APP_IOS_3). Type App-Instabilit\u00e4t (ITYPE_AT_APP). Severity LOW. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.3.0 (PLV_APP_IOS_3). App version 5.4.0 (APPV_CZ_540). Affected games: Danube Classic (GAME_AT_01), Wiener Zahlen (GAME_AT_03). Started 2025-12-20T20:23:13. Resolved 2025-12-23T18:46:13. Source: incident_management table incidents, record INC_027.",
             "title": "incidents: INC_027",
             "document_type": "INCIDENTS",
             "market_id": "MKT_AT",
@@ -279,7 +279,7 @@
             "chunk_id": "REC_incidents_INC_003",
             "document_id": "INC_003",
             "chunk_index": 0,
-            "text": "Incident INC_003 in Austria: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.2.0 (PLV_ANALYTICS_2). Type App-Instabilität (ITYPE_AT_APP). Severity HIGH. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.2.0 (PLV_ANALYTICS_2). Affected games: Wiener Zahlen (GAME_AT_03), Alpen Star (GAME_AT_04), Edelweiss Instant (GAME_AT_05). Started 2025-07-20T17:37:32. Resolved 2025-07-21T00:39:32. Source: incident_management table incidents, record INC_003.",
+            "text": "Incident INC_003 in Austria: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.2.0 (PLV_ANALYTICS_2). Type App-Instabilit\u00e4t (ITYPE_AT_APP). Severity HIGH. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.2.0 (PLV_ANALYTICS_2). Affected games: Wiener Zahlen (GAME_AT_03), Alpen Star (GAME_AT_04), Edelweiss Instant (GAME_AT_05). Started 2025-07-20T17:37:32. Resolved 2025-07-21T00:39:32. Source: incident_management table incidents, record INC_003.",
             "title": "incidents: INC_003",
             "document_type": "INCIDENTS",
             "market_id": "MKT_AT",
@@ -302,7 +302,7 @@
             "chunk_id": "REC_incidents_INC_038",
             "document_id": "INC_038",
             "chunk_index": 0,
-            "text": "Incident INC_038 in Greece: Application crashes reported on launch. Seen on platform version 2024.1.0 (PLV_APP_IOS_1). Type Αστάθεια εφαρμογής (ITYPE_GR_EFARMOGI). Severity HIGH. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.1.0 (PLV_APP_IOS_1). App version 5.3.0 (APPV_GR_530). Affected games: Aegean Gold (GAME_GR_01), Olympia Numbers (GAME_GR_03). Started 2025-03-08T00:39:10. Resolved 2025-03-08T21:40:10. Root cause RC_15. Source: incident_management table incidents, record INC_038.",
+            "text": "Incident INC_038 in Greece: Application crashes reported on launch. Seen on platform version 2024.1.0 (PLV_APP_IOS_1). Type \u0391\u03c3\u03c4\u03ac\u03b8\u03b5\u03b9\u03b1 \u03b5\u03c6\u03b1\u03c1\u03bc\u03bf\u03b3\u03ae\u03c2 (ITYPE_GR_EFARMOGI). Severity HIGH. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.1.0 (PLV_APP_IOS_1). App version 5.3.0 (APPV_GR_530). Affected games: Aegean Gold (GAME_GR_01), Olympia Numbers (GAME_GR_03). Started 2025-03-08T00:39:10. Resolved 2025-03-08T21:40:10. Root cause RC_15. Source: incident_management table incidents, record INC_038.",
             "title": "incidents: INC_038",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -371,7 +371,7 @@
             "chunk_id": "REC_incidents_INC_010",
             "document_id": "INC_010",
             "chunk_index": 0,
-            "text": "Incident INC_010 in Greece: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.2.0 (PLV_ANALYTICS_2). Type Αστάθεια εφαρμογής (ITYPE_GR_EFARMOGI). Severity CRITICAL. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.2.0 (PLV_ANALYTICS_2). Affected games: Aegean Gold (GAME_GR_01), Olympia Numbers (GAME_GR_03), Athena Express (GAME_GR_04). Started 2025-10-31T03:35:53. Resolved 2025-10-31T16:24:53. Source: incident_management table incidents, record INC_010.",
+            "text": "Incident INC_010 in Greece: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.2.0 (PLV_ANALYTICS_2). Type \u0391\u03c3\u03c4\u03ac\u03b8\u03b5\u03b9\u03b1 \u03b5\u03c6\u03b1\u03c1\u03bc\u03bf\u03b3\u03ae\u03c2 (ITYPE_GR_EFARMOGI). Severity CRITICAL. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.2.0 (PLV_ANALYTICS_2). Affected games: Aegean Gold (GAME_GR_01), Olympia Numbers (GAME_GR_03), Athena Express (GAME_GR_04). Started 2025-10-31T03:35:53. Resolved 2025-10-31T16:24:53. Source: incident_management table incidents, record INC_010.",
             "title": "incidents: INC_010",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -394,7 +394,7 @@
             "chunk_id": "REC_incidents_INC_042",
             "document_id": "INC_042",
             "chunk_index": 0,
-            "text": "Incident INC_042 in Greece: Payment checkout failures on platform version PLV_PAYMENTS_3 affecting digital checkout. Type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES). Severity HIGH. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Ellas Jackpot (GAME_GR_02), Athena Express (GAME_GR_04). Started 2025-05-21T11:00:00. Resolved 2025-05-23T11:00:00. Root cause RC_77. Source: incident_management table incidents, record INC_042.",
+            "text": "Incident INC_042 in Greece: Payment checkout failures on platform version PLV_PAYMENTS_3 affecting digital checkout. Type \u0391\u03c0\u03bf\u03c4\u03c5\u03c7\u03af\u03b1 \u03c0\u03bb\u03b7\u03c1\u03c9\u03bc\u03ce\u03bd (ITYPE_GR_PLIROMES). Severity HIGH. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Ellas Jackpot (GAME_GR_02), Athena Express (GAME_GR_04). Started 2025-05-21T11:00:00. Resolved 2025-05-23T11:00:00. Root cause RC_77. Source: incident_management table incidents, record INC_042.",
             "title": "incidents: INC_042",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -417,7 +417,7 @@
             "chunk_id": "REC_incidents_INC_040",
             "document_id": "INC_040",
             "chunk_index": 0,
-            "text": "Incident INC_040 in Czech Republic: Payment provider degraded; transactions failing. Seen on platform version 2024.2.0 (PLV_PAYMENTS_2). Type Selhání plateb (ITYPE_CZ_PLATBY). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.2.0 (PLV_PAYMENTS_2). Affected games: Moravia Multi (GAME_CZ_02). Started 2025-08-29T17:50:36. Resolved 2025-08-31T09:06:36. Source: incident_management table incidents, record INC_040.",
+            "text": "Incident INC_040 in Czech Republic: Payment provider degraded; transactions failing. Seen on platform version 2024.2.0 (PLV_PAYMENTS_2). Type Selh\u00e1n\u00ed plateb (ITYPE_CZ_PLATBY). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.2.0 (PLV_PAYMENTS_2). Affected games: Moravia Multi (GAME_CZ_02). Started 2025-08-29T17:50:36. Resolved 2025-08-31T09:06:36. Source: incident_management table incidents, record INC_040.",
             "title": "incidents: INC_040",
             "document_type": "INCIDENTS",
             "market_id": "MKT_CZ",
@@ -457,13 +457,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.1698050498962402,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_008",
             "document_id": "INC_008",
             "chunk_index": 0,
-            "text": "Incident INC_008 in Czech Republic: Draw result publication delayed. Seen on platform version 2024.3.0 (PLV_DRAW_3). Type Zpoždění losování (ITYPE_CZ_LOSOVANI). Severity HIGH. Platform Draw Engine (PLT_DRAW). Platform version 2024.3.0 (PLV_DRAW_3). Affected games: Vltava Výhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02), Rychle Cisla (GAME_CZ_03). Started 2025-06-12T07:26:31. Resolved 2025-06-15T01:31:31. Source: incident_management table incidents, record INC_008.",
+            "text": "Incident INC_008 in Czech Republic: Draw result publication delayed. Seen on platform version 2024.3.0 (PLV_DRAW_3). Type Zpo\u017ed\u011bn\u00ed losov\u00e1n\u00ed (ITYPE_CZ_LOSOVANI). Severity HIGH. Platform Draw Engine (PLT_DRAW). Platform version 2024.3.0 (PLV_DRAW_3). Affected games: Vltava V\u00fdhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02), Rychle Cisla (GAME_CZ_03). Started 2025-06-12T07:26:31. Resolved 2025-06-15T01:31:31. Source: incident_management table incidents, record INC_008.",
             "title": "incidents: INC_008",
             "document_type": "INCIDENTS",
             "market_id": "MKT_CZ",
@@ -480,13 +480,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.184744119644165,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_006",
             "document_id": "INC_006",
             "chunk_index": 0,
-            "text": "Incident INC_006 in Greece: Retail terminals offline in one region. Seen on platform version 2024.3.0 (PLV_RETAIL_3). Type Διακοπή τερματικών (ITYPE_GR_TERMATIKA). Severity LOW. Platform Retail Terminal Network (PLT_RETAIL). Platform version 2024.3.0 (PLV_RETAIL_3). Affected games: Peloponnesus Pull (GAME_GR_05). Started 2025-09-12T07:30:23. Resolved 2025-09-14T08:30:23. Source: incident_management table incidents, record INC_006.",
+            "text": "Incident INC_006 in Greece: Retail terminals offline in one region. Seen on platform version 2024.3.0 (PLV_RETAIL_3). Type \u0394\u03b9\u03b1\u03ba\u03bf\u03c0\u03ae \u03c4\u03b5\u03c1\u03bc\u03b1\u03c4\u03b9\u03ba\u03ce\u03bd (ITYPE_GR_TERMATIKA). Severity LOW. Platform Retail Terminal Network (PLT_RETAIL). Platform version 2024.3.0 (PLV_RETAIL_3). Affected games: Peloponnesus Pull (GAME_GR_05). Started 2025-09-12T07:30:23. Resolved 2025-09-14T08:30:23. Source: incident_management table incidents, record INC_006.",
             "title": "incidents: INC_006",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -503,7 +503,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.191836357116699,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_001",
@@ -526,13 +526,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.2272298336029053,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_023",
             "document_id": "INC_023",
             "chunk_index": 0,
-            "text": "Incident INC_023 in Austria: Application crashes reported on launch. Seen on platform version 2024.3.0 (PLV_APP_IOS_3). Type App-Instabilität (ITYPE_AT_APP). Severity MEDIUM. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.3.0 (PLV_APP_IOS_3). App version 5.3.0 (APPV_GR_530). Affected games: Alpen Jackpot (GAME_AT_02), Wiener Zahlen (GAME_AT_03). Started 2025-08-06T12:34:51. Resolved 2025-08-08T22:11:51. Root cause RC_79. Source: incident_management table incidents, record INC_023.",
+            "text": "Incident INC_023 in Austria: Application crashes reported on launch. Seen on platform version 2024.3.0 (PLV_APP_IOS_3). Type App-Instabilit\u00e4t (ITYPE_AT_APP). Severity MEDIUM. Platform Mobile iOS Application (PLT_APP_IOS). Platform version 2024.3.0 (PLV_APP_IOS_3). App version 5.3.0 (APPV_GR_530). Affected games: Alpen Jackpot (GAME_AT_02), Wiener Zahlen (GAME_AT_03). Started 2025-08-06T12:34:51. Resolved 2025-08-08T22:11:51. Root cause RC_79. Source: incident_management table incidents, record INC_023.",
             "title": "incidents: INC_023",
             "document_type": "INCIDENTS",
             "market_id": "MKT_AT",
@@ -549,13 +549,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.230646848678589,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_002",
             "document_id": "INC_002",
             "chunk_index": 0,
-            "text": "Incident INC_002 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.3.0 (PLV_PAYMENTS_3). Type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Ellas Jackpot (GAME_GR_02), Athena Express (GAME_GR_04), Peloponnesus Pull (GAME_GR_05). Started 2025-02-05T08:29:43. Resolved 2025-02-05T16:24:43. Source: incident_management table incidents, record INC_002.",
+            "text": "Incident INC_002 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.3.0 (PLV_PAYMENTS_3). Type \u0391\u03c0\u03bf\u03c4\u03c5\u03c7\u03af\u03b1 \u03c0\u03bb\u03b7\u03c1\u03c9\u03bc\u03ce\u03bd (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Ellas Jackpot (GAME_GR_02), Athena Express (GAME_GR_04), Peloponnesus Pull (GAME_GR_05). Started 2025-02-05T08:29:43. Resolved 2025-02-05T16:24:43. Source: incident_management table incidents, record INC_002.",
             "title": "incidents: INC_002",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -572,13 +572,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.2502057552337646,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_018",
             "document_id": "INC_018",
             "chunk_index": 0,
-            "text": "Incident INC_018 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.2.0 (PLV_PAYMENTS_2). Type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.2.0 (PLV_PAYMENTS_2). Affected games: Olympia Numbers (GAME_GR_03). Started 2025-08-19T23:46:27. Resolved 2025-08-20T17:07:27. Source: incident_management table incidents, record INC_018.",
+            "text": "Incident INC_018 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.2.0 (PLV_PAYMENTS_2). Type \u0391\u03c0\u03bf\u03c4\u03c5\u03c7\u03af\u03b1 \u03c0\u03bb\u03b7\u03c1\u03c9\u03bc\u03ce\u03bd (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.2.0 (PLV_PAYMENTS_2). Affected games: Olympia Numbers (GAME_GR_03). Started 2025-08-19T23:46:27. Resolved 2025-08-20T17:07:27. Source: incident_management table incidents, record INC_018.",
             "title": "incidents: INC_018",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -595,13 +595,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.260680913925171,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_026",
             "document_id": "INC_026",
             "chunk_index": 0,
-            "text": "Incident INC_026 in Greece: Retail terminals offline in one region. Seen on platform version 2024.1.0 (PLV_RETAIL_1). Type Διακοπή τερματικών (ITYPE_GR_TERMATIKA). Severity LOW. Platform Retail Terminal Network (PLT_RETAIL). Platform version 2024.1.0 (PLV_RETAIL_1). Affected games: Ellas Jackpot (GAME_GR_02), Olympia Numbers (GAME_GR_03), Athena Express (GAME_GR_04). Started 2025-10-13T22:15:37. Resolved 2025-10-13T23:36:37. Root cause RC_18. Source: incident_management table incidents, record INC_026.",
+            "text": "Incident INC_026 in Greece: Retail terminals offline in one region. Seen on platform version 2024.1.0 (PLV_RETAIL_1). Type \u0394\u03b9\u03b1\u03ba\u03bf\u03c0\u03ae \u03c4\u03b5\u03c1\u03bc\u03b1\u03c4\u03b9\u03ba\u03ce\u03bd (ITYPE_GR_TERMATIKA). Severity LOW. Platform Retail Terminal Network (PLT_RETAIL). Platform version 2024.1.0 (PLV_RETAIL_1). Affected games: Ellas Jackpot (GAME_GR_02), Olympia Numbers (GAME_GR_03), Athena Express (GAME_GR_04). Started 2025-10-13T22:15:37. Resolved 2025-10-13T23:36:37. Root cause RC_18. Source: incident_management table incidents, record INC_026.",
             "title": "incidents: INC_026",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -618,13 +618,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.26168155670166,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_014",
             "document_id": "INC_014",
             "chunk_index": 0,
-            "text": "Incident INC_014 in Greece: Sign-in failures for a subset of accounts. Seen on platform version 2024.2.0 (PLV_WEB_2). Type Διακοπή σύνδεσης (ITYPE_GR_SYNDESI). Severity HIGH. Platform Web Portal (PLT_WEB). Platform version 2024.2.0 (PLV_WEB_2). Affected games: Ellas Jackpot (GAME_GR_02). Started 2025-11-24T20:51:37. Resolved 2025-11-25T21:50:37. Source: incident_management table incidents, record INC_014.",
+            "text": "Incident INC_014 in Greece: Sign-in failures for a subset of accounts. Seen on platform version 2024.2.0 (PLV_WEB_2). Type \u0394\u03b9\u03b1\u03ba\u03bf\u03c0\u03ae \u03c3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7\u03c2 (ITYPE_GR_SYNDESI). Severity HIGH. Platform Web Portal (PLT_WEB). Platform version 2024.2.0 (PLV_WEB_2). Affected games: Ellas Jackpot (GAME_GR_02). Started 2025-11-24T20:51:37. Resolved 2025-11-25T21:50:37. Source: incident_management table incidents, record INC_014.",
             "title": "incidents: INC_014",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -641,13 +641,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.268922805786133,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_039",
             "document_id": "INC_039",
             "chunk_index": 0,
-            "text": "Incident INC_039 in Austria: Sign-in failures for a subset of accounts. Seen on platform version 2024.2.0 (PLV_WEB_2). Type Anmeldestörung (ITYPE_AT_ANMELDUNG). Severity LOW. Platform Web Portal (PLT_WEB). Platform version 2024.2.0 (PLV_WEB_2). Affected games: Wiener Zahlen (GAME_AT_03). Started 2025-11-26T02:39:44. Resolved 2025-11-27T12:31:44. Root cause RC_56. Source: incident_management table incidents, record INC_039.",
+            "text": "Incident INC_039 in Austria: Sign-in failures for a subset of accounts. Seen on platform version 2024.2.0 (PLV_WEB_2). Type Anmeldest\u00f6rung (ITYPE_AT_ANMELDUNG). Severity LOW. Platform Web Portal (PLT_WEB). Platform version 2024.2.0 (PLV_WEB_2). Affected games: Wiener Zahlen (GAME_AT_03). Started 2025-11-26T02:39:44. Resolved 2025-11-27T12:31:44. Root cause RC_56. Source: incident_management table incidents, record INC_039.",
             "title": "incidents: INC_039",
             "document_type": "INCIDENTS",
             "market_id": "MKT_AT",
@@ -664,7 +664,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.270662784576416,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_043",
@@ -687,7 +687,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.3057985305786133,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_029",
@@ -710,13 +710,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.3793084621429443,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_034",
             "document_id": "INC_034",
             "chunk_index": 0,
-            "text": "Incident INC_034 in Greece: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.1.0 (PLV_ANALYTICS_1). Type Αστάθεια εφαρμογής (ITYPE_GR_EFARMOGI). Severity LOW. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.1.0 (PLV_ANALYTICS_1). Affected games: Olympia Numbers (GAME_GR_03). Started 2025-06-27T16:24:49. Resolved 2025-06-29T00:06:49. Root cause RC_32. Source: incident_management table incidents, record INC_034.",
+            "text": "Incident INC_034 in Greece: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.1.0 (PLV_ANALYTICS_1). Type \u0391\u03c3\u03c4\u03ac\u03b8\u03b5\u03b9\u03b1 \u03b5\u03c6\u03b1\u03c1\u03bc\u03bf\u03b3\u03ae\u03c2 (ITYPE_GR_EFARMOGI). Severity LOW. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.1.0 (PLV_ANALYTICS_1). Affected games: Olympia Numbers (GAME_GR_03). Started 2025-06-27T16:24:49. Resolved 2025-06-29T00:06:49. Root cause RC_32. Source: incident_management table incidents, record INC_034.",
             "title": "incidents: INC_034",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -733,7 +733,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.4339375495910645,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_033",
@@ -756,13 +756,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.45701265335083,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_044",
             "document_id": "INC_044",
             "chunk_index": 0,
-            "text": "Incident INC_044 in Czech Republic: Payment checkout failures on platform version PLV_PAYMENTS_3 affecting digital checkout. Type Selhání plateb (ITYPE_CZ_PLATBY). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Vltava Výhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02). Started 2025-05-23T13:00:00. Resolved 2025-05-24T01:00:00. Root cause RC_77. Source: incident_management table incidents, record INC_044.",
+            "text": "Incident INC_044 in Czech Republic: Payment checkout failures on platform version PLV_PAYMENTS_3 affecting digital checkout. Type Selh\u00e1n\u00ed plateb (ITYPE_CZ_PLATBY). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Vltava V\u00fdhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02). Started 2025-05-23T13:00:00. Resolved 2025-05-24T01:00:00. Root cause RC_77. Source: incident_management table incidents, record INC_044.",
             "title": "incidents: INC_044",
             "document_type": "INCIDENTS",
             "market_id": "MKT_CZ",
@@ -779,13 +779,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.4571826457977295,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_022",
             "document_id": "INC_022",
             "chunk_index": 0,
-            "text": "Incident INC_022 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.3.0 (PLV_PAYMENTS_3). Type Αποτυχία πληρωμών (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Athena Express (GAME_GR_04). Started 2025-11-29T01:54:04. Resolved 2025-11-29T14:58:04. Root cause RC_26. Source: incident_management table incidents, record INC_022.",
+            "text": "Incident INC_022 in Greece: Payment provider degraded; transactions failing. Seen on platform version 2024.3.0 (PLV_PAYMENTS_3). Type \u0391\u03c0\u03bf\u03c4\u03c5\u03c7\u03af\u03b1 \u03c0\u03bb\u03b7\u03c1\u03c9\u03bc\u03ce\u03bd (ITYPE_GR_PLIROMES). Severity LOW. Platform Payments Gateway (PLT_PAYMENTS). Platform version 2024.3.0 (PLV_PAYMENTS_3). Affected games: Athena Express (GAME_GR_04). Started 2025-11-29T01:54:04. Resolved 2025-11-29T14:58:04. Root cause RC_26. Source: incident_management table incidents, record INC_022.",
             "title": "incidents: INC_022",
             "document_type": "INCIDENTS",
             "market_id": "MKT_GR",
@@ -802,7 +802,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.5136678218841553,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_013",
@@ -825,13 +825,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.549111843109131,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_004",
             "document_id": "INC_004",
             "chunk_index": 0,
-            "text": "Incident INC_004 in Czech Republic: Draw result publication delayed. Seen on platform version 2024.3.0 (PLV_DRAW_3). Type Zpoždění losování (ITYPE_CZ_LOSOVANI). Severity LOW. Platform Draw Engine (PLT_DRAW). Platform version 2024.3.0 (PLV_DRAW_3). Affected games: Rychle Cisla (GAME_CZ_03). Started 2025-05-22T11:28:04. Resolved 2025-05-22T20:45:04. Root cause RC_20. Source: incident_management table incidents, record INC_004.",
+            "text": "Incident INC_004 in Czech Republic: Draw result publication delayed. Seen on platform version 2024.3.0 (PLV_DRAW_3). Type Zpo\u017ed\u011bn\u00ed losov\u00e1n\u00ed (ITYPE_CZ_LOSOVANI). Severity LOW. Platform Draw Engine (PLT_DRAW). Platform version 2024.3.0 (PLV_DRAW_3). Affected games: Rychle Cisla (GAME_CZ_03). Started 2025-05-22T11:28:04. Resolved 2025-05-22T20:45:04. Root cause RC_20. Source: incident_management table incidents, record INC_004.",
             "title": "incidents: INC_004",
             "document_type": "INCIDENTS",
             "market_id": "MKT_CZ",
@@ -848,7 +848,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.601217031478882,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_021",
@@ -871,7 +871,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.6168408393859863,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_028",
@@ -894,13 +894,13 @@
             "discovered_via": "vector",
             "rerank_score": -2.7078897953033447,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_016",
             "document_id": "INC_016",
             "chunk_index": 0,
-            "text": "Incident INC_016 in Czech Republic: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.1.0 (PLV_ANALYTICS_1). Type Nestabilita aplikace (ITYPE_CZ_APLIKACE). Severity MEDIUM. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.1.0 (PLV_ANALYTICS_1). Affected games: Vltava Výhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02), Rychle Cisla (GAME_CZ_03). Started 2025-04-13T20:00:37. Resolved 2025-04-14T12:41:37. Source: incident_management table incidents, record INC_016.",
+            "text": "Incident INC_016 in Czech Republic: Reporting pipelines delayed; no customer impact. Seen on platform version 2024.1.0 (PLV_ANALYTICS_1). Type Nestabilita aplikace (ITYPE_CZ_APLIKACE). Severity MEDIUM. Platform Analytics Platform (PLT_ANALYTICS). Platform version 2024.1.0 (PLV_ANALYTICS_1). Affected games: Vltava V\u00fdhra (GAME_CZ_01), Moravia Multi (GAME_CZ_02), Rychle Cisla (GAME_CZ_03). Started 2025-04-13T20:00:37. Resolved 2025-04-14T12:41:37. Source: incident_management table incidents, record INC_016.",
             "title": "incidents: INC_016",
             "document_type": "INCIDENTS",
             "market_id": "MKT_CZ",
@@ -917,7 +917,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.711827039718628,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_019",
@@ -940,7 +940,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.717299461364746,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_025",
@@ -963,7 +963,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.785050630569458,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_015",
@@ -986,7 +986,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.7959744930267334,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_011",
@@ -1009,7 +1009,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.824755907058716,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "REC_incidents_INC_020",
@@ -1032,7 +1032,7 @@
             "discovered_via": "vector",
             "rerank_score": -2.90854811668396,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "CHNK_0256_00",
@@ -1055,7 +1055,7 @@
             "discovered_via": "vector",
             "rerank_score": -5.173148155212402,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           },
           {
             "chunk_id": "CHNK_0053_00",
@@ -1078,7 +1078,7 @@
             "discovered_via": "vector",
             "rerank_score": -6.117222785949707,
             "selected": false,
-            "discard_reason": "slot_limit"
+            "discard_reason": "context_budget"
           }
         ],
         "embedding_model": "bge-m3",
@@ -2621,7 +2621,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_005",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2634,7 +2634,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_008",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2647,7 +2647,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_006",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2660,7 +2660,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_001",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2673,7 +2673,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_023",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2686,7 +2686,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_002",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2699,7 +2699,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_018",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2712,7 +2712,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_026",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2725,7 +2725,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_014",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2738,7 +2738,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_039",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2751,7 +2751,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_043",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2764,7 +2764,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_029",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2777,7 +2777,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_034",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2790,7 +2790,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_033",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2803,7 +2803,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_044",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2816,7 +2816,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_022",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2829,7 +2829,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_013",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2842,7 +2842,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_004",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2855,7 +2855,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_021",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2868,7 +2868,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_028",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2881,7 +2881,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_016",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2894,7 +2894,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_019",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2907,7 +2907,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_025",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2920,7 +2920,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_015",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2933,7 +2933,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_011",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2946,7 +2946,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "REC_incidents_INC_020",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2959,7 +2959,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "CHNK_0256_00",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2972,7 +2972,7 @@
       "event_type": "rag.evidence.discarded",
       "payload": {
         "chunk_id": "CHNK_0053_00",
-        "reason": "slot_limit"
+        "reason": "context_budget"
       }
     },
     {
@@ -2987,7 +2987,7 @@
         "selected": 12,
         "discarded": 28,
         "context_tokens": 1444,
-        "evidence_slots": 12
+        "budget_tokens": 2000
       }
     },
     {
@@ -3070,12 +3070,24 @@
       }
     },
     {
+      "event_id": "933b32e9f84e4c49802f1dac71a07a70",
+      "timestamp": "2026-10-23T21:04:40.501565+00:00",
+      "run_id": "RUN-53BB15DD2B37",
+      "pipeline": "B",
+      "t_ms": 361400098.2,
+      "sequence": 135,
+      "event_type": "graph.target_types.resolved",
+      "payload": {
+        "labels": "Incident,Market,PlatformVersion"
+      }
+    },
+    {
       "event_id": "3d2051abbe124118a8475b7d72dadd6e",
       "timestamp": "2026-10-23T21:04:40.501835+00:00",
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400098.4,
-      "sequence": 135,
+      "sequence": 136,
       "event_type": "graph.seed.selected",
       "payload": {
         "node_id": "INC_037"
@@ -3087,7 +3099,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400098.6,
-      "sequence": 136,
+      "sequence": 137,
       "event_type": "graph.traversal.started",
       "payload": {
         "max_depth": 2,
@@ -3104,7 +3116,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400235.5,
-      "sequence": 137,
+      "sequence": 138,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "PLV_IDENTITY_2",
@@ -3119,7 +3131,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400236.1,
-      "sequence": 138,
+      "sequence": 139,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "INC_037",
@@ -3135,7 +3147,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400236.4,
-      "sequence": 139,
+      "sequence": 140,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_UK_06",
@@ -3150,7 +3162,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400236.7,
-      "sequence": 140,
+      "sequence": 141,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "INC_037",
@@ -3166,7 +3178,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400237.1,
-      "sequence": 141,
+      "sequence": 142,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "ITYPE_UK_SIGN_IN",
@@ -3181,7 +3193,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400237.3,
-      "sequence": 142,
+      "sequence": 143,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "INC_037",
@@ -3197,7 +3209,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400237.6,
-      "sequence": 143,
+      "sequence": 144,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "MKT_UK",
@@ -3212,7 +3224,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400237.8,
-      "sequence": 144,
+      "sequence": 145,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "INC_037",
@@ -3228,7 +3240,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400238,
-      "sequence": 145,
+      "sequence": 146,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "PLT_IDENTITY",
@@ -3243,7 +3255,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400238.2,
-      "sequence": 146,
+      "sequence": 147,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "INC_037",
@@ -3259,7 +3271,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400238.6,
-      "sequence": 147,
+      "sequence": 148,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00005",
@@ -3274,7 +3286,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400238.8,
-      "sequence": 148,
+      "sequence": 149,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "INC_037",
@@ -3290,7 +3302,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400239,
-      "sequence": 149,
+      "sequence": 150,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00113",
@@ -3305,7 +3317,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400239.2,
-      "sequence": 150,
+      "sequence": 151,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "INC_037",
@@ -3321,7 +3333,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400239.4,
-      "sequence": 151,
+      "sequence": 152,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00121",
@@ -3336,7 +3348,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400239.6,
-      "sequence": 152,
+      "sequence": 153,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "INC_037",
@@ -3352,7 +3364,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400239.8,
-      "sequence": 153,
+      "sequence": 154,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "INC_024",
@@ -3367,7 +3379,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400240.1,
-      "sequence": 154,
+      "sequence": 155,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "PLV_IDENTITY_2",
@@ -3383,7 +3395,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400240.3,
-      "sequence": 155,
+      "sequence": 156,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "INC_029",
@@ -3398,7 +3410,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400240.5,
-      "sequence": 156,
+      "sequence": 157,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "PLV_IDENTITY_2",
@@ -3414,7 +3426,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400240.7,
-      "sequence": 157,
+      "sequence": 158,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "INC_001",
@@ -3429,7 +3441,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400240.9,
-      "sequence": 158,
+      "sequence": 159,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3445,7 +3457,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400241.3,
-      "sequence": 159,
+      "sequence": 160,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "INC_005",
@@ -3460,7 +3472,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400241.6,
-      "sequence": 160,
+      "sequence": 161,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3476,7 +3488,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400241.8,
-      "sequence": 161,
+      "sequence": 162,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "INC_013",
@@ -3491,7 +3503,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400242,
-      "sequence": 162,
+      "sequence": 163,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3507,7 +3519,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400242.2,
-      "sequence": 163,
+      "sequence": 164,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_UK_01",
@@ -3522,7 +3534,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400242.3,
-      "sequence": 164,
+      "sequence": 165,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "SUP_00121",
@@ -3538,7 +3550,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400242.5,
-      "sequence": 165,
+      "sequence": 166,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_UK_02",
@@ -3553,7 +3565,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400242.7,
-      "sequence": 166,
+      "sequence": 167,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "SUP_00005",
@@ -3569,7 +3581,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400242.9,
-      "sequence": 167,
+      "sequence": 168,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "INC_009",
@@ -3584,7 +3596,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400243.1,
-      "sequence": 168,
+      "sequence": 169,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "ITYPE_UK_SIGN_IN",
@@ -3600,7 +3612,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400243.3,
-      "sequence": 169,
+      "sequence": 170,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "INC_033",
@@ -3615,7 +3627,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400243.4,
-      "sequence": 170,
+      "sequence": 171,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "ITYPE_UK_SIGN_IN",
@@ -3631,7 +3643,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400243.7,
-      "sequence": 171,
+      "sequence": 172,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00065",
@@ -3646,7 +3658,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400243.9,
-      "sequence": 172,
+      "sequence": 173,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3662,7 +3674,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400244,
-      "sequence": 173,
+      "sequence": 174,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00169",
@@ -3677,7 +3689,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400244.2,
-      "sequence": 174,
+      "sequence": 175,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3693,7 +3705,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400244.4,
-      "sequence": 175,
+      "sequence": 176,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00173",
@@ -3708,7 +3720,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400244.7,
-      "sequence": 176,
+      "sequence": 177,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3724,7 +3736,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400244.9,
-      "sequence": 177,
+      "sequence": 178,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00205",
@@ -3739,7 +3751,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400245,
-      "sequence": 178,
+      "sequence": 179,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3755,7 +3767,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400245.2,
-      "sequence": 179,
+      "sequence": 180,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_AT_01",
@@ -3770,7 +3782,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400245.4,
-      "sequence": 180,
+      "sequence": 181,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "PLT_IDENTITY",
@@ -3786,7 +3798,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400245.5,
-      "sequence": 181,
+      "sequence": 182,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_AT_02",
@@ -3801,7 +3813,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400245.7,
-      "sequence": 182,
+      "sequence": 183,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "PLT_IDENTITY",
@@ -3817,7 +3829,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400246,
-      "sequence": 183,
+      "sequence": 184,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_AT_03",
@@ -3832,7 +3844,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400246.2,
-      "sequence": 184,
+      "sequence": 185,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "PLT_IDENTITY",
@@ -3848,7 +3860,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400246.3,
-      "sequence": 185,
+      "sequence": 186,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_AT_04",
@@ -3863,7 +3875,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400246.5,
-      "sequence": 186,
+      "sequence": 187,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "PLT_IDENTITY",
@@ -3879,7 +3891,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400246.6,
-      "sequence": 187,
+      "sequence": 188,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "MECH_UK_INSTANT_ROUNDS",
@@ -3894,7 +3906,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400246.8,
-      "sequence": 188,
+      "sequence": 189,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3910,7 +3922,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400246.9,
-      "sequence": 189,
+      "sequence": 190,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "PLT_APP_ANDROID",
@@ -3925,7 +3937,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400247.1,
-      "sequence": 190,
+      "sequence": 191,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3941,7 +3953,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400247.3,
-      "sequence": 191,
+      "sequence": 192,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "PLT_APP_IOS",
@@ -3956,7 +3968,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400247.4,
-      "sequence": 192,
+      "sequence": 193,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -3972,7 +3984,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400247.6,
-      "sequence": 193,
+      "sequence": 194,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "PLT_DRAW",
@@ -3987,7 +3999,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400247.8,
-      "sequence": 194,
+      "sequence": 195,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -4003,7 +4015,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400248.1,
-      "sequence": 195,
+      "sequence": 196,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "PLV_IDENTITY_1",
@@ -4018,7 +4030,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400248.3,
-      "sequence": 196,
+      "sequence": 197,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "PLT_IDENTITY",
@@ -4034,7 +4046,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400248.5,
-      "sequence": 197,
+      "sequence": 198,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "PLV_IDENTITY_3",
@@ -4049,7 +4061,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400248.7,
-      "sequence": 198,
+      "sequence": 199,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "PLT_IDENTITY",
@@ -4065,7 +4077,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400248.8,
-      "sequence": 199,
+      "sequence": 200,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUPC_UK_GAME",
@@ -4080,7 +4092,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400249,
-      "sequence": 200,
+      "sequence": 201,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "SUP_00005",
@@ -4096,7 +4108,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400249.3,
-      "sequence": 201,
+      "sequence": 202,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUPC_UK_TECHNICAL",
@@ -4111,7 +4123,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400249.6,
-      "sequence": 202,
+      "sequence": 203,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "SUP_00113",
@@ -4127,7 +4139,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400249.7,
-      "sequence": 203,
+      "sequence": 204,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "CAT_UK_INSTANT",
@@ -4142,7 +4154,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400249.9,
-      "sequence": 204,
+      "sequence": 205,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -4158,7 +4170,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250,
-      "sequence": 205,
+      "sequence": 206,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00001",
@@ -4173,7 +4185,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250.2,
-      "sequence": 206,
+      "sequence": 207,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "MKT_UK",
@@ -4189,7 +4201,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250.4,
-      "sequence": 207,
+      "sequence": 208,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00009",
@@ -4204,7 +4216,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250.6,
-      "sequence": 208,
+      "sequence": 209,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "MKT_UK",
@@ -4220,7 +4232,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250.6,
-      "sequence": 209,
+      "sequence": 210,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "SUP_00013",
@@ -4235,7 +4247,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250.7,
-      "sequence": 210,
+      "sequence": 211,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "MKT_UK",
@@ -4251,7 +4263,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250.8,
-      "sequence": 211,
+      "sequence": 212,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "FAM_UK_ONLINE_INSTANT",
@@ -4266,7 +4278,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250.9,
-      "sequence": 212,
+      "sequence": 213,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "GAME_UK_06",
@@ -4282,7 +4294,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400250.9,
-      "sequence": 213,
+      "sequence": 214,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_UK_03",
@@ -4297,7 +4309,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400251,
-      "sequence": 214,
+      "sequence": 215,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "MKT_UK",
@@ -4313,7 +4325,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400251.1,
-      "sequence": 215,
+      "sequence": 216,
       "event_type": "graph.node.discovered",
       "payload": {
         "node_id": "GAME_UK_04",
@@ -4328,7 +4340,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361400251.2,
-      "sequence": 216,
+      "sequence": 217,
       "event_type": "graph.relationship.traversed",
       "payload": {
         "from_id": "MKT_UK",
@@ -4344,7 +4356,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361401204.3,
-      "sequence": 217,
+      "sequence": 218,
       "event_type": "graph.rerank.started",
       "payload": {
         "candidates": 75,
@@ -4357,7 +4369,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "B",
       "t_ms": 361405841,
-      "sequence": 218,
+      "sequence": 219,
       "event_type": "pipeline.cancelled",
       "payload": {
         "error_code": "CANCELLED",
@@ -4371,7 +4383,7 @@
       "run_id": "RUN-53BB15DD2B37",
       "pipeline": "run",
       "t_ms": 361405841.5,
-      "sequence": 219,
+      "sequence": 220,
       "event_type": "run.cancelled",
       "payload": {
         "error_code": "CANCELLED",

@@ -89,6 +89,53 @@ test('follows a live run and offers the timeline when it ends', async ({
   await expect(page.getByRole('slider', { name: 'Position' })).toBeEnabled()
 })
 
+test('shows where the graph put each record under method v0.3, and why one was set aside', async ({
+  page,
+}) => {
+  await serveLiveRun(page, live.events, live.results)
+  await page.goto('/#/live-lab')
+  await page.getByRole('button', { name: h1.question }).click()
+  await page.getByRole('button', { name: 'Live', exact: true }).click()
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await expect(page.getByText('The run is complete.')).toBeVisible()
+  const graph = page.getByRole('region', { name: 'B · Graph', exact: true })
+  await expect(
+    graph.getByText("Question's target: incident, market, platform version"),
+  ).toBeVisible()
+  await expect(graph.getByText('Context: 1,357 of 2,000 tokens')).toBeVisible()
+  const evidence = graph.getByRole('list', { name: 'Evidence' })
+  await expect(
+    evidence.getByText('starting point · graph rank 1'),
+  ).toBeVisible()
+  await expect(
+    evidence.getByText('Set aside: the context was full').first(),
+  ).toBeAttached()
+  await expect(evidence.getByText(/old method/)).toHaveCount(0)
+  await shot(page, 'live-v03-end')
+})
+
+test('labels a recording made under the old method, and reads its reasons as old', async ({
+  page,
+}) => {
+  await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+  const bar = page.getByRole('region', { name: 'Question' })
+  await expect(
+    bar.getByText('recorded under the old method (v0.2)'),
+  ).toBeVisible()
+  await page.getByRole('button', { name: 'Pause' }).click()
+  const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+  await page.getByRole('slider', { name: 'Position' }).fill(String(duration))
+  await expect(page.getByText('The run is complete.')).toBeVisible()
+  const evidence = page
+    .getByRole('region', { name: 'B · Graph', exact: true })
+    .getByRole('list', { name: 'Evidence' })
+  await expect(
+    evidence.getByText('Set aside under the old method').first(),
+  ).toBeAttached()
+  await expect(evidence.getByText(/graph rank/)).toHaveCount(0)
+  await shot(page, 'recorded-old-method-end')
+})
+
 test('shows a cancelled run as it was recorded, with no score', async ({
   page,
 }) => {

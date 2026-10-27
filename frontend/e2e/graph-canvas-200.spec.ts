@@ -236,10 +236,10 @@ test.describe('graph canvas after scrubbing', () => {
     await expect(nodes(page).first()).toBeVisible()
     const slider = page.getByRole('slider')
     // Scrub up, down and up again, as a person drags the cursor.
-    for (const count of [120, 300, 405, 500, 650, 705, 405, 160, 705]) {
+    for (const count of [120, 260, 366, 461, 550, 605, 366, 160, 605]) {
       await slider.fill(String(count))
       await layoutReady(page)
-      await expectTidy(page, `${count} events`, count >= 405)
+      await expectTidy(page, `${count} events`, count >= 366)
     }
   })
 
@@ -250,13 +250,13 @@ test.describe('graph canvas after scrubbing', () => {
     await page.reload()
     await expect(nodes(page).first()).toBeVisible()
     const slider = page.getByRole('slider')
-    for (const count of [405, 450, 500, 600, 650, 704]) {
+    for (const count of [366, 411, 461, 500, 550, 604]) {
       await slider.fill(String(count))
       await layoutReady(page)
       await expectTidy(page, `${count} events (live)`, true, true)
     }
     // At the end of the stream the final graph is laid out whole.
-    await slider.fill('705')
+    await slider.fill('605')
     await layoutReady(page)
     await expectTidy(page, 'the end of the stream (live)', true)
   })
@@ -271,7 +271,7 @@ test.describe('graph canvas after scrubbing', () => {
       await page.reload()
       await expect(nodes(page).first()).toBeVisible()
       const slider = page.getByRole('slider')
-      for (const count of [405, 450, 500, 600, 650, 704]) {
+      for (const count of [366, 411, 461, 500, 550, 604]) {
         await slider.fill(String(count))
         await layoutReady(page)
       }
@@ -289,10 +289,10 @@ test.describe('graph canvas after scrubbing', () => {
     await page.reload()
     await expect(nodes(page).first()).toBeVisible()
     const slider = page.getByRole('slider')
-    await slider.fill('405')
+    await slider.fill('366')
     await layoutReady(page)
     expect(await page.locator('[data-on-path="true"]').count()).toBe(0)
-    await slider.fill('705')
+    await slider.fill('605')
     await layoutReady(page)
     expect(await page.locator('[data-on-path="true"]').count()).toBeGreaterThan(
       0,

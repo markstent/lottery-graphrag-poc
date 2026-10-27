@@ -4,6 +4,7 @@ import { plainName } from './plain-words'
 
 export const KIND_WORDS: Record<string, string> = {
   official: 'Official run',
+  dev: 'Development run',
   smoke: 'Quick check',
   sweep: 'Depth sweep',
 }

@@ -36,6 +36,10 @@ const { values, positionals } = parseArgs({
   },
 })
 const BASE = positionals[0] ?? 'http://localhost:8000'
+// The retrieval method the backend runs (METHOD_VERSION in backend/app/config):
+// a recording keeps the method it was made under, so Live Lab can label one
+// made under an older method.
+const METHOD = '0.3.0'
 const STRATA = values.strata ? values.strata.split(',') : ['H1']
 const OUT_DIR = values['out-dir']
 if (values.strata && !OUT_DIR) throw new Error('--strata needs --out-dir')
@@ -169,6 +173,7 @@ if (values.adhoc) {
       run_id: runId,
       model: generation.model,
       captured_at: new Date().toISOString(),
+      method: METHOD,
       results: run,
       events,
     }

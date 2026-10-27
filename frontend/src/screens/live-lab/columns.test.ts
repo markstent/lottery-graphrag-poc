@@ -8,12 +8,15 @@ import {
   type RunState,
 } from '../../run/reduce'
 import cancelled from '../../run/fixtures/run-cancelled.json'
+import runAbc from '../../run/fixtures/run-abc.json'
 import {
+  contextLine,
   evidenceRows,
   evidenceSummary,
   pipelineNotice,
   runStatusLine,
   stageRows,
+  targetLine,
 } from './columns'
 import type { RunPhase, Timeline as TimelineView } from './use-live-run'
 
@@ -161,11 +164,141 @@ describe('evidenceRows', () => {
   })
 
   it('names a graph node by its kind and id, and says why one was set aside', () => {
-    const rows = evidenceRows('B', finished)
+    const rows = evidenceRows(
+      'B',
+      reduceAll(runAbc.events as unknown as RunEvent[]),
+    )
     const inc = rows.find((row) => row.id === 'INC_037')!
     expect(inc).toMatchObject({ kind: 'incident', state: 'selected' })
     const aside = rows.find((row) => row.state === 'discarded')!
     expect(aside.detail).toMatch(/^Set aside: /)
+  })
+})
+
+describe('evidenceRows under method v0.3', () => {
+  const v03 = reduceAll(runAbc.events as unknown as RunEvent[])
+  const outcome = (sequence: number, type: string, payload: object): RunEvent =>
+    ({
+      event_id: `e${sequence}`,
+      timestamp: '2026-01-01T10:00:00+00:00',
+      run_id: 'RUN-TEST',
+      pipeline: 'B',
+      event_type: type,
+      t_ms: sequence,
+      payload,
+      sequence,
+    }) as unknown as RunEvent
+  const node = (id: string, tier: string | null, rank: number | null) => ({
+    node_id: id,
+    score: 0.5,
+    hops: 1,
+    seed: tier === 'seed',
+    tier,
+    graph_rank: rank,
+  })
+  const built = reduceAll([
+    outcome(1, 'graph.candidate.selected', {
+      ...node('INC_1', 'seed', 1),
+      weight_graph_distance: 1,
+      weight_relationship_type: 1,
+      weight_semantic_relevance: 1,
+      weight_temporal_validity: 1,
+    }),
+    outcome(2, 'graph.candidate.discarded', {
+      ...node('PLV_1', 'target', 2),
+      reason: 'same_record',
+    }),
+    outcome(3, 'graph.candidate.discarded', {
+      ...node('PLT_1', 'other', 3),
+      reason: 'context_budget',
+    }),
+    outcome(4, 'graph.candidate.discarded', {
+      ...node('MKT_1', null, null),
+      reason: 'out_of_scope_market',
+    }),
+  ])
+  const row = (id: string) =>
+    evidenceRows('B', built).find((candidate) => candidate.id === id)!
+
+  it('places each graph record by its tier and graph rank', () => {
+    expect(row('INC_1').place).toBe('starting point · graph rank 1')
+    expect(row('PLV_1').place).toBe("question's target · graph rank 2")
+    expect(row('PLT_1').place).toBe('other · graph rank 3')
+    // A record refused before the graph order has no place in it.
+    expect(row('MKT_1').place).toBeNull()
+  })
+
+  it('says why a record was set aside, in the words of the v0.3 reasons', () => {
+    expect(row('PLV_1').detail).toBe(
+      'Set aside: the same record is already in the context',
+    )
+    expect(row('PLT_1').detail).toBe('Set aside: the context was full')
+    expect(row('MKT_1').detail).toBe(
+      'Set aside: outside the markets asked about',
+    )
+  })
+
+  it('gives a passage no place in the graph order', () => {
+    const rows = evidenceRows('B', v03)
+    expect(rows.filter((r) => r.kind === 'passage').length).toBeGreaterThan(0)
+    expect(
+      rows.filter((r) => r.kind === 'passage').every((r) => r.place === null),
+    ).toBe(true)
+    expect(rows.find((r) => r.id === 'INC_037')?.place).toBe(
+      'starting point · graph rank 1',
+    )
+  })
+})
+
+describe('evidenceRows of an old-method recording', () => {
+  it('says a record was set aside under the old method, with no graph rank', () => {
+    const rows = evidenceRows('B', finished)
+    const aside = rows.filter((row) => row.state === 'discarded')
+    expect(aside.length).toBeGreaterThan(0)
+    expect(
+      aside.every((row) => row.detail === 'Set aside under the old method'),
+    ).toBe(true)
+    expect(rows.every((row) => row.place === null)).toBe(true)
+  })
+})
+
+describe('targetLine', () => {
+  it("names the question's target types in plain words", () => {
+    expect(
+      targetLine('C', reduceAll(runAbc.events as unknown as RunEvent[])),
+    ).toBe(
+      "Question's target: incident, incident type, market, platform version",
+    )
+  })
+
+  it('says when the question named none, and is silent for A and old recordings', () => {
+    const none = reduceAll([
+      {
+        event_id: 'e1',
+        timestamp: '2026-01-01T10:00:00+00:00',
+        run_id: 'RUN-TEST',
+        pipeline: 'B',
+        event_type: 'graph.target_types.resolved',
+        t_ms: 1,
+        payload: { labels: '' },
+        sequence: 1,
+      } as unknown as RunEvent,
+    ])
+    expect(targetLine('B', none)).toBe("Question's target: none named")
+    expect(targetLine('A', none)).toBeNull()
+    expect(targetLine('B', finished)).toBeNull()
+  })
+})
+
+describe('contextLine', () => {
+  it('gives the context size against its budget', () => {
+    const v03 = reduceAll(runAbc.events as unknown as RunEvent[])
+    expect(contextLine(v03.pipelines.A)).toBe('Context: 1,444 of 2,000 tokens')
+  })
+
+  it('is silent before the context is built and for an old recording, which had no budget', () => {
+    expect(contextLine(initialRunState().pipelines.A)).toBeNull()
+    expect(contextLine(finished.pipelines.A)).toBeNull()
   })
 })
 

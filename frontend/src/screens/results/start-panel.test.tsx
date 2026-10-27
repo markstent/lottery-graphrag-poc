@@ -7,7 +7,7 @@ import type { Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
 import { MODELS, stubApi } from '../../test/api-stub'
 import { Panel } from '../../components/panel'
-import { StartArea, StartButton } from './start-panel'
+import { KINDS_NOTE, StartArea, StartButton } from './start-panel'
 
 type Job = Schemas['BenchmarkJob']
 
@@ -105,11 +105,19 @@ describe('StartPanel', () => {
     const { user } = show()
     expect(screen.queryByRole('radio')).toBeNull()
     await open(user)
-    expect(screen.getByRole('radio', { name: 'Official run' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Development run' })).toBeChecked()
     expect(screen.getByRole('radio', { name: 'Quick check' })).not.toBeChecked()
-    for (const seed of ['2026', '2027', '2028'])
-      expect(screen.getByRole('checkbox', { name: seed })).toBeChecked()
-    expect(screen.getByRole('spinbutton', { name: 'Repeats' })).toHaveValue(3)
+    // The official run is never started from here (D-091), and the form says why.
+    expect(screen.queryByRole('radio', { name: 'Official run' })).toBeNull()
+    expect(screen.getByText(KINDS_NOTE)).toBeVisible()
+    expect(KINDS_NOTE).toMatch(/2029 to 2034/)
+    expect(screen.getByRole('checkbox', { name: '2026' })).toBeChecked()
+    for (const seed of ['2027', '2028']) {
+      expect(screen.getByRole('checkbox', { name: seed })).not.toBeChecked()
+      expect(screen.getByRole('checkbox', { name: seed })).toBeDisabled()
+    }
+    expect(screen.getByText('World 2026 only')).toBeVisible()
+    expect(screen.getByRole('spinbutton', { name: 'Repeats' })).toHaveValue(1)
     expect(screen.getByRole('radio', { name: 'Whole bank' })).toBeChecked()
     expect(await within(form()).findByText('bank-v7')).toBeVisible()
     expect(within(form()).getByText('qwen3:8b')).toBeVisible()
@@ -123,7 +131,7 @@ describe('StartPanel', () => {
     expect(button).toHaveAttribute('aria-expanded', 'false')
     await user.click(button)
     expect(screen.queryByRole('button', { name: 'Start a run' })).toBeNull()
-    expect(screen.getByRole('radio', { name: 'Official run' })).toHaveFocus()
+    expect(screen.getByRole('radio', { name: 'Development run' })).toHaveFocus()
   })
 
   it('closes with Escape or Close and brings the button back with focus', async () => {
@@ -185,18 +193,20 @@ describe('StartPanel', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('follows the minimum when the kind changes, but keeps Repeats the reader typed', async () => {
+  it('frees the other seen worlds for a quick check and keeps Repeats the reader typed', async () => {
     const { user } = show()
     await open(user)
     const repeats = screen.getByRole('spinbutton', { name: 'Repeats' })
-    await user.click(screen.getByRole('radio', { name: 'Quick check' }))
-    expect(repeats).toHaveValue(1)
-    await user.click(screen.getByRole('radio', { name: 'Official run' }))
-    expect(repeats).toHaveValue(3)
     await user.clear(repeats)
-    await user.type(repeats, '5')
+    await user.type(repeats, '2')
     await user.click(screen.getByRole('radio', { name: 'Quick check' }))
-    expect(repeats).toHaveValue(5)
+    expect(repeats).toHaveValue(2)
+    expect(screen.getByRole('checkbox', { name: '2027' })).toBeEnabled()
+    expect(screen.queryByText('World 2026 only')).toBeNull()
+    await user.click(screen.getByRole('checkbox', { name: '2027' }))
+    await user.click(screen.getByRole('radio', { name: 'Development run' }))
+    expect(screen.getByRole('checkbox', { name: '2027' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: '2027' })).toBeDisabled()
   })
 
   it('offers the kinds of question only under Chosen kinds, and needs one', async () => {
@@ -226,17 +236,14 @@ describe('StartPanel', () => {
     expect(within(form()).getByText('Not known')).toBeVisible()
   })
 
-  it('official run needs three repeats', async () => {
+  it('needs at least one repeat', async () => {
     const { user, start } = show()
     await open(user)
     const repeats = screen.getByRole('spinbutton', { name: 'Repeats' })
     await user.clear(repeats)
-    await user.type(repeats, '2')
-    expect(screen.getByText('Use a whole number, at least 3.')).toBeVisible()
+    await user.type(repeats, '0')
+    expect(screen.getByText('Use a whole number, at least 1.')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Start' })).toBeDisabled()
-    await user.click(screen.getByRole('radio', { name: 'Quick check' }))
-    expect(screen.queryByText(/at least 3/)).toBeNull()
-    expect(screen.getByRole('button', { name: 'Start' })).toBeEnabled()
     expect(start).not.toHaveBeenCalled()
   })
 
@@ -244,7 +251,7 @@ describe('StartPanel', () => {
     const { user, start } = show()
     await open(user)
     await user.click(screen.getByRole('radio', { name: 'Quick check' }))
-    await user.click(screen.getByRole('checkbox', { name: '2027' }))
+    await user.click(screen.getByRole('checkbox', { name: '2028' }))
     await user.click(screen.getByRole('radio', { name: 'Chosen kinds' }))
     await user.click(screen.getByRole('checkbox', { name: /Multi-hop/ }))
     await user.type(

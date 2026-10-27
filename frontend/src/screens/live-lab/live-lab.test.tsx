@@ -141,6 +141,22 @@ describe('Live Lab', () => {
     ).toBeVisible()
   })
 
+  it('says a recording was made under the old method when one is chosen, and not for a live run', async () => {
+    api({ '/api/v1/health/ready': DOWN })
+    open()
+    const note = 'recorded under the old method (v0.2)'
+    await userEvent.click(
+      await screen.findByRole('button', { name: h1.question }),
+    )
+    const source = screen.getByRole('group', { name: 'Source' })
+    expect(within(source).getByText(note)).toBeVisible()
+    await userEvent.type(
+      screen.getByRole('textbox', { name: 'Or ask your own question' }),
+      'Which games run in Greece?',
+    )
+    expect(within(source).queryByText(note)).toBeNull()
+  })
+
   it('plays a recorded run to its end at once under reduced motion', async () => {
     reduceMotion()
     api({ '/api/v1/health/ready': DOWN })
@@ -210,6 +226,9 @@ describe('Live Lab', () => {
     const bar = await screen.findByRole('region', { name: 'Question' })
     expect(within(bar).getByText(h1.question)).toBeVisible()
     expect(within(bar).getByText('Recorded run')).toBeVisible()
+    expect(
+      within(bar).getByText('recorded under the old method (v0.2)'),
+    ).toBeVisible()
     expect(
       within(bar).getByRole('button', { name: 'Change question' }),
     ).toBeVisible()
