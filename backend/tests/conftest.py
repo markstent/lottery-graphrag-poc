@@ -157,7 +157,7 @@ def litellm_offline(monkeypatch: pytest.MonkeyPatch) -> None:
 
 # The services an ungated test must never reach, each with the flag that
 # opts a live test in (tests/live.py) and its ports: the defaults, and any
-# port the environment names for it (read at collection and at each test).
+# port the environment names for it (read at collection and on each connect).
 SERVICE_DEFAULT_PORTS = {
     "Neo4j": (live.GRAPH, {7474, 7473, 7687}),
     "Qdrant": (live.VECTOR, {6333, 6334}),
@@ -168,6 +168,8 @@ SERVICE_URL_VARIABLES = {
     "Qdrant": ("QDRANT_URL",),
     "Ollama or a model server": ("OLLAMA_HOST", "GENERATION_API_BASE", "JUDGE_API_BASE"),
 }
+# The port a URL without one uses.
+SCHEME_PORTS = {"http": 80, "https": 443, "bolt": 7687, "neo4j": 7687}
 SERVICE_GUARD_ERROR = "tests must not reach real services"
 
 
@@ -177,10 +179,13 @@ def _url_ports(variables: tuple[str, ...]) -> set[int]:
         value = os.environ.get(name)
         if not value:
             continue
+        url = urlsplit(value if "://" in value else f"//{value}")
         try:
-            port = urlsplit(value if "://" in value else f"//{value}").port
+            port = url.port
         except ValueError:
             continue
+        # "bolt+s" and "neo4j+ssc" use their base scheme's port.
+        port = port or SCHEME_PORTS.get(url.scheme.split("+")[0])
         if port is not None:
             ports.add(port)
     return ports
@@ -201,41 +206,70 @@ def guarded_ports() -> dict[int, str]:
     return ports
 
 
-# The connect the guard falls through to for any other address; a module
-# attribute so the guard's own test can replace it with a recorder.
+# The connects the guard falls through to for any other address; module
+# attributes, looked up on each call, so the guard's own test can replace
+# them with recorders.
 _real_connect = socket.socket.connect
+_real_connect_ex = socket.socket.connect_ex
+# Every refused attempt not yet charged to a test; ``no_real_services`` fails
+# the test it happened in, and the session check any left outside a test.
+_attempts: list[str] = []
+
+
+def _refuse(address: Any) -> None:
+    """Refuse a connect to a guarded service, with the flags as they are now."""
+    if not (isinstance(address, tuple) and len(address) >= 2):
+        return
+    service = guarded_ports().get(address[1])
+    if service is not None:
+        attempt = f"{service} at {address[0]}:{address[1]}"
+        _attempts.append(attempt)
+        raise ConnectionRefusedError(f"{SERVICE_GUARD_ERROR}: a test tried to reach {attempt}")
+
+
+def _guarded_connect(self: socket.socket, address: Any) -> None:
+    _refuse(address)
+    _real_connect(self, address)
+
+
+def _guarded_connect_ex(self: socket.socket, address: Any) -> int:
+    _refuse(address)
+    return int(_real_connect_ex(self, address))
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Install the service guard (fix round T4-R3) once, before any fixture
+    of any scope or any test module's import-time code runs: an ungated
+    test never opens a socket to Neo4j, Qdrant, Ollama or a model server.
+    A live flag lifts the guard for its own service only."""
+    socket.socket.connect = _guarded_connect  # type: ignore[method-assign]
+    socket.socket.connect_ex = _guarded_connect_ex  # type: ignore[method-assign]
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    socket.socket.connect = _real_connect  # type: ignore[method-assign]
+    socket.socket.connect_ex = _real_connect_ex  # type: ignore[method-assign]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def no_service_attempt_outside_a_test() -> Iterator[None]:
+    """Fail the session when a module or session fixture's teardown tried
+    to reach a real service after the last test that could be charged."""
+    yield
+    assert not _attempts, f"a fixture tried to reach real services: {_attempts}"
 
 
 @pytest.fixture(autouse=True)
-def no_real_services(monkeypatch: pytest.MonkeyPatch) -> Iterator[list[str]]:
-    """An ungated test never opens a socket to Neo4j, Qdrant, Ollama or a
-    model server (fix round T4-R3): the connect is refused before it reaches
-    the network, and the attempt fails the test even where the code under
-    test swallows the error (a benchmark job thread, a readiness probe). A
-    live test keeps its opt-in: its flag lifts the guard for its service.
-    Yields the attempts, so the guard's own test can consume them."""
-    attempts: list[str] = []
-    ports = guarded_ports()
-
-    def refuse(address: Any) -> None:
-        if isinstance(address, tuple) and len(address) >= 2 and address[1] in ports:
-            attempt = f"{ports[address[1]]} at {address[0]}:{address[1]}"
-            attempts.append(attempt)
-            raise ConnectionRefusedError(f"{SERVICE_GUARD_ERROR}: a test tried to reach {attempt}")
-
-    def connect(self: socket.socket, address: Any) -> None:
-        refuse(address)
-        _real_connect(self, address)
-
-    def connect_ex(self: socket.socket, address: Any) -> int:
-        refuse(address)
-        return int(real_connect_ex(self, address))
-
-    real_connect_ex = socket.socket.connect_ex
-    monkeypatch.setattr(socket.socket, "connect", connect)
-    monkeypatch.setattr(socket.socket, "connect_ex", connect_ex)
-    yield attempts
-    assert not attempts, f"an ungated test tried to reach real services: {attempts}"
+def no_real_services() -> Iterator[list[str]]:
+    """Fail the test in whose setup, call or teardown a connect to a real
+    service was refused, even where the code under test swallows the error
+    (a benchmark job thread, a readiness probe). Attempts made by a module or
+    session fixture set up for this test are charged to it too. Yields the
+    attempts, so the guard's own test can consume them."""
+    yield _attempts
+    found = list(_attempts)
+    _attempts.clear()
+    assert not found, f"an ungated test tried to reach real services: {found}"
 
 
 @pytest.fixture(autouse=True)

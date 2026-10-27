@@ -33,7 +33,12 @@ def network(monkeypatch: pytest.MonkeyPatch) -> list[Any]:
         passed.append(address)
         raise ConnectionRefusedError(f"the test network is closed: {address}")
 
+    def recorder_ex(_socket: socket.socket, address: Any) -> int:
+        passed.append(address)
+        raise ConnectionRefusedError(f"the test network is closed: {address}")
+
     monkeypatch.setattr(conftest, "_real_connect", recorder)
+    monkeypatch.setattr(conftest, "_real_connect_ex", recorder_ex)
     return passed
 
 
@@ -100,3 +105,34 @@ def test_a_port_named_in_the_environment_is_guarded(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("QDRANT_URL", "http://vectors:16333")
     ports = conftest.guarded_ports()
     assert (ports[17687], ports[16333]) == ("Neo4j", "Qdrant")
+
+
+def test_a_url_without_a_port_guards_its_schemes_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GENERATION_API_BASE", "https://models.example/v1")
+    monkeypatch.setenv("QDRANT_URL", "http://vectors")
+    monkeypatch.setenv("NEO4J_URI", "neo4j+s://db.internal")
+    ports = conftest.guarded_ports()
+    assert ports[443].startswith("Ollama") and ports[80] == "Qdrant" and ports[7687] == "Neo4j"
+
+
+def test_the_flags_are_read_on_each_connect(
+    no_real_services: list[str], network: list[Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A flag set when the test started and unset later no longer lifts the
+    guard, and a flag set later lifts it: the ports are looked up per connect."""
+    monkeypatch.setenv(live.GRAPH, "1")
+    with socket.socket() as probe, pytest.raises(ConnectionRefusedError, match="network is closed"):
+        probe.connect(("127.0.0.1", 7687))  # lifted: falls through to the recorder
+    assert network == [("127.0.0.1", 7687)] and no_real_services == []
+    monkeypatch.delenv(live.GRAPH)
+    with socket.socket() as probe, pytest.raises(ConnectionRefusedError, match=GUARD):
+        probe.connect_ex(("127.0.0.1", 7687))
+    assert network == [("127.0.0.1", 7687)]
+    _consume(no_real_services, "Neo4j")
+
+
+def test_the_guard_is_installed_for_the_whole_session() -> None:
+    """Installed at configure time, so module and session fixtures and
+    import-time code run under it too."""
+    assert socket.socket.connect is conftest._guarded_connect
+    assert socket.socket.connect_ex is conftest._guarded_connect_ex
