@@ -56,6 +56,38 @@ export const OFFICIAL_STRATA = {
   summary: summary({ strata: ['H1'], limit: null }),
 }
 
+/** `GET /settings`: the settings the system runs with now. */
+export const SETTINGS = {
+  judge_configured: true,
+  values: {
+    generation_model: 'model-now',
+    generation_temperature: 0,
+    max_tokens: 1024,
+    top_k: 20,
+    context_budget_tokens: 2000,
+    context: { evidence_slots: 12, graph_slots: 6 },
+    judge_model: 'judge-now',
+  },
+}
+
+/** An official run that recorded some of those settings, one of them with another value. */
+export const OFFICIAL_RECORDED = {
+  ...OFFICIAL,
+  run_id: 'official-recorded',
+  summary: {
+    ...OFFICIAL.summary,
+    reproducibility: {
+      run: {
+        generation_model: 'model-then',
+        top_k: 20,
+        context_budget_tokens: 1500,
+        context: { evidence_slots: 12, graph_slots: 6 },
+      },
+      worlds: [],
+    },
+  },
+}
+
 export const NOT_FOUND = () =>
   json(
     { error: { error_code: 'NOT_FOUND', message: 'none', retryable: false } },
@@ -67,6 +99,8 @@ export interface BankStub {
   latest?: unknown
   failQuestions?: boolean
   failLatest?: boolean
+  settings?: unknown
+  failSettings?: boolean
 }
 
 /** A fetch stand-in for everything Help loads; the shell's routes are included. */
@@ -75,6 +109,8 @@ export function stubBank({
   latest = OFFICIAL,
   failQuestions = false,
   failLatest = false,
+  settings = SETTINGS,
+  failSettings = false,
 }: BankStub = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const path = new URL(String(input), 'http://localhost').pathname
@@ -92,6 +128,21 @@ export function stubBank({
               503,
             )
           : json(questions),
+      )
+    if (path === '/api/v1/settings')
+      return Promise.resolve(
+        failSettings
+          ? json(
+              {
+                error: {
+                  error_code: 'CONFIGURATION_ERROR',
+                  message: 'The settings are invalid.',
+                  retryable: true,
+                },
+              },
+              503,
+            )
+          : json(settings),
       )
     if (path === '/api/v1/scenarios') return Promise.resolve(json(SCENARIOS))
     if (path === '/api/v1/benchmarks/latest' && failLatest)

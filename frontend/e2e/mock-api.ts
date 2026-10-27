@@ -46,6 +46,20 @@ const READY = world.ready
 const RUNS = runsFixture
 const DEMO_QUESTIONS = world.demo_questions
 
+/** What GET /settings answers: fixed test values for the settings Help shows, not a capture of the system. */
+const SETTINGS = {
+  judge_configured: true,
+  values: {
+    generation_model: 'fixture-model',
+    generation_temperature: 0,
+    max_tokens: 1024,
+    top_k: 20,
+    context_budget_tokens: 2000,
+    context: { evidence_slots: 12, graph_slots: 6 },
+    judge_model: 'fixture-judge',
+  },
+}
+
 const cell = (mean: number, repeats: number) => ({
   mean,
   n: BANK_INSTANCES,
@@ -240,6 +254,7 @@ export async function mockApi(
         return route.fulfill(envelope('The latest run is unavailable.', 503))
       return route.fulfill(json(LATEST[latest]))
     }
+    if (path === '/api/v1/settings') return route.fulfill(json(SETTINGS))
     // The bank is scored only when the newest run is a whole-bank official run, as the backend does.
     if (path === '/api/v1/benchmarks/questions')
       return route.fulfill(

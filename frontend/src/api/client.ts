@@ -165,6 +165,8 @@ export const getNeighbours = (
 // Benchmarks
 export const listBenchmarks = (signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks', { signal })
+export const getSettings = (signal?: AbortSignal) =>
+  call('get', '/api/v1/settings', { signal })
 export const getLatestBenchmark = (signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks/latest', { signal })
 export const getBenchmark = (id: string, signal?: AbortSignal) =>

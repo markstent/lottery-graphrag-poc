@@ -14,6 +14,8 @@ import { NODE_LABELS, countedLabel, nodeLabel } from '../design/node-labels'
 import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
 import { APPROACH_LINES } from '../screens/help/approach-lines'
+import { CHAPTER_COPY } from '../screens/help/copy'
+import type { Block, ChapterCopy } from '../screens/help/chapters'
 import { STRATUM_NAMES } from '../screens/help/bank'
 import { KIND_WORDS } from '../app/run-kinds'
 import {
@@ -383,6 +385,35 @@ describe('copy in expressions', () => {
       'No',
       'Fallback words',
     ])
+  })
+})
+
+/** The sentences of the Plain blocks of a chapter: paragraphs and list items. Technical blocks are not read. */
+const plainTexts = ({ plain }: ChapterCopy): string[] =>
+  plain.flatMap((block: Block) =>
+    typeof block === 'string' ? [block] : 'kind' in block ? [] : [...block],
+  )
+
+describe('Help chapters', () => {
+  it('reads the Plain blocks and skips the Technical blocks', () => {
+    const sample: ChapterCopy = {
+      plain: [
+        'A seed node',
+        ['a fake one', 'fine'],
+        { kind: 'diagram', name: 'flow' },
+      ],
+      technical: ['The seed is chosen', ['a chunk']],
+    }
+    expect(plainTexts(sample).filter((text) => violation(text))).toEqual([
+      'A seed node',
+      'a fake one',
+    ])
+  })
+
+  it('has no banned word in the Plain blocks of any chapter', () => {
+    const texts = Object.values(CHAPTER_COPY).flatMap(plainTexts)
+    expect(texts.length).toBeGreaterThan(5)
+    expect(texts.filter((text) => violation(text))).toEqual([])
   })
 })
 

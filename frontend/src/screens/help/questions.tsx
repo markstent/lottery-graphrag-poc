@@ -8,7 +8,6 @@
 
 import { answerWords, evidenceScore } from '../../app/score-words'
 import { hrefFor, useRoute } from '../../app/router'
-import type { Load } from '../../app/use-load'
 import { plural } from '../../charts/scale'
 import { PIPELINES, type PipelineId } from '../../design/pipelines'
 import {
@@ -17,7 +16,8 @@ import {
   type Question,
   type ScoreState,
 } from './bank'
-import { Section } from './section'
+import { useHelpData } from './help-data'
+import { helpHref } from './level'
 
 const LINK = 'text-text-primary underline'
 const SELECT =
@@ -72,12 +72,13 @@ function Filters({
   story: string
   summary: string
 }) {
+  const { params: route } = useRoute()
   const strata = [...new Set(bank.questions.map((q) => q.stratum))].sort()
   const go = (next: { stratum: string; story: string }) => {
     const params: Record<string, string> = { section: 'questions' }
     if (next.stratum) params.stratum = next.stratum
     if (next.story) params.story = next.story
-    window.location.hash = hrefFor('help', params)
+    window.location.hash = helpHref(route, params)
   }
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
@@ -116,25 +117,17 @@ function Filters({
   )
 }
 
-export function Questions({
-  load,
-  scores,
-}: {
-  load: Load<Bank>
-  scores: ScoreState
-}) {
+export function Questions() {
   const { params } = useRoute()
+  const { bank, scores } = useHelpData()
+  if (bank.status !== 'ready') return null
   return (
-    <Section id="questions" load={load}>
-      {load.status === 'ready' && (
-        <QuestionTable
-          bank={load.data}
-          scores={scores}
-          stratum={params.get('stratum') ?? ''}
-          story={params.get('story') ?? ''}
-        />
-      )}
-    </Section>
+    <QuestionTable
+      bank={bank.data}
+      scores={scores}
+      stratum={params.get('stratum') ?? ''}
+      story={params.get('story') ?? ''}
+    />
   )
 }
 
@@ -149,6 +142,7 @@ function QuestionTable({
   stratum: string
   story: string
 }) {
+  const { params: route } = useRoute()
   // A kind or story the bank does not have is ignored, not an empty table.
   const stratum = bank.questions.some((q) => q.stratum === wantedStratum)
     ? wantedStratum
@@ -246,7 +240,7 @@ function QuestionTable({
                         {' · Story: '}
                         <a
                           className={LINK}
-                          href={hrefFor('help', {
+                          href={helpHref(route, {
                             section: 'stories',
                             story: head.scenario_id,
                             ...(stratum && { stratum }),
@@ -280,7 +274,7 @@ function QuestionTable({
       {shown.length === 0 && (
         <p>
           No question matches these filters.{' '}
-          <a href={hrefFor('help', { section: 'questions' })} className={LINK}>
+          <a href={helpHref(route, { section: 'questions' })} className={LINK}>
             Clear the filters
           </a>
         </p>

@@ -27,23 +27,20 @@ async function open(page: Page, hash: string, latest: LatestRun = 'official') {
 }
 
 const SECTIONS = [
-  ['what', 'What we are testing'],
-  ['approaches', 'The three approaches'],
-  ['data', 'The data'],
-  ['stories', 'The planted stories'],
-  ['questions', 'The questions'],
-  ['scoring', 'How scoring works'],
-  ['glossary', 'Glossary'],
-  ['running', 'Running it'],
+  ['what', '1. Why this exists'],
+  ['data', '2. The made-up company'],
+  ['stories', '3. The planted stories'],
+  ['approaches', '4. The three approaches'],
+  ['scoring', '7. How scoring works'],
+  ['questions', '10. The questions'],
+  ['glossary', '11. Glossary'],
+  ['running', '12. Running it'],
 ] as const
 
 for (const [id, title] of SECTIONS) {
-  test(`the ${id} section opens from its link`, async ({ page }) => {
+  test(`the ${id} link opens its chapter`, async ({ page }) => {
     await open(page, `#/help?section=${id}`)
-    const heading = page.getByRole('heading', {
-      level: 2,
-      name: new RegExp(title),
-    })
+    const heading = page.getByRole('heading', { level: 2, name: title })
     await expect(heading).toBeInViewport()
     await shot(page, `section-${id}`)
   })
@@ -126,6 +123,39 @@ test('presentation mode keeps the table and the sections readable', async ({
     ),
   ).toBe(true)
   await shot(page, 'presentation-questions')
+})
+
+test('the level switch shows the technical detail and keeps the chapter in view', async ({
+  page,
+}) => {
+  await open(page, '#/help?section=scoring')
+  const heading = page.getByRole('heading', {
+    level: 2,
+    name: '7. How scoring works',
+  })
+  await expect(heading).toBeInViewport()
+  await expect(
+    page.getByRole('heading', { name: 'Technical detail' }),
+  ).toHaveCount(0)
+  await page.getByRole('radio', { name: 'Technical' }).click()
+  await expect(page).toHaveURL(/level=technical$/)
+  await expect(
+    page.getByRole('heading', { name: 'Technical detail' }),
+  ).toHaveCount(1)
+  await expect(heading).toBeInViewport()
+  await shot(page, 'technical-level')
+  await page.reload()
+  await expect(page.getByRole('radio', { name: 'Technical' })).toBeChecked()
+})
+
+test('the settings table shows the settings now and Not recorded for a run without them', async ({
+  page,
+}) => {
+  await open(page, '#/help?section=running&level=technical')
+  const row = page.getByRole('row', { name: /^top_k/ })
+  await expect(row).toContainText('20')
+  await expect(row).toContainText('Not recorded')
+  await shot(page, 'running-settings')
 })
 
 test('Help shows vendor names in Running it only', async ({ page }) => {

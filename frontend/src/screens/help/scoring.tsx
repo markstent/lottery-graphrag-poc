@@ -2,8 +2,6 @@
 
 import type { ReactNode } from 'react'
 
-import { Section } from './section'
-
 function Part({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="space-y-1">
@@ -13,9 +11,9 @@ function Part({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-export function Scoring() {
+export function ScoringParts() {
   return (
-    <Section id="scoring">
+    <>
       <Part title="Evidence found">
         <p>
           Evidence score runs from 0 to 1: 1 is all the needed evidence and
@@ -56,6 +54,6 @@ export function Scoring() {
           groups says there are too few pairs to say.
         </p>
       </Part>
-    </Section>
+    </>
   )
 }
