@@ -107,6 +107,7 @@ def context_block(chunk: EvidenceChunk) -> str:
         scope = ", ".join(part for part in (chunk.market_id, chunk.language_code) if part)
         lines = [f"{chunk.title} ({scope})" if scope else chunk.title, chunk.text]
     if chunk.graph_path is not None:
+        # EvidenceChunk validates the pair when built; model_copy does not.
         if chunk.graph_seed is None:
             raise ValueError(f"graph node {chunk.chunk_id} has a path but no seed")
         lines.append(f"- reached from {chunk.graph_seed}: {chunk.graph_path}")

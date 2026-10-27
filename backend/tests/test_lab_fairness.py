@@ -24,7 +24,6 @@ from app.evidence import EvidenceChunk, GraphRunResult, RagRunResult
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
 from app.lab import Lab, bc_graph_settings, graph_pipelines
 from app.ontology.model import Ontology
-from app.retrieval.graph import pipeline as pipeline_module
 from app.retrieval.graph.neo4j_adapter import build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import (
@@ -493,10 +492,12 @@ def _scn007_pipelines(
     return lab.pipeline_a(), b, c
 
 
-def test_a_b_c_select_under_the_same_budget() -> None:
+def test_a_b_c_select_under_the_same_budget(monkeypatch: pytest.MonkeyPatch) -> None:
     """F20: A, B and C hold the one frozen context settings object loaded
     with the lab's settings: one 2,000-token budget, one near-duplicate
     threshold, which no pipeline can change."""
+    monkeypatch.delenv("RAG_CONTEXT_TOKEN_BUDGET", raising=False)
+    monkeypatch.delenv("RAG_DEDUPE_THRESHOLD", raising=False)
     settings = from_env()
     lab = dataclasses.replace(build_lab_offline(), settings=settings)
     a, b, c = _scn007_pipelines(lab)
@@ -549,63 +550,81 @@ def test_a_b_c_share_reranker_answer_model_and_prompt(stub_litellm: StubLiteLLM)
     assert {call["model"] for call in stub_litellm.calls} == {"stub/model"}
 
 
-# A's selection on the tiny world (RAG_TOP_K 40, lexical re-ranker, 2,000
-# tokens): the cross-encoder order cut at the budget, pinned.
-A_QUESTION = "Which platform version was INC_024 related to?"
+# A pinned regression of A's selection on the tiny world (seed 42, top_k 40,
+# lexical re-ranker, 2,000 tokens). The question is specific enough that the
+# lexical scores spread over seven levels (largest tie: five items); within a
+# level the order is the lexical re-ranker's tie order, by chunk id.
+A_QUESTION = (
+    "Which Identity Service incident in the United Kingdom of type sign-in outage with HIGH"
+    " severity was seen on platform version 2024.1.0 and affected Union Raffle?"
+)
 A_SELECTED = [
-    "REC_incidents_INC_024",
     "REC_incidents_INC_001",
-    "REC_incidents_INC_002",
+    "REC_incidents_INC_005",
+    "REC_incidents_INC_021",
+    "REC_incidents_INC_009",
+    "REC_incidents_INC_011",
+    "REC_incidents_INC_022",
+    "REC_incidents_INC_006",
+    "REC_incidents_INC_013",
+    "REC_incidents_INC_017",
+    "REC_incidents_INC_020",
+    "REC_incidents_INC_025",
     "REC_incidents_INC_003",
     "REC_incidents_INC_004",
-    "REC_incidents_INC_005",
-    "REC_incidents_INC_006",
     "REC_incidents_INC_007",
     "REC_incidents_INC_008",
-    "REC_incidents_INC_009",
-    "REC_incidents_INC_010",
-    "REC_incidents_INC_011",
-    "REC_incidents_INC_012",
-    "REC_incidents_INC_013",
-    "REC_incidents_INC_014",
-    "REC_platform_versions_PLV_ANALYTICS_1",
-    "REC_platform_versions_PLV_DRAW_1",
+    "REC_platform_versions_PLV_IDENTITY_1",
 ]
+A_CONTEXT_TOKENS = 1973
 
 
 @pytest.fixture(scope="module")
 def tiny_world(
     tmp_path_factory: pytest.TempPathFactory,
 ) -> tuple[Lab, dict[str, GraphRagPipeline]]:
+    """The tiny world's lab and B and C, all three under one set of
+    retrieval settings (top_k 40, as RAG_TOP_K)."""
     dataset_dir = tmp_path_factory.mktemp("tiny-world-fairness")
     write_world(
         dataset_dir, TABLE_SCHEMAS, build_world(GenerationConfig("tiny", world_seed=42)).tables
     )
-    lab, pipelines = tiny_world_lab(dataset_dir)
-    return dataclasses.replace(lab, settings=dataclasses.replace(lab.settings, top_k=40)), pipelines
+    lab, pipelines = tiny_world_lab(dataset_dir, top_k=40)
+    assert lab.pipeline_a().settings is lab.settings and lab.settings.top_k == 40
+    assert (pipelines["B"].settings, pipelines["C"].settings) == bc_graph_settings(lab.settings)
+    return lab, pipelines
 
 
 def test_a_is_unchanged_by_the_graph_layers(
     tiny_world: tuple[Lab, dict[str, GraphRagPipeline]],
 ) -> None:
+    """A pinned regression: A's selection and its token total on the tiny
+    world, unchanged by running B and C. The pinned list is the re-ranked
+    order cut at the budget: the walk below re-derives the cut from the
+    recorded order with the selection's own token measure, and no candidate
+    was refused as a near-duplicate, so only the budget cut it."""
     lab, pipelines = tiny_world
     reranker = RecordingReranker()
     a = lab.pipeline_a()
     a.reranker = reranker
     first = a.run(A_QUESTION)
-    selected = [chunk.chunk_id for chunk in first.evidence if chunk.selected]
-    assert selected == A_SELECTED
-    # The cross-encoder order cut at the budget: every item that fits, in order.
+    assert [chunk.chunk_id for chunk in first.evidence if chunk.selected] == A_SELECTED
+    assert first.answer.context_tokens == A_CONTEXT_TOKENS
+    assert {chunk.discard_reason for chunk in first.evidence if not chunk.selected} == {
+        "context_budget"
+    }
     used, cut = 0, []
     for chunk in reranker.reranked:
         if used + block_tokens(chunk) <= 2000:
             used += block_tokens(chunk)
             cut.append(chunk.chunk_id)
-    assert cut == A_SELECTED and len(reranker.reranked) > len(cut)
+    assert cut == A_SELECTED and used == A_CONTEXT_TOKENS
+    assert len(reranker.reranked) > len(cut)
     for tag in ("B", "C"):
         pipelines[tag].run(A_QUESTION)
     again = a.run(A_QUESTION)
     assert [chunk.chunk_id for chunk in again.evidence if chunk.selected] == A_SELECTED
+    assert again.answer.context_tokens == A_CONTEXT_TOKENS
 
 
 def test_b_and_c_extras_are_declared_and_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -618,13 +637,12 @@ def test_b_and_c_extras_are_declared_and_recorded(monkeypatch: pytest.MonkeyPatc
         chunk.document_id: context_block(chunk) for chunk in lab.pipeline_a().run(question).evidence
     }
     matchers: list[Ontology | None] = []
-    built = pipeline_module.TargetTypeMatcher
 
     def spy(ontology: Ontology | None) -> TargetTypeMatcher:
         matchers.append(ontology)
-        return built(ontology)
+        return TargetTypeMatcher(ontology)
 
-    monkeypatch.setattr(pipeline_module, "TargetTypeMatcher", spy)
+    monkeypatch.setattr("app.retrieval.graph.pipeline.TargetTypeMatcher", spy)
     for pipeline in (b, c):
         capture = PromptCapture()
         pipeline.generator = capture

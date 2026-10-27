@@ -157,6 +157,20 @@ def test_operator_tools_never_import_evaluation_or_name_the_ledger() -> None:
         assert not any(marker in source for marker in LEDGER_STRINGS), f"{name} names the ledger"
 
 
+# The modules method v0.3 added or rewrote, and what none of them may load:
+# the evaluator (bank, answer keys, truth ledger, hand labels) and the
+# scenario engine, which plants the truth and writes the ledger.
+V03_RETRIEVAL_MODULES = (
+    "app.retrieval.graph.resolution",
+    "app.retrieval.graph.ranking",
+    "app.retrieval.standard.context",
+    "app.retrieval.standard.records",
+    "app.retrieval.standard.corpus",
+    "app.retrieval.standard.generation",
+)
+TRUTH_PREFIXES = ("app.evaluation", "app.scenarios")
+
+
 def _retrieval_modules() -> list[str]:
     import app.retrieval
 
@@ -180,10 +194,10 @@ def _evaluation_modules_loaded_by(
     return done.stdout.split()
 
 
-def test_the_lab_and_every_retrieval_module_load_no_evaluation_module() -> None:
+def test_the_lab_and_every_retrieval_module_load_no_evaluation_or_scenario_module() -> None:
     modules = ["app.lab", *_retrieval_modules()]
     assert len(modules) > 10  # the walk found the retrieval packages
-    assert _evaluation_modules_loaded_by(modules) == []
+    assert _evaluation_modules_loaded_by(modules, TRUTH_PREFIXES) == []
 
 
 def test_the_runtime_check_sees_an_evaluation_module_when_one_is_loaded() -> None:
@@ -191,22 +205,10 @@ def test_the_runtime_check_sees_an_evaluation_module_when_one_is_loaded() -> Non
     assert "app.evaluation.grounding" in _evaluation_modules_loaded_by(["app.api.scoring"])
 
 
-# The modules method v0.3 added or rewrote, and what none of them may load:
-# the evaluator (bank, answer keys, truth ledger, hand labels) and the
-# scenario engine, which plants the truth and writes the ledger.
-V03_RETRIEVAL_MODULES = (
-    "app.retrieval.graph.resolution",
-    "app.retrieval.graph.ranking",
-    "app.retrieval.standard.context",
-    "app.retrieval.standard.records",
-    "app.retrieval.standard.corpus",
-    "app.retrieval.standard.generation",
-)
-TRUTH_PREFIXES = ("app.evaluation", "app.scenarios")
-
-
 @pytest.mark.parametrize("module", V03_RETRIEVAL_MODULES)
-def test_new_retrieval_modules_load_no_evaluation_module(module: str) -> None:
+def test_each_v03_retrieval_module_alone_loads_no_evaluation_or_scenario_module(
+    module: str,
+) -> None:
     """Each module alone, in a fresh interpreter, loads no evaluator or
     scenario module, so its isolation does not lean on what else is imported."""
     assert _evaluation_modules_loaded_by([module], TRUTH_PREFIXES) == []

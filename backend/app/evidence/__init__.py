@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # Graph relevance tiers (method v0.3, D-083), in order: the seeds, the nodes
 # that hold a type the question asks about, then every other node.
@@ -101,6 +101,12 @@ class EvidenceChunk(BaseModel):
             " (its row is already selected through the other channel)"
         ),
     )
+
+    @model_validator(mode="after")
+    def _path_has_its_seed(self) -> EvidenceChunk:
+        if (self.graph_path is None) != (self.graph_seed is None):
+            raise ValueError(f"{self.chunk_id}: graph_seed must be set exactly when graph_path is")
+        return self
 
 
 class Citation(BaseModel):

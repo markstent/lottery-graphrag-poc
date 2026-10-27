@@ -20,6 +20,7 @@ from app.retrieval.standard.generation import (
     context_block,
     parse_answer,
 )
+from pydantic import ValidationError
 
 from tests.conftest import StubLiteLLM
 from tests.test_graph_rag import RecordingReranker
@@ -219,9 +220,28 @@ def test_a_document_without_a_market_has_no_empty_scope() -> None:
     )
 
 
-def test_a_path_without_its_seed_is_refused() -> None:
+def test_a_path_without_its_seed_is_refused_when_rendered() -> None:
+    # model_copy skips validation, so context_block keeps its own check.
     with pytest.raises(ValueError, match="DEV_UK_000009"):
         context_block(_bare_node(graph_path="PLAYER_UK_000001 -USES-> DEV_UK_000009"))
+
+
+@pytest.mark.parametrize(
+    "pair",
+    [
+        {"graph_path": "PLAYER_UK_000001 -USES-> DEV_UK_000009"},
+        {"graph_seed": "PLAYER_UK_000001"},
+    ],
+)
+def test_a_path_and_its_seed_are_set_together_when_built(pair: dict[str, str]) -> None:
+    payload = {**_bare_node().model_dump(), **pair}
+    with pytest.raises(ValidationError, match="graph_seed must be set exactly when graph_path is"):
+        EvidenceChunk.model_validate(payload)
+    both = {
+        "graph_path": "PLAYER_UK_000001 -USES-> DEV_UK_000009",
+        "graph_seed": "PLAYER_UK_000001",
+    }
+    assert EvidenceChunk.model_validate({**payload, **both}).graph_seed == "PLAYER_UK_000001"
 
 
 def test_a_record_without_facts_is_refused() -> None:

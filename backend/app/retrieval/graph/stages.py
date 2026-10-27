@@ -530,9 +530,10 @@ def _structured_chunk(
     title, market, language, provenance and compact facts from the source
     lookup, whether or not the search returned the block, so the generator
     sees the same block for the same row in A, B and C, apart from the
-    declared path line (D-085). Any other node is titled "<Label>: <id>"
-    with no market or language, and its text is "<Label> <id>" (or a
-    concept's ontology text in C) only (D-028). steps is the walked path
+    declared path line (D-085). Any other node carries the title
+    "<Label>: <id>" for citations and the UI only, with no market or
+    language; the prompt never renders that title, only "<Label> <id>" and,
+    for a concept in C, its ontology text (D-028). steps is the walked path
     from the node's seed (none for a seed). Its authoritative facts stay on
     the node's evidence.
     """
