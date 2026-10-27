@@ -3677,7 +3677,7 @@
     "event_type": "graph.context.assembled",
     "payload": {
      "budget_tokens": 2000,
-     "context_tokens": 1985,
+     "context_tokens": 1975,
      "document_chunks": 4,
      "stated_links": 320,
      "structured_nodes": 16
@@ -3695,7 +3695,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 1985,
+     "context_tokens": 1975,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -3911,7 +3911,7 @@
     "cited_blocks": [
      1
     ],
-    "context_tokens": 1985,
+    "context_tokens": 1975,
     "model": "fake-answer-v1",
     "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: support_cases: SUP_00002, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].\"}",
     "text": "[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: support_cases: SUP_00002, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].",
@@ -3963,6 +3963,7 @@
      ],
      "facts_heading": "Support case SUP_00002",
      "graph_path": null,
+     "graph_seed": null,
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_GR",
@@ -3998,6 +3999,7 @@
      ],
      "facts_heading": "Incident type ITYPE_CORP_PAYMENT",
      "graph_path": null,
+     "graph_seed": null,
      "kind": "record",
      "language_code": "en",
      "market_id": "",
@@ -4037,6 +4039,7 @@
      ],
      "facts_heading": "Incident type ITYPE_GR_PLIROMES",
      "graph_path": null,
+     "graph_seed": null,
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_GR",
@@ -4076,6 +4079,7 @@
      ],
      "facts_heading": "Incident type ITYPE_CZ_PLATBY",
      "graph_path": null,
+     "graph_seed": null,
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_CZ",
@@ -10160,15 +10164,18 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.discarded",
+    "event_type": "graph.candidate.selected",
     "payload": {
      "graph_rank": 52,
      "hops": 2,
      "node_id": "CAT_UK_INSTANT",
-     "reason": "context_budget",
      "score": 0.4,
      "seed": false,
-     "tier": "other"
+     "tier": "other",
+     "weight_graph_distance": 0.5,
+     "weight_relationship_type": 0.5,
+     "weight_semantic_relevance": 0.0,
+     "weight_temporal_validity": 1.0
     },
     "pipeline": "C"
    },
@@ -10316,7 +10323,7 @@
     "event_type": "graph.evidence_path.completed",
     "payload": {
      "max_hops": 2,
-     "paths": 17
+     "paths": 18
     },
     "pipeline": "C"
    },
@@ -10324,10 +10331,10 @@
     "event_type": "graph.context.assembled",
     "payload": {
      "budget_tokens": 2000,
-     "context_tokens": 1971,
+     "context_tokens": 1998,
      "document_chunks": 3,
      "stated_links": 320,
-     "structured_nodes": 17
+     "structured_nodes": 18
     },
     "pipeline": "C"
    },
@@ -10342,7 +10349,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 1971,
+     "context_tokens": 1998,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -10555,15 +10562,25 @@
       "source_record_id": "INC_018",
       "source_system": "incident_management",
       "title": "incidents: INC_018"
+     },
+     {
+      "chunk_id": "CAT_UK_INSTANT",
+      "document_id": "CAT_UK_INSTANT",
+      "language_code": "-",
+      "market_id": "",
+      "record_table": null,
+      "source_record_id": "CAT_UK_INSTANT",
+      "source_system": "graph",
+      "title": "GameCategory: CAT_UK_INSTANT"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 1971,
+    "context_tokens": 1998,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: incidents: INC_010, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].\"}",
-    "text": "[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: incidents: INC_010, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 21 retrieved source(s), the strongest evidence for the question is in: incidents: INC_010, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].\"}",
+    "text": "[fake-model] Based on 21 retrieved source(s), the strongest evidence for the question is in: incidents: INC_010, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -10616,6 +10633,7 @@
      ],
      "facts_heading": "Incident INC_010",
      "graph_path": null,
+     "graph_seed": null,
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_GR",
@@ -10675,6 +10693,7 @@
      ],
      "facts_heading": "Support case SUP_00002",
      "graph_path": null,
+     "graph_seed": null,
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_GR",
@@ -10710,6 +10729,7 @@
      ],
      "facts_heading": "Incident type ITYPE_CORP_PAYMENT",
      "graph_path": null,
+     "graph_seed": null,
      "kind": "record",
      "language_code": "en",
      "market_id": "",
@@ -10749,6 +10769,7 @@
      ],
      "facts_heading": "Incident type ITYPE_GR_PLIROMES",
      "graph_path": null,
+     "graph_seed": null,
      "kind": "record",
      "language_code": "en",
      "market_id": "MKT_GR",
@@ -12076,7 +12097,7 @@
       "semantic_relevance": 0.0,
       "temporal_validity": 1.0
      },
-     "discard_reason": "context_budget",
+     "discard_reason": null,
      "graph_rank": 52,
      "hops": 2,
      "node_id": "CAT_UK_INSTANT",
@@ -12088,7 +12109,7 @@
      ],
      "rel_type": "INSTANCE_OF",
      "score": 0.4,
-     "selected": false,
+     "selected": true,
      "tier": "other"
     },
     {

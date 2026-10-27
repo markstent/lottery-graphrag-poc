@@ -65,6 +65,7 @@ from app.models.gateway import CompletionRequest
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.graph.resolution import StaticEntityResolver
+from app.retrieval.standard.context import estimate_tokens
 from app.retrieval.standard.fusion import RRF_K
 from app.retrieval.standard.generation import (
     PROMPT_VERSION,
@@ -316,6 +317,19 @@ def test_a_generation_failure_is_recorded_not_fatal(
     assert run.to_payload()["generation_error"] == "gateway down"
 
 
+def test_a_failed_repeat_counts_its_rendered_blocks_as_a_successful_one_does(
+    runner_with_failing_generator: BenchmarkRunner, runner_smoke: BenchmarkRunner
+) -> None:
+    failed = runner_with_failing_generator.run().results[0].runs
+    answered = runner_smoke.run().results[0].runs
+    for tag in ("A", "B", "C"):
+        run, ok = failed[tag][0], answered[tag][0]
+        assert run.generation_failed and not ok.generation_failed
+        assert run.selected == ok.selected
+        assert run.context_tokens == ok.context_tokens
+        assert run.context_tokens == sum(estimate_tokens(block.text) for block in run.blocks)
+
+
 def test_smoke_runs_are_labelled_and_official_runs_refuse_the_fake_generator(
     offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path
 ) -> None:
@@ -471,7 +485,12 @@ def _three_kinds() -> tuple[EvidenceChunk, EvidenceChunk, EvidenceChunk]:
     record = INCIDENT.to_evidence(similarity=0.1, rank=2)
     node = record_corpus_chunk("platform_versions", "PLV_PAYMENTS_3", "Version 3.", market_id="")
     walked = node.to_evidence(similarity=0.1, rank=1).model_copy(
-        update={"kind": "node", "chunk_id": "PLV_PAYMENTS_3", "graph_path": PATH}
+        update={
+            "kind": "node",
+            "chunk_id": "PLV_PAYMENTS_3",
+            "graph_path": PATH,
+            "graph_seed": "INC_S007_GR",
+        }
     )
     return document, record, walked
 

@@ -72,6 +72,7 @@ from app.retrieval.graph.resolution import (
 from app.retrieval.graph.source_lookup import SourceLookup, bare_node_text, label_for_table
 from app.retrieval.graph.traversal import (
     NeighbourProvider,
+    PathStep,
     TraversalResult,
     bounded_traversal,
     expand_ontology,
@@ -477,7 +478,7 @@ def select_and_attach(
             source_lookup.record_block(evidence.node_label, evidence.node_id)
             if source_lookup is not None
             else None,
-            render_path(traversal.result.steps_to(evidence.node_id, ranked.labels)) or None,
+            traversal.result.steps_to(evidence.node_id, ranked.labels),
         )
         for graph_rank, evidence in enumerate(drafts, start=1)
     ]
@@ -520,7 +521,7 @@ def _structured_chunk(
     text: str,
     graph_rank: int,
     record: CorpusChunk | None,
-    graph_path: str | None,
+    steps: list[PathStep],
 ) -> EvidenceChunk:
     """A graph node as a context candidate, ranked within its channel by
     its graph rank.
@@ -529,9 +530,11 @@ def _structured_chunk(
     title, market, language, provenance and compact facts from the source
     lookup, whether or not the search returned the block, so the generator
     sees the same block for the same row in A, B and C, apart from the
-    declared path line (D-085). Any other node is shown as "<Label>: <id>"
-    with no market or language: its text is "<Label> <id>" only (D-028).
-    Its authoritative facts stay on the node's evidence.
+    declared path line (D-085). Any other node is titled "<Label>: <id>"
+    with no market or language, and its text is "<Label> <id>" (or a
+    concept's ontology text in C) only (D-028). steps is the walked path
+    from the node's seed (none for a seed). Its authoritative facts stay on
+    the node's evidence.
     """
     authoritative = evidence.authoritative or {}
     source_table = authoritative.get("source_table")
@@ -553,7 +556,8 @@ def _structured_chunk(
         facts=list(record.facts) if record else [],
         similarity=evidence.score,
         rank=graph_rank,
-        graph_path=graph_path,
+        graph_path=render_path(steps) or None,
+        graph_seed=steps[0].from_id if steps else None,
         discovered_via="graph_traversal",
     )
 

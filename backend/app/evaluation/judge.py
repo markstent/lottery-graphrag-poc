@@ -13,9 +13,12 @@ rendered prompt block less a document chunk's title line. A record reads
 the same in A, B and C (its facts heading, source and facts), so record
 blocks carry no tell of their own. Two tells remain, both declared (D-085):
 a graph record reached by a walk ends with its "reached from" path line,
-which only B and C show; and a graph node without a record block shows its
-"<Label>: <id>" title line and "<Label> <id>" text, which only B and C can
-select. The judge is secondary to the deterministic scores (D-031).
+which only B and C show; and a graph node without a record block, which
+only B and C can select. Such a node shows exactly "<Label> <id>" (for
+example "Device DEV_UK_000009", as the v0.2 judge saw it), followed in C by
+a concept's ontology text for a BusinessConcept node, and by its path line
+when it was reached by a walk. The judge is secondary to the deterministic
+scores (D-031).
 
 A judge failure (gateway error or unusable reply) is recorded as
 a verdict without scores.

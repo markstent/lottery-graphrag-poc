@@ -897,6 +897,18 @@
             "description": "A graph node's walked path from its seed, one line (INC_1 -AFFECTS-> GAME_1); None for a seed and for documents",
             "title": "Graph Path"
           },
+          "graph_seed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The seed id a graph node's walked path starts at; set exactly when graph_path is",
+            "title": "Graph Seed"
+          },
           "kind": {
             "default": "chunk",
             "description": "chunk (document text) | record (table row) | node (graph block)",

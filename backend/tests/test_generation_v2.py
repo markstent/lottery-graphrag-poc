@@ -169,27 +169,59 @@ def test_a_record_is_its_heading_with_source_and_one_line_per_fact() -> None:
 
 def test_a_graph_record_adds_its_path_from_the_seed() -> None:
     path = "INC_037 -RELATED_TO_VERSION-> PLV_IDENTITY_2 <-RELATED_TO_VERSION- INC_024"
-    node = _record(kind="node", chunk_id="INC_024", graph_path=path)
+    node = _record(kind="node", chunk_id="INC_024", graph_path=path, graph_seed="INC_037")
     assert context_block(node) == (f"{context_block(_record())}\n- reached from INC_037: {path}")
 
 
-def test_a_graph_node_without_a_record_keeps_its_title_and_text_and_path() -> None:
-    node = _chunk().model_copy(
+def _bare_node(**update: object) -> EvidenceChunk:
+    return _chunk().model_copy(
         update={
             "kind": "node",
             "chunk_id": "DEV_UK_000009",
             "document_id": "DEV_UK_000009",
             "title": "Device: DEV_UK_000009",
+            "document_type": "Device",
             "market_id": "",
             "language_code": "-",
             "text": "Device DEV_UK_000009",
-            "graph_path": "PLAYER_UK_000001 -USES-> DEV_UK_000009",
+            **update,
         }
     )
+
+
+def test_a_graph_node_without_a_record_is_its_label_and_id_and_path() -> None:
+    node = _bare_node(
+        graph_path="PLAYER_UK_000001 -USES-> DEV_UK_000009", graph_seed="PLAYER_UK_000001"
+    )
     assert context_block(node) == (
-        "Device: DEV_UK_000009 (, -)\nDevice DEV_UK_000009\n"
+        "Device DEV_UK_000009\n"
         "- reached from PLAYER_UK_000001: PLAYER_UK_000001 -USES-> DEV_UK_000009"
     )
+    assert context_block(_bare_node()) == "Device DEV_UK_000009"
+
+
+def test_a_concept_node_is_its_label_and_id_then_its_ontology_text() -> None:
+    concept = _bare_node(
+        chunk_id="CONCEPT_PLATFORM_INCIDENT",
+        document_id="CONCEPT_PLATFORM_INCIDENT",
+        document_type="BusinessConcept",
+        text="Concept Platform incident: an outage of a shared platform.",
+    )
+    assert context_block(concept) == (
+        "BusinessConcept CONCEPT_PLATFORM_INCIDENT\n"
+        "Concept Platform incident: an outage of a shared platform."
+    )
+
+
+def test_a_document_without_a_market_has_no_empty_scope() -> None:
+    assert context_block(_chunk().model_copy(update={"market_id": ""})) == (
+        "Price Notice (el)\nThe ticket price is 2.50."
+    )
+
+
+def test_a_path_without_its_seed_is_refused() -> None:
+    with pytest.raises(ValueError, match="DEV_UK_000009"):
+        context_block(_bare_node(graph_path="PLAYER_UK_000001 -USES-> DEV_UK_000009"))
 
 
 def test_a_record_without_facts_is_refused() -> None:

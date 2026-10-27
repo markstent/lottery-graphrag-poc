@@ -85,10 +85,12 @@ def context_block(chunk: EvidenceChunk) -> str:
 
     A record, whether a record block or a graph node with one, is its facts
     heading with its source, then one "- name: value" line per fact. A
-    document chunk, and a graph node without a record block, is a title line
-    then its text. A graph node reached by a walk (B and C, hops > 0) adds
-    "- reached from <seed id>: <path>" (``PROMPT_EXTRAS["path_line"]``);
-    ``graph_path`` starts at the seed.
+    document chunk is a title line, "{title} ({market}, {language})" without
+    empty parts, then its text. A graph node without a record block is its
+    heading "<Label> <id>", then its text when the text says more (a
+    concept's ontology text in C); a bare node's text is that heading. A
+    graph node reached by a walk (B and C, hops > 0) adds
+    "- reached from <seed id>: <path>" (``PROMPT_EXTRAS["path_line"]``).
     """
     if chunk.facts_heading is not None:
         lines = [
@@ -98,11 +100,16 @@ def context_block(chunk: EvidenceChunk) -> str:
         ]
     elif chunk.kind == "record":
         raise ValueError(f"record block {chunk.chunk_id} has no facts to show")
+    elif chunk.kind == "node":
+        heading = f"{chunk.document_type} {chunk.document_id}"
+        lines = [heading] if chunk.text == heading else [heading, chunk.text]
     else:
-        lines = [f"{chunk.title} ({chunk.market_id}, {chunk.language_code})", chunk.text]
-    if chunk.graph_path:
-        seed = chunk.graph_path.split(" ", 1)[0]
-        lines.append(f"- reached from {seed}: {chunk.graph_path}")
+        scope = ", ".join(part for part in (chunk.market_id, chunk.language_code) if part)
+        lines = [f"{chunk.title} ({scope})" if scope else chunk.title, chunk.text]
+    if chunk.graph_path is not None:
+        if chunk.graph_seed is None:
+            raise ValueError(f"graph node {chunk.chunk_id} has a path but no seed")
+        lines.append(f"- reached from {chunk.graph_seed}: {chunk.graph_path}")
     return "\n".join(lines)
 
 

@@ -65,6 +65,12 @@ class EvidenceChunk(BaseModel):
             " (INC_1 -AFFECTS-> GAME_1); None for a seed and for documents"
         ),
     )
+    graph_seed: str | None = Field(
+        default=None,
+        description=(
+            "The seed id a graph node's walked path starts at; set exactly when graph_path is"
+        ),
+    )
     facts_heading: str | None = Field(
         default=None,
         description=(

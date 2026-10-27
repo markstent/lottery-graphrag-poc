@@ -907,6 +907,11 @@ export interface components {
              */
             graph_path?: string | null;
             /**
+             * Graph Seed
+             * @description The seed id a graph node's walked path starts at; set exactly when graph_path is
+             */
+            graph_seed?: string | null;
+            /**
              * Kind
              * @description chunk (document text) | record (table row) | node (graph block)
              * @default chunk

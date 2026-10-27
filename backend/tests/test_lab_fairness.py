@@ -316,6 +316,41 @@ def test_path_line_only_for_graph_records_off_seed(monkeypatch: pytest.MonkeyPat
         assert PATH_LINE not in context_block(seed)
 
 
+EMPTY_SCOPE = ("()", "(, ", ", )", " -)", "(-)")
+
+
+def test_no_block_shows_an_empty_scope(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every candidate block of A, B and C (records, documents, one without a
+    market, and graph nodes without a record block: Game, Market,
+    SupportCase and, in C, BusinessConcept) renders without empty
+    parentheses or a "-" language."""
+    unscoped = dataclasses.replace(
+        build_corpus()["CHNK_S007_UK_00"], chunk_id="CHNK_UNSCOPED_00", market_id=""
+    )
+    lab = indexed_lab([*build_corpus().values(), unscoped])
+    b, c = (
+        pipeline
+        for _, pipeline in graph_pipelines(
+            lab,
+            scn007_adjacency(),
+            StaticEntityResolver(resolved()),
+            StaticEntityResolver(resolved()),
+        )
+    )
+    question = "Why did checkout fail in Greece?"
+    candidates = list(lab.pipeline_a().run(question).evidence)
+    labels: set[str] = set()
+    for pipeline in (b, c):
+        result, channel = graph_channel(pipeline, question, monkeypatch)
+        candidates += [*result.document_evidence, *channel]
+        labels |= {chunk.document_type for chunk in channel if chunk.facts_heading is None}
+    assert {"Game", "Market", "SupportCase", "BusinessConcept"} <= labels
+    assert "CHNK_UNSCOPED_00" in {chunk.chunk_id for chunk in candidates}
+    for chunk in candidates:
+        block = context_block(chunk)
+        assert not any(fragment in block for fragment in EMPTY_SCOPE), block
+
+
 def test_a_and_b_show_the_same_evidence_as_the_same_blocks_in_alternation() -> None:
     """Same evidence, same blocks (design G1, 5.4); the order is alternation.
 

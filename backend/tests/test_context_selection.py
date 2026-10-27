@@ -401,7 +401,11 @@ def test_a_record_and_a_walked_node_pay_for_their_fact_blocks() -> None:
     assert context_block(record).startswith("Game GAME_GR_01 (source: ")
     assert block_tokens(record) == estimate_tokens(context_block(record))
     walked = record.model_copy(
-        update={"kind": "node", "graph_path": "MKT_GR -AVAILABLE_IN-> GAME_GR_01"}
+        update={
+            "kind": "node",
+            "graph_path": "MKT_GR -AVAILABLE_IN-> GAME_GR_01",
+            "graph_seed": "MKT_GR",
+        }
     )
     assert context_block(walked).startswith(context_block(record) + "\n- reached from MKT_GR: ")
     assert block_tokens(walked) > block_tokens(record)
