@@ -139,7 +139,7 @@ class DroppedClaim:
         best = min(
             self.carriers, key=lambda c: (c.graph_rank is None, c.graph_rank or 0, c.carrier)
         )
-        return best.reason or "not ranked"
+        return best.reason or "not offered"
 
 
 @dataclass(frozen=True, slots=True)
@@ -361,7 +361,8 @@ def render_markdown(diagnostic: SelectionDiagnostic) -> str:
             "Reasons: `context_budget` means the token budget was full,",
             "`same_record` means the same record was already kept through the other channel,",
             "`duplicate` means a near copy was already kept,",
-            "and `not ranked` means the graph did not place the record in its order.",
+            "and `not offered` means the graph found the record,",
+            "but it never reached the selection, so no reason was recorded.",
             "The tier is seed, target or other,",
             "and graph rank 1 is the graph's most relevant record.",
             "",
@@ -372,7 +373,7 @@ def render_markdown(diagnostic: SelectionDiagnostic) -> str:
         lines.append("")
     for drop in diagnostic.dropped:
         carriers = "; ".join(
-            f"`{c.carrier}` (reason {c.reason or 'not ranked'}, tier {c.tier or 'none'}, "
+            f"`{c.carrier}` (reason {c.reason or 'not offered'}, tier {c.tier or 'none'}, "
             f"graph rank {c.graph_rank if c.graph_rank is not None else 'none'})"
             for c in drop.carriers
         )

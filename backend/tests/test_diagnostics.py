@@ -204,7 +204,15 @@ def test_closest_carrier_is_lowest_graph_rank() -> None:
     drop = DroppedClaim("i", "B", "c1", carriers, 0)
     assert drop.reason == "duplicate"
     unranked = DroppedClaim("i", "B", "c1", (DroppedCarrier("CLM_8", None, None, None),), 0)
-    assert unranked.reason == "not ranked"
+    assert unranked.reason == "not offered"
+    ranked_without_reason = DroppedClaim(
+        "i", "B", "c1", (DroppedCarrier("CLM_6", None, "seed", 1),), 0
+    )
+    assert ranked_without_reason.reason == "not offered"
+    unranked_with_reason = DroppedClaim(
+        "i", "B", "c1", (DroppedCarrier("CLM_5", "context_budget", None, None),), 0
+    )
+    assert unranked_with_reason.reason == "context_budget"
 
 
 def test_legend_describes_tier_and_graph_rank_not_node_scores() -> None:

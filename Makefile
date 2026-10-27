@@ -21,13 +21,13 @@ setup: ## Install Python, frontend and Playwright dependencies
 	$(PNPM) install
 	$(PNPM) exec playwright install chromium
 
-dev-backend: ## Run the FastAPI backend with reload
+dev-backend: ## Run the FastAPI backend with reload (a question run reads Neo4j and Qdrant and calls the configured models)
 	$(UV) run uvicorn app.main:app --reload --port 8000
 
 dev-frontend: ## Run the Vite frontend dev server
 	$(PNPM) run dev
 
-dev: ## Run backend and frontend together (Ctrl+C stops both)
+dev: ## Run backend and frontend together (Ctrl+C stops both; the backend reads Neo4j and Qdrant and calls the configured models)
 	$(MAKE) -j2 dev-backend dev-frontend
 
 test: ## Run Python and frontend unit tests (never the live graph tests)
@@ -70,10 +70,10 @@ services-down: ## Stop and remove local services
 generate-dev-data: ## Generate the development dataset
 	$(UV) run python -m app.datasets --profile dev --world-seed 2026
 
-ingest-graph: ## Ingest the development dataset into Neo4j
+ingest-graph: ## Ingest the development dataset into Neo4j (wipes Neo4j first; no model)
 	$(UV) run python -m app.graph --wipe
 
-index-vector: ## Build the document vector index in Qdrant
+index-vector: ## Build the document vector index in Qdrant (writes Qdrant; runs the embedding model)
 	$(UV) run python -m app.retrieval.standard
 
 traces: ## Write side-by-side A/B/C example traces (reads Neo4j and Qdrant, runs the embedding and re-ranking models; fake generator, no answer model)
@@ -92,16 +92,16 @@ generate-demo-data: ## Generate the demo dataset (5M tickets; writes a separate 
 DEMO_DATASET_DIR = ../data/generated/demo-seed2026
 DEMO_ENV = DATASET_DIR=$(DEMO_DATASET_DIR) TRUTH_LEDGER_PATH=../data/truth/ledger-demo.json QDRANT_COLLECTION=semantic_context_lab_demo
 
-ingest-demo-graph: ## Ingest the demo dataset into Neo4j (demo reset, part 1)
+ingest-demo-graph: ## Ingest the demo dataset into Neo4j (wipes Neo4j first; no model; demo reset, part 1)
 	$(DEMO_ENV) $(UV) run python -m app.graph --wipe
 
-index-demo-vector: ## Build the demo vector index in Qdrant (demo reset, part 2)
+index-demo-vector: ## Build the demo vector index in Qdrant (writes Qdrant; runs the embedding model; demo reset, part 2)
 	$(DEMO_ENV) $(UV) run python -m app.retrieval.standard
 
-serve-demo-api: ## Serve the API against the demo world
+serve-demo-api: ## Serve the API against the demo world (reads Neo4j and Qdrant; calls the configured models)
 	$(DEMO_ENV) $(UV) run uvicorn app.main:app --port 8000
 
-demo-reset: ## Reset the presentation demo state (re-ingest graph + rebuild vector index)
+demo-reset: ## Reset the presentation demo state (wipes Neo4j and re-ingests; rebuilds the Qdrant index with the embedding model; no answer model)
 	$(MAKE) ingest-demo-graph index-demo-vector
 	@echo "demo reset complete: restart serve-demo-api to load the new world"
 
@@ -114,27 +114,27 @@ demo-reset: ## Reset the presentation demo state (re-ingest graph + rebuild vect
 SEEDS = 2026,2027,2028
 OFFICIAL_SEEDS = 2029,2030,2031,2032,2033,2034
 
-ground-bank: ## Ground bank 2.0.0 into the active world (DATASET_DIR and TRUTH_LEDGER_PATH)
+ground-bank: ## Ground bank 2.0.0 into the active world (DATASET_DIR and TRUTH_LEDGER_PATH; files only, no Neo4j, no model)
 	$(UV) run python -m app.evaluation ground
 
-ground-demo-bank: ## Ground bank 2.0.0 into the demo world and its ledger
+ground-demo-bank: ## Ground bank 2.0.0 into the demo world and its ledger (files only, no Neo4j, no model)
 	$(DEMO_ENV) $(UV) run python -m app.evaluation ground
 
-run-smoke: ## Scorer smoke test on three worlds (fake generator and judge; needs services)
+run-smoke: ## Scorer smoke test on three worlds (wipes and restores Neo4j, indexes new worlds in Qdrant; fake generator and judge, so no answer or judge model)
 	$(UV) run python -m app.evaluation run --kind smoke --seeds $(SEEDS)
 
-run-benchmark: ## Official run on the six unseen worlds, 3 repeats (wipes and restores Neo4j; calls the answer and judge models, reads GENERATION_* and JUDGE_*); OUT=DIR names the run, OUT=DIR RESUME=1 continues a failed one
+run-benchmark: ## Official run on the six unseen worlds, 3 repeats (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the answer and judge models, reads GENERATION_* and JUDGE_*); OUT=DIR names the run, OUT=DIR RESUME=1 continues a failed one
 	@test -z "$(RESUME)" || test -n "$(OUT)" || { echo "RESUME=1 needs OUT=<the run directory to continue>"; exit 1; }
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
 	$(UV) run python -m app.evaluation run --kind official --seeds $(OFFICIAL_SEEDS) --repeats 3 $(if $(OUT),--out $(OUT)) $(if $(and $(OUT),$(RESUME)),--resume)
 
-dry-run: ## Four-question dry run of the official settings (wipes and restores Neo4j; calls the answer and judge models; owner approval required)
+dry-run: ## Four-question dry run of the official settings (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the answer and judge models; owner approval required)
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
 	$(UV) run python -m app.evaluation run --kind official --seeds 2026 --repeats 3 --limit 1 --questions $$($(UV) run python -m app.evaluation dry-run-questions) $(if $(OUT),--out $(OUT))
 
-dev-run: ## Development run on seed 2026, not a result (wipes and restores Neo4j; calls the answer and judge models; owner go-ahead required)
+dev-run: ## Development run on seed 2026, not a result (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the answer and judge models; owner go-ahead required)
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
 	$(UV) run python -m app.evaluation run --kind dev --seeds 2026 --repeats $(or $(REPEATS),1) $(if $(STRATA),--strata $(STRATA)) $(if $(LIMIT),--limit $(LIMIT)) $(if $(OUT),--out $(OUT))
@@ -151,6 +151,6 @@ label-sample: ## Build the hand-labelling sample from the official run v0.2.0 (n
 label-agreement: ## Agreement of the measures with the hand labels (no Neo4j, no model)
 	$(UV) run python -m app.evaluation label-agreement --run ../data/evaluation/runs/official-2026-10-26
 
-run-sweep: ## H1 depth sweep 0 to 3 for B and C on three worlds (reads JUDGE_* and GENERATION_*)
+run-sweep: ## H1 depth sweep 0 to 3 for B and C on three worlds (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the judge model, and the answer model unless GENERATION_PROVIDER=fake)
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
 	$(UV) run python -m app.evaluation sweep --seeds $(SEEDS) --depths 0,1,2,3

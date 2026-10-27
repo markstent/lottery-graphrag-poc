@@ -155,7 +155,8 @@ A job started from the API never resumes; its failure message names the command 
 | `make diagnose-selection` | Read-only: which claim records each approach finds and the selection keeps (reads Neo4j, runs the embedding and re-ranking models, no answer model) |
 | `make addendum-v020` | Rescores official run v0.2.0 with scorer 2.1.0; no Neo4j, no model |
 | `make label-sample`, `label-agreement` | Builds the hand-labelling sample from run v0.2.0, and reports the agreement of the measures with the labels; no Neo4j, no model |
-| `make run-smoke`, `run-benchmark`, `run-sweep` | The benchmark runs (see [evaluation.md](evaluation.md)) |
+| `make run-smoke` | Scorer smoke test on three worlds; it wipes and restores Neo4j and indexes new worlds in Qdrant, with the fake generator and judge (no answer or judge model) |
+| `make run-benchmark`, `run-sweep` | The official run and the depth sweep (see [evaluation.md](evaluation.md)); each wipes and restores Neo4j, indexes new worlds in Qdrant and calls the judge model, and the answer model unless `GENERATION_PROVIDER=fake` |
 
 The Makefile is the stable command surface.
 
@@ -171,7 +172,7 @@ The official seeds 2029 to 2034 are unseen: no development, dry, diagnostic or l
 ### Setup
 
 The worktree has no `data/` and no root `.env`.
-Link the main checkout's data (`ln -s ../lottery-graphrag-poc/data data` in the worktree root; it is git-ignored).
+From inside the worktree root, link the main checkout's `data/` directory with `ln -s ../lottery-graphrag-poc/data data`; the target is the main checkout's data directory, and the link is git-ignored.
 The API on port 8000 and the UI on port 5173 keep running from the main checkout throughout.
 
 Because there is no root `.env`, the Makefile reads no settings, so supply the environment explicitly in the shell that runs the targets.
