@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "AgreementOut": {
-        "description": "Agreement of the judge with the deterministic answer score over ``n``\njudged repeats; None where none were judged.",
+        "description": "Three-level agreement of the judge's correctness with the answer\nlevel (method v0.3) over ``n`` judged repeats, and the linearly\nweighted kappa; None where it is undefined.",
         "properties": {
           "agreement": {
             "anyOf": [
@@ -15,7 +15,11 @@
             ],
             "title": "Agreement"
           },
-          "kappa": {
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "weighted_kappa": {
             "anyOf": [
               {
                 "type": "number"
@@ -24,19 +28,32 @@
                 "type": "null"
               }
             ],
-            "title": "Kappa"
-          },
-          "n": {
-            "title": "N",
-            "type": "integer"
+            "title": "Weighted Kappa"
           }
         },
         "required": [
           "n",
           "agreement",
-          "kappa"
+          "weighted_kappa"
         ],
         "title": "AgreementOut",
+        "type": "object"
+      },
+      "AgreementSplitOut": {
+        "description": "Agreement over the answers that answered and those that abstained.",
+        "properties": {
+          "abstained": {
+            "$ref": "#/components/schemas/AgreementOut"
+          },
+          "answered": {
+            "$ref": "#/components/schemas/AgreementOut"
+          }
+        },
+        "required": [
+          "answered",
+          "abstained"
+        ],
+        "title": "AgreementSplitOut",
         "type": "object"
       },
       "ApiErrorBody": {
@@ -3085,11 +3102,11 @@
       "JudgeAgreementOut": {
         "properties": {
           "overall": {
-            "$ref": "#/components/schemas/AgreementOut"
+            "$ref": "#/components/schemas/AgreementSplitOut"
           },
           "pipelines": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/AgreementOut"
+              "$ref": "#/components/schemas/AgreementSplitOut"
             },
             "title": "Pipelines",
             "type": "object"
@@ -6046,9 +6063,13 @@
                 "$ref": "#/components/schemas/JudgeAgreementOut"
               },
               {
+                "$ref": "#/components/schemas/ThresholdJudgeAgreementOut"
+              },
+              {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Judge Agreement"
           },
           "label": {
             "anyOf": [
@@ -6217,6 +6238,64 @@
           "dictionary_source"
         ],
         "title": "TableSchemaOut",
+        "type": "object"
+      },
+      "ThresholdAgreementOut": {
+        "description": "Agreement as runs before method v0.3 recorded it: judge correctness 2\nagainst an answer score of at least 0.5, with Cohen's kappa.",
+        "properties": {
+          "agreement": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agreement"
+          },
+          "kappa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kappa"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "n",
+          "agreement",
+          "kappa"
+        ],
+        "title": "ThresholdAgreementOut",
+        "type": "object"
+      },
+      "ThresholdJudgeAgreementOut": {
+        "properties": {
+          "overall": {
+            "$ref": "#/components/schemas/ThresholdAgreementOut"
+          },
+          "pipelines": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ThresholdAgreementOut"
+            },
+            "title": "Pipelines",
+            "type": "object"
+          }
+        },
+        "required": [
+          "overall",
+          "pipelines"
+        ],
+        "title": "ThresholdJudgeAgreementOut",
         "type": "object"
       },
       "UnavailableOut": {

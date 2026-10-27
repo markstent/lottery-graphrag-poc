@@ -280,11 +280,23 @@ export function judgeRows(summary: Summary): DataTableRow[] {
 
 const UNDEFINED = 'Undefined'
 
+function isThresholdAgreement(
+  judged: Schemas['JudgeAgreementOut'] | Schemas['ThresholdJudgeAgreementOut'],
+): judged is Schemas['ThresholdJudgeAgreementOut'] {
+  return 'n' in judged.overall
+}
+
 /** How often the judge and the answer score agree, overall and per pipeline; null without a judge. */
 export function agreement(summary: Summary): DataTableRow[] | null {
   const judged = summary.judge_agreement
-  if (!judged) return null
-  const row = (key: string, label: string, cell: Schemas['AgreementOut']) => ({
+  // Only the threshold agreement of runs before method v0.3 is shown so far;
+  // the answered and abstained agreement of v0.3 is rendered by a later task.
+  if (!judged || !isThresholdAgreement(judged)) return null
+  const row = (
+    key: string,
+    label: string,
+    cell: Schemas['ThresholdAgreementOut'],
+  ) => ({
     key,
     label,
     cells: [

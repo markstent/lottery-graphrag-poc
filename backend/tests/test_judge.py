@@ -22,6 +22,7 @@ from app.evaluation.judge import (
     JUDGE_MAX_TOKENS,
     JUDGE_PROMPT_VERSION,
     JUDGE_SYSTEM_PROMPT,
+    Agreement,
     FakeJudge,
     GatewayJudge,
     JudgeItem,
@@ -29,6 +30,7 @@ from app.evaluation.judge import (
     JudgeScores,
     JudgeVerdict,
     agreement,
+    answer_level,
     blind,
     build_judge_prompt,
     check_families,
@@ -135,16 +137,11 @@ def test_judge_family_must_differ() -> None:
         check_families("qwen", "Qwen")
 
 
-def test_agreement_and_kappa() -> None:
-    result = agreement([(True, True), (False, False), (True, False), (True, True)])
-    assert result.n == 4 and result.agreement == 0.75 and result.kappa == pytest.approx(0.5)
-
-
 # --- Constants and settings -------------------------------------------------------
 
 
 def test_versioned_constants() -> None:
-    assert JUDGE_PROMPT_VERSION == "1.0.0"
+    assert JUDGE_PROMPT_VERSION == "1.1.0"
     assert JUDGE_DIMENSIONS == (
         "correctness",
         "completeness",
@@ -165,6 +162,29 @@ def test_prompt_hash_covers_the_prompt_its_version_and_the_user_template(
         judge_module, "JUDGE_USER_TEMPLATE", judge_module.JUDGE_USER_TEMPLATE.replace("\n\n", "\n")
     )
     assert judge_prompt_hash() != before
+
+
+def test_judge_prompt_1_1_0_scores_unwarranted_abstention_zero() -> None:
+    assert (
+        "correctness: the answer agrees with the reference answer; an answer that says the "
+        "sources do not answer scores 0 when the reference answer gives an answer. "
+    ) in JUDGE_SYSTEM_PROMPT
+    assert (
+        "abstention: 2 when the answer correctly says the context does not answer the "
+        "question, or answers when the context does; 0 when it guesses without support "
+        "in the context; 1 otherwise. "
+    ) in JUDGE_SYSTEM_PROMPT
+
+
+# The judge prompt hash of the v0.2.0 official run (prompt 1.0.0), from
+# reproducibility.run.judge_prompt_hash in official-2026-10-26/results.json.
+JUDGE_PROMPT_HASH_1_0_0 = "e89e8a186b6d28d997bc5d7a3d253114369bd770248c42d5bed44ad6f6f19ec4"
+JUDGE_PROMPT_HASH_1_1_0 = "f0db814c57eb3a2e2b28d1387c62f95df57dbf1f75c9d8a1317d38b4e274abd6"
+
+
+def test_judge_prompt_hash_changes_with_version() -> None:
+    assert judge_prompt_hash() == JUDGE_PROMPT_HASH_1_1_0
+    assert JUDGE_PROMPT_HASH_1_1_0 != JUDGE_PROMPT_HASH_1_0_0
 
 
 def test_judge_settings_come_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -353,10 +373,33 @@ def test_different_families_pass() -> None:
     check_families("qwen", "gemma")
 
 
-def test_agreement_without_pairs_or_variation() -> None:
-    assert agreement([]).n == 0 and agreement([]).agreement is None and agreement([]).kappa is None
-    same = agreement([(True, True), (True, True)])
-    assert (same.n, same.agreement, same.kappa) == (2, 1.0, None)
+def test_answer_level() -> None:
+    assert [answer_level(s) for s in (0.0, 0.33, 0.92, 1.0)] == [0, 1, 1, 2]
+
+
+def test_agreement_three_level_and_weighted_kappa() -> None:
+    result = agreement([(0, 0), (1, 1), (2, 2), (2, 1), (0, 2)])
+    # Linear weights w = 1 - |i - j| / 2 over the levels 0, 1, 2.
+    # Observed weighted agreement: (1 + 1 + 1 + 0.5 + 0) / 5 = 0.7.
+    # Marginals: answer level 0: 2/5, 1: 1/5, 2: 2/5; judge 0: 1/5, 1: 2/5, 2: 2/5.
+    # Expected weighted agreement, row by row (answer level i, sum_j q_j w_ij):
+    #   i=0: 0.4 * (0.2*1 + 0.4*0.5 + 0.4*0) = 0.4 * 0.4 = 0.16
+    #   i=1: 0.2 * (0.2*0.5 + 0.4*1 + 0.4*0.5) = 0.2 * 0.7 = 0.14
+    #   i=2: 0.4 * (0.2*0 + 0.4*0.5 + 0.4*1) = 0.4 * 0.6 = 0.24
+    #   total 0.54.
+    # Weighted kappa: (0.7 - 0.54) / (1 - 0.54) = 0.16 / 0.46 = 8/23.
+    assert result.n == 5
+    assert result.agreement == pytest.approx(0.6)
+    assert result.weighted_kappa == pytest.approx(8 / 23)
+
+
+def test_kappa_undefined_when_constant() -> None:
+    result = agreement([(2, 2)] * 4)
+    assert (result.n, result.agreement, result.weighted_kappa) == (4, 1.0, None)
+
+
+def test_agreement_without_pairs() -> None:
+    assert agreement([]) == Agreement(0, None, None)
 
 
 def _score(answer: float | None, correctness: int | None, judged: bool = True) -> RunScore:
@@ -369,14 +412,19 @@ def _score(answer: float | None, correctness: int | None, judged: bool = True) -
     return RunScore(answer, evidence, CitationMetrics(None, None), None, verdict)
 
 
-def test_judge_pairs_take_every_judged_repeat_with_an_answer_score() -> None:
-    scores = [
-        _score(1.0, 2),
-        _score(0.5, 1),
-        _score(0.0, 2),
-        _score(None, 2),  # no deterministic answer score
-        _score(1.0, None),  # the judge failed
-        _score(1.0, 2, judged=False),
-        None,  # the generation failed
+def test_pairs_split_answered_and_abstained() -> None:
+    results = [
+        ("answer", _score(1.0, 2)),
+        ("answer", _score(0.5, 1)),
+        ("Unknown: the sources do not say", _score(0.0, 2)),
+        ("unknown", _score(1.0, 0)),
+        ("answer", _score(0.0, 0)),
+        ("answer", _score(None, 2)),  # no deterministic answer score
+        ("answer", _score(1.0, None)),  # the judge failed
+        ("answer", _score(1.0, 2, judged=False)),
+        ("", None),  # the generation failed
     ]
-    assert judge_pairs(scores) == [(True, True), (True, False), (False, True)]
+    assert judge_pairs(results) == {
+        "answered": [(2, 2), (1, 1), (0, 0)],
+        "abstained": [(0, 2), (2, 0)],
+    }

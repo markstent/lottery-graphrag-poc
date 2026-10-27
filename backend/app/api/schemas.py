@@ -256,17 +256,39 @@ class SplitCell(BaseModel):
 
 
 class AgreementOut(BaseModel):
-    """Agreement of the judge with the deterministic answer score over ``n``
-    judged repeats; None where none were judged."""
+    """Three-level agreement of the judge's correctness with the answer
+    level (method v0.3) over ``n`` judged repeats, and the linearly
+    weighted kappa; None where it is undefined."""
+
+    n: int
+    agreement: float | None
+    weighted_kappa: float | None
+
+
+class AgreementSplitOut(BaseModel):
+    """Agreement over the answers that answered and those that abstained."""
+
+    answered: AgreementOut
+    abstained: AgreementOut
+
+
+class JudgeAgreementOut(BaseModel):
+    overall: AgreementSplitOut
+    pipelines: dict[str, AgreementSplitOut]
+
+
+class ThresholdAgreementOut(BaseModel):
+    """Agreement as runs before method v0.3 recorded it: judge correctness 2
+    against an answer score of at least 0.5, with Cohen's kappa."""
 
     n: int
     agreement: float | None
     kappa: float | None
 
 
-class JudgeAgreementOut(BaseModel):
-    overall: AgreementOut
-    pipelines: dict[str, AgreementOut]
+class ThresholdJudgeAgreementOut(BaseModel):
+    overall: ThresholdAgreementOut
+    pipelines: dict[str, ThresholdAgreementOut]
 
 
 class FailuresOut(BaseModel):
@@ -316,7 +338,8 @@ class SummaryOut(BaseModel):
     comparisons: list[ComparisonCell]
     ontology_split: list[SplitCell] | None = None
     headlines: list[str]
-    judge_agreement: JudgeAgreementOut | None
+    # A run published before method v0.3 (such as v0.2.0) keeps its threshold agreement.
+    judge_agreement: JudgeAgreementOut | ThresholdJudgeAgreementOut | None
     failures: FailuresOut
     selection: SelectionOut
     reproducibility: ReproducibilityOut

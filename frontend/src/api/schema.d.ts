@@ -522,16 +522,25 @@ export interface components {
     schemas: {
         /**
          * AgreementOut
-         * @description Agreement of the judge with the deterministic answer score over ``n``
-         *     judged repeats; None where none were judged.
+         * @description Three-level agreement of the judge's correctness with the answer
+         *     level (method v0.3) over ``n`` judged repeats, and the linearly
+         *     weighted kappa; None where it is undefined.
          */
         AgreementOut: {
             /** Agreement */
             agreement: number | null;
-            /** Kappa */
-            kappa: number | null;
             /** N */
             n: number;
+            /** Weighted Kappa */
+            weighted_kappa: number | null;
+        };
+        /**
+         * AgreementSplitOut
+         * @description Agreement over the answers that answered and those that abstained.
+         */
+        AgreementSplitOut: {
+            abstained: components["schemas"]["AgreementOut"];
+            answered: components["schemas"]["AgreementOut"];
         };
         /**
          * ApiErrorBody
@@ -1796,10 +1805,10 @@ export interface components {
         JsonValue: unknown;
         /** JudgeAgreementOut */
         JudgeAgreementOut: {
-            overall: components["schemas"]["AgreementOut"];
+            overall: components["schemas"]["AgreementSplitOut"];
             /** Pipelines */
             pipelines: {
-                [key: string]: components["schemas"]["AgreementOut"];
+                [key: string]: components["schemas"]["AgreementSplitOut"];
             };
         };
         /**
@@ -2952,7 +2961,8 @@ export interface components {
             /** Headlines */
             headlines: string[];
             instances: components["schemas"]["InstanceCounts"];
-            judge_agreement: components["schemas"]["JudgeAgreementOut"] | null;
+            /** Judge Agreement */
+            judge_agreement: components["schemas"]["JudgeAgreementOut"] | components["schemas"]["ThresholdJudgeAgreementOut"] | null;
             /** Label */
             label: string | null;
             /** Metrics */
@@ -3009,6 +3019,27 @@ export interface components {
             source_system: string;
             /** Table */
             table: string;
+        };
+        /**
+         * ThresholdAgreementOut
+         * @description Agreement as runs before method v0.3 recorded it: judge correctness 2
+         *     against an answer score of at least 0.5, with Cohen's kappa.
+         */
+        ThresholdAgreementOut: {
+            /** Agreement */
+            agreement: number | null;
+            /** Kappa */
+            kappa: number | null;
+            /** N */
+            n: number;
+        };
+        /** ThresholdJudgeAgreementOut */
+        ThresholdJudgeAgreementOut: {
+            overall: components["schemas"]["ThresholdAgreementOut"];
+            /** Pipelines */
+            pipelines: {
+                [key: string]: components["schemas"]["ThresholdAgreementOut"];
+            };
         };
         /**
          * UnavailableOut

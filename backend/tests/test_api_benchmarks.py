@@ -1139,10 +1139,25 @@ def test_summary_is_typed_for_every_run_shape(client_with_runs: TestClient) -> N
     assert official["metrics"]["H3"]["answer"]["A"]["n"] == 12
     assert official["comparisons"][0]["comparison"] == "B_vs_A"
     assert official["ontology_split"][0]["in_family"] is False
-    assert official["judge_agreement"]["overall"]["n"] > 0
+    answered = official["judge_agreement"]["overall"]["answered"]
+    assert answered["n"] > 0 and "weighted_kappa" in answered
+    assert official["judge_agreement"]["pipelines"]["A"]["abstained"]["n"] == 0
     assert official["failures"]["classes"]["A"]["retrieval_failure"] > 0
     assert official["unavailable"]["2026"] == [{"question_id": "L99", "reason": "no anchor"}]
     assert official["reproducibility"]["run"]["judge_temperature"] == 0.0
+
+
+def test_a_v0_2_run_keeps_its_threshold_agreement(client: TestClient, runs_dir: Path) -> None:
+    """A run published before method v0.3 recorded one boolean agreement
+    (n, agreement, kappa) per pipeline; it still reads, unchanged."""
+    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
+    path = runs_dir / "v02" / "summary.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    cell = {"n": 1092, "agreement": 0.418, "kappa": 0.104}
+    summary["judge_agreement"] = {"overall": cell, "pipelines": {"A": cell}}
+    path.write_text(json.dumps(summary), encoding="utf-8")
+    body = client.get("/api/v1/benchmarks/v02").json()
+    assert body["summary"]["judge_agreement"] == {"overall": cell, "pipelines": {"A": cell}}
 
 
 def test_older_run_without_split_or_new_reproducibility_fields_reads(

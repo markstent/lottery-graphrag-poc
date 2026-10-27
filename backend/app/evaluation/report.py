@@ -411,15 +411,21 @@ def _headlines(comparisons: Sequence[_Comparison]) -> list[str]:
 
 
 def _judge_agreement(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> dict[str, Any]:
-    def scores(tags: Sequence[str]) -> list[RunScore | None]:
-        return [s for r in results for tag in tags for s in r.scores.get(tag, [])]
+    """Three-level agreement of the judge with the answer score, split by
+    whether the answer abstained, overall and per pipeline."""
 
-    return {
-        "overall": dataclasses.asdict(agreement(judge_pairs(scores(pipelines)))),
-        "pipelines": {
-            tag: dataclasses.asdict(agreement(judge_pairs(scores([tag])))) for tag in pipelines
-        },
-    }
+    def split(tags: Sequence[str]) -> dict[str, Any]:
+        repeats: list[tuple[str, RunScore | None]] = [
+            (run.verdict, score)
+            for r in results
+            for tag in tags
+            for run, score in zip(r.runs.get(tag, []), r.scores.get(tag, []), strict=True)
+        ]
+        return {
+            key: dataclasses.asdict(agreement(pairs)) for key, pairs in judge_pairs(repeats).items()
+        }
+
+    return {"overall": split(pipelines), "pipelines": {tag: split([tag]) for tag in pipelines}}
 
 
 def _failures(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> dict[str, Any]:
@@ -570,16 +576,27 @@ def _agreement_section(agreements: dict[str, Any]) -> list[str]:
     lines = [
         "## Judge agreement",
         "",
-        "Agreement of judge correctness 2 with a deterministic answer score of at least 0.5.",
+        "The deterministic answer score is put on the judge's three correctness levels.",
         "",
-        "| Pipeline | Judged repeats | Agreement | Kappa |",
-        "|---|---|---|---|",
+        "- Level 0: the answer score is 0, and the judge gives correctness 0.",
+        "- Level 1: the answer score is between 0 and 1, and the judge gives correctness 1.",
+        "- Level 2: the answer score is exactly 1, and the judge gives correctness 2.",
+        "",
+        "Agreement is the share of judged repeats on the same level; the weighted kappa "
+        "(linear weights) discounts chance and counts a one-level gap as half a disagreement.",
+        "Answers that say the sources do not answer are reported apart from answers that answer.",
+        "",
+        "| Pipeline | Answers | Judged repeats | Agreement | Weighted kappa |",
+        "|---|---|---|---|---|",
     ]
     rows = [("all", agreements["overall"]), *agreements["pipelines"].items()]
-    for name, row in rows:
-        lines.append(
-            f"| {name} | {row['n']} | {_ratio(row['agreement'])} | {_ratio(row['kappa'])} |"
-        )
+    for name, split in rows:
+        for answers in ("answered", "abstained"):
+            row = split[answers]
+            lines.append(
+                f"| {name} | {answers} | {row['n']} | {_ratio(row['agreement'])} "
+                f"| {_ratio(row['weighted_kappa'])} |"
+            )
     return [*lines, ""]
 
 

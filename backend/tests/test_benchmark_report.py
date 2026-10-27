@@ -14,6 +14,8 @@ from app.evaluation.judge import JudgeScores, JudgeVerdict
 from app.evaluation.report import (
     SMOKE_HEADLINE,
     SUMMARY_SCHEMA_VERSION,
+    _agreement_section,
+    _judge_agreement,
     _observe,
     instance_means,
     render_report,
@@ -298,7 +300,8 @@ def test_counts_failures_agreement_and_basis(synthetic_summary: dict[str, Any]) 
     assert summary["failures"]["generation"] == {"A": 12, "B": 0, "C": 0}
     assert summary["failures"]["judge"] == {"A": 0, "B": 0, "C": 0}
     assert summary["failures"]["classes"]["A"]["retrieval_failure"] > 0
-    assert summary["judge_agreement"]["overall"]["n"] > 0
+    assert summary["judge_agreement"]["overall"]["answered"]["n"] > 0
+    assert summary["judge_agreement"]["overall"]["abstained"]["n"] == 0
     assert set(summary["judge_agreement"]["pipelines"]) == {"A", "B", "C"}
     assert summary["anchor_resolution_basis"] == {
         "A": "selection",
@@ -340,6 +343,46 @@ def test_comparisons_name_why_they_were_or_were_not_tested(
     assert reasons[("H3", "evidence_f1")] == "not_in_family"
     assert reasons[("H2_name", "evidence_f1")] == "not_in_family"
     assert all((c["reason"] == "tested") == c["in_family"] for c in comparisons)
+
+
+def test_agreement_section_reports_answered_and_abstained() -> None:
+    instance = _instance("L10", "H1", 2026)
+    runs = {
+        "A": [
+            dataclasses.replace(_run("A", 0), verdict="answer"),
+            dataclasses.replace(_run("A", 1), verdict="unknown"),
+            _run("A", 2, failed=True),
+        ],
+        "B": [dataclasses.replace(_run("B", i), verdict="answer") for i in range(2)],
+    }
+    scores: dict[str, list[RunScore | None]] = {
+        "A": [_score(1.0, 1.0, judged=2), _score(0.0, 0.0, judged=2), None],
+        "B": [_score(0.5, 1.0, judged=1), _score(0.0, 1.0, judged=0)],
+    }
+    agreements = _judge_agreement([InstanceResult(instance, runs, scores)], ["A", "B"])
+    # Answered pairs (answer level, judge correctness): A (2, 2), B (1, 1) and (0, 0).
+    assert agreements["overall"]["answered"] == {"n": 3, "agreement": 1.0, "weighted_kappa": 1.0}
+    # The one abstention scores 0 where the judge gave 2: no agreement, and
+    # chance agreement is 0, so the weighted kappa is 0.
+    assert agreements["overall"]["abstained"] == {
+        "n": 1,
+        "agreement": 0.0,
+        "weighted_kappa": 0.0,
+    }
+    assert agreements["pipelines"]["A"]["answered"]["n"] == 1
+    assert agreements["pipelines"]["B"]["abstained"] == {
+        "n": 0,
+        "agreement": None,
+        "weighted_kappa": None,
+    }
+    section = "\n".join(_agreement_section(agreements))
+    assert "| Pipeline | Answers | Judged repeats | Agreement | Weighted kappa |" in section
+    assert "| all | answered | 3 | 1.000 | 1.000 |" in section
+    assert "| all | abstained | 1 | 0.000 | 0.000 |" in section
+    assert "| B | abstained | 0 | - | - |" in section
+    for level in ("Level 0", "Level 1", "Level 2"):
+        assert level in section
+    assert "0.5" not in section
 
 
 def test_report_reads_counts_and_reasons_from_the_summary(synthetic_run: BenchmarkRun) -> None:

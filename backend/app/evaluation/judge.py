@@ -30,11 +30,13 @@ import json
 import random
 import re
 import time
+from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from app.config import FAKE_JUDGE_MODEL, JudgeSettings
+from app.evaluation.checks import is_abstention
 from app.models.gateway import (
     Completion,
     CompletionRequest,
@@ -46,7 +48,7 @@ from app.retrieval.standard.generation import CITATION, FENCED_JSON
 if TYPE_CHECKING:
     from app.evaluation.runner import RunScore, ShownBlock
 
-JUDGE_PROMPT_VERSION = "1.0.0"
+JUDGE_PROMPT_VERSION = "1.1.0"
 JUDGE_DIMENSIONS = (
     "correctness",
     "completeness",
@@ -58,9 +60,6 @@ ANSWER_CHAR_CAP = 2400
 JUDGE_MAX_TOKENS = 300
 JUDGE_TIMEOUT_S = 120.0
 TRUNCATION_MARK = " [truncated]"
-# A deterministic answer score at or above this counts as correct when the
-# judge's correctness is compared with it.
-AGREEMENT_ANSWER_THRESHOLD = 0.5
 
 JUDGE_SYSTEM_PROMPT = (
     "You grade one answer to a question about an enterprise. You are given the "
@@ -69,7 +68,8 @@ JUDGE_SYSTEM_PROMPT = (
     "sources as [n]; [?] marks a citation of a source that was not shown. Score "
     "five dimensions, each 0, 1 or 2, where 0 means wrong or absent, 1 means "
     "partly and 2 means fully. "
-    "correctness: the answer agrees with the reference answer. "
+    "correctness: the answer agrees with the reference answer; an answer that says the "
+    "sources do not answer scores 0 when the reference answer gives an answer. "
     "completeness: the answer states the key facts. "
     "faithfulness: every statement in the answer is supported by the context sources. "
     "citation_accuracy: each citation points at a source that supports the "
@@ -322,37 +322,67 @@ def check_families(generation_family: str | None, judge_family: str | None) -> N
         )
 
 
+def answer_level(score: float) -> int:
+    """The deterministic answer score on the judge's three levels: 0 when
+    it is 0, 2 when it is exactly 1, and 1 for anything between."""
+    if score == 0:
+        return 0
+    return 2 if score == 1 else 1
+
+
 @dataclass(frozen=True, slots=True)
 class Agreement:
-    """Agreement of the judge with the deterministic answer score."""
+    """Agreement of the judge's correctness with the answer level over
+    ``n`` judged repeats: exact three-level agreement and the linearly
+    weighted kappa; None where it is undefined."""
 
     n: int
     agreement: float | None
-    kappa: float | None
+    weighted_kappa: float | None
 
 
-def agreement(pairs: Sequence[tuple[bool, bool]]) -> Agreement:
-    """Percent agreement and Cohen's kappa; kappa is None when chance
-    agreement is 1 (both raters constant and equal)."""
+def agreement(pairs: Sequence[tuple[int, int]]) -> Agreement:
+    """Exact agreement and Cohen's kappa with linear weights over the
+    levels 0, 1 and 2 of (answer level, judge correctness) pairs.
+
+    The kappa is computed as one minus observed over expected linear
+    disagreement (|i - j|), which equals the agreement-weight form with
+    weights 1 - |i - j| / 2. It is None when the expected disagreement is
+    0, which happens when both raters use one and the same level. The
+    sums are integers, so that test is exact.
+    """
     n = len(pairs)
     if n == 0:
         return Agreement(0, None, None)
     observed = sum(a == b for a, b in pairs) / n
-    p_a = sum(a for a, _ in pairs) / n
-    p_b = sum(b for _, b in pairs) / n
-    expected = p_a * p_b + (1 - p_a) * (1 - p_b)
-    kappa = None if expected == 1 else (observed - expected) / (1 - expected)
-    return Agreement(n, observed, kappa)
+    levels_a = Counter(a for a, _ in pairs)
+    levels_b = Counter(b for _, b in pairs)
+    expected = sum(
+        count_a * count_b * abs(a - b)
+        for a, count_a in levels_a.items()
+        for b, count_b in levels_b.items()
+    )
+    if expected == 0:
+        return Agreement(n, observed, None)
+    disagreement = n * sum(abs(a - b) for a, b in pairs)
+    return Agreement(n, observed, 1 - disagreement / expected)
 
 
-def judge_pairs(scores: Iterable[RunScore | None]) -> list[tuple[bool, bool]]:
-    """(deterministic answer score >= 0.5, judge correctness == 2) for every
-    judged repeat that has a deterministic answer score."""
-    return [
-        (score.answer >= AGREEMENT_ANSWER_THRESHOLD, score.judge.scores.correctness == 2)
-        for score in scores
-        if score is not None
-        and score.answer is not None
-        and score.judge is not None
-        and score.judge.scores is not None
-    ]
+def judge_pairs(
+    results: Iterable[tuple[str, RunScore | None]],
+) -> dict[str, list[tuple[int, int]]]:
+    """(answer level, judge correctness) for every judged repeat with a
+    deterministic answer score, keyed "answered" or "abstained" by its
+    verdict; a repeat without a score (failed generation) is left out."""
+    pairs: dict[str, list[tuple[int, int]]] = {"answered": [], "abstained": []}
+    for verdict, score in results:
+        if (
+            score is None
+            or score.answer is None
+            or score.judge is None
+            or score.judge.scores is None
+        ):
+            continue
+        key = "abstained" if is_abstention(verdict) else "answered"
+        pairs[key].append((answer_level(score.answer), score.judge.scores.correctness))
+    return pairs
