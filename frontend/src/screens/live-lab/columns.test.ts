@@ -35,14 +35,14 @@ describe('stageRows', () => {
     expect(stageRows('A', start.pipelines.A).map((row) => row.label)).toEqual([
       'Embed the question',
       'Search passages',
-      'Re-order and pick',
+      'Re-order and pick passages',
       'Build the context',
       'Write the answer',
     ])
     expect(stageRows('B', start.pipelines.B).map((row) => row.label)).toEqual([
       'Find starting points',
       'Follow relationships',
-      'Re-order and pick',
+      'Re-order passages, take turns',
       'Build the context',
       'Write the answer',
     ])
@@ -52,7 +52,7 @@ describe('stageRows', () => {
       'Add ontology terms',
       'Follow relationships',
       'Add linked records',
-      'Re-order and pick',
+      'Re-order passages, take turns',
       'Build the context',
       'Write the answer',
     ])
@@ -100,13 +100,27 @@ describe('stageRows', () => {
   })
 })
 
+describe('stageRows, the re-rank step by method', () => {
+  it('names what v0.3 does, and keeps the old name for a recording of the old method', () => {
+    const start = initialRunState()
+    const rerank = (id: 'A' | 'B', old: boolean) =>
+      stageRows(id, start.pipelines[id], old).find(
+        (row) => row.stage === 'rerank',
+      )?.label
+    expect(rerank('A', false)).toBe('Re-order and pick passages')
+    expect(rerank('B', false)).toBe('Re-order passages, take turns')
+    expect(rerank('B', true)).toBe('Re-order and pick')
+  })
+})
+
 describe('stageRows, a step the pipeline never ran', () => {
   const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!
   const state = reduceAll(h3.events)
 
   it('says "Not run" for a step a completed pipeline skipped, such as C with no ontology links', () => {
     expect(state.pipelines.C.status).toBe('completed')
-    const rows = stageRows('C', state.pipelines.C)
+    // The recording was made under the old method, so it keeps that step name.
+    const rows = stageRows('C', state.pipelines.C, true)
     expect(rows.map((row) => [row.label, row.status])).toEqual([
       ['Find starting points', 'done'],
       ['Add ontology terms', 'done'],

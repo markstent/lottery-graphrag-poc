@@ -7,7 +7,7 @@
 import type { Schemas } from '../../api/client'
 import { nodeLabel } from '../../design/node-labels'
 import type { PipelineId } from '../../design/pipelines'
-import { STAGE_LABELS, STEPS } from '../../run/lanes'
+import { stageLabel, STEPS } from '../../run/lanes'
 import { formatDuration } from './format'
 import { recordTitle } from './record-title'
 import type { RunPhase, Timeline } from './use-live-run'
@@ -45,10 +45,15 @@ function unseen(status: PipelineState['status']): StageRowStatus {
   return status === 'completed' ? 'not-run' : 'not-reached'
 }
 
-export function stageRows(id: PipelineId, pipeline: PipelineState): StageRow[] {
+export function stageRows(
+  id: PipelineId,
+  pipeline: PipelineState,
+  /** A recording of the old method, which keeps its own step names. */
+  oldMethod = false,
+): StageRow[] {
   return STEPS[id].map((stage) => {
     const recorded = pipeline.stages[stage]
-    const label = STAGE_LABELS[stage]
+    const label = stageLabel(id, stage, oldMethod)
     if (recorded === undefined)
       return {
         stage,

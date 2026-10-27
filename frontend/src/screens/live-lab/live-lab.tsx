@@ -259,6 +259,7 @@ export function LiveLab() {
                 results={results}
                 canOpen={(recordId) => sourceOf(id, recordId) !== null}
                 onOpen={(recordId) => open(id, recordId)}
+                oldMethod={run.oldMethod}
               />
             ))}
           </div>
@@ -266,6 +267,7 @@ export function LiveLab() {
       </div>
       <Timeline
         state={state}
+        oldMethod={run.oldMethod}
         originMs={run.originMs}
         timeline={run.timeline}
         controls={run.controls}

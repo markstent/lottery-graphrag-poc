@@ -18,7 +18,6 @@ export const STEP = {
   findStartingPoints: 'Find starting points',
   followRelationships: 'Follow relationships',
   addLinkedRecords: 'Add linked records',
-  reorderAndPick: 'Re-order and pick',
   reorderPassages: 'Re-order passages',
   rankByGraph: 'Rank by the graph',
 } as const
@@ -54,16 +53,44 @@ export const LANES: Lane[] = [
   },
 ]
 
-export const STAGE_LABELS: Record<Stage, string> = {
+/** The name of each stage that does the same work in every pipeline. */
+export const STAGE_LABELS: Record<Exclude<Stage, 'rerank'>, string> = {
   embedding: 'Embed the question',
   search: STEP.searchPassages,
   expansion: STEP.addOntologyTerms,
   resolution: STEP.findStartingPoints,
   traversal: STEP.followRelationships,
   linking: STEP.addLinkedRecords,
-  rerank: STEP.reorderAndPick,
   context: 'Build the context',
   generation: 'Write the answer',
+}
+
+/**
+ * The re-rank stage does different work by pipeline under method v0.3. A
+ * re-orders its passages and picks them within the budget. B and C re-order
+ * only their passages (the graph has already ordered its own records), then
+ * the two lists take turns filling the budget.
+ */
+const RERANK_LABELS: Record<PipelineId, string> = {
+  A: 'Re-order and pick passages',
+  B: 'Re-order passages, take turns',
+  C: 'Re-order passages, take turns',
+}
+
+/** The old method (v0.2) re-ranked passages and graph records together and picked from them. */
+const OLD_METHOD_RERANK = 'Re-order and pick'
+
+/**
+ * The name of a stage of a pipeline, as the step list and the timeline give
+ * it; `oldMethod` for a recording of the old method, which still replays.
+ */
+export const stageLabel = (
+  id: PipelineId,
+  stage: Stage,
+  oldMethod = false,
+): string => {
+  if (stage !== 'rerank') return STAGE_LABELS[stage]
+  return oldMethod ? OLD_METHOD_RERANK : RERANK_LABELS[id]
 }
 
 /** Each pipeline's stages in the order the first event of each one arrives. */

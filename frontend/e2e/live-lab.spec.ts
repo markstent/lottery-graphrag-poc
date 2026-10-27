@@ -98,6 +98,11 @@ test('shows where the graph put each record under method v0.3, and why one was s
     graph.getByText("Question's target: incident, market, platform version"),
   ).toBeVisible()
   await expect(graph.getByText('Context: 1,996 of 2,000 tokens')).toBeVisible()
+  await expect(
+    graph
+      .getByRole('list', { name: 'Steps' })
+      .getByText('Re-order passages, take turns'),
+  ).toBeVisible()
   const evidence = graph.getByRole('list', { name: 'Evidence' })
   await expect(
     evidence.getByText('starting point · graph rank 1'),
@@ -128,6 +133,12 @@ test('labels a recording made under the old method, and reads its reasons as old
     evidence.getByText('Set aside under the old method').first(),
   ).toBeAttached()
   await expect(evidence.getByText(/graph rank/)).toHaveCount(0)
+  await expect(
+    page
+      .getByRole('region', { name: 'B · Graph', exact: true })
+      .getByRole('list', { name: 'Steps' })
+      .getByText('Re-order and pick', { exact: true }),
+  ).toBeVisible()
   await shot(page, 'recorded-old-method-end')
 })
 
