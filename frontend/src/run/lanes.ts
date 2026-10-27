@@ -19,15 +19,27 @@ export const STEP = {
   followRelationships: 'Follow relationships',
   addLinkedRecords: 'Add linked records',
   reorderAndPick: 'Re-order and pick',
+  reorderPassages: 'Re-order passages',
+  rankByGraph: 'Rank by the graph',
 } as const
 
-/** Question, then these lanes, then the shared steps after them. Each lane's steps are in the order its first events arrive (lanes.test.ts checks this against the recordings). */
+/**
+ * Question, then these lanes, then the shared steps after them, as method
+ * v0.3 works: only passages are re-ordered; B and C put their graph records in
+ * the graph's own order, and the two lists take turns filling one budget. Each
+ * lane's steps before its ranking are in the order its first events arrive
+ * (lanes.test.ts checks this against the recordings).
+ */
 export const LANES: Lane[] = [
-  { label: 'A, B and C', steps: [STEP.searchPassages] },
+  { label: 'A, B and C', steps: [STEP.searchPassages, STEP.reorderPassages] },
   {
     label: 'B · Graph',
     pipeline: 'B',
-    steps: [STEP.findStartingPoints, STEP.followRelationships],
+    steps: [
+      STEP.findStartingPoints,
+      STEP.followRelationships,
+      STEP.rankByGraph,
+    ],
   },
   {
     label: 'C · Graph + Ontology',
@@ -37,6 +49,7 @@ export const LANES: Lane[] = [
       STEP.addOntologyTerms,
       STEP.followRelationships,
       STEP.addLinkedRecords,
+      STEP.rankByGraph,
     ],
   },
 ]
@@ -69,7 +82,10 @@ export const STEPS: Record<PipelineId, readonly Stage[]> = {
 }
 
 export const SHARED_BEFORE = 'Question'
-export const SHARED_AFTER = [STEP.reorderAndPick, 'Answer with sources']
+export const SHARED_AFTER = ['Fill one budget', 'Answer with sources']
+
+/** Said under the picture: how B and C fill the budget. */
+export const TURNS_LINE = 'B and C take turns: a passage, then a graph record.'
 
 /** The same diagram in words, built from the lanes so the two cannot differ. */
 export const STEP_LINES = [
@@ -77,4 +93,5 @@ export const STEP_LINES = [
   ...LANES.map(({ label, steps }) => `${label}: ${steps.join(', then ')}.`),
   'B and C also take passages from the same search.',
   `All three then ${SHARED_AFTER.join(', then ').toLowerCase()}.`,
+  TURNS_LINE,
 ]

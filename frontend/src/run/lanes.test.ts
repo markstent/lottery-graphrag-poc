@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import runAbc from './fixtures/run-abc.json'
 import { RECORDINGS } from '../test/recordings'
-import { LANES, STAGE_LABELS, STEPS } from './lanes'
+import { LANES, STAGE_LABELS, STEP, STEPS } from './lanes'
 import { initialRunState, reduce, type RunEvent, type Stage } from './reduce'
 import type { PipelineId } from '../design/pipelines'
 
@@ -41,18 +41,17 @@ describe('the order of the steps against the recorded events', () => {
     expect([...shown].sort()).toEqual([...STEPS[id]].sort())
   })
 
-  it('the Overview lanes name the same steps, in the same order, as STEPS', () => {
+  it('the Overview lanes name the same steps, in the same order, as STEPS, then the graph ranking', () => {
     const labels = (id: PipelineId) =>
       STEPS[id]
         .slice(0, STEPS[id].indexOf('rerank'))
         .map((stage) => STAGE_LABELS[stage])
     const lane = (id: PipelineId) => LANES.find((l) => l.pipeline === id)!.steps
-    expect(lane('B')).toEqual(labels('B'))
-    expect(lane('C')).toEqual(labels('C'))
-    expect(labels('A')).toEqual(
-      expect.arrayContaining(
-        LANES.find((l) => l.pipeline === undefined)!.steps,
-      ),
-    )
+    expect(lane('B')).toEqual([...labels('B'), STEP.rankByGraph])
+    expect(lane('C')).toEqual([...labels('C'), STEP.rankByGraph])
+    expect(LANES.find((l) => l.pipeline === undefined)!.steps).toEqual([
+      STAGE_LABELS.search,
+      STEP.reorderPassages,
+    ])
   })
 })
