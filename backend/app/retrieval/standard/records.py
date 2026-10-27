@@ -7,8 +7,16 @@ the planted-pattern carriers (shared devices, shared payment methods and the
 players taking part in a share, design 10a.2) are rendered as short English
 sentences and indexed next to document chunks. Local names are joined from
 the taxonomy tables so a block names a game's family, category and
-mechanics the way the market does. A graph node is shown as these blocks
-only, so the model never sees warehouse text A could not index (D-028).
+mechanics the way the market does.
+
+The prompt shows each record, in A, B and C alike, as compact facts
+(``FACT_SERIALISERS``, method v0.3, D-085, versioned by
+``RECORD_FACTS_VERSION``): the columns its sentence states, one named fact
+per line under a heading such as "Incident INC_024", so the model never
+sees warehouse text A could not index (D-028). The facts are built
+in-process from the same rows when the corpus loads; they are never
+indexed, so the indexed text, the embeddings and the payload stay those of
+``RECORD_SERIALISER_VERSION``.
 
 This serialiser is a fixed, published function: one template per table in
 ``SERIALISERS``, no tuning hooks, versioned by ``RECORD_SERIALISER_VERSION``
@@ -18,6 +26,7 @@ benchmark bank is built against it, its wording is frozen.
 
 from __future__ import annotations
 
+import re
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -30,7 +39,7 @@ import duckdb
 
 from app.datasets.schema import TABLE_PROVENANCE, TABLE_SCHEMAS
 from app.graph.mapping import game_available_via
-from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.corpus import CorpusChunk, Fact
 
 Row = dict[str, Any]
 
@@ -368,10 +377,231 @@ SERIALISERS: dict[str, Callable[[Row], str]] = {
     ),
 }
 
+_ISO_DATETIME = re.compile(r"(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2})")
+
+
+def _fact_value(value: object) -> str:
+    """A value as a fact prints it: an ISO date-time at midnight as its date,
+    any other ISO date-time as "YYYY-MM-DD HH:MM:SS", anything else as the
+    record block prints it."""
+    text = str(value)
+    match = _ISO_DATETIME.fullmatch(text)
+    if match is None:
+        return text
+    day, time = match.groups()
+    return day if time == "00:00:00" else f"{day} {time}"
+
+
+def _facts(*facts: tuple[str, object]) -> list[Fact]:
+    """The named facts whose value exists, in order; ``None`` is omitted, never printed."""
+    return [(name, _fact_value(value)) for name, value in facts if value is not None]
+
+
+def _named(record_id: object, name: object) -> str | None:
+    """An id with its name, "PLV_IDENTITY_2 (2024.2.0)"; the id alone without one."""
+    if record_id is None:
+        return None
+    return f"{record_id} ({name})" if name is not None else str(record_id)
+
+
+def _market(r: Row) -> str | None:
+    # The market id was on every v0.2 block's title line; the facts keep it.
+    return _named(r.get("market_id"), r["market_name"])
+
+
+def _used_by(r: Row) -> str:
+    return f"{len(r['player_ids'])} player accounts: {_players(r['player_ids'])}"
+
+
+# One fact list per serialised table: the columns its sentence states, each
+# as one named fact, under a heading "<Entity word> <id>" (D-085).
+FACT_SERIALISERS: dict[str, Callable[[Row], tuple[str, list[Fact]]]] = {
+    "games": lambda r: (
+        f"Game {r['game_id']}",
+        _facts(
+            ("name", r["game_name"]),
+            ("market", _market(r)),
+            ("family", r["family_name"]),
+            ("category", r["category_name"]),
+            ("ticket price", f"{r['ticket_price']} {r['currency_code']}"),
+            ("mechanics", r["mechanic_names"]),
+            ("channels", _channels(r)),
+            ("launched", r["launch_date"]),
+            ("retired", r["retirement_date"]),
+            ("status", r["status"]),
+        ),
+    ),
+    "platform_versions": lambda r: (
+        f"Platform version {r['platform_version_id']}",
+        _facts(
+            ("version", r["version_label"]),
+            ("platform", _named(r["platform_id"], r["platform_name"])),
+            ("released", r["released_at"]),
+            ("retired", r["retired_at"]),
+        ),
+    ),
+    "incidents": lambda r: (
+        f"Incident {r['incident_id']}",
+        _facts(
+            ("market", _market(r)),
+            ("type", _named(r["incident_type"], r["incident_type_name"])),
+            ("severity", r["severity"]),
+            ("platform", _named(r["platform_id"], r["platform_name"])),
+            ("platform version", _named(r["platform_version_id"], r["platform_version_label"])),
+            ("app version", _named(r["app_version_id"], r["app_version_label"])),
+            ("affected games", r["game_names"]),
+            ("started", r["started_at"]),
+            ("resolved", r["resolved_at"]),
+            ("root cause", r["root_cause_code"]),
+            ("summary", r["summary"]),
+        ),
+    ),
+    "campaigns": lambda r: (
+        f"Campaign {r['campaign_id']}",
+        _facts(
+            ("name", r["campaign_name"]),
+            ("market", _market(r)),
+            ("type", r["campaign_type"]),
+            ("objective", r["objective_code"]),
+            ("budget", f"{r['budget_amount']} {r['currency_code']}"),
+            ("promoted games", r["game_names"]),
+            ("starts", r["start_at"]),
+            ("ends", r["end_at"]),
+        ),
+    ),
+    "player_segments": lambda r: (
+        f"Player segment {r['segment_id']}",
+        _facts(
+            ("name", r["name"]),
+            ("market", _market(r)),
+            ("kind", r["segment_kind"]),
+            ("language", r["language_code"]),
+        ),
+    ),
+    "payment_providers": lambda r: (
+        f"Payment provider {r['provider_id']}",
+        _facts(
+            ("name", r["name"]),
+            ("platform", _named(r["platform_id"], r["platform_name"])),
+            ("home market", _market(r)),
+        ),
+    ),
+    "app_versions": lambda r: (
+        f"App version {r['app_version_id']}",
+        _facts(
+            ("version", r["version_label"]),
+            ("market", _market(r)),
+            ("released", r["released_at"]),
+            ("minimum os", r["min_os_bucket"]),
+        ),
+    ),
+    "game_families": lambda r: (
+        f"Game family {r['family_id']}",
+        _facts(("name", r["name"]), ("market", _market(r)), ("language", r["language_code"])),
+    ),
+    "game_mechanics": lambda r: (
+        f"Game mechanic {r['mechanic_id']}",
+        _facts(
+            ("code", r["mechanic_code"]),
+            ("market", _market(r)),
+            ("description", r["description"]),
+            ("language", r["language_code"]),
+        ),
+    ),
+    "incident_types": lambda r: (
+        f"Incident type {r['incident_type_id']}",
+        _facts(("name", r["name"]), ("market", _market(r)), ("language", r["language_code"])),
+    ),
+    "support_categories": lambda r: (
+        f"Support category {r['support_category_id']}",
+        _facts(("name", r["name"]), ("market", _market(r)), ("language", r["language_code"])),
+    ),
+    "markets": lambda r: (
+        f"Market {r['market_id']}",
+        _facts(
+            ("name", r["market_name"]),
+            ("market code", r["market_code"]),
+            ("currency", r["currency_code"]),
+            ("primary language", r["primary_language"]),
+            ("time zone", r["timezone"]),
+        ),
+    ),
+    "platforms": lambda r: (
+        f"Platform {r['platform_id']}",
+        _facts(
+            ("name", r["platform_name"]),
+            ("type", r["platform_type"]),
+            ("supplier", _named(r["supplier_id"], r["supplier_name"])),
+        ),
+    ),
+    "channels": lambda r: (
+        f"Channel {r['channel_code']}",
+        _facts(("description", r["description"])),
+    ),
+    "experiments": lambda r: (
+        f"Experiment {r['experiment_id']}",
+        _facts(
+            ("name", r["experiment_name"]),
+            ("market", _market(r)),
+            ("hypothesis", r["hypothesis"]),
+            ("target segment", _named(r["target_segment"], r["target_segment_name"])),
+            ("primary metric", r["primary_metric"]),
+            ("starts", r["start_at"]),
+            ("ends", r["end_at"]),
+            ("result", r["result_summary"]),
+        ),
+    ),
+    "support_cases": lambda r: (
+        f"Support case {r['support_case_id']}",
+        _facts(
+            ("market", _market(r)),
+            ("category", _named(r["category_code"], r["category_name"])),
+            ("player", r["player_id"]),
+            ("game", _named(r["game_id"], r["game_name"])),
+            ("incident", r["incident_id"]),
+            ("opened", r["opened_at"]),
+            ("closed", r["closed_at"]),
+            ("sentiment score", r["sentiment_score"]),
+            ("summary", r["summary_text"]),
+        ),
+    ),
+    "devices": lambda r: (
+        f"Device {r['device_id']}",
+        _facts(
+            ("family", r["device_family"]),
+            ("used by", _used_by(r)),
+            ("os version", r["os_version_bucket"]),
+            ("first seen", r["first_seen_at"]),
+        ),
+    ),
+    "payment_methods": lambda r: (
+        f"Payment method {r['payment_method_id']}",
+        _facts(
+            ("type", r["payment_type"]),
+            ("provider", r["provider_name"]),
+            ("used by", _used_by(r)),
+            ("created", r["created_at"]),
+        ),
+    ),
+    "players": lambda r: (
+        f"Player {r['player_id']}",
+        _facts(
+            ("market", _market(r)),
+            ("value segment", _named(r["value_segment"], r["value_segment_name"])),
+            (
+                "engagement segment",
+                _named(r["engagement_segment"], r["engagement_segment_name"]),
+            ),
+            ("registered", r["registration_date"]),
+        ),
+    ),
+}
+
 
 @dataclass(frozen=True, slots=True)
 class RecordBlock:
-    """One serialised warehouse row, ready to index as a corpus chunk."""
+    """One serialised warehouse row, ready to index as a corpus chunk, with
+    the compact facts the prompt shows for it (never indexed)."""
 
     record_id: str
     table: str
@@ -380,6 +610,8 @@ class RecordBlock:
     source_system: str
     valid_from: str | None
     valid_to: str | None
+    heading: str
+    facts: tuple[Fact, ...]
 
     def to_corpus_chunk(self) -> CorpusChunk:
         return CorpusChunk(
@@ -398,6 +630,8 @@ class RecordBlock:
             valid_to=self.valid_to,
             kind="record",
             record_table=self.table,
+            facts_heading=self.heading,
+            facts=self.facts,
         )
 
 
@@ -426,6 +660,7 @@ def _block(table: str, row: Row) -> RecordBlock:
     record_id = str(row["record_id"])
     provenance = f"Source: {source_system} table {table}, record {record_id}."
     valid_from, valid_to = VALIDITY_COLUMNS.get(table, (None, None))
+    heading, facts = FACT_SERIALISERS[table](row)
     return RecordBlock(
         record_id=record_id,
         table=table,
@@ -434,6 +669,8 @@ def _block(table: str, row: Row) -> RecordBlock:
         source_system=source_system,
         valid_from=row[valid_from] if valid_from else None,
         valid_to=row[valid_to] if valid_to else None,
+        heading=heading,
+        facts=tuple(facts),
     )
 
 

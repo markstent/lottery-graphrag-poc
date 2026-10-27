@@ -86,6 +86,7 @@ from app.retrieval.standard.generation import (
     FakeAnswerGenerator,
     GenerationError,
     GenerationOutput,
+    context_block,
 )
 from app.retrieval.standard.pipeline import StandardRagPipeline
 from app.retrieval.standard.records import RECORD_FACTS_VERSION
@@ -254,11 +255,26 @@ class ReproducibilityRecord:
 
 @dataclass(frozen=True, slots=True)
 class ShownBlock:
-    """One context block the generator was shown, with the carrier it is."""
+    """One context block the generator was shown, with the carrier it is.
+
+    ``text`` is what the judge, the labelling sheet and the groundedness
+    measure read: ``shown_text`` of the block.
+    """
 
     carrier_id: str
     title: str
     text: str
+
+
+def shown_text(chunk: EvidenceChunk) -> str:
+    """The rendered prompt block (``context_block``, without its [n]) less a
+    document chunk's "{title} ({market}, {language})" line: a document is
+    read by its text, as before. A record's heading with its source, and a
+    graph record's path line, stay: they are the same in A, B and C apart
+    from the declared path line (D-085), and their ids count as shown
+    support."""
+    block = context_block(chunk)
+    return block.split("\n", 1)[1] if chunk.kind == "chunk" else block
 
 
 @dataclass(frozen=True, slots=True)
@@ -679,7 +695,7 @@ class BenchmarkRunner:
         latency_ms = (time.perf_counter() - started) * 1000
         contexts = self._shown.contexts
         blocks = tuple(
-            ShownBlock(selection_carrier(c.kind, c.chunk_id, c.document_id), c.title, c.text)
+            ShownBlock(selection_carrier(c.kind, c.chunk_id, c.document_id), c.title, shown_text(c))
             for c in contexts
         )
         resolved = tuple(

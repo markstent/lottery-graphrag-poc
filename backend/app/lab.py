@@ -8,7 +8,7 @@ byte-identical retrieval configurations (docs/reference/retrieval/retrieval-fair
 from __future__ import annotations
 
 import dataclasses
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
@@ -24,7 +24,7 @@ from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import EntityResolver, QueryExpansion
 from app.retrieval.graph.source_lookup import SourceLookup, record_blocks_of
 from app.retrieval.graph.traversal import NeighbourProvider
-from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.corpus import CorpusChunk, Fact, record_facts_of
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import (
     AnswerGenerator,
@@ -64,6 +64,12 @@ class Lab:
     # Manifest of the populated index the lab was built on (checked against
     # this code's record serialiser); None when the store started empty.
     index_manifest: dict[str, object] | None = None
+    # The prompt facts of every record block of ``corpus``, built once per
+    # lab (and again by ``dataclasses.replace``), shared by A, B and C (D-085).
+    record_facts: dict[str, tuple[str, tuple[Fact, ...]]] = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "record_facts", record_facts_of(self.corpus.values()))
 
     @property
     def record_serialiser_version(self) -> str | None:
@@ -80,6 +86,7 @@ class Lab:
             generator=self.generator,
             settings=self.settings,
             reranker=self.reranker,
+            record_facts=self.record_facts,
             pipeline="A",
             sink=sink,
         )
@@ -136,7 +143,7 @@ def build_lab(settings: RetrievalSettings, generator: AnswerGenerator) -> Lab:
         settings=settings,
         generator=generator,
         corpus=corpus,
-        # Nodes are shown as the record blocks A indexes, byte for byte.
+        # Nodes take the record blocks A indexes: their text, and their facts.
         source_lookup=SourceLookup(Path(settings.dataset_dir), record_blocks_of(corpus.values())),
         embeddings=embeddings,
         sparse=build_sparse_embedder(settings.embedding),
@@ -205,6 +212,7 @@ def graph_pipelines(
                 generator=lab.generator,
                 settings=tuned,
                 reranker=lab.reranker,
+                record_facts=lab.record_facts,
                 source_lookup=lab.source_lookup,
                 pipeline=tag,
                 sink=sink,

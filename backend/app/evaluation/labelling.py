@@ -3,9 +3,10 @@
 About 100 judged repeats of the v0.2.0 run are drawn from the cells where
 the two answer measures disagreed (proposal section 4.4), by a hashed seed,
 and written as a blind sheet: question, reference answer, key facts, the
-shown blocks shuffled and renumbered as the judge saw them (block text only,
-no titles) and the blinded answer. The approach, the cell and every recorded
-score and judgement go to ``key.json``, which the labellers do not open
+shown blocks shuffled and renumbered as the judge saw them (each block's
+recorded ``ShownBlock.text``, never its title) and the blinded answer.
+The approach, the cell and every recorded score and judgement go to
+``key.json``, which the labellers do not open
 before labelling. Two labellers fill empty templates independently and
 settle their disagreements in a consensus file; the analysis then measures
 how far each answer measure agrees with the consensus label.

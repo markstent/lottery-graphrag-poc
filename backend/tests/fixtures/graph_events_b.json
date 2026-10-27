@@ -1352,50 +1352,41 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 17,
      "hops": 1,
      "node_id": "PLT_IDENTITY",
+     "reason": "context_budget",
      "score": 0.466667,
      "seed": false,
-     "tier": "other",
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.0,
-     "weight_temporal_validity": 1.0
+     "tier": "other"
     },
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 18,
      "hops": 2,
      "node_id": "GAME_AT_02",
+     "reason": "context_budget",
      "score": 0.462416,
      "seed": false,
-     "tier": "other",
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.106904,
-     "weight_temporal_validity": 1.0
+     "tier": "other"
     },
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 19,
      "hops": 2,
      "node_id": "GAME_AT_04",
+     "reason": "context_budget",
      "score": 0.460044,
      "seed": false,
-     "tier": "other",
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.6,
-     "weight_semantic_relevance": 0.100125,
-     "weight_temporal_validity": 1.0
+     "tier": "other"
     },
     "pipeline": "B"
    },
@@ -1530,18 +1521,15 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 30,
      "hops": 1,
      "node_id": "CAT_UK_DRAW",
+     "reason": "context_budget",
      "score": 0.441667,
      "seed": false,
-     "tier": "other",
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.0,
-     "weight_temporal_validity": 1.0
+     "tier": "other"
     },
     "pipeline": "B"
    },
@@ -1858,7 +1846,7 @@
     "event_type": "graph.evidence_path.completed",
     "payload": {
      "max_hops": 2,
-     "paths": 20
+     "paths": 16
     },
     "pipeline": "B"
    },
@@ -1866,10 +1854,10 @@
     "event_type": "graph.context.assembled",
     "payload": {
      "budget_tokens": 2000,
-     "context_tokens": 1988,
+     "context_tokens": 1986,
      "document_chunks": 3,
      "stated_links": 129,
-     "structured_nodes": 20
+     "structured_nodes": 16
     },
     "pipeline": "B"
    },
@@ -1884,7 +1872,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 1988,
+     "context_tokens": 1986,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -2085,55 +2073,15 @@
       "source_record_id": "INC_007",
       "source_system": "incident_management",
       "title": "incidents: INC_007"
-     },
-     {
-      "chunk_id": "PLT_IDENTITY",
-      "document_id": "PLT_IDENTITY",
-      "language_code": "en",
-      "market_id": "",
-      "record_table": "platforms",
-      "source_record_id": "PLT_IDENTITY",
-      "source_system": "release_management",
-      "title": "platforms: PLT_IDENTITY"
-     },
-     {
-      "chunk_id": "GAME_AT_02",
-      "document_id": "GAME_AT_02",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_02",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_02"
-     },
-     {
-      "chunk_id": "GAME_AT_04",
-      "document_id": "GAME_AT_04",
-      "language_code": "en",
-      "market_id": "MKT_AT",
-      "record_table": "games",
-      "source_record_id": "GAME_AT_04",
-      "source_system": "warehouse",
-      "title": "games: GAME_AT_04"
-     },
-     {
-      "chunk_id": "CAT_UK_DRAW",
-      "document_id": "CAT_UK_DRAW",
-      "language_code": "-",
-      "market_id": "",
-      "record_table": null,
-      "source_record_id": "CAT_UK_DRAW",
-      "source_system": "graph",
-      "title": "GameCategory: CAT_UK_DRAW"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 1988,
+    "context_tokens": 1986,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 23 retrieved source(s), the strongest evidence for the question is in: incidents: INC_009, games: GAME_UK_02 [1].\"}",
-    "text": "[fake-model] Based on 23 retrieved source(s), the strongest evidence for the question is in: incidents: INC_009, games: GAME_UK_02 [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 19 retrieved source(s), the strongest evidence for the question is in: incidents: INC_009, games: GAME_UK_02 [1].\"}",
+    "text": "[fake-model] Based on 19 retrieved source(s), the strongest evidence for the question is in: incidents: INC_009, games: GAME_UK_02 [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -2146,6 +2094,45 @@
      "discovered_via": "vector",
      "document_id": "INC_009",
      "document_type": "INCIDENTS",
+     "facts": [
+      [
+       "market",
+       "MKT_UK (United Kingdom)"
+      ],
+      [
+       "type",
+       "ITYPE_UK_DRAW_DELAY (Draw delay)"
+      ],
+      [
+       "severity",
+       "LOW"
+      ],
+      [
+       "platform",
+       "PLT_DRAW (Draw Engine)"
+      ],
+      [
+       "platform version",
+       "PLV_DRAW_1 (2024.1.0)"
+      ],
+      [
+       "affected games",
+       "Union Raffle (GAME_UK_04), Lioness Instant (GAME_UK_05), SwiftSix (GAME_UK_06)"
+      ],
+      [
+       "started",
+       "2025-12-21 21:40:27"
+      ],
+      [
+       "resolved",
+       "2025-12-23 21:09:27"
+      ],
+      [
+       "summary",
+       "Draw result publication delayed. Seen on platform version 2024.1.0 (PLV_DRAW_1)."
+      ]
+     ],
+     "facts_heading": "Incident INC_009",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -2170,6 +2157,8 @@
      "discovered_via": "vector",
      "document_id": "DOC_0011",
      "document_type": "RELEASE_NOTE",
+     "facts": [],
+     "facts_heading": null,
      "graph_path": null,
      "kind": "chunk",
      "language_code": "en",
@@ -2194,6 +2183,8 @@
      "discovered_via": "vector",
      "document_id": "DOC_0024",
      "document_type": "MEETING_NOTE",
+     "facts": [],
+     "facts_heading": null,
      "graph_path": null,
      "kind": "chunk",
      "language_code": "en",
@@ -2218,6 +2209,45 @@
      "discovered_via": "vector",
      "document_id": "GAME_UK_02",
      "document_type": "GAMES",
+     "facts": [
+      [
+       "name",
+       "Kingsport Draw"
+      ],
+      [
+       "market",
+       "MKT_UK (United Kingdom)"
+      ],
+      [
+       "family",
+       "Annuity Draw"
+      ],
+      [
+       "category",
+       "Draw games"
+      ],
+      [
+       "ticket price",
+       "3.00 GBP"
+      ],
+      [
+       "mechanics",
+       "NUMBER_MATCH (Match your numbers against the draw)"
+      ],
+      [
+       "channels",
+       "APP, WEB, RETAIL"
+      ],
+      [
+       "launched",
+       "2023-02-01"
+      ],
+      [
+       "status",
+       "ACTIVE"
+      ]
+     ],
+     "facts_heading": "Game GAME_UK_02",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -2747,21 +2777,14 @@
      "tier": "other"
     },
     {
-     "authoritative": {
-      "platform_id": "PLT_IDENTITY",
-      "platform_name": "Identity Service",
-      "platform_type": "IDENTITY",
-      "source_record_id": "PLT_IDENTITY",
-      "source_table": "platforms",
-      "supplier_id": "SUP_STATIK"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.6,
       "semantic_relevance": 0.0,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 17,
      "hops": 1,
      "node_id": "PLT_IDENTITY",
@@ -2772,28 +2795,18 @@
      ],
      "rel_type": "RUNS_ON",
      "score": 0.466667,
-     "selected": true,
+     "selected": false,
      "tier": "other"
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_LAENDER_JACKPOT",
-      "game_id": "GAME_AT_02",
-      "game_name": "Alpen Jackpot",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_02",
-      "source_table": "games",
-      "ticket_price": "2.50"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.6,
       "semantic_relevance": 0.106904,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 18,
      "hops": 2,
      "node_id": "GAME_AT_02",
@@ -2805,28 +2818,18 @@
      ],
      "rel_type": "RUNS_ON",
      "score": 0.462416,
-     "selected": true,
+     "selected": false,
      "tier": "other"
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_AT_ZUSATZSPIEL",
-      "game_id": "GAME_AT_04",
-      "game_name": "Alpen Star",
-      "market_id": "MKT_AT",
-      "retirement_date": "-",
-      "source_record_id": "GAME_AT_04",
-      "source_table": "games",
-      "ticket_price": "1.00"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.6,
       "semantic_relevance": 0.100125,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 19,
      "hops": 2,
      "node_id": "GAME_AT_04",
@@ -2838,7 +2841,7 @@
      ],
      "rel_type": "RUNS_ON",
      "score": 0.460044,
-     "selected": true,
+     "selected": false,
      "tier": "other"
     },
     {
@@ -3078,7 +3081,7 @@
       "semantic_relevance": 0.0,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 30,
      "hops": 1,
      "node_id": "CAT_UK_DRAW",
@@ -3089,7 +3092,7 @@
      ],
      "rel_type": "INSTANCE_OF",
      "score": 0.441667,
-     "selected": true,
+     "selected": false,
      "tier": "other"
     },
     {
@@ -5449,18 +5452,15 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 16,
      "hops": 2,
      "node_id": "INC_017",
+     "reason": "context_budget",
      "score": 0.502517,
      "seed": false,
-     "tier": "target",
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.8,
-     "weight_semantic_relevance": 0.078621,
-     "weight_temporal_validity": 1.0
+     "tier": "target"
     },
     "pipeline": "B"
    },
@@ -5715,18 +5715,15 @@
     "pipeline": "B"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 36,
      "hops": 1,
      "node_id": "PLV_PAYMENTS_3",
+     "reason": "context_budget",
      "score": 0.558827,
      "seed": false,
-     "tier": "other",
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.9,
-     "weight_semantic_relevance": 0.049029,
-     "weight_temporal_validity": 1.0
+     "tier": "other"
     },
     "pipeline": "B"
    },
@@ -6316,7 +6313,7 @@
     "event_type": "graph.evidence_path.completed",
     "payload": {
      "max_hops": 2,
-     "paths": 16
+     "paths": 14
     },
     "pipeline": "B"
    },
@@ -6324,10 +6321,10 @@
     "event_type": "graph.context.assembled",
     "payload": {
      "budget_tokens": 2000,
-     "context_tokens": 1993,
+     "context_tokens": 1992,
      "document_chunks": 4,
      "stated_links": 222,
-     "structured_nodes": 16
+     "structured_nodes": 14
     },
     "pipeline": "B"
    },
@@ -6342,7 +6339,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 1993,
+     "context_tokens": 1992,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -6525,16 +6522,6 @@
       "title": "incidents: INC_005"
      },
      {
-      "chunk_id": "INC_017",
-      "document_id": "INC_017",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "record_table": "incidents",
-      "source_record_id": "INC_017",
-      "source_system": "incident_management",
-      "title": "incidents: INC_017"
-     },
-     {
       "chunk_id": "GAME_GR_05",
       "document_id": "GAME_GR_05",
       "language_code": "en",
@@ -6543,25 +6530,15 @@
       "source_record_id": "GAME_GR_05",
       "source_system": "warehouse",
       "title": "games: GAME_GR_05"
-     },
-     {
-      "chunk_id": "PLV_PAYMENTS_3",
-      "document_id": "PLV_PAYMENTS_3",
-      "language_code": "en",
-      "market_id": "",
-      "record_table": "platform_versions",
-      "source_record_id": "PLV_PAYMENTS_3",
-      "source_system": "release_management",
-      "title": "platform_versions: PLV_PAYMENTS_3"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 1993,
+    "context_tokens": 1992,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, markets: MKT_GR [1].\"}",
-    "text": "[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, markets: MKT_GR [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 18 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, markets: MKT_GR [1].\"}",
+    "text": "[fake-model] Based on 18 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, markets: MKT_GR [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -6574,6 +6551,45 @@
      "discovered_via": "vector",
      "document_id": "INC_025",
      "document_type": "INCIDENTS",
+     "facts": [
+      [
+       "market",
+       "MKT_UK (United Kingdom)"
+      ],
+      [
+       "type",
+       "ITYPE_UK_PAYMENT_FAILURE (Payment failure)"
+      ],
+      [
+       "severity",
+       "LOW"
+      ],
+      [
+       "platform",
+       "PLT_PAYMENTS (Payments Gateway)"
+      ],
+      [
+       "platform version",
+       "PLV_PAYMENTS_3 (2024.3.0)"
+      ],
+      [
+       "affected games",
+       "Thames Cash (GAME_UK_03), Lioness Instant (GAME_UK_05)"
+      ],
+      [
+       "started",
+       "2025-01-06 04:18:42"
+      ],
+      [
+       "resolved",
+       "2025-01-08 03:24:42"
+      ],
+      [
+       "summary",
+       "Payment provider degraded; transactions failing. Seen on platform version 2024.3.0 (PLV_PAYMENTS_3)."
+      ]
+     ],
+     "facts_heading": "Incident INC_025",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -6598,6 +6614,45 @@
      "discovered_via": "vector",
      "document_id": "GAME_GR_02",
      "document_type": "GAMES",
+     "facts": [
+      [
+       "name",
+       "Ellas Jackpot"
+      ],
+      [
+       "market",
+       "MKT_GR (Greece)"
+      ],
+      [
+       "family",
+       "Πολυεθνικό Τζάκποτ"
+      ],
+      [
+       "category",
+       "Κληρώσεις"
+      ],
+      [
+       "ticket price",
+       "2.50 EUR"
+      ],
+      [
+       "mechanics",
+       "EPILOGI_ARITHMON (Επιλογή αριθμών και αντιστοίχιση)"
+      ],
+      [
+       "channels",
+       "APP, WEB, RETAIL"
+      ],
+      [
+       "launched",
+       "2023-02-01"
+      ],
+      [
+       "status",
+       "ACTIVE"
+      ]
+     ],
+     "facts_heading": "Game GAME_GR_02",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -6622,6 +6677,21 @@
      "discovered_via": "vector",
      "document_id": "ITYPE_UK_PAYMENT_FAILURE",
      "document_type": "INCIDENT_TYPES",
+     "facts": [
+      [
+       "name",
+       "Payment failure"
+      ],
+      [
+       "market",
+       "MKT_UK (United Kingdom)"
+      ],
+      [
+       "language",
+       "en"
+      ]
+     ],
+     "facts_heading": "Incident type ITYPE_UK_PAYMENT_FAILURE",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -6646,6 +6716,37 @@
      "discovered_via": "vector",
      "document_id": "SUP_00058",
      "document_type": "SUPPORT_CASES",
+     "facts": [
+      [
+       "market",
+       "MKT_GR (Greece)"
+      ],
+      [
+       "category",
+       "SUPC_GR_PLIROMI (Πρόβλημα πληρωμής)"
+      ],
+      [
+       "game",
+       "GAME_GR_03 (Olympia Numbers)"
+      ],
+      [
+       "opened",
+       "2025-02-16 11:10:42"
+      ],
+      [
+       "closed",
+       "2025-02-18 13:10:42"
+      ],
+      [
+       "sentiment score",
+       "-0.934"
+      ],
+      [
+       "summary",
+       "Synthetic support contact describing a player-reported issue."
+      ]
+     ],
+     "facts_heading": "Support case SUP_00058",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -7128,25 +7229,14 @@
      "tier": "target"
     },
     {
-     "authoritative": {
-      "incident_id": "INC_017",
-      "incident_type": "ITYPE_UK_APP_STABILITY",
-      "market_id": "MKT_UK",
-      "resolved_at": "2025-04-23 21:37:14",
-      "root_cause_code": "-",
-      "severity": "MEDIUM",
-      "source_record_id": "INC_017",
-      "source_table": "incidents",
-      "started_at": "2025-04-23 15:21:14",
-      "summary": "Reporting pipelines delayed; no customer impact. Seen on platform version 2024.3.0 (PLV_ANALYTICS_3)."
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.8,
       "semantic_relevance": 0.078621,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 16,
      "hops": 2,
      "node_id": "INC_017",
@@ -7158,7 +7248,7 @@
      ],
      "rel_type": "AFFECTS",
      "score": 0.502517,
-     "selected": true,
+     "selected": false,
      "tier": "target"
     },
     {
@@ -7607,22 +7697,14 @@
      "tier": "target"
     },
     {
-     "authoritative": {
-      "platform_id": "PLT_PAYMENTS",
-      "platform_version_id": "PLV_PAYMENTS_3",
-      "released_at": "2024-08-01 00:00:00",
-      "retired_at": "-",
-      "source_record_id": "PLV_PAYMENTS_3",
-      "source_table": "platform_versions",
-      "version_label": "2024.3.0"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.9,
       "semantic_relevance": 0.049029,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 36,
      "hops": 1,
      "node_id": "PLV_PAYMENTS_3",
@@ -7633,7 +7715,7 @@
      ],
      "rel_type": "RELATED_TO_VERSION",
      "score": 0.558827,
-     "selected": true,
+     "selected": false,
      "tier": "other"
     },
     {

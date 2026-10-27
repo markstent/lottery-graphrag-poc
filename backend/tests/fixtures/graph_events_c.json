@@ -2509,34 +2509,28 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 20,
      "hops": 2,
      "node_id": "SUP_00049",
+     "reason": "context_budget",
      "score": 0.492444,
      "seed": false,
-     "tier": "target",
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.7,
-     "weight_semantic_relevance": 0.121268,
-     "weight_temporal_validity": 1.0
+     "tier": "target"
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 21,
      "hops": 1,
      "node_id": "GAME_GR_02",
+     "reason": "context_budget",
      "score": 0.491202,
      "seed": false,
-     "tier": "target",
-     "weight_graph_distance": 0.666667,
-     "weight_relationship_type": 0.4,
-     "weight_semantic_relevance": 0.212959,
-     "weight_temporal_validity": 1.0
+     "tier": "target"
     },
     "pipeline": "C"
    },
@@ -3490,15 +3484,18 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.discarded",
+    "event_type": "graph.candidate.selected",
     "payload": {
      "graph_rank": 95,
      "hops": 2,
      "node_id": "CAT_UK_INSTANT",
-     "reason": "context_budget",
      "score": 0.4,
      "seed": false,
-     "tier": "other"
+     "tier": "other",
+     "weight_graph_distance": 0.5,
+     "weight_relationship_type": 0.5,
+     "weight_semantic_relevance": 0.0,
+     "weight_temporal_validity": 1.0
     },
     "pipeline": "C"
    },
@@ -3672,7 +3669,7 @@
     "event_type": "graph.evidence_path.completed",
     "payload": {
      "max_hops": 2,
-     "paths": 17
+     "paths": 16
     },
     "pipeline": "C"
    },
@@ -3680,10 +3677,10 @@
     "event_type": "graph.context.assembled",
     "payload": {
      "budget_tokens": 2000,
-     "context_tokens": 1987,
+     "context_tokens": 1985,
      "document_chunks": 4,
      "stated_links": 320,
-     "structured_nodes": 17
+     "structured_nodes": 16
     },
     "pipeline": "C"
    },
@@ -3698,7 +3695,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 1987,
+     "context_tokens": 1985,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -3901,33 +3898,23 @@
       "title": "incident_types: ITYPE_AT_ZAHLUNG"
      },
      {
-      "chunk_id": "SUP_00049",
-      "document_id": "SUP_00049",
-      "language_code": "en",
-      "market_id": "MKT_UK",
-      "record_table": "support_cases",
-      "source_record_id": "SUP_00049",
-      "source_system": "support_platform",
-      "title": "support_cases: SUP_00049"
-     },
-     {
-      "chunk_id": "GAME_GR_02",
-      "document_id": "GAME_GR_02",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "games",
-      "source_record_id": "GAME_GR_02",
-      "source_system": "warehouse",
-      "title": "games: GAME_GR_02"
+      "chunk_id": "CAT_UK_INSTANT",
+      "document_id": "CAT_UK_INSTANT",
+      "language_code": "-",
+      "market_id": "",
+      "record_table": null,
+      "source_record_id": "CAT_UK_INSTANT",
+      "source_system": "graph",
+      "title": "GameCategory: CAT_UK_INSTANT"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 1987,
+    "context_tokens": 1985,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 21 retrieved source(s), the strongest evidence for the question is in: support_cases: SUP_00002, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].\"}",
-    "text": "[fake-model] Based on 21 retrieved source(s), the strongest evidence for the question is in: support_cases: SUP_00002, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: support_cases: SUP_00002, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].\"}",
+    "text": "[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: support_cases: SUP_00002, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -3940,6 +3927,41 @@
      "discovered_via": "vector",
      "document_id": "SUP_00002",
      "document_type": "SUPPORT_CASES",
+     "facts": [
+      [
+       "market",
+       "MKT_GR (Greece)"
+      ],
+      [
+       "category",
+       "SUPC_GR_LOGARIASMOS (Πρόσβαση λογαριασμού)"
+      ],
+      [
+       "player",
+       "PLAYER_GR_000026"
+      ],
+      [
+       "game",
+       "GAME_GR_02 (Ellas Jackpot)"
+      ],
+      [
+       "opened",
+       "2025-08-29 13:02:48"
+      ],
+      [
+       "closed",
+       "2025-09-03 02:02:48"
+      ],
+      [
+       "sentiment score",
+       "0.031"
+      ],
+      [
+       "summary",
+       "Synthetic support contact describing a player-reported issue."
+      ]
+     ],
+     "facts_heading": "Support case SUP_00002",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -3964,6 +3986,17 @@
      "discovered_via": "vector",
      "document_id": "ITYPE_CORP_PAYMENT",
      "document_type": "INCIDENT_TYPES",
+     "facts": [
+      [
+       "name",
+       "Payment processing failure"
+      ],
+      [
+       "language",
+       "en"
+      ]
+     ],
+     "facts_heading": "Incident type ITYPE_CORP_PAYMENT",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -3988,6 +4021,21 @@
      "discovered_via": "vector",
      "document_id": "ITYPE_GR_PLIROMES",
      "document_type": "INCIDENT_TYPES",
+     "facts": [
+      [
+       "name",
+       "Αποτυχία πληρωμών"
+      ],
+      [
+       "market",
+       "MKT_GR (Greece)"
+      ],
+      [
+       "language",
+       "el"
+      ]
+     ],
+     "facts_heading": "Incident type ITYPE_GR_PLIROMES",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -4012,6 +4060,21 @@
      "discovered_via": "vector",
      "document_id": "ITYPE_CZ_PLATBY",
      "document_type": "INCIDENT_TYPES",
+     "facts": [
+      [
+       "name",
+       "Selhání plateb"
+      ],
+      [
+       "market",
+       "MKT_CZ (Czech Republic)"
+      ],
+      [
+       "language",
+       "cs"
+      ]
+     ],
+     "facts_heading": "Incident type ITYPE_CZ_PLATBY",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -4590,22 +4653,14 @@
      "tier": "target"
     },
     {
-     "authoritative": {
-      "category_code": "SUPC_UK_TECHNICAL",
-      "market_id": "MKT_UK",
-      "opened_at": "2025-05-24 22:07:37",
-      "source_record_id": "SUP_00049",
-      "source_table": "support_cases",
-      "summary_text": "Synthetic support contact describing a player-reported issue.",
-      "support_case_id": "SUP_00049"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.7,
       "semantic_relevance": 0.121268,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 20,
      "hops": 2,
      "node_id": "SUP_00049",
@@ -4617,28 +4672,18 @@
      ],
      "rel_type": "CONCERNS",
      "score": 0.492444,
-     "selected": true,
+     "selected": false,
      "tier": "target"
     },
     {
-     "authoritative": {
-      "currency_code": "EUR",
-      "game_family_id": "FAM_GR_POLYETHNIKO_TZAKPOT",
-      "game_id": "GAME_GR_02",
-      "game_name": "Ellas Jackpot",
-      "market_id": "MKT_GR",
-      "retirement_date": "-",
-      "source_record_id": "GAME_GR_02",
-      "source_table": "games",
-      "ticket_price": "2.50"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.666667,
       "relationship_type": 0.4,
       "semantic_relevance": 0.212959,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 21,
      "hops": 1,
      "node_id": "GAME_GR_02",
@@ -4649,7 +4694,7 @@
      ],
      "rel_type": "AVAILABLE_IN",
      "score": 0.491202,
-     "selected": true,
+     "selected": false,
      "tier": "target"
     },
     {
@@ -6341,7 +6386,7 @@
       "semantic_relevance": 0.0,
       "temporal_validity": 1.0
      },
-     "discard_reason": "context_budget",
+     "discard_reason": null,
      "graph_rank": 95,
      "hops": 2,
      "node_id": "CAT_UK_INSTANT",
@@ -6353,7 +6398,7 @@
      ],
      "rel_type": "INSTANCE_OF",
      "score": 0.4,
-     "selected": false,
+     "selected": true,
      "tier": "other"
     },
     {
@@ -9712,50 +9757,41 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 21,
      "hops": 2,
      "node_id": "INC_014",
+     "reason": "context_budget",
      "score": 0.409487,
      "seed": false,
-     "tier": "target",
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.4,
-     "weight_semantic_relevance": 0.098533,
-     "weight_temporal_validity": 1.0
+     "tier": "target"
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 22,
      "hops": 3,
      "node_id": "ITYPE_CORP_APPLICATION",
+     "reason": "context_budget",
      "score": 0.40164,
      "seed": false,
-     "tier": "target",
-     "weight_graph_distance": 0.4,
-     "weight_relationship_type": 0.4,
-     "weight_semantic_relevance": 0.147542,
-     "weight_temporal_validity": 1.0
+     "tier": "target"
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 23,
      "hops": 3,
      "node_id": "ITYPE_GR_KLIROSI",
+     "reason": "context_budget",
      "score": 0.398507,
      "seed": false,
-     "tier": "target",
-     "weight_graph_distance": 0.4,
-     "weight_relationship_type": 0.4,
-     "weight_semantic_relevance": 0.138592,
-     "weight_temporal_validity": 1.0
+     "tier": "target"
     },
     "pipeline": "C"
    },
@@ -10124,34 +10160,28 @@
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 52,
      "hops": 2,
      "node_id": "CAT_UK_INSTANT",
+     "reason": "context_budget",
      "score": 0.4,
      "seed": false,
-     "tier": "other",
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.0,
-     "weight_temporal_validity": 1.0
+     "tier": "other"
     },
     "pipeline": "C"
    },
    {
-    "event_type": "graph.candidate.selected",
+    "event_type": "graph.candidate.discarded",
     "payload": {
      "graph_rank": 53,
      "hops": 2,
      "node_id": "CAT_UK_NUMBERS",
+     "reason": "context_budget",
      "score": 0.4,
      "seed": false,
-     "tier": "other",
-     "weight_graph_distance": 0.5,
-     "weight_relationship_type": 0.5,
-     "weight_semantic_relevance": 0.0,
-     "weight_temporal_validity": 1.0
+     "tier": "other"
     },
     "pipeline": "C"
    },
@@ -10285,8 +10315,8 @@
    {
     "event_type": "graph.evidence_path.completed",
     "payload": {
-     "max_hops": 3,
-     "paths": 22
+     "max_hops": 2,
+     "paths": 17
     },
     "pipeline": "C"
    },
@@ -10294,10 +10324,10 @@
     "event_type": "graph.context.assembled",
     "payload": {
      "budget_tokens": 2000,
-     "context_tokens": 1991,
+     "context_tokens": 1971,
      "document_chunks": 3,
      "stated_links": 320,
-     "structured_nodes": 22
+     "structured_nodes": 17
     },
     "pipeline": "C"
    },
@@ -10312,7 +10342,7 @@
     "event_type": "graph.generation.completed",
     "payload": {
      "cited_blocks": 1,
-     "context_tokens": 1991,
+     "context_tokens": 1971,
      "model": "fake-answer-v1",
      "verdict": "[fake-model] answered from the retrieved sources"
     },
@@ -10525,65 +10555,15 @@
       "source_record_id": "INC_018",
       "source_system": "incident_management",
       "title": "incidents: INC_018"
-     },
-     {
-      "chunk_id": "INC_014",
-      "document_id": "INC_014",
-      "language_code": "en",
-      "market_id": "",
-      "record_table": "incidents",
-      "source_record_id": "INC_014",
-      "source_system": "incident_management",
-      "title": "incidents: INC_014"
-     },
-     {
-      "chunk_id": "ITYPE_CORP_APPLICATION",
-      "document_id": "ITYPE_CORP_APPLICATION",
-      "language_code": "en",
-      "market_id": "",
-      "record_table": "incident_types",
-      "source_record_id": "ITYPE_CORP_APPLICATION",
-      "source_system": "warehouse",
-      "title": "incident_types: ITYPE_CORP_APPLICATION"
-     },
-     {
-      "chunk_id": "ITYPE_GR_KLIROSI",
-      "document_id": "ITYPE_GR_KLIROSI",
-      "language_code": "en",
-      "market_id": "MKT_GR",
-      "record_table": "incident_types",
-      "source_record_id": "ITYPE_GR_KLIROSI",
-      "source_system": "warehouse",
-      "title": "incident_types: ITYPE_GR_KLIROSI"
-     },
-     {
-      "chunk_id": "CAT_UK_INSTANT",
-      "document_id": "CAT_UK_INSTANT",
-      "language_code": "-",
-      "market_id": "",
-      "record_table": null,
-      "source_record_id": "CAT_UK_INSTANT",
-      "source_system": "graph",
-      "title": "GameCategory: CAT_UK_INSTANT"
-     },
-     {
-      "chunk_id": "CAT_UK_NUMBERS",
-      "document_id": "CAT_UK_NUMBERS",
-      "language_code": "-",
-      "market_id": "",
-      "record_table": null,
-      "source_record_id": "CAT_UK_NUMBERS",
-      "source_system": "graph",
-      "title": "GameCategory: CAT_UK_NUMBERS"
      }
     ],
     "cited_blocks": [
      1
     ],
-    "context_tokens": 1991,
+    "context_tokens": 1971,
     "model": "fake-answer-v1",
-    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 25 retrieved source(s), the strongest evidence for the question is in: incidents: INC_010, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].\"}",
-    "text": "[fake-model] Based on 25 retrieved source(s), the strongest evidence for the question is in: incidents: INC_010, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].",
+    "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: incidents: INC_010, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].\"}",
+    "text": "[fake-model] Based on 20 retrieved source(s), the strongest evidence for the question is in: incidents: INC_010, BusinessConcept: CONCEPT_PAYMENT_INCIDENT [1].",
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -10596,6 +10576,45 @@
      "discovered_via": "vector",
      "document_id": "INC_010",
      "document_type": "INCIDENTS",
+     "facts": [
+      [
+       "market",
+       "MKT_GR (Greece)"
+      ],
+      [
+       "type",
+       "ITYPE_GR_PLIROMES (Αποτυχία πληρωμών)"
+      ],
+      [
+       "severity",
+       "LOW"
+      ],
+      [
+       "platform",
+       "PLT_PAYMENTS (Payments Gateway)"
+      ],
+      [
+       "platform version",
+       "PLV_PAYMENTS_1 (2024.1.0)"
+      ],
+      [
+       "affected games",
+       "Aegean Gold (GAME_GR_01), Ellas Jackpot (GAME_GR_02), Peloponnesus Pull (GAME_GR_05)"
+      ],
+      [
+       "started",
+       "2025-11-24 19:45:14"
+      ],
+      [
+       "resolved",
+       "2025-11-27 19:04:14"
+      ],
+      [
+       "summary",
+       "Payment provider degraded; transactions failing. Seen on platform version 2024.1.0 (PLV_PAYMENTS_1)."
+      ]
+     ],
+     "facts_heading": "Incident INC_010",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -10620,6 +10639,41 @@
      "discovered_via": "vector",
      "document_id": "SUP_00002",
      "document_type": "SUPPORT_CASES",
+     "facts": [
+      [
+       "market",
+       "MKT_GR (Greece)"
+      ],
+      [
+       "category",
+       "SUPC_GR_LOGARIASMOS (Πρόσβαση λογαριασμού)"
+      ],
+      [
+       "player",
+       "PLAYER_GR_000026"
+      ],
+      [
+       "game",
+       "GAME_GR_02 (Ellas Jackpot)"
+      ],
+      [
+       "opened",
+       "2025-08-29 13:02:48"
+      ],
+      [
+       "closed",
+       "2025-09-03 02:02:48"
+      ],
+      [
+       "sentiment score",
+       "0.031"
+      ],
+      [
+       "summary",
+       "Synthetic support contact describing a player-reported issue."
+      ]
+     ],
+     "facts_heading": "Support case SUP_00002",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -10644,6 +10698,17 @@
      "discovered_via": "vector",
      "document_id": "ITYPE_CORP_PAYMENT",
      "document_type": "INCIDENT_TYPES",
+     "facts": [
+      [
+       "name",
+       "Payment processing failure"
+      ],
+      [
+       "language",
+       "en"
+      ]
+     ],
+     "facts_heading": "Incident type ITYPE_CORP_PAYMENT",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -10668,6 +10733,21 @@
      "discovered_via": "vector",
      "document_id": "ITYPE_GR_PLIROMES",
      "document_type": "INCIDENT_TYPES",
+     "facts": [
+      [
+       "name",
+       "Αποτυχία πληρωμών"
+      ],
+      [
+       "market",
+       "MKT_GR (Greece)"
+      ],
+      [
+       "language",
+       "el"
+      ]
+     ],
+     "facts_heading": "Incident type ITYPE_GR_PLIROMES",
      "graph_path": null,
      "kind": "record",
      "language_code": "en",
@@ -11279,25 +11359,14 @@
      "tier": "target"
     },
     {
-     "authoritative": {
-      "incident_id": "INC_014",
-      "incident_type": "ITYPE_CORP_APPLICATION",
-      "market_id": "-",
-      "resolved_at": "2025-12-25 17:32:34",
-      "root_cause_code": "-",
-      "severity": "HIGH",
-      "source_record_id": "INC_014",
-      "source_table": "incidents",
-      "started_at": "2025-12-23 17:15:34",
-      "summary": "Reporting pipelines delayed; no customer impact. Seen on platform version 2024.2.0 (PLV_ANALYTICS_2)."
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.5,
       "relationship_type": 0.4,
       "semantic_relevance": 0.098533,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 21,
      "hops": 2,
      "node_id": "INC_014",
@@ -11309,25 +11378,18 @@
      ],
      "rel_type": "AFFECTS",
      "score": 0.409487,
-     "selected": true,
+     "selected": false,
      "tier": "target"
     },
     {
-     "authoritative": {
-      "incident_type_id": "ITYPE_CORP_APPLICATION",
-      "language_code": "en",
-      "market_id": "-",
-      "name": "Application stability",
-      "source_record_id": "ITYPE_CORP_APPLICATION",
-      "source_table": "incident_types"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.4,
       "relationship_type": 0.4,
       "semantic_relevance": 0.147542,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 22,
      "hops": 3,
      "node_id": "ITYPE_CORP_APPLICATION",
@@ -11340,25 +11402,18 @@
      ],
      "rel_type": "MAPS_TO",
      "score": 0.40164,
-     "selected": true,
+     "selected": false,
      "tier": "target"
     },
     {
-     "authoritative": {
-      "incident_type_id": "ITYPE_GR_KLIROSI",
-      "language_code": "el",
-      "market_id": "MKT_GR",
-      "name": "Καθυστέρηση κλήρωσης",
-      "source_record_id": "ITYPE_GR_KLIROSI",
-      "source_table": "incident_types"
-     },
+     "authoritative": null,
      "components": {
       "graph_distance": 0.4,
       "relationship_type": 0.4,
       "semantic_relevance": 0.138592,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 23,
      "hops": 3,
      "node_id": "ITYPE_GR_KLIROSI",
@@ -11371,7 +11426,7 @@
      ],
      "rel_type": "MAPS_TO",
      "score": 0.398507,
-     "selected": true,
+     "selected": false,
      "tier": "target"
     },
     {
@@ -12021,7 +12076,7 @@
       "semantic_relevance": 0.0,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 52,
      "hops": 2,
      "node_id": "CAT_UK_INSTANT",
@@ -12033,7 +12088,7 @@
      ],
      "rel_type": "INSTANCE_OF",
      "score": 0.4,
-     "selected": true,
+     "selected": false,
      "tier": "other"
     },
     {
@@ -12044,7 +12099,7 @@
       "semantic_relevance": 0.0,
       "temporal_validity": 1.0
      },
-     "discard_reason": null,
+     "discard_reason": "context_budget",
      "graph_rank": 53,
      "hops": 2,
      "node_id": "CAT_UK_NUMBERS",
@@ -12056,7 +12111,7 @@
      ],
      "rel_type": "INSTANCE_OF",
      "score": 0.4,
-     "selected": true,
+     "selected": false,
      "tier": "other"
     },
     {

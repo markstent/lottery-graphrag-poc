@@ -2,7 +2,8 @@
 
 Every pipeline answers from one total token budget with no item limit, and
 every item is charged the tokens of the block the prompt shows for it
-(``block_tokens``), so A, B and C pay the same for the same block.
+(``block_tokens``), so A, B and C pay the same for the same block; a
+graph record's declared path line (D-085) is paid for from the same budget.
 
 There are two ranked channels:
 

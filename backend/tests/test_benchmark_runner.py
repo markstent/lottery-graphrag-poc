@@ -56,6 +56,7 @@ from app.evaluation.runner import (
     ReproducibilityRecord,
     RunScore,
     settings_fields,
+    shown_text,
 )
 from app.evaluation.scoring import classify_failure, evidence_score
 from app.evidence import EvidenceChunk
@@ -70,6 +71,7 @@ from app.retrieval.standard.generation import (
     SYSTEM_PROMPT,
     GenerationError,
     GenerationOutput,
+    context_block,
 )
 from app.retrieval.standard.index import index_corpus
 from app.retrieval.standard.records import RECORD_FACTS_VERSION, RECORD_SERIALISER_VERSION
@@ -148,17 +150,19 @@ class ScriptedGenerator:
 
 
 def indexed_lab(world_dir: Path, store: VectorStore | None = None, **overrides: object) -> Lab:
-    """The offline lab over ``world_dir`` with the test corpus indexed and a
-    current index manifest."""
+    """The offline lab over ``world_dir`` with the test corpus loaded and
+    indexed, and a current index manifest."""
     lab = build_lab_offline()
+    corpus = [*build_corpus().values(), INCIDENT]
     values: dict[str, object] = {
         "settings": dataclasses.replace(lab.settings, dataset_dir=str(world_dir)),
         "store": store or InMemoryVectorStore(),
         "index_manifest": {"record_serialiser_version": RECORD_SERIALISER_VERSION},
+        "corpus": {chunk.chunk_id: chunk for chunk in corpus},
         **overrides,
     }
     lab = dataclasses.replace(lab, **values)  # type: ignore[arg-type]
-    index_corpus(lab.store, lab.embeddings, lab.sparse, [*build_corpus().values(), INCIDENT])
+    index_corpus(lab.store, lab.embeddings, lab.sparse, corpus)
     return lab
 
 
@@ -447,6 +451,48 @@ def test_unknown_pipelines_are_refused(
 
 
 # --- What a run records ------------------------------------------------------------
+
+
+def test_shown_blocks_are_the_rendered_blocks_less_a_document_title_line() -> None:
+    """F12: the judge, the labelling sheet and the groundedness measure read
+    the prompt block without its [n]; a document chunk drops its title line,
+    a record keeps its heading with its source, a graph node its path line."""
+    document = build_corpus()["CHNK_S007_GR_00"].to_evidence(similarity=0.1, rank=1)
+    record = INCIDENT.to_evidence(similarity=0.1, rank=2)
+    path = "INC_S007_GR -RELATED_TO_VERSION-> PLV_PAYMENTS_3"
+    node = record_corpus_chunk("platform_versions", "PLV_PAYMENTS_3", "Version 3.", market_id="")
+    walked = node.to_evidence(similarity=0.1, rank=1).model_copy(
+        update={"kind": "node", "chunk_id": "PLV_PAYMENTS_3", "graph_path": path}
+    )
+    assert context_block(document) == f"Incident Report: INC_S007_GR (MKT_GR, el)\n{document.text}"
+    assert shown_text(document) == document.text
+    assert (
+        shown_text(record)
+        == context_block(record)
+        == (
+            "Record INC_S007_GR (source: warehouse.incidents, record INC_S007_GR)\n"
+            "- summary: Incident INC_S007_GR in Greece: checkout failed."
+        )
+    )
+    assert (
+        shown_text(walked)
+        == context_block(walked)
+        == (
+            "Record PLV_PAYMENTS_3 (source: warehouse.platform_versions, record PLV_PAYMENTS_3)\n"
+            "- summary: Version 3.\n"
+            f"- reached from INC_S007_GR: {path}"
+        )
+    )
+
+
+def test_runs_show_the_rendered_blocks(runner_smoke: BenchmarkRunner) -> None:
+    result = runner_smoke.run().results[0]
+    a, b = result.runs["A"][0], result.runs["B"][0]
+    shown_a = dict(zip(a.selected, a.blocks, strict=True))
+    assert shown_a["CHNK_S007_GR_00"].text == build_corpus()["CHNK_S007_GR_00"].text
+    assert shown_a["INC_S007_GR"].text == shown_text(INCIDENT.to_evidence(similarity=0.1, rank=1))
+    assert all("- reached from " not in block.text for block in a.blocks)
+    assert any("\n- reached from INC_S007_GR: " in block.text for block in b.blocks)
 
 
 def test_runs_record_the_shown_blocks_and_selected_carriers(

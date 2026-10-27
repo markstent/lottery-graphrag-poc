@@ -4,10 +4,10 @@ The graph guides retrieval; quantitative facts come from the structured
 layer (AGENTS.md Graph Augmentation Principle). For each structured node
 this module reads the authoritative warehouse row from the dataset Parquet
 via DuckDB (for citations, ranking validity, market scope and the UI), and
-gives the block the node is shown as: the exact record block pipeline A
-indexes for the same row when one exists, else "<Label> <id>" only. The
-model never sees warehouse text A could not index
-(D-028).
+gives the record block pipeline A indexes for the same row when one exists:
+the node is scored on its text and shown by its compact facts, exactly as
+A shows the row (D-085); else "<Label> <id>" only. The model never sees
+warehouse text A could not index (D-028).
 """
 
 from __future__ import annotations
@@ -235,11 +235,11 @@ class SourceLookup:
         return self._record_blocks.get((table, node_id)) if table is not None else None
 
     def node_text(self, node_label: str, node_id: str) -> str:
-        """The text a node is scored on (semantic relevance) and shown as.
+        """The text a node is scored on (semantic relevance).
 
-        The node's record block, byte for byte, so the same record reads the
-        same in every pipeline; "<Label> <id>" for a
-        node whose row has no block.
+        The node's record block text, byte for byte, as A indexes it (the
+        prompt shows the block's facts instead); "<Label> <id>" for a node
+        whose row has no block, which the prompt shows as is.
         """
         record = self.record_block(node_label, node_id)
         return record.text if record is not None else bare_node_text(node_label, node_id)

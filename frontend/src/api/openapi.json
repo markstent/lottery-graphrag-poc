@@ -855,6 +855,36 @@
             "title": "Document Type",
             "type": "string"
           },
+          "facts": {
+            "description": "A record's compact facts as (name, value), in prompt order",
+            "items": {
+              "maxItems": 2,
+              "minItems": 2,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "title": "Facts",
+            "type": "array"
+          },
+          "facts_heading": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Heading of a record's compact facts (Incident INC_024), for a record block and a graph node with one; None for documents and nodes without a record block",
+            "title": "Facts Heading"
+          },
           "graph_path": {
             "anyOf": [
               {

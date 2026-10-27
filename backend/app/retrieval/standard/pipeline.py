@@ -36,7 +36,7 @@ from app.events import (
 )
 from app.evidence import RagAnswer, RagRunResult
 from app.retrieval.standard.context import assemble_context
-from app.retrieval.standard.corpus import hit_to_evidence
+from app.retrieval.standard.corpus import RecordFacts, hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
 from app.retrieval.standard.generation import AnswerGenerator, citations_for, parse_answer
 from app.retrieval.standard.reranking import Reranker
@@ -56,6 +56,7 @@ class StandardRagPipeline:
         generator: AnswerGenerator,
         settings: RetrievalSettings,
         reranker: Reranker,
+        record_facts: RecordFacts,
         pipeline: str = "A",
         sink: EventSink | None = None,
     ) -> None:
@@ -65,6 +66,8 @@ class StandardRagPipeline:
         self.generator = generator
         self.settings = settings
         self.reranker = reranker
+        # The prompt facts of every record block, shared with B and C (D-085).
+        self.record_facts = record_facts
         self.pipeline = pipeline
         self.sink: EventSink = sink if sink is not None else ListEventSink()
         self.emitter = EventEmitter(pipeline, self.sink)
@@ -96,7 +99,9 @@ class StandardRagPipeline:
             query_vector, query_terms, limit=self.settings.top_k, markets=scope
         )
         # similarity holds the fused (RRF) score of the hybrid search.
-        candidates = [hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
+        candidates = [
+            hit_to_evidence(hit, rank, self.record_facts) for rank, hit in enumerate(hits, start=1)
+        ]
         for candidate in candidates:
             self.emitter.emit(
                 RAG_CANDIDATE_RETRIEVED,

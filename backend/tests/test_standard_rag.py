@@ -36,7 +36,7 @@ from app.events import (
 from app.evidence import EvidenceChunk
 from app.retrieval.standard import index as index_module
 from app.retrieval.standard.context import block_tokens, estimate_tokens, interleave_by_budget
-from app.retrieval.standard.corpus import CorpusChunk, load_corpus
+from app.retrieval.standard.corpus import CorpusChunk, load_corpus, record_facts_of
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.fusion import reciprocal_rank_fusion
 from app.retrieval.standard.generation import FakeAnswerGenerator
@@ -129,6 +129,7 @@ def build_pipeline(
         generator=FakeAnswerGenerator(),
         settings=settings,
         reranker=build_reranker(settings),
+        record_facts=record_facts_of(corpus),
     )
 
 

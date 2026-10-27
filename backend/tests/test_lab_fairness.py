@@ -26,7 +26,7 @@ from app.retrieval.graph.resolution import (
 )
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import load_static_provider_from_rows
-from app.retrieval.standard.corpus import hit_to_evidence
+from app.retrieval.standard.corpus import CorpusChunk, hit_to_evidence
 from app.retrieval.standard.generation import context_block
 from app.retrieval.standard.index import index_corpus
 from app.retrieval.standard.sparse import SparseVector
@@ -37,6 +37,7 @@ from tests.test_graph_rag import (
     PromptCapture,
     RecordingReranker,
     build_corpus,
+    graph_channel,
     make_settings,
     record_corpus_chunk,
     resolved,
@@ -169,6 +170,17 @@ def test_build_resolvers_gives_b_the_id_resolver_and_c_the_term_resolver(lab: La
     assert c.expansion is not None
 
 
+def indexed_lab(corpus: Sequence[CorpusChunk], **overrides: object) -> Lab:
+    """The offline lab with corpus loaded (record facts included) and indexed."""
+    lab = dataclasses.replace(
+        build_lab_offline(),
+        corpus={chunk.chunk_id: chunk for chunk in corpus},
+        **overrides,  # type: ignore[arg-type]
+    )
+    index_corpus(lab.store, lab.embeddings, lab.sparse, list(corpus))
+    return lab
+
+
 def test_one_shared_judge_sees_the_same_documents_in_a_b_and_c() -> None:
     """A, B and C hand the shared reranker the same document candidates.
 
@@ -204,11 +216,10 @@ def test_the_reranker_receives_b_document_channel_only_equal_to_a() -> None:
     document channel from B, record blocks of B's own nodes included, in A's
     order and ranks, and no node: nodes are ordered by the graph (D-083)."""
     reranker = RecordingReranker()
-    lab = dataclasses.replace(build_lab_offline(), reranker=reranker)
     record = record_corpus_chunk(
         "incidents", "INC_S007_GR", "Incident INC_S007_GR in Greece: checkout failed."
     )
-    index_corpus(lab.store, lab.embeddings, lab.sparse, [*build_corpus().values(), record])
+    lab = indexed_lab([*build_corpus().values(), record], reranker=reranker)
     (_, b), _c = graph_pipelines(
         lab, scn007_adjacency(), StaticEntityResolver(resolved()), StaticEntityResolver([])
     )
@@ -224,15 +235,13 @@ def test_the_reranker_receives_b_document_channel_only_equal_to_a() -> None:
     assert any(e.node_id == "INC_S007_GR" for e in result_b.node_evidence)
 
 
-def test_a_and_b_show_the_same_evidence_as_the_same_blocks_in_alternation() -> None:
-    """Same evidence, same blocks (design G1, 5.4); the order is alternation.
+PATH_LINE = "- reached from "
 
-    B's two nodes are exactly A's two record hits, so both pipelines show
-    the same rows and documents, each row once, and each as the same block
-    (same title line and text). A's prompt is its cross-encoder order; B's
-    takes its documents (A's order) and its nodes (graph order) in turn,
-    documents first (D-084).
-    """
+
+def two_record_lab() -> tuple[Lab, GraphRagPipeline, GraphRagPipeline]:
+    """A lab whose corpus holds the SCN-007 documents and two records, an
+    incident (the seed) and the platform version it relates to; B and C
+    resolve the incident and walk to the version."""
     incident = record_corpus_chunk(
         "incidents", "INC_S007_GR", "Incident INC_S007_GR in Greece: checkout failed."
     )
@@ -245,18 +254,78 @@ def test_a_and_b_show_the_same_evidence_as_the_same_blocks_in_alternation() -> N
     records = {
         (chunk.record_table or "", chunk.document_id): chunk for chunk in (incident, version)
     }
-    lab = dataclasses.replace(
-        build_lab_offline(), source_lookup=SourceLookup(Path("unused"), records)
-    )
-    index_corpus(
-        lab.store, lab.embeddings, lab.sparse, [*build_corpus().values(), incident, version]
+    lab = indexed_lab(
+        [*build_corpus().values(), incident, version],
+        source_lookup=SourceLookup(Path("unused"), records),
     )
     neighbours = load_static_provider_from_rows(
         [("INC_S007_GR", "RELATED_TO_VERSION", "PLV_PAYMENTS_3", "PlatformVersion")]
     )
-    (_, b), _c = graph_pipelines(
-        lab, neighbours, StaticEntityResolver(resolved()), StaticEntityResolver([])
+    (_, b), (_, c) = graph_pipelines(
+        lab, neighbours, StaticEntityResolver(resolved()), StaticEntityResolver(resolved())
     )
+    return lab, b, c
+
+
+def split_path_line(block: str) -> tuple[str, list[str]]:
+    """(the block without its path line, the path lines it had)."""
+    lines = block.split("\n")
+    paths = [line for line in lines if line.startswith(PATH_LINE)]
+    return "\n".join(line for line in lines if not line.startswith(PATH_LINE)), paths
+
+
+def test_same_row_renders_the_same_in_a_b_and_c(monkeypatch: pytest.MonkeyPatch) -> None:
+    """D-085: a row is the same block in A (its record hit) and in B and C
+    (its graph node), apart from the declared path line."""
+    lab, b, c = two_record_lab()
+    question = "Why did checkout fail in Greece?"
+    result_a = lab.pipeline_a().run(question)
+    blocks_a = {e.document_id: context_block(e) for e in result_a.evidence if e.kind == "record"}
+    assert set(blocks_a) == {"INC_S007_GR", "PLV_PAYMENTS_3"}
+    assert all(block.startswith("Record ") for block in blocks_a.values())
+    for pipeline in (b, c):
+        _result, channel = graph_channel(pipeline, question, monkeypatch)
+        nodes = {node.document_id: node for node in channel if node.document_id in blocks_a}
+        assert set(nodes) == set(blocks_a)
+        for row, node in nodes.items():
+            block, paths = split_path_line(context_block(node))
+            assert block == blocks_a[row], (pipeline.pipeline, row)
+            assert len(paths) == (1 if node.graph_path else 0)
+
+
+def test_path_line_only_for_graph_records_off_seed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Never in A, never for a seed, always for a B or C node with hops > 0."""
+    lab, b, c = two_record_lab()
+    question = "Why did checkout fail in Greece?"
+    result_a = lab.pipeline_a().run(question)
+    assert result_a.evidence
+    assert all(PATH_LINE not in context_block(chunk) for chunk in result_a.evidence)
+    for pipeline in (b, c):
+        result, channel = graph_channel(pipeline, question, monkeypatch)
+        hops = {node.node_id: node.hops for node in result.node_evidence}
+        assert hops["INC_S007_GR"] == 0 and hops["PLV_PAYMENTS_3"] > 0
+        assert all(PATH_LINE not in context_block(chunk) for chunk in result.document_evidence)
+        for node in channel:
+            _block, paths = split_path_line(context_block(node))
+            assert len(paths) == (0 if hops[node.document_id] == 0 else 1), node.document_id
+        version = next(node for node in channel if node.document_id == "PLV_PAYMENTS_3")
+        assert context_block(version).endswith(
+            "\n- reached from INC_S007_GR: INC_S007_GR -RELATED_TO_VERSION-> PLV_PAYMENTS_3"
+        )
+        seed = next(node for node in channel if node.document_id == "INC_S007_GR")
+        assert PATH_LINE not in context_block(seed)
+
+
+def test_a_and_b_show_the_same_evidence_as_the_same_blocks_in_alternation() -> None:
+    """Same evidence, same blocks (design G1, 5.4); the order is alternation.
+
+    B's two nodes are exactly A's two record hits, so both pipelines show
+    the same rows and documents, each row once, and each as the same block
+    apart from the declared path line of a node B reached by a walk (D-085).
+    A's prompt is its cross-encoder order; B's takes its documents (A's
+    order) and its nodes (graph order) in turn, documents first (D-084).
+    """
+    lab, b, _c = two_record_lab()
     question = "Why did checkout fail in Greece?"
     generator_a, generator_b = PromptCapture(), PromptCapture()
     a = lab.pipeline_a()
@@ -264,10 +333,14 @@ def test_a_and_b_show_the_same_evidence_as_the_same_blocks_in_alternation() -> N
     result_a, result_b = a.run(question), b.run(question)
 
     blocks_a = {chunk.document_id: context_block(chunk) for chunk in generator_a.contexts}
-    blocks_b = {chunk.document_id: context_block(chunk) for chunk in generator_b.contexts}
+    blocks_b = {
+        chunk.document_id: split_path_line(context_block(chunk))[0]
+        for chunk in generator_b.contexts
+    }
     assert sorted(blocks_a) == ["DOC_S007_GR", "DOC_S007_UK", "INC_S007_GR", "PLV_PAYMENTS_3"]
     assert len(generator_b.contexts) == len(blocks_b) == len(blocks_a)
     assert blocks_b == blocks_a
+    assert all(PATH_LINE not in block for block in blocks_a.values())
     assert {"node", "chunk"} <= {c.kind for c in generator_b.contexts}
 
     documents = [c.document_id for c in generator_b.contexts if c.kind != "node"]
@@ -339,6 +412,8 @@ def test_vector_hits_are_built_from_the_payload_in_every_pipeline() -> None:
     for hits, (_asked, judged) in zip(store.searches, reranker.calls, strict=True):
         assert hits, "every pipeline must retrieve documents"
         documents = [chunk for chunk in judged if chunk.kind != "node"]
-        expected = [hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
+        expected = [
+            hit_to_evidence(hit, rank, lab.record_facts) for rank, hit in enumerate(hits, start=1)
+        ]
         assert documents == expected
         assert all(chunk.text != "stale corpus text" for chunk in documents)
