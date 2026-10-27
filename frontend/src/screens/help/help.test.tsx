@@ -12,6 +12,7 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SettingsProvider } from '../../app/settings'
+import { GLOSSARY_TERMS } from '../../copy/glossary'
 import { SECTION_ALIASES, CHAPTERS } from './chapters'
 import { Help } from './help'
 import { BRING_UP, MODELS, RECOVERY } from './running-data'
@@ -393,34 +394,24 @@ describe('states', () => {
 })
 
 describe('scoring and glossary', () => {
-  it('defines the evidence score in one line, on the scale Overview uses', async () => {
+  it('defines the evidence score on the scale Overview uses', async () => {
     await renderHelp()
     expect(
       within(section('7. How scoring works')).getByText(
-        /Evidence score runs from 0 to 1/,
+        /The evidence score runs from 0 to 1/,
       ),
     ).toBeVisible()
   })
 
-  it('has one short part each for evidence, answer, judge and intervals', async () => {
+  it('shows every glossary term with its plain meaning', async () => {
     await renderHelp()
-    expect(
-      within(section('7. How scoring works'))
-        .getAllByRole('heading', { level: 3 })
-        .map((h) => h.textContent),
-    ).toEqual(['Evidence found', 'Correct answer', 'Judge', 'Intervals'])
-  })
-
-  it('has twelve glossary terms of about twelve words each', async () => {
-    await renderHelp()
-    const terms = within(section('11. Glossary')).getAllByRole('term')
-    const meanings = within(section('11. Glossary')).getAllByRole('definition')
-    expect(terms).toHaveLength(12)
-    for (const meaning of meanings) {
-      const words = meaning.textContent!.trim().split(/\s+/).length
-      expect(words).toBeGreaterThanOrEqual(8)
-      expect(words).toBeLessThanOrEqual(16)
-    }
+    const glossary = section('11. Glossary')
+    expect(within(glossary).getAllByRole('term')).toHaveLength(
+      GLOSSARY_TERMS.length,
+    )
+    expect(within(glossary).getAllByRole('definition')).toHaveLength(
+      GLOSSARY_TERMS.length,
+    )
   })
 })
 
@@ -448,25 +439,25 @@ describe('one name for the record a question names', () => {
   })
 })
 
-describe('section 8 and the vendor names', () => {
-  it('names vendors and engineering commands in Running it and nowhere else', async () => {
+describe('Running it and the vendor names', () => {
+  it('names vendors and engineering commands in Running it at Technical, and nowhere at Plain', async () => {
     const { container } = await renderHelp()
+    for (const name of RUNNING_ONLY)
+      expect(container.textContent!.toLowerCase(), name).not.toContain(
+        name.toLowerCase(),
+      )
+    expect(container.querySelectorAll('code')).toHaveLength(0)
+    expect(section('12. Running it')).toHaveTextContent(/operators/)
+    cleanup()
+
+    await renderHelp('#/help?level=technical')
     const running = section('12. Running it')
     for (const name of RUNNING_ONLY)
       expect(running.textContent, name).toContain(name)
-    // Everything else: the purpose sentence, the section links and sections 1 to 7.
-    const rest = container.cloneNode(true) as HTMLElement
-    rest.querySelector('#running')!.remove()
-    for (const name of RUNNING_ONLY)
-      expect(rest.textContent!.toLowerCase(), name).not.toContain(
-        name.toLowerCase(),
-      )
-    expect(rest.querySelectorAll('code')).toHaveLength(0)
-    expect(rest.textContent).toContain('How it works in plain language')
   })
 
   it('gives a real remedy for a model the server does not list', async () => {
-    await renderHelp()
+    await renderHelp('#/help?level=technical')
     const table = within(section('12. Running it')).getByRole('table', {
       name: 'Recovery',
     })
@@ -474,7 +465,7 @@ describe('section 8 and the vendor names', () => {
   })
 
   it('has a recovery table with the graph ingest command and the world note', async () => {
-    await renderHelp()
+    await renderHelp('#/help?level=technical')
     const table = within(section('12. Running it')).getByRole('table', {
       name: 'Recovery',
     })
@@ -482,13 +473,13 @@ describe('section 8 and the vendor names', () => {
     expect(table).toHaveTextContent(/graph must hold the presentation world/i)
   })
 
-  it('gives bring-up commands that exist in the Makefile', async () => {
+  it('gives commands that exist in the Makefile', async () => {
     const makefile = readFileSync(resolve(process.cwd(), '../Makefile'), 'utf8')
-    await renderHelp()
+    await renderHelp('#/help?level=technical')
     const targets = [
       ...within(section('12. Running it')).getAllByText(/^make [a-z-]+$/),
     ].map((element) => element.textContent!.slice('make '.length))
-    expect(targets.length).toBeGreaterThan(6)
+    expect(targets.length).toBeGreaterThan(20)
     for (const target of targets)
       expect(makefile).toMatch(new RegExp(`^${target}:`, 'm'))
   })
@@ -514,7 +505,7 @@ describe('reading levels', () => {
   it('shows the plain text before the technical detail at technical', async () => {
     await renderHelp('#/help?level=technical')
     const running = section('12. Running it')
-    const plain = within(running).getByText('Bring-up')
+    const plain = within(running).getByText(/is for operators/)
     const heading = within(running).getByRole('heading', {
       name: 'Technical detail',
     })

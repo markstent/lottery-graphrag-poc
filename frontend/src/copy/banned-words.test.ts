@@ -14,6 +14,7 @@ import { NODE_LABELS, countedLabel, nodeLabel } from '../design/node-labels'
 import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
 import { CHAPTER_COPY } from '../screens/help/copy'
+import { REGISTER } from '../screens/help/copy/limits'
 import type { Block, ChapterCopy } from '../screens/help/chapters'
 import { STRATUM_NAMES } from '../screens/help/bank'
 import { KIND_WORDS } from '../app/run-kinds'
@@ -428,6 +429,13 @@ describe('Help chapters', () => {
   it('has no banned word in the Plain blocks of any chapter', () => {
     const texts = Object.values(CHAPTER_COPY).flatMap(plainTexts)
     expect(texts.length).toBeGreaterThan(5)
+    expect(texts.filter((text) => violation(text))).toEqual([])
+  })
+
+  it('has no banned word in what the register shows at Plain', () => {
+    // The Technical columns (reason, cost, decision) are not read, as with Technical blocks.
+    const texts = REGISTER.flatMap(({ item, plain }) => [item, plain])
+    expect(texts.length).toBeGreaterThan(20)
     expect(texts.filter((text) => violation(text))).toEqual([])
   })
 })

@@ -13,7 +13,7 @@ import { Glossary } from './glossary'
 import { useHelpData } from './help-data'
 import { Questions } from './questions'
 import { Running } from './running'
-import { ScoringParts } from './scoring'
+import { Register } from './register'
 import {
   fillSettings,
   NOT_AVAILABLE,
@@ -32,7 +32,7 @@ const DIAGRAMS: Record<DiagramName, ReactElement> = {
 const COMPONENTS: Record<ComponentName, ReactElement> = {
   dataTour: <DataTour />,
   stories: <Stories />,
-  scoringParts: <ScoringParts />,
+  register: <Register />,
   questions: <Questions />,
   glossary: <Glossary />,
   running: <Running />,

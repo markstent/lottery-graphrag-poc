@@ -24,4 +24,13 @@ export const company: ChapterCopy = {
     "Determinism: each table generator draws from its own random stream, keyed by the generator version, the world seed and the component name (backend/app/datasets/rng.py), and each scenario from its own stream keyed by the scenario seed and its id, so one component's draws do not shift another's. The same version, seeds and configuration reproduce the same world. backend/tests/test_determinism.py checks this within a process, and test_golden_world.py pins a hash of the written Parquet files and the truth ledger across processes (fixture tests/fixtures/golden/tiny-seed7.json).",
     "Validation (validate_world) checks referential integrity over all 61 foreign keys, that a player's segments come from the player's own market, market and currency consistency, time order (a session runs only an app version its market had released), the volume targets and provenance coverage.",
   ],
+  terms: [
+    'Concept',
+    'Market',
+    'Passage',
+    'Record',
+    'Record text',
+    'Truth ledger',
+    'World',
+  ],
 }

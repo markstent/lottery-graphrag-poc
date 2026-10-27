@@ -10,7 +10,7 @@ export const evidence: ChapterCopy = {
   plain: [
     'The answer model does not read everything the search finds. It is given at most {context.evidence_slots} pieces of evidence, and together they must fit a budget of {context_budget_tokens} tokens. A token is a small piece of text, counted here as four characters.',
     'One re-ordering model reads the question beside every piece found and gives each a score for how well it answers the question. The pieces are taken in score order while places and budget last. When two passages say nearly the same thing, only the first is taken.',
-    'In A, every place can go to a passage or a record text. In B and C, {context.graph_slots} of the {context.evidence_slots} places are kept for records the graph reached, and the rest go to passages and record texts. A graph place that no graph record fills goes to a passage or record text, but a passage place is not given to a graph record.',
+    'In A, every evidence place can go to a passage or a record text. In B and C, {context.graph_slots} of the {context.evidence_slots} places are kept for records the graph reached, and the rest go to passages and record texts. A graph place that no graph record fills goes to a passage or record text, but a passage place is not given to a graph record.',
     { kind: 'diagram', name: 'evidence' },
     'Why a limit at all: a model can read only so much at once, and more text is slower and can bury the fact that matters. The limit is the same for all three approaches, so a difference in their answers comes from what each found, not from how much each could show.',
     "What happened in practice: the graph reaches many of the facts a correct answer needs, but most of them do not get a place. A check on 2026-10-25 found that the re-ordering model scores the graph's records low, so most of them ranked too low to get a place. The graph was given its own places the same day. That helped a little, but within those places the model still often picked other graph records than the ones the answer needed. The official run of 2026-10-26 to 2026-10-27 is consistent with this: the choice of evidence, not the graph's reach, is the likely limit on B and C.",
@@ -48,5 +48,14 @@ export const evidence: ChapterCopy = {
       'The dry run of 2026-10-26 (four questions; data/evaluation/runs/dry-run-2026-10-26/, summarised in docs/evaluation/official-run-proposal.md) showed the same on one question: on the multi-hop question L05, the graph places of B and C went to the incident the question names and to support cases, and the record that carries the needed claim did not reach the prompt.',
       'The official run v0.2.0 (2026-10-26 to 2026-10-27; docs/evaluation.md) found no detectable difference between the approaches (chapter 1). Read with the diagnostic, the result points at selection: the graph reaches many of the facts, and the re-ranker and the 12 places keep most of them from the answer model.',
     ],
+  ],
+  terms: [
+    'Answer model',
+    'Claim',
+    'Evidence place',
+    'Passage',
+    'Re-ordering model',
+    'Record text',
+    'Token',
   ],
 }

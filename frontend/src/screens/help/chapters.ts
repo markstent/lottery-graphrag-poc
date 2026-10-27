@@ -75,7 +75,7 @@ export type DiagramName = (typeof DIAGRAM_NAMES)[number]
 
 /** Live parts of a chapter that plain text cannot hold: they read the bank, the newest run or the API. */
 export type ComponentName =
-  'dataTour' | 'stories' | 'scoringParts' | 'questions' | 'glossary' | 'running'
+  'dataTour' | 'stories' | 'register' | 'questions' | 'glossary' | 'running'
 
 /**
  * One block of a chapter. A string is a paragraph and a list of strings is a
@@ -92,4 +92,9 @@ export type Block =
 export interface ChapterCopy {
   plain: readonly Block[]
   technical: readonly Block[]
+  /**
+   * The glossary terms the chapter uses, as the glossary spells them. A test
+   * checks that each is in the glossary and appears in the chapter's text.
+   */
+  terms?: readonly string[]
 }

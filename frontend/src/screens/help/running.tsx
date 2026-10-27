@@ -1,9 +1,10 @@
 /**
- * Running it: the one section that names the vendors and the engineering
- * commands. Every command is a target in the Makefile, and a test checks it.
+ * Running it, at the Technical level: the one chapter that names the vendors
+ * and the engineering commands. Every command is a target in the Makefile,
+ * and a test checks it.
  */
 
-import { BRING_UP, MODELS, RECOVERY } from './running-data'
+import { BRING_UP, COMMAND_GROUPS, MODELS, RECOVERY } from './running-data'
 
 const CODE = 'rounded-chip bg-surface-raised px-1.5 py-0.5 text-sm'
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
@@ -87,6 +88,32 @@ export function Running() {
         worlds, three times each. <Command>make run-smoke</Command> checks the
         scoring with stand-ins and is not a result.
       </p>
+      <h3 className="text-base font-semibold text-text-primary">
+        Every command
+      </h3>
+      {COMMAND_GROUPS.map(({ group, rows }) => (
+        <table key={group} className="w-full text-left text-sm">
+          <caption className="py-2 text-left font-semibold text-text-primary">
+            {group}
+          </caption>
+          <thead className="sr-only">
+            <tr>
+              <th scope="col">Command</th>
+              <th scope="col">What it does</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([command, line]) => (
+              <tr key={command}>
+                <th scope="row" className={`${CELL} w-56 font-normal`}>
+                  <Command>{command}</Command>
+                </th>
+                <td className={CELL}>{line}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ))}
     </>
   )
 }

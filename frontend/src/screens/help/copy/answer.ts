@@ -46,4 +46,18 @@ export const answer: ChapterCopy = {
     'A model judge runs in benchmark runs only; a quick check uses a stand-in judge that measures nothing. In Live Lab a bank question is scored by the deterministic scorer alone, after the run is complete (D-035).',
     'In the official run v0.2.0 (2026-10-26 to 2026-10-27; docs/evaluation.md), judge correctness agreed with the answer score on 53 percent of 1,348 judged answers, kappa 0.07. 2 of 1,350 judge calls failed, both in B, with a server error while the machine slept.',
   ],
+  terms: [
+    'Answer key',
+    'Answer model',
+    'Citation',
+    "Cohen's kappa",
+    'Evidence',
+    'Judge',
+    'Language model',
+    'Model family',
+    'Reasoning',
+    'Repeat',
+    'Temperature',
+    'Token',
+  ],
 }

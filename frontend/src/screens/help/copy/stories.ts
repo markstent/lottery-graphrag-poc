@@ -35,4 +35,13 @@ export const stories: ChapterCopy = {
     ],
     "The hidden truths on the story cards come from GET /api/v1/benchmarks/questions, which reads the evaluator's output after the fact.",
   ],
+  terms: [
+    'Answer key',
+    'Concept',
+    'Hidden truth',
+    'Market',
+    'Planted story',
+    'Question bank',
+    'Truth ledger',
+  ],
 }

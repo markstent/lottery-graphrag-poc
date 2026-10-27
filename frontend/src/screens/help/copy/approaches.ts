@@ -32,7 +32,7 @@ export const approaches: ChapterCopy = {
     "The search index. One Qdrant collection holds the passages and the record texts (chapter 2). Each item has a dense vector from bge-m3 (1024 dimensions, run by Ollama) and a sparse vector from Qdrant/bm25 (run in process by fastembed); both handle English, Greek, German and Czech (EMBEDDING_MODEL and SPARSE_MODEL, defaults in backend/app/config/__init__.py; every run records the names it used). The index's manifest records the record text version, and the system refuses to start on an index built by another (D-028).",
     "Hybrid search (A, and the document channel of B and C): a dense top {top_k} and a sparse top {top_k} inside the same market filter, fused on the client by reciprocal rank fusion with k = {rrf_k} (each item scores the sum of 1 / (k + its rank) in each list), ties broken by fused score, then dense rank, then id, and cut to {top_k} (D-022). This is the whole of A's candidate pool.",
     "Entity resolution in B, with no model: graph ids found in the question by pattern and prefix (INC_, MKT_, PLV_, PLT_, GAME_, APPV_, CMP_, FAM_, PLAYER_ and PAY_; SEED_ID_PREFIXES in backend/app/retrieval/graph/source_lookup.py) and checked against the graph, then market names and codes as whole words. The resolved records are the starting points (seeds, in the code). When nothing resolves, the starting point is the graph node of the best record-text hit in the shared index, found with A's own models; with no record-text hit there is none, and B and C answer from the document channel alone (D-027).",
-    "Traversal: breadth-first and undirected over the structured records, to depth {graph_limits.depth}, at most {graph_limits.nodes_per_hop} nodes per hop, {graph_limits.edges_per_node_type} edges per node and relationship type and {graph_limits.total_nodes} nodes in all, with a hard limit of 5,000 rows on any one neighbour query. Where edges exceed a cap they are explored in order of relationship strength, ties by node id. B walks these relationship types: {relationship_types_b}. Eight of the graph's 30 types are left out of every walk: HAS_CHUNK and REFERENCES, because documents reach every approach through the index, and PLAYS, EXPOSED_TO, AVAILABLE_VIA, PROMOTES, HAS_DRAW and DEPLOYED_TO, which are transactional or fan out too widely. Nodes labelled {excluded_labels} may start a walk but are not candidates (D-026). Every node keeps the path it was found by, so Live Lab can draw it again.",
+    "Traversal (the graph walk): breadth-first and undirected over the structured records, to depth {graph_limits.depth}, at most {graph_limits.nodes_per_hop} nodes per hop, {graph_limits.edges_per_node_type} edges per node and relationship type and {graph_limits.total_nodes} nodes in all, with a hard limit of 5,000 rows on any one neighbour query. Where edges exceed a cap they are explored in order of relationship strength, ties by node id. B walks these relationship types: {relationship_types_b}. Eight of the graph's 30 types are left out of every walk: HAS_CHUNK and REFERENCES, because documents reach every approach through the index, and PLAYS, EXPOSED_TO, AVAILABLE_VIA, PROMOTES, HAS_DRAW and DEPLOYED_TO, which are transactional or fan out too widely. Nodes labelled {excluded_labels} may start a walk but are not candidates (D-026). Every node keeps the path it was found by, so Live Lab can draw it again.",
     "Candidate scoring: each graph node gets a weighted sum of graph distance (1 / (1 + hops / 2)), relationship type (the weakest relationship weight on its path, from backend/app/retrieval/graph/traversal.py), semantic relevance (the dense cosine between the question and the node's text, with A's model) and temporal validity (1.0, or 0.3 when its validity ended before {reference_date}). The weights are {ranking_weights}; none is tuned to a scenario. The score orders the graph candidates and the Live Lab picture. It does not choose the evidence (chapter 5).",
     'What the ontology adds in C (version {ontology_version}, from schemas/ontology/ontology.yaml: 42 concepts under six roots, and 117 bindings from market codes to concepts):',
     [
@@ -44,5 +44,17 @@ export const approaches: ChapterCopy = {
     ],
     "Candidate pools: A's re-ranker sees up to {top_k} search hits. B and C hand it the same search hits (C's from its expanded question) together with every graph node the walk reached, up to {graph_limits.total_nodes}, less excluded labels. The pools differ in size, so a count of facts in them measures reach, not precision.",
     "Equal access: a graph node is shown with exactly its row's record text from A's index, and a node whose row has none reads '<Label> <id>' and nothing more (D-028). The graph can bring in a row A did not rank, but not a fact A could not have retrieved. backend/tests/test_lab_fairness.py pins that A, B and C share the embedders, re-ranker, index, answer model and settings, and that B is C without the ontology.",
+  ],
+  terms: [
+    'Answer model',
+    'Approach',
+    'Concept',
+    'Evidence',
+    'Graph walk',
+    'Hybrid search',
+    'Passage',
+    'Record text',
+    'Starting point',
+    'Text search',
   ],
 }
