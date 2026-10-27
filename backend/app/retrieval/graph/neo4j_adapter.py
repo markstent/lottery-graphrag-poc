@@ -158,6 +158,25 @@ class GraphReader:
         )
         return [(str(record["entity_id"]), str(record["entity_label"])) for record in records]
 
+    def stated_links(
+        self, ids: list[str], rel_types: tuple[str, ...], limit: int
+    ) -> list[NeighbourEdge]:
+        """Relationships of the given types between two of the given ids,
+        in stored direction (bounds in ``with_stated_links``)."""
+        records = self._records(
+            statements.RETRIEVAL_STATED_LINKS,
+            {"ids": ids, "rel_types": list(rel_types), "limit": limit},
+        )
+        return [
+            NeighbourEdge(
+                from_id=str(record["from_id"]),
+                rel_type=str(record["rel_type"]),
+                to_id=str(record["to_id"]),
+                to_label=str(record["to_label"]),
+            )
+            for record in records
+        ]
+
     def markets(self) -> dict[str, str]:
         """Alias -> market id for the resolver."""
         records = self._records(statements.RETRIEVAL_MARKETS, {})

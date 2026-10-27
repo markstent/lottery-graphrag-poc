@@ -18,14 +18,18 @@ visible in every event payload, and shared by both graph pipelines.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, replace
 from datetime import date
+from typing import Literal
 
 from app.config import RankingWeights
 from app.retrieval.graph.source_lookup import NODE_SOURCES
 from app.retrieval.graph.traversal import (
     DEFAULT_RELATIONSHIP_WEIGHT,
     RELATIONSHIP_WEIGHTS,
+    STATED_ENDPOINTS,
+    NeighbourEdge,
     TraversalResult,
 )
 from app.retrieval.standard.embeddings import EmbeddingFunction
@@ -39,6 +43,10 @@ STRUCTURED_LABELS = frozenset(NODE_SOURCES)
 # Temporal component of a record whose validity window has ended.
 SUPERSEDED_VALIDITY = 0.3
 
+# Graph relevance tiers (method v0.3, proposal 4.1), in order.
+GraphTier = Literal["seed", "target", "other"]
+_TIER_RANK: dict[GraphTier, int] = {"seed": 0, "target": 1, "other": 2}
+
 
 @dataclass(frozen=True, slots=True)
 class ScoredNode:
@@ -49,6 +57,7 @@ class ScoredNode:
     rel_type: str
     score: float
     components: dict[str, float]
+    tier: GraphTier = "other"  # set by graph_relevance_order
 
 
 def score_nodes(
@@ -102,6 +111,69 @@ def score_nodes(
         )
     scored.sort(key=lambda node: (-node.score, node.node_id))
     return scored
+
+
+def holds_target(
+    node_id: str,
+    labels: Mapping[str, str],
+    edges: Sequence[NeighbourEdge],
+    targets: frozenset[str],
+) -> bool:
+    """Whether a node holds a target type the question asks about.
+
+    A node holds a target when its label is a target, or when one of
+    ``edges`` joins it to a node whose label is a target and the schema
+    states that relationship with this node as the source, so its own
+    record states the link (an Incident with ``AFFECTS_MARKET`` holds
+    ``Market``; the Market does not hold ``Incident`` through that edge).
+
+    The pipeline passes ``TraversalResult.stated_links``: every stated link
+    between two reached nodes (``with_stated_links``), not only the walk's
+    discovery edges, so a link to a target node the walk reached over some
+    other path counts too.
+    """
+    if not targets:
+        return False
+    label = labels.get(node_id, "")
+    if label in targets:
+        return True
+    for walked in edges:
+        if walked.from_id == node_id:
+            other = walked.to_id
+        elif walked.to_id == node_id:
+            other = walked.from_id
+        else:
+            continue
+        other_label = labels.get(other, "")
+        if other_label in targets and (walked.rel_type, label, other_label) in STATED_ENDPOINTS:
+            return True
+    return False
+
+
+def graph_relevance_order(
+    scored: Sequence[ScoredNode],
+    labels: Mapping[str, str],
+    edges: Sequence[NeighbourEdge],
+    targets: frozenset[str],
+) -> list[ScoredNode]:
+    """Order graph candidates by relevance tier, then composite score, then id.
+
+    Tiers: seeds (hop 0, resolved or the D-027 fallback seed), then nodes
+    that hold a target type (``holds_target``), then every other node.
+    With no targets, or when every node holds one, the order is seeds then
+    composite score. Returns copies with ``tier`` set; scores are unchanged.
+    """
+
+    def tier_of(node: ScoredNode) -> GraphTier:
+        if node.hops == 0:
+            return "seed"
+        if holds_target(node.node_id, labels, edges, targets):
+            return "target"
+        return "other"
+
+    tiered = [replace(node, tier=tier_of(node)) for node in scored]
+    tiered.sort(key=lambda node: (_TIER_RANK[node.tier], -node.score, node.node_id))
+    return tiered
 
 
 def temporal_validity(valid_to: date | None, reference: date) -> float:

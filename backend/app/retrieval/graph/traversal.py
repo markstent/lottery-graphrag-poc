@@ -12,11 +12,18 @@ app.graph.statements), while tests use a static adjacency map.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field, replace
+from itertools import pairwise
 from typing import Protocol
 
 from app.config import GraphRagSettings
+from app.graph.statements import RELATIONSHIP_ENDPOINTS, STATED_LINKS_LIMIT
+
+# (relationship type, source label, target label) as the graph schema states
+# them: the source node's own record states the link.
+STATED_ENDPOINTS: frozenset[tuple[str, str, str]] = frozenset(RELATIONSHIP_ENDPOINTS)
+STATED_REL_TYPES: tuple[str, ...] = tuple(sorted({rel for rel, _, _ in RELATIONSHIP_ENDPOINTS}))
 
 # Transparent relationship strengths, shared by traversal priority and
 # evidence ranking. Document edges and incident-specific links outrank
@@ -74,6 +81,10 @@ class TraversalResult:
     # (bottleneck): evidence is as strong as its weakest link.
     path_strengths: dict[str, float] = field(default_factory=dict)
     depth_reached: int = 0
+    # Every schema-stated relationship between two reached nodes, in its
+    # stored direction (``with_stated_links``); empty until fetched. The
+    # walk's ``edges`` are only its discovery edges (a spanning tree).
+    stated_links: list[NeighbourEdge] = field(default_factory=list)
 
     def path_to(self, node_id: str) -> list[str]:
         """Seed-to-node path through parent links (for replay and drawing)."""
@@ -84,6 +95,54 @@ class TraversalResult:
             path.append(current)
         path.reverse()
         return path
+
+    def steps_to(self, node_id: str, labels: Mapping[str, str]) -> list[PathStep]:
+        """Seed-to-node discovery path as directed steps (empty for a seed).
+
+        Each step is written in walk order; ``forward`` says whether the
+        schema states the relationship in that direction. A step is shown
+        against the walk only when the schema states the reverse and not
+        the walked direction, so an edge between two nodes of one label
+        (``SIMILAR_TO``, ``IS_A``) reads forward as walked.
+        """
+        path = self.path_to(node_id)
+        steps: list[PathStep] = []
+        for from_id, to_id in pairwise(path):
+            rel_type = self.relationships[to_id]
+            from_label = labels.get(from_id, "")
+            to_label = labels.get(to_id, "")
+            forward = (rel_type, from_label, to_label) in STATED_ENDPOINTS or (
+                rel_type,
+                to_label,
+                from_label,
+            ) not in STATED_ENDPOINTS
+            steps.append(PathStep(from_id, rel_type, to_id, forward=forward))
+        return steps
+
+
+@dataclass(frozen=True, slots=True)
+class PathStep:
+    """One walked edge of an evidence path, in walk order."""
+
+    from_id: str
+    rel_type: str
+    to_id: str
+    # False only when the schema states rel_type from to_id's label to
+    # from_id's and not the walked way: the link is drawn against the walk.
+    forward: bool
+
+
+def render_path(steps: Sequence[PathStep]) -> str:
+    """One-line evidence path, for example
+    ``INC_037 -RELATED_TO_VERSION-> PLV_IDENTITY_2 <-RELATED_TO_VERSION- INC_024``.
+    Empty for a seed (no steps)."""
+    if not steps:
+        return ""
+    parts = [steps[0].from_id]
+    for step in steps:
+        arrow = f"-{step.rel_type}->" if step.forward else f"<-{step.rel_type}-"
+        parts.append(f"{arrow} {step.to_id}")
+    return " ".join(parts)
 
 
 class NeighbourProvider(Protocol):
@@ -110,6 +169,14 @@ class NeighbourProvider(Protocol):
         excluded labels dropped before the limit."""
         ...
 
+    def stated_links(
+        self, ids: list[str], rel_types: tuple[str, ...], limit: int
+    ) -> list[NeighbourEdge]:
+        """Relationships of the given types whose two ends are both in
+        ``ids``, in stored direction, ordered by (from, type, to), at most
+        ``limit`` rows. Reads relationships only: never adds a node."""
+        ...
+
 
 class StaticNeighbourProvider:
     """Adjacency-map provider for tests and offline runs.
@@ -129,6 +196,7 @@ class StaticNeighbourProvider:
         for edges in adjacency.values():
             for edge in edges:
                 known.setdefault(edge.to_id, edge.to_label)
+        self._stored = [edge for edges in adjacency.values() for edge in edges]
         self._adjacency: dict[str, list[NeighbourEdge]] = {}
         for node_id, edges in adjacency.items():
             for edge in edges:
@@ -173,6 +241,18 @@ class StaticNeighbourProvider:
             if edge.rel_type == "MAPS_TO" and edge.to_label not in excluded_labels
         ]
         return bound[:limit]
+
+    def stated_links(
+        self, ids: list[str], rel_types: tuple[str, ...], limit: int
+    ) -> list[NeighbourEdge]:
+        among = set(ids)
+        links = [
+            edge
+            for edge in self._stored
+            if edge.rel_type in rel_types and edge.from_id in among and edge.to_id in among
+        ]
+        links.sort(key=lambda edge: (edge.from_id, edge.rel_type, edge.to_id))
+        return links[:limit]
 
 
 def bounded_traversal(
@@ -257,6 +337,43 @@ def bounded_traversal(
         path_strengths=strengths,
         depth_reached=depth_reached,
     )
+
+
+class StatedLinksError(RuntimeError):
+    """The stated-links read was refused: too many nodes, or a cut result."""
+
+
+def with_stated_links(
+    provider: NeighbourProvider,
+    traversal: TraversalResult,
+    settings: GraphRagSettings,
+) -> TraversalResult:
+    """The traversal with every schema-stated link among its reached nodes.
+
+    Run after the walk (and after ontology expansion in pipeline C). It reads
+    relationships whose types are in the schema's RELATIONSHIP_ENDPOINTS and
+    whose two ends were both reached, so it adds no node and leaves the walk,
+    its paths and its limits untouched. Bound: the ids are at most
+    ``settings.max_total_nodes``; the rows at most ``STATED_LINKS_LIMIT``,
+    and a result over that limit is refused rather than silently cut. With
+    no reached node no query is issued.
+    """
+    if not traversal.node_ids:
+        return traversal
+    if len(traversal.node_ids) > settings.max_total_nodes:
+        raise StatedLinksError(
+            f"{len(traversal.node_ids)} reached nodes exceed the total node limit "
+            f"{settings.max_total_nodes}"
+        )
+    links = provider.stated_links(
+        list(traversal.node_ids), STATED_REL_TYPES, STATED_LINKS_LIMIT + 1
+    )
+    if len(links) > STATED_LINKS_LIMIT:
+        raise StatedLinksError(
+            f"more than {STATED_LINKS_LIMIT} stated links among {len(traversal.node_ids)} "
+            "reached nodes; the result would be cut"
+        )
+    return replace(traversal, stated_links=links)
 
 
 BoundRelevance = Callable[[list[tuple[str, str]]], list[float]]
