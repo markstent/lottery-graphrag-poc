@@ -71,6 +71,7 @@ from app.retrieval.standard.context import (
     SELECTION_EXCLUDED_LABEL,
     SELECTION_SAME_RECORD,
     ContextAssembly,
+    assemble_context,
 )
 from app.retrieval.standard.corpus import CorpusChunk, record_facts_of
 from app.retrieval.standard.embeddings import HashingEmbedder
@@ -941,7 +942,7 @@ def graph_channel(
     """Run ``question`` and return the result and the graph channel the
     selection received, in graph relevance order."""
     captured: list[EvidenceChunk] = []
-    assemble = stages.assemble_context
+    assemble = assemble_context
 
     def spy(
         documents: Sequence[EvidenceChunk],

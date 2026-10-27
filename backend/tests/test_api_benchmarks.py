@@ -23,6 +23,7 @@ from typing import Any
 import pytest
 from app.api import benchmarks
 from app.api.graph_world import GraphLease
+from app.api.schemas import BenchmarkStart
 from app.config import METHOD_VERSION, REPO_ROOT
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
@@ -428,7 +429,7 @@ def test_a_cancelled_job_with_kept_worlds_names_the_resume_command(tmp_path: Pat
     out_dir = tmp_path / "20261025T000000Z-smoke"
     (out_dir / "worlds").mkdir(parents=True)
     (out_dir / "worlds" / "2026.json").write_text("{}")
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     body = benchmarks._with_kept_worlds(None, request, out_dir)
     assert body is not None and body.error_code == "CANCELLED"
     assert "1 finished world was kept" in body.message and "--resume" in body.message
@@ -443,7 +444,7 @@ def test_the_resume_message_names_a_root_relative_out_that_the_cli_resolves(
     out_dir = tmp_path / "data" / "evaluation" / "runs" / "20261025T000000Z-smoke"
     (out_dir / "worlds").mkdir(parents=True)
     (out_dir / "worlds" / "2026.json").write_text("{}")
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     body = benchmarks._with_kept_worlds(RuntimeError("x"), request, out_dir)
     assert body is not None
     shown = body.message.split(" --out ")[1].removesuffix(" --resume")
@@ -455,7 +456,7 @@ def test_the_resume_command_runs_from_the_repository_root_and_parses(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     out_dir = REPO_ROOT / "data" / "evaluation" / "runs" / "20261025T000000Z-smoke"
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     monkeypatch.setattr(benchmarks, "kept_world_count", lambda _dir: 1)
     body = benchmarks._with_kept_worlds(RuntimeError("x"), request, out_dir)
     assert body is not None

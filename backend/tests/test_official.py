@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.config import SELECTION_RULE
+from app.config import REPO_ROOT, SELECTION_RULE
 from app.datasets.config import GENERATOR_VERSION
 from app.evaluation import __main__ as cli
 from app.evaluation import official
@@ -1301,7 +1301,7 @@ def test_compare_shows_a_difference_in_code_revision(tmp_path: Path) -> None:
 
 def test_cli_resolves_a_relative_out_from_the_repository_root(captured: dict[str, Any]) -> None:
     cli.main(["run", "--kind", "smoke", "--out", "data/evaluation/runs/x", "--resume"])
-    assert captured["run"][1]["out_dir"] == official.REPO_ROOT / "data/evaluation/runs/x"
+    assert captured["run"][1]["out_dir"] == REPO_ROOT / "data/evaluation/runs/x"
 
 
 @pytest.mark.parametrize(
@@ -1370,7 +1370,8 @@ def _run(recorder: Recorder, seeds: tuple[int, ...] = (2026, 2027, 2028), **opti
 
 
 def _kept(recorder: Recorder, seed: int) -> dict[str, Any]:
-    return json.loads((recorder.tmp / "worlds" / f"{seed}.json").read_text())
+    kept: dict[str, Any] = json.loads((recorder.tmp / "worlds" / f"{seed}.json").read_text())
+    return kept
 
 
 def _edit_kept(recorder: Recorder, seed: int, edit: Callable[[dict[str, Any]], None]) -> None:

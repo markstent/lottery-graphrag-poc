@@ -4,12 +4,13 @@ the check that no run worker or benchmark job thread outlives its test."""
 
 from __future__ import annotations
 
+import _socket
 import os
 import socket
 import sys
 import threading
 import types
-from collections.abc import Iterator
+from collections.abc import Buffer, Iterator
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -209,6 +210,8 @@ def guarded_ports() -> dict[int, str]:
 # The connects the guard falls through to for any other address; module
 # attributes, looked up on each call, so the guard's own test can replace
 # them with recorders.
+# The address a socket connects to, as the standard library types it.
+_Address = tuple[Any, ...] | str | Buffer
 _real_connect = socket.socket.connect
 _real_connect_ex = socket.socket.connect_ex
 # Every refused attempt not yet charged to a test; ``no_real_services`` fails
@@ -227,12 +230,12 @@ def _refuse(address: Any) -> None:
         raise ConnectionRefusedError(f"{SERVICE_GUARD_ERROR}: a test tried to reach {attempt}")
 
 
-def _guarded_connect(self: socket.socket, address: Any) -> None:
+def _guarded_connect(self: _socket.socket, address: _Address) -> None:
     _refuse(address)
     _real_connect(self, address)
 
 
-def _guarded_connect_ex(self: socket.socket, address: Any) -> int:
+def _guarded_connect_ex(self: _socket.socket, address: _Address) -> int:
     _refuse(address)
     return int(_real_connect_ex(self, address))
 

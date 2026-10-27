@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import types
+from typing import Any
 
 import httpx
 import pytest
@@ -71,11 +72,12 @@ def test_reasoning_off_for_ollama_sends_think_false() -> None:
     from litellm.llms.ollama.chat.transformation import OllamaChatConfig
     from litellm.utils import get_optional_params
 
-    kwargs = _reasoning_off_kwargs("ollama/qwen3.6:latest")
+    # LiteLLM types each keyword it takes; the gateway's extra keywords are passed as they are.
+    kwargs: dict[str, Any] = dict(_reasoning_off_kwargs("ollama/qwen3.6:latest") or {})
     messages = [{"role": "user", "content": "hi"}]
     for provider, config in (("ollama_chat", OllamaChatConfig()), ("ollama", OllamaConfig())):
         params = get_optional_params(
-            model="qwen3.6:latest", custom_llm_provider=provider, max_tokens=5, **(kwargs or {})
+            model="qwen3.6:latest", custom_llm_provider=provider, max_tokens=5, **kwargs
         )
         body = config.transform_request(
             model="qwen3.6:latest",
@@ -93,9 +95,9 @@ def test_reasoning_off_for_openrouter_sends_reasoning_disabled(model: str) -> No
     from litellm.llms.openrouter.chat.transformation import OpenrouterConfig
     from litellm.utils import get_optional_params
 
-    kwargs = _reasoning_off_kwargs(f"openrouter/{model}")
+    kwargs: dict[str, Any] = dict(_reasoning_off_kwargs(f"openrouter/{model}") or {})
     params = get_optional_params(
-        model=model, custom_llm_provider="openrouter", max_tokens=5, **(kwargs or {})
+        model=model, custom_llm_provider="openrouter", max_tokens=5, **kwargs
     )
     body = OpenrouterConfig().transform_request(
         model=model,
@@ -171,7 +173,7 @@ def test_reasoning_off_reaches_the_openrouter_request_through_litellm_completion
 def test_each_call_gets_its_own_reasoning_kwargs() -> None:
     first = _reasoning_off_kwargs("openrouter/a/b")
     assert first is not None
-    first["extra_body"] = "mutated"  # type: ignore[assignment]
+    first["extra_body"] = "mutated"
     assert _reasoning_off_kwargs("openrouter/a/b") == {
         "extra_body": {"reasoning": {"enabled": False}}
     }
