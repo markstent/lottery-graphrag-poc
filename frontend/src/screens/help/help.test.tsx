@@ -80,9 +80,15 @@ const questionTable = () =>
 
 const section = (name: string) => screen.getByRole('region', { name })
 
+const { scrollBy } = window
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+  window.localStorage.clear()
+  window.history.replaceState(null, '', '/')
+  window.scrollBy = scrollBy
 })
 
 describe('Help', () => {
@@ -532,13 +538,12 @@ describe('reading levels', () => {
         document.getElementById(other.id)!,
         'getBoundingClientRect',
       ).mockImplementation(() => ({ top: -900, bottom: -10 }) as DOMRect)
-    const scrollBy = vi.fn()
-    window.scrollBy = scrollBy
-    scrollBy.mockImplementation(() => undefined)
+    const scrolled = vi.fn()
+    window.scrollBy = scrolled
     await user.click(radio('Technical'))
     await waitFor(() => expect(radio('Technical')).toBeChecked())
-    await waitFor(() => expect(scrollBy).toHaveBeenCalled())
-    expect(scrollBy.mock.calls.at(-1)![0]).toMatchObject({ top: 360 })
+    await waitFor(() => expect(scrolled).toHaveBeenCalled())
+    expect(scrolled.mock.calls.at(-1)![0]).toMatchObject({ top: 360 })
     expect(window.location.hash).toBe('#/help?section=scoring&level=technical')
   })
 
@@ -554,7 +559,6 @@ describe('reading levels', () => {
     expect(radio('Plain')).toBeChecked()
     await user.click(radio('Technical'))
     await waitFor(() => expect(radio('Technical')).toBeChecked())
-    vi.restoreAllMocks()
   })
 
   it('remembers the level in storage and the URL wins over it', async () => {
@@ -564,7 +568,6 @@ describe('reading levels', () => {
     cleanup()
     await renderHelp('#/help?level=plain')
     expect(radio('Plain')).toBeChecked()
-    window.localStorage.removeItem('help-level')
   })
 
   it('a deep link opens at Plain whatever storage holds, a bare Help uses storage, and ?level wins', async () => {
@@ -583,7 +586,6 @@ describe('reading levels', () => {
     cleanup()
     await renderHelp('#/help?section=scoring&level=technical')
     expect(radio('Technical')).toBeChecked()
-    window.localStorage.removeItem('help-level')
   })
 
   it('keeps a level that came from storage through a chapter link, a filter and a story link', async () => {
@@ -613,7 +615,6 @@ describe('reading levels', () => {
     await user.click(story)
     await waitFor(() => expect(window.location.hash).toContain('story=SCN-001'))
     expect(radio('Technical')).toBeChecked()
-    window.localStorage.removeItem('help-level')
   })
 
   it('presentation mode ignores storage but honours ?level', async () => {
@@ -623,8 +624,6 @@ describe('reading levels', () => {
     cleanup()
     await renderHelp('?present=1#/help?level=technical')
     expect(radio('Technical')).toBeChecked()
-    window.localStorage.removeItem('help-level')
-    window.history.replaceState(null, '', '/')
   })
 
   it('the switch is a labelled radio group operable by keyboard', async () => {
@@ -755,7 +754,26 @@ describe('settings in Help', () => {
       name: 'Retry loading settings',
     })
     expect(retry).toBeVisible()
+    stubBank({ ...RECORDED_RUNS })
     await user.click(retry)
+    const generation = settingsRow('generation_model')
+    await within(generation).findByText('model-then')
+    expect(within(generation).queryByText('Not available')).toBeNull()
+    expect(screen.queryByText('The run list is unavailable.')).toBeNull()
+  })
+
+  it('shows both errors when neither load works', async () => {
+    await renderHelp('#/help?section=running&level=technical', {
+      failSettings: true,
+      failRuns: true,
+    })
+    const running = section('12. Running it')
+    expect(
+      await within(running).findByText('The settings are invalid.'),
+    ).toBeVisible()
+    expect(
+      within(running).getByText('The run list is unavailable.'),
+    ).toBeVisible()
   })
 
   it('reads Not recorded for every setting when no run is official', async () => {

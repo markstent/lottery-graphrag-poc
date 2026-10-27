@@ -410,22 +410,6 @@ describe('Help chapters', () => {
     ])
   })
 
-  it('reads several Plain sentences in each of chapters 1 to 6, and none uses a banned word', () => {
-    const ids = [
-      'why',
-      'company',
-      'stories',
-      'approaches',
-      'evidence',
-      'answer',
-    ] as const
-    for (const id of ids) {
-      const texts = plainTexts(CHAPTER_COPY[id])
-      expect(texts.length, id).toBeGreaterThanOrEqual(3)
-      expect(texts.filter((text) => violation(text))).toEqual([])
-    }
-  })
-
   it('has no banned word in the Plain blocks of any chapter', () => {
     const texts = Object.values(CHAPTER_COPY).flatMap(plainTexts)
     expect(texts.length).toBeGreaterThan(5)

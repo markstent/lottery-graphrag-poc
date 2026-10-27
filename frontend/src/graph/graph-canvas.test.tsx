@@ -96,13 +96,13 @@ const nodeButton = (id: string) =>
     (el) => el.getAttribute('data-node-id') === id,
   ) as HTMLElement
 
-/** Waits for the async layout to place every node. */
 /**
  * The ready flag waits for the layout and the animated fit, which can pass
  * waitFor's default second when the whole suite runs in parallel.
  */
 const READY = { timeout: 5000 }
 
+/** Waits for the async layout to place every node. */
 async function placed(count: number) {
   await waitFor(() => expect(nodeButtons()).toHaveLength(count))
 }
