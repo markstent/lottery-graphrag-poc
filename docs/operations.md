@@ -116,7 +116,10 @@ Set `GENERATION_MODEL` to an `openrouter/...` model and `OPENROUTER_API_KEY` in 
 Never commit a key or write it to a log.
 
 **Official run.**
-The generation model and the judge for the official run are chosen at CP3, with an estimated cost and duration.
+The official run of v0.3.0 uses the six unseen worlds, seeds 2029 to 2034, and the models of v0.2.0; it starts from the command line (`make run-benchmark`) only after the owner agrees (D-091).
+The API never starts it.
+The Results start panel offers a development run on seed 2026 (the default) and a quick check, and neither is a result.
+Development uses seed 2026 only, through `make dev-run`; no development, diagnostic or labelling step may use seeds 2029 to 2034.
 An official run requires `GENERATION_MODEL_FAMILY`, `JUDGE_MODEL_FAMILY` (different), `GENERATION_PROVIDER=litellm` and `JUDGE_PROVIDER=litellm`.
 
 **A failed official run.**
@@ -156,7 +159,7 @@ A job started from the API never resumes; its failure message names the command 
 | `make addendum-v020` | Rescores official run v0.2.0 with scorer 2.1.0; no Neo4j, no model |
 | `make label-sample`, `label-agreement` | Builds the hand-labelling sample from run v0.2.0, and reports the agreement of the measures with the labels; no Neo4j, no model |
 | `make run-smoke` | Scorer smoke test on three worlds; it wipes and restores Neo4j and indexes new worlds in Qdrant, with the fake generator and judge (no answer or judge model) |
-| `make run-benchmark`, `run-sweep` | The official run and the depth sweep (see [evaluation.md](evaluation.md)); each wipes and restores Neo4j, indexes new worlds in Qdrant and calls the judge model, and the answer model unless `GENERATION_PROVIDER=fake` |
+| `make run-benchmark`, `run-sweep` | The official run (six unseen worlds, seeds 2029 to 2034, only after the owner agrees) and the depth sweep (see [evaluation.md](evaluation.md)); each wipes and restores Neo4j, indexes new worlds in Qdrant and calls the judge model, and the answer model unless `GENERATION_PROVIDER=fake` |
 
 The Makefile is the stable command surface.
 
@@ -255,6 +258,9 @@ Cancel it from the screen, or stop the server, and the next start-up marks it in
 
 ## Configuration reference
 
+`RAG_EVIDENCE_SLOTS` and `RAG_GRAPH_SLOTS` were removed with method v0.3 (D-084).
+A value left set, in the environment or in a `.env` that the Makefile exports, stops the API and the benchmark at start-up with a message naming the variable; delete the line.
+
 Every variable below is read from the process environment.
 `.env.example` has the same list with comments.
 A key shown commented in that file must stay unset, not empty, to get its default.
@@ -267,7 +273,7 @@ A key shown commented in that file must stay unset, not empty, to get its defaul
 | World | `DATASET_DIR`, `TRUTH_LEDGER_PATH` | `data/generated/dev-seed2026`, `data/truth/ledger.json` |
 | Embeddings | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `OLLAMA_HOST` | `ollama`, `bge-m3`, 1024, `http://localhost:11434` |
 | Sparse | `SPARSE_PROVIDER`, `SPARSE_MODEL`, `FASTEMBED_CACHE` | unset, `Qdrant/bm25`, `~/.cache/fastembed` |
-| Retrieval | `RAG_TOP_K`, `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_EVIDENCE_SLOTS`, `RAG_GRAPH_SLOTS`, `RAG_DEDUPE_THRESHOLD` | 40, 2000, 12, 6, 0.85 |
+| Retrieval | `RAG_TOP_K`, `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_DEDUPE_THRESHOLD` | 40, 2000, 0.85 |
 | Re-ranker | `RERANK_PROVIDER`, `RERANK_MODEL` | `cross_encoder`, `BAAI/bge-reranker-v2-m3` |
 | Generation | `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_API_BASE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S`, `GENERATION_MODEL_FAMILY`, `GENERATION_MODEL_QUANTISATION`, `GENERATION_REASONING` | `fake`, `fake-answer-v1`, 0, unset, 1200, 120, unset, unset, `default` |
 | Judge | `JUDGE_PROVIDER`, `JUDGE_MODEL`, `JUDGE_MODEL_FAMILY`, `JUDGE_API_BASE`, `JUDGE_TEMPERATURE`, `JUDGE_REASONING` | `fake`, `fake-judge-v1`, unset, unset, 0, `default` |

@@ -45,7 +45,7 @@ The likely cause is evidence selection, not the graph's reach: the selection dia
 
 Limits on reading it:
 
-- the judge and the deterministic answer score agree on only 53 percent of answers (kappa 0.07), so the two measures of a right answer often disagree;
+- the judge and the deterministic answer score agree on only 53 percent of answers (kappa 0.07, by the old 0.5-threshold definition), so the two measures of a right answer often disagree;
 - each comparison rests on 12 question groups, so intervals are wide and a small effect would not be detected;
 - one small local answer model; a larger model might use the evidence differently;
 - 2 of 1,350 judge calls failed (both in B, while the machine slept), and no answer failed.
@@ -53,13 +53,16 @@ Limits on reading it:
 The run is kept in `data/evaluation/runs/official-2026-10-26/` (not in git) and is the default run on the Overview and Results screens.
 
 Before it, four live development runs in the Live Lab and two pilot subset runs showed B and C no better than A.
-The selection rule changed after them (decision D-081, 2026-10-25, after the CP3 proposal).
-It was changed after the pilot runs and a diagnostic showed B and C doing no better than A, and the share was fixed before the new rule was measured.
-Decision D-025 had made all three approaches choose what the model sees through one shared re-ranker.
+The selection rule changed after them (decision D-081, 2026-10-25), and the pilot runs described here used the older rule (D-025: all three approaches choose what the model sees through one shared re-ranker).
 On the multi-hop question, B's graph search found the record that carries the claim the answer needed, and the shared re-ranker kept that record out of the prompt.
-Now half of the 12 evidence slots go to the graph's own selection in B and C, and A keeps all 12 for documents.
-The pilot runs described here used the old rule.
-The detail is in [docs/retrieval.md](docs/retrieval.md) and [docs/evaluation.md](docs/evaluation.md).
+
+Method v0.3 is the next step, and it is not yet run.
+The v0.2.0 data showed that the 12 evidence slots decided what the model saw, and that two answer measures each had a specific fault.
+So v0.3 changes the method after seeing a result in which the graph did not win, and every report of it says so: the graph ranks its own records, every approach fills the same 2,000 token budget with no item limit, records are shown as compact facts with a path line for graph records, the scorer and judge are fixed, and groundedness is added (decisions D-083 to D-093).
+Development uses the presentation world (seed 2026) only.
+The official run will use six worlds no one has looked at (seeds 2029 to 2034), and v0.3.0 will be published whatever it shows, including no difference.
+The v0.2.0 result stands as published, labelled as the old method.
+The reasons and the data are in [docs/evaluation/v0.3-method-proposal.md](docs/evaluation/v0.3-method-proposal.md), and the details in [docs/retrieval.md](docs/retrieval.md) and [docs/evaluation.md](docs/evaluation.md).
 
 ## Run it
 

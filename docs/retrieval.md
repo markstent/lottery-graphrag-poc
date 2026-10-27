@@ -3,36 +3,15 @@
 This page describes the three pipelines, what they share, how they select evidence and how they answer.
 The world they search is in [data.md](data.md), the graph they walk in [graph-and-ontology.md](graph-and-ontology.md), the events they emit in [api.md](api.md), and how they are scored in [evaluation.md](evaluation.md).
 
-## Open method question for the owner
+## How the selection method got here
 
-The four recorded live development runs showed B and C no better than A.
-They are one question each from the strata H1, H2, H3 and H5, one model (qwen3.6 through Ollama, reasoning off) and one repeat, on the seed 2026 development world.
-They are not a benchmark result.
-
-| Question | A answer / evidence | B answer / evidence | C answer / evidence |
-|---|---|---|---|
-| L05 (H1), incidents on the same platform version as INC_037 | 0.00 / 0.00 | 0.00 / 0.00 | 0.00 / 0.00 |
-| L09 (H2), games in other markets of the same kind as GAME_AT_05 | 0.40 / 0.35 | 0.50 / 0.14 | 0.50 / 0.14 |
-| L01 (H3), ticket price of GAME_AT_04 | 1.00 / none | 1.00 / none | 1.00 / none |
-| L15 (H5), cause of INC_041 | 0.00 / 0.15 | 0.00 / 0.15 | 0.00 / 0.15 |
-
-B and C are level with A on three of the four.
-On L09 B and C wrote a slightly better answer and found less of the needed evidence.
-C's scores equal B's on every question.
-The H3 question has no evidence score, because it has no claims to find.
-
-On the multi-hop question L05, B's traversal found INC_024, the record that carries the claim the answer needs.
-The one shared re-ranker (decision D-025) then judged that record together with A's document search results, and did not select it.
-Four items reached the prompt: INC_037 and three support cases.
-The model answered that the sources do not contain the answer.
-This is the designed behaviour of D-025, not a defect, and neither the rule nor the questions were changed, because that would favour one approach.
-
-D-025 was presented with CP1 part 2, which the project owner approved.
-DECISIONS.md records it as a controller ruling.
-
-Update, 2026-10-25: the rule was changed after the CP3 proposal, on the owner's reply, and it is now the graph share (D-081, described under "The graph share" below; D-081 is a proposed controller ruling).
-The change was made after the pilot runs and the diagnostic, in which B and C did no better than A and fewer of their claims reached the prompt (38 and 39 against 43 for A).
-The four pilot runs above were made under D-025, so they describe the old rule and are history, not results of the current one.
+The first official run, v0.2.0, found no detectable difference between A, B and C.
+It used one shared re-ranker over the document and graph candidates (D-025), and then a graph share of 12 evidence slots (D-081).
+Looking into its data showed that the 12 slots bound in all 1,350 prompts, that the 2,000 token budget never did (the largest prompt held 1,489 tokens), and that the record which answered the multi-hop question L05 was left out of the prompt.
+Method v0.3 changed this after seeing that result, and says so wherever it reports: the graph ranks its own records (D-083), every approach fills one token budget with no item limit (D-084), and records are shown as compact facts with a path line for graph records (D-085).
+The proposal with the reasons and the data is [evaluation/v0.3-method-proposal.md](evaluation/v0.3-method-proposal.md), and the rules are the decision records D-083 to D-093 in `DECISIONS.md`.
+The four recorded Live Lab runs and the pilot runs of 2026-10-25 were made under the old rules and are history, not results of the current ones.
+The official run v0.2.0 stays as published and is labelled as method 0.2.0 wherever it is shown.
 
 ## Purpose
 
@@ -46,6 +25,8 @@ Three pipelines answer the same question over the same world, and differ only in
 | Ontology expansion | none | none | concept-bound records, ranked and bounded |
 | Document channel | hybrid search | same as A | same as A, with C's expanded query |
 | Structured record channel | serialised table rows in the same search | the same rows, plus every traversal node | the same, plus concept-bound nodes |
+| Ordering of graph records | none | graph relevance: seeds, target-type holders, others | the same, with ontology terms also naming target types |
+| Path to a graph record in the prompt | none | one "reached from" line | one "reached from" line |
 
 The experiment claims only what the comparison isolates.
 B is C minus the ontology layer.
@@ -59,8 +40,8 @@ A is B minus the graph layer, except that A reads table rows through the vector 
 question
  -> dense and sparse (BM25) embedding
  -> hybrid search: dense top-k and sparse top-k, fused by reciprocal rank fusion
- -> the shared judge (a cross-encoder re-ranker)
- -> selection under one token budget and one slot count
+ -> the shared re-ranker (a cross-encoder)
+ -> selection under one token budget, in re-ranked order
  -> generator
  -> structured answer with citations
 ```
@@ -89,12 +70,13 @@ question
  -> seed selection                          (resolved entities; else the graph node of the best record hit)
  -> bounded traversal of the record subgraph
  -> ontology expansion                      (C only)
- -> candidate scoring                       (ranks the structured channel, drives telemetry)
+ -> candidate scoring                       (the composite score, used within tiers)
+ -> graph relevance order                   (seeds, target-type holders, others; D-083)
  -> authoritative facts attached from the source tables
  -> document channel                        (the same hybrid search as A)
- -> one judge over both channels
- -> one selection              (graph share; a record block yields to its node only if the node holds a graph slot)
- -> the same generator as A
+ -> the shared re-ranker over the documents only
+ -> one selection              (documents and graph records take turns under one token budget; D-084)
+ -> the same generator and prompt as A
 ```
 
 Code: `backend/app/retrieval/graph/`.
@@ -115,10 +97,10 @@ The structured candidates are chosen before the document channel runs, because t
 
 **Query expansion** (C only) appends the labels and synonyms of every resolved concept to the question on a new line.
 The expanded text drives C's document search, the fallback seed search and the semantic ranking of nodes.
-The judge and the generator always see the raw question, and A and B use the raw question everywhere.
+The re-ranker and the generator always see the raw question, and A and B use the raw question everywhere.
 
 **Seeds** are the resolved entities.
-A seed has no slot of its own and is judged like any other candidate, then competes for the graph share with the other nodes.
+A seed is the first tier of the graph relevance order, and the fallback seed counts as a seed.
 When nothing resolves, the fallback seed is the graph node of the best record hit in the shared vector layer, found with A's own models (D-027).
 When there is no record hit there is no seed, and B and C then run on the document channel alone.
 A seed is never invented.
@@ -137,7 +119,7 @@ At most four are taken per concept, ordered by semantic relevance to the expande
 Records already reached, and records of an excluded label, are not candidates.
 These nodes are announced with the concept they came through.
 
-**Candidate scoring** ranks the structured channel.
+**Candidate scoring** orders the nodes inside each tier of the graph relevance order (see "How evidence is selected").
 It is a weighted sum of four recorded components, shared by B and C:
 
 | Component | Weight | Meaning |
@@ -154,86 +136,113 @@ A node without an authoritative row counts as current.
 The weights are in `DEFAULT_RANKING_WEIGHTS` and are not read from the environment.
 No weight is tuned to make a scenario pass, and a change to the table is an experiment change that must be re-validated before an official run.
 
-The composite score orders the structured channel and appears in telemetry.
-It does not select context, and neither judge reads it.
+The composite score orders nodes within a tier and appears in telemetry.
+The re-ranker never reads it, and it never sees a node.
 
 ### What a node says
 
-Each node has one text, used for ranking, by the judge and in the prompt.
+Each node has one text, used for ranking and in the prompt.
+How a block reads is the same in A, B and C (D-085), with three declared differences that only B and C have.
 
-- A node whose row has a record block in A's corpus gets that block's text, byte for byte.
-  It is also shown with that block's title, market and language, whether or not the search returned the block.
-- A concept node in C gets its ontology text: the canonical name, definition, labels and synonyms.
+- A record, whether it is a record block in the document channel or a node whose row has a record block, is shown as compact facts.
+  The heading is `<Label> <id> (source: <system>.<table>, record <id>)`, and there is one `- name: value` line for each column the record serialiser states (`FACT_SERIALISERS`, facts version 1.0.0).
+  The facts come from the same row A indexes, so no column A could not index reaches the prompt (D-028).
+  A datetime at midnight prints as its date.
+  A record in the index whose facts are not in the loaded corpus is refused with an error and never shown as prose.
+- A document chunk is its title line, `{title} ({market}, {language})` with empty parts left out, then its text.
+- A concept node in C is its heading `BusinessConcept <id>` and its ontology text: the canonical name, definition, labels and synonyms.
   That text is the ontology layer under test and has no counterpart in A.
-- Any other node reads `<Label> <id>` and nothing more (D-028).
-  No warehouse value reaches the judge or the prompt unless pipeline A could have indexed it.
+- Any other node without a record block is its heading `<Label> <id>` and nothing more (D-028).
+  No warehouse value reaches the prompt unless pipeline A could have indexed it.
+- **The path line.**
+  A node the walk reached (hops above 0) ends with `- reached from <seed>: <path>`, the discovery path from the seed it came through, for example `INC_037 -RELATED_TO_VERSION-> PLV_IDENTITY_2 <-RELATED_TO_VERSION- INC_024`.
+  The arrow shows the direction the schema states for the link, and a link the schema does not state is drawn as it was walked.
+  A seed, a document chunk and every block in A have no path line.
+  Its tokens are counted against the same budget.
+
+The three differences, declared because they are graph information A cannot have: the path line, a node without a record block (shown as `<Label> <id>`, which only B and C can select), and the ontology text of C's concept nodes.
+All three are also tells for the judge and the labelling sheet (see [evaluation.md](evaluation.md)).
 
 Authoritative facts from the source tables stay on the node's evidence for citations, ranking validity, market scope and the UI.
-They never enter the judge or the prompt.
 Quantitative claims in answers come from those records and not from document prose.
 
-### The one judge and one selection
+### How evidence is selected (v0.3)
 
-One re-ranker instance, shared by A, B and C, scores every candidate a pipeline has against the raw question.
-A's candidates are its hybrid hits.
-B and C hand it, in one call, the same document channel plus every traversal node.
-The model is the cross-encoder `BAAI/bge-reranker-v2-m3`, run by fastembed (D-021).
-Ties break on id.
-There is no cut inside the judge.
+Every approach fills one token budget with no item limit, from two ranked channels (D-083, D-084).
+Method v0.3 replaces the shared re-ranker over graph candidates (D-025) and the graph share of the slots (D-081).
 
-Record blocks of structured candidates are judged with the other documents, each candidate once.
-A record block is refused as `superseded_by_structured_fact` only when its node holds a graph slot, because then the node is the authoritative copy and one fact never takes two slots.
-A node refused by the share leaves its record block, when the document search retrieved it, to compete for a document slot under its own rank, exactly as it would in A.
+**The document channel.**
+One re-ranker instance, shared by A, B and C, scores the document candidates against the raw question: the hybrid hits, which include the record blocks A indexes.
+The model is the cross-encoder `BAAI/bge-reranker-v2-m3`, run by fastembed (D-021), and ties break on id.
+B's and C's re-ranker input is A's document channel and nothing else, so it equals A's in ids and order (a test pins it).
+Graph nodes are never re-ranked.
 
-One selection walks the judged list under one token budget and one slot count (D-023, in part superseded by D-081):
+**The graph channel (B and C).**
+The graph orders its own nodes by a rule built from the walk (`graph_relevance_order` in `ranking.py`):
+
+1. seeds first: every node at hops 0, which includes the fallback seed (D-027);
+2. then nodes that hold a target type, the graph labels the question asks about;
+3. then every other node;
+4. within a tier, the composite score (the table above, weights unchanged), then node id.
+
+A node's graph rank is its 1-based position among the nodes not of an excluded label.
+A node of an excluded label has no tier and no rank.
+
+**The target types** come from the question text by a deterministic matcher (`TargetTypeMatcher` in `resolution.py`), which reads the schema and the ontology only and never the bank.
+
+- Schema vocabulary, in B and C: every node label split into words (`PlatformVersion` is "platform version"), the last word alone when no other label ends in it ("mechanic", "segment", "family", "platform", "game", "player", "case"), and the table names of `NODE_SOURCES`.
+  `BusinessConcept`, `Document` and `DocumentChunk` are left out.
+  There are 50 phrases.
+- Ontology vocabulary, in C only: every concept label and synonym in any language names the graph label of each binding kind of the concept and of its descendants (411 phrases).
+- Matching is on whole words, casefolded, with an optional plural (`s`, `es`, and `ies` after a word ending in `y`).
+  It is leftmost-longest and non-overlapping, so "game mechanic" names `GameMechanic` and not `Game`.
+  The schema phrases and the ontology phrases match in two separate passes and the labels are united, so C's target types always contain B's.
+- `graph.target_types.resolved` records the labels the question named, empty when none.
+
+A node **holds** a target type when its own label is one, or when a stated link from the node, in its stored direction, joins it to a node whose label is a target type, and the triple (relationship type, node label, target label) is in the schema (`RELATIONSHIP_ENDPOINTS`).
+A stated link is any link among the nodes the walk reached, of every relationship type in the schema and not only those the walk follows, so a Player holds Game through `PLAYS` although the walk does not traverse it.
+The links are read in one centralised, bounded query (`RETRIEVAL_STATED_LINKS`, `with_stated_links`) and only when the question names a target type: at most 200 visited ids (the node cap), at most 5,000 rows, and a result over the limit or an id count over it is an error that fails the run, never a silent cut.
+The row count is recorded on `graph.context.assembled`.
+
+The cue is for B and C only.
+A gets no table boost, because that would change the tuned baseline, and the difference is declared.
+The risk is breadth: "market", "game", "player", "incident", "case", "method" and "draw" are common words, so the target tier can hold many nodes and then adds little.
+
+**The merge** (`interleave_by_budget` in `context.py`):
+
+- The channels take turns, starting with documents, so B's and C's first block is A's first block.
+  A's selection is its cross-encoder order cut at the budget.
+- Each offered item is checked in this order and the first failing check is its discard reason: `same_record` (a record block or node whose row is already selected through the other channel, so a row is taken once, at its first appearance), `context_budget`, `duplicate` (document chunks only, Jaccard at or above 0.85, because two distinct rows with similar columns are different facts).
+- A refused item keeps the turn with its channel, so the channel offers its next item.
+  An admitted item passes the turn.
+  When one channel is used up, the other continues alone.
+- The walk is single pass, and nothing is lost by that: every refusal is final, because the budget only shrinks and a selected row stays selected.
+- Every item is charged the tokens of the block the prompt shows for it, at four characters per token (`block_tokens`), the same for A, B and C.
+  A's selection therefore differs from v0.2.0 only through this charge and the removed 12-item limit.
+- The selected list is in prompt order, and that single list is what the generator receives.
 
 | Setting | Default | Meaning |
 |---|---|---|
-| `RAG_CONTEXT_TOKEN_BUDGET` | 2000 | Total tokens for all selected blocks, estimated at 4 characters per token |
-| `RAG_EVIDENCE_SLOTS` | 12 | The most evidence items any pipeline may place in the prompt |
-| `RAG_GRAPH_SLOTS` | 6 | Of those slots, how many graph nodes may take in B and C (0 to `RAG_EVIDENCE_SLOTS`) |
+| `RAG_CONTEXT_TOKEN_BUDGET` | 2000 | Total tokens for all selected blocks, rendered as the prompt shows them |
 | `RAG_DEDUPE_THRESHOLD` | 0.85 | Jaccard overlap at which a document chunk is a near-duplicate |
+| `RAG_TOP_K` | 40 | The document pool, as A has always used |
 
-For each candidate the first failing check is its discard reason, in this order: `context_budget` (a smaller later candidate may still fit), `slot_limit` (the slots for its kind were full), `duplicate`.
-The near-duplicate check applies to document chunks only, because two distinct rows with similar columns are different facts.
-Graph nodes and documents each have their own slots (D-081, below), but the token budget is shared and is checked in judge order, so neither channel reserves any of it.
-The budget counts block text only, not titles.
-The selection comes back in judge order, and that single list is what the generator receives.
-
-#### The graph share (D-081)
-
-Of the 12 slots, 6 are for the graph's own selection and the rest are for documents.
-The reason is in the 2026-10-25 diagnostic: the graph found many of the facts a correct answer needs, but the shared re-ranker scores the graph's record text low against the question, so nearly all of them fell below the cut at 12.
-With one cut, the experiment measured mostly the re-ranker's view of record text, not what the graph adds.
-The change was made after the pilot runs and the diagnostic, in which B and C did no better than A and fewer of their claims reached the prompt (38 and 39 against 43 for A).
-The share was fixed at half before the new rule was measured, and no other value has been tried.
-It is option 3 in [the official run proposal](evaluation/official-run-proposal.md).
-
-How it works, in one walk of the judged list:
-
-- the first 6 usable graph nodes in judge order are given a graph slot, and a node is usable when its own tokens fit the whole budget;
-- every other node is refused as `slot_limit`;
-- a document is admitted only while the items selected, plus the graph slots still waiting for their node, leave room, so documents never take a graph slot;
-- the share goes one way: a graph slot with no node to fill it (fewer than 6 usable nodes) goes to documents, but a document slot that no document fills never goes to graph nodes, so B and C can show fewer than 12 items while nodes are refused;
-- a record block yields to its node only when that node holds a graph slot;
-- a node that holds a slot but does not fit the remaining token budget is refused as `context_budget` and releases its slot to the documents still to come, while documents already refused as `slot_limit` stay refused because the walk never revisits a decision;
-- known limitation: the walk is single-pass, so a lower-ranked document may take a slot that a budget-refused node released, after a higher-ranked document was already refused as `slot_limit`; the token budget rarely binds (pilot prompts used about 1,130 of 2,000 tokens);
-- A has no graph nodes, so it keeps all 12 slots for documents and its selection is exactly what D-025 gave.
-
-Before 2026-10-25 the rule was D-025: one cut at 12 across both channels (recorded as `shared-reranker-12-slots`).
-The development pilot runs used it.
-The recorded rule is now `reranker-graph-share`, and `graph_slots` and `evidence_slots` are part of the recorded context settings, so runs made under different rules never compare or resume as one experiment.
+`RAG_EVIDENCE_SLOTS` and `RAG_GRAPH_SLOTS` no longer exist.
+A value left in the environment stops the start-up with a message naming D-084, so an old `.env` cannot be read as if it still applied.
+The rule is recorded as `graph-rank-interleave-budget`, and the reproducibility record holds the method version, the facts version and the prompt extras, so runs of different methods never compare or resume as one experiment (D-092).
 
 ### Answers
 
 A, B and C share one generator, one prompt and one parser.
-The prompt numbers the selected blocks in judge order, whatever their kind, and asks for exactly one JSON object:
+The prompt numbers the selected blocks in prompt order, whatever their kind, and asks for exactly one JSON object:
 
 ```json
 { "verdict": "<one line, or 'unknown' when the sources do not answer>", "answer": "<prose with [n] citations>" }
 ```
 
-The prompt version is `PROMPT_VERSION` 2.0.0 (D-024), recorded with every benchmark run.
+The prompt version is `PROMPT_VERSION` 3.0.0 (D-085), recorded with every benchmark run (2.0.0, D-024, was the prompt of v0.2.0).
+It tells the model that the verdict is the answer itself in one line and never a status word such as "success" or "ok", and that a source line starting with "reached from" shows how that record connects to an entity named in the question.
+The same prompt serves A, B and C.
 `parse_answer` tries strict JSON, then fenced JSON, then plain text with an empty verdict.
 A citation `[n]` or `[n, m]` counts only if it points at a block the model was shown, so an answer cannot cite a source it was not given.
 Ranges such as `[1-3]` are not supported.
@@ -243,27 +252,37 @@ The parser never turns a failed call into an answer.
 
 ## Fairness
 
-For an official comparison every pipeline gets the same question, world, source corpus, embedding models, re-ranker, generation model and parameters, token budget, slot count and prompt, and none can read the truth ledger.
+For an official comparison every pipeline gets the same question, world, source corpus, embedding models, re-ranker, generation model and parameters, token budget and prompt, and none can read the truth ledger.
+There is no item limit for any approach.
 Any deviation must be recorded with the benchmark result.
 
 What makes it hold:
 
 - **One lab.** A, B and C are built from one configuration by `lab.py`.
-- **One judge, one budget, one list.** The same selected evidence gives the same prompt string in A, B and C.
+- **One re-ranker, one budget, one list.** The same selected evidence gives the same prompt string in A, B and C, apart from the declared path line.
+  Every approach is charged the tokens of the rendered block.
 - **Equal access.** Record blocks give A the warehouse access B and C get through the graph, so the comparison isolates relationships and not data access.
   The graph adds reach, because it can bring in a row A did not rank.
   It adds no access, because it cannot bring in a fact A could not have retrieved.
 - **B is C minus the ontology.** B has no ontology relationship types, no concept expansion, no term resolver and no query expansion (D-017).
 - **Query expansion is part of the layer under test.** It is derived only from the question and the ontology.
+- **Declared extras for B and C.** The graph's own product is not available to A, and v0.3 shows it on purpose (D-083, D-085):
+  the target-type tier, which uses the schema vocabulary and, in C, the ontology's labels and synonyms;
+  the "reached from" path line on graph records the walk reached;
+  a node without a record block, shown as `<Label> <id>`, and C's concept nodes with their ontology text.
+  The run record lists them as `prompt_extras`, and a reader should weigh the result with them in mind: it measures the graph with them, not a graph without them.
 
 `backend/tests/test_lab_fairness.py` pins that:
 
 - A, B and C share the same embedder, sparse embedder, re-ranker, vector store, generator and source lookup;
-- they use the same `top_k` and context settings, and B and C the same reference date and ranking weights;
-- the shared re-ranker sees the same document candidates, in the same order, in A, B and C when no seed resolves;
-- B's document candidates are A's minus the record blocks of B's nodes, in A's order and ranks;
-- when A and B select the same evidence, the generator receives the identical prompt and the stand-in generator answers identically;
-- B is C minus the ontology relationship types, concept expansion, term resolver, query expansion and ontology.
+- they use one frozen context settings object (the budget and the dedupe threshold), and B and C the same reference date and ranking weights;
+- B's re-ranker input is A's document channel only, equal in ids and order, and no node reaches it;
+- A's selection is its cross-encoder order cut at the budget, and running B and C does not change it;
+- A, B and C hand the generator the same raw question, one answer model and one prompt;
+- the same row renders the same block in A, B and C, and the only line that differs is the path line of a graph record the walk reached;
+- no block shows an empty scope fragment such as "(, en)";
+- B is C minus the ontology relationship types, concept expansion, term resolver, query expansion and ontology;
+- the retrieval modules load no evaluation or scenario module, and never name the labels directory (`test_truth_ledger_isolation.py`).
 
 ## Embeddings and indexing
 
@@ -276,7 +295,7 @@ What makes it hold:
 All three are multilingual or language-neutral for English, Greek, German and Czech.
 The dense embedder normalises every vector and refuses one whose length differs from `EMBEDDING_DIMENSIONS`.
 The model names are stamped into the index manifest and into every benchmark record, and changing one needs an index rebuild.
-CI uses a hashing embedder and a lexical judge (query-token coverage), so retrieval mechanics are testable without model downloads.
+CI uses a hashing embedder and a lexical re-ranker (query-token coverage), so retrieval mechanics are testable without model downloads.
 
 ```bash
 make index-vector                                          # Ollama and bge-m3 into Qdrant
@@ -311,10 +330,10 @@ Never edit the generated file.
 | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `OLLAMA_HOST` | `ollama`, `bge-m3`, 1024, `http://localhost:11434` | Dense model. `hashing` is the CI model. |
 | `SPARSE_PROVIDER`, `SPARSE_MODEL` | unset, `Qdrant/bm25` | Sparse model. Unset follows the dense provider: hashing gives hashing, otherwise fastembed. |
 | `FASTEMBED_CACHE` | `~/.cache/fastembed` | Download cache for the sparse and re-ranker models |
-| `RERANK_PROVIDER`, `RERANK_MODEL` | `cross_encoder`, `BAAI/bge-reranker-v2-m3` | The one judge. `lexical` is the CI judge. |
+| `RERANK_PROVIDER`, `RERANK_MODEL` | `cross_encoder`, `BAAI/bge-reranker-v2-m3` | The one re-ranker. `lexical` is the CI re-ranker. |
 | `QDRANT_URL`, `QDRANT_COLLECTION` | `http://localhost:6333`, `semantic_context_lab` | The shared collection |
 | `RAG_TOP_K` | 40 | Dense and sparse hits each before fusion |
-| `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_EVIDENCE_SLOTS`, `RAG_GRAPH_SLOTS`, `RAG_DEDUPE_THRESHOLD` | 2000, 12, 6, 0.85 | The shared budget and slots, and the graph's share of them |
+| `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_DEDUPE_THRESHOLD` | 2000, 0.85 | The shared token budget, and the near-duplicate threshold. `RAG_EVIDENCE_SLOTS` and `RAG_GRAPH_SLOTS` are removed and refused if set (D-084). |
 | `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S` | `fake`, `fake-answer-v1`, 0, 1200, 120 | The answer model. `fake` is the deterministic CI generator. |
 | `GENERATION_API_BASE`, `GENERATION_MODEL_FAMILY`, `GENERATION_MODEL_QUANTISATION`, `GENERATION_REASONING` | unset, unset, unset, `default` | Gateway address, and the facts recorded with each benchmark run. `off` asks a thinking model not to think. |
 | `GRAPH_*` | see [graph-and-ontology.md](graph-and-ontology.md) | Traversal caps and the reference date |
@@ -326,8 +345,12 @@ A local thinking model with `GENERATION_REASONING=default` can spend the whole t
 ## Testing
 
 - `test_standard_rag.py`, `test_records.py`, `test_sparse_and_fusion.py`, `test_rerank_cross_encoder.py`, `test_generation_v2.py`, `test_embeddings.py`: pipeline A and its parts.
-- `test_graph_rag.py`, `test_graph_stages.py`, `test_resolution.py`: B and C, including caps, weight-ordered cuts, replayable paths, ontology expansion, excluded labels, score components, the one-judge call, the fallback seed, market scope and determinism over the full event sequence.
-- `test_lab_fairness.py`, `test_context_budget_v2.py`: the fairness contract and the shared budget.
+- `test_graph_rag.py`, `test_graph_stages.py`: B and C, including caps, weight-ordered cuts, replayable paths, ontology expansion, excluded labels, score components, the document-only re-ranker call, the fallback seed, market scope and determinism over the full event sequence.
+- `test_resolution.py`: the target-type matcher, including leftmost-longest matching, plurals, C containing B, and that it reads only the schema and the ontology.
+- `test_graph_ranking.py`: the three tiers and their tie-breaks, holding a target type through a discovery link and a stated link, path rendering, and the bounded stated-links query.
+- `test_context_selection.py`: the merge (alternation, one channel used up, a row in both channels, budget refusals, no selection over the budget) and A's selection.
+- `test_records.py`, `test_generation_v2.py`: the facts of every table (golden blocks), the path line, the prompt hash.
+- `test_lab_fairness.py`: the fairness contract and the declared extras.
 - `test_failure_modes.py`: that failures propagate instead of becoming answers.
 - `test_vector_store_qdrant.py` (`VECTOR_E2E=1`) and `test_graph_rag_live.py` (`GRAPH_E2E=1`): live services.
   The graph live test wipes and re-ingests a tiny world, so run `make ingest-graph` afterwards.
@@ -338,7 +361,8 @@ A local thinking model with `GENERATION_REASONING=default` can spend the whole t
   It also changes what A can see, so it changes the comparison.
 - A new seedable id prefix: `SEED_ID_PREFIXES`, which is a method change.
 - A new reranker or model: configuration, then an index rebuild when the embedding model changes.
-- Changing how the graph's selection reaches the prompt was the method question settled by D-081 (see above); any further change is a method change that needs the owner's approval.
+- Changing how the graph's records are ordered, how the channels are merged or how a record is shown is a method change (D-083 to D-085) that needs the owner's approval and a new method version.
+- A new target-type phrase comes only from the schema or the ontology, never from the bank.
 
 ## Failure modes
 
@@ -349,6 +373,9 @@ A local thinking model with `GENERATION_REASONING=default` can spend the whole t
 | Sparse model or re-ranker fails | `EMBEDDING_ERROR` or `CONTEXT_BUILD_ERROR` in the API. |
 | Model unreachable, or an empty answer | `MODEL_ERROR`. |
 | Traversal cap reached | The caps are recorded on the traversal event, the walk never exceeds them, and edges beyond a cap are neither followed nor recorded. |
+| Stated links over their limit (more than 200 ids or 5,000 rows), or not read when a target type was named | `StatedLinksError`, classified as `GRAPH_QUERY_ERROR`: the run fails with the graph error and `pipeline.failed`, and the benchmark stops. Nothing is cut or read as none. |
+| `RAG_EVIDENCE_SLOTS` or `RAG_GRAPH_SLOTS` set | The settings refuse to load and name D-084. |
+| A record in the index with no facts in the loaded corpus | An error naming the record and saying to rebuild the index; no prose fallback. |
 | Index built by another serialiser version, or dense only | The lab refuses to start with a message naming the fix (`make index-vector`). |
 
 The archived retrieval pages are in [reference/retrieval/](reference/retrieval/standard-rag.md).
