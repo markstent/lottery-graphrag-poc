@@ -7,6 +7,7 @@ import {
   listRecordedQuestions,
   live,
   RECORDED_RUNS,
+  runTyped,
   serveLiveRun,
   serveRunInProgress,
 } from './live-lab-fixtures'
@@ -19,6 +20,7 @@ import {
   type LatestRun,
   type RunsMode,
 } from './mock-api'
+import { graphNode } from './mock-data-model'
 
 /**
  * Visual regression baselines for the foundation. Run locally only:
@@ -142,13 +144,31 @@ test.describe('shell', () => {
 
   test('with the evidence drawer open', async ({ page }) => {
     await page.goto('/#/__graph?shell=1&evidence=1')
-    await page.locator('[data-node-id]').first().click()
-    await expect(page.getByRole('dialog', { name: 'Evidence' })).toBeVisible()
-    await expect(
-      page.getByText('Identity service latency causing timeouts.', {
-        exact: false,
-      }),
-    ).toBeVisible()
+    await expect(page.locator('[data-layout-ready="true"]')).toBeVisible()
+    // The first node the framed drawing wholly shows (the fit can leave others
+    // outside it) that the mocked graph API holds a record for.
+    const inFrame = await page.evaluate(() => {
+      const frame = document
+        .querySelector('.react-flow')!
+        .getBoundingClientRect()
+      return [...document.querySelectorAll('[data-node-id]')]
+        .filter((node) => {
+          const box = node.getBoundingClientRect()
+          return (
+            box.left >= frame.left &&
+            box.top >= frame.top &&
+            box.right <= frame.right &&
+            box.bottom <= frame.bottom
+          )
+        })
+        .map((node) => node.getAttribute('data-node-id') ?? '')
+    })
+    const id = inFrame.find((candidate) => graphNode(candidate) !== null) ?? ''
+    expect(id).not.toBe('')
+    await page.locator(`[data-node-id="${id}"]`).click()
+    const drawer = page.getByRole('dialog', { name: 'Evidence' })
+    await expect(drawer).toBeVisible()
+    await expect(drawer.getByText(id).first()).toBeVisible()
     await settle(page)
     await expectScreen(
       page.getByRole('dialog', { name: 'Evidence' }),
@@ -663,11 +683,9 @@ test.describe('Live Lab', () => {
     await canvasReady(page)
   }
 
-  async function liveRun(page: Page, waitFor: string) {
-    await page.goto('/#/live-lab')
-    await page.getByRole('button', { name: h1.question }).click()
-    await page.getByRole('button', { name: 'Live', exact: true }).click()
-    await page.getByRole('button', { name: 'Run', exact: true }).click()
+  /** Runs the fixture's own typed question live. */
+  async function liveRun(page: Page, question: string, waitFor: string) {
+    await runTyped(page, question)
     await expect(page.getByText(waitFor).first()).toBeVisible()
   }
 
@@ -693,7 +711,7 @@ test.describe('Live Lab', () => {
       live.events,
       Math.floor(live.events.length * 0.55),
     )
-    await liveRun(page, 'The run is in progress.')
+    await liveRun(page, live.question, 'The run is in progress.')
     await expect(page.getByRole('button', { name: 'Cancel run' })).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Run', exact: true }),
@@ -768,7 +786,7 @@ test.describe('Live Lab', () => {
       cancelled.events as unknown as typeof live.events,
       cancelled.results,
     )
-    await liveRun(page, 'The run was cancelled.')
+    await liveRun(page, cancelled.question, 'The run was cancelled.')
     // C never started, and the toggle says so.
     await expect(page.getByText('C did not run.')).toBeVisible()
     await expect(
@@ -811,7 +829,7 @@ test.describe('Live Lab', () => {
         }),
       }),
     )
-    await liveRun(page, 'Another run is using the graph.')
+    await liveRun(page, live.question, 'Another run is using the graph.')
     await expect(
       page.getByRole('alert').getByRole('button', { name: 'Retry' }),
     ).toBeVisible()

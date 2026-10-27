@@ -88,10 +88,11 @@ describe('stageRows', () => {
     const statuses = (id: 'A' | 'B' | 'C') =>
       stageRows(id, cancelledState.pipelines[id]).map((row) => row.status)
     expect(statuses('A')).toEqual(['done', 'done', 'done', 'done', 'done'])
+    // B was cancelled while it followed the graph's relationships.
     expect(statuses('B')).toEqual([
       'done',
-      'done',
       'cancelled',
+      'not-reached',
       'not-reached',
       'not-reached',
     ])
@@ -168,7 +169,7 @@ describe('evidenceRows', () => {
       'B',
       reduceAll(runAbc.events as unknown as RunEvent[]),
     )
-    const inc = rows.find((row) => row.id === 'INC_037')!
+    const inc = rows.find((row) => row.id === 'INC_022')!
     expect(inc).toMatchObject({ kind: 'incident', state: 'selected' })
     const aside = rows.find((row) => row.state === 'discarded')!
     expect(aside.detail).toMatch(/^Set aside: /)
@@ -238,14 +239,18 @@ describe('evidenceRows under method v0.3', () => {
     )
   })
 
-  it('gives a passage no place in the graph order', () => {
+  it('gives a document no place in the graph order', () => {
     const rows = evidenceRows('B', v03)
-    expect(rows.filter((r) => r.kind === 'passage').length).toBeGreaterThan(0)
-    expect(
-      rows.filter((r) => r.kind === 'passage').every((r) => r.place === null),
-    ).toBe(true)
-    expect(rows.find((r) => r.id === 'INC_037')?.place).toBe(
+    const documents = rows.filter(
+      (r) => r.kind === 'passage' || r.kind === 'source record',
+    )
+    expect(documents.length).toBeGreaterThan(0)
+    expect(documents.every((r) => r.place === null)).toBe(true)
+    expect(rows.find((r) => r.id === 'INC_021')?.place).toBe(
       'starting point · graph rank 1',
+    )
+    expect(rows.find((r) => r.id === 'INC_022')?.place).toBe(
+      "question's target · graph rank 2",
     )
   })
 })
@@ -293,7 +298,7 @@ describe('targetLine', () => {
 describe('contextLine', () => {
   it('gives the context size against its budget', () => {
     const v03 = reduceAll(runAbc.events as unknown as RunEvent[])
-    expect(contextLine(v03.pipelines.A)).toBe('Context: 1,444 of 2,000 tokens')
+    expect(contextLine(v03.pipelines.B)).toBe('Context: 1,996 of 2,000 tokens')
   })
 
   it('is silent before the context is built and for an old recording, which had no budget', () => {

@@ -8,6 +8,7 @@ import {
   live,
   plainAnswers,
   RECORDED_RUNS,
+  runTyped,
   serveLiveRun,
 } from './live-lab-fixtures'
 import { expectNoUnmockedRequests, mockApi } from './mock-api'
@@ -81,10 +82,7 @@ test('follows a live run and offers the timeline when it ends', async ({
   page,
 }) => {
   await serveLiveRun(page, live.events, live.results)
-  await page.goto('/#/live-lab')
-  await page.getByRole('button', { name: h1.question }).click()
-  await page.getByRole('button', { name: 'Live', exact: true }).click()
-  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await runTyped(page, live.question)
   await expect(page.getByText('The run is complete.')).toBeVisible()
   await expect(page.getByRole('slider', { name: 'Position' })).toBeEnabled()
 })
@@ -93,16 +91,13 @@ test('shows where the graph put each record under method v0.3, and why one was s
   page,
 }) => {
   await serveLiveRun(page, live.events, live.results)
-  await page.goto('/#/live-lab')
-  await page.getByRole('button', { name: h1.question }).click()
-  await page.getByRole('button', { name: 'Live', exact: true }).click()
-  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await runTyped(page, live.question)
   await expect(page.getByText('The run is complete.')).toBeVisible()
   const graph = page.getByRole('region', { name: 'B · Graph', exact: true })
   await expect(
     graph.getByText("Question's target: incident, market, platform version"),
   ).toBeVisible()
-  await expect(graph.getByText('Context: 1,357 of 2,000 tokens')).toBeVisible()
+  await expect(graph.getByText('Context: 1,996 of 2,000 tokens')).toBeVisible()
   const evidence = graph.getByRole('list', { name: 'Evidence' })
   await expect(
     evidence.getByText('starting point · graph rank 1'),
@@ -144,10 +139,7 @@ test('shows a cancelled run as it was recorded, with no score', async ({
     cancelled.events as unknown as typeof live.events,
     plainAnswers(cancelled.results),
   )
-  await page.goto('/#/live-lab')
-  await page.getByRole('button', { name: h1.question }).click()
-  await page.getByRole('button', { name: 'Live', exact: true }).click()
-  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await runTyped(page, cancelled.question)
   await expect(page.getByText('The run was cancelled.')).toBeVisible()
   await expect(
     page.getByRole('region', { name: 'B · Graph', exact: true }),
@@ -511,10 +503,7 @@ test('shows only what can be measured for a question with no answer key', async 
     score: null,
   }
   await serveLiveRun(page, live.events, adHoc)
-  await page.goto('/#/live-lab')
-  await page.getByRole('button', { name: h1.question }).click()
-  await page.getByRole('button', { name: 'Live', exact: true }).click()
-  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await runTyped(page, live.question)
   await expect(
     page.getByText('No answer key exists for this question.'),
   ).toBeVisible()

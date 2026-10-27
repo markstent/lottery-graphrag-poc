@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+import fixture from '../src/run/fixtures/run-abc.json' with { type: 'json' }
+
 /*
  * The graph canvas at presentation size (1920 by 1080) with the generated
  * 200-node fixture (scripts/make-graph-200.mjs). The page is the development
@@ -236,10 +238,10 @@ test.describe('graph canvas after scrubbing', () => {
     await expect(nodes(page).first()).toBeVisible()
     const slider = page.getByRole('slider')
     // Scrub up, down and up again, as a person drags the cursor.
-    for (const count of [120, 260, 366, 461, 550, 605, 366, 160, 605]) {
+    for (const count of [120, 170, 212, 250, 290, 328, 212, 160, 328]) {
       await slider.fill(String(count))
       await layoutReady(page)
-      await expectTidy(page, `${count} events`, count >= 366)
+      await expectTidy(page, `${count} events`, count >= 212)
     }
   })
 
@@ -250,13 +252,13 @@ test.describe('graph canvas after scrubbing', () => {
     await page.reload()
     await expect(nodes(page).first()).toBeVisible()
     const slider = page.getByRole('slider')
-    for (const count of [366, 411, 461, 500, 550, 604]) {
+    for (const count of [212, 230, 250, 280, 300, 327]) {
       await slider.fill(String(count))
       await layoutReady(page)
       await expectTidy(page, `${count} events (live)`, true, true)
     }
     // At the end of the stream the final graph is laid out whole.
-    await slider.fill('605')
+    await slider.fill('328')
     await layoutReady(page)
     await expectTidy(page, 'the end of the stream (live)', true)
   })
@@ -271,7 +273,7 @@ test.describe('graph canvas after scrubbing', () => {
       await page.reload()
       await expect(nodes(page).first()).toBeVisible()
       const slider = page.getByRole('slider')
-      for (const count of [366, 411, 461, 500, 550, 604]) {
+      for (const count of [212, 230, 250, 280, 300, 327]) {
         await slider.fill(String(count))
         await layoutReady(page)
       }
@@ -289,10 +291,10 @@ test.describe('graph canvas after scrubbing', () => {
     await page.reload()
     await expect(nodes(page).first()).toBeVisible()
     const slider = page.getByRole('slider')
-    await slider.fill('366')
+    await slider.fill('212')
     await layoutReady(page)
     expect(await page.locator('[data-on-path="true"]').count()).toBe(0)
-    await slider.fill('605')
+    await slider.fill('328')
     await layoutReady(page)
     expect(await page.locator('[data-on-path="true"]').count()).toBeGreaterThan(
       0,
@@ -514,7 +516,14 @@ test.describe('evidence out of view', () => {
 })
 
 test.describe('the out-of-view count', () => {
-  const PATH = ['INC_037', 'SUP_00113', 'SUP_00121', 'SUP_00005']
+  /** Every node on the pipeline's evidence paths, as its results record them. */
+  const pathNodes = (config: 'B' | 'C') => [
+    ...new Set(
+      fixture.results.results[config].node_evidence
+        .filter((node) => node.selected)
+        .flatMap((node) => node.path),
+    ),
+  ]
 
   for (const config of ['B', 'C'] as const) {
     test(`on ${config} equals the evidence nodes the frame does not wholly show`, async ({
@@ -540,7 +549,7 @@ test.describe('the out-of-view count', () => {
             box.bottom <= frame.bottom
           )
         }).length
-      }, PATH)
+      }, pathNodes(config))
       const note = page.getByText(/evidence nodes? out of view/)
       if (cropped === 0) await expect(note).toHaveCount(0)
       else await expect(note).toHaveText(new RegExp(`^${cropped} evidence`))

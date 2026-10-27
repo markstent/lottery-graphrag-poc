@@ -17,15 +17,16 @@ describe('pathsFromResult', () => {
     for (const id of ['B', 'C'] as const) {
       const selected = result(id).node_evidence.filter((n) => n.selected)
       expect(pathsFromResult(result(id))).toEqual(selected.map((n) => n.path))
+      // Every path starts at a seed: the incident asked about, or in C the matched concept.
       for (const path of pathsFromResult(result(id)))
-        expect(path[0]).toBe('INC_037')
+        expect(['INC_021', 'CONCEPT_INCIDENT']).toContain(path[0])
     }
   })
 
   it('leaves out the paths of nodes that were not selected', () => {
     const all = result('C').node_evidence.length
-    expect(all).toBe(61)
-    expect(pathsFromResult(result('C'))).toHaveLength(4)
+    expect(all).toBe(53)
+    expect(pathsFromResult(result('C'))).toHaveLength(15)
   })
 })
 

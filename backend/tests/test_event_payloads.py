@@ -52,7 +52,7 @@ from tests.helpers import (
 from tests.test_graph_rag import build_corpus, scn007_adjacency
 
 GOLDEN_DIR = Path(__file__).parent / "fixtures"
-# A live-shaped run (dense and sparse ranks, rerank scores and fused scores that are null).
+# A run through the API (dense and sparse ranks, rerank scores and fused scores that are null).
 FRONTEND_RUN = Path(__file__).parents[2] / "frontend" / "src" / "run" / "fixtures" / "run-abc.json"
 ENVELOPE = {
     "event_id": "0" * 32,
@@ -173,10 +173,13 @@ def test_every_stored_event_of_a_real_run_validates_against_its_model(
         service.store.close()
     assert {"pipeline.cancelled", "run.cancelled"} <= seen
 
-    # The frontend's run fixture, live-shaped with the nulls a live run has, in
-    # method v0.3 events: no slot count and no reason only the old method gave.
+    # The frontend's run fixture, a run of the pipelines on the tiny world
+    # through the API (tests/test_run_fixtures.py), in method v0.3 events: no
+    # slot count and no reason only the old method gave.
     recorded = json.loads(FRONTEND_RUN.read_text())["events"]
-    assert len(recorded) > 600
+    assert {"graph.target_types.resolved", "graph.context.assembled"} <= {
+        event["event_type"] for event in recorded
+    }
     assert not any("evidence_slots" in event["payload"] for event in recorded)
     assert not {event["payload"].get("reason") for event in recorded} & OLD_METHOD_REASONS
     seen |= validate(recorded)
