@@ -10,11 +10,21 @@ Two generated pages sit beside this one and are never edited by hand:
 
 ## Status of results
 
-No official run exists yet.
-An official run is the CP3 checkpoint, which the owner has not reached.
-The Overview screen therefore reads "No official run yet", and no number on this page is a benchmark result.
+The official run v0.2.0 is the one official result.
+It ran from 2026-10-26 11:42 to 2026-10-27 03:21 UTC at commit 27a4ce4 with a clean tree, after the owner approved CP3, and is kept in `data/evaluation/runs/official-2026-10-26/` (not in git).
+Three worlds (2026, 2027, 2028), the whole bank of 150 instances, three approaches and three repeats gave 1,350 answers, each judged; the answer model was `ollama/qwen3.6:latest` and the judge `ollama/gemma4:31b`, both with reasoning off, under the selection rule `reranker-graph-share` (D-081).
 
-Evidence that exists is development evidence:
+- None of the eight tested comparisons shows a detectable difference (Holm-adjusted Wilcoxon on group means).
+- Over every question, the evidence score (F1) is 0.19 for A, 0.17 for B and 0.19 for C, and the answer score is 0.44 for all three.
+- Descriptive, outside the family: on the 18 name-anchored instances B is 14.7 evidence points below A (interval 10.8 to 18.6 below) and C is 13.4 above B (8.4 to 18.6) with an answer score 10.4 points higher (3.6 to 18.6); over every ontology-dependent question C is 4.0 evidence points and 4.1 answer points above B.
+- Failure causes per 450 answers: "the needed evidence was not retrieved" 216 (A), 213 (B), 201 (C); "the evidence was retrieved but the answer was wrong" 72, 60, 81; "the starting record was not found" 0, 9, 9.
+- The judge's correctness agrees with the deterministic answer score (at least 0.5) on 53 percent of 1,348 judged answers, kappa 0.07: the two measures of a right answer disagree often, which limits how far either can be read alone.
+- No answer failed; 2 judge calls failed, both in B, with an Ollama server error while the machine slept.
+
+Read with the selection diagnostic below, the result points at evidence selection: the graph reaches many of the facts, and the re-ranker and the 12 prompt slots keep most of them from the model.
+It does not show that a graph or an ontology cannot help; it shows that, with this selection rule, this answer model and this bank, they did not measurably help.
+
+Evidence from before the official run is development evidence:
 
 - four recorded live runs in the Live Lab (one question each from H1, H2, H3 and H5, one model, one repeat), which showed B and C no better than A;
 - the selection rule changed on 2026-10-25, after the CP3 proposal and after pilot runs and a diagnostic in which B and C did no better than A: half of the 12 evidence slots now go to the graph's own selection (D-081, see [retrieval.md](retrieval.md)), and the development pilot runs below used the old rule (D-025);

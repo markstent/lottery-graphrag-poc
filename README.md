@@ -24,16 +24,36 @@ Fairness rules and the shared context budget are in [docs/retrieval.md](docs/ret
 
 ## Headline numbers
 
-There is no official run yet, so there are no official numbers.
-The official run follows checkpoint CP3 and waits for the project owner.
+The official run v0.2.0 ran from 2026-10-26 11:42 to 2026-10-27 03:21 UTC at commit 27a4ce4 with a clean tree.
+It covered three worlds (seeds 2026, 2027 and 2028), the whole bank (150 instances), the three approaches and three repeats: 1,350 answers, each judged.
+The answer model was qwen3.6 and the judge gemma4 31B, both local through Ollama with reasoning off, under the selection rule D-081.
 
-Four live development runs have been recorded in the Live Lab.
-They used one question each from the strata H1 (multi-hop), H2 (ontology-dependent), H3 (single fact) and H5 (planted pattern), with the answer model qwen3.6 through Ollama on the seed 2026 development world, and one repeat each.
-They showed B and C no better than A.
-B and C were level with A on three of the four questions.
-On the ontology question B and C wrote a slightly better answer and found less of the needed evidence.
+The result: no detectable difference between the approaches in any of the eight tested comparisons (graph against text search, and ontology against graph, on multi-hop, ontology-dependent, single-fact and planted-pattern questions; Wilcoxon, Holm-adjusted).
 
-The selection rule has changed since those runs (decision D-081, 2026-10-25, after the CP3 proposal).
+| Over every question | A: text search | B: graph | C: graph and ontology |
+|---|---|---|---|
+| Evidence score (F1, 114 instances with evidence) | 0.19 | 0.17 | 0.19 |
+| Answer score (150 instances) | 0.44 | 0.44 | 0.44 |
+
+Outside the tested family, and so descriptive only:
+
+- on the 18 instances that name a game in a market's own language, B found 14.7 evidence points less than A (95 percent interval 10.8 to 18.6 less), and C found 13.4 more than B (8.4 to 18.6) and answered 10.4 points better (3.6 to 18.6);
+- over every ontology-dependent question, C was 4.0 evidence points and 4.1 answer points above B.
+
+What this says: under these settings the graph and the ontology did not measurably improve the answers.
+The likely cause is evidence selection, not the graph's reach: the selection diagnostic showed the graph finding many of the needed facts and the re-ranker and the 12 prompt slots keeping most of them out, and "the needed evidence was not retrieved" is the most common failure for every approach (216, 213 and 201 of 450 answers).
+
+Limits on reading it:
+
+- the judge and the deterministic answer score agree on only 53 percent of answers (kappa 0.07), so the two measures of a right answer often disagree;
+- each comparison rests on 12 question groups, so intervals are wide and a small effect would not be detected;
+- one small local answer model; a larger model might use the evidence differently;
+- 2 of 1,350 judge calls failed (both in B, while the machine slept), and no answer failed.
+
+The run is kept in `data/evaluation/runs/official-2026-10-26/` (not in git) and is the default run on the Overview and Results screens.
+
+Before it, four live development runs in the Live Lab and two pilot subset runs showed B and C no better than A.
+The selection rule changed after them (decision D-081, 2026-10-25, after the CP3 proposal).
 It was changed after the pilot runs and a diagnostic showed B and C doing no better than A, and the share was fixed before the new rule was measured.
 Decision D-025 had made all three approaches choose what the model sees through one shared re-ranker.
 On the multi-hop question, B's graph search found the record that carries the claim the answer needed, and the shared re-ranker kept that record out of the prompt.

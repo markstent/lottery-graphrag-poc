@@ -142,7 +142,14 @@ The graph was back at 36,888 nodes afterwards.
 The tooling is ready for the full run.
 The dry run also shows, on one question, what the diagnostic showed on all of them: under D-081 the graph's selection reaches the prompt, but the re-ranker does not pick the graph records the answers need.
 
-## 5. Order after approval
+## 5. Official run result
+
+The owner approved CP3 on 2026-10-26 and the full run ran from 11:42 that day to 03:21 UTC on 2026-10-27, at commit 27a4ce4 with a clean tree.
+It produced 1,350 answers with no generation failure and 2 judge failures, and the graph was back at 36,888 nodes afterwards.
+It took about 15.6 hours, not the 9.5 estimated: the machine slept for about three hours with its lid closed, and the awake time averaged about 33 s per answer with judging and the three world loads, against the 25 s of the estimate.
+None of the eight tested comparisons shows a detectable difference; the outcome and its limits are in [Status of results](../evaluation.md#status-of-results).
+
+## 6. Order after approval
 
 1. The owner rules on D-025; if option 2 or 3, the change is built and reviewed, and the diagnostic runs once.
 2. The dry run, with its results shown to the owner.
