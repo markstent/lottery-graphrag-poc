@@ -90,6 +90,7 @@ test('a run of method v0.3 names its method and shows recall, C against A, split
   await page.goto('/#/results?run=fixture-v03')
   const verdict = page.getByRole('region', { name: 'Verdict' })
   await expect(verdict.getByText('Method v0.3', { exact: true })).toBeVisible()
+  await expect(verdict.getByText(/^Method v0.3 was made after/)).toBeVisible()
   const charts = page.getByRole('region', {
     name: 'Scores by kind of question',
   })

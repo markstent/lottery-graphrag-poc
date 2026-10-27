@@ -51,6 +51,7 @@ describe('verdictFrom', () => {
       kind: 'official',
       method: '0.2.0',
       metric: 'evidence_f1',
+      note: null,
       tiles: [
         { pipeline: 'A', mean: 0.25, n: 114, repeats: 342 },
         { pipeline: 'B', mean: null, n: 0, repeats: 0 },
@@ -73,6 +74,20 @@ describe('verdictFrom', () => {
     })
   })
 
+  it('carries the declaration of the method change a v0.3 summary makes', () => {
+    const v03 = run('official', null, FULL, '0.3.0')
+    const declared = {
+      ...v03,
+      summary: {
+        ...v03.summary,
+        method_note: 'Method v0.3 was made after v0.2.0.',
+      },
+    }
+    expect(verdictFrom(declared)).toMatchObject({
+      note: 'Method v0.3 was made after v0.2.0.',
+    })
+  })
+
   it('keeps a missing mean as null, never zero', () => {
     const verdict = verdictFrom(run('official', null, FULL))
     expect(verdict.kind === 'official' && verdict.tiles[1].mean).toBeNull()
@@ -90,6 +105,7 @@ describe('verdictFrom', () => {
       kind: 'official',
       method: '0.3.0',
       metric: 'evidence_recall',
+      note: null,
       tiles: ['A', 'B', 'C'].map((pipeline) => ({
         pipeline,
         mean: null,

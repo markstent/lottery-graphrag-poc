@@ -1,9 +1,10 @@
 /** What a run says: three tiles and its headline sentences, or for a quick check only a warning. */
 
 import type { Schemas } from '../../api/client'
-import { EVIDENCE_LABELS, evidenceMetric, methodBadge } from '../../app/method'
+import { EVIDENCE_LABELS, evidenceMetric } from '../../app/method'
 import { percent } from '../../app/score-words'
 import { StatTile } from '../../charts/stat-tile'
+import { MethodBadge } from '../../components/method-badge'
 import { pipeline, type PipelineId } from '../../design/pipelines'
 import { selectionText, type RunStanding } from '../../results/runs'
 import { printsIntervalBelowFloor, tiles } from '../../results/strata'
@@ -32,14 +33,6 @@ const Headlines = ({ summary }: { summary: Summary }) => (
 )
 
 /** The method the run was made under, in words: never colour alone. */
-const MethodBadge = ({ method }: { method: string }) => (
-  <p>
-    <span className="inline-block rounded-chip border border-border px-2 py-0.5 text-sm font-medium text-text-primary">
-      {methodBadge(method)}
-    </span>
-  </p>
-)
-
 export function Verdict({
   run,
   summary,
@@ -56,7 +49,7 @@ export function Verdict({
   if (kind === 'quick-check')
     return (
       <div className="space-y-3">
-        <MethodBadge method={method} />
+        <MethodBadge method={method} note={summary.method_note} />
         <Headlines summary={summary} />
         <p className="text-sm font-medium text-text-primary">
           {QUICK_CHECK_WARNING}
@@ -65,7 +58,7 @@ export function Verdict({
     )
   return (
     <div className="space-y-4">
-      <MethodBadge method={method} />
+      <MethodBadge method={method} note={summary.method_note} />
       {kind === 'subset' && (
         <p className="text-sm font-medium text-text-primary">
           <span className="mr-1 rounded-chip border border-border px-2 py-0.5">

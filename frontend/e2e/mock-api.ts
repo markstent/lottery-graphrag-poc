@@ -91,6 +91,7 @@ const FIXTURE_OFFICIAL_V03 = {
   method_version: '0.3.0',
   summary: {
     ...FIXTURE_OFFICIAL.summary,
+    method_note: v03Summary.summary.method_note,
     metrics: {
       overall: {
         evidence_recall: FIXTURE_OFFICIAL.summary.metrics.overall.evidence_f1,

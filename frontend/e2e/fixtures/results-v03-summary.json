@@ -5,6 +5,7 @@
   "method_version": "0.3.0",
   "summary": {
     "schema_version": "3",
+    "method_note": "Method v0.3 was made after seeing the v0.2.0 result, in which the graph did not win; the reasons are in docs/evaluation/v0.3-method-proposal.md (D-093).",
     "run_kind": "official",
     "label": "Fixture run (test values)",
     "bank_version": "2.0.0",

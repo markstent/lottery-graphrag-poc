@@ -5,7 +5,7 @@
  */
 
 import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
-import { EVIDENCE_LABELS, methodBadge } from '../../app/method'
+import { EVIDENCE_LABELS } from '../../app/method'
 import { datasetName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { MISSING } from '../../app/score-words'
@@ -13,6 +13,7 @@ import { MODEL_LABELS } from '../../app/settings-labels'
 import { useLoad, type Load } from '../../app/use-load'
 import { StatTile } from '../../charts/stat-tile'
 import { plural } from '../../charts/scale'
+import { MethodBadge } from '../../components/method-badge'
 import { Panel, type PanelState } from '../../components/panel'
 import { PIPELINES } from '../../design/pipelines'
 import { Screen } from '../screen'
@@ -90,11 +91,7 @@ function LatestRun() {
     >
       {verdict?.kind === 'official' && (
         <div className="space-y-4">
-          <p>
-            <span className="inline-block rounded-chip border border-border px-2 py-0.5 text-sm font-medium text-text-primary">
-              {methodBadge(verdict.method)}
-            </span>
-          </p>
+          <MethodBadge method={verdict.method} note={verdict.note} />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {verdict.tiles.map((figures) => (
               <Tile

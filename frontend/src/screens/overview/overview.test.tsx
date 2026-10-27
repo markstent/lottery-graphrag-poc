@@ -105,6 +105,7 @@ describe('Overview', () => {
     await screen.findByTestId('tile-A')
     const panel = screen.getByRole('region', { name: 'Latest official run' })
     expect(within(panel).getByText('Method v0.2 (old method)')).toBeVisible()
+    expect(within(panel).queryByText(/was made after/)).toBeNull()
   })
 
   it('reads evidence recall, by name, from a run of method v0.3', async () => {
@@ -114,6 +115,7 @@ describe('Overview', () => {
         method_version: '0.3.0',
         summary: {
           ...OFFICIAL.summary,
+          method_note: 'Method v0.3 was made after seeing the v0.2.0 result.',
           metrics: {
             overall: {
               evidence_recall: {
@@ -134,6 +136,9 @@ describe('Overview', () => {
     expect(within(a).getByText('0.40')).toBeVisible()
     expect(within(a).getByText('120 questions, 360 runs')).toBeVisible()
     expect(screen.getByText('Method v0.3')).toBeVisible()
+    expect(
+      screen.getByText('Method v0.3 was made after seeing the v0.2.0 result.'),
+    ).toBeVisible()
   })
 
   it('renders the headline sentences verbatim', async () => {

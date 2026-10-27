@@ -27,6 +27,8 @@ export type Verdict =
       method: string
       /** The evidence metric that method compares, which the tiles show. */
       metric: EvidenceMetric
+      /** The run's declaration of the method change; null for a v0.2 run. */
+      note: string | null
       tiles: TileFigures[]
       headlines: string[]
     }
@@ -83,6 +85,7 @@ export function verdictFrom(
     kind: 'official',
     method: latest.method_version,
     metric,
+    note: latest.summary.method_note ?? null,
     tiles: PIPELINE_IDS.map((id) => figures(latest.summary, metric, id)),
     headlines: Array.isArray(headlines)
       ? headlines.filter((line): line is string => typeof line === 'string')

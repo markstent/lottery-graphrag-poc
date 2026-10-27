@@ -317,6 +317,10 @@ describe('two methods', () => {
     stubApi(routes)
     open(`run=${V03_RUN.run_id}`)
     expect(await (await verdict()).findByText('Method v0.3')).toBeVisible()
+    // The run's own declaration of the method change stands beside the badge.
+    expect(
+      (await verdict()).getByText(V03_RUN.summary.method_note!),
+    ).toBeVisible()
     expect(
       (await verdict()).getByText('Evidence recall: A · Text search'),
     ).toBeVisible()
@@ -363,6 +367,7 @@ describe('two methods', () => {
     expect(
       (await verdict()).getByText('Evidence score: A · Text search'),
     ).toBeVisible()
+    expect((await verdict()).queryByText(/Method v0.3 was made/)).toBeNull()
     const judge = within(await screen.findByRole('region', { name: 'Judge' }))
     expect(judge.getByRole('columnheader', { name: 'Kappa' })).toBeVisible()
     expect(
