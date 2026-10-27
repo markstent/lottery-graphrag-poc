@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 from app.config import RetrievalSettings
+from app.evidence import GraphRunResult, RagRunResult
 from app.graph.statements import ONTOLOGY_RELATIONSHIP_TYPES
 from app.lab import Lab, bc_graph_settings, graph_pipelines
 from app.retrieval.graph.neo4j_adapter import build_resolvers
@@ -26,6 +27,7 @@ from app.retrieval.graph.resolution import (
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import load_static_provider_from_rows
 from app.retrieval.standard.corpus import hit_to_evidence
+from app.retrieval.standard.generation import context_block
 from app.retrieval.standard.index import index_corpus
 from app.retrieval.standard.sparse import SparseVector
 from app.retrieval.standard.vector_store import InMemoryVectorStore, SearchHit
@@ -61,7 +63,7 @@ def test_b_and_c_differ_only_in_graph_traversal(base: RetrievalSettings) -> None
     assert diff_labels(base, settings_b) == ["graph"]
     assert diff_labels(base, settings_c) in ([], ["graph"])
     assert diff_labels(settings_b, settings_c) == ["graph"]
-    # One total budget and evidence-slot count for A (base), B and C.
+    # One total token budget for A (base), B and C, with no item limit.
     assert settings_b.context == settings_c.context == base.context
 
 
@@ -197,10 +199,10 @@ def test_one_shared_judge_sees_the_same_documents_in_a_b_and_c() -> None:
     assert judged[0] == judged[1] == judged[2] == (question, judged[0][1])
 
 
-def test_b_judges_exactly_a_documents_including_its_nodes_record_blocks() -> None:
-    """With structured candidates, B's document channel is A's, record blocks
-    of B's own nodes included, in A's order and ranks: a block yields to its
-    node only in selection, and only when the node holds a graph slot."""
+def test_the_reranker_receives_b_document_channel_only_equal_to_a() -> None:
+    """With graph candidates, the shared re-ranker still receives exactly A's
+    document channel from B, record blocks of B's own nodes included, in A's
+    order and ranks, and no node: nodes are ordered by the graph (D-083)."""
     reranker = RecordingReranker()
     lab = dataclasses.replace(build_lab_offline(), reranker=reranker)
     record = record_corpus_chunk(
@@ -212,23 +214,24 @@ def test_b_judges_exactly_a_documents_including_its_nodes_record_blocks() -> Non
     )
     question = "Why did checkout fail in Greece?"
     lab.pipeline_a().run(question)
-    b.run(question)
+    result_b = b.run(question)
     (asked_a, judged_a), (asked_b, judged_b) = reranker.calls
     assert asked_a == asked_b == question
-    nodes_b = {chunk.chunk_id for chunk in judged_b if chunk.kind == "node"}
-    assert "INC_S007_GR" in nodes_b
+    assert all(chunk.kind != "node" for chunk in judged_b)
     documents_a = [(chunk.chunk_id, chunk.rank) for chunk in judged_a]
     assert record.chunk_id in dict(documents_a), "A must retrieve the record block"
-    documents_b = [(chunk.chunk_id, chunk.rank) for chunk in judged_b if chunk.kind != "node"]
-    assert documents_b == documents_a
+    assert [(chunk.chunk_id, chunk.rank) for chunk in judged_b] == documents_a
+    assert any(e.node_id == "INC_S007_GR" for e in result_b.node_evidence)
 
 
-def test_a_and_b_hand_the_generator_the_same_prompt_for_the_same_evidence() -> None:
-    """Same selected evidence, same prompt (design G1, 5.4; D-025).
+def test_a_and_b_show_the_same_evidence_as_the_same_blocks_in_alternation() -> None:
+    """Same evidence, same blocks (design G1, 5.4); the order is alternation.
 
-    B's two nodes are exactly A's two record hits, so both pipelines select
-    the same evidence; the generator must then receive the same blocks in
-    the same (judge) order, with the same titles, and answer identically.
+    B's two nodes are exactly A's two record hits, so both pipelines show
+    the same rows and documents, each row once, and each as the same block
+    (same title line and text). A's prompt is its cross-encoder order; B's
+    takes its documents (A's order) and its nodes (graph order) in turn,
+    documents first (D-084).
     """
     incident = record_corpus_chunk(
         "incidents", "INC_S007_GR", "Incident INC_S007_GR in Greece: checkout failed."
@@ -260,21 +263,31 @@ def test_a_and_b_hand_the_generator_the_same_prompt_for_the_same_evidence() -> N
     a.generator, b.generator = generator_a, generator_b
     result_a, result_b = a.run(question), b.run(question)
 
-    shown_a = [chunk.document_id for chunk in generator_a.contexts]
-    shown_b = [chunk.document_id for chunk in generator_b.contexts]
-    assert sorted(shown_a) == ["DOC_S007_GR", "DOC_S007_UK", "INC_S007_GR", "PLV_PAYMENTS_3"]
-    assert {c.kind for c in generator_b.contexts} == {"node", "chunk"}
-    assert shown_b == shown_a
-    assert generator_b.prompt == generator_a.prompt
-    assert result_b.answer.raw_text == result_a.answer.raw_text
-    citations = [
-        (c.document_id, c.title, c.source_system, c.source_record_id, c.record_table)
-        for c in result_a.answer.citations
-    ]
-    assert citations == [
-        (c.document_id, c.title, c.source_system, c.source_record_id, c.record_table)
-        for c in result_b.answer.citations
-    ]
+    blocks_a = {chunk.document_id: context_block(chunk) for chunk in generator_a.contexts}
+    blocks_b = {chunk.document_id: context_block(chunk) for chunk in generator_b.contexts}
+    assert sorted(blocks_a) == ["DOC_S007_GR", "DOC_S007_UK", "INC_S007_GR", "PLV_PAYMENTS_3"]
+    assert len(generator_b.contexts) == len(blocks_b) == len(blocks_a)
+    assert blocks_b == blocks_a
+    assert {"node", "chunk"} <= {c.kind for c in generator_b.contexts}
+
+    documents = [c.document_id for c in generator_b.contexts if c.kind != "node"]
+    nodes = [c for c in generator_b.contexts if c.kind == "node"]
+    assert [c.rank for c in nodes] == sorted(c.rank for c in nodes)
+    a_order = [c.document_id for c in generator_a.contexts]
+    assert documents == [d for d in a_order if d in documents]
+    expected: list[str] = []
+    for index in range(max(len(documents), len(nodes))):
+        expected += documents[index : index + 1] + [c.document_id for c in nodes[index : index + 1]]
+    assert [c.document_id for c in generator_b.contexts] == expected
+    assert generator_b.contexts[0].document_id == a_order[0]
+
+    def citations(result: RagRunResult | GraphRunResult) -> set[tuple[object, ...]]:
+        return {
+            (c.document_id, c.title, c.source_system, c.source_record_id, c.record_table)
+            for c in result.answer.citations
+        }
+
+    assert citations(result_b) == citations(result_a)
 
 
 class RecordingStore(InMemoryVectorStore):

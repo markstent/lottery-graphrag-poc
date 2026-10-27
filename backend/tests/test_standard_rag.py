@@ -35,7 +35,7 @@ from app.events import (
 )
 from app.evidence import EvidenceChunk
 from app.retrieval.standard import index as index_module
-from app.retrieval.standard.context import estimate_tokens, select_context
+from app.retrieval.standard.context import block_tokens, estimate_tokens, interleave_by_budget
 from app.retrieval.standard.corpus import CorpusChunk, load_corpus
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.fusion import reciprocal_rank_fusion
@@ -150,8 +150,9 @@ class TestRetrievalCorrectness:
         selected_ids = {chunk.chunk_id for chunk in result.evidence if chunk.selected}
         cited_ids = {citation.chunk_id for citation in result.answer.citations}
         assert cited_ids == selected_ids
+        # Each item is charged its rendered prompt block (D-084).
         assert result.answer.context_tokens == sum(
-            estimate_tokens(chunk.text) for chunk in result.evidence if chunk.selected
+            block_tokens(chunk) for chunk in result.evidence if chunk.selected
         )
 
     def test_all_candidates_recorded_with_scores(self) -> None:
@@ -299,7 +300,7 @@ class TestContextLimits:
             candidate(twin, 2, 0.85),
             candidate(corpus[1], 3, 0.4),
         ]
-        selected, discarded = select_context(candidates, budget_tokens=1000, graph_slots=0)
+        selected, discarded = interleave_by_budget(candidates, [], 1000, 0.85)
 
         assert [chunk.chunk_id for chunk in selected] == ["CHNK_PAY_00", "CHNK_MARKETING_00"]
         assert [chunk.discard_reason for chunk in discarded] == ["duplicate"]
@@ -326,6 +327,9 @@ class TestTelemetry:
         assert event_types.count(RAG_CANDIDATE_RETRIEVED) == 3
         assert event_types.count(RAG_EVIDENCE_SELECTED) >= 1
         assert RAG_CONTEXT_ASSEMBLED in event_types
+        (assembled,) = [e for e in pipeline.events if e.event_type == RAG_CONTEXT_ASSEMBLED]
+        assert assembled.payload["budget_tokens"] == 200
+        assert "evidence_slots" not in assembled.payload
         assert RAG_GENERATION_STARTED in event_types
         assert event_types[-1] == RAG_GENERATION_COMPLETED
 

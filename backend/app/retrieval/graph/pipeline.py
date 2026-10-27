@@ -2,24 +2,30 @@
 
 Specified in docs/reference/08 (Phase 9) and docs/reference/retrieval/graph-rag.md.
 
-    question -> entity resolution (+ query expansion for pipeline C)
+    question -> entity resolution and target types (+ query expansion for C)
              -> seed selection (record-anchored vector fallback)
              -> bounded traversal (+ ontology expansion for pipeline C)
-             -> transparent evidence ranking -> structured candidates
+             -> stated links among reached nodes (when there are targets)
+             -> composite score -> graph relevance order (seeds, target-type
+                holders, the rest; D-083) -> structured candidates
              -> authoritative source lookup
-             -> pipeline A's document channel
-             -> one judge (the shared reranker, raw question) over both
-             -> one selection (budget and slot count as A, with the graph
-                share; a record block yields to its node only when the node
-                holds a graph slot)
-             -> LLM over the selection in judge order -> answer + citations
+             -> pipeline A's document channel, re-ranked by the shared
+                cross-encoder on the raw question, exactly as in A
+             -> the two ranked channels taken in turn, documents first, into
+                A's token budget with no item limit; a row reaches the prompt
+                once, at its first appearance (D-084)
+             -> LLM over the selection in prompt order -> answer + citations
+
+History: method v0.2 re-ranked nodes with the documents and gave the graph
+a share of 12 slots (D-025, D-081); see DECISIONS.md.
 
 Pipeline B runs the identical pipeline with `ontology_expansion=False`
 (MAPS_TO excluded from the traversal allow-list), an id-and-market resolver
 and no query expansion; pipeline C adds the ontology term resolver and the
 expanded query text. Everything else is shared, isolating the ontology
-contribution (docs/reference/retrieval/retrieval-fairness.md). Every candidate and
-selected node is recorded with its score components; final quantitative
+contribution (docs/reference/retrieval/retrieval-fairness.md). C's target types
+may also come from ontology terms. Every candidate and
+selected node is recorded with its score components, tier and graph rank; final quantitative
 claims come from the structured layer, not the graph. The stages and
 their typed results live in ``stages.py``; ``run`` composes them in order.
 """
@@ -33,7 +39,7 @@ from app.events import EventEmitter, EventSink, ListEventSink, RetrievalEvent, n
 from app.evidence import GraphRunResult
 from app.ontology.model import Ontology
 from app.retrieval.graph import stages
-from app.retrieval.graph.resolution import EntityResolver, QueryExpansion
+from app.retrieval.graph.resolution import EntityResolver, QueryExpansion, TargetTypeMatcher
 from app.retrieval.graph.source_lookup import SourceLookup
 from app.retrieval.graph.traversal import NeighbourProvider
 from app.retrieval.standard.embeddings import EmbeddingFunction
@@ -67,6 +73,8 @@ class GraphRagPipeline:
         self.expansion = expansion
         # Concept node texts (pipeline C); B has none and never meets a concept.
         self.ontology = ontology
+        # Target types from the schema words; in C also the ontology's terms.
+        self.target_types = TargetTypeMatcher(ontology)
         self.neighbours = neighbours
         self.embeddings = embeddings
         self.sparse = sparse
@@ -97,11 +105,13 @@ class GraphRagPipeline:
         vectors = stages.VectorLayer(self.store, self.embeddings, self.sparse)
         nodes = stages.NodeReader(self.source_lookup, self.ontology, self.embeddings)
         resolution = stages.resolve(
-            question, scope, self.resolver, self.expansion, vectors, emitter
+            question, scope, self.resolver, self.expansion, self.target_types, vectors, emitter
         )
         traversal = stages.traverse(resolution, self.neighbours, graph, nodes, emitter)
         ranked = stages.rank_and_scope(resolution, traversal, scope, graph, nodes, emitter)
-        selection = stages.select_and_attach(ranked, graph.excluded_labels, self.source_lookup)
+        selection = stages.select_and_attach(
+            ranked, traversal, resolution.target_types, graph.excluded_labels, self.source_lookup
+        )
         documents = stages.document_channel(
             resolution.search_text, scope, vectors, self.settings.top_k
         )

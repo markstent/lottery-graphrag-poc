@@ -97,7 +97,7 @@ def event_type_constants() -> set[str]:
         for name, value in vars(events_module).items()
         if name.isupper() and isinstance(value, str) and "." in value
     }
-    assert len(constants) == 36
+    assert len(constants) == 37
     return constants
 
 
@@ -133,8 +133,8 @@ def test_every_stored_event_of_a_real_run_validates_against_its_model(
         seen |= validate(run_to_completion(client, configurations=["A", "B", "C"])["events"])
         wait_idle(client)
 
-    # One evidence slot: every pipeline discards, so the discard events appear.
-    context = dataclasses.replace(lab.settings.context, evidence_slots=1)
+    # A tight token budget: every pipeline discards, so the discard events appear.
+    context = dataclasses.replace(lab.settings.context, budget_tokens=60)
     tight = dataclasses.replace(lab, settings=dataclasses.replace(lab.settings, context=context))
     with TestClient(create_app(lab_factory=lambda: tight, graph_config=GRAPH)) as client:
         seen |= validate(run_to_completion(client, configurations=["A", "B", "C"])["events"])
@@ -175,6 +175,130 @@ def test_every_stored_event_of_a_real_run_validates_against_its_model(
     # The golden graph streams reach the events SCN-007 does not.
     seen |= validate(golden_events())
     assert seen == event_type_constants()
+
+
+# Fields and reasons only the old method (v0.2, D-081) emitted.
+OLD_METHOD_FIELDS = frozenset({"evidence_slots", "rerank_score"})
+OLD_METHOD_REASONS = frozenset({"slot_limit", "superseded_by_structured_fact"})
+
+
+def _old_method_event(event_type: str, pipeline: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return {**ENVELOPE, "event_type": event_type, "pipeline": pipeline, "payload": payload}
+
+
+def test_a_stored_old_method_run_still_replays() -> None:
+    """A v0.2 Live Lab run stored in the run database replays through the
+    same models: its slot counts, node re-rank scores and slot reasons stay
+    accepted (the stream and the run endpoints validate each stored event)."""
+    weights = {
+        "weight_graph_distance": 1.0,
+        "weight_relationship_type": 1.0,
+        "weight_semantic_relevance": 0.4,
+        "weight_temporal_validity": 1.0,
+    }
+    stored = [
+        _old_method_event(
+            "rag.context.assembled",
+            "A",
+            {"selected": 12, "discarded": 28, "context_tokens": 1130, "evidence_slots": 12},
+        ),
+        _old_method_event(
+            "graph.candidate.reranked",
+            "B",
+            {"candidate_id": "INC_1", "kind": "node", "rerank_score": 0.7, "rank": 1},
+        ),
+        _old_method_event(
+            "graph.candidate.selected",
+            "B",
+            {"node_id": "INC_1", "score": 0.8, "rerank_score": 0.7, "hops": 0, "seed": True}
+            | weights,
+        ),
+        _old_method_event(
+            "graph.candidate.discarded",
+            "B",
+            {
+                "node_id": "INC_2",
+                "score": 0.5,
+                "rerank_score": 0.1,
+                "hops": 1,
+                "seed": False,
+                "reason": "slot_limit",
+            },
+        ),
+        _old_method_event(
+            "graph.candidate.discarded",
+            "B",
+            {
+                "chunk_id": "REC_incidents_INC_1",
+                "rerank_score": 0.6,
+                "reason": "superseded_by_structured_fact",
+            },
+        ),
+        _old_method_event(
+            "graph.context.assembled",
+            "B",
+            {
+                "structured_nodes": 6,
+                "document_chunks": 6,
+                "context_tokens": 1100,
+                "evidence_slots": 12,
+            },
+        ),
+    ]
+    models = []
+    for event in stored:
+        replayed = RecordedEvent.model_validate(event).root
+        assert replayed.event_type == event["event_type"]
+        models.append(type(replayed.payload).__name__)
+        dumped = replayed.payload.model_dump(exclude_none=True)
+        assert dumped == {k: v for k, v in event["payload"].items() if v is not None}
+    assert models == [
+        "OldMethodRagContextAssembled",
+        "GraphCandidateReranked",
+        "OldMethodGraphNodeSelected",
+        "OldMethodGraphNodeDiscarded",
+        "GraphChunkDiscarded",
+        "OldMethodGraphContextAssembled",
+    ]
+
+
+def _old_method_keys(stored: list[dict[str, Any]]) -> list[tuple[str, str]]:
+    found: list[tuple[str, str]] = []
+    for event in stored:
+        payload = event["payload"]
+        is_node = "node_id" in payload and event["event_type"].startswith("graph.candidate")
+        for key in OLD_METHOD_FIELDS & set(payload):
+            if key == "evidence_slots" or is_node:
+                found.append((event["event_type"], key))
+        if payload.get("reason") in OLD_METHOD_REASONS:
+            found.append((event["event_type"], str(payload["reason"])))
+        if event["event_type"] == "graph.candidate.reranked" and payload["kind"] == "node":
+            found.append((event["event_type"], "node"))
+    return found
+
+
+def test_method_v03_never_emits_an_old_method_field(
+    lab: Lab, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The golden graph streams and a real A, B and C run carry the budget,
+    the tier and the graph rank, and nothing only the old method emitted."""
+    assert _old_method_keys(golden_events()) == []
+    monkeypatch.setattr(runs_module, "wired_pipelines", offline_wiring(scn007_adjacency()))
+    with TestClient(create_app(lab_factory=lambda: lab, graph_config=GRAPH)) as client:
+        stored = run_to_completion(client, configurations=["A", "B", "C"])["events"]
+        wait_idle(client)
+    assert _old_method_keys(stored) == []
+    assembled = [e for e in stored if e["event_type"].endswith("context.assembled")]
+    assert len(assembled) == 3
+    assert all(
+        e["payload"]["budget_tokens"] == lab.settings.context.budget_tokens for e in assembled
+    )
+    nodes = [
+        e["payload"]
+        for e in stored
+        if e["event_type"].startswith("graph.candidate.") and "node_id" in e["payload"]
+    ]
+    assert nodes and all({"tier", "graph_rank"} <= set(payload) for payload in nodes)
 
 
 def test_the_sink_refuses_to_store_an_event_that_does_not_validate(

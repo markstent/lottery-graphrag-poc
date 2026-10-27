@@ -350,7 +350,8 @@ def trace_g(
             )
         lines.append(
             f"  - `{node.node_id}` ({node.node_label}, {node.hops} hop(s) via "
-            f"{node.rel_type}, score {node.score:.3f}, rerank {_fmt_score(node.rerank_score)}, "
+            f"{node.rel_type}, score {node.score:.3f}, tier {node.tier}, "
+            f"graph rank {node.graph_rank}, "
             f"components {node.components}){facts}"
         )
     reasons: dict[str, int] = {}

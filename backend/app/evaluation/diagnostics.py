@@ -354,8 +354,8 @@ def render_markdown(diagnostic: SelectionDiagnostic) -> str:
         lines += ["None.", ""]
     else:
         lines += [
-            "Reasons: `slot_limit` means the slots for its kind were full,",
-            "`context_budget` means the token budget was full,",
+            "Reasons: `context_budget` means the token budget was full,",
+            "`same_record` means the same record was already kept through the other channel,",
             "`duplicate` means a near copy was already kept,",
             "and `not judged` means the record was not offered to the re-ranker.",
             "The score is the re-ranker's relevance score and rank 1 is its best candidate.",
@@ -421,8 +421,6 @@ def settings_record(lab: Lab, node_count: int) -> dict[str, Any]:
         "record_serialiser_version": lab.record_serialiser_version,
         "top_k": settings.top_k,
         "context_budget_tokens": settings.context.budget_tokens,
-        "evidence_slots": settings.context.evidence_slots,
-        "graph_slots": settings.context.graph_slots,
         "selection_rule": SELECTION_RULE,
         "graph_depth": settings.graph.max_depth,
         "graph_nodes_per_hop": settings.graph.max_nodes_per_hop,

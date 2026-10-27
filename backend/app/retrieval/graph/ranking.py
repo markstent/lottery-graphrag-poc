@@ -21,9 +21,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, replace
 from datetime import date
-from typing import Literal
 
 from app.config import RankingWeights
+from app.evidence import GraphTier
 from app.retrieval.graph.source_lookup import NODE_SOURCES
 from app.retrieval.graph.traversal import (
     DEFAULT_RELATIONSHIP_WEIGHT,
@@ -45,7 +45,6 @@ STRUCTURED_LABELS = frozenset(NODE_SOURCES)
 SUPERSEDED_VALIDITY = 0.3
 
 # Graph relevance tiers (method v0.3, proposal 4.1), in order.
-GraphTier = Literal["seed", "target", "other"]
 _TIER_RANK: dict[GraphTier, int] = {"seed": 0, "target": 1, "other": 2}
 
 

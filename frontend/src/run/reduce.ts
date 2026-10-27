@@ -405,6 +405,14 @@ function seeded(graph: GraphEvents, id: string): GraphEvents {
   })
 }
 
+/** A node's re-rank score, which only old-method (v0.2) runs recorded:
+ * method v0.3 orders nodes by the graph and never re-ranks them. */
+function oldMethodRerankScore(payload: object): number | null {
+  return 'rerank_score' in payload && typeof payload.rerank_score === 'number'
+    ? payload.rerank_score
+    : null
+}
+
 function unknownEvent(
   state: RunState,
   event: {
@@ -537,6 +545,9 @@ function apply(state: RunState, event: RunEvent): RunState {
         entities: [...g.entities, entity],
       }))
     }
+    case 'graph.target_types.resolved':
+      // Method v0.3 target types: recorded, not drawn yet.
+      return state
     case 'graph.query.expanded':
       // The expansion happens at one instant, like assembling the context.
       return updatePipeline(state, id, (p) => ({
@@ -616,11 +627,17 @@ function apply(state: RunState, event: RunEvent): RunState {
           changeNode(g, payload.node_id, {
             outcome: 'selected',
             score: payload.score,
-            rerankScore: payload.rerank_score,
+            rerankScore: oldMethodRerankScore(payload),
           }),
         )
         return updatePipeline(next, id, (p) =>
-          selectedIn(p, payload.node_id, 'node', null, payload.rerank_score),
+          selectedIn(
+            p,
+            payload.node_id,
+            'node',
+            null,
+            oldMethodRerankScore(payload),
+          ),
         )
       }
       return updatePipeline(state, id, (p) =>
@@ -641,11 +658,16 @@ function apply(state: RunState, event: RunEvent): RunState {
             outcome: 'discarded',
             reason: payload.reason,
             score: payload.score,
-            rerankScore: payload.rerank_score,
+            rerankScore: oldMethodRerankScore(payload),
           }),
         )
         return updatePipeline(next, id, (p) =>
-          discardedIn(p, payload.node_id, payload.reason, payload.rerank_score),
+          discardedIn(
+            p,
+            payload.node_id,
+            payload.reason,
+            oldMethodRerankScore(payload),
+          ),
         )
       }
       return updatePipeline(state, id, (p) =>

@@ -5,6 +5,12 @@ declared shape of those dicts. They feed the OpenAPI contract (and so the
 frontend's types) and a test validates every stored event against them.
 ``extra="forbid"`` makes a field added to an emitter without a model here a
 failure rather than silent drift.
+
+Stored Live Lab runs of the old method (v0.2, the slot rule of D-081) replay
+through these models: the reasons only that method gave stay in
+DiscardReason, and the payloads whose fields changed keep an
+OldMethod... model beside the current one (the union accepts either, and
+extra="forbid" lets exactly one match). Method v0.3 code never emits them.
 """
 
 from __future__ import annotations
@@ -14,14 +20,17 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 
 from app.api.errors import ApiErrorBody
+from app.evidence import GraphTier
 
 DiscardReason = Literal[
     "excluded_label",
     "out_of_scope_market",
-    "superseded_by_structured_fact",
+    "same_record",
     "context_budget",
-    "slot_limit",
     "duplicate",
+    # Old method (v0.2) only, accepted for stored runs.
+    "superseded_by_structured_fact",
+    "slot_limit",
 ]
 EntityOrigin = Literal["id", "market_alias", "term", "concept_binding", "vector_fallback"]
 CandidateKind = Literal["node", "chunk", "record"]
@@ -103,6 +112,15 @@ class RagContextAssembled(Payload):
     selected: int
     discarded: int
     context_tokens: int
+    budget_tokens: int  # the shared token budget (D-084)
+
+
+class OldMethodRagContextAssembled(Payload):
+    """Old method (v0.2) only: it recorded its evidence-slot count."""
+
+    selected: int
+    discarded: int
+    context_tokens: int
     evidence_slots: int
 
 
@@ -142,6 +160,13 @@ class GraphQueryExpanded(Payload):
     expanded_length: int
 
 
+class GraphTargetTypesResolved(Payload):
+    """The graph labels the question asks about, sorted and comma-joined; ""
+    when it names none (D-083)."""
+
+    labels: str
+
+
 class GraphSeedSelected(Payload):
     node_id: str
 
@@ -176,6 +201,9 @@ class GraphOntologyExpanded(Payload):
 
 
 class GraphCandidateReranked(Payload):
+    """A document candidate's cross-encoder outcome (old-method runs also
+    re-ranked nodes, with ``kind`` "node")."""
+
     candidate_id: str
     kind: CandidateKind
     rerank_score: float | None
@@ -183,6 +211,24 @@ class GraphCandidateReranked(Payload):
 
 
 class GraphNodeSelected(Payload):
+    """``tier`` and ``graph_rank`` place the node in the graph channel's
+    relevance order (D-083)."""
+
+    node_id: str
+    score: float
+    hops: int
+    seed: bool
+    tier: GraphTier
+    graph_rank: int
+    weight_graph_distance: float
+    weight_relationship_type: float
+    weight_semantic_relevance: float
+    weight_temporal_validity: float
+
+
+class OldMethodGraphNodeSelected(Payload):
+    """Old method (v0.2) only: nodes were re-ranked with the documents."""
+
     node_id: str
     score: float
     rerank_score: float | None
@@ -201,6 +247,21 @@ class GraphChunkSelected(Payload):
 
 
 class GraphNodeDiscarded(Payload):
+    """``tier`` and ``graph_rank`` are None only for a node refused before
+    the graph order (``out_of_scope_market``, ``excluded_label``)."""
+
+    node_id: str
+    score: float
+    hops: int
+    seed: bool
+    reason: DiscardReason
+    tier: GraphTier | None
+    graph_rank: int | None
+
+
+class OldMethodGraphNodeDiscarded(Payload):
+    """Old method (v0.2) only: nodes were re-ranked with the documents."""
+
     node_id: str
     score: float
     rerank_score: float | None
@@ -221,6 +282,20 @@ class GraphEvidencePathCompleted(Payload):
 
 
 class GraphContextAssembled(Payload):
+    """``stated_links`` counts the schema-stated links read among the reached
+    nodes for the target-type tier; None when none were read (the question
+    names no target type)."""
+
+    structured_nodes: int
+    document_chunks: int
+    context_tokens: int
+    budget_tokens: int  # the shared token budget (D-084)
+    stated_links: int | None
+
+
+class OldMethodGraphContextAssembled(Payload):
+    """Old method (v0.2) only: it recorded its evidence-slot count."""
+
     structured_nodes: int
     document_chunks: int
     context_tokens: int

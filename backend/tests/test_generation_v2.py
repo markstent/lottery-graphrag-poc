@@ -164,8 +164,9 @@ class CitingLastBlockGenerator:
 
 
 def test_graph_citations_follow_prompt_block_order() -> None:
-    """One list in judge order: nodes and documents interleave as judged,
-    and cited block n is citations[n - 1]."""
+    """One list in prompt order: the selected documents (cross-encoder
+    order) and nodes (graph order) alternate, documents first (D-084), and
+    cited block n is citations[n - 1]."""
     pipeline = build_graph_pipeline()
     generator = CitingLastBlockGenerator()
     pipeline.generator = generator
@@ -173,13 +174,18 @@ def test_graph_citations_follow_prompt_block_order() -> None:
     pipeline.reranker = reranker
     result = pipeline.run("Why did checkout fail in Greece?")
 
-    nodes = [evidence for evidence in result.node_evidence if evidence.selected]
+    nodes = sorted(
+        (evidence for evidence in result.node_evidence if evidence.selected),
+        key=lambda evidence: evidence.graph_rank or 0,
+    )
     assert nodes, "the fixture must select structured nodes"
-    selected = {e.node_id for e in nodes} | {
-        chunk.chunk_id for chunk in result.document_evidence if chunk.selected
-    }
-    judge_order = [c.chunk_id for c in reranker.reranked if c.chunk_id in selected]
-    assert generator.blocks == judge_order
+    selected_documents = {c.chunk_id for c in result.document_evidence if c.selected}
+    documents = [c.chunk_id for c in reranker.reranked if c.chunk_id in selected_documents]
+    assert documents, "the fixture must select documents"
+    expected: list[str] = []
+    for index in range(max(len(documents), len(nodes))):
+        expected += documents[index : index + 1] + [e.node_id for e in nodes[index : index + 1]]
+    assert generator.blocks == expected
     cited_ids = [citation.chunk_id for citation in result.answer.citations]
     assert cited_ids == generator.blocks
     assert result.answer.cited_blocks == [len(cited_ids)]

@@ -83,6 +83,7 @@ export interface EvidenceRow {
 const DISCARD_WORDS: Record<DiscardReason, string> = {
   excluded_label: 'a kind of record this question does not use',
   out_of_scope_market: 'outside the markets asked about',
+  same_record: 'the same record is already in the context',
   superseded_by_structured_fact: 'a table value already answers it',
   context_budget: 'the context was full',
   slot_limit: 'no slot left',

@@ -838,7 +838,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why the chunk was not selected: context_budget | slot_limit | duplicate | superseded_by_structured_fact",
+            "description": "Why the chunk was not selected: context_budget | duplicate | same_record (its row is already selected through the other channel)",
             "title": "Discard Reason"
           },
           "discovered_via": {
@@ -855,6 +855,18 @@
             "title": "Document Type",
             "type": "string"
           },
+          "graph_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A graph node's walked path from its seed, one line (INC_1 -AFFECTS-> GAME_1); None for a seed and for documents",
+            "title": "Graph Path"
+          },
           "kind": {
             "default": "chunk",
             "description": "chunk (document text) | record (table row) | node (graph block)",
@@ -870,7 +882,7 @@
             "type": "string"
           },
           "rank": {
-            "description": "Position after ranking (1-based)",
+            "description": "1-based position in its channel: cross-encoder order for chunks and records, graph relevance order for graph nodes",
             "title": "Rank",
             "type": "integer"
           },
@@ -895,7 +907,7 @@
                 "type": "null"
               }
             ],
-            "description": "Reranker score when reranking is enabled",
+            "description": "Cross-encoder score of a chunk or record; None for graph nodes",
             "title": "Rerank Score"
           },
           "selected": {
@@ -1092,6 +1104,9 @@
                 "$ref": "#/components/schemas/GraphNodeDiscarded"
               },
               {
+                "$ref": "#/components/schemas/OldMethodGraphNodeDiscarded"
+              },
+              {
                 "$ref": "#/components/schemas/GraphChunkDiscarded"
               }
             ],
@@ -1139,6 +1154,7 @@
       },
       "GraphCandidateReranked": {
         "additionalProperties": false,
+        "description": "A document candidate's cross-encoder outcome (old-method runs also\nre-ranked nodes, with ``kind`` \"node\").",
         "properties": {
           "candidate_id": {
             "title": "Candidate Id",
@@ -1251,6 +1267,9 @@
                 "$ref": "#/components/schemas/GraphNodeSelected"
               },
               {
+                "$ref": "#/components/schemas/OldMethodGraphNodeSelected"
+              },
+              {
                 "$ref": "#/components/schemas/GraphChunkSelected"
               }
             ],
@@ -1307,10 +1326,11 @@
             "enum": [
               "excluded_label",
               "out_of_scope_market",
-              "superseded_by_structured_fact",
+              "same_record",
               "context_budget",
-              "slot_limit",
-              "duplicate"
+              "duplicate",
+              "superseded_by_structured_fact",
+              "slot_limit"
             ],
             "title": "Reason",
             "type": "string"
@@ -1368,7 +1388,12 @@
       },
       "GraphContextAssembled": {
         "additionalProperties": false,
+        "description": "``stated_links`` counts the schema-stated links read among the reached\nnodes for the target-type tier; None when none were read (the question\nnames no target type).",
         "properties": {
+          "budget_tokens": {
+            "title": "Budget Tokens",
+            "type": "integer"
+          },
           "context_tokens": {
             "title": "Context Tokens",
             "type": "integer"
@@ -1377,9 +1402,16 @@
             "title": "Document Chunks",
             "type": "integer"
           },
-          "evidence_slots": {
-            "title": "Evidence Slots",
-            "type": "integer"
+          "stated_links": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stated Links"
           },
           "structured_nodes": {
             "title": "Structured Nodes",
@@ -1390,7 +1422,8 @@
           "structured_nodes",
           "document_chunks",
           "context_tokens",
-          "evidence_slots"
+          "budget_tokens",
+          "stated_links"
         ],
         "title": "GraphContextAssembled",
         "type": "object"
@@ -1408,7 +1441,15 @@
             "type": "string"
           },
           "payload": {
-            "$ref": "#/components/schemas/GraphContextAssembled"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraphContextAssembled"
+              },
+              {
+                "$ref": "#/components/schemas/OldMethodGraphContextAssembled"
+              }
+            ],
+            "title": "Payload"
           },
           "pipeline": {
             "enum": [
@@ -1686,6 +1727,18 @@
             ],
             "title": "Discard Reason"
           },
+          "graph_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1-based position in the graph channel; None when refused before the order",
+            "title": "Graph Rank"
+          },
           "hops": {
             "title": "Hops",
             "type": "integer"
@@ -1709,18 +1762,6 @@
             "title": "Rel Type",
             "type": "string"
           },
-          "rerank_score": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Shared reranker score; None when the node was never judged",
-            "title": "Rerank Score"
-          },
           "score": {
             "title": "Score",
             "type": "number"
@@ -1729,6 +1770,23 @@
             "default": false,
             "title": "Selected",
             "type": "boolean"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "enum": [
+                  "seed",
+                  "target",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Graph relevance tier; None for a node refused before the graph order",
+            "title": "Tier"
           }
         },
         "required": [
@@ -1929,7 +1987,19 @@
       },
       "GraphNodeDiscarded": {
         "additionalProperties": false,
+        "description": "``tier`` and ``graph_rank`` are None only for a node refused before\nthe graph order (``out_of_scope_market``, ``excluded_label``).",
         "properties": {
+          "graph_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graph Rank"
+          },
           "hops": {
             "title": "Hops",
             "type": "integer"
@@ -1942,24 +2012,14 @@
             "enum": [
               "excluded_label",
               "out_of_scope_market",
-              "superseded_by_structured_fact",
+              "same_record",
               "context_budget",
-              "slot_limit",
-              "duplicate"
+              "duplicate",
+              "superseded_by_structured_fact",
+              "slot_limit"
             ],
             "title": "Reason",
             "type": "string"
-          },
-          "rerank_score": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rerank Score"
           },
           "score": {
             "title": "Score",
@@ -1968,15 +2028,32 @@
           "seed": {
             "title": "Seed",
             "type": "boolean"
+          },
+          "tier": {
+            "anyOf": [
+              {
+                "enum": [
+                  "seed",
+                  "target",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tier"
           }
         },
         "required": [
           "node_id",
           "score",
-          "rerank_score",
           "hops",
           "seed",
-          "reason"
+          "reason",
+          "tier",
+          "graph_rank"
         ],
         "title": "GraphNodeDiscarded",
         "type": "object"
@@ -2073,7 +2150,12 @@
       },
       "GraphNodeSelected": {
         "additionalProperties": false,
+        "description": "``tier`` and ``graph_rank`` place the node in the graph channel's\nrelevance order (D-083).",
         "properties": {
+          "graph_rank": {
+            "title": "Graph Rank",
+            "type": "integer"
+          },
           "hops": {
             "title": "Hops",
             "type": "integer"
@@ -2082,17 +2164,6 @@
             "title": "Node Id",
             "type": "string"
           },
-          "rerank_score": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Rerank Score"
-          },
           "score": {
             "title": "Score",
             "type": "number"
@@ -2100,6 +2171,15 @@
           "seed": {
             "title": "Seed",
             "type": "boolean"
+          },
+          "tier": {
+            "enum": [
+              "seed",
+              "target",
+              "other"
+            ],
+            "title": "Tier",
+            "type": "string"
           },
           "weight_graph_distance": {
             "title": "Weight Graph Distance",
@@ -2121,9 +2201,10 @@
         "required": [
           "node_id",
           "score",
-          "rerank_score",
           "hops",
           "seed",
+          "tier",
+          "graph_rank",
           "weight_graph_distance",
           "weight_relationship_type",
           "weight_semantic_relevance",
@@ -2649,6 +2730,76 @@
           "source"
         ],
         "title": "GraphStats",
+        "type": "object"
+      },
+      "GraphTargetTypesResolved": {
+        "additionalProperties": false,
+        "description": "The graph labels the question asks about, sorted and comma-joined; \"\"\nwhen it names none (D-083).",
+        "properties": {
+          "labels": {
+            "title": "Labels",
+            "type": "string"
+          }
+        },
+        "required": [
+          "labels"
+        ],
+        "title": "GraphTargetTypesResolved",
+        "type": "object"
+      },
+      "GraphTargetTypesResolvedEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "event_id": {
+            "title": "Event Id",
+            "type": "string"
+          },
+          "event_type": {
+            "const": "graph.target_types.resolved",
+            "title": "Event Type",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/GraphTargetTypesResolved"
+          },
+          "pipeline": {
+            "enum": [
+              "A",
+              "B",
+              "C",
+              "run"
+            ],
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "t_ms": {
+            "title": "T Ms",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "event_id",
+          "timestamp",
+          "run_id",
+          "pipeline",
+          "t_ms",
+          "sequence",
+          "event_type",
+          "payload"
+        ],
+        "title": "GraphTargetTypesResolvedEvent",
         "type": "object"
       },
       "GraphTraversalStarted": {
@@ -3458,6 +3609,184 @@
           "provenance"
         ],
         "title": "NodeOut",
+        "type": "object"
+      },
+      "OldMethodGraphContextAssembled": {
+        "additionalProperties": false,
+        "description": "Old method (v0.2) only: it recorded its evidence-slot count.",
+        "properties": {
+          "context_tokens": {
+            "title": "Context Tokens",
+            "type": "integer"
+          },
+          "document_chunks": {
+            "title": "Document Chunks",
+            "type": "integer"
+          },
+          "evidence_slots": {
+            "title": "Evidence Slots",
+            "type": "integer"
+          },
+          "structured_nodes": {
+            "title": "Structured Nodes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "structured_nodes",
+          "document_chunks",
+          "context_tokens",
+          "evidence_slots"
+        ],
+        "title": "OldMethodGraphContextAssembled",
+        "type": "object"
+      },
+      "OldMethodGraphNodeDiscarded": {
+        "additionalProperties": false,
+        "description": "Old method (v0.2) only: nodes were re-ranked with the documents.",
+        "properties": {
+          "hops": {
+            "title": "Hops",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "excluded_label",
+              "out_of_scope_market",
+              "same_record",
+              "context_budget",
+              "duplicate",
+              "superseded_by_structured_fact",
+              "slot_limit"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "node_id",
+          "score",
+          "rerank_score",
+          "hops",
+          "seed",
+          "reason"
+        ],
+        "title": "OldMethodGraphNodeDiscarded",
+        "type": "object"
+      },
+      "OldMethodGraphNodeSelected": {
+        "additionalProperties": false,
+        "description": "Old method (v0.2) only: nodes were re-ranked with the documents.",
+        "properties": {
+          "hops": {
+            "title": "Hops",
+            "type": "integer"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "rerank_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rerank Score"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "seed": {
+            "title": "Seed",
+            "type": "boolean"
+          },
+          "weight_graph_distance": {
+            "title": "Weight Graph Distance",
+            "type": "number"
+          },
+          "weight_relationship_type": {
+            "title": "Weight Relationship Type",
+            "type": "number"
+          },
+          "weight_semantic_relevance": {
+            "title": "Weight Semantic Relevance",
+            "type": "number"
+          },
+          "weight_temporal_validity": {
+            "title": "Weight Temporal Validity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "node_id",
+          "score",
+          "rerank_score",
+          "hops",
+          "seed",
+          "weight_graph_distance",
+          "weight_relationship_type",
+          "weight_semantic_relevance",
+          "weight_temporal_validity"
+        ],
+        "title": "OldMethodGraphNodeSelected",
+        "type": "object"
+      },
+      "OldMethodRagContextAssembled": {
+        "additionalProperties": false,
+        "description": "Old method (v0.2) only: it recorded its evidence-slot count.",
+        "properties": {
+          "context_tokens": {
+            "title": "Context Tokens",
+            "type": "integer"
+          },
+          "discarded": {
+            "title": "Discarded",
+            "type": "integer"
+          },
+          "evidence_slots": {
+            "title": "Evidence Slots",
+            "type": "integer"
+          },
+          "selected": {
+            "title": "Selected",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "selected",
+          "discarded",
+          "context_tokens",
+          "evidence_slots"
+        ],
+        "title": "OldMethodRagContextAssembled",
         "type": "object"
       },
       "OntologyOut": {
@@ -4386,16 +4715,16 @@
       "RagContextAssembled": {
         "additionalProperties": false,
         "properties": {
+          "budget_tokens": {
+            "title": "Budget Tokens",
+            "type": "integer"
+          },
           "context_tokens": {
             "title": "Context Tokens",
             "type": "integer"
           },
           "discarded": {
             "title": "Discarded",
-            "type": "integer"
-          },
-          "evidence_slots": {
-            "title": "Evidence Slots",
             "type": "integer"
           },
           "selected": {
@@ -4407,7 +4736,7 @@
           "selected",
           "discarded",
           "context_tokens",
-          "evidence_slots"
+          "budget_tokens"
         ],
         "title": "RagContextAssembled",
         "type": "object"
@@ -4425,7 +4754,15 @@
             "type": "string"
           },
           "payload": {
-            "$ref": "#/components/schemas/RagContextAssembled"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RagContextAssembled"
+              },
+              {
+                "$ref": "#/components/schemas/OldMethodRagContextAssembled"
+              }
+            ],
+            "title": "Payload"
           },
           "pipeline": {
             "enum": [
@@ -4607,10 +4944,11 @@
             "enum": [
               "excluded_label",
               "out_of_scope_market",
-              "superseded_by_structured_fact",
+              "same_record",
               "context_budget",
-              "slot_limit",
-              "duplicate"
+              "duplicate",
+              "superseded_by_structured_fact",
+              "slot_limit"
             ],
             "title": "Reason",
             "type": "string"
@@ -5206,6 +5544,7 @@
             "graph.relationship.traversed": "#/components/schemas/GraphRelationshipTraversedEvent",
             "graph.rerank.started": "#/components/schemas/GraphRerankStartedEvent",
             "graph.seed.selected": "#/components/schemas/GraphSeedSelectedEvent",
+            "graph.target_types.resolved": "#/components/schemas/GraphTargetTypesResolvedEvent",
             "graph.traversal.started": "#/components/schemas/GraphTraversalStartedEvent",
             "pipeline.cancelled": "#/components/schemas/PipelineCancelled",
             "pipeline.completed": "#/components/schemas/PipelineCompleted",
@@ -5299,6 +5638,9 @@
           },
           {
             "$ref": "#/components/schemas/GraphQueryExpandedEvent"
+          },
+          {
+            "$ref": "#/components/schemas/GraphTargetTypesResolvedEvent"
           },
           {
             "$ref": "#/components/schemas/GraphSeedSelectedEvent"

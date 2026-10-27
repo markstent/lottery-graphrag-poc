@@ -3,6 +3,7 @@
 Each member pairs an event type with its payload model (``app.events.payloads``),
 so the OpenAPI contract, and the frontend types generated from it, carry the
 payload of every event the API can replay or stream (docs/reference/07 sections 6 to 11).
+An ``OldMethod...`` member is the shape a stored v0.2 run recorded.
 """
 
 from __future__ import annotations
@@ -29,8 +30,13 @@ from app.events.payloads import (
     GraphQueryExpanded,
     GraphRelationshipTraversed,
     GraphSeedSelected,
+    GraphTargetTypesResolved,
     GraphTraversalStarted,
     ModelStarted,
+    OldMethodGraphContextAssembled,
+    OldMethodGraphNodeDiscarded,
+    OldMethodGraphNodeSelected,
+    OldMethodRagContextAssembled,
     RagCandidateReranked,
     RagCandidateRetrieved,
     RagContextAssembled,
@@ -141,7 +147,7 @@ class RagEvidenceDiscardedEvent(_Envelope):
 
 class RagContextAssembledEvent(_Envelope):
     event_type: Literal["rag.context.assembled"]
-    payload: RagContextAssembled
+    payload: RagContextAssembled | OldMethodRagContextAssembled
 
 
 class RagGenerationStartedEvent(_Envelope):
@@ -167,6 +173,11 @@ class GraphEntityResolvedEvent(_Envelope):
 class GraphQueryExpandedEvent(_Envelope):
     event_type: Literal["graph.query.expanded"]
     payload: GraphQueryExpanded
+
+
+class GraphTargetTypesResolvedEvent(_Envelope):
+    event_type: Literal["graph.target_types.resolved"]
+    payload: GraphTargetTypesResolved
 
 
 class GraphSeedSelectedEvent(_Envelope):
@@ -206,12 +217,12 @@ class GraphCandidateRerankedEvent(_Envelope):
 
 class GraphCandidateSelectedEvent(_Envelope):
     event_type: Literal["graph.candidate.selected"]
-    payload: GraphNodeSelected | GraphChunkSelected
+    payload: GraphNodeSelected | OldMethodGraphNodeSelected | GraphChunkSelected
 
 
 class GraphCandidateDiscardedEvent(_Envelope):
     event_type: Literal["graph.candidate.discarded"]
-    payload: GraphNodeDiscarded | GraphChunkDiscarded
+    payload: GraphNodeDiscarded | OldMethodGraphNodeDiscarded | GraphChunkDiscarded
 
 
 class GraphEvidencePathCompletedEvent(_Envelope):
@@ -221,7 +232,7 @@ class GraphEvidencePathCompletedEvent(_Envelope):
 
 class GraphContextAssembledEvent(_Envelope):
     event_type: Literal["graph.context.assembled"]
-    payload: GraphContextAssembled
+    payload: GraphContextAssembled | OldMethodGraphContextAssembled
 
 
 class GraphGenerationStartedEvent(_Envelope):
@@ -260,6 +271,7 @@ class RecordedEvent(
             | GraphEntityResolutionStartedEvent
             | GraphEntityResolvedEvent
             | GraphQueryExpandedEvent
+            | GraphTargetTypesResolvedEvent
             | GraphSeedSelectedEvent
             | GraphTraversalStartedEvent
             | GraphNodeDiscoveredEvent

@@ -1,8 +1,8 @@
 """Standard RAG pipeline (docs/reference/retrieval/standard-rag.md).
 
     question -> dense + sparse embedding -> hybrid search (RRF) -> top-k
-             -> the shared judge (reranker) -> one selection (shared budget
-                and slots) -> LLM -> answer + citations
+             -> the shared cross-encoder -> its order cut at the shared
+                token budget (no item limit, D-084) -> LLM -> answer + citations
 
 Every candidate and selected chunk is recorded with its scores; every stage
 emits typed events. The baseline is never weakened: chunking comes from the
@@ -121,7 +121,8 @@ class StandardRagPipeline:
                 rank=candidate.rank,
             )
 
-        assembly = assemble_context(candidates, self.settings.context)
+        # A has no graph channel: its selection is the re-ranked order cut at the budget.
+        assembly = assemble_context(candidates, [], self.settings.context)
         selected, discarded = assembly.selected, assembly.discarded
         for chunk in selected:
             self.emitter.emit(RAG_EVIDENCE_SELECTED, chunk_id=chunk.chunk_id, rank=chunk.rank)
@@ -136,7 +137,7 @@ class StandardRagPipeline:
             selected=len(selected),
             discarded=len(discarded),
             context_tokens=context_tokens,
-            evidence_slots=self.settings.context.evidence_slots,
+            budget_tokens=self.settings.context.budget_tokens,
         )
 
         self.emitter.emit(RAG_GENERATION_STARTED, model=self.generator.model_name)

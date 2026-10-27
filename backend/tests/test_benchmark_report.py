@@ -68,7 +68,7 @@ def _record(kind: str) -> ReproducibilityRecord:
         reranker="fake-rerank",
         top_k=8,
         context_budget_tokens=4000,
-        context={"dedupe_threshold": 0.9, "evidence_slots": 8},
+        context={"budget_tokens": 4000, "dedupe_threshold": 0.9},
         graph_limits={"depth": 2},
         ranking_weights={"w": 1.0},
         reference_date="2026-01-01",

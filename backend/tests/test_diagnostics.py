@@ -120,7 +120,11 @@ GRAPH_EVENTS = [
     event(GRAPH_CANDIDATE_SELECTED, node_id="CLM_2", score=1.0, rerank_score=0.9),
     event(GRAPH_CANDIDATE_RERANKED, candidate_id="CLM_1", kind="node", rerank_score=0.2, rank=3),
     event(
-        GRAPH_CANDIDATE_DISCARDED, node_id="CLM_1", score=0.5, rerank_score=0.2, reason="slot_limit"
+        GRAPH_CANDIDATE_DISCARDED,
+        node_id="CLM_1",
+        score=0.5,
+        rerank_score=0.2,
+        reason="context_budget",
     ),
     event(GRAPH_CANDIDATE_DISCARDED, chunk_id="CH1", rerank_score=0.1, reason="context_budget"),
 ]
@@ -170,17 +174,17 @@ def test_dropped_list_names_instance_and_carrier() -> None:
     carrier = diagnostic.dropped[0].carriers[0]
     assert (carrier.carrier, carrier.reason, carrier.rerank_score, carrier.rank) == (
         "CLM_1",
-        "slot_limit",
+        "context_budget",
         0.2,
         3,
     )
     assert diagnostic.dropped[0].selected_count == 1
-    assert diagnostic.dropped_by_reason()["B"] == {"slot_limit": 1}
+    assert diagnostic.dropped_by_reason()["B"] == {"context_budget": 1}
     markdown = render_markdown(diagnostic)
     assert "Approach B, question `L05-2026-X`, claim `c1`" in markdown
-    assert "`CLM_1` (reason slot_limit, score 0.200, rank 3)" in markdown
-    assert "Approach B: 1 claims (slot_limit 1)." in markdown
-    assert "`slot_limit` means the slots for its kind were full" in markdown
+    assert "`CLM_1` (reason context_budget, score 0.200, rank 3)" in markdown
+    assert "Approach B: 1 claims (context_budget 1)." in markdown
+    assert "`same_record` means the same record was already kept" in markdown
     assert "| B: documents and the graph | 1 | 2 | 2 | 0 | 1 |" in markdown
     assert "| A: documents only | 1 | 2 | - | 0 | 0 |" in markdown
     assert "## H2: ontology-dependent questions" in markdown
@@ -271,10 +275,11 @@ def test_other_errors_are_not_swallowed() -> None:
         diagnose(bank_of(instance(claims)), {"B": cast(Retriever, Broken())}, CORPUS)
 
 
-def test_settings_block_records_the_selection_rule_and_graph_share() -> None:
+def test_settings_block_records_the_selection_rule_and_no_slots() -> None:
     record = settings_record(build_lab_offline(), node_count=7)
-    assert record["selection_rule"] == SELECTION_RULE
-    assert (record["evidence_slots"], record["graph_slots"]) == (12, 6)
+    assert record["selection_rule"] == SELECTION_RULE == "graph-rank-interleave-budget"
+    assert record["context_budget_tokens"] == 2000
+    assert not {"evidence_slots", "graph_slots"} & set(record)
 
 
 def test_writes_json_and_markdown(tmp_path: Path) -> None:

@@ -19,7 +19,7 @@ from app.lab import Lab, WiredGraphPipelines, graph_pipelines
 from app.persistence.store import RunRow, RunStore
 from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.graph.resolution import StaticEntityResolver
-from app.retrieval.graph.traversal import NeighbourEdge, NeighbourProvider
+from app.retrieval.graph.traversal import NeighbourEdge, NeighbourProvider, StatedLink
 from app.retrieval.standard.generation import GenerationError, GenerationOutput
 from fastapi.testclient import TestClient
 
@@ -72,6 +72,12 @@ class SlowNeighbours:
     ) -> list[tuple[str, str]]:
         assert self._release.wait(DEADLINE_S), "the test never released the graph"
         return self._inner.concept_bound(concept_id, limit, excluded_labels)
+
+    def stated_links(
+        self, ids: list[str], rel_types: tuple[str, ...], limit: int
+    ) -> list[StatedLink]:
+        assert self._release.wait(DEADLINE_S), "the test never released the graph"
+        return self._inner.stated_links(ids, rel_types, limit)
 
 
 def offline_wiring(

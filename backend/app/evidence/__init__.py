@@ -7,7 +7,13 @@ chunk: provenance, scores and the selected/discarded outcome
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+# Graph relevance tiers (method v0.3, D-083), in order: the seeds, the nodes
+# that hold a type the question asks about, then every other node.
+GraphTier = Literal["seed", "target", "other"]
 
 
 class EvidenceChunk(BaseModel):
@@ -46,7 +52,19 @@ class EvidenceChunk(BaseModel):
     sparse_rank: int | None = Field(
         default=None, description="1-based rank in the sparse channel; None if absent or unknown"
     )
-    rank: int = Field(description="Position after ranking (1-based)")
+    rank: int = Field(
+        description=(
+            "1-based position in its channel: cross-encoder order for chunks and records,"
+            " graph relevance order for graph nodes"
+        )
+    )
+    graph_path: str | None = Field(
+        default=None,
+        description=(
+            "A graph node's walked path from its seed, one line"
+            " (INC_1 -AFFECTS-> GAME_1); None for a seed and for documents"
+        ),
+    )
     discovered_via: str = Field(
         default="vector",
         description=(
@@ -55,14 +73,15 @@ class EvidenceChunk(BaseModel):
         ),
     )
     rerank_score: float | None = Field(
-        default=None, description="Reranker score when reranking is enabled"
+        default=None,
+        description="Cross-encoder score of a chunk or record; None for graph nodes",
     )
     selected: bool = False
     discard_reason: str | None = Field(
         default=None,
         description=(
-            "Why the chunk was not selected: context_budget | slot_limit | duplicate"
-            " | superseded_by_structured_fact"
+            "Why the chunk was not selected: context_budget | duplicate | same_record"
+            " (its row is already selected through the other channel)"
         ),
     )
 
@@ -130,8 +149,13 @@ class GraphEvidence(BaseModel):
     rel_type: str
     score: float
     components: dict[str, float]
-    rerank_score: float | None = Field(
-        default=None, description="Shared reranker score; None when the node was never judged"
+    tier: GraphTier | None = Field(
+        default=None,
+        description="Graph relevance tier; None for a node refused before the graph order",
+    )
+    graph_rank: int | None = Field(
+        default=None,
+        description="1-based position in the graph channel; None when refused before the order",
     )
     selected: bool = False
     discard_reason: str | None = None
