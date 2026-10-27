@@ -88,10 +88,15 @@ export function Help() {
   }, [target, section, ready])
 
   // A level changes how long the chapters are, so the chapter in view is put back where it was.
+  // The chapter in view is the one at the reading line, where a chapter link puts a chapter's
+  // top (its scroll margin, below the sticky bar), not the end of the one before it.
   const kept = useRef<{ id: string; top: number } | null>(null)
   const choose = (next: Level) => {
     const inView = CHAPTERS.map(({ id }) => document.getElementById(id)).find(
-      (element) => element && element.getBoundingClientRect().bottom > 0,
+      (element) =>
+        element &&
+        element.getBoundingClientRect().bottom >
+          (parseFloat(getComputedStyle(element).scrollMarginTop) || 0) + 1,
     )
     kept.current = inView
       ? { id: inView.id, top: inView.getBoundingClientRect().top }

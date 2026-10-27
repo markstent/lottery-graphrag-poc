@@ -141,7 +141,7 @@ test('the level switch shows the technical detail and keeps the chapter in view'
   await expect(page).toHaveURL(/level=technical$/)
   await expect(
     page.getByRole('heading', { name: 'Technical detail' }),
-  ).toHaveCount(1)
+  ).not.toHaveCount(0)
   await expect(heading).toBeInViewport()
   await shot(page, 'technical-level')
   await page.reload()
@@ -152,11 +152,57 @@ test('the settings table shows the settings now and Not recorded for a run witho
   page,
 }) => {
   await open(page, '#/help?section=running&level=technical')
-  const row = page.getByRole('row', { name: /^top_k/ })
+  const row = page.locator('#running').getByRole('row', { name: /^top_k/ })
   await expect(row).toContainText('20')
   await expect(row).toContainText('Not recorded')
   await shot(page, 'running-settings')
 })
+
+test('chapter 5 draws and states its places and budget from the settings', async ({
+  page,
+}) => {
+  await open(page, '#/help?section=evidence')
+  const chapter = page.locator('#evidence')
+  await expect(chapter).toContainText('at most 12 pieces of evidence')
+  await expect(chapter).toContainText('6 of the 12 places')
+  await expect(
+    chapter.getByRole('img', { name: /at most 12 pieces/ }),
+  ).toBeVisible()
+  await shot(page, 'evidence-plain')
+  await page.getByRole('radio', { name: 'Technical' }).click()
+  await expect(chapter).toContainText('the 2000-token budget')
+  await shot(page, 'evidence-technical')
+})
+
+// The app is built for 16:9 screens and has no phone layout; at half that width
+// and at tablet width, beside the sidebar, the diagrams must stay whole and readable.
+for (const width of [960, 768])
+  test(`the diagrams fit a column ${width} pixels wide, with their text still legible`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1080 })
+    await open(page, '#/help?section=approaches')
+    for (const name of [/^A · /, /^B · /, /^C · /, /^How evidence is chosen/]) {
+      const picture = page.getByRole('img', { name })
+      await expect(picture).toBeVisible()
+      const fit = await picture.evaluate((element) => {
+        const svg = [...element.querySelectorAll('svg')].find(
+          (drawing) => drawing.getBoundingClientRect().width > 0,
+        )!
+        const box = svg.getBoundingClientRect()
+        const panel = element.closest('section')!.getBoundingClientRect()
+        // Text is drawn at 14 units, so this is the size of a 14 px label on screen.
+        const text = (14 * box.width) / svg.viewBox.baseVal.width
+        return {
+          inside: box.left >= panel.left && box.right <= panel.right,
+          text,
+        }
+      })
+      expect(fit.inside).toBe(true)
+      expect(fit.text).toBeGreaterThanOrEqual(11)
+    }
+    await shot(page, `approaches-${width}`)
+  })
 
 test('Help shows vendor names in Running it only', async ({ page }) => {
   await open(page, '#/help')

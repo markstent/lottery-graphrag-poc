@@ -13,7 +13,6 @@ import { EVIDENCE_STATES } from '../design/evidence-states'
 import { NODE_LABELS, countedLabel, nodeLabel } from '../design/node-labels'
 import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
-import { APPROACH_LINES } from '../screens/help/approach-lines'
 import { CHAPTER_COPY } from '../screens/help/copy'
 import type { Block, ChapterCopy } from '../screens/help/chapters'
 import { STRATUM_NAMES } from '../screens/help/bank'
@@ -400,7 +399,7 @@ describe('Help chapters', () => {
       plain: [
         'A seed node',
         ['a fake one', 'fine'],
-        { kind: 'diagram', name: 'flow' },
+        { kind: 'diagram', name: 'evidence' },
       ],
       technical: ['The seed is chosen', ['a chunk']],
     }
@@ -408,6 +407,22 @@ describe('Help chapters', () => {
       'A seed node',
       'a fake one',
     ])
+  })
+
+  it('reads several Plain sentences in each of chapters 1 to 6, and none uses a banned word', () => {
+    const ids = [
+      'why',
+      'company',
+      'stories',
+      'approaches',
+      'evidence',
+      'answer',
+    ] as const
+    for (const id of ids) {
+      const texts = plainTexts(CHAPTER_COPY[id])
+      expect(texts.length, id).toBeGreaterThanOrEqual(3)
+      expect(texts.filter((text) => violation(text))).toEqual([])
+    }
   })
 
   it('has no banned word in the Plain blocks of any chapter', () => {
@@ -434,7 +449,6 @@ describe('generated copy', () => {
     ...Object.values(MODEL_LABELS),
     // Display maps in screens: a bare "Ontology" as a value is caught here.
     ...Object.values(STRATUM_NAMES),
-    ...Object.values(APPROACH_LINES),
     ...Object.values(KIND_WORDS),
     ...Object.values(STRATUM_LABELS),
     ...Object.values(COMPARISON_LABELS),

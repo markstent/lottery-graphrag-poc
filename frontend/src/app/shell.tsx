@@ -47,9 +47,12 @@ function Sidebar() {
   const descriptions = useId()
   const Toggle = sidebarCollapsed ? PanelLeftOpen : PanelLeftClose
 
+  // The page may end on a fraction of a pixel (a scaled picture), while the browser scrolls
+  // to a whole one, so a sticky sidebar held inside the page would stop up to a pixel short
+  // of the top at the very end. The -1px bottom margin lets it overhang by that fraction.
   return (
     <aside
-      className={`sticky top-0 flex h-screen shrink-0 flex-col self-start border-r border-hairline bg-surface ${
+      className={`sticky top-0 -mb-px flex h-screen shrink-0 flex-col self-start border-r border-hairline bg-surface ${
         sidebarCollapsed ? 'w-16' : 'w-60'
       }`}
     >

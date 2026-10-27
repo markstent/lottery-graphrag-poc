@@ -5,10 +5,10 @@
 
 import type { ReactElement } from 'react'
 
-import { FlowDiagram } from '../../components/flow-diagram'
-import { ApproachCards } from './approaches'
 import type { Block, ComponentName, DiagramName, SettingKey } from './chapters'
 import { DataTour } from './data'
+import { ApproachDiagram } from './diagrams/approach-diagram'
+import { EvidenceDiagram } from './diagrams/evidence-diagram'
 import { Glossary } from './glossary'
 import { useHelpData } from './help-data'
 import { Questions } from './questions'
@@ -22,11 +22,15 @@ import {
 } from './settings'
 import { Stories } from './stories'
 
-const DIAGRAMS: Record<DiagramName, ReactElement> = { flow: <FlowDiagram /> }
+const DIAGRAMS: Record<DiagramName, ReactElement> = {
+  approachA: <ApproachDiagram id="A" />,
+  approachB: <ApproachDiagram id="B" />,
+  approachC: <ApproachDiagram id="C" />,
+  evidence: <EvidenceDiagram />,
+}
 
 const COMPONENTS: Record<ComponentName, ReactElement> = {
   dataTour: <DataTour />,
-  approachCards: <ApproachCards />,
   stories: <Stories />,
   scoringParts: <ScoringParts />,
   questions: <Questions />,

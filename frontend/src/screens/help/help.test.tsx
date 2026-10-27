@@ -102,29 +102,27 @@ describe('Help', () => {
     ).toHaveAttribute('href', '#/help?section=questions')
   })
 
-  it('says what is tested in three sentences and one diagram', async () => {
+  it('states the official result in chapter 1 as it is, with its dates', async () => {
     await renderHelp()
-    const what = section('1. Why this exists')
-    expect(within(what).getAllByRole('paragraph')).toHaveLength(1)
-    const sentences = within(what)
-      .getByRole('paragraph')
-      .textContent!.split(/(?<=\.)\s+/)
-    expect(sentences).toHaveLength(3)
-    expect(
-      within(what).getByRole('img', {
-        name: 'How the three approaches differ',
-      }),
-    ).toBeVisible()
+    const why = section('1. Why this exists')
+    expect(why).toHaveTextContent(
+      /from 2026-10-26 to 2026-10-27, found no detectable difference/,
+    )
+    expect(why).toHaveTextContent(/0\.44 for all three/)
   })
 
-  it('gives each approach a card with its letter, plain name and one line', async () => {
+  it('draws each approach as a picture named by its letter and plain name', async () => {
     await renderHelp()
-    const cards = within(section('4. The three approaches')).getAllByRole(
-      'article',
+    const figures = within(section('4. The three approaches')).getAllByRole(
+      'figure',
     )
     expect(
-      cards.map((card) => within(card).getByRole('heading').textContent),
+      figures.map((figure) => figure.querySelector('figcaption')!.textContent),
     ).toEqual(['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
+    for (const figure of figures)
+      expect(within(figure).getByRole('img')).toHaveAccessibleName(
+        /re-ordering model/,
+      )
   })
 
   it('links the data tour to the Data Model tabs', async () => {
@@ -694,8 +692,11 @@ describe('section links', () => {
 })
 
 describe('settings in Help', () => {
+  // The table in Running it; chapters 4 to 6 have tables of their own.
   const settingsRow = (key: string) =>
-    screen.getByRole('row', { name: new RegExp(`^${key}\\b`) })
+    within(section('12. Running it')).getByRole('row', {
+      name: new RegExp(`^${key}\\b`),
+    })
 
   it('shows the setting now beside the newest official run, and marks a difference', async () => {
     await renderHelp('#/help?section=running&level=technical', {
@@ -759,12 +760,11 @@ describe('settings in Help', () => {
     await within(row).findByText('20')
     expect(within(row).getByText('Not available')).toBeVisible()
     expect(within(row).queryByText('Not recorded')).toBeNull()
-    expect(
-      screen.getByRole('button', { name: 'Retry loading settings' }),
-    ).toBeVisible()
-    await user.click(
-      screen.getByRole('button', { name: 'Retry loading settings' }),
-    )
+    const retry = within(section('12. Running it')).getByRole('button', {
+      name: 'Retry loading settings',
+    })
+    expect(retry).toBeVisible()
+    await user.click(retry)
   })
 
   it('reads Not recorded for every setting when no run is official', async () => {

@@ -63,18 +63,19 @@ export const SECTION_ALIASES: Record<string, ChapterId> = {
 /** A key of the settings a run records, such as `top_k`; a nested one is written `context.graph_slots`. */
 export type SettingKey = string
 
-/** The pictures a chapter can show. */
-export type DiagramName = 'flow'
+/** The pictures a chapter can show: each approach in chapter 4, and how evidence is chosen in chapter 5. */
+export const DIAGRAM_NAMES = [
+  'approachA',
+  'approachB',
+  'approachC',
+  'evidence',
+] as const
+
+export type DiagramName = (typeof DIAGRAM_NAMES)[number]
 
 /** Live parts of a chapter that plain text cannot hold: they read the bank, the newest run or the API. */
 export type ComponentName =
-  | 'dataTour'
-  | 'approachCards'
-  | 'stories'
-  | 'scoringParts'
-  | 'questions'
-  | 'glossary'
-  | 'running'
+  'dataTour' | 'stories' | 'scoringParts' | 'questions' | 'glossary' | 'running'
 
 /**
  * One block of a chapter. A string is a paragraph and a list of strings is a

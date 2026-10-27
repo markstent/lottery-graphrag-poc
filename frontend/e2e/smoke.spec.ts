@@ -154,16 +154,17 @@ test.describe('presentation mode on every destination', () => {
   }
 })
 
-test.describe('the flow diagram in presentation mode', () => {
-  for (const hash of ['#/overview', '#/help?section=approaches']) {
-    test(`grows with the type scale on ${hash}`, async ({ page }) => {
+test.describe('the approach diagrams in presentation mode', () => {
+  for (const [hash, name] of [
+    ['#/overview', 'How the three approaches differ'],
+    ['#/help?section=approaches', /^C · Graph \+ Ontology\./],
+  ] as const) {
+    test(`grow with the type scale on ${hash}`, async ({ page }) => {
       await page.setViewportSize({ width: 1920, height: 1080 })
       await mockApi(page)
       const height = async (url: string) => {
         await page.goto(url)
-        const figure = page.getByRole('img', {
-          name: 'How the three approaches differ',
-        })
+        const figure = page.getByRole('img', { name })
         await expect(figure).toBeVisible()
         return (await figure.boundingBox())!.height
       }

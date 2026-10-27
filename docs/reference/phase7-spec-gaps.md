@@ -69,3 +69,17 @@ Decision D-071 records the rule.
 Gap 12 is closed: the Makefile labels, the `demo-reset` message and the `docker-compose.yml` header were corrected in a later Phase 7 commit.
 Gap 16 is settled by D-066, which records the copy cap as built.
 In gap 18, `frontend/README.md` is now a pointer to the primary documents, so only the three archived pages still describe superseded state.
+
+## Found while writing Help v2 (2026-10-27)
+
+Help chapters 1 to 6 follow the code in both cases.
+
+20. **Record texts in the document channel of B and C.**
+    `docs/retrieval.md:102` says the document channel "drops exactly their record blocks", and `docs/retrieval.md:264` says B's document candidates are A's minus the record blocks of B's nodes.
+    `backend/app/retrieval/graph/stages.py:501-521` (`document_channel`) keeps every search hit, and `backend/app/retrieval/standard/context.py` refuses a record block as `superseded_by_structured_fact` only when its node holds a graph slot (D-081).
+    `backend/tests/test_lab_fairness.py:200` is named `test_b_judges_exactly_a_documents_including_its_nodes_record_blocks`.
+    `docs/retrieval.md:184-186` already describes the code; the two older sentences predate D-081.
+21. **Scenario noise level.**
+    `docs/scenarios.md:96` describes `noise_level` as "how much noise surrounds" the signal, and the archived `docs/reference/04-scenario-catalogue.md` section 20 asks for tests that "unrelated noise also exists".
+    In the code `noise_level` is a label only: `backend/app/scenarios/catalogue.py:30` declares it, `engine.py:78` and `ledger.py:39` record it, and no injector reads it.
+    Strength, by contrast, scales the planted volume (`backend/app/scenarios/planter.py:121-122`).
