@@ -129,6 +129,7 @@ Continue it with `make run-benchmark OUT=data/evaluation/runs/<run id> RESUME=1`
 `OUT` is relative to the repository root, and the directory must exist.
 Resume refuses any setting that differs from the kept worlds and says which (see [evaluation.md](evaluation.md)).
 An official run resumes only from a clean checkout at the same revision, so any code change, committed or not, means a new run rather than a resume.
+A fresh official run, the dry run included, also starts only when git reports a clean checkout; a checkout with uncommitted changes, or one git cannot read, is refused before any world is prepared.
 A job started from the API never resumes; its failure message names the command to run.
 
 ## Command reference

@@ -274,6 +274,7 @@ The visual state of a node (seed, candidate, selected, discarded, ontology conce
 A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of schema version 2 (method 0.2.0) or 3 (method v0.3), which the harness writes last.
 A directory with another schema version is not listed.
 Schema 3 adds evidence recall and its comparisons, C against A cells (`not_in_family`), groundedness means, and a judge agreement with `answered` and `abstained` cells, each with `n`, `agreement` and `weighted_kappa`.
+Schema 3 also carries `method_note`: for a method v0.3 run, the fixed declaration that the method was made after seeing the v0.2.0 result (D-093); null otherwise.
 The weighted kappa is in the data at any n; a client shows it only from n of 10, as the Results screen does (D-086).
 A malformed `summary.json` is a server error and is never silently skipped.
 

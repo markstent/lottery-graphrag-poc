@@ -56,7 +56,8 @@ C against A is reported with an interval and no test (D-087).
 A change that is not tuned and is declared is not a guarantee: the guards limit what the change could have been fitted to and do not remove the doubt.
 
 An incident during the build is recorded in D-091.
-A test on old code generated world 2029 into a temporary directory and ran the real graph ingest against the local Neo4j, which failed and left the graph at 36,853 nodes.
+A test on old code generated world 2029 into a temporary directory and ran the real graph ingest against the local Neo4j, which failed and left the graph at 36,853 nodes and 129,103 relationships.
+The test's own attempt to restore seed 2026 also failed.
 The owner approved restoring it with `make ingest-graph`, which gave 36,888 nodes and 130,112 relationships, and ruled that seed 2029 stays in the official set, because nothing was tuned on it or read from it.
 A socket-level service guard in the test configuration now stops any test from opening a connection to Neo4j, Qdrant or a model.
 
@@ -477,6 +478,7 @@ The names of the embedding, sparse and re-ranking models need a built lab, so th
 Only when the run started, where its world directory is and, for a smoke run, whether the checkout was dirty may differ.
 A run of another method is refused before any of that, with a message naming both method versions (D-092).
 An official run resumes only from a clean checkout at the same revision, now and in every kept world, because an uncommitted edit would mix two code versions without leaving a trace in the record.
+For the same reason a fresh official run, the dry run included, starts only when git reports a clean checkout, and a checkout git cannot read counts as unclean; smoke, sweep and dev runs record `git_dirty` only.
 Any code change therefore means a new run, not a resume.
 A directory that already holds `summary.json` or `results.json` is never resumed, a directory that holds kept worlds is refused unless `--resume` is given, and `--resume` on a directory that does not exist is refused.
 A kept file that cannot be read is named in the refusal, and deleting it reruns that world.
@@ -517,7 +519,7 @@ Files are written to a temporary name and moved into place, and `summary.json` i
 | File | Contents |
 |---|---|
 | `results.json` | The selection, the record, and for each world every instance, every repeat of every pipeline (answer, shown blocks, selected carriers, resolved ids, tokens, latency) and every score |
-| `summary.json` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record. Schema version 3 for method v0.3 (evidence recall, groundedness, answered and abstaining agreement with weighted kappa, C against A), schema version 2 for v0.2.0. |
+| `summary.json` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record. Schema version 3 for method v0.3 (evidence recall, groundedness, answered and abstaining agreement with weighted kappa, C against A), schema version 2 for v0.2.0. A v0.3 summary carries `method_note`, the fixed declaration that the method was made after seeing v0.2.0 (D-093), which also heads every v0.3 `report.md`. |
 | `report.md` | The summary as tables |
 | `sweep.json` | Per depth, the H1 metrics for B and C |
 | `comparison.json` | H7, written to `data/evaluation/comparisons/` |

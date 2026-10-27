@@ -141,7 +141,7 @@ The re-ranker never reads it, and it never sees a node.
 
 ### What a node says
 
-Each node has one text, used for ranking and in the prompt.
+Each node has one text, used for its semantic relevance; what the prompt shows is its rendered block, as below.
 How a block reads is the same in A, B and C (D-085), with three declared differences that only B and C have.
 
 - A record, whether it is a record block in the document channel or a node whose row has a record block, is shown as compact facts.
@@ -185,8 +185,8 @@ The graph orders its own nodes by a rule built from the walk (`graph_relevance_o
 3. then every other node;
 4. within a tier, the composite score (the table above, weights unchanged), then node id.
 
-A node's graph rank is its 1-based position among the nodes not of an excluded label.
-A node of an excluded label has no tier and no rank.
+A node's graph rank is its 1-based position among the in-scope nodes not of an excluded label.
+A node of an excluded label, or outside the market scope, has no tier and no rank.
 
 **The target types** come from the question text by a deterministic matcher (`TargetTypeMatcher` in `resolution.py`), which reads the schema and the ontology only and never the bank.
 
@@ -201,7 +201,7 @@ A node of an excluded label has no tier and no rank.
 
 A node **holds** a target type when its own label is one, or when a stated link from the node, in its stored direction, joins it to a node whose label is a target type, and the triple (relationship type, node label, target label) is in the schema (`RELATIONSHIP_ENDPOINTS`).
 A stated link is any link among the nodes the walk reached, of every relationship type in the schema and not only those the walk follows, so a Player holds Game through `PLAYS` although the walk does not traverse it.
-The links are read in one centralised, bounded query (`RETRIEVAL_STATED_LINKS`, `with_stated_links`) and only when the question names a target type: at most 200 visited ids (the node cap), at most 5,000 rows, and a result over the limit or an id count over it is an error that fails the run, never a silent cut.
+The links are read in one centralised, bounded query (`RETRIEVAL_STATED_LINKS`, `with_stated_links`) and only when the question names a target type: at most the total node limit of visited ids (`GRAPH_MAX_TOTAL_NODES`, default 200), at most 5,000 rows, and a result over the limit or an id count over it is an error that fails the run, never a silent cut.
 The row count is recorded on `graph.context.assembled`.
 
 The cue is for B and C only.
