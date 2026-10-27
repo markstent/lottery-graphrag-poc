@@ -5,6 +5,7 @@ labellers do not open, and the agreement of each measure with the labels."""
 from __future__ import annotations
 
 import csv
+import dataclasses
 import hashlib
 import json
 import re
@@ -18,6 +19,7 @@ from app.evaluation.labelling import (
     CELLS,
     build_sample,
     label_agreement,
+    render_sheet,
     write_agreement,
     write_sample,
 )
@@ -358,12 +360,42 @@ def test_blocks_are_blinded_like_the_judge(sample_dir: Path, run_dir: Path) -> N
         )
         section = _section(sheet, item_id)
         found = re.findall(r"^\[(\d+)\] (.*)$", section, flags=re.MULTILINE)
-        assert found == [(str(n), block.text) for n, block in enumerate(shown, start=1)]
+        assert found == [(str(n), block.judge_text) for n, block in enumerate(shown, start=1)]
         assert f"> {answer}" in section
         assert f"Verdict: {run['verdict']}" in section
         assert entry["instance"]["text"] in section
         assert entry["instance"]["expected_answer"] in section
         assert entry["instance"]["claims"][0]["statement"] in section
+
+
+def test_sheet_omits_a_document_title_but_keeps_headings_and_paths(run_dir: Path) -> None:
+    """F12-R: the sheet reads judge_text, as the judge does."""
+    payload = json.loads((run_dir / "results.json").read_text(encoding="utf-8"))
+    item = build_sample(payload)[0]
+    blocks = (
+        ShownBlock(
+            "CHNK_1", "Release Note: R1", "Release Note: R1 (MKT_UK, en)\nNote text.", "chunk"
+        ),
+        ShownBlock(
+            "INC_1",
+            "incidents: INC_1",
+            "Incident INC_1 (source: s.incidents, record INC_1)",
+            "record",
+        ),
+        ShownBlock(
+            "GAME_1",
+            "games: GAME_1",
+            "Game GAME_1 (source: s.games, record GAME_1)\n"
+            "- reached from INC_1: INC_1 -AFFECTS-> GAME_1",
+            "node",
+        ),
+    )
+    run = dataclasses.replace(item.run, blocks=blocks, cited_blocks=(1,))
+    sheet = render_sheet([dataclasses.replace(item, run=run)])
+    assert "Release Note: R1 (MKT_UK, en)" not in sheet and "Note text." in sheet
+    assert "Incident INC_1 (source: s.incidents, record INC_1)" in sheet
+    assert "Game GAME_1 (source: s.games, record GAME_1)" in sheet
+    assert "- reached from INC_1: INC_1 -AFFECTS-> GAME_1" in sheet
 
 
 def test_label_files_are_empty_templates(sample_dir: Path) -> None:

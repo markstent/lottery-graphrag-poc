@@ -257,24 +257,27 @@ class ReproducibilityRecord:
 class ShownBlock:
     """One context block the generator was shown, with the carrier it is.
 
-    ``text`` is what the judge, the labelling sheet and the groundedness
-    measure read: ``shown_text`` of the block.
+    ``text`` is exactly what the model was shown for the source: the
+    rendered ``context_block`` without its [n], so groundedness measures
+    support against everything the model saw. ``kind`` is the evidence kind
+    (chunk, record, node); None in a block recorded before method v0.3,
+    whose ``text`` is the bare chunk text.
     """
 
     carrier_id: str
     title: str
     text: str
+    kind: str | None = None
 
-
-def shown_text(chunk: EvidenceChunk) -> str:
-    """The rendered prompt block (``context_block``, without its [n]) less a
-    document chunk's "{title} ({market}, {language})" line: a document is
-    read by its text, as before. A record's heading with its source, and a
-    graph record's path line, stay: they are the same in A, B and C apart
-    from the declared path line (D-085), and their ids count as shown
-    support."""
-    block = context_block(chunk)
-    return block.split("\n", 1)[1] if chunk.kind == "chunk" else block
+    @property
+    def judge_text(self) -> str:
+        """What the judge and the labelling sheet read (F12): ``text`` less a
+        document chunk's "{title} ({market}, {language})" line. A record's
+        heading with its source and a graph record's path line stay; a block
+        recorded before v0.3 holds no title line and is read as is."""
+        if self.kind == "chunk":
+            return self.text.split("\n", 1)[1]
+        return self.text
 
 
 @dataclass(frozen=True, slots=True)
@@ -695,7 +698,12 @@ class BenchmarkRunner:
         latency_ms = (time.perf_counter() - started) * 1000
         contexts = self._shown.contexts
         blocks = tuple(
-            ShownBlock(selection_carrier(c.kind, c.chunk_id, c.document_id), c.title, shown_text(c))
+            ShownBlock(
+                selection_carrier(c.kind, c.chunk_id, c.document_id),
+                c.title,
+                context_block(c),
+                c.kind,
+            )
             for c in contexts
         )
         resolved = tuple(

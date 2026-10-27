@@ -8,7 +8,7 @@ are shuffled by a hashed seed and renumbered, the answer's citations are
 rewritten to the new numbers, and the prompt never names the pipeline or
 how the context was retrieved.
 
-The judge reads each block's shown text (``runner.shown_text``): the
+The judge reads each block's ``ShownBlock.judge_text``: the
 rendered prompt block less a document chunk's title line. A record reads
 the same in A, B and C (its facts heading, source and facts), so record
 blocks carry no tell of their own. Two tells remain, both declared (D-085):
@@ -193,7 +193,7 @@ def build_judge_prompt(item: JudgeItem) -> tuple[str, str]:
     answer = _blind_answer(item.answer, renumber)
     facts = "\n".join(f"- {statement}" for statement in item.claim_statements) or "- (none)"
     sources = (
-        "\n\n".join(f"[{n}] {block.text}" for n, block in enumerate(shown, start=1))
+        "\n\n".join(f"[{n}] {block.judge_text}" for n, block in enumerate(shown, start=1))
         or "(no context was shown)"
     )
     cited = [str(renumber[n]) for n in item.cited_blocks if n in renumber]
