@@ -4,7 +4,7 @@ import { GLOSSARY_TERMS } from '../../copy/glossary'
 import settingsFixture from '../../test/settings.fixture.json'
 import { CHAPTER_COPY } from './copy'
 import { REGISTER } from './copy/limits'
-import { settingValue, fillSettings } from './settings'
+import { EVIDENCE_DIAGRAM_KEYS, fillSettings, settingValue } from './settings'
 import type { Block } from './chapters'
 
 const values = settingsFixture.values as Record<string, unknown>
@@ -46,6 +46,9 @@ function usedKeys(): { where: string; key: string }[] {
     add(`glossary ${term}`, meaning)
     add(`glossary ${term}`, technical ?? '')
   }
+  used.push(
+    ...EVIDENCE_DIAGRAM_KEYS.map((key) => ({ where: 'evidence diagram', key })),
+  )
   return used
 }
 

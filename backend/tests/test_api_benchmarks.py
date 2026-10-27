@@ -1305,6 +1305,7 @@ def test_settings_without_a_judge(client: TestClient, monkeypatch: pytest.Monkey
 
 
 def test_settings_has_no_secret(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    _without_judge_env(monkeypatch)
     for name in SECRET_ENV:
         monkeypatch.setenv(name, f"https://user:{SENTINEL}@host" if "BASE" in name else SENTINEL)
     monkeypatch.setenv("JUDGE_PROVIDER", "litellm")

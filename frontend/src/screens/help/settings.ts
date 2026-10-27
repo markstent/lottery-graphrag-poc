@@ -132,3 +132,10 @@ export function fillSettings(text: string, values: SettingValues): string {
     return current ?? recorded ?? 'not available'
   })
 }
+
+/** The settings the picture reads. */
+export const EVIDENCE_DIAGRAM_KEYS = [
+  'context.evidence_slots',
+  'context.graph_slots',
+  'context_budget_tokens',
+] as const

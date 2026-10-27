@@ -96,7 +96,7 @@ def test_reasoning_off_for_openrouter_sends_reasoning_disabled(model: str) -> No
 
     kwargs: dict[str, Any] = _reasoning_off_kwargs(f"openrouter/{model}") or {}
     params = get_optional_params(
-        model=model, custom_llm_provider="openrouter", max_tokens=5, **(kwargs or {})
+        model=model, custom_llm_provider="openrouter", max_tokens=5, **kwargs
     )
     body = OpenrouterConfig().transform_request(
         model=model,

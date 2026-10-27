@@ -41,7 +41,7 @@ The routes of the first version of the product (`#/lab`, `#/experiment`, `#/dict
 Overview is the default.
 
 - A left sidebar lists the five destinations, and collapses to icons.
-Below 768 px wide it stays collapsed and the toggle is hidden, so the page keeps its width.
+  Below 768 px wide it stays collapsed and the toggle is hidden, so the page keeps its width.
   The active one carries a heavy bar and bold text, so it does not rely on colour.
 - The header carries the product name, the active dataset in plain words (for example "dev world, 2026"), the model status, the presentation toggle and Settings.
 - The model status is one button with a dot and a word: Checking, Ready, Starting or Not ready.

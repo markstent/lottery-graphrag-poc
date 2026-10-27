@@ -10,6 +10,7 @@
 import { useId } from 'react'
 
 import {
+  EVIDENCE_DIAGRAM_KEYS,
   rawSetting,
   showNumber,
   useSettingValues,
@@ -132,9 +133,9 @@ function Note({ y, text }: { y: number; text: string }) {
 export function EvidenceDiagram() {
   const values = useSettingValues()
   const { loading } = values
-  const slots = wholeNumber('context.evidence_slots', values)
-  const graph = wholeNumber('context.graph_slots', values)
-  const budget = wholeNumber('context_budget_tokens', values)
+  const slots = wholeNumber(EVIDENCE_DIAGRAM_KEYS[0], values)
+  const graph = wholeNumber(EVIDENCE_DIAGRAM_KEYS[1], values)
+  const budget = wholeNumber(EVIDENCE_DIAGRAM_KEYS[2], values)
   const unknown = loading ? 'loading' : 'not available'
   const known = slots !== null && slots > 0
   const share = known && graph !== null && graph <= slots ? graph : null
