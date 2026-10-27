@@ -109,4 +109,13 @@ describe('isFullOfficial', () => {
     expect(isFullOfficial(run('smoke', null, FULL))).toBe(false)
     expect(isFullOfficial(run('official', null, undefined))).toBe(false)
   })
+
+  it('treats an official run over some questions only as a subset, as the API does', () => {
+    const someQuestions = { strata: null, limit: null, questions: ['L05'] }
+    expect(isFullOfficial(run('official', null, someQuestions))).toBe(false)
+    expect(verdictFrom(run('official', 'dry run', someQuestions))).toEqual({
+      kind: 'none',
+      otherRun: 'dry run',
+    })
+  })
 })

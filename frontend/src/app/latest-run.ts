@@ -43,14 +43,19 @@ function figures(summary: Record<string, unknown>, id: PipelineId) {
   }
 }
 
-/** Whether the summary is an official run of the whole bank: no strata, no limit. */
+/**
+ * Whether the summary is an official run of the whole bank: no strata, no
+ * limit and no list of questions, the rule of `_full` in
+ * backend/app/api/benchmarks.py (a run writes `questions` only when set).
+ */
 export function isFullOfficial(latest: Schemas['BenchmarkSummary']): boolean {
   const { selection } = latest.summary
   return (
     latest.run_kind === 'official' &&
     isRecord(selection) &&
     selection.strata === null &&
-    selection.limit === null
+    selection.limit === null &&
+    selection.questions == null
   )
 }
 
