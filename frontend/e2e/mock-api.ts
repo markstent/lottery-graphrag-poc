@@ -31,6 +31,7 @@ import smokeSummary from './fixtures/results-smoke-summary.json' with { type: 'j
 import v03Instances from './fixtures/results-v03-instances.json' with { type: 'json' }
 import v03Summary from './fixtures/results-v03-summary.json' with { type: 'json' }
 import world from './fixtures/world-shell.json' with { type: 'json' }
+import settingsFixture from '../src/test/settings.fixture.json' with { type: 'json' }
 
 /** The captured bank: its instance count (Help shows it) and the repeats of an official run. */
 const BANK_INSTANCES = scoredQuestions.length
@@ -49,71 +50,11 @@ const RUNS = runsFixture
 const DEMO_QUESTIONS = world.demo_questions
 
 /**
- * What GET /settings answers: fixed test values for the settings Help shows,
- * in the shape `runner.settings_fields()` gives them, not a capture of the system.
+ * What GET /settings answers: the API's own answer for a fixed test
+ * environment (src/test/settings.fixture.json, written by
+ * backend/tests/test_settings_fixture.py), not a capture of the system.
  */
-const SETTINGS = {
-  judge_configured: true,
-  values: {
-    generation_model: 'fixture-model',
-    generation_model_family: 'fixture-family',
-    generation_temperature: 0,
-    generation_reasoning: 'off',
-    max_tokens: 1024,
-    prompt_version: '2.0.0',
-    prompt_hash: 'fixture-prompt-hash',
-    top_k: 20,
-    rrf_k: 60,
-    context_budget_tokens: 2000,
-    context: { dedupe_threshold: 0.85, evidence_slots: 12, graph_slots: 6 },
-    graph_limits: {
-      depth: 2,
-      nodes_per_hop: 100,
-      edges_per_node_type: 4,
-      total_nodes: 200,
-      relationship_types: 22,
-    },
-    ranking_weights: {
-      graph_distance: 0.25,
-      relationship_type: 0.25,
-      semantic_relevance: 0.35,
-      temporal_validity: 0.15,
-    },
-    reference_date: '2026-01-01',
-    excluded_labels: ['Document'],
-    ontology_version: '2.0.0',
-    graph_label_version: 'v2',
-    relationship_types_b: [
-      'AFFECTS',
-      'AFFECTS_MARKET',
-      'AVAILABLE_IN',
-      'BELONGS_TO',
-      'CATEGORISED_AS',
-      'CONCERNS',
-      'FROM_MARKET',
-      'HAS_MECHANIC',
-      'INSTANCE_OF',
-      'OF_TYPE',
-      'PROVIDED_BY',
-      'RELATED_TO',
-      'RELATED_TO_APP_VERSION',
-      'RELATED_TO_VERSION',
-      'RUNS_ON',
-      'TARGETS',
-      'USES',
-      'USES_PAYMENT',
-      'VERSION_OF',
-    ],
-    repeats: 3,
-    judge_model: 'fixture-judge',
-    judge_model_family: 'fixture-judge-family',
-    judge_temperature: 0,
-    judge_reasoning: 'off',
-    judge_prompt_version: '1.0.0',
-    judge_prompt_hash: 'fixture-judge-prompt-hash',
-    selection_rule: 'reranker-graph-share',
-  },
-}
+const SETTINGS = settingsFixture
 
 const cell = (mean: number, repeats: number) => ({
   mean,

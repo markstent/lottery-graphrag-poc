@@ -1,18 +1,15 @@
 {
-  "judge_configured": true,
   "values": {
     "question_bank_version": "2.0.0",
     "rrf_k": 60,
     "generation_model": "generation-model",
     "generation_temperature": 0.0,
     "max_tokens": 1200,
-    "prompt_version": "2.0.0",
+    "prompt_version": "3.0.0",
     "top_k": 40,
     "context_budget_tokens": 2000,
     "context": {
-      "dedupe_threshold": 0.85,
-      "evidence_slots": 12,
-      "graph_slots": 6
+      "dedupe_threshold": 0.85
     },
     "graph_limits": {
       "depth": 2,
@@ -31,8 +28,8 @@
     "excluded_labels": ["Document"],
     "ontology_version": "2.0.0",
     "graph_label_version": "v2",
-    "scorer_version": "2.0.0",
-    "prompt_hash": "57c938fbde7ad73cc26b80d9d14c3aa117460d4aa1f6bd727cf66cf205bcd701",
+    "scorer_version": "2.1.0",
+    "prompt_hash": "ac71b7bebd16b82f96fa0988c535966973bb5abb94c819a2b9424fa790b98daa",
     "relationship_types_b": [
       "AFFECTS",
       "AFFECTS_MARKET",
@@ -86,10 +83,18 @@
     "run_kind": "official",
     "judge_model": "judge-model",
     "judge_model_family": "judge-family",
-    "judge_prompt_version": "1.0.0",
-    "judge_prompt_hash": "e89e8a186b6d28d997bc5d7a3d253114369bd770248c42d5bed44ad6f6f19ec4",
+    "judge_prompt_version": "1.1.0",
+    "judge_prompt_hash": "f0db814c57eb3a2e2b28d1387c62f95df57dbf1f75c9d8a1317d38b4e274abd6",
     "judge_temperature": 0.0,
-    "judge_reasoning": "off",
-    "selection_rule": "reranker-graph-share"
-  }
+    "judge_reasoning": "default",
+    "selection_rule": "graph-rank-interleave-budget",
+    "method_version": "0.3.0",
+    "record_facts_version": "1.0.0",
+    "prompt_extras": {
+      "path_line": ["B", "C"],
+      "target_type_tier": ["B", "C"],
+      "ontology_target_terms": ["C"]
+    }
+  },
+  "judge_configured": true
 }
