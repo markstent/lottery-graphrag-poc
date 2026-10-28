@@ -1842,9 +1842,7 @@ def test_full_official_run_refuses_seen_seeds(
         ("sweep", (2027, 2027), False),
     ],
 )
-def test_repeated_seeds_are_refused(
-    kind: str, seeds: tuple[int, ...], full_bank: bool
-) -> None:
+def test_repeated_seeds_are_refused(kind: str, seeds: tuple[int, ...], full_bank: bool) -> None:
     with pytest.raises(ValueError, match="seeds must not repeat"):
         official.check_seeds(kind, seeds, full_bank=full_bank)
 
