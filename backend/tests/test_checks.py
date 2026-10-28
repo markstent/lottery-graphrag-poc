@@ -230,6 +230,13 @@ def test_a_release_label_tied_to_a_rival_market_scores_zero() -> None:
     assert check_score(RELEASE_CHECK, "", answer) == 0.0
 
 
+def test_a_correct_label_and_owner_beside_an_unrelated_rival_scores_zero() -> None:
+    # Conservative by controller ruling (D-095): any other platform named
+    # beside the label cancels it, even when the answer is right.
+    answer = "Web Portal 2024.3.0; the Payments Gateway was not involved."
+    assert check_score(VERSION_CHECK, "", answer) == 0.0
+
+
 def test_a_market_is_no_rival_of_a_platform_version() -> None:
     # The motivating answer names a market beside the platform.
     answer = "Version 2024.3.0 [7][3]. This incident affected the Web Portal platform in Greece."

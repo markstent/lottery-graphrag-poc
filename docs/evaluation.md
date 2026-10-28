@@ -207,6 +207,7 @@ Question-specific rules and open owner questions:
   For an app release (L15) it is the market, by English or local name or id, from `app_versions` and `markets`, such as `5.3.1` with `Greece`.
   A rival is any other platform or market that has a version of the same label: an answer that names one beside the label scores 0, because it ties the label to another owner or does not say which.
   A market is never a rival of a platform version, so "2024.3.0 ... the Web Portal platform in Greece" still counts.
+  A correct answer that names any other platform beside the label (or, for L15, any other market) scores 0, accepted as conservative by controller ruling, for example "Web Portal 2024.3.0; the Payments Gateway was not involved".
   The grounder writes the label, the owner's names and the rivals into the check, and only where label and owner identify that one version in the world.
   A bare label scores 0, because every platform and every market has a version of each label, and a label inside a longer dotted number (`5.3.1` in `1.5.3.1`) is not the label.
   Only L02 was labelled (the `version_label` cell, D-089); the rule reaches L07 and L15 by the controller's ruling that the owner's decision is about version answers, not one question, with no labels behind it.
