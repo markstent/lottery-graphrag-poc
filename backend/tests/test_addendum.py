@@ -197,6 +197,36 @@ def test_addendum_shows_agreement_with_n_and_kappa_only_from_ten(
     assert kappa_text(9, 0.5) == "too few to say"
 
 
+def test_groundedness_line_says_which_repeats_its_means_cover() -> None:
+    """The means cover only answers that state an id, date or number; the
+    line names that count beside every repeat groundedness was computed for."""
+    cell = {
+        "repeats": 108,
+        "abstentions": 0,
+        "answer_recorded": {"n": 108, "mean": 0.5},
+        "answer_rescored": {"n": 108, "mean": 0.5},
+        "groundedness": {
+            "n": 108,
+            "supported": {"n": 69, "mean": 0.8221},
+            "unsupported": {"n": 69, "mean": 0.0091},
+        },
+        "agreement": {
+            key: {
+                v: {"n": 0, "agreement": None, "weighted_kappa": None}
+                for v in ("recorded", "rescored")
+            }
+            for key in ("answered", "abstained")
+        },
+    }
+    lines = addendum._cell_lines("A", cell)
+    assert (
+        "- Groundedness, over the 69 of 108 repeats"
+        " whose answer states an id, date or number not in the question:"
+        " supported 0.822, unsupported 0.009."
+    ) in lines
+    assert not any("scored repeats" in line for line in lines)
+
+
 def test_addendum_has_no_tests(run_dir: Path, tmp_path: Path) -> None:
     out = write_addendum(run_dir, tmp_path / "out")
     text = (out / "addendum.md").read_text(encoding="utf-8").casefold()

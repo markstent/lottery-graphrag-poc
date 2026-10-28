@@ -244,7 +244,7 @@ What it does not do, and what a reader should know:
 - For the v0.2.0 addendum it reads the stored block text, which has no title, no facts format and no path line, so a v0.2.0 figure and a v0.3.0 figure are not comparable.
 
 It is recorded per answer, summarised by stratum and approach with its n (the answers with at least one atom), and shown on the Results screen.
-In the addendum, "over N scored repeats" counts every scored repeat and the means count only the answers with atoms.
+In the addendum, each groundedness line says over how many repeats its means are taken, "over the 69 of 108 repeats whose answer states an id, date or number not in the question": the first number is the answers with atoms, the second every repeat groundedness was computed for.
 
 ### Failure class
 

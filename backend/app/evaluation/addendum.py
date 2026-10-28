@@ -190,9 +190,12 @@ def _cell_lines(tag: str, cell: dict[str, Any]) -> list[str]:
         f"- Repeats: {cell['repeats']}; abstentions: {cell['abstentions']}.",
         f"- Answer score as recorded: {_shown(cell['answer_recorded'])}.",
         f"- Answer score rescored: {_shown(cell['answer_rescored'])}.",
-        f"- Groundedness over {grounded['n']} scored repeats:"
-        f" supported {_shown(grounded['supported'])},"
-        f" unsupported {_shown(grounded['unsupported'])}.",
+        # Both shares are defined exactly when the answer has an atom, so
+        # supported and unsupported always share one n.
+        f"- Groundedness, over the {grounded['supported']['n']} of {grounded['n']} repeats"
+        " whose answer states an id, date or number not in the question:"
+        f" supported {_number(grounded['supported']['mean'])},"
+        f" unsupported {_number(grounded['unsupported']['mean'])}.",
     ]
     for key, label in (("answered", "answered"), ("abstained", "abstained")):
         for version in ("recorded", "rescored"):
