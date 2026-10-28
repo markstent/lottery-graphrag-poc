@@ -176,7 +176,9 @@ The official seeds 2029 to 2034 are unseen: no development, dry, diagnostic or l
 ### Setup
 
 The worktree has no `data/` and no root `.env`.
-From inside the worktree root, link the main checkout's `data/` directory with `ln -s ../lottery-graphrag-poc/data data`; the target is the main checkout's data directory, and the link is git-ignored.
+From inside the worktree root, link the main checkout's `data/` directory with `ln -s ../lottery-graphrag-poc/data data`; the target is the main checkout's data directory.
+The root `/data` pattern in `.gitignore` ignores the link; a pattern ending in `/` would not, because git sees a symlink as a file.
+An unignored link would make the checkout dirty, and `make dry-run` and `make run-benchmark` refuse a dirty checkout.
 The API on port 8000 and the UI on port 5173 keep running from the main checkout throughout.
 
 Because there is no root `.env`, the Makefile reads no settings, so supply the environment explicitly in the shell that runs the targets.

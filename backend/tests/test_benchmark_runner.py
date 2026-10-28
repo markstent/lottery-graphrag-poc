@@ -23,6 +23,7 @@ import pytest
 from app.config import (
     LABEL_VERSION,
     METHOD_VERSION,
+    REPO_ROOT,
     SELECTION_RULE,
     GraphConfig,
     JudgeSettings,
@@ -1039,6 +1040,16 @@ def test_git_dirty_is_none_without_git(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subprocess, "run", missing)
     assert runner_module._git_dirty() is None
     assert runner_module._git_sha() == "unknown"
+
+
+def test_a_linked_data_directory_leaves_the_checkout_clean() -> None:
+    """The runbook links a worktree's ``data`` to the main checkout's; a
+    symlink is a file to git, so only a root ``/data`` pattern ignores it, and
+    without one the link alone makes an official run refuse to start."""
+    ignored = subprocess.run(
+        ["git", "check-ignore", "--no-index", "-q", "data"], cwd=REPO_ROOT, check=False
+    )
+    assert ignored.returncode == 0
 
 
 def test_every_repeat_writes_one_structured_log_record(
