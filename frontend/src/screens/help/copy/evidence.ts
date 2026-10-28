@@ -16,7 +16,7 @@ export const evidence: ChapterCopy = {
     'The two lists take turns: one passage or record text, then one graph record, then a passage again, until the budget is full. A record already in the evidence is not taken again, and when one list runs out the other carries on alone.',
     { kind: 'diagram', name: 'evidence' },
     'Why one budget: a model can read only so much at once, and more text is slower and can bury the fact that matters. The budget is the same for all three approaches, so a difference in their answers comes from what each found, not from how much each could show. Taking turns gives the graph room without a share that someone would have to choose.',
-    'This is method v0.3, in use since 2026-10-27. The official run v0.2.0 used the old method: the answer model saw at most 12 pieces, and one re-ordering model put the passages and the graph records in one list. A check on 2026-10-25 found that it scored graph records low, so about half of the facts the graph found did not reach the answer model. The method was changed after that result was seen (chapter 8).',
+    'This is method v0.3, in use since 2026-10-27. The official run v0.2.0 used the old method: the answer model saw at most 12 pieces, and one re-ordering model put the passages and the graph records in one list. A check on 2026-10-25 found that it scored graph records low, so about half of the facts the graph found did not reach the answer model. The method was changed after that result was seen (chapter 9).',
   ],
   technical: [
     'The settings in this chapter, now and in the newest official run:',

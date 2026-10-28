@@ -63,7 +63,7 @@ DEV_HEADLINE = f"{DEV_LABEL.capitalize()}: the tables are descriptive and no cla
 # the header of every method v0.3 report and as ``method_note`` in its summary.
 METHOD_NOTE = (
     "Method v0.3 was made after seeing the v0.2.0 result, in which the graph did not win; "
-    "the reasons are in docs/evaluation/v0.3-method-proposal.md (D-093)."
+    "why, and what changed, is in Help, chapter 9 (D-093)."
 )
 # Kinds whose headlines are one fixed line in place of the generated ones.
 FIXED_HEADLINES = {"smoke": SMOKE_HEADLINE, "dev": DEV_HEADLINE}
