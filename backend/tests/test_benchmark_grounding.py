@@ -25,8 +25,15 @@ from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation.__main__ import main as cli_main
 from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, BANK_VERSION, question_by_id
-from app.evaluation.checks import NumberCheck, SetCheck, TokenCheck, check_score, normalise
-from app.evaluation.grounders import Draft, ground_l01
+from app.evaluation.checks import (
+    SCORER_VERSION,
+    NumberCheck,
+    SetCheck,
+    TokenCheck,
+    check_score,
+    normalise,
+)
+from app.evaluation.grounders import Draft, PlatformVersion, ground_l01, version_label_alias
 from app.evaluation.grounding import (
     FrozenBank,
     GroundingError,
@@ -176,6 +183,59 @@ def test_l01_expects_the_record_price(grounding: WorldGrounding, tiny_dataset: P
         (check,) = instance.checks
         assert check == NumberCheck(format(Decimal(price).normalize(), "f"), currency)
         assert f"{price:.2f} {currency}" in instance.expected_answer
+
+
+def test_l02_accepts_the_version_label_beside_its_platform(
+    grounding: WorldGrounding, tiny_dataset: Path
+) -> None:
+    rows = duckdb.execute(
+        "SELECT v.platform_version_id, v.version_label, p.platform_name, p.platform_id"
+        " FROM read_parquet(?) v JOIN read_parquet(?) p USING (platform_id)",
+        [
+            (tiny_dataset / "platform_versions.parquet").as_posix(),
+            (tiny_dataset / "platforms.parquet").as_posix(),
+        ],
+    ).fetchall()
+    versions = {str(r[0]): (str(r[1]), str(r[2]), str(r[3])) for r in rows}
+    instances = grounding.ground(question_by_id("L02")).instances
+    assert instances
+    for instance in instances:
+        (check,) = instance.checks
+        assert isinstance(check, TokenCheck)
+        label, name, platform_id = versions[check.expected]
+        assert check.qualified == ((label, (name, platform_id)),)
+
+
+# Two platforms share every label in a generated world; that is the normal case.
+SHARED_LABELS = {
+    "PLV_WEB_1": PlatformVersion("2024.1.0", "PLT_WEB", "Web Portal"),
+    "PLV_WEB_2": PlatformVersion("2024.2.0", "PLT_WEB", "Web Portal"),
+    "PLV_DRAW_1": PlatformVersion("2024.1.0", "PLT_DRAW", "Draw Engine"),
+}
+
+
+def test_a_label_two_platforms_share_counts_beside_its_own_platform() -> None:
+    assert version_label_alias(SHARED_LABELS, "PLV_WEB_1") == (
+        ("2024.1.0", ("Web Portal", "PLT_WEB")),
+    )
+    assert version_label_alias(SHARED_LABELS, "PLV_DRAW_1") == (
+        ("2024.1.0", ("Draw Engine", "PLT_DRAW")),
+    )
+
+
+def test_a_label_two_versions_of_one_platform_share_never_counts() -> None:
+    # Label and platform would not say which of the two versions is meant.
+    versions = {**SHARED_LABELS, "PLV_WEB_9": PlatformVersion("2024.1.0", "PLT_WEB", "Web Portal")}
+    assert version_label_alias(versions, "PLV_WEB_1") == ()
+    assert version_label_alias(versions, "PLV_WEB_2") == (("2024.2.0", ("Web Portal", "PLT_WEB")),)
+
+
+def test_a_platform_name_two_platforms_share_is_not_a_qualifier() -> None:
+    versions = {
+        "PLV_A_1": PlatformVersion("2024.1.0", "PLT_A", "Portal"),
+        "PLV_B_1": PlatformVersion("2024.1.0", "PLT_B", "portal"),
+    }
+    assert version_label_alias(versions, "PLV_A_1") == (("2024.1.0", ("PLT_A",)),)
 
 
 def test_grounding_is_deterministic(
@@ -425,6 +485,7 @@ def test_frozen_bank_records_its_inputs_and_round_trips(
     assert bank.world_manifest_hash == hashlib.sha256(manifest).hexdigest()
     assert bank.ledger_hash == hashlib.sha256(tiny_ledger.read_bytes()).hexdigest()
     assert bank.record_serialiser_version == RECORD_SERIALISER_VERSION
+    assert bank.scorer_version == SCORER_VERSION
     assert (bank.bank_version, bank.world_seed) == (BANK_VERSION, 42)
     path = tmp_path / "bank.json"
     write_frozen_bank(bank, path)

@@ -864,6 +864,11 @@ def check_bank(bank: FrozenBank, world_dir: Path, lab: Lab) -> dict[str, Any]:
             f"the frozen bank has bank version {bank.bank_version}, the code has "
             f"{BANK_VERSION}; ground the bank again"
         )
+    if bank.scorer_version != SCORER_VERSION:
+        raise GroundingError(
+            f"the frozen bank was grounded for scorer {bank.scorer_version or 'unrecorded'}, "
+            f"the code has scorer {SCORER_VERSION}; ground the bank again"
+        )
     built_by = lab.record_serialiser_version
     if bank.record_serialiser_version != built_by:
         raise GroundingError(

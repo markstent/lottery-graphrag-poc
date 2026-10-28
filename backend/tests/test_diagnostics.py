@@ -13,7 +13,7 @@ from typing import cast
 import pytest
 from app.config import METHOD_VERSION, SELECTION_RULE, GraphConfig
 from app.evaluation import diagnostics, official
-from app.evaluation.checks import TokenCheck
+from app.evaluation.checks import SCORER_VERSION, TokenCheck
 from app.evaluation.claims import Claim, selection_carrier
 from app.evaluation.diagnostics import (
     Candidates,
@@ -107,6 +107,7 @@ def bank_of(*instances: BankInstance) -> FrozenBank:
         world_seed=2026,
         world_manifest_hash="m",
         record_serialiser_version="s",
+        scorer_version=SCORER_VERSION,
         ledger_hash="l",
         instances=instances,
         unavailable=(),

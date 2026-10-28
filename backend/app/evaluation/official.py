@@ -51,6 +51,7 @@ from app.config import (
 from app.datasets import __main__ as datasets_cli
 from app.datasets.config import GENERATOR_VERSION
 from app.evaluation.bank import BANK, BANK_VERSION, STRATA, question_by_id
+from app.evaluation.checks import SCORER_VERSION
 from app.evaluation.grounding import (
     FrozenBank,
     GroundingError,
@@ -381,14 +382,15 @@ def _bank_is_current(paths: WorldPaths) -> bool:
         and bank.world_manifest_hash == _sha256(paths.world_dir / WORLD_MANIFEST)
         and bank.ledger_hash == _sha256(paths.ledger_path)
         and bank.record_serialiser_version == RECORD_SERIALISER_VERSION
+        and bank.scorer_version == SCORER_VERSION
     )
 
 
 def bank_matches_active_world() -> bool:
     """Whether the presentation bank is current for the world the API serves
     (``DATASET_DIR`` and ``TRUTH_LEDGER_PATH``), with every check the runner
-    makes before it uses a bank: its version, world manifest, ledger and
-    record serialiser. A bank whose world or ledger is missing does not
+    makes before it uses a bank: its version, world manifest, ledger, record
+    serialiser and scorer. A bank whose world or ledger is missing does not
     match."""
     paths = world_paths(PRESENTATION_SEED)
     if not ((paths.world_dir / WORLD_MANIFEST).is_file() and paths.ledger_path.is_file()):

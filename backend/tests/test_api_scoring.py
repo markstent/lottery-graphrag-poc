@@ -40,7 +40,7 @@ from app.api.scoring import (
 from app.evaluation import official
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
-from app.evaluation.checks import TokenCheck
+from app.evaluation.checks import SCORER_VERSION, TokenCheck
 from app.evaluation.claims import Claim
 from app.evaluation.grounding import DEMO_STRATA, BankInstance, FrozenBank
 from app.evaluation.official import world_paths
@@ -122,6 +122,7 @@ def bank(world_dir: Path) -> FrozenBank:
         world_seed=2026,
         world_manifest_hash=hashlib.sha256((world_dir / "_manifest.json").read_bytes()).hexdigest(),
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash="ledger-hash",
         instances=instances,
         unavailable=(),

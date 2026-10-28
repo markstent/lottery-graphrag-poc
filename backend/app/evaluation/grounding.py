@@ -9,7 +9,7 @@ grounds to one instance read from its scenario's ledger truth
 (``app.evaluation.planted``).
 
 :func:`freeze_bank` grounds the whole bank into a hashed :class:`FrozenBank`
-that records the world, ledger and record serialiser it was built from.
+that records the world, ledger, record serialiser and scorer it was built from.
 
 Everything here is evaluator-only (ADR-008): retrieval code never imports
 this package. Identical world, ledger and bank version give identical output.
@@ -28,7 +28,7 @@ import duckdb
 
 from app.datasets.schema import TABLE_SCHEMAS
 from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, BANK_VERSION, LogicalQuestion
-from app.evaluation.checks import Check, check_from_payload
+from app.evaluation.checks import SCORER_VERSION, Check, check_from_payload
 from app.evaluation.claims import (
     CarrierIndex,
     Claim,
@@ -268,13 +268,16 @@ class FrozenBank:
     """The bank grounded into one world, with the hashes of what it was built from.
 
     ``bank_hash`` is the sha256 of the canonical JSON of every other field,
-    so any edit to a written bank is detected on load.
+    so any edit to a written bank is detected on load. The checks are the
+    scorer's answer key, so the bank records the scorer it was grounded for;
+    ``scorer_version`` is None in a bank written before it was recorded.
     """
 
     bank_version: str
     world_seed: int
     world_manifest_hash: str
     record_serialiser_version: str
+    scorer_version: str | None
     ledger_hash: str
     instances: tuple[BankInstance, ...]
     unavailable: tuple[Unavailable, ...]
@@ -311,6 +314,7 @@ def freeze_bank(world_dir: Path, ledger_path: Path) -> FrozenBank:
         world_seed=grounding.world_seed,
         world_manifest_hash=_sha256(manifest),
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash=_sha256(ledger_path.read_bytes()),
         instances=tuple(instances),
         unavailable=tuple(unavailable),
@@ -365,6 +369,7 @@ def _content(bank: FrozenBank) -> dict[str, object]:
         "world_seed": bank.world_seed,
         "world_manifest_hash": bank.world_manifest_hash,
         "record_serialiser_version": bank.record_serialiser_version,
+        "scorer_version": bank.scorer_version,
         "ledger_hash": bank.ledger_hash,
         "instances": [instance.to_payload() for instance in bank.instances],
         "unavailable": [
@@ -379,6 +384,7 @@ def _bank_from_content(content: Mapping[str, object], bank_hash: str) -> FrozenB
         world_seed=int(str(content["world_seed"])),
         world_manifest_hash=str(content["world_manifest_hash"]),
         record_serialiser_version=str(content["record_serialiser_version"]),
+        scorer_version=_optional_text(content.get("scorer_version")),
         ledger_hash=str(content["ledger_hash"]),
         instances=tuple(
             instance_from_payload(p) for p in cast(list[Mapping[str, object]], content["instances"])
@@ -389,6 +395,10 @@ def _bank_from_content(content: Mapping[str, object], bank_hash: str) -> FrozenB
         ),
         bank_hash=bank_hash,
     )
+
+
+def _optional_text(value: object) -> str | None:
+    return None if value is None else str(value)
 
 
 def _canonical(payload: Mapping[str, object]) -> str:

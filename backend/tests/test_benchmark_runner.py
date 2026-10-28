@@ -221,6 +221,7 @@ def frozen_bank(world_dir: Path) -> FrozenBank:
         world_seed=2026,
         world_manifest_hash=manifest_hash,
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash="ledger-hash",
         instances=(
             _instance(
@@ -359,6 +360,17 @@ def test_runner_refuses_a_bank_of_another_version(
 ) -> None:
     old = dataclasses.replace(frozen_bank, bank_version="1.0.0")
     with pytest.raises(GroundingError, match=r"bank version 1\.0\.0"):
+        BenchmarkRunner(offline_lab, GRAPH, old, world_dir, kind="smoke", repeats=1)
+
+
+@pytest.mark.parametrize("grounded_for", ["2.1.0", None])
+def test_runner_refuses_a_bank_grounded_for_another_scorer(
+    offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path, grounded_for: str | None
+) -> None:
+    # The checks are the scorer's answer key: an L02 check grounded before
+    # scorer 2.2.0 has no version label, so it would score by the old rule.
+    old = dataclasses.replace(frozen_bank, scorer_version=grounded_for)
+    with pytest.raises(GroundingError, match=f"grounded for scorer {grounded_for or 'unrecorded'}"):
         BenchmarkRunner(offline_lab, GRAPH, old, world_dir, kind="smoke", repeats=1)
 
 

@@ -28,6 +28,7 @@ from app.evaluation import __main__ as cli
 from app.evaluation import official
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
+from app.evaluation.checks import SCORER_VERSION
 from app.evaluation.grounding import (
     BankInstance,
     FrozenBank,
@@ -138,6 +139,7 @@ class Recorder:
             world_seed=paths.seed,
             world_manifest_hash=_sha(paths.world_dir / "_manifest.json"),
             record_serialiser_version=RECORD_SERIALISER_VERSION,
+            scorer_version=SCORER_VERSION,
             ledger_hash=_sha(paths.ledger_path),
             instances=instances,
             unavailable=(Unavailable("L22", "scenario not planted"),),
@@ -418,6 +420,7 @@ def grounded_world(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> WorldPath
         world_seed=PRESENTATION_SEED,
         world_manifest_hash=_sha(paths.world_dir / "_manifest.json"),
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash=_sha(paths.ledger_path),
         instances=(),
         unavailable=(),
@@ -563,7 +566,9 @@ def test_the_demo_world_is_grounded_by_its_own_variables(
     assert bank_matches_active_world()
 
 
-@pytest.mark.parametrize("stale", ["manifest", "ledger", "serialiser", "version", "no manifest"])
+@pytest.mark.parametrize(
+    "stale", ["manifest", "ledger", "serialiser", "version", "scorer", "no scorer", "no manifest"]
+)
 def test_a_bank_is_not_current_once_what_it_was_grounded_on_changes(
     grounded_world: WorldPaths, stale: str
 ) -> None:
@@ -575,11 +580,13 @@ def test_a_bank_is_not_current_once_what_it_was_grounded_on_changes(
     elif stale == "no manifest":
         (grounded_world.world_dir / "_manifest.json").unlink()
     else:
-        changed = (
-            dataclasses.replace(bank, record_serialiser_version="0.0.1")
-            if stale == "serialiser"
-            else dataclasses.replace(bank, bank_version="0.0.1")
-        )
+        changed = {
+            "serialiser": dataclasses.replace(bank, record_serialiser_version="0.0.1"),
+            "version": dataclasses.replace(bank, bank_version="0.0.1"),
+            # A bank grounded for another scorer holds that scorer's answer key.
+            "scorer": dataclasses.replace(bank, scorer_version="2.1.0"),
+            "no scorer": dataclasses.replace(bank, scorer_version=None),
+        }[stale]
         write_frozen_bank(seal_bank(changed), grounded_world.bank_path)
     assert not bank_matches_active_world()
 
@@ -689,6 +696,7 @@ def _bank(instances: tuple[BankInstance, ...]) -> FrozenBank:
         world_seed=2026,
         world_manifest_hash="m",
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash="l",
         instances=instances,
         unavailable=(Unavailable("L01", "no eligible anchor"), Unavailable("L22", "x")),
