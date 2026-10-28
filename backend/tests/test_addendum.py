@@ -11,7 +11,7 @@ from typing import Any
 import pytest
 from app.evaluation import addendum
 from app.evaluation.addendum import current_checks, rescore, rescoring_checks, write_addendum
-from app.evaluation.checks import TokenCheck
+from app.evaluation.checks import Check, QualifiedAlias, SetCheck, TokenCheck
 from app.evaluation.grounding import FrozenBank, freeze_bank
 from app.evaluation.official import world_paths
 from app.evaluation.report import kappa_text
@@ -187,7 +187,9 @@ def _grounded_now(payload: dict[str, Any], **changes: Any) -> dict[int, FrozenBa
     """The run's bank as grounded now: the L02 check with its version label."""
     (bank,) = addendum.current_banks(payload).values()
     (instance,) = bank.instances
-    check = TokenCheck("PLV_WEB_3", qualified=(("2024.3.0", ("Web Portal", "PLT_WEB")),))
+    check = TokenCheck(
+        "PLV_WEB_3", qualified=(QualifiedAlias("2024.3.0", ("Web Portal", "PLT_WEB")),)
+    )
     now = dataclasses.replace(instance, checks=(check,), **changes)
     return {bank.world_seed: dataclasses.replace(bank, instances=(now,))}
 
@@ -205,6 +207,45 @@ def test_rescoring_refuses_an_instance_grounded_differently_now() -> None:
     changed = _grounded_now(payload, text="Which platform version did INC_022 hit?")
     with pytest.raises(ValueError, match="L02-2026-INC_022 of world 2026 is not grounded now"):
         current_checks(payload, changed)
+
+
+def _with_checks(payload: dict[str, Any], *checks: Check) -> dict[int, FrozenBank]:
+    (bank,) = addendum.current_banks(payload).values()
+    (instance,) = bank.instances
+    now = dataclasses.replace(instance, checks=checks)
+    return {bank.world_seed: dataclasses.replace(bank, instances=(now,))}
+
+
+def test_rescoring_refuses_a_check_that_drifted_in_its_aliases() -> None:
+    # Only the qualified aliases (D-095) may differ from the recorded check.
+    payload = _l02_payload()
+    drifted = _with_checks(payload, TokenCheck("PLV_WEB_3", ("Web Portal 3",)))
+    with pytest.raises(ValueError, match=r"checks of L02-2026-INC_022 .* differ"):
+        current_checks(payload, drifted)
+
+
+def test_rescoring_refuses_a_set_check_whose_universe_drifted() -> None:
+    payload = _l02_payload()
+    (entry,) = payload["worlds"][0]["results"]
+    recorded = SetCheck.of({"MKT_GR"}, {"MKT_GR": ["Greece"], "MKT_UK": ["United Kingdom"]})
+    entry["instance"]["checks"] = [recorded.to_payload()]
+    wider = SetCheck.of({"MKT_GR"}, {"MKT_GR": ["Greece"], "MKT_AT": ["Austria"]})
+    with pytest.raises(ValueError, match=r"checks of L02-2026-INC_022 .* differ"):
+        current_checks(payload, _with_checks(payload, wider))
+
+
+def test_rescoring_accepts_a_change_in_the_qualified_aliases_only() -> None:
+    payload = _l02_payload()
+    (entry,) = payload["worlds"][0]["results"]
+    # As a run of scorer 2.2.0 recorded it: the alias without its rivals.
+    entry["instance"]["checks"] = [
+        TokenCheck("PLV_WEB_3", qualified=(QualifiedAlias("2024.3.0", ("PLT_WEB",)),)).to_payload()
+    ]
+    now = TokenCheck(
+        "PLV_WEB_3",
+        qualified=(QualifiedAlias("2024.3.0", ("Web Portal", "PLT_WEB"), ("PLT_DRAW",)),),
+    )
+    assert current_checks(payload, _with_checks(payload, now)) == {"L02-2026-INC_022": (now,)}
 
 
 def test_rescoring_refuses_an_instance_the_bank_lacks() -> None:
@@ -239,7 +280,7 @@ def test_current_banks_ground_the_runs_worlds_again(
 
 def test_addendum_never_writes_into_the_run(run_dir: Path, tmp_path: Path) -> None:
     before = _snapshot(run_dir)
-    out = write_addendum(run_dir, tmp_path / "addenda" / "official-2026-10-26-scorer-2.2.0")
+    out = write_addendum(run_dir, tmp_path / "addenda" / "official-2026-10-26-scorer-2.2.1")
     assert _snapshot(run_dir) == before
     assert {path.name for path in out.iterdir()} == {"addendum.json", "addendum.md"}
     with pytest.raises(ValueError, match="inside the run"):
@@ -259,7 +300,7 @@ def test_addendum_header_labels_it(run_dir: Path, tmp_path: Path) -> None:
     text = (out / "addendum.md").read_text(encoding="utf-8")
     assert text.startswith("# Addendum to the official run v0.2.0")
     assert (
-        "rescored with scorer 2.2.0 and the groundedness measure, no model was called, "
+        "rescored with scorer 2.2.1 and the groundedness measure, no model was called, "
         "and the original record is unchanged"
     ) in text
     assert "scorer 2.0.0" in text

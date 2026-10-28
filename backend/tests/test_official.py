@@ -401,11 +401,11 @@ def test_world_paths_name_the_world_ledger_bank_and_collection(data_dir: Path) -
     assert presentation.ledger_path == data_dir / "truth" / "ledger.json"
     assert (
         presentation.bank_path
-        == data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.0-dev-seed2026.json"
+        == data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.1-dev-seed2026.json"
     )
     assert other.world_dir == data_dir / "generated" / "dev-seed2028"
     assert other.ledger_path == data_dir / "truth" / "dev-seed2028.json"
-    assert other.bank_path.name == "bank-2.0.0-scorer-2.2.0-dev-seed2028.json"
+    assert other.bank_path.name == "bank-2.0.0-scorer-2.2.1-dev-seed2028.json"
     assert other.seed == 2028
 
 
@@ -531,7 +531,7 @@ def test_the_presentation_world_is_dataset_dir_and_the_truth_ledger_path(
     assert paths.ledger_path == data_dir / "truth" / "ledger-demo.json"
     assert (
         paths.bank_path
-        == data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.0-demo-seed2026.json"
+        == data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.1-demo-seed2026.json"
     )
     assert world_paths(2027).world_dir == data_dir / "generated" / "dev-seed2027"
 
@@ -566,7 +566,7 @@ def test_the_demo_world_is_grounded_by_its_own_variables(
     monkeypatch.setenv("DATASET_DIR", str(demo))
     monkeypatch.setenv("TRUTH_LEDGER_PATH", str(ledger))
     assert cli.main(["ground"]) == 0
-    bank = data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.0-demo-seed2026.json"
+    bank = data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.1-demo-seed2026.json"
     assert bank.is_file() and f"wrote {bank}" in capsys.readouterr().out
     assert bank_matches_active_world()
 

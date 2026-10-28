@@ -25,6 +25,7 @@ from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, BANK_VERSION, questi
 from app.evaluation.checks import (
     SCORER_VERSION,
     NumberCheck,
+    QualifiedAlias,
     SetCheck,
     TokenCheck,
     check_score,
@@ -180,7 +181,7 @@ def _platform_versions(tiny_dataset: Path) -> dict[str, tuple[str, str, str]]:
     return {str(r[0]): (str(r[1]), str(r[2]), str(r[3])) for r in rows}
 
 
-# Scorer 2.2.0 (D-095): every question whose answer is a platform version.
+# Scorer 2.2.1 (D-095): every question whose answer is a platform version.
 @pytest.mark.parametrize("question_id", ["L02", "L07"])
 def test_a_platform_version_answer_accepts_its_label_beside_its_platform(
     grounding: WorldGrounding, tiny_dataset: Path, question_id: str
@@ -192,7 +193,16 @@ def test_a_platform_version_answer_accepts_its_label_beside_its_platform(
         (check,) = instance.checks
         assert isinstance(check, TokenCheck)
         label, name, platform_id = versions[check.expected]
-        assert check.qualified == ((label, (name, platform_id)),)
+        # Every other platform has a version of the same label: each is a rival.
+        rivals = {
+            owner
+            for version, (other, *owners) in versions.items()
+            if other == label and version != check.expected
+            for owner in owners
+        }
+        (alias,) = check.qualified
+        assert (alias.alias, alias.qualifiers) == (label, (name, platform_id))
+        assert set(alias.rivals) == rivals
 
 
 def test_an_app_release_answer_accepts_its_label_beside_its_market(
@@ -211,9 +221,13 @@ def test_an_app_release_answer_accepts_its_label_beside_its_market(
     (check,) = instance.checks
     assert isinstance(check, TokenCheck)
     label, market, name = releases[check.expected]
-    ((alias, qualifiers),) = check.qualified
+    (alias,) = check.qualified
     # The market by its English name, its local name and its id.
-    assert alias == label and qualifiers[0] == name and qualifiers[-1] == market
+    assert alias.alias == label
+    assert alias.qualifiers[0] == name and alias.qualifiers[-1] == market
+    # Every other market has a release of that label, so names a rival.
+    rivals = {other for _, (lab, other, _) in releases.items() if lab == label} - {market}
+    assert rivals and rivals <= set(alias.rivals) and market not in alias.rivals
 
 
 def test_every_version_id_check_accepts_a_label_beside_its_owner(
@@ -240,10 +254,10 @@ SHARED_LABELS = {
 
 def test_a_label_two_platforms_share_counts_beside_its_own_platform() -> None:
     assert version_label_alias(SHARED_LABELS, "PLV_WEB_1") == (
-        ("2024.1.0", ("Web Portal", "PLT_WEB")),
+        QualifiedAlias("2024.1.0", ("Web Portal", "PLT_WEB"), ("Draw Engine", "PLT_DRAW")),
     )
     assert version_label_alias(SHARED_LABELS, "PLV_DRAW_1") == (
-        ("2024.1.0", ("Draw Engine", "PLT_DRAW")),
+        QualifiedAlias("2024.1.0", ("Draw Engine", "PLT_DRAW"), ("Web Portal", "PLT_WEB")),
     )
 
 
@@ -251,7 +265,9 @@ def test_a_label_two_versions_of_one_platform_share_never_counts() -> None:
     # Label and platform would not say which of the two versions is meant.
     versions = {**SHARED_LABELS, "PLV_WEB_9": Version("2024.1.0", ("Web Portal", "PLT_WEB"))}
     assert version_label_alias(versions, "PLV_WEB_1") == ()
-    assert version_label_alias(versions, "PLV_WEB_2") == (("2024.2.0", ("Web Portal", "PLT_WEB")),)
+    assert version_label_alias(versions, "PLV_WEB_2") == (
+        QualifiedAlias("2024.2.0", ("Web Portal", "PLT_WEB")),
+    )
 
 
 def test_a_platform_name_two_platforms_share_is_not_a_qualifier() -> None:
@@ -259,7 +275,10 @@ def test_a_platform_name_two_platforms_share_is_not_a_qualifier() -> None:
         "PLV_A_1": Version("2024.1.0", ("Portal", "PLT_A")),
         "PLV_B_1": Version("2024.1.0", ("portal", "PLT_B")),
     }
-    assert version_label_alias(versions, "PLV_A_1") == (("2024.1.0", ("PLT_A",)),)
+    # The shared name is no qualifier, and naming it names the rival too.
+    assert version_label_alias(versions, "PLV_A_1") == (
+        QualifiedAlias("2024.1.0", ("PLT_A",), ("portal", "PLT_B")),
+    )
 
 
 def test_grounding_is_deterministic(
@@ -616,13 +635,14 @@ def test_bank_doc_lists_every_question_and_instance(
     for instance in load_frozen_bank(bank_path).instances:
         assert instance.text in doc and instance.expected_answer in doc
     assert f"Scorer version: `{SCORER_VERSION}`." in doc
-    # Scorer 2.2.0 (D-095): the page names what else an L02 check accepts.
+    # Scorer 2.2.0 (D-095): the page names what else a version check accepts.
     for instance in load_frozen_bank(bank_path).instances:
         for check in instance.checks:
             if isinstance(check, TokenCheck):
-                for alias, qualifiers in check.qualified:
-                    names = " or ".join(qualifiers)
-                    assert f"  - Also accepted: {alias} with {names}." in doc
+                for q in check.qualified:
+                    names, rivals = " or ".join(q.qualifiers), ", ".join(q.rivals)
+                    line = f"  - Also accepted: {q.alias} with {names}, naming none of {rivals}."
+                    assert line in doc
 
 
 @dev_world

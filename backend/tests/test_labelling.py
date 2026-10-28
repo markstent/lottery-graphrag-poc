@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 from app.evaluation import addendum, labelling
-from app.evaluation.checks import TokenCheck
+from app.evaluation.checks import QualifiedAlias, TokenCheck
 from app.evaluation.grounding import FrozenBank
 from app.evaluation.judge import JUDGE_SYSTEM_PROMPT, JudgeItem, blind
 from app.evaluation.labelling import (
@@ -527,7 +527,7 @@ def test_agreement_reports_every_measure_per_cell(sample_dir: Path, run_dir: Pat
     ]
     assert list(result["measures"]) == measures
     assert "scorer 2.0.0" in result["measures"]["scorer_recorded"]
-    assert "scorer 2.2.0" in result["measures"]["scorer_rescored"]
+    assert "scorer 2.2.1" in result["measures"]["scorer_rescored"]
     assert "judge 1.0.0" in result["measures"]["judge_recorded"]
     assert set(result["cells"]) == {name for name, _ in CELLS}
     for cell in result["cells"].values():
@@ -563,15 +563,18 @@ def test_agreement_rescores_with_the_checks_grounded_now(
     # Scorer 2.2.0 (D-095): the version label beside its platform lives in
     # the L02 check as grounded now, not in the check the run recorded.
     answer = "Incident INC_003 was seen on version 2024.3.0 [1]. It hit the Web Portal."
-    run = _write_run(
-        tmp_path / RUN_NAME, [_entry("L02", "INC_003", [("C", 1, "2024.3.0", answer, 0.0, 2)])]
-    )
+    entry = _entry("L02", "INC_003", [("C", 1, "2024.3.0", answer, 0.0, 2)])
+    # As v0.2.0 recorded it: the id-only check.
+    entry["instance"]["checks"] = [TokenCheck("PLV_WEB_3").to_payload()]
+    run = _write_run(tmp_path / RUN_NAME, [entry])
     sample = write_sample(run, tmp_path / "labels")
     _write_labels(sample / "labels-controller.csv", _all(sample, "2"))
     recorded = addendum.current_banks
 
     def grounded_now(payload: dict[str, Any]) -> dict[int, FrozenBank]:
-        check = TokenCheck("PLV_WEB_3", qualified=(("2024.3.0", ("Web Portal", "PLT_WEB")),))
+        check = TokenCheck(
+            "PLV_WEB_3", qualified=(QualifiedAlias("2024.3.0", ("Web Portal", "PLT_WEB")),)
+        )
         return {
             seed: dataclasses.replace(
                 bank,
@@ -709,7 +712,7 @@ def test_eighty_percent_rule_flags_a_cell(tmp_path: Path) -> None:
     }
     assert flags == {
         "- scorer 2.0.0 as recorded": True,
-        "- scorer 2.2.0 rescored": True,
+        "- scorer 2.2.1 rescored": True,
         "- judge 1.0.0 as recorded": False,
         "- judge 1.0.0 with the 1.1.0 abstention rule applied mechanically": True,
     }

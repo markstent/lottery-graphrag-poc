@@ -8,7 +8,9 @@ Scorer 2.1.0 adds one rule: a token whose whole text is an ISO date also
 matches when a time follows it ("2025-10-07T09:30"). Scorer 2.2.0 adds one
 more: a token check may hold qualified aliases, an alias that counts only
 beside one of its qualifiers (a version label beside its platform, D-095);
-the grounder decides which checks have them. `is_abstention` reads a
+the grounder decides which checks have them. Scorer 2.2.1 corrects it: the
+alias does not count when the answer also names a rival (another owner of
+that label), and a dotted label never matches inside a longer dotted one. `is_abstention` reads a
 verdict that opens with the word "unknown". `groundedness` (D-088) is a
 descriptive measure of whether the ids, dates and numbers an answer states
 come from the blocks it cites; it reads no answer key.
@@ -27,7 +29,7 @@ from app.evaluation.claims import Claim, word_pattern
 
 # The version of the answer checks and their scoring; recorded with every run
 # and every frozen bank, whose checks are grounded for it.
-SCORER_VERSION = "2.2.0"
+SCORER_VERSION = "2.2.1"
 
 _CITATION = r"\[\d+(?:\s*,\s*\d+)*\]"
 _CITATION_PATTERN = re.compile(_CITATION)
@@ -105,18 +107,32 @@ class SetCheck:
 
 
 @dataclass(frozen=True, slots=True)
-class TokenCheck:
-    """The answer names `expected` or one of its aliases, or names a qualified
-    alias together with one of that alias's qualifiers.
+class QualifiedAlias:
+    """An alias that counts only in an answer that also names one of its
+    qualifiers and names none of its rivals, anywhere in the text (D-095:
+    a version label beside its platform or market, and beside no other
+    platform or market that has a version of that label)."""
 
-    `qualified` holds (alias, qualifiers) pairs: the alias counts only in an
-    answer that also names one of its qualifiers, anywhere in the text. The
-    grounder sets it (scorer 2.2.0, D-095: a version label beside its platform).
-    """
+    alias: str
+    qualifiers: tuple[str, ...]
+    rivals: tuple[str, ...] = ()
+
+    def named_in(self, text: str) -> bool:
+        return (
+            _mentions_label(text, self.alias)
+            and any(_mentions(text, name) for name in self.qualifiers)
+            and not any(_mentions(text, name) for name in self.rivals)
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class TokenCheck:
+    """The answer names `expected` or one of its aliases, or one of its
+    qualified aliases as that alias requires. The grounder sets `qualified`."""
 
     expected: str
     aliases: tuple[str, ...] = ()
-    qualified: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    qualified: tuple[QualifiedAlias, ...] = ()
 
     def to_payload(self) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -127,7 +143,7 @@ class TokenCheck:
         # Left out when empty, so every other token check keeps its payload.
         if self.qualified:
             payload["qualified"] = [
-                [alias, list(qualifiers)] for alias, qualifiers in self.qualified
+                [q.alias, list(q.qualifiers), list(q.rivals)] for q in self.qualified
             ]
         return payload
 
@@ -169,7 +185,15 @@ def check_from_payload(payload: Mapping[str, object]) -> Check:
         return TokenCheck(
             str(payload["expected"]),
             tuple(cast(list[str], payload["aliases"])),
-            tuple((str(alias), tuple(map(str, qualifiers))) for alias, qualifiers in qualified),
+            # Scorer 2.2.0 wrote [alias, qualifiers]; 2.2.1 adds the rivals.
+            tuple(
+                QualifiedAlias(
+                    str(entry[0]),
+                    tuple(map(str, entry[1])),
+                    tuple(map(str, entry[2])) if len(entry) > 2 else (),
+                )
+                for entry in qualified
+            ),
         )
     if kind == "verdict":
         expected = payload["expected"]
@@ -190,8 +214,7 @@ def check_score(check: Check, verdict: str, answer: str) -> float:
     if isinstance(check, TokenCheck):
         names = (check.expected, *check.aliases)
         named = any(_mentions(text, name) for name in names) or any(
-            _mentions(text, alias) and any(_mentions(text, q) for q in qualifiers)
-            for alias, qualifiers in check.qualified
+            alias.named_in(text) for alias in check.qualified
         )
         return 1.0 if named else 0.0
     return _set_score(check, text)
@@ -379,6 +402,13 @@ def _mentions(text: str, name: str) -> bool:
     else:
         pattern = word_pattern(name)
     return pattern.search(text.casefold()) is not None
+
+
+def _mentions_label(text: str, label: str) -> bool:
+    """A whole-word label that is also not part of a longer dotted number:
+    "5.3.1" is not in "1.5.3.1" or "5.3.1.2"."""
+    pattern = rf"(?<!\w)(?<!\d\.){re.escape(label.casefold())}(?!\w)(?!\.\d)"
+    return re.search(pattern, text.casefold()) is not None
 
 
 def normalise(number: str | int | float | Decimal) -> str:

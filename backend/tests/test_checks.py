@@ -9,6 +9,7 @@ from app.evaluation.checks import (
     Check,
     GroundednessScore,
     NumberCheck,
+    QualifiedAlias,
     SetCheck,
     TokenCheck,
     VerdictCheck,
@@ -152,8 +153,28 @@ def test_time_suffix_rule_applies_only_to_iso_dates() -> None:
     assert check_score(TokenCheck("INC_024"), "", "INC_024T00:00") == 0.0
 
 
-# Scorer 2.2.0 (D-095): a version label counts beside its platform.
-VERSION_CHECK = TokenCheck("PLV_WEB_3", qualified=(("2024.3.0", ("Web Portal", "PLT_WEB")),))
+# Scorer 2.2.1 (D-095): a version label counts beside its platform, and not
+# when it also stands beside a rival, another platform with that label.
+VERSION_CHECK = TokenCheck(
+    "PLV_WEB_3",
+    qualified=(
+        QualifiedAlias(
+            "2024.3.0",
+            ("Web Portal", "PLT_WEB"),
+            ("Payments Gateway", "PLT_PAYMENTS", "Draw Engine", "PLT_DRAW"),
+        ),
+    ),
+)
+RELEASE_CHECK = TokenCheck(
+    "APPV_GR_531",
+    qualified=(
+        QualifiedAlias(
+            "5.3.1",
+            ("Greece", "Ελλάδα", "MKT_GR"),
+            ("United Kingdom", "MKT_UK", "Austria", "Österreich", "MKT_AT"),
+        ),
+    ),
+)
 
 
 def test_a_version_label_with_its_platform_name_scores_full() -> None:
@@ -188,6 +209,48 @@ def test_the_version_id_alone_still_scores_full() -> None:
 def test_a_qualified_alias_matches_whole_words_only() -> None:
     assert check_score(VERSION_CHECK, "", "Web Portal 2024.3.01 [1].") == 0.0
     assert check_score(VERSION_CHECK, "", "Web Portals, 2024.3.0 [1].") == 0.0
+    # A dotted version inside a longer one is not the version.
+    assert check_score(VERSION_CHECK, "", "Web Portal 2024.3.0.1 [1].") == 0.0
+    assert check_score(VERSION_CHECK, "", "Web Portal 1.2024.3.0 [1].") == 0.0
+    assert check_score(RELEASE_CHECK, "", "Release 1.5.3.1 in Greece [1].") == 0.0
+    assert check_score(RELEASE_CHECK, "", "Release 5.3.1.2 in Greece [1].") == 0.0
+    assert check_score(RELEASE_CHECK, "", "Release 5.3.1. Greece [1].") == 1.0
+
+
+def test_a_version_label_tied_to_a_rival_platform_scores_zero() -> None:
+    answer = (
+        "Incident X was seen on version 2024.3.0 of the Payments Gateway;"
+        " the Web Portal was not affected."
+    )
+    assert check_score(VERSION_CHECK, "", answer) == 0.0
+
+
+def test_a_release_label_tied_to_a_rival_market_scores_zero() -> None:
+    answer = "Incident INC_041 in Greece was caused by app release 5.3.1 in the United Kingdom."
+    assert check_score(RELEASE_CHECK, "", answer) == 0.0
+
+
+def test_a_market_is_no_rival_of_a_platform_version() -> None:
+    # The motivating answer names a market beside the platform.
+    answer = "Version 2024.3.0 [7][3]. This incident affected the Web Portal platform in Greece."
+    assert check_score(VERSION_CHECK, "", answer) == 1.0
+
+
+def test_a_rival_does_not_cancel_the_version_id() -> None:
+    assert check_score(VERSION_CHECK, "", "PLV_WEB_3, not the Payments Gateway.") == 1.0
+
+
+def test_a_qualified_alias_payload_of_scorer_2_2_0_still_reads() -> None:
+    # Runs and banks of scorer 2.2.0 wrote [alias, qualifiers] with no rivals.
+    stored = {
+        "kind": "token",
+        "expected": "PLV_WEB_3",
+        "aliases": [],
+        "qualified": [["2024.3.0", ["Web Portal", "PLT_WEB"]]],
+    }
+    assert check_from_payload(stored) == TokenCheck(
+        "PLV_WEB_3", qualified=(QualifiedAlias("2024.3.0", ("Web Portal", "PLT_WEB")),)
+    )
 
 
 @pytest.mark.parametrize(
@@ -232,7 +295,7 @@ def test_a_citation_to_a_missing_block_is_inaccurate() -> None:
         NumberCheck("2.5", "GBP"),
         NumberCheck("7", None),
         TokenCheck("MKT_CZ", ("Czech Republic",)),
-        TokenCheck("PLV_WEB_3", qualified=(("2024.3.0", ("Web Portal", "PLT_WEB")),)),
+        VERSION_CHECK,
         VerdictCheck("no"),
     ],
 )

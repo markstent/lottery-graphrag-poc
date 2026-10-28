@@ -365,10 +365,11 @@ def _question_section(
             f"  - Question: {instance.text}",
             f"  - Expected answer: {instance.expected_answer}",
             *(
-                f"  - Also accepted: {alias} with {' or '.join(qualifiers)}."
+                f"  - Also accepted: {q.alias} with {' or '.join(q.qualifiers)}"
+                + (f", naming none of {', '.join(q.rivals)}." if q.rivals else ".")
                 for check in instance.checks
                 if isinstance(check, TokenCheck)
-                for alias, qualifiers in check.qualified
+                for q in check.qualified
             ),
         ]
     return [*lines, ""]
