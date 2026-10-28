@@ -537,8 +537,11 @@ def check_seeds(kind: str, seeds: Sequence[int], full_bank: bool) -> None:
     on, and it runs exactly ``OFFICIAL_SEEDS``, so no unseen world is used
     up before the frozen run: a smoke, sweep or dev run, and an official run
     over part of the bank (such as the dry run), are refused there. A dev
-    run uses the presentation world only.
+    run uses the presentation world only. A seed named twice is refused for
+    every kind, so a run never scores one world twice.
     """
+    if len(set(seeds)) != len(seeds):
+        raise ValueError(f"seeds must not repeat, got {list(seeds)}")
     unseen = sorted(seed for seed in seeds if seed >= FIRST_UNSEEN_SEED)
     if kind == "dev" and tuple(seeds) != DEV_SEEDS:
         raise ValueError(

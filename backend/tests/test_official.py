@@ -1832,6 +1832,31 @@ def test_full_official_run_refuses_seen_seeds(
     assert recorder.generated == recorder.ingested == [] and recorder.runners == []
 
 
+@pytest.mark.parametrize(
+    ("kind", "seeds", "full_bank"),
+    [
+        # Every unseen seed is there, so a comparison of sets alone would pass it.
+        ("official", (*OFFICIAL_SEEDS, 2029), True),
+        ("official", (2026, 2026), False),
+        ("smoke", (2026, 2027, 2026), True),
+        ("sweep", (2027, 2027), False),
+    ],
+)
+def test_repeated_seeds_are_refused(
+    kind: str, seeds: tuple[int, ...], full_bank: bool
+) -> None:
+    with pytest.raises(ValueError, match="seeds must not repeat"):
+        official.check_seeds(kind, seeds, full_bank=full_bank)
+
+
+def test_a_run_naming_a_seed_twice_is_refused_before_any_world_is_prepared(
+    recorder: Recorder,
+) -> None:
+    with pytest.raises(ValueError, match="seeds must not repeat"):
+        _run(recorder, seeds=(2026, 2027, 2026))
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
 def test_the_dry_run_on_seed_2026_passes_the_seed_guard(
     recorder: Recorder, gateway_env: None
 ) -> None:

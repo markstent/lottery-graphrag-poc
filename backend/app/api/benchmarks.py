@@ -508,8 +508,6 @@ def _check(request: BenchmarkStart) -> None:
             ErrorCode.VALIDATION_ERROR,
             f"unknown seeds {unknown}; expected some of {list(JOB_SEEDS)}",
         )
-    if len(set(request.seeds)) != len(request.seeds):
-        raise ApiError(422, ErrorCode.VALIDATION_ERROR, "seeds must not repeat")
     try:
         check_seeds(
             request.kind, request.seeds, full_bank=request.strata is None and request.limit is None
