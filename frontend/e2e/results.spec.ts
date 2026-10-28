@@ -152,13 +152,9 @@ test('a run of method v0.2 says it is of the old method, and has no groundedness
   )
 })
 
-/**
- * No box around the tooltip clips it: every ancestor that clips holds it
- * whole. `vertical` checks its top and bottom only, for a box that scrolls
- * sideways, where the reader scrolls to the rest.
- */
-const shownWhole = (tip: Locator, vertical = false) =>
-  tip.evaluate((el, vertical) => {
+/** No box around the tooltip clips it: every ancestor that clips holds it whole. */
+const shownWhole = (tip: Locator) =>
+  tip.evaluate((el) => {
     const tipBox = el.getBoundingClientRect()
     for (let box = el.parentElement; box; box = box.parentElement) {
       const style = getComputedStyle(box)
@@ -168,12 +164,13 @@ const shownWhole = (tip: Locator, vertical = false) =>
       if (
         tipBox.top < r.top ||
         tipBox.bottom > r.bottom ||
-        (!vertical && (tipBox.left < r.left || tipBox.right > r.right))
+        tipBox.left < r.left ||
+        tipBox.right > r.right
       )
         return false
     }
     return true
-  }, vertical)
+  })
 
 test('a tooltip over the first row of an interval plot is shown whole, and no chart box scrolls on a desktop', async ({
   page,
@@ -240,7 +237,7 @@ test.describe('at phone width', () => {
     ).toBeLessThan(100)
   })
 
-  test('a tooltip on the first row of a chart opens below it, so its scrolling box never cuts off its top', async ({
+  test('a tooltip on the first row of a chart opens below it, inside the visible part of its scrolling box, and follows the box as it scrolls', async ({
     page,
   }) => {
     await mockApi(page, 'v03')
@@ -254,7 +251,17 @@ test.describe('at phone width', () => {
       await mark.focus()
       const tip = plot.getByRole('tooltip')
       await expect(tip).toBeVisible()
-      expect(await shownWhole(tip, true), title).toBe(true)
+      expect(await shownWhole(tip), title).toBe(true)
+      // Scrolled to either end, the tooltip moves with what is in view.
+      for (const left of [0, 10_000]) {
+        await mark.evaluate((el, left) => {
+          el.closest('.overflow-x-auto')!.scrollLeft = left
+        }, left)
+        await expect(tip).toBeVisible()
+        await expect
+          .poll(() => shownWhole(tip), `${title}, scrolled to ${left}`)
+          .toBe(true)
+      }
       await mark.blur()
     }
   })

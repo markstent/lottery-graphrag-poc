@@ -5,6 +5,7 @@
  */
 
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -32,11 +33,15 @@ export interface TipContent {
 interface Placed {
   index: number
   content: TipContent
+  place: Place
+  side: Side
+  /** Above a mark, the mark's centre; beside it, the offset from the near edge. */
   x: number
   y: number
-  side: Side
   /** The mark's bottom edge, where a tooltip with no room above it goes. */
   bottom: number
+  /** The part of the plot in view, in plot coordinates: all of it unless a box around it scrolls sideways. */
+  view: { left: number; right: number; plot: number }
 }
 
 /** The space between a tooltip and its mark, in pixels. */
@@ -59,10 +64,83 @@ const TRANSFORM: Record<Side, string> = {
 /** 'above' sits over the mark; 'beside' keeps clear of everything above a tall mark. */
 type Place = 'above' | 'beside'
 
+/** The least distance from a tooltip's centre to the edge of the view, before its width is known. */
 const EDGE = 100
+
+/** The nearest box around `el` that scrolls sideways, as a chart box does on a phone; null on a desktop. */
+function scrollBoxOf(el: Element): HTMLElement | null {
+  for (let box = el.parentElement; box; box = box.parentElement) {
+    const { overflowX } = getComputedStyle(box)
+    if (overflowX === 'auto' || overflowX === 'scroll') return box
+  }
+  return null
+}
+
+/** Where a tooltip for the mark `el` goes, in the coordinates of the plot `host`. */
+function placement(
+  host: HTMLElement,
+  el: Element,
+  index: number,
+  content: TipContent,
+  place: Place,
+): Placed {
+  const area = host.getBoundingClientRect()
+  const box = el.getBoundingClientRect()
+  const centre = box.left - area.left + box.width / 2
+  const y = box.top - area.top
+  const bottom = box.bottom - area.top
+  const scroller = scrollBoxOf(host)
+  const frame = scroller?.getBoundingClientRect()
+  const view = {
+    left: (frame ? Math.max(frame.left, area.left) : area.left) - area.left,
+    right:
+      (frame && scroller
+        ? Math.min(frame.left + scroller.clientWidth, area.right)
+        : area.right) - area.left,
+    plot: area.width,
+  }
+  if (place === 'beside') {
+    // The roomier side within the view, which is the whole plot on a desktop.
+    const left = area.width > 0 && centre > (view.left + view.right) / 2
+    return {
+      index,
+      content,
+      place,
+      y,
+      bottom,
+      view,
+      side: left ? 'left' : 'right',
+      x: left ? area.right - box.left + GAP : box.right - area.left + GAP,
+    }
+  }
+  return { index, content, place, x: centre, y, bottom, view, side: 'above' }
+}
+
+/**
+ * Where a tooltip `width` wide goes across, kept inside the view where it
+ * fits: its centre above or below a mark, its left edge to the right of one,
+ * or its distance from the plot's right edge to the left of one.
+ */
+function placedX(placed: Placed, width: number | undefined): number {
+  const { view, x, side } = placed
+  if (view.right - view.left <= 0) return x
+  if (side === 'above') {
+    const half = Math.max(EDGE, (width ?? 0) / 2)
+    if (view.right - view.left < 2 * half) return (view.left + view.right) / 2
+    return Math.min(Math.max(x, view.left + half), view.right - half)
+  }
+  if (width === undefined) return x
+  if (side === 'right')
+    return Math.max(view.left, Math.min(x, view.right - width))
+  return Math.max(
+    view.plot - view.right,
+    Math.min(x, view.plot - view.left - width),
+  )
+}
 
 function tipElement({
   id,
+  index,
   ref,
   content,
   x,
@@ -70,6 +148,8 @@ function tipElement({
   side,
 }: {
   id: string
+  /** A new mark draws a new tooltip, which is measured before it is shown. */
+  index: number
   ref: Ref<HTMLDivElement>
   content: TipContent
   x: number
@@ -78,6 +158,7 @@ function tipElement({
 }) {
   return (
     <div
+      key={index}
       id={id}
       ref={ref}
       role="tooltip"
@@ -87,7 +168,7 @@ function tipElement({
         top: y,
         transform: TRANSFORM[side],
       }}
-      className="pointer-events-none absolute z-10 min-w-36 max-w-64 rounded-chip border border-hairline bg-surface px-3 py-2 text-sm shadow-overlay"
+      className="pointer-events-none absolute z-10 w-max min-w-36 max-w-64 rounded-chip border border-hairline bg-surface px-3 py-2 text-sm shadow-overlay"
     >
       <div className="text-text-secondary">{content.title}</div>
       {content.rows.map((row) => (
@@ -126,9 +207,18 @@ export function useMarkTips(count: number, disabled: boolean) {
   const marks = useRef<(SVGElement | null)[]>([])
   const [current, setCurrent] = useState(0)
   const [placed, setPlaced] = useState<Placed | null>(null)
-  // State-held, like the host, so its height is watched once it is drawn.
+  // State-held, like the host, so its size is watched once it is drawn.
   const [tip, setTip] = useState<HTMLDivElement | null>(null)
-  const [tipHeight, setTipHeight] = useState<number | null>(null)
+  const [tipSize, setTipSize] = useState<{
+    width: number
+    height: number
+  } | null>(null)
+  // Measured as it mounts, so its side and centre come from its own size
+  // before it is painted, never from the tooltip shown before it.
+  const measureTip = useCallback((el: HTMLDivElement | null) => {
+    setTip(el)
+    setTipSize(el ? { width: el.offsetWidth, height: el.offsetHeight } : null)
+  }, [])
   const active = Math.min(current, Math.max(count - 1, 0))
 
   // The host is a state-held element so the width follows it in and out of the table view.
@@ -143,35 +233,30 @@ export function useMarkTips(count: number, disabled: boolean) {
 
   useEffect(() => {
     if (!tip) return
-    const watch = new ResizeObserver(() => setTipHeight(tip.offsetHeight))
+    const watch = new ResizeObserver(() =>
+      setTipSize({ width: tip.offsetWidth, height: tip.offsetHeight }),
+    )
     watch.observe(tip)
     return () => watch.disconnect()
   }, [tip])
 
-  function show(el: Element, index: number, content: TipContent, place: Place) {
-    if (!host) return
-    const area = host.getBoundingClientRect()
-    const box = el.getBoundingClientRect()
-    const centre = box.left - area.left + box.width / 2
-    const y = box.top - area.top
-    const bottom = box.bottom - area.top
-    if (place === 'beside') {
-      const left = area.width > 0 && centre > area.width / 2
-      setPlaced({
-        index,
-        content,
-        y,
-        bottom,
-        side: left ? 'left' : 'right',
-        x: left ? area.right - box.left + GAP : box.right - area.left + GAP,
+  // A box that scrolls sideways moves the marks under the tooltip, so it follows them.
+  useEffect(() => {
+    const scroller = host && scrollBoxOf(host)
+    if (!host || !scroller) return
+    const follow = () =>
+      setPlaced((was) => {
+        const el = was && marks.current[was.index]
+        return was && el
+          ? placement(host, el, was.index, was.content, was.place)
+          : null
       })
-      return
-    }
-    const x =
-      area.width > 0
-        ? Math.min(Math.max(centre, EDGE), area.width - EDGE)
-        : centre
-    setPlaced({ index, content, x, y, bottom, side: 'above' })
+    scroller.addEventListener('scroll', follow, { passive: true })
+    return () => scroller.removeEventListener('scroll', follow)
+  }, [host])
+
+  function show(el: Element, index: number, content: TipContent, place: Place) {
+    if (host) setPlaced(placement(host, el, index, content, place))
   }
 
   function markProps(
@@ -221,13 +306,16 @@ export function useMarkTips(count: number, disabled: boolean) {
   // A tooltip above a mark too near the plot's top would stick out of it,
   // and a box that scrolls on a phone cuts it off, so it goes below the mark.
   const below =
-    placed?.side === 'above' && tipHeight !== null && placed.y < tipHeight + GAP
+    placed?.side === 'above' &&
+    tipSize !== null &&
+    placed.y < tipSize.height + GAP
   const tooltip: ReactNode = placed
     ? tipElement({
         id: tipId,
-        ref: setTip,
+        index: placed.index,
+        ref: measureTip,
         content: placed.content,
-        x: placed.x,
+        x: placedX(placed, tipSize?.width),
         y: below ? placed.bottom : placed.y,
         side: below ? 'below' : placed.side,
       })
