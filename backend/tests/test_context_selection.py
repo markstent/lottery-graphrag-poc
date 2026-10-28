@@ -331,8 +331,10 @@ def test_a_selection_is_cross_encoder_order_cut_at_budget() -> None:
 def _greedy_cut(
     candidates: list[EvidenceChunk], budget: int
 ) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
-    """D-025 as built, without its item cap and charging the rendered block:
-    one walk in judge order, budget then near-duplicate check."""
+    """The walk of D-025 without its item cap, charging the rendered block:
+    one pass over the candidates in the order given (A's cross-encoder
+    order), checking the budget and then near duplicates. Over documents
+    alone the v0.3 selection must take the same items."""
     selected: list[EvidenceChunk] = []
     discarded: list[EvidenceChunk] = []
     used = 0
