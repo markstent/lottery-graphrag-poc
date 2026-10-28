@@ -180,8 +180,9 @@ def _url_ports(variables: tuple[str, ...]) -> set[int]:
         value = os.environ.get(name)
         if not value:
             continue
-        url = urlsplit(value if "://" in value else f"//{value}")
+        # A URL that does not parse, or whose port is not a number, guards nothing.
         try:
+            url = urlsplit(value if "://" in value else f"//{value}")
             port = url.port
         except ValueError:
             continue

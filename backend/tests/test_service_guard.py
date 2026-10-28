@@ -115,6 +115,16 @@ def test_a_url_without_a_port_guards_its_schemes_default(monkeypatch: pytest.Mon
     assert ports[443].startswith("Ollama") and ports[80] == "Qdrant" and ports[7687] == "Neo4j"
 
 
+@pytest.mark.parametrize("value", ["http://[::1", "vectors:abc", "http://vectors:99999"])
+def test_a_malformed_url_guards_no_port_and_breaks_nothing(
+    monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    """A URL that does not parse, or names no usable port, adds no port,
+    and the conftest that reads it at start-up does not fail."""
+    monkeypatch.setenv("QDRANT_URL", value)
+    assert conftest._url_ports(("QDRANT_URL",)) == set()
+
+
 def test_the_flags_are_read_on_each_connect(
     no_real_services: list[str], network: list[Any], monkeypatch: pytest.MonkeyPatch
 ) -> None:
