@@ -10,6 +10,7 @@ import {
   PILOT,
   PILOT_INSTANCES,
   RUNS as CAPTURED_RUNS,
+  V03_INSTANCES,
   V03_RUN,
 } from '../../results/results.fixtures'
 import { DATASETS, failure, stubApi } from '../../test/api-stub'
@@ -333,6 +334,48 @@ describe('two methods', () => {
     expect(
       scores.getAllByText(/: C against A$/, { exact: false }).length,
     ).toBeGreaterThan(0)
+  })
+
+  it("a v0.3 run's question table shows each question's evidence recall, never its F1", async () => {
+    // F1 set apart from recall, so the cell shows which one it reads.
+    const instances = structuredClone(V03_INSTANCES)
+    for (const row of instances)
+      for (const scores of Object.values(row.pipelines))
+        if (scores) scores.evidence_f1 = 0.99
+    stubApi({
+      ...routes,
+      [`/api/v1/benchmarks/${V03_RUN.run_id}/instances`]: instances,
+    })
+    open(`run=${V03_RUN.run_id}`)
+    const table = await questionTable()
+    const heads = await table.findAllByRole('columnheader', {
+      name: 'Evidence recall',
+    })
+    expect(heads).toHaveLength(3)
+    expect(table.queryByRole('columnheader', { name: 'Evidence' })).toBeNull()
+    const first = instances[0]
+    const row = table
+      .getByRole('button', { name: `Details for ${first.instance_id}` })
+      .closest('tr')!
+    const cells = within(row)
+      .getAllByRole('cell')
+      .map((c) => c.textContent)
+    // Question, kind, world, then answer, evidence and judge per approach.
+    expect([cells[4], cells[7], cells[10]]).toEqual(
+      (['A', 'B', 'C'] as const).map((id) =>
+        first.pipelines[id]!.evidence_recall!.toFixed(2),
+      ),
+    )
+    expect(table.queryByText('0.99')).toBeNull()
+  })
+
+  it("a v0.2 run's question table keeps its evidence score", async () => {
+    stubApi(routes)
+    open('run=fixture-official')
+    const table = await questionTable()
+    expect(
+      await table.findAllByRole('columnheader', { name: 'Evidence score' }),
+    ).toHaveLength(3)
   })
 
   it('a v0.3 run splits judge agreement and shows groundedness', async () => {

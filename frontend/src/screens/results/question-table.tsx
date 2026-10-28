@@ -8,6 +8,7 @@ import {
   listDatasets,
   type Schemas,
 } from '../../api/client'
+import { EVIDENCE_LABELS, type EvidenceMetric } from '../../app/method'
 import { failureWords } from '../../app/plain-words'
 import { hrefFor, useRoute } from '../../app/router'
 import { evidenceScore, MISSING, percent } from '../../app/score-words'
@@ -101,12 +102,21 @@ function Details({ row }: { row: Row }) {
 
 const CELL = 'tabular whitespace-nowrap px-2 py-2 text-right'
 
-function Scores({ row, id }: { row: Row; id: string }) {
+/** One approach's cells; `metric` is the evidence metric of the run's method. */
+function Scores({
+  row,
+  id,
+  metric,
+}: {
+  row: Row
+  id: string
+  metric: EvidenceMetric
+}) {
   const s = row.pipelines[id]
   const evidence = s
-    ? s.evidence_f1 === null && row.stratum === 'H3'
+    ? s[metric] === null && row.stratum === 'H3'
       ? NO_EVIDENCE
-      : num(s.evidence_f1, evidenceScore)
+      : num(s[metric], evidenceScore)
     : MISSING
   return (
     <>
@@ -125,12 +135,14 @@ function Scores({ row, id }: { row: Row; id: string }) {
 
 function QuestionRow({
   row,
+  metric,
   open,
   onToggle,
   activeWorld,
   worldsFailed,
 }: {
   row: Row
+  metric: EvidenceMetric
   open: boolean
   onToggle: () => void
   activeWorld: number | null
@@ -168,7 +180,7 @@ function QuestionRow({
         <td className="px-2 py-2">{STRATUM_SHORT[stratumOf(row)]}</td>
         <td className={CELL}>{row.world_seed}</td>
         {PIPELINES.map(({ id }) => (
-          <Scores key={id} row={row} id={id} />
+          <Scores key={id} row={row} id={id} metric={metric} />
         ))}
         <td className="px-2 py-2">
           {'href' in link ? (
@@ -283,12 +295,14 @@ function Filters({
 
 function Table({
   rows,
+  metric,
   tableRef,
   badge,
   activeWorld,
   worldsFailed,
 }: {
   rows: Row[]
+  metric: EvidenceMetric
   tableRef: RefObject<HTMLDivElement | null>
   badge?: string
   activeWorld: number | null
@@ -361,7 +375,7 @@ function Table({
               {PIPELINES.flatMap(({ id }) =>
                 [
                   QUESTION_HEADS.answer,
-                  QUESTION_HEADS.evidence,
+                  EVIDENCE_LABELS[metric],
                   MEASURES.judge,
                 ].map((name) => (
                   <th
@@ -380,6 +394,7 @@ function Table({
               <QuestionRow
                 key={row.instance_id}
                 row={row}
+                metric={metric}
                 open={opened.has(row.instance_id)}
                 onToggle={() => toggle(row.instance_id)}
                 activeWorld={activeWorld}
@@ -423,10 +438,13 @@ function Table({
 /** Loads the run's per-question scores and the loaded world; a failure here leaves the rest of the screen alone. */
 export function QuestionsPanel({
   runId,
+  evidence,
   tableRef,
   badge,
 }: {
   runId: string
+  /** The evidence metric of the run's method: F1 under v0.2, recall from v0.3 (D-087). */
+  evidence: EvidenceMetric
   tableRef: RefObject<HTMLDivElement | null>
   badge?: string
 }) {
@@ -449,6 +467,7 @@ export function QuestionsPanel({
       {instances.status === 'ready' && (
         <Table
           rows={instances.data}
+          metric={evidence}
           tableRef={tableRef}
           badge={badge}
           activeWorld={activeWorld}

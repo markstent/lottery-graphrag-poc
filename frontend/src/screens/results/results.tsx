@@ -79,6 +79,7 @@ function RunView({ run }: { run: Run }) {
           </Panel>
           <QuestionsPanel
             runId={run.run_id}
+            evidence={evidenceMetric(load.data.method_version)}
             tableRef={tableRef}
             badge={badge}
           />

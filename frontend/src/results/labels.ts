@@ -19,7 +19,6 @@ export const QUESTION_HEADS = {
   kind: 'Kind',
   world: 'World',
   answer: 'Answer',
-  evidence: 'Evidence',
   liveLab: 'Live Lab',
 } as const
 
