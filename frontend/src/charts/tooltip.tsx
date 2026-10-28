@@ -42,6 +42,8 @@ interface Placed {
   bottom: number
   /** The part of the plot in view, in plot coordinates: all of it unless a box around it scrolls sideways. */
   view: { left: number; right: number; plot: number }
+  /** Whether any of the mark is in view; a tooltip for a mark scrolled out of view is hidden. */
+  inView: boolean
 }
 
 /** The space between a tooltip and its mark, in pixels. */
@@ -68,10 +70,16 @@ type Place = 'above' | 'beside'
 const EDGE = 100
 
 /** The nearest box around `el` that scrolls sideways, as a chart box does on a phone; null on a desktop. */
-function scrollBoxOf(el: Element): HTMLElement | null {
+export function scrollBoxOf(el: Element): HTMLElement | null {
   for (let box = el.parentElement; box; box = box.parentElement) {
     const { overflowX } = getComputedStyle(box)
-    if (overflowX === 'auto' || overflowX === 'scroll') return box
+    // A box that scrolls only up and down computes overflow-x to auto too, so
+    // only one whose content is wider than it, checked on each use, counts.
+    if (
+      (overflowX === 'auto' || overflowX === 'scroll') &&
+      box.scrollWidth > box.clientWidth
+    )
+      return box
   }
   return null
 }
@@ -99,6 +107,9 @@ function placement(
         : area.right) - area.left,
     plot: area.width,
   }
+  const inView =
+    !scroller ||
+    (box.right - area.left > view.left && box.left - area.left < view.right)
   if (place === 'beside') {
     // The roomier side within the view, which is the whole plot on a desktop.
     const left = area.width > 0 && centre > (view.left + view.right) / 2
@@ -109,11 +120,22 @@ function placement(
       y,
       bottom,
       view,
+      inView,
       side: left ? 'left' : 'right',
       x: left ? area.right - box.left + GAP : box.right - area.left + GAP,
     }
   }
-  return { index, content, place, x: centre, y, bottom, view, side: 'above' }
+  return {
+    index,
+    content,
+    place,
+    x: centre,
+    y,
+    bottom,
+    view,
+    inView,
+    side: 'above',
+  }
 }
 
 /**
@@ -240,9 +262,12 @@ export function useMarkTips(count: number, disabled: boolean) {
     return () => watch.disconnect()
   }, [tip])
 
-  // A box that scrolls sideways moves the marks under the tooltip, so it follows them.
+  // A box that scrolls sideways moves the marks under the tooltip, so it
+  // follows them; the box is looked for each time a tooltip opens, because
+  // whether it scrolls depends on the width of the screen.
+  const open = placed !== null
   useEffect(() => {
-    const scroller = host && scrollBoxOf(host)
+    const scroller = open && host && scrollBoxOf(host)
     if (!host || !scroller) return
     const follow = () =>
       setPlaced((was) => {
@@ -253,7 +278,7 @@ export function useMarkTips(count: number, disabled: boolean) {
       })
     scroller.addEventListener('scroll', follow, { passive: true })
     return () => scroller.removeEventListener('scroll', follow)
-  }, [host])
+  }, [host, open])
 
   function show(el: Element, index: number, content: TipContent, place: Place) {
     if (host) setPlaced(placement(host, el, index, content, place))
@@ -273,7 +298,8 @@ export function useMarkTips(count: number, disabled: boolean) {
       role: 'graphics-symbol',
       tabIndex: index === active ? 0 : -1,
       'aria-label': label,
-      'aria-describedby': placed?.index === index ? tipId : undefined,
+      'aria-describedby':
+        placed?.index === index && placed.inView ? tipId : undefined,
       onFocus: (e: FocusEvent<SVGElement>) => {
         setCurrent(index)
         show(e.currentTarget, index, content, place)
@@ -309,7 +335,7 @@ export function useMarkTips(count: number, disabled: boolean) {
     placed?.side === 'above' &&
     tipSize !== null &&
     placed.y < tipSize.height + GAP
-  const tooltip: ReactNode = placed
+  const tooltip: ReactNode = placed?.inView
     ? tipElement({
         id: tipId,
         index: placed.index,

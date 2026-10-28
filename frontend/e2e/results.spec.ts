@@ -237,7 +237,7 @@ test.describe('at phone width', () => {
     ).toBeLessThan(100)
   })
 
-  test('a tooltip on the first row of a chart opens below it, inside the visible part of its scrolling box, and follows the box as it scrolls', async ({
+  test('a tooltip on the first row of a chart opens below it, inside the visible part of its scrolling box, follows the box as it scrolls, and hides while its mark is out of view', async ({
     page,
   }) => {
     await mockApi(page, 'v03')
@@ -252,16 +252,29 @@ test.describe('at phone width', () => {
       const tip = plot.getByRole('tooltip')
       await expect(tip).toBeVisible()
       expect(await shownWhole(tip), title).toBe(true)
-      // Scrolled to either end, the tooltip moves with what is in view.
-      for (const left of [0, 10_000]) {
-        await mark.evaluate((el, left) => {
+      // Scrolled to the far end, the tooltip follows the mark while any of
+      // it is in view and is hidden once none is; scrolled back, it returns.
+      const scrollTo = (left: number) =>
+        mark.evaluate((el, left) => {
           el.closest('.overflow-x-auto')!.scrollLeft = left
         }, left)
-        await expect(tip).toBeVisible()
+      await scrollTo(10_000)
+      const inView = await mark.evaluate((el) => {
+        const m = el.getBoundingClientRect()
+        const box = el.closest('.overflow-x-auto')!.getBoundingClientRect()
+        return m.right > box.left && m.left < box.right
+      })
+      if (inView)
         await expect
-          .poll(() => shownWhole(tip), `${title}, scrolled to ${left}`)
+          .poll(() => shownWhole(tip), `${title}, scrolled to the end`)
           .toBe(true)
-      }
+      else await expect(tip, `${title}, scrolled past`).toBeHidden()
+      expect(inView, title).toBe(title.startsWith('Paired'))
+      await scrollTo(0)
+      await expect(tip).toBeVisible()
+      await expect
+        .poll(() => shownWhole(tip), `${title}, scrolled back`)
+        .toBe(true)
       await mark.blur()
     }
   })
