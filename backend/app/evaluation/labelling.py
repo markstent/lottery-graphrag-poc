@@ -401,19 +401,17 @@ def _labels(
 
 
 def _labeller(sample_dir: Path, labeller: str, item_ids: Sequence[str]) -> dict[str, Label] | None:
-    """One labeller's labels. The owner's file is required; the controller's
-    may be left untouched (one labeller), but not half filled."""
+    """One labeller's labels, or None when the file is missing or untouched
+    (that labeller did not label). A half-filled file is refused."""
     path = sample_dir / f"labels-{labeller}.csv"
     if not path.exists():
-        if labeller == LABELLERS[0]:
-            raise ValueError(f"{path} is missing")
         return None
     rows = _read_rows(path)
     untouched = not any(
         (row["correctness"] or "").strip() or (row["abstained"] or "").strip()
         for row in rows.values()
     )
-    if untouched and labeller != LABELLERS[0]:
+    if untouched:
         return None
     return _labels(path, item_ids, rows)
 
@@ -528,15 +526,22 @@ def _measure_levels(
 
 def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
     """Agreement of every measure with the consensus label, overall, per
-    cell and per approach; refuses incomplete labels or unsettled disagreements."""
+    cell and per approach; refuses incomplete labels or unsettled disagreements.
+    One labeller file (owner or controller) is enough, or both with consensus."""
     key = _read_key(sample_dir)
     if key["run"] != run_dir.name:
         raise ValueError(f"the sample was drawn from the run {key['run']}, not {run_dir.name}")
     items: dict[str, dict[str, Any]] = key["items"]
     item_ids = list(items)
-    first = _labeller(sample_dir, LABELLERS[0], item_ids)
-    assert first is not None  # the owner's file is required
-    second = _labeller(sample_dir, LABELLERS[1], item_ids)
+    filled = {name: _labeller(sample_dir, name, item_ids) for name in LABELLERS}
+    labelled = {name: labels for name, labels in filled.items() if labels is not None}
+    if not labelled:
+        raise ValueError(
+            "no labeller has labelled the sample; fill labels-owner.csv, labels-controller.csv"
+            " or both"
+        )
+    first, *rest = labelled.values()
+    second = rest[0] if rest else None
     consensus, disputed = _consensus(sample_dir, first, second)
     payload = load_results(run_dir)
     record = payload["reproducibility"]["run"]
@@ -554,7 +559,7 @@ def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
     return {
         "run": run_dir.name,
         "labellers": {
-            "names": [LABELLERS[0]] if second is None else list(LABELLERS),
+            "names": list(labelled),
             "disputed": disputed,
             "correctness": None
             if second is None
@@ -625,7 +630,7 @@ def render_agreement(result: dict[str, Any]) -> str:
         " labels.",
         f"A weighted kappa over fewer than {MIN_KAPPA_ITEMS} items is not shown (too few to say),"
         " and such a cell is never flagged.",
-        f"Labelled by: {', '.join(labellers['names'])}.",
+        _labelled_by(labellers["names"]),
     ]
     if labellers["correctness"] is not None:
         lines += [
@@ -660,6 +665,21 @@ def render_agreement(result: dict[str, Any]) -> str:
                 f" wrong share {_number(found['wrong_share'])}."
             )
     return "\n".join(lines) + "\n"
+
+
+def _labelled_by(names: list[str]) -> str:
+    """The sentence naming who labelled, plain about a single labeller."""
+    if names == ["controller"]:
+        return (
+            "Labelled by: controller only (a model labeller; no human labelled this sample,"
+            " so there is no labeller-to-labeller agreement)."
+        )
+    if len(names) == 1:
+        return (
+            f"Labelled by: {names[0]} only"
+            " (one labeller, so there is no labeller-to-labeller agreement)."
+        )
+    return f"Labelled by: {', '.join(names)}."
 
 
 def _found(found: dict[str, Any]) -> str:

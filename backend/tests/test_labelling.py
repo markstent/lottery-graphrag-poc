@@ -410,7 +410,7 @@ def test_label_files_are_empty_templates(sample_dir: Path) -> None:
 
 
 def test_agreement_refuses_missing_or_invalid_labels(sample_dir: Path, run_dir: Path) -> None:
-    with pytest.raises(ValueError, match="S001, S002, S003, S004, S005"):
+    with pytest.raises(ValueError, match="no labeller has labelled"):
         label_agreement(sample_dir, run_dir)
     rows = _all(sample_dir, "2")
     rows["S002"] = ("3", "n")
@@ -462,6 +462,32 @@ def test_agreement_needs_consensus_for_disagreements(sample_dir: Path, run_dir: 
     assert labellers["correctness"]["n"] == 5
     assert labellers["correctness"]["agreement"] == pytest.approx(0.8)
     assert labellers["abstained"]["agreement"] == pytest.approx(0.8)
+
+
+def test_controller_only_names_the_controller(sample_dir: Path, run_dir: Path) -> None:
+    _write_labels(sample_dir / "labels-controller.csv", _all(sample_dir, "2"))
+    result = label_agreement(sample_dir, run_dir)
+    assert result["labellers"]["names"] == ["controller"]
+    assert result["labellers"]["correctness"] is None
+    assert (
+        "Labelled by: controller only (a model labeller; no human labelled this sample,"
+        " so there is no labeller-to-labeller agreement).\n"
+    ) in labelling.render_agreement(result)
+
+
+def test_owner_only_says_one_labeller(sample_dir: Path, run_dir: Path) -> None:
+    _write_labels(sample_dir / "labels-owner.csv", _all(sample_dir, "2"))
+    page = labelling.render_agreement(label_agreement(sample_dir, run_dir))
+    assert "Labelled by: owner only (one labeller" in page
+    assert "model labeller" not in page
+
+
+def test_agreement_refuses_when_neither_labeller_labelled(sample_dir: Path, run_dir: Path) -> None:
+    with pytest.raises(ValueError, match="no labeller has labelled"):
+        label_agreement(sample_dir, run_dir)
+    (sample_dir / "labels-owner.csv").unlink()
+    with pytest.raises(ValueError, match="no labeller has labelled"):
+        label_agreement(sample_dir, run_dir)
 
 
 def test_one_labeller_needs_no_consensus(sample_dir: Path, run_dir: Path) -> None:
