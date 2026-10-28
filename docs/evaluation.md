@@ -46,7 +46,7 @@ What changed, in short:
 | Graph records | ordered by the shared re-ranker | ordered by the graph relevance rule (D-083) |
 | Context | 12 items, graph share of 6 | one 2,000 token budget, no item limit, channels alternate (D-084) |
 | Prompt | prose record blocks, prompt 2.0.0 | compact facts, path line for graph records, prompt 3.0.0 (D-085) |
-| Scorer, judge | scorer 2.0.0, judge prompt 1.0.0 | scorer 2.2.0 (D-086, D-095), judge prompt 1.1.0 (D-086) |
+| Scorer, judge | scorer 2.0.0, judge prompt 1.0.0 | scorer 2.2.1 (D-086, D-095), judge prompt 1.1.0 (D-086) |
 | Agreement | rate at the 0.5 threshold and Cohen's kappa | three levels, weighted kappa, answered and abstaining apart (D-086) |
 | Tested evidence metric | F1 | recall; F1 and precision descriptive (D-087) |
 | New measures | none | groundedness, descriptive (D-088) |
@@ -128,7 +128,7 @@ The bank has no "not planted" questions.
 
 ### Grounding and freezing
 
-`python -m app.evaluation ground` (`make ground-bank`) grounds the bank into one world and writes `data/evaluation/bank/bank-2.0.0-scorer-2.2.0-<dataset directory name>.json`.
+`python -m app.evaluation ground` (`make ground-bank`) grounds the bank into one world and writes `data/evaluation/bank/bank-2.0.0-scorer-2.2.1-<dataset directory name>.json`.
 The file name carries the scorer the bank is grounded for, so a bank for a new scorer is a new file, and grounding never replaces a bank file that holds another bank, because runs were made with it (D-095).
 The v0.2.0 bank files, `bank-2.0.0-<dataset directory name>.json`, stay as they were and still load.
 Anchors are chosen in a stable hash order (sha256 of `bank version:question id:anchor`), among anchors inside fixed eligibility bounds: an answer set of 1 to 6 members once the anchor is excluded, with bounds of their own for L06, L11, L13 and L14 (D-030).
@@ -202,11 +202,15 @@ The checks are the scorer's answer key, so a frozen bank records the scorer it w
 
 Question-specific rules and open owner questions:
 
-- Every check whose answer is a version also accepts the version's label when the answer also names what the version belongs to, anywhere in the text (scorer 2.2.0, D-095).
-  For a platform version (L02, L07) that is the platform's name or id, from the world's `platform_versions` and `platforms` tables, such as `2024.3.0` with `Payments Gateway`.
-  For an app release (L15) it is the market's English or local name or id, from `app_versions` and `markets`, such as `5.3.1` with `Greece`.
-  The grounder writes the accepted label and names into the check, and only where label and name identify that one version in the world.
-  A bare label scores 0, because every platform and every market has a version of each label.
+- Every check whose answer is a version also accepts the version's label when the answer also names what the version belongs to, its owner, anywhere in the text, and names no rival (scorer 2.2.1, D-095).
+  For a platform version (L02, L07) the owner is the platform, by name or id, from the world's `platform_versions` and `platforms` tables, such as `2024.3.0` with `Payments Gateway`.
+  For an app release (L15) it is the market, by English or local name or id, from `app_versions` and `markets`, such as `5.3.1` with `Greece`.
+  A rival is any other platform or market that has a version of the same label: an answer that names one beside the label scores 0, because it ties the label to another owner or does not say which.
+  A market is never a rival of a platform version, so "2024.3.0 ... the Web Portal platform in Greece" still counts.
+  The grounder writes the label, the owner's names and the rivals into the check, and only where label and owner identify that one version in the world.
+  A bare label scores 0, because every platform and every market has a version of each label, and a label inside a longer dotted number (`5.3.1` in `1.5.3.1`) is not the label.
+  Only L02 was labelled (the `version_label` cell, D-089); the rule reaches L07 and L15 by the controller's ruling that the owner's decision is about version answers, not one question, with no labels behind it.
+  For L15 the incident in the question fixes the market, so a correct answer usually names that market anyway, and the label in effect counts on its own unless another market is named.
 - L18's set check leaves out the primary market and the market the answer should name as unaffected, so it measures recall only.
 - L16 and L17 expect every other player linked to the anchor's shared devices or payment instruments in the world data, so the expected sets include baseline players and not only the planted cluster (D-030).
   This is an open owner question.
@@ -332,7 +336,7 @@ make label-agreement    # reports how far each measure agrees with the labels
   The agreement report names only who labelled, and says plainly when there was one labeller.
 - The v0.2.0 sample was labelled by the controller only, a model labeller, by owner decision of 2026-10-28 (D-094).
   No human labelled it, so the report holds no labeller-to-labeller agreement.
-- It reports the agreement of the scorer as recorded, the current scorer (2.2.0) rescored, the judge as recorded and the judge with the 1.1.0 abstention rule applied mechanically, with the consensus label, overall, per cell and per approach.
+- It reports the agreement of the scorer as recorded, the current scorer (2.2.1) rescored, the judge as recorded and the judge with the 1.1.0 abstention rule applied mechanically, with the consensus label, overall, per cell and per approach.
   A rule changes only where the labels show it wrong on at least 80 percent of its cell, and a cell of fewer than 10 items is never flagged.
   Weighted kappa follows the n rule above.
 - The labels are not committed, and no pipeline can read them.
@@ -347,14 +351,15 @@ make label-agreement    # reports how far each measure agrees with the labels
 make addendum-v020      # no Neo4j, no model
 ```
 
-It rescores the stored answers of v0.2.0 with the current scorer, 2.2.0, and adds groundedness and the three-level agreement, recorded against rescored, and writes `addendum.json` and `addendum.md` into `data/evaluation/addenda/official-2026-10-26-scorer-2.2.0/`, never inside the run (D-090).
+It rescores the stored answers of v0.2.0 with the current scorer, 2.2.1, and adds groundedness and the three-level agreement, recorded against rescored, and writes `addendum.json` and `addendum.md` into `data/evaluation/addenda/official-2026-10-26-scorer-2.2.1/`, never inside the run (D-090).
 Because a scorer rule can live in the checks (D-095), it grounds each world of the run again in memory and scores with the checks grounded now.
-It refuses when an instance of the run is grounded differently in anything but its checks, and it writes no bank file.
+It refuses when an instance of the run is grounded differently in anything but its checks, or when a check grounded now differs from the recorded one in anything but its qualified aliases, and it writes no bank file.
 The label agreement rescores the same way.
 Evidence scores, citations, the failure class and the judge's scores stay as recorded, so the recorded failure class can go stale.
 The header says that no model was called and that the original record is unchanged.
 It runs no test and states no p-value.
 The first addendum, written with scorer 2.1.0 on 2026-10-27 into `official-2026-10-26-scorer-2.1.0/`, changed only the H3 answer scores: A 0.722 to 0.944, B 0.667 to 0.917 and C 0.611 to 0.861.
+The second, written with scorer 2.2.0 on 2026-10-28 into `official-2026-10-26-scorer-2.2.0/`, moved only C's H3 answer score, to 0.889; A stayed at 0.944 and B at 0.917.
 
 ### Statistics
 
@@ -547,7 +552,7 @@ While only a smoke run or a subset run exists, the Overview shows "No official r
 
 The reproducibility record of every run, stored as `run` (fields every world shares) and `worlds` (each world's full record), holds:
 
-- **Code and bank:** `git_sha`, `git_dirty`, `question_bank_version`, `bank_version`, `bank_hash`, `scorer_version` (2.2.0 in v0.3, 2.0.0 in v0.2.0), `run_kind`, `repeats`, `started_at`.
+- **Code and bank:** `git_sha`, `git_dirty`, `question_bank_version`, `bank_version`, `bank_hash`, `scorer_version` (2.2.1 in v0.3, 2.0.0 in v0.2.0), `run_kind`, `repeats`, `started_at`.
 - **Method:** `method_version` (0.3.0; a record written before the field existed is read as 0.2.0), `record_facts_version`, `prompt_extras` (the path line and the target-type tier for B and C, the ontology target terms for C).
 - **World:** `world_dir`, `generator_version`, `profile`, `world_seed`, `scenario_seed`, `reference_date`, `ontology_version`, `graph_label_version`.
 - **Retrieval:** `embedding_model`, `embedding_dimensions`, `sparse_model`, `rrf_k`, `record_serialiser_version`, `reranker`, `top_k`, `context_budget_tokens`, `context` (the dedupe threshold; v0.2.0 also held its slot counts), `dedupe_threshold`, `graph_limits`, `relationship_types_b`, `relationship_types_c`, `ranking_weights`, `excluded_labels`.
