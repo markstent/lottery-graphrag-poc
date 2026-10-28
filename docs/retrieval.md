@@ -174,7 +174,8 @@ Method v0.3 replaces the shared re-ranker over graph candidates (D-025) and the 
 **The document channel.**
 One re-ranker instance, shared by A, B and C, scores the document candidates against the raw question: the hybrid hits, which include the record blocks A indexes.
 The model is the cross-encoder `BAAI/bge-reranker-v2-m3`, run by fastembed (D-021), and ties break on id.
-B's and C's re-ranker input is A's document channel and nothing else, so it equals A's in ids and order (a test pins it).
+B's re-ranker input is A's document channel and nothing else, so it equals A's in ids and order (a test pins it).
+C's document channel searches with its expanded question, the question plus the resolved concepts' labels and synonyms, so its re-ranker input can differ from A's; the re-ranker still scores it against the raw question.
 Graph nodes are never re-ranked.
 
 **The graph channel (B and C).**
@@ -210,7 +211,8 @@ The risk is breadth: "market", "game", "player", "incident", "case", "method" an
 
 **The merge** (`interleave_by_budget` in `context.py`):
 
-- The channels take turns, starting with documents, so B's and C's first block is A's first block.
+- The channels take turns, starting with documents, so B's first block is A's first block.
+  C's first block is the first of its own re-ranked documents, which can differ from A's because C searches with its expanded question.
   A's selection is its cross-encoder order cut at the budget.
 - Each offered item is checked in this order and the first failing check is its discard reason: `same_record` (a record block or node whose row is already selected through the other channel, so a row is taken once, at its first appearance), `context_budget`, `duplicate` (document chunks only, Jaccard at or above 0.85, because two distinct rows with similar columns are different facts).
 - A refused item keeps the turn with its channel, so the channel offers its next item.
