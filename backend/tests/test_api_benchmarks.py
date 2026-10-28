@@ -1416,6 +1416,8 @@ def test_settings_returns_the_recorded_fields(
     assert set(values) == _recorded_keys()
     assert values["repeats"] == OFFICIAL_MIN_REPEATS
     assert values["run_kind"] == "official"
+    # frontend/scripts/capture-run.mjs records a recording's method from here.
+    assert values["method_version"] == METHOD_VERSION
     assert response.json()["judge_configured"] is False
 
 
