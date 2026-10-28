@@ -334,6 +334,21 @@ def write_frozen_bank(bank: FrozenBank, path: Path) -> None:
     path.write_text(_canonical({**_content(bank), "bank_hash": bank.bank_hash}), encoding="utf-8")
 
 
+def write_new_bank(bank: FrozenBank, path: Path) -> None:
+    """Write a newly grounded bank, never over another one: a bank file
+    belongs to every run made with it (D-095). Writing the same bank again
+    is no change; a file holding any other content is refused and left as it
+    is, so the caller moves it aside on purpose or keeps it."""
+    text = _canonical({**_content(bank), "bank_hash": bank.bank_hash})
+    if path.exists() and path.read_text(encoding="utf-8") != text:
+        raise GroundingError(
+            f"{path} holds another bank than the one grounded now (hash {bank.bank_hash}); "
+            "a bank file is never replaced, because runs were made with it. Move it aside "
+            "to ground this world again"
+        )
+    write_frozen_bank(bank, path)
+
+
 DEMO_STRATA = ("H1", "H2", "H3", "H5")
 
 

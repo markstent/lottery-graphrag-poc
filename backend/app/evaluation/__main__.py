@@ -30,7 +30,7 @@ from app.evaluation.grounding import (
     FrozenBank,
     freeze_bank,
     load_frozen_bank,
-    write_frozen_bank,
+    write_new_bank,
 )
 from app.evaluation.runner import OFFICIAL_MIN_REPEATS
 
@@ -227,7 +227,7 @@ def _dispatch(args: argparse.Namespace) -> int:
         world = args.world or active.world_dir
         out = args.out or official.bank_path_for(world)
         bank = freeze_bank(world, args.ledger or active.ledger_path)
-        write_frozen_bank(bank, out)
+        write_new_bank(bank, out)
         for line in stratum_counts(bank):
             print(line)
         for item in bank.unavailable:

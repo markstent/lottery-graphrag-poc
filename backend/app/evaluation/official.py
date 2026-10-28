@@ -59,7 +59,7 @@ from app.evaluation.grounding import (
     freeze_bank,
     instance_from_payload,
     load_frozen_bank,
-    write_frozen_bank,
+    write_new_bank,
 )
 from app.evaluation.judge import FakeJudge, GatewayJudge, check_families
 from app.evaluation.report import (
@@ -224,8 +224,13 @@ def ground_command() -> str:
 
 
 def bank_path_for(world_dir: Path) -> Path:
-    """The frozen bank of a world, named after the world's directory."""
-    return DATA_DIR / "evaluation" / "bank" / f"bank-{BANK_VERSION}-{world_dir.name}.json"
+    """The frozen bank of a world, named after the bank version, the scorer
+    it is grounded for and the world's directory. The scorer is in the name
+    because the checks are its answer key (D-095): a bank for a new scorer is
+    a new file, and the file an earlier run was made with stays as it was
+    (v0.2.0's ``bank-2.0.0-dev-seed2026.json`` among them)."""
+    name = f"bank-{BANK_VERSION}-scorer-{SCORER_VERSION}-{world_dir.name}.json"
+    return DATA_DIR / "evaluation" / "bank" / name
 
 
 def world_paths(seed: int) -> WorldPaths:
@@ -304,7 +309,7 @@ def _index(paths: WorldPaths) -> None:
 
 
 def _ground(paths: WorldPaths) -> None:
-    write_frozen_bank(freeze_bank(paths.world_dir, paths.ledger_path), paths.bank_path)
+    write_new_bank(freeze_bank(paths.world_dir, paths.ledger_path), paths.bank_path)
 
 
 def _indexed_points(paths: WorldPaths) -> int:

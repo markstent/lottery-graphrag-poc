@@ -1126,7 +1126,10 @@ def test_the_demo_world_serves_bank_questions(
     monkeypatch.setenv("DATASET_DIR", str(demo))
     monkeypatch.setenv("TRUTH_LEDGER_PATH", str(demo_ledger))
     write_frozen_bank(bank, world_paths(official.PRESENTATION_SEED).bank_path)
-    assert world_paths(official.PRESENTATION_SEED).bank_path.name == "bank-2.0.0-demo-seed2026.json"
+    assert (
+        world_paths(official.PRESENTATION_SEED).bank_path.name
+        == "bank-2.0.0-scorer-2.2.0-demo-seed2026.json"
+    )
     with TestClient(create_app()) as demo_client:
         demos = demo_client.get("/api/v1/demo/questions")
         questions = demo_client.get("/api/v1/benchmarks/questions")

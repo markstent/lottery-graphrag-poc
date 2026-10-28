@@ -32,6 +32,7 @@ from app.evaluation.checks import SCORER_VERSION
 from app.evaluation.grounding import (
     BankInstance,
     FrozenBank,
+    GroundingError,
     Unavailable,
     load_frozen_bank,
     seal_bank,
@@ -399,11 +400,12 @@ def test_world_paths_name_the_world_ledger_bank_and_collection(data_dir: Path) -
     assert presentation.world_dir == data_dir / "generated" / "dev-seed2026"
     assert presentation.ledger_path == data_dir / "truth" / "ledger.json"
     assert (
-        presentation.bank_path == data_dir / "evaluation" / "bank" / "bank-2.0.0-dev-seed2026.json"
+        presentation.bank_path
+        == data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.0-dev-seed2026.json"
     )
     assert other.world_dir == data_dir / "generated" / "dev-seed2028"
     assert other.ledger_path == data_dir / "truth" / "dev-seed2028.json"
-    assert other.bank_path.name == "bank-2.0.0-dev-seed2028.json"
+    assert other.bank_path.name == "bank-2.0.0-scorer-2.2.0-dev-seed2028.json"
     assert other.seed == 2028
 
 
@@ -527,7 +529,10 @@ def test_the_presentation_world_is_dataset_dir_and_the_truth_ledger_path(
     paths = world_paths(PRESENTATION_SEED)
     assert paths.world_dir == data_dir / "generated" / "demo-seed2026"
     assert paths.ledger_path == data_dir / "truth" / "ledger-demo.json"
-    assert paths.bank_path == data_dir / "evaluation" / "bank" / "bank-2.0.0-demo-seed2026.json"
+    assert (
+        paths.bank_path
+        == data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.0-demo-seed2026.json"
+    )
     assert world_paths(2027).world_dir == data_dir / "generated" / "dev-seed2027"
 
 
@@ -561,7 +566,7 @@ def test_the_demo_world_is_grounded_by_its_own_variables(
     monkeypatch.setenv("DATASET_DIR", str(demo))
     monkeypatch.setenv("TRUTH_LEDGER_PATH", str(ledger))
     assert cli.main(["ground"]) == 0
-    bank = data_dir / "evaluation" / "bank" / "bank-2.0.0-demo-seed2026.json"
+    bank = data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.0-demo-seed2026.json"
     assert bank.is_file() and f"wrote {bank}" in capsys.readouterr().out
     assert bank_matches_active_world()
 
@@ -589,6 +594,26 @@ def test_a_bank_is_not_current_once_what_it_was_grounded_on_changes(
         }[stale]
         write_frozen_bank(seal_bank(changed), grounded_world.bank_path)
     assert not bank_matches_active_world()
+
+
+def test_preparing_never_replaces_a_bank_file_a_run_was_made_with(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # D-095: the bank file name carries the scorer, so the v0.2.0 file is
+    # never the current one, and a file of the current name is never replaced.
+    paths = world_paths(2027)
+    paths.bank_path.parent.mkdir(parents=True)
+    v020 = paths.bank_path.parent / "bank-2.0.0-dev-seed2027.json"
+    v020.write_text("the bank v0.2.0 was made with", encoding="utf-8")
+    assert paths.bank_path != v020
+    write_frozen_bank(seal_bank(_bank(())), paths.bank_path)
+    kept = paths.bank_path.read_bytes()
+    grounded_now = seal_bank(dataclasses.replace(_bank(()), ledger_hash="another ledger"))
+    monkeypatch.setattr(official, "freeze_bank", lambda world_dir, ledger: grounded_now)
+    with pytest.raises(GroundingError, match="holds another bank"):
+        official._ground(paths)
+    assert paths.bank_path.read_bytes() == kept
+    assert v020.read_text(encoding="utf-8") == "the bank v0.2.0 was made with"
 
 
 def test_the_presentation_collection_follows_the_environment(

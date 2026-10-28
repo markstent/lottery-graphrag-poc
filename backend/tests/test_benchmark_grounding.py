@@ -8,6 +8,7 @@ dev-world tests run only with ``LIVE_WORLD_E2E=1``, and fail when
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from collections import Counter
@@ -40,7 +41,9 @@ from app.evaluation.grounding import (
     load_frozen_bank,
     name_anchor_order,
     sample_anchors,
+    seal_bank,
     write_frozen_bank,
+    write_new_bank,
 )
 from app.evaluation.truth_ledger import TruthLedger, TruthScenario, load_ledger
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
@@ -514,6 +517,42 @@ def test_frozen_bank_records_its_inputs_and_round_trips(
     text = path.read_text(encoding="utf-8")
     assert text.endswith("}\n") and text.startswith('{\n  "bank_hash"')
     assert load_frozen_bank(path) == bank
+
+
+def test_grounding_never_replaces_a_bank_file_whose_content_differs(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    # A bank file belongs to every run made with it (D-095).
+    path = tmp_path / "bank.json"
+    bank = freeze_bank(tiny_dataset, tiny_ledger)
+    write_new_bank(bank, path)
+    written = path.read_bytes()
+    write_new_bank(bank, path)  # the same bank again is no change
+    assert path.read_bytes() == written
+    other = seal_bank(dataclasses.replace(bank, scorer_version="2.1.0"))
+    with pytest.raises(GroundingError, match="holds another bank"):
+        write_new_bank(other, path)
+    assert path.read_bytes() == written
+
+
+def test_a_bank_file_written_before_the_scorer_was_recorded_still_loads(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    # The v0.2 bank files hold no scorer_version; their hash covers what they hold.
+    content = json.loads(_written(freeze_bank(tiny_dataset, tiny_ledger), tmp_path))
+    del content["bank_hash"], content["scorer_version"]
+    text = json.dumps(content, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
+    content["bank_hash"] = hashlib.sha256(text.encode()).hexdigest()
+    path = tmp_path / "old.json"
+    path.write_text(json.dumps(content), encoding="utf-8")
+    old = load_frozen_bank(path)
+    assert old.scorer_version is None and old.bank_hash == content["bank_hash"]
+
+
+def _written(bank: FrozenBank, directory: Path) -> str:
+    path = directory / "written.json"
+    write_frozen_bank(bank, path)
+    return path.read_text(encoding="utf-8")
 
 
 def test_loading_a_tampered_bank_fails(
