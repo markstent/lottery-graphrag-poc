@@ -651,7 +651,8 @@ def test_a_result_reads_back_from_results_json(synthetic_run: BenchmarkRun) -> N
 # synthetic run through ``summarize`` and the API's own builders, so they are
 # real output with test values. Rewrite them from backend/ with
 #     uv run python -m tests.test_benchmark_report
-# then run prettier --write on them in frontend/.
+# They are the writer's output byte for byte; frontend/.prettierignore leaves
+# them alone.
 V03_FIXTURES = Path(__file__).parents[2] / "frontend" / "e2e" / "fixtures"
 V03_FIXTURE_RUN = "fixture-v03"
 V03_FIXTURE_LABEL = "Fixture run (test values)"

@@ -9,7 +9,10 @@
     "run_kind": "official",
     "label": "Fixture run (test values)",
     "bank_version": "2.0.0",
-    "worlds": [2026, 2027],
+    "worlds": [
+      2026,
+      2027
+    ],
     "instances": {
       "total": {
         "H1": 12,
@@ -2479,8 +2482,13 @@
         "bank_hash": "bankhash",
         "scorer_version": "2.0.0",
         "prompt_hash": "prompthash",
-        "relationship_types_b": ["R"],
-        "relationship_types_c": ["R", "O"],
+        "relationship_types_b": [
+          "R"
+        ],
+        "relationship_types_c": [
+          "R",
+          "O"
+        ],
         "dedupe_threshold": 0.9,
         "generation_quantisation": null,
         "generation_model_family": "fake",
@@ -2539,8 +2547,13 @@
           "bank_hash": "bankhash",
           "scorer_version": "2.0.0",
           "prompt_hash": "prompthash",
-          "relationship_types_b": ["R"],
-          "relationship_types_c": ["R", "O"],
+          "relationship_types_b": [
+            "R"
+          ],
+          "relationship_types_c": [
+            "R",
+            "O"
+          ],
           "dedupe_threshold": 0.9,
           "generation_quantisation": null,
           "generation_model_family": "fake",

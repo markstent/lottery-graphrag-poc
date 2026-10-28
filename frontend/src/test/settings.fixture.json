@@ -25,7 +25,9 @@
       "temporal_validity": 0.15
     },
     "reference_date": "2026-01-01",
-    "excluded_labels": ["Document"],
+    "excluded_labels": [
+      "Document"
+    ],
     "ontology_version": "2.0.0",
     "graph_label_version": "v2",
     "scorer_version": "2.1.0",
@@ -91,9 +93,17 @@
     "method_version": "0.3.0",
     "record_facts_version": "1.0.0",
     "prompt_extras": {
-      "path_line": ["B", "C"],
-      "target_type_tier": ["B", "C"],
-      "ontology_target_terms": ["C"]
+      "path_line": [
+        "B",
+        "C"
+      ],
+      "target_type_tier": [
+        "B",
+        "C"
+      ],
+      "ontology_target_terms": [
+        "C"
+      ]
     }
   },
   "judge_configured": true
