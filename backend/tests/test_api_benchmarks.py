@@ -1128,7 +1128,7 @@ def test_the_demo_world_serves_bank_questions(
     write_frozen_bank(bank, world_paths(official.PRESENTATION_SEED).bank_path)
     assert (
         world_paths(official.PRESENTATION_SEED).bank_path.name
-        == "bank-2.0.0-scorer-2.2.0-demo-seed2026.json"
+        == "bank-2.0.0-scorer-2.2.1-demo-seed2026.json"
     )
     with TestClient(create_app()) as demo_client:
         demos = demo_client.get("/api/v1/demo/questions")

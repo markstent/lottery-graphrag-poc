@@ -348,7 +348,7 @@ def test_smoke_runs_are_labelled_and_official_runs_refuse_the_fake_generator(
 
 def test_reproducibility_record_names_the_bank_and_scorer(runner_smoke: BenchmarkRunner) -> None:
     payload = runner_smoke.record().to_payload()
-    assert payload["bank_version"] == "2.0.0" and payload["scorer_version"] == "2.2.0"
+    assert payload["bank_version"] == "2.0.0" and payload["scorer_version"] == "2.2.1"
     assert payload["repeats"] == 2
 
 
@@ -793,7 +793,7 @@ def test_record_carries_method_and_versions(offline_lab: Lab) -> None:
     assert fields["method_version"] == METHOD_VERSION == "0.3.0"
     assert fields["selection_rule"] == SELECTION_RULE
     assert fields["prompt_version"] == PROMPT_VERSION
-    assert fields["scorer_version"] == "2.2.0"
+    assert fields["scorer_version"] == "2.2.1"
     assert fields["judge_prompt_version"] == "1.1.0"
     assert fields["record_facts_version"] == RECORD_FACTS_VERSION == "1.0.0"
     assert fields["prompt_extras"] == {

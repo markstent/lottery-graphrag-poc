@@ -31,6 +31,7 @@ from app.evaluation.checks import (
     UNIT_SYMBOLS,
     Check,
     NumberCheck,
+    QualifiedAlias,
     SetCheck,
     TokenCheck,
     VerdictCheck,
@@ -285,19 +286,23 @@ def ground_l02(world: World) -> list[Draft]:
 
 def version_check(versions: Mapping[str, Version], version_id: str) -> TokenCheck:
     """The check of an answer that is a version: its id, or its label beside
-    what it belongs to (scorer 2.2.0, D-095)."""
+    what it belongs to (scorer 2.2.0 and 2.2.1, D-095)."""
     return TokenCheck(version_id, qualified=version_label_alias(versions, version_id))
 
 
 def version_label_alias(
     versions: Mapping[str, Version], version_id: str
-) -> tuple[tuple[str, tuple[str, ...]], ...]:
+) -> tuple[QualifiedAlias, ...]:
     """Scorer 2.2.0 (D-095): a version's label counts beside a name of what
     it belongs to (a platform's name or id, a market's name or id) when label
     and that name identify this one version in the world. Platforms and
     markets share labels ("2024.3.0", "5.3.1"), so the label alone never
     counts; a name with which the label still fits two versions is no
     qualifier, and with no qualifier left there is no alias.
+
+    Every name of another version's owner with the same label is a rival
+    (scorer 2.2.1): an answer that also names one has tied the label to
+    another platform or market, or has not said which, so it does not count.
     """
     fits = Counter(
         (version.label, name.casefold()) for version in versions.values() for name in version.owners
@@ -306,7 +311,17 @@ def version_label_alias(
     qualifiers = tuple(
         name for name in version.owners if fits[(version.label, name.casefold())] == 1
     )
-    return ((version.label, qualifiers),) if qualifiers else ()
+    if not qualifiers:
+        return ()
+    own = {name.casefold() for name in qualifiers}
+    rivals = dict.fromkeys(
+        name
+        for other_id, other in versions.items()
+        if other.label == version.label and other_id != version_id
+        for name in other.owners
+        if name.casefold() not in own
+    )
+    return (QualifiedAlias(version.label, qualifiers, tuple(rivals)),)
 
 
 def ground_l03(world: World) -> list[Draft]:

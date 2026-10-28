@@ -24,6 +24,7 @@ from typing import Any
 from app.evaluation.checks import (
     SCORER_VERSION,
     Check,
+    TokenCheck,
     answer_score,
     groundedness,
     is_abstention,
@@ -68,7 +69,9 @@ def current_banks(payload: dict[str, Any]) -> dict[int, FrozenBank]:
 def current_checks(payload: dict[str, Any], banks: dict[int, FrozenBank]) -> Checks:
     """Each instance's checks as ``banks`` ground them. Refuses an instance
     the bank lacks or grounds differently in anything but its checks, since
-    then the stored answers did not answer the question the bank asks now."""
+    then the stored answers did not answer the question the bank asks now,
+    and refuses checks that differ from the recorded ones in anything but
+    their qualified aliases (D-095), the one part a scorer rule may add."""
     checks: Checks = {}
     for world in payload["worlds"]:
         seed = int(world["world_seed"])
@@ -82,8 +85,22 @@ def current_checks(payload: dict[str, Any], banks: dict[int, FrozenBank]) -> Che
                     "the run recorded it, so its answers cannot be rescored with scorer "
                     f"{SCORER_VERSION}; the world or its ledger has changed since the run"
                 )
+            if _unqualified(now.checks) != _unqualified(recorded.checks):
+                raise ValueError(
+                    f"the checks of {recorded.instance_id} of world {seed} grounded now differ "
+                    "from the recorded ones in more than their qualified aliases, so the "
+                    f"answers cannot be rescored with scorer {SCORER_VERSION}; the grounder, "
+                    "the world or its ledger has changed since the run"
+                )
             checks[recorded.instance_id] = now.checks
     return checks
+
+
+def _unqualified(checks: tuple[Check, ...]) -> tuple[Check, ...]:
+    return tuple(
+        dataclasses.replace(check, qualified=()) if isinstance(check, TokenCheck) else check
+        for check in checks
+    )
 
 
 def rescoring_checks(payload: dict[str, Any]) -> Checks:
