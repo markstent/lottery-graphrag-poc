@@ -24,6 +24,7 @@ from app.api.event_schemas import RecordedEvent
 from app.api.runs import EventPayloadError, QueryService, RecordingSink
 from app.events import RetrievalEvent
 from app.events.payloads import (
+    DiscardReason,
     GraphChunkDiscarded,
     GraphNodeDiscarded,
     Payload,
@@ -276,6 +277,36 @@ def test_a_stored_old_method_run_still_replays() -> None:
         "OldMethodGraphChunkDiscarded",
         "OldMethodGraphContextAssembled",
     ]
+
+
+# A document discard has the same fields in both methods, so its payload
+# validates against the current model and its old-method twin alike; the
+# event union must resolve it by the reason.
+_TWIN_DISCARDS = (
+    ("rag.evidence.discarded", "A", {"chunk_id": "C"}, "RagEvidenceDiscarded"),
+    (
+        "graph.candidate.discarded",
+        "B",
+        {"chunk_id": "C", "rerank_score": 0.1},
+        "GraphChunkDiscarded",
+    ),
+)
+
+
+@pytest.mark.parametrize("reason", get_args(DiscardReason))
+def test_a_current_reason_replays_as_the_current_model_not_its_twin(reason: str) -> None:
+    for event_type, pipeline, payload, current in _TWIN_DISCARDS:
+        event = _old_method_event(event_type, pipeline, payload | {"reason": reason})
+        replayed = RecordedEvent.model_validate(event).root.payload
+        assert type(replayed).__name__ == current, (event_type, reason)
+
+
+@pytest.mark.parametrize("reason", sorted(OLD_METHOD_REASONS))
+def test_an_old_reason_replays_as_the_old_method_twin(reason: str) -> None:
+    for event_type, pipeline, payload, current in _TWIN_DISCARDS:
+        event = _old_method_event(event_type, pipeline, payload | {"reason": reason})
+        replayed = RecordedEvent.model_validate(event).root.payload
+        assert type(replayed).__name__ == f"OldMethod{current}", (event_type, reason)
 
 
 @pytest.mark.parametrize("reason", sorted(OLD_METHOD_REASONS))
