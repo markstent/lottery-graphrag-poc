@@ -77,7 +77,7 @@
     ],
     "dedupe_threshold": 0.85,
     "generation_quantisation": null,
-    "generation_model_family": null,
+    "generation_model_family": "generation-family",
     "generation_reasoning": "default",
     "repeats": 3,
     "run_kind": "official",

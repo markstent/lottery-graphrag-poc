@@ -22,6 +22,7 @@ SETTINGS_FIXTURE = REPO_ROOT / "frontend/src/test/settings.fixture.json"
 # Test values, not a configuration anyone runs: names that read as stand-ins.
 FIXTURE_ENV = {
     "GENERATION_MODEL": "generation-model",
+    "GENERATION_MODEL_FAMILY": "generation-family",
     "JUDGE_PROVIDER": "litellm",
     "JUDGE_MODEL": "judge-model",
     "JUDGE_MODEL_FAMILY": "judge-family",
