@@ -901,7 +901,8 @@ def test_latest_official_is_the_newest_official_run_whatever_its_method(
 
 
 def _score(answer: float | None, f1: float) -> dict[str, Any]:
-    return {"answer": answer, "evidence": {"f1": f1}}
+    """A repeat's score; recall is set apart from F1 (1 - F1) so each reads as itself."""
+    return {"answer": answer, "evidence": {"f1": f1, "recall": 1.0 - f1}}
 
 
 def _results(bank: FrozenBank, scores: Callable[[str], dict[str, list[Any]]]) -> dict[str, Any]:
@@ -965,9 +966,9 @@ def test_scores_are_means_over_the_scored_repeats_of_the_latest_official_run(
     )
     questions = client_with_bank.get("/api/v1/benchmarks/questions").json()
     assert questions[0]["scores"] == {
-        "A": {"answer": 0.5, "evidence_f1": 0.75},
-        "B": {"answer": 1.0, "evidence_f1": 0.5},
-        "C": {"answer": None, "evidence_f1": None},
+        "A": {"answer": 0.5, "evidence_recall": 0.25, "evidence_f1": 0.75},
+        "B": {"answer": 1.0, "evidence_recall": 0.5, "evidence_f1": 0.5},
+        "C": {"answer": None, "evidence_recall": None, "evidence_f1": None},
     }
     assert questions[1]["scores"] is not None
     assert all(q["scores"] is None for q in questions[2:])
@@ -986,7 +987,11 @@ def test_scores_come_from_the_named_run(
     unnamed = client_with_bank.get("/api/v1/benchmarks/questions").json()
     named = client_with_bank.get("/api/v1/benchmarks/questions?run_id=smoke").json()
     assert unnamed[0]["scores"] is None
-    assert named[0]["scores"]["A"] == {"answer": 0.5, "evidence_f1": 0.75}
+    assert named[0]["scores"]["A"] == {
+        "answer": 0.5,
+        "evidence_recall": 0.25,
+        "evidence_f1": 0.75,
+    }
 
 
 def test_a_run_over_another_bank_gives_no_scores(

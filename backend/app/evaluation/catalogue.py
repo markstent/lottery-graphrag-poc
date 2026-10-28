@@ -57,6 +57,8 @@ class PipelineMeans:
     where no scored repeat defines the metric."""
 
     answer: float | None
+    # The evidence metric of the run's method: recall from v0.3, F1 under v0.2 (D-087).
+    evidence_recall: float | None
     evidence_f1: float | None
 
 
@@ -100,11 +102,11 @@ def instance_scores(
         for world in results["worlds"]
         if world["world_seed"] == bank.world_seed and world["bank_hash"] == bank.bank_hash
     ]
-    means = instance_means({**results, "worlds": worlds}, ("answer", "evidence_f1"))
+    metrics = ("answer", "evidence_recall", "evidence_f1")
+    means = instance_means({**results, "worlds": worlds}, metrics)
     return {
         instance_id: {
-            tag: PipelineMeans(values.get((tag, "answer")), values.get((tag, "evidence_f1")))
-            for tag in PIPELINES
+            tag: PipelineMeans(*(values.get((tag, m)) for m in metrics)) for tag in PIPELINES
         }
         for instance_id, (_key, _cluster, values) in means.items()
     }

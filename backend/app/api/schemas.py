@@ -394,6 +394,8 @@ class PipelineScore(BaseModel):
     where no scored repeat defines the metric."""
 
     answer: float | None
+    # The run's method says which evidence metric to read (D-087).
+    evidence_recall: float | None
     evidence_f1: float | None
 
 

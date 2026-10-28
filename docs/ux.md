@@ -200,7 +200,7 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
 3. **Scores by kind of question.** A switch between the method's evidence metric and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
    A v0.3 run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
-4. **Questions.** One row per question and world, with filters, the answer, evidence and judge score of each approach, and an expanding table of every measure.
+4. **Questions.** One row per question and world, with filters, the answer, the method's evidence metric (headed "Evidence recall" or "Evidence score") and judge score of each approach, and an expanding table of every measure.
    "Open" goes to the question in Live Lab when its world is loaded.
    Fifty rows a page.
 5. **Efficiency.** Latency and context size, with means only.
@@ -293,7 +293,9 @@ A past measurement, such as the pilot or the dry run, is typed with its date and
 Help is the one screen that shows answer keys and hidden truths, because they are the scoring reference and not an input to any approach.
 It is also the one screen that names vendors, models and commands at Technical, and every command in it is a Makefile target, which a test checks.
 Scores appear only when the newest run is a whole-bank official run that scored at least one question.
-Otherwise a score cell reads "No official run yet".
+A score cell gives the answer and the evidence metric of that run's method, "Evidence recall" for v0.3 and "Evidence score" (its F1) for v0.2.
+When that run scored none of these world 2026 questions, as a v0.3 official run on the unseen worlds does, the screen says so above the table and links to Results.
+With no whole-bank official run, a score cell reads "No official run yet".
 The screen never averages scores.
 
 Copy: each chapter holds its Plain and its Technical text as separate fields.

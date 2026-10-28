@@ -4151,10 +4151,22 @@
               }
             ],
             "title": "Evidence F1"
+          },
+          "evidence_recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Recall"
           }
         },
         "required": [
           "answer",
+          "evidence_recall",
           "evidence_f1"
         ],
         "title": "PipelineScore",

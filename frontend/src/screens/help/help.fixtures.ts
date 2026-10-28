@@ -35,13 +35,22 @@ export const OFFICIAL = {
   run_id: 'official',
   run_kind: 'official',
   label: null,
+  method_version: '0.2.0',
   summary: summary({ strata: null, limit: null }),
 }
 export const SMOKE = {
   run_id: 'smoke',
   run_kind: 'smoke',
   label: 'scorer smoke test',
+  method_version: '0.2.0',
   summary: summary({ strata: null, limit: null }),
+}
+
+/** A whole-bank official run of method v0.3, which compares evidence recall. */
+export const OFFICIAL_V03 = {
+  ...OFFICIAL,
+  run_id: 'official-v03',
+  method_version: '0.3.0',
 }
 
 /** An official run of part of the bank, as the backend publishes today. */

@@ -139,7 +139,8 @@ A live score equals the deterministic part of the benchmark's score for the same
 | `scored` | `score` is set |
 | `failed` | Scoring raised, and the error is logged. `score_failure` is `interrupted` when the server stopped between the final row and the score. |
 
-The score holds, for each pipeline, `answer`, `evidence_f1`, `anchor_resolution` and `failure_class`.
+The score holds, for each pipeline, `answer`, `evidence_recall`, `evidence_f1`, `anchor_resolution` and `failure_class`.
+A live score of method v0.3 sets `evidence_recall` and leaves `evidence_f1` null; a score stored under v0.2 has F1 and no recall.
 A metric the instance does not define is null.
 
 ### Demo questions
@@ -288,7 +289,7 @@ A malformed `summary.json` is a server error and is never silently skipped.
 - `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, and its failure classes.
   It carries the question text and scores only, never the expected answer, claims, checks, answer text or context blocks.
   A run without `results.json` is a 404.
-- `GET /benchmarks/questions` lists the presentation world's bank for the Help screen, with each question's expected answer, the hidden truth of a planted question, and per-pipeline scores from the run named by the optional `run_id`, else the newest official run.
+- `GET /benchmarks/questions` lists the presentation world's bank for the Help screen, with each question's expected answer, the hidden truth of a planted question, and per-pipeline scores (`answer`, `evidence_recall` and `evidence_f1`, means over the scored repeats) from the run named by the optional `run_id`, else the newest official run.
   A missing or stale bank is a 503 `CONFIGURATION_ERROR`.
 
 ### Settings

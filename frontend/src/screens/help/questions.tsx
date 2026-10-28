@@ -6,6 +6,7 @@
  * the route, so a filtered table is a link. Scores read as on Live Lab.
  */
 
+import { EVIDENCE_LABELS } from '../../app/method'
 import { answerWords, evidenceScore } from '../../app/score-words'
 import { hrefFor, useRoute } from '../../app/router'
 import { plural } from '../../charts/scale'
@@ -26,8 +27,11 @@ const SELECT =
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
 const NO_RUN = 'No official run yet'
 
+const ELSEWHERE = 'Not scored by the newest official run'
+
 const LABELS = {
   none: NO_RUN,
+  elsewhere: ELSEWHERE,
   unreadable: 'Scores could not be read',
   loading: 'Scores are loading',
 }
@@ -44,6 +48,7 @@ function ScoreCell({
   id: PipelineId
   state: ScoreState
 }) {
+  const { evidence } = useHelpData()
   if (state !== 'shown')
     return (
       <td className={CELL}>
@@ -57,7 +62,9 @@ function ScoreCell({
   return (
     <td className={`${CELL} whitespace-nowrap tabular-nums`}>
       <div>Answer: {answerWords(score.answer)}</div>
-      <div>Evidence score: {evidenceScore(score.evidence_f1)}</div>
+      <div>
+        {EVIDENCE_LABELS[evidence]}: {evidenceScore(score[evidence])}
+      </div>
     </td>
   )
 }
@@ -175,11 +182,13 @@ function QuestionTable({
   const columns = 2 + PIPELINES.length
   return (
     <>
-      {(scores === 'none' || scores === 'unreadable') && (
+      {scores !== 'shown' && scores !== 'loading' && (
         <p>
           {scores === 'none'
             ? `${NO_RUN}. Scores appear after a full official run. `
-            : 'The latest run could not be read, so scores are hidden. '}
+            : scores === 'elsewhere'
+              ? 'The newest official run scored none of these world 2026 questions; its scores are on Results. '
+              : 'The latest run could not be read, so scores are hidden. '}
           <a href={hrefFor('results')} className={LINK}>
             Go to Results
           </a>

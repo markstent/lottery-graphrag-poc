@@ -2277,6 +2277,8 @@ export interface components {
             answer: number | null;
             /** Evidence F1 */
             evidence_f1: number | null;
+            /** Evidence Recall */
+            evidence_recall: number | null;
         };
         /** PipelineStarted */
         PipelineStarted: {

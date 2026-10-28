@@ -32,6 +32,7 @@ function helpData(
     level,
     bank: { status: 'loading', retry: () => undefined },
     scores: 'none',
+    evidence: 'evidence_f1',
     story: null,
     settings: {
       status: 'ready',

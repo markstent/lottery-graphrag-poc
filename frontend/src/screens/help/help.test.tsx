@@ -21,6 +21,7 @@ import {
   RECORDED_RUNS,
   OFFICIAL_STRATA,
   OFFICIAL_SUBSET,
+  OFFICIAL_V03,
   SCENARIOS,
   SCORED,
   SMOKE,
@@ -300,6 +301,34 @@ describe('the questions table', () => {
     expect(
       within(section('7. How scoring works')).getByText(/read Missing/),
     ).toBeVisible()
+  })
+
+  it('shows evidence recall, never F1, when the newest official run is of method v0.3', async () => {
+    const questions = structuredClone(SCORED)
+    for (const question of questions)
+      for (const score of Object.values(question.scores ?? {}))
+        if (score) score.evidence_recall = 0.9
+    await renderHelp('#/help?section=questions&story=SCN-007', {
+      questions,
+      latest: OFFICIAL_V03,
+    })
+    const row = rows()[0]
+    expect(within(row).getAllByText('Evidence recall: 0.90')).toHaveLength(3)
+    expect(row).not.toHaveTextContent('Evidence score')
+  })
+
+  it('says the newest official run scored none of these questions, never that there is none', async () => {
+    await renderHelp('#/help?section=questions', {
+      questions: UNSCORED,
+      latest: OFFICIAL_V03,
+    })
+    const questions = section('10. The questions')
+    expect(
+      within(questions).getByText(
+        /^The newest official run scored none of these world 2026 questions; its scores are on Results\./,
+      ),
+    ).toBeVisible()
+    expect(within(questions).queryByText(/No official run yet/)).toBeNull()
   })
 
   it('says an instance was not part of the run when it has no scores', async () => {

@@ -10,6 +10,7 @@
 
 import { useEffect, useLayoutEffect, useRef } from 'react'
 
+import { evidenceMetric, OLD_METHOD } from '../../app/method'
 import { useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { loadLatest } from '../../app/latest-run'
@@ -139,6 +140,11 @@ export function Help() {
           level,
           bank,
           scores: scoreState(latest, bank),
+          evidence: evidenceMetric(
+            latest.status === 'ready' && latest.data
+              ? latest.data.method_version
+              : OLD_METHOD,
+          ),
           story: section === 'stories' ? story : null,
           settings,
           recorded: recordedRun,
