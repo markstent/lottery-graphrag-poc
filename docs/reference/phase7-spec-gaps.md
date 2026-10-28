@@ -69,3 +69,25 @@ Decision D-071 records the rule.
 Gap 12 is closed: the Makefile labels, the `demo-reset` message and the `docker-compose.yml` header were corrected in a later Phase 7 commit.
 Gap 16 is settled by D-066, which records the copy cap as built.
 In gap 18, `frontend/README.md` is now a pointer to the primary documents, so only the three archived pages still describe superseded state.
+
+## Found while writing Help v2 (2026-10-27)
+
+Help follows the code in each case.
+
+20. **Record texts in the document channel of B and C.**
+    `docs/retrieval.md:102` says the document channel "drops exactly their record blocks", and `docs/retrieval.md:264` says B's document candidates are A's minus the record blocks of B's nodes.
+    `backend/app/retrieval/graph/stages.py:501-521` (`document_channel`) keeps every search hit, and `backend/app/retrieval/standard/context.py` refuses a record block as `superseded_by_structured_fact` only when its node holds a graph slot (D-081).
+    `backend/tests/test_lab_fairness.py:200` is named `test_b_judges_exactly_a_documents_including_its_nodes_record_blocks`.
+    `docs/retrieval.md:184-186` already describes the code; the two older sentences predate D-081.
+21. **Scenario noise level.**
+    `docs/scenarios.md:96` describes `noise_level` as "how much noise surrounds" the signal, and the archived `docs/reference/04-scenario-catalogue.md` section 20 asks for tests that "unrelated noise also exists".
+    In the code `noise_level` is a label only: `backend/app/scenarios/catalogue.py:30` declares it, `engine.py:78` and `ledger.py:39` record it, and no injector reads it.
+    Strength, by contrast, scales the planted volume (`backend/app/scenarios/planter.py:121-122`).
+22. **A citation of a block that was not shown.**
+    `docs/evaluation.md:171` says such a citation "counts as inaccurate".
+    `backend/app/retrieval/standard/generation.py:146-150` (`parse_answer`) keeps only citations of blocks 1 to the number shown, and `backend/app/evaluation/runner.py:703-705` passes those to `citation_metrics`, so the out-of-range branch in `backend/app/evaluation/checks.py:179` never sees one.
+    The citation is dropped, and an answer that cites only unshown blocks has an undefined citation accuracy, not 0.
+    Help chapters 6 and 7 and the glossary follow the code.
+23. **Help's purpose sentence.**
+    The overhaul design (`docs/superpowers/specs/2026-10-18-overhaul-design.md:295`) gives Help the purpose "How it works in plain language, every benchmark question with its answer key, glossary, how to run it".
+    Help v2 has a Plain and a Technical level, and the purpose sentence shows at both, so `frontend/src/app/router.ts:48` drops "in plain language".

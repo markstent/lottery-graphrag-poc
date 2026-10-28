@@ -24,22 +24,25 @@ import pytest
 from app.api import benchmarks
 from app.api.graph_world import GraphLease
 from app.api.schemas import BenchmarkStart
-from app.config import METHOD_VERSION, REPO_ROOT
+from app.config import METHOD_VERSION, REPO_ROOT, from_env
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation import __main__ as cli
+from app.evaluation import judge as judge_module
 from app.evaluation import official
 from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
+from app.evaluation.judge import FakeJudge
 from app.evaluation.official import InstanceHook, WorldPaths, world_paths
 from app.evaluation.report import METHOD_NOTE, summarize
-from app.evaluation.runner import WorldRun
+from app.evaluation.runner import OFFICIAL_MIN_REPEATS, WorldRun, settings_fields
 from app.evaluation.truth_ledger import load_ledger
 from app.events import TERMINAL_EVENT_TYPES
 from app.lab import Lab
 from app.main import create_app
+from app.models import gateway
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import build_ledger, write_ledger
 from fastapi.testclient import TestClient
@@ -1367,3 +1370,120 @@ def test_jobs_list_newest_first_with_world_progress(
     assert [job["job_id"] for job in jobs] == [second["job_id"], first["job_id"]]
     assert jobs[1]["progress"]["worlds_done"] == 2 and jobs[1]["progress"]["worlds_total"] == 2
     assert jobs[0]["progress"]["worlds_total"] == 1
+
+
+# -- settings -------------------------------------------------------------------
+
+JUDGE_ENV = (
+    "JUDGE_PROVIDER",
+    "JUDGE_MODEL",
+    "JUDGE_MODEL_FAMILY",
+    "JUDGE_API_BASE",
+    "JUDGE_TEMPERATURE",
+    "JUDGE_REASONING",
+)
+NOT_RECORDED = frozenset({"git_sha", "git_dirty"})
+SECRET_ENV = (
+    "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GENERATION_API_KEY",
+    "JUDGE_API_KEY",
+    "GENERATION_API_BASE",
+    "JUDGE_API_BASE",
+)
+SENTINEL = "sentinel-3f9c1d7a-secret"
+
+
+def _without_judge_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Whatever the shell exports, the judge is not configured."""
+    for name in JUDGE_ENV:
+        monkeypatch.delenv(name, raising=False)
+
+
+def _recorded_keys() -> set[str]:
+    fields = settings_fields(from_env(), FakeJudge(), "official", OFFICIAL_MIN_REPEATS)
+    return set(fields) - NOT_RECORDED
+
+
+def test_settings_returns_the_recorded_fields(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _without_judge_env(monkeypatch)
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 200
+    values = response.json()["values"]
+    assert set(values) == _recorded_keys()
+    assert values["repeats"] == OFFICIAL_MIN_REPEATS
+    assert values["run_kind"] == "official"
+    assert response.json()["judge_configured"] is False
+
+
+def test_settings_makes_no_model_call(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def refuse(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("the settings route made a model call")
+
+    monkeypatch.setattr(gateway, "complete", refuse)
+    monkeypatch.setattr(judge_module, "complete", refuse)
+    monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
+    monkeypatch.setenv("JUDGE_MODEL", "judge-x")
+    monkeypatch.setenv("JUDGE_MODEL_FAMILY", "family-j")
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 200
+    assert response.json()["judge_configured"] is True
+    assert response.json()["values"]["judge_model"] == "judge-x"
+
+
+def test_settings_without_a_judge(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    _without_judge_env(monkeypatch)
+    body = client.get("/api/v1/settings").json()
+    assert body["judge_configured"] is False
+    assert body["values"]["judge_model"] is None
+    assert body["values"]["judge_temperature"] is None
+
+
+def test_settings_has_no_secret(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    _without_judge_env(monkeypatch)
+    for name in SECRET_ENV:
+        monkeypatch.setenv(name, f"https://user:{SENTINEL}@host" if "BASE" in name else SENTINEL)
+    monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
+    monkeypatch.setenv("JUDGE_MODEL", "judge-x")
+    monkeypatch.setenv("JUDGE_MODEL_FAMILY", "family-j")
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 200
+    assert SENTINEL not in response.text
+    values = response.json()["values"]
+    assert not [key for key in values if key.endswith(("_key", "_token", "_password"))]
+    assert not NOT_RECORDED & set(values)
+
+
+SETTINGS_FIXTURE = REPO_ROOT / "frontend/src/test/settings.fixture.json"
+
+
+def _flatten(values: dict[str, Any], prefix: str = "") -> set[str]:
+    keys: set[str] = set()
+    for name, value in values.items():
+        if isinstance(value, dict):
+            keys |= _flatten(value, f"{prefix}{name}.")
+        else:
+            keys.add(f"{prefix}{name}")
+    return keys
+
+
+def test_the_frontend_settings_fixture_has_the_recorded_fields() -> None:
+    """Help resolves its setting keys against this file, so it names the fields the API serves."""
+    fixture = json.loads(SETTINGS_FIXTURE.read_text())
+    expected = (
+        _flatten(settings_fields(from_env(), FakeJudge(), "official", OFFICIAL_MIN_REPEATS))
+        - NOT_RECORDED
+    )
+    assert _flatten(fixture["values"]) == expected
+
+
+def test_settings_invalid_judge_is_a_configuration_error(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JUDGE_REASONING", "sideways")
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 503
+    assert response.json()["error"]["error_code"] == "CONFIGURATION_ERROR"

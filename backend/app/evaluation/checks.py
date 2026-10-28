@@ -260,7 +260,9 @@ def citation_metrics(
     """Citation accuracy and numeric citation rate for one answer.
 
     `cited_blocks` are the 1-based context block numbers the answer cites;
-    a citation to a block outside the context counts as inaccurate.
+    a block outside the context counts as inaccurate here, but `parse_answer`
+    (app.retrieval.standard.generation) drops such citations first, so the
+    runner never passes one.
     """
     accuracy = None
     if cited_blocks and claims:

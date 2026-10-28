@@ -5,9 +5,8 @@
  * elsewhere.
  */
 
-import type { Load } from '../../app/use-load'
-import type { Bank, Question, Scenario } from './bank'
-import { Section } from './section'
+import type { Question, Scenario } from './bank'
+import { useHelpData } from './help-data'
 
 const WORKED_EXAMPLE = 'SCN-007'
 
@@ -29,7 +28,7 @@ function Story({
       id={`story-${id}`}
       aria-labelledby={`title-${id}`}
       aria-current={highlighted ? 'true' : undefined}
-      className="scroll-mt-4 rounded-card border border-hairline p-4 aria-[current=true]:border-2 aria-[current=true]:border-text-primary"
+      className="scroll-mt-24 rounded-card border border-hairline p-4 aria-[current=true]:border-2 aria-[current=true]:border-text-primary"
     >
       <h3
         id={`title-${id}`}
@@ -49,7 +48,11 @@ function Story({
         </p>
       ) : (
         truths.map((truth) => (
-          <p key={truth} data-api className="mt-2 text-text-primary">
+          <p
+            key={truth}
+            data-api
+            className="mt-2 break-words text-text-primary"
+          >
             {truth}
           </p>
         ))
@@ -60,13 +63,13 @@ function Story({
             A correct answer names the markets that shared the platform version
             with the incident, and the market that did not.
           </p>
-          <dl className="grid grid-cols-[8rem_1fr] gap-y-1">
+          <dl className="grid grid-cols-1 gap-y-1 md:grid-cols-[8rem_minmax(0,1fr)]">
             <dt className="text-text-muted">Question</dt>
-            <dd data-api className="text-text-primary">
+            <dd data-api className="break-words text-text-primary">
               {example.text}
             </dd>
             <dt className="text-text-muted">Answer key</dt>
-            <dd data-api className="text-text-primary">
+            <dd data-api className="break-words text-text-primary">
               {example.expected_answer}
             </dd>
           </dl>
@@ -76,36 +79,21 @@ function Story({
   )
 }
 
-export function Stories({
-  load,
-  story,
-}: {
-  load: Load<Bank>
-  /** The story a link pointed at, to mark. */
-  story: string | null
-}) {
+export function Stories() {
+  const { bank, story } = useHelpData()
+  if (bank.status !== 'ready') return null
   return (
-    <Section id="stories" load={load}>
-      {load.status === 'ready' && (
-        <>
-          <p>
-            Each story is planted in the data on purpose. The hidden truth says
-            what was planted, so the answer key is known.
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            {load.data.scenarios.map((scenario) => (
-              <Story
-                key={scenario.scenario_id}
-                scenario={scenario}
-                questions={load.data.questions.filter(
-                  (q) => q.scenario_id === scenario.scenario_id,
-                )}
-                highlighted={scenario.scenario_id === story}
-              />
-            ))}
-          </div>
-        </>
-      )}
-    </Section>
+    <div className="grid grid-cols-2 gap-4">
+      {bank.data.scenarios.map((scenario) => (
+        <Story
+          key={scenario.scenario_id}
+          scenario={scenario}
+          questions={bank.data.questions.filter(
+            (q) => q.scenario_id === scenario.scenario_id,
+          )}
+          highlighted={scenario.scenario_id === story}
+        />
+      ))}
+    </div>
   )
 }

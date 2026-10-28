@@ -56,9 +56,9 @@ describe('screens', () => {
     expect(screens).toEqual(
       new Set([null, 'data-model', 'help', 'live-lab', 'overview', 'results']),
     )
-    const help = '/src/screens/help/what.tsx'
+    const help = '/src/screens/help/chapter.tsx'
     expect(targetScreen(help, '../overview/overview')).toBe('overview')
-    expect(targetScreen(help, './section')).toBe('help')
+    expect(targetScreen(help, './chapters')).toBe('help')
     expect(targetScreen(help, '../screen')).toBeNull()
     expect(targetScreen(help, '../../app/router')).toBeNull()
     expect(targetScreen(help, 'react')).toBeNull()
