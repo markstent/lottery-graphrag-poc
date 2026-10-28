@@ -56,7 +56,7 @@ VIA_CONCEPT_SHOWN = 5
 HEADER_LINES: tuple[str, ...] = (
     "# Example Traces: A/B/C Retrieval Comparison",
     "",
-    "Status: HITL-08 artefact, regenerated for pipelines v2 against the development world.",
+    "Status: HITL-08 artefact, regenerated for method v0.3 against the development world.",
     "",
     "## What this document is",
     "",
@@ -66,7 +66,7 @@ HEADER_LINES: tuple[str, ...] = (
     (
         "- **A, conventional RAG**: dense (bge-m3) plus sparse embedding, hybrid search "
         "fused by reciprocal rank, cross-encoder reranking, one shared context budget "
-        "and slot limit, generation."
+        "with no item limit, generation."
     ),
     (
         "  The index holds document chunks and structured record blocks, so A can "
@@ -75,11 +75,12 @@ HEADER_LINES: tuple[str, ...] = (
     (
         "- **B, graph relationships**: an id and market resolver seeds a bounded "
         "traversal over the structured-record subgraph (when nothing resolves, the "
-        "graph node of the best-matching record block); every traversal node joins A's "
-        "graph channel, ordered by graph relevance (seeds, then nodes holding what "
+        "graph node of the best-matching record block); every traversal node joins the "
+        "graph list, ordered by graph relevance (seeds, then nodes holding what "
         "the question asks for, then the rest), and is shown as the record block A "
-        "indexes for its row (or only `<Label> <id>` when the row has none); nodes "
-        "carry authoritative facts from the source tables for citations."
+        "indexes for its row (or only `<Label> <id>` when the row has none); the "
+        "document and graph lists take turns filling the budget, documents first; "
+        "nodes carry authoritative facts from the source tables for citations."
     ),
     "  No ontology: no concept seeds, no `MAPS_TO` expansion, no query expansion.",
     (
