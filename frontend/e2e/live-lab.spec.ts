@@ -568,17 +568,25 @@ test('presentation mode keeps the scorecard label on one line', async ({
   expect(await lineCount(corner)).toBe(1)
 })
 
-test('on a desktop the tables fit, so their boxes are not tab stops', async ({
+test('on a desktop the tables fit, so their boxes are neither tab stops nor named groups', async ({
   page,
 }) => {
   await page.goto(`/#/live-lab?question=${h1.instance_id}`)
   await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
   await page.getByRole('button', { name: 'Pause' }).click()
   await toEnd(page)
+  await expect(page.getByRole('region', { name: 'Scorecard' })).toBeVisible()
+  await expect(
+    page.getByRole('table', { name: 'Market coverage' }),
+  ).toBeVisible()
+  // A named group around a table that fits would only be announced twice.
   for (const name of ['Scorecard', 'Market coverage'])
-    await expect(page.getByRole('group', { name })).not.toHaveAttribute(
-      'tabindex',
-    )
+    await expect(page.getByRole('group', { name })).toHaveCount(0)
+  const boxes = page.locator('.overflow-x-auto')
+  for (const box of await boxes.all()) {
+    await expect(box).not.toHaveAttribute('tabindex')
+    await expect(box).not.toHaveAttribute('role')
+  }
 })
 
 // The app is built for 16:9 screens; on a phone Live Lab stacks the canvas
