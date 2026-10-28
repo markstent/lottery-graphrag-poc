@@ -9,7 +9,7 @@ afterEach(cleanup)
 
 const copy: ChapterCopy = {
   plain: [
-    'The model sees {context.evidence_slots} items.',
+    'Duplicates from {context.dedupe_threshold}.',
     ['{top_k} candidates', 'and {missing_key} here'],
   ],
   technical: ['The budget is {context_budget_tokens} tokens.'],
@@ -31,7 +31,7 @@ function show(
         judge_configured: true,
         values: {
           top_k: 10,
-          context: { evidence_slots: 8 },
+          context: { dedupe_threshold: 0.8 },
         },
       },
     },
@@ -48,7 +48,7 @@ function show(
 describe('Chapter', () => {
   it('fills each setting in a paragraph and a list item from the settings now', () => {
     const chapter = show('plain', null)
-    expect(within(chapter).getByText('The model sees 8 items.')).toBeVisible()
+    expect(within(chapter).getByText('Duplicates from 0.8.')).toBeVisible()
     expect(within(chapter).getByText('10 candidates')).toBeVisible()
     expect(within(chapter).getByText('and not available here')).toBeVisible()
   })
@@ -68,6 +68,6 @@ describe('Chapter', () => {
     expect(
       within(technical).getByRole('heading', { name: 'Technical detail' }),
     ).toBeVisible()
-    expect(within(technical).getByText('The model sees 8 items.')).toBeVisible()
+    expect(within(technical).getByText('Duplicates from 0.8.')).toBeVisible()
   })
 })

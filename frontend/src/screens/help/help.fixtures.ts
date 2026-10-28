@@ -65,7 +65,7 @@ export const SETTINGS = {
     max_tokens: 1024,
     top_k: 20,
     context_budget_tokens: 2000,
-    context: { evidence_slots: 12, graph_slots: 6 },
+    context: { dedupe_threshold: 0.85 },
     judge_model: 'judge-now',
   },
 }
@@ -92,7 +92,7 @@ const OFFICIAL_RECORDED = {
         generation_model: 'model-then',
         top_k: 20,
         context_budget_tokens: 1500,
-        context: { evidence_slots: 12, graph_slots: 6 },
+        context: { dedupe_threshold: 0.85 },
       },
       worlds: [],
     },

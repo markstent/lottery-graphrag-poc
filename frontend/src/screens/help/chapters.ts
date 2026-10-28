@@ -60,7 +60,7 @@ export const SECTION_ALIASES: Record<string, ChapterId> = {
   running: 'running',
 }
 
-/** A key of the settings a run records, such as `top_k`; a nested one is written `context.graph_slots`. */
+/** A key of the settings a run records, such as `top_k`; a nested one is written `context.dedupe_threshold`. */
 export type SettingKey = string
 
 /** The pictures a chapter can show: each approach in chapter 4, and how evidence is chosen in chapter 5. */

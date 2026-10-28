@@ -75,7 +75,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'How far two ways of marking agree beyond what chance alone would give: 0 is chance, 1 is full agreement.',
     technical:
-      'Used for the agreement of "judge correctness is 2" with "answer score is at least 0.5", overall and for each approach.',
+      'The agreement measure of the old method: "judge correctness is 2" against "answer score is at least 0.5", overall and for each approach, as in the official run v0.2.0. Shown only from 10 judged answers (D-086).',
   },
   {
     term: 'Concept',
@@ -99,6 +99,13 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'A Holm-adjusted p-value below 0.05 from a two-sided Wilcoxon signed-rank test on the per-group mean differences, with the 95 percent interval wholly above or below 0, in a cell of at least 10 pairs and 6 groups (backend/app/evaluation/statistics.py).',
   },
   {
+    term: 'Development run',
+    meaning:
+      'A run on world 2026 while the method is being built. It asks the configured models the questions, and it is not a result.',
+    technical:
+      'Run kind dev (make dev-run, or "Development run" on Results): seed 2026 only, with the gateway answer model and judge; its one headline says it is not a result (D-091).',
+  },
+  {
     term: 'Enterprise ontology',
     meaning:
       'The shared vocabulary that ties each market’s local terms to one concept.',
@@ -111,18 +118,18 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'The records and passages that state the facts a correct answer needs.',
   },
   {
-    term: 'Evidence place',
+    term: 'Evidence recall',
     meaning:
-      'One of the limited places for evidence in front of the answer model. All three approaches have the same number.',
+      'The share of the needed facts that the evidence an approach chose covers, from 0 to 1. Method v0.3 tests it.',
     technical:
-      'An evidence slot: context.evidence_slots per prompt, of which context.graph_slots are kept for graph nodes in B and C (D-081).',
+      'The share of claims with at least one carrier selected, after the starting record is removed; undefined when no claim is left. The evidence metric of the tested family since method v0.3 (D-087).',
   },
   {
     term: 'Evidence score',
     meaning:
-      'How much of the needed evidence an approach found without padding, from 0 to 1.',
+      'How much of the needed evidence an approach found without padding, from 0 to 1. The official run v0.2.0 tested it; method v0.3 shows it without a test.',
     technical:
-      'F1: the harmonic mean of recall (the share of claims with at least one carrier selected) and precision (the share of selected items that carry a claim), after the starting record is removed. Undefined when no claim is left.',
+      'F1: the harmonic mean of recall (the share of claims with at least one carrier selected) and precision (the share of selected items that carry a claim), after the starting record is removed. Undefined when no claim is left. Descriptive since method v0.3, because precision depends on how many items fit the budget (D-087).',
   },
   {
     term: 'Failure cause',
@@ -132,11 +139,25 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'The failure class (backend/app/evaluation/scoring.py): entity_resolution_failure when B or C did not resolve the starting record, else retrieval_failure when evidence recall is below 0.5, else generation_failure.',
   },
   {
+    term: 'Graph rank',
+    meaning:
+      "A graph record's place in the graph's own order in B and C: starting points first, then records of a kind the question asks about, then the rest.",
+    technical:
+      'The 1-based position among the in-scope nodes not of an excluded label, ordered by tier (seed, target type, other), then composite score, then node id (D-083). Live Lab shows it on each graph record.',
+  },
+  {
     term: 'Graph walk',
     meaning:
       'Following links in the knowledge graph from the starting points to related records, up to a set number of steps.',
     technical:
       'Traversal: breadth-first and undirected, to graph_limits.depth hops, under the node and edge caps (backend/app/retrieval/graph/traversal.py).',
+  },
+  {
+    term: 'Groundedness',
+    meaning:
+      'How far the ids, dates and numbers an answer states are held by the pieces it cites, and how many no piece shown to the model holds. Shown, not tested.',
+    technical:
+      'Supported and unsupported shares of checkable atoms per sentence, with no model (backend/app/evaluation/checks.py, D-088); descriptive and outside the Holm family. A v0.2.0 figure and a v0.3 one are not comparable.',
   },
   {
     term: 'Hidden truth',
@@ -204,9 +225,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Official run',
     meaning:
-      'Every question run on three worlds, three times each, scored identically for all approaches.',
+      'Every question run on several worlds, three times each, scored identically for all approaches. Only an official run is a result.',
     technical:
-      'Run kind official over the whole bank on world seeds 2026, 2027 and 2028, with at least 3 repeats and a gateway answer model and judge (make run-benchmark).',
+      'Run kind official over the whole bank, with at least 3 repeats and a gateway answer model and judge (make run-benchmark): for method v0.3 on the six unseen world seeds 2029 to 2034 (D-091); v0.2.0 used seeds 2026, 2027 and 2028.',
   },
   {
     term: 'Pair',
@@ -258,9 +279,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Re-ordering model',
     meaning:
-      'The model that scores each piece found for how well it answers the question, so the best pieces fill the limited places.',
+      'The model that scores each passage and record text for how well it answers the question, so the best come first. It does not score graph records.',
     technical:
-      'The re-ranker: one cross-encoder, BAAI/bge-reranker-v2-m3, run in process by fastembed (D-021). One instance serves A, B and C.',
+      'The re-ranker: one cross-encoder, BAAI/bge-reranker-v2-m3, run in process by fastembed (D-021). One instance serves A, B and C, on the document channel only since method v0.3 (D-083).',
   },
   {
     term: 'Reasoning',
@@ -334,10 +355,17 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'Written by backend/app/scenarios/ledger.py and loaded only by backend/app/evaluation/truth_ledger.py; backend/tests/test_truth_ledger_isolation.py enforces this.',
   },
   {
+    term: 'Weighted kappa',
+    meaning:
+      'How far the judge and the answer score agree beyond chance, on three levels, where being one level apart counts as half a disagreement. Shown only from 10 compared answers.',
+    technical:
+      'Linearly weighted kappa of judge correctness 0, 1 or 2 against the answer score read as 0, between 0 and 1, or 1, separately for answered and abstaining answers (D-086). Below n = 10 it reads "too few to say".',
+  },
+  {
     term: 'World',
     meaning:
       'One generated version of the made-up company. The same settings build the same world again.',
     technical:
-      'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2026, 2027 and 2028.',
+      'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2029 to 2034 for method v0.3, and were 2026, 2027 and 2028 for v0.2.0.',
   },
 ]

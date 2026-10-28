@@ -22,7 +22,7 @@ const LAST_SIX: readonly ChapterId[] = [
   'running',
 ]
 
-/** Settings now of 10 slots, 4 for the graph, 1500 tokens and depth 2. */
+/** Settings now of 1500 tokens, a duplicate threshold of 0.9 and depth 2. */
 function helpData(level: HelpData['level']): HelpData {
   return {
     level,
@@ -36,7 +36,7 @@ function helpData(level: HelpData['level']): HelpData {
         judge_configured: true,
         values: {
           context_budget_tokens: 1500,
-          context: { evidence_slots: 10, graph_slots: 4 },
+          context: { dedupe_threshold: 0.9 },
           graph_limits: { depth: 2 },
           repeats: 3,
         },
@@ -122,14 +122,14 @@ describe('chapters 7 to 12', () => {
         'synthetic-data',
         'one-company-shape',
         'evidence-limits',
-        'graph-share',
+        'graph-order',
         'reasoning-off',
         'answer-model',
         'judge-is-a-model',
         'judge-agreement',
         'bank-size',
         'question-groups',
-        'reranker-graph-records',
+        'method-after-result',
         'bank-authors',
       ]),
     )
@@ -145,6 +145,7 @@ describe('chapters 7 to 12', () => {
     expect(agreement.reason).toMatch(/kappa 0\.07/)
     expect(agreement.reason).toContain('2026-10-26')
     expect(row('question-groups').plain).toContain('12 groups')
+    expect(row('method-after-result').plain).toContain('v0.2.0')
   })
 
   it('plain shows item and plain only, technical adds reason and cost', () => {
@@ -181,13 +182,10 @@ describe('chapters 7 to 12', () => {
 
   it('the register fills current settings into its rows and types none of them', () => {
     const table = showRegister('plain')
-    const limits = within(table).getByRole('row', {
-      name: /^The evidence limits/,
+    const budget = within(table).getByRole('row', {
+      name: /^The evidence budget/,
     })
-    expect(limits).toHaveTextContent('at most 10 pieces')
-    expect(limits).toHaveTextContent('1,500 tokens')
-    const share = within(table).getByRole('row', { name: /^The graph's share/ })
-    expect(share).toHaveTextContent('4 of the 10 places')
+    expect(budget).toHaveTextContent('1,500 tokens')
     expect(table).not.toHaveTextContent(/not available/)
     // Every cell the register fills, at both levels, takes current settings from placeholders.
     const cells = REGISTER.flatMap((row) => [

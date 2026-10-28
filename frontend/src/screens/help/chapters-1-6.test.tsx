@@ -23,7 +23,7 @@ const prose = (blocks: readonly Block[]) =>
   blocks.filter((block) => typeof block === 'string' || !('kind' in block))
     .length
 
-/** Settings now of 10 slots, 4 for the graph and 1500 tokens; the run recorded 12, 6 and 2000. */
+/** Settings now of 1500 tokens and a duplicate threshold of 0.9; the run recorded 2000 and 0.85. */
 function helpData(
   level: HelpData['level'],
   recorded: Record<string, unknown> | null,
@@ -40,7 +40,7 @@ function helpData(
         judge_configured: true,
         values: {
           context_budget_tokens: 1500,
-          context: { evidence_slots: 10, graph_slots: 4 },
+          context: { dedupe_threshold: 0.9 },
         },
       },
     },
@@ -50,7 +50,7 @@ function helpData(
 
 const RECORDED = {
   context_budget_tokens: 2000,
-  context: { evidence_slots: 12, graph_slots: 6 },
+  context: { dedupe_threshold: 0.85 },
 }
 
 function showEvidence(
@@ -76,17 +76,18 @@ describe('chapters 1 to 6', () => {
     }
   })
 
-  it('chapter 5 prose takes slots, graph slots and budget from settings', () => {
-    // The prose only: the diagram works out the places left for documents (10 - 4 = 6) and is tested below.
+  it('chapter 5 prose takes the budget and the duplicate threshold from settings', () => {
     const plain = within(showEvidence('plain'))
       .getAllByText(/./, { selector: 'p, li' })
       .map((node) => node.textContent!)
       .join(' ')
-    expect(plain).toContain('at most 10 pieces')
-    expect(plain).toContain('4 of the 10 places')
     expect(plain).toContain('a budget of 1,500 tokens')
-    // The current settings win over the run's, and no number is typed in.
-    expect(plain).not.toMatch(/\b(?:12|6|2000|2,000)\b/)
+    expect(plain).toContain('There is no other limit on the number of pieces')
+    // The current settings win over the run's, and no budget is typed in; 12 pieces is dated history.
+    expect(plain).not.toMatch(/\b(?:2000|2,000)\b/)
+    expect(plain).toMatch(
+      /v0\.2\.0 used the old method: the answer model saw at most 12 pieces/,
+    )
     cleanup()
 
     // The technical detail states the same settings from the settings, beside dated history.
@@ -98,9 +99,9 @@ describe('chapters 1 to 6', () => {
       .getAllByText(/./, { selector: 'p, li' })
       .map((node) => node.textContent!)
       .join(' ')
-    expect(sentences).toContain('the first 4 graph nodes')
-    expect(sentences).toContain('the 1,500-token budget')
-    expect(sentences).toContain('leave room within 10')
+    expect(sentences).toContain('until the 1,500-token budget is full')
+    expect(sentences).toContain('a Jaccard index of 0.9 or more')
+    expect(sentences).toContain('the 12 places bound in all 1,350 prompts')
   })
 
   it('every diagram has a text alternative', () => {
@@ -125,9 +126,8 @@ describe('chapters 1 to 6', () => {
       </HelpDataContext.Provider>,
     )
     const label = screen.getByRole('img').getAttribute('aria-label')!
-    expect(label).toContain('at most 10 pieces')
-    expect(label).toContain('4 places are kept for graph records and 6 go to')
-    expect(label).toContain('1,500 tokens')
+    expect(label).toContain('one budget of 1,500 tokens')
+    expect(label).toContain('no limit on the number of pieces')
     expect(label).not.toMatch(/\b(?:12|2000|2,000)\b/)
     cleanup()
 

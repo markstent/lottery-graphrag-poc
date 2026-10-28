@@ -153,24 +153,27 @@ test('the settings table shows the settings now and Not recorded for a run witho
 }) => {
   await open(page, '#/help?section=running&level=technical')
   const row = page.locator('#running').getByRole('row', { name: /^top_k/ })
-  await expect(row).toContainText('20')
+  await expect(row).toContainText('40')
   await expect(row).toContainText('Not recorded')
   await shot(page, 'running-settings')
 })
 
-test('chapter 5 draws and states its places and budget from the settings', async ({
+test('chapter 5 draws and states its budget from the settings', async ({
   page,
 }) => {
   await open(page, '#/help?section=evidence')
   const chapter = page.locator('#evidence')
-  await expect(chapter).toContainText('at most 12 pieces of evidence')
-  await expect(chapter).toContainText('6 of the 12 places')
+  await expect(chapter).toContainText('a budget of 2,000 tokens')
+  await expect(chapter).toContainText(
+    'There is no other limit on the number of pieces',
+  )
   await expect(
-    chapter.getByRole('img', { name: /at most 12 pieces/ }),
+    chapter.getByRole('img', { name: /one budget of 2,000 tokens/ }),
   ).toBeVisible()
   await shot(page, 'evidence-plain')
   await page.getByRole('radio', { name: 'Technical' }).click()
-  await expect(chapter).toContainText('the 2,000-token budget')
+  await expect(chapter).toContainText('until the 2,000-token budget is full')
+  await expect(chapter).toContainText('a Jaccard index of 0.85 or more')
   await shot(page, 'evidence-technical')
 })
 

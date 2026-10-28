@@ -127,9 +127,7 @@ describe('Help', () => {
       figures.map((figure) => figure.querySelector('figcaption')!.textContent),
     ).toEqual(['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
     for (const figure of figures)
-      expect(within(figure).getByRole('img')).toHaveAccessibleName(
-        /re-ordering model/,
-      )
+      expect(within(figure).getByRole('img')).toHaveAccessibleName(/one budget/)
   })
 
   it('links the data tour to the Data Model tabs', async () => {
@@ -300,7 +298,7 @@ describe('the questions table', () => {
     ).toHaveLength(3)
     expect(within(rows()[0]).getAllByText('Answer: Correct')).toHaveLength(3)
     expect(
-      within(section('7. How scoring works')).getByText(/reads Missing/),
+      within(section('7. How scoring works')).getByText(/read Missing/),
     ).toBeVisible()
   })
 
@@ -404,7 +402,7 @@ describe('scoring and glossary', () => {
     await renderHelp()
     expect(
       within(section('7. How scoring works')).getByText(
-        /The evidence score runs from 0 to 1/,
+        /Evidence recall is the share of the claims that the chosen evidence covers, from 0 to 1/,
       ),
     ).toBeVisible()
   })
@@ -714,8 +712,8 @@ describe('settings in Help', () => {
     await renderHelp('#/help?section=running&level=technical', {
       ...RECORDED_RUNS,
     })
-    const row = settingsRow('context.graph_slots')
-    expect(await within(row).findAllByText('6')).toHaveLength(2)
+    const row = settingsRow('context.dedupe_threshold')
+    expect(await within(row).findAllByText('0.85')).toHaveLength(2)
   })
 
   it('a setting the run did not record reads Not recorded', async () => {
