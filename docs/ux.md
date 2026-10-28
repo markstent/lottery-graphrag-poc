@@ -45,6 +45,8 @@ Overview is the default.
 - The screens are designed for a 16:9 desktop, and a phone 390 px wide still reads them without sideways page scroll.
   Below 768 px Live Lab stacks the canvas, the three approach panels (each capped in height and scrolling inside itself) and the answers in one column; Results stacks its paired panels.
   Charts keep a readable width and scroll sideways in their own box, as wide tables do (the scorecard, market coverage, the question table, the Help tables).
+  A table box that scrolls takes keyboard focus, with its name and the shared focus ring, so the arrow keys scroll it; when the table fits it is not a tab stop (`frontend/src/components/scroll-box.tsx`).
+  A chart box scrolls only below 768 px, so on a desktop no tooltip is clipped; its marks take focus and bring themselves into view.
   The reproducibility record puts each value under its name.
   At 768 px and wider the layout is the desktop one, unchanged.
   The active one carries a heavy bar and bold text, so it does not rely on colour.

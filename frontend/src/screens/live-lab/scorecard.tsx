@@ -26,6 +26,7 @@ import {
   type DeltaKind,
   type ScoreColumn,
 } from './score'
+import { ScrollBox } from '../../components/scroll-box'
 
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
@@ -138,7 +139,7 @@ export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
       aria-label="Scorecard"
       className="overflow-hidden rounded-card border border-hairline bg-surface"
     >
-      <div className="relative overflow-x-auto">
+      <ScrollBox label="Scorecard">
         <table className="w-full min-w-[56rem] table-fixed text-left text-sm md:min-w-0">
           <thead>
             <tr>
@@ -179,7 +180,7 @@ export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
       {!card.scored && <Note>{unscoredNote(results)}</Note>}
     </section>
   )

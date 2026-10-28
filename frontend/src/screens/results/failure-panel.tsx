@@ -6,6 +6,7 @@ import { PIPELINES } from '../../design/pipelines'
 import { CAPTIONS, MEASURES, TABLE_HEADS } from '../../results/labels'
 import { failureTotals } from '../../results/strata'
 import { RunBadge } from './run-badge'
+import { ScrollBox } from '../../components/scroll-box'
 
 type Summary = Schemas['SummaryOut']
 
@@ -27,7 +28,7 @@ export function FailurePanel({
   return (
     <div className="space-y-3">
       <RunBadge label={badge} />
-      <div className="relative overflow-x-auto">
+      <ScrollBox label={CAPTIONS.failures}>
         <table className="w-full border-collapse text-sm text-text-primary">
           <caption className="sr-only">{CAPTIONS.failures}</caption>
           <thead>
@@ -90,7 +91,7 @@ export function FailurePanel({
             </tr>
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
     </div>
   )
 }

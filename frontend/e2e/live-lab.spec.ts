@@ -568,6 +568,19 @@ test('presentation mode keeps the scorecard label on one line', async ({
   expect(await lineCount(corner)).toBe(1)
 })
 
+test('on a desktop the tables fit, so their boxes are not tab stops', async ({
+  page,
+}) => {
+  await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+  await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await toEnd(page)
+  for (const name of ['Scorecard', 'Market coverage'])
+    await expect(page.getByRole('group', { name })).not.toHaveAttribute(
+      'tabindex',
+    )
+})
+
 // The app is built for 16:9 screens; on a phone Live Lab stacks the canvas
 // and the three approaches, and wide tables scroll in their own box.
 test.describe('at phone width', () => {
@@ -610,5 +623,15 @@ test.describe('at phone width', () => {
     expect(
       await scorecard.evaluate((box) => box.scrollWidth > box.clientWidth),
     ).toBe(true)
+    // A box that scrolls takes focus, with its name, and the arrow keys scroll it.
+    for (const name of ['Scorecard', 'Market coverage']) {
+      const box = page.getByRole('group', { name })
+      await box.focus()
+      await expect(box).toBeFocused()
+      await page.keyboard.press('ArrowRight')
+      await expect
+        .poll(() => box.evaluate((el) => el.scrollLeft))
+        .toBeGreaterThan(0)
+    }
   })
 })

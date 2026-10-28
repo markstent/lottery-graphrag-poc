@@ -37,6 +37,7 @@ import {
   STRATUM_ORDER,
 } from '../../results/strata'
 import { RunBadge } from './run-badge'
+import { ScrollBox } from '../../components/scroll-box'
 
 type Row = Schemas['InstanceResultOut']
 type PipelineScores = Schemas['InstancePipelineOut']
@@ -323,7 +324,7 @@ function Table({
           )
         }}
       />
-      <div className="relative overflow-x-auto">
+      <ScrollBox label={CAPTIONS.questions}>
         <table className="w-full border-collapse text-sm text-text-primary">
           <caption className="sr-only">{CAPTIONS.questions}</caption>
           <thead>
@@ -387,7 +388,7 @@ function Table({
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
       {kept.length === 0 ? (
         <p className="text-sm text-text-secondary">No match</p>
       ) : (

@@ -8,6 +8,7 @@
 import { REGISTER } from './copy/limits'
 import { useHelpData } from './help-data'
 import { fillSettings, useSettingValues } from './settings'
+import { ScrollBox } from '../../components/scroll-box'
 
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
 
@@ -27,7 +28,7 @@ export function Register() {
     ? [...PLAIN_COLUMNS, ...TECHNICAL_COLUMNS]
     : PLAIN_COLUMNS
   return (
-    <div className="relative overflow-x-auto">
+    <ScrollBox label="Assumptions and limits">
       <table
         className={`w-full text-left text-sm ${technical ? 'min-w-[64rem]' : 'min-w-[36rem]'}`}
       >
@@ -64,6 +65,6 @@ export function Register() {
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollBox>
   )
 }

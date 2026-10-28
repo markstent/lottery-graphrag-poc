@@ -18,6 +18,7 @@ import {
 } from './bank'
 import { useHelpData } from './help-data'
 import { helpHref } from './level'
+import { ScrollBox } from '../../components/scroll-box'
 
 const LINK = 'text-text-primary underline'
 const SELECT =
@@ -192,7 +193,7 @@ function QuestionTable({
           shownCount === total ? total : `Showing ${shownCount} of ${total}`
         }
       />
-      <div className="relative overflow-x-auto">
+      <ScrollBox label="Benchmark questions">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Benchmark questions</caption>
           <thead className="text-text-muted">
@@ -272,7 +273,7 @@ function QuestionTable({
             )
           })}
         </table>
-      </div>
+      </ScrollBox>
       {shown.length === 0 && (
         <p>
           No question matches these filters.{' '}

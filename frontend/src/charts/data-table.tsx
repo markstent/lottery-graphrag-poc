@@ -1,5 +1,7 @@
 /** The table twin of a chart: the same numbers, as text, in tabular numerals. */
 
+import { ScrollBox } from '../components/scroll-box'
+
 export interface DataTableRow {
   key: string
   label: string
@@ -18,7 +20,7 @@ export function DataTable({
   rows: readonly DataTableRow[]
 }) {
   return (
-    <div className="relative overflow-x-auto">
+    <ScrollBox label={caption}>
       <table className="w-full border-collapse text-sm text-text-primary">
         <caption className="sr-only">{caption}</caption>
         <thead>
@@ -58,6 +60,6 @@ export function DataTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </ScrollBox>
   )
 }

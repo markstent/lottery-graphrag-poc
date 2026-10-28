@@ -234,6 +234,12 @@ test.describe('at phone width', () => {
           () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
       ).toBe(true)
+      // Every table box that scrolls can take focus.
+      for (const box of await page
+        .locator('[role="group"].overflow-x-auto')
+        .all())
+        if (await box.evaluate((el) => el.scrollWidth > el.clientWidth))
+          await expect(box).toHaveAttribute('tabindex', '0')
       expect(
         await page
           .getByRole('navigation', { name: 'Primary' })

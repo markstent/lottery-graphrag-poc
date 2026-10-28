@@ -63,6 +63,8 @@ const AXIS = 48
 const CHAR_PX = 6.4
 const LABEL_CHAR_PX = 7.4
 const LABEL_MAX = 330
+/** The most of a narrow plot the labels take, so a phone shows them whole beside the start of the plot. */
+const LABEL_SHARE = 0.4
 const LABEL_LINES = 3
 const GUTTER = 16
 const DOT = 5
@@ -105,6 +107,7 @@ export function IntervalPlot({
   ]
   const labelW = Math.min(
     LABEL_MAX,
+    width * LABEL_SHARE,
     Math.max(...rows.map((r) => r.label.length), 8) * LABEL_CHAR_PX + 8,
   )
   const countW =
