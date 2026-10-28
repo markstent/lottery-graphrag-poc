@@ -7,7 +7,9 @@ import { ScrollBox } from './scroll-box'
 class Watcher {
   static all: Watcher[] = []
   watched = new Set<Element>()
-  constructor(private readonly callback: ResizeObserverCallback) {
+  readonly callback: ResizeObserverCallback
+  constructor(callback: ResizeObserverCallback) {
+    this.callback = callback
     Watcher.all.push(this)
   }
   observe(target: Element) {
