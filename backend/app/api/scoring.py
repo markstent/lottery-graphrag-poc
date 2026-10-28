@@ -46,7 +46,8 @@ FAILED = "failed"
 INTERRUPTED = "interrupted"
 # The pipelines that resolve entities before retrieval (the runner's ``seeded``).
 SEEDED_PIPELINES = frozenset({"B", "C"})
-LIVE_METRICS = ("answer", "evidence_f1", "anchor_resolution")
+# Method v0.3 compares evidence recall (D-087), so a live score holds no F1.
+LIVE_METRICS = ("answer", "evidence_recall", "anchor_resolution")
 
 Results = dict[str, dict[str, Any]]
 Events = list[dict[str, Any]]

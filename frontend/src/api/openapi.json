@@ -3343,7 +3343,7 @@
         "type": "object"
       },
       "LivePipelineScore": {
-        "description": "One pipeline's deterministic scores on a live bank question; None\nwhere the instance does not define the metric.",
+        "description": "One pipeline's deterministic scores on a live bank question; None\nwhere the instance does not define the metric.\n\nMethod v0.3 scores evidence recall, the evidence metric it compares\n(D-087). ``evidence_f1`` is set only in a score stored under method\nv0.2, which had no recall; each is None in a score of the other method.",
         "properties": {
           "anchor_resolution": {
             "anyOf": [
@@ -3378,6 +3378,17 @@
             ],
             "title": "Evidence F1"
           },
+          "evidence_recall": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Recall"
+          },
           "failure_class": {
             "anyOf": [
               {
@@ -3392,7 +3403,6 @@
         },
         "required": [
           "answer",
-          "evidence_f1",
           "anchor_resolution",
           "failure_class"
         ],

@@ -23,7 +23,8 @@ Names on screen:
 | A · Text search | Pipeline A |
 | B · Graph | Pipeline B |
 | C · Graph + Ontology | Pipeline C |
-| Evidence score | The evidence F1, from 0 to 1 with two decimals (D-047) |
+| Evidence score | The evidence F1 of method v0.2, from 0 to 1 with two decimals (D-047) |
+| Evidence recall | The share of the needed facts the chosen evidence covers, from 0 to 1 with two decimals; the evidence metric of method v0.3 (D-087) |
 | Answer writing time | The model's time to write the answer, shown as "<1 ms" when it is none (D-047) |
 | Starting point | A seed: where the walk through the graph begins |
 | Set aside | Evidence a pipeline judged and did not use |
@@ -111,7 +112,8 @@ At 1920 by 1080, the first screen of a running run holds the question bar, the g
 1. **Question bar.**
    Before a run it is open: the four saved questions, a box for your own question, the market scope and the source (Recorded run or Live).
    Once a run is chosen it collapses to one line with "Change question", "Cancel run" while a live run is going, and Run.
-2. **Scorecard**, when a run has completed: a row for each approach with Answer, Evidence score, Starting record, Markets reached, Answer writing time, Context size and Reason.
+2. **Scorecard**, when a run has completed: a row for each approach with Answer, Evidence recall, Starting record, Markets reached, Answer writing time, Context size and Reason.
+   A recording made under the old method shows its Evidence score (F1) in place of Evidence recall, because that is what it was scored on.
    B and C show signed changes against A.
    The reason is the failure class in plain words: "the starting record was not found", "the needed evidence was not retrieved", or "the evidence was retrieved but the answer was wrong" (D-054).
    A question with no answer key shows only what can be measured.

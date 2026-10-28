@@ -11,20 +11,20 @@ const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!.results
 
 describe('scorecard', () => {
   it('takes the score from the run score and the measures from the results', () => {
-    const card = scorecard(h3)
+    const card = scorecard(h3, 'evidence_f1')
     expect(card.scored).toBe(true)
     expect(card.label).toBe('scored against the answer key')
     const a = card.columns.A!
     const result = h3.results!.A
     expect(a.answer).toBe(1)
-    expect(a.evidenceF1).toBeNull()
+    expect(a.evidence).toBeNull()
     expect(a.anchorResolution).toBe(1)
     expect(a.latencyMs).toBe(result.answer.latency_ms)
     expect(a.contextTokens).toBe(result.answer.context_tokens)
   })
 
   it('carries a failure class and its plain words', () => {
-    const card = scorecard(h1)
+    const card = scorecard(h1, 'evidence_f1')
     expect(card.columns.B!.failureClass).toBe('retrieval_failure')
     expect(card.columns.B!.failure).toBe(
       'the needed evidence was not retrieved',
@@ -39,12 +39,12 @@ describe('scorecard', () => {
       score_status: 'not_applicable',
       score: null,
     } as unknown as Results
-    const card = scorecard(adhoc)
+    const card = scorecard(adhoc, 'evidence_f1')
     expect(card.scored).toBe(false)
     for (const id of ['A', 'B', 'C'] as const) {
       const column = card.columns[id]!
       expect(column.answer).toBeNull()
-      expect(column.evidenceF1).toBeNull()
+      expect(column.evidence).toBeNull()
       expect(column.failure).toBeNull()
       expect(column.latencyMs).toBe(h1.results![id].answer.latency_ms)
     }
@@ -52,13 +52,16 @@ describe('scorecard', () => {
 
   it('is not scored while the score is pending or failed, even with a key', () => {
     for (const status of ['pending', 'failed'] as const)
-      expect(scorecard({ ...h1, score_status: status } as Results).scored).toBe(
-        false,
-      )
+      expect(
+        scorecard({ ...h1, score_status: status } as Results, 'evidence_f1')
+          .scored,
+      ).toBe(false)
   })
 
   it('is not scored when the run holds no score even if it says scored', () => {
-    expect(scorecard({ ...h1, score: null } as Results).scored).toBe(false)
+    expect(
+      scorecard({ ...h1, score: null } as Results, 'evidence_f1').scored,
+    ).toBe(false)
   })
 
   it('leaves a pipeline with no result out', () => {
@@ -66,13 +69,13 @@ describe('scorecard', () => {
       ...h1,
       results: { A: h1.results!.A },
     } as unknown as Results
-    const card = scorecard(only)
+    const card = scorecard(only, 'evidence_f1')
     expect(card.columns.B).toBeNull()
     expect(card.columns.A).not.toBeNull()
   })
 
   it('counts the markets reached from the coverage rule', () => {
-    expect(scorecard(h1).columns.A!.markets).toBeGreaterThan(0)
+    expect(scorecard(h1, 'evidence_f1').columns.A!.markets).toBeGreaterThan(0)
   })
 })
 

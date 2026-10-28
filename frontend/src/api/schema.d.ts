@@ -1944,6 +1944,10 @@ export interface components {
          * LivePipelineScore
          * @description One pipeline's deterministic scores on a live bank question; None
          *     where the instance does not define the metric.
+         *
+         *     Method v0.3 scores evidence recall, the evidence metric it compares
+         *     (D-087). ``evidence_f1`` is set only in a score stored under method
+         *     v0.2, which had no recall; each is None in a score of the other method.
          */
         LivePipelineScore: {
             /** Anchor Resolution */
@@ -1951,7 +1955,9 @@ export interface components {
             /** Answer */
             answer: number | null;
             /** Evidence F1 */
-            evidence_f1: number | null;
+            evidence_f1?: number | null;
+            /** Evidence Recall */
+            evidence_recall?: number | null;
             /** Failure Class */
             failure_class: string | null;
         };

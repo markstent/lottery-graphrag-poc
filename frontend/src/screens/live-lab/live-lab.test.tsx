@@ -1126,4 +1126,43 @@ describe('Live Lab, results', () => {
     expect(within(card).queryByText('scored against the answer key')).toBeNull()
     expect(within(card).queryByText('Answer')).toBeNull()
   })
+
+  it('scores a live run on evidence recall and a recording of the old method on its evidence score', async () => {
+    const scored = structuredClone(h1.results) as typeof h1.results
+    for (const id of ['A', 'B', 'C'] as const)
+      scored.score!.per_pipeline[id] = {
+        ...scored.score!.per_pipeline[id],
+        evidence_f1: null,
+        evidence_recall: 0.5,
+      }
+    api({
+      '/api/v1/datasets': DATASETS,
+      '/api/v1/queries/RUN-T': scored,
+    })
+    const user = userEvent.setup()
+    const { unmount } = open()
+    await user.click(await screen.findByRole('button', { name: h1.question }))
+    const liveButton = screen.getByRole('button', { name: 'Live' })
+    await waitFor(() => expect(liveButton).toBeEnabled())
+    await user.click(liveButton)
+    await user.click(screen.getByRole('button', { name: 'Run' }))
+    await waitFor(() => expect(stream.subscribeRun).toHaveBeenCalled())
+    act(() => {
+      for (const event of live) handlers.onEvent(event)
+      handlers.onEnd()
+    })
+    const card = await screen.findByRole('region', { name: 'Scorecard' })
+    expect(
+      within(card).getByRole('columnheader', { name: 'Evidence recall' }),
+    ).toBeVisible()
+    expect(within(card).queryByText('Evidence score')).toBeNull()
+    unmount()
+
+    await finishRecording(userEvent.setup())
+    const recorded = screen.getByRole('region', { name: 'Scorecard' })
+    expect(
+      within(recorded).getByRole('columnheader', { name: 'Evidence score' }),
+    ).toBeVisible()
+    expect(within(recorded).queryByText('Evidence recall')).toBeNull()
+  })
 })

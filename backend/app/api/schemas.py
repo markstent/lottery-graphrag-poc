@@ -134,10 +134,16 @@ class RunHistory(BaseModel):
 
 class LivePipelineScore(BaseModel):
     """One pipeline's deterministic scores on a live bank question; None
-    where the instance does not define the metric."""
+    where the instance does not define the metric.
+
+    Method v0.3 scores evidence recall, the evidence metric it compares
+    (D-087). ``evidence_f1`` is set only in a score stored under method
+    v0.2, which had no recall; each is None in a score of the other method.
+    """
 
     answer: float | None
-    evidence_f1: float | None
+    evidence_recall: float | None = None
+    evidence_f1: float | None = None
     anchor_resolution: float | None
     failure_class: str | None
 
