@@ -2,7 +2,7 @@ import type { ChapterCopy } from '../chapters'
 
 export const approaches: ChapterCopy = {
   plain: [
-    'All three approaches answer the same question from the same data with the same answer model. They differ only in how they look for evidence. How the evidence is then chosen and answered is the same for all three (chapters 5 and 6).',
+    "All three approaches answer the same question from the same data with the same answer model. They differ in how they look for evidence, and in one more way: B and C put the records the graph reached in the graph's own order, records of a kind the question asks about first, and those records take turns with the passages; A has no graph records. The budget, the answer model and how a piece is shown are the same for all three (chapters 5 and 6).",
     "A, text search, looks for the passages that best match the question's words and meaning. A passage is a short piece of a document. The search also covers a record text: a short text written for each record in the main business tables, such as a game or an incident. So A can reach, by search, the records whose facts B and C can show.",
     { kind: 'diagram', name: 'approachA' },
     "B, graph, does everything A does. It also picks its starting points from the question, such as an incident the question names, and follows the graph's links from them to related records: the platform version the incident happened on, other incidents on that version, the markets they affected. It puts the records it reaches in its own order, and they take turns with the passages for room in front of the answer model (chapter 5).",

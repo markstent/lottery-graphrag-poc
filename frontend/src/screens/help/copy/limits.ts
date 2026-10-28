@@ -60,7 +60,7 @@ export const REGISTER: readonly RegisterRow[] = [
     plain:
       "In B and C the graph's records are ordered by the graph, records of a kind the question asks about first, and they take turns with the passages; A gets no such help.",
     reason:
-      'Each approach ranks with what it has: text relevance for passages, connection to the question for graph records. Taking turns has no share to choose, and the kinds a question asks about are matched by fixed word lists, with no model.',
+      'Each approach ranks with what it has: text relevance for passages, connection to the question for graph records. Taking turns one for one leaves no proportion to tune, and the kinds a question asks about are matched by fixed word lists, with no model.',
     cost: 'Common words such as "market" or "game" name broad kinds, so the first group may hold many records and add little; this cue is a declared difference that A does not have.',
     decision: 'D-083, D-084',
   },

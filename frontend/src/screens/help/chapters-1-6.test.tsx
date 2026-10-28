@@ -128,6 +128,11 @@ describe('chapters 1 to 6', () => {
     const label = screen.getByRole('img').getAttribute('aria-label')!
     expect(label).toContain('one budget of 1,500 tokens')
     expect(label).toContain('no limit on the number of pieces')
+    expect(label).toContain('a passage or record text first')
+    // The row captions name record texts, as the prose does.
+    const picture = screen.getByRole('img')
+    expect(picture).toHaveTextContent('Passages and record texts, in order')
+    expect(picture).toHaveTextContent('One from each list, in turn')
     expect(label).not.toMatch(/\b(?:12|2000|2,000)\b/)
     cleanup()
 

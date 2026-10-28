@@ -281,4 +281,55 @@ describe('chapters 7 to 12', () => {
       )
     }
   })
+
+  it('states method v0.3 where Help v2 stated v0.2 facts', () => {
+    // Running it: the official run is the six unseen worlds, with the repeats from settings.
+    show('technical', [{ kind: 'component', name: 'running' }])
+    expect(
+      screen.getByText(/runs every question on the six unseen worlds/),
+    ).toHaveTextContent(
+      'runs every question on the six unseen worlds, 2029 to 2034, 3 times each.',
+    )
+    expect(document.body).not.toHaveTextContent(/on three worlds/)
+    cleanup()
+    // The questions: 150 instances belong to v0.2.0, not to the official run now.
+    const questions = chapterText('questions')
+    expect(questions).toContain(
+      'the three worlds of the official run v0.2.0 gave 150',
+    )
+    expect(questions).not.toMatch(/the three official worlds/)
+    // A token is charged for the whole block, not the bare text.
+    const token = GLOSSARY_TERMS.find(({ term }) => term === 'Token')!
+    expect(token.technical).toContain('over the whole block the prompt shows')
+    expect(token.technical).not.toContain('text only')
+    // The approaches differ in their graph order and turns too, and say so.
+    const approaches = strings(CHAPTER_COPY.approaches.plain).join(' ')
+    expect(approaches).not.toMatch(/chosen and answered is the same/)
+    expect(approaches).toContain("in the graph's own order")
+  })
+
+  it('names every declared difference rather than one', () => {
+    const answer = strings(CHAPTER_COPY.answer.plain).join(' ')
+    expect(answer).not.toMatch(/the one thing B and C show/)
+    expect(answer).toContain('only B and C can pick')
+    expect(answer).toContain('the shared concepts only C shows')
+    const why = strings(CHAPTER_COPY.why.technical).join(' ')
+    expect(why).not.toMatch(/the one declared extra/)
+    expect(why).toContain('target-type tier')
+    expect(why).toContain("C's concept text")
+  })
+
+  it("says only B shares A's first block, and that turns are one for one", () => {
+    const evidence = chapterText('evidence')
+    expect(evidence).not.toMatch(/so their first block is A's first block/)
+    expect(evidence).toContain("so B's first block is A's first block")
+    expect(evidence).toContain('its ontology terms')
+    for (const text of [evidence, chapterText('limits')]) {
+      expect(text).not.toMatch(/share to choose|a share that someone/)
+      expect(text).toMatch(/one for one/)
+    }
+    expect(chapterText('scoring')).toContain(
+      'it is computed the same way for all three approaches',
+    )
+  })
 })

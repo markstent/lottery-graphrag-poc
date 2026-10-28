@@ -345,7 +345,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A small piece of text, the unit models count. Here, four characters count as one token.',
     technical:
-      'Estimated as characters divided by four, rounded up, over the text only. The evidence must fit context_budget_tokens.',
+      'Estimated as characters divided by four, rounded up, over the whole block the prompt shows (heading, title line, path line and text; block_tokens). The evidence must fit context_budget_tokens.',
   },
   {
     term: 'Truth ledger',

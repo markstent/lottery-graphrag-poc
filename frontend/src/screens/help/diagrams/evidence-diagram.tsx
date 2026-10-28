@@ -156,7 +156,7 @@ export function EvidenceDiagram() {
         'How evidence is chosen.',
         "The passages and record texts are put in order by the re-ordering model. In B and C, the records the graph reached form a second list, in the graph's own order.",
         'A takes pieces from its one list in order until its budget is full.',
-        'B and C take one piece from each list in turn, a passage first, until the budget is full.',
+        'B and C take one piece from each list in turn, a passage or record text first, until the budget is full.',
         tokens !== null
           ? `Each approach has one budget of ${tokens}, and no limit on the number of pieces.`
           : 'The token budget is not available.',
@@ -217,10 +217,10 @@ export function EvidenceDiagram() {
           </g>
           <g fontSize={SMALL} fill="var(--color-text-secondary)">
             <text x={SLOTS_X} y={rowA - 8}>
-              Passages, in order, until full
+              Passages and record texts, in order
             </text>
             <text x={SLOTS_X} y={rowBC - 8}>
-              A passage, then a graph record, in turn
+              One from each list, in turn
             </text>
           </g>
           <Budget y={rowA} takes={A_TAKES} />

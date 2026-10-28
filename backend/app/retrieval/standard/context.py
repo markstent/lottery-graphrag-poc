@@ -15,7 +15,9 @@ There are two ranked channels:
   Nodes are never re-ranked by the cross-encoder.
 
 ``interleave_by_budget`` takes one item from each channel in turn, starting
-with the documents, so B's and C's first block is A's first block. Each
+with the documents. B's document channel is A's, so B's first block is A's
+first block; C searches documents with its expanded question, so its first
+block is the first of its own hits. Each
 offered item is checked in a fixed order, and the first failing check is its
 discard reason:
 

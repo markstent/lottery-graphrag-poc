@@ -5,6 +5,8 @@
  */
 
 import { BRING_UP, COMMAND_GROUPS, MODELS, RECOVERY } from './running-data'
+import { ScrollBox } from '../../components/scroll-box'
+import { fillSettings, useSettingValues } from './settings'
 
 const CODE = 'rounded-chip bg-surface-raised px-1.5 py-0.5 text-sm'
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
@@ -14,6 +16,7 @@ const Command = ({ children }: { children: string }) => (
 )
 
 export function Running() {
+  const values = useSettingValues()
   return (
     <div className="space-y-3 [&>h3]:pt-3">
       <h3 className="text-base font-semibold text-text-primary">Bring-up</h3>
@@ -25,7 +28,7 @@ export function Running() {
         ))}
       </ol>
       <h3 className="text-base font-semibold text-text-primary">Recovery</h3>
-      <div className="relative overflow-x-auto">
+      <ScrollBox label="Recovery">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Recovery</caption>
           <thead className="text-text-muted">
@@ -49,7 +52,7 @@ export function Running() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
       <h3 className="text-base font-semibold text-text-primary">
         Model configuration
       </h3>
@@ -59,7 +62,7 @@ export function Running() {
         every setting. Its defaults put fixed programs in place of the answer
         model and the judge, so they run without a language model.
       </p>
-      <div className="relative overflow-x-auto">
+      <ScrollBox label="Model configuration">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Model configuration</caption>
           <thead className="text-text-muted">
@@ -83,20 +86,21 @@ export function Running() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
       <p>
         An official run needs <code className={CODE}>GENERATION_PROVIDER</code>{' '}
         and <code className={CODE}>JUDGE_PROVIDER</code> set to{' '}
         <code className={CODE}>litellm</code>. Then{' '}
-        <Command>make run-benchmark</Command> runs every question on three
-        worlds, three times each. <Command>make run-smoke</Command> checks the
-        scoring with those fixed programs and is not a result.
+        <Command>make run-benchmark</Command> runs every question on the six
+        unseen worlds, 2029 to 2034, {fillSettings('{repeats}', values)} times
+        each. <Command>make run-smoke</Command> checks the scoring with those
+        fixed programs and is not a result.
       </p>
       <h3 className="text-base font-semibold text-text-primary">
         Every command
       </h3>
       {COMMAND_GROUPS.map(({ group, rows }) => (
-        <div key={group} className="relative overflow-x-auto">
+        <ScrollBox key={group} label={group}>
           <table className="w-full min-w-[36rem] text-left text-sm">
             <caption className="py-2 text-left font-semibold text-text-primary">
               {group}
@@ -118,7 +122,7 @@ export function Running() {
               ))}
             </tbody>
           </table>
-        </div>
+        </ScrollBox>
       ))}
     </div>
   )
