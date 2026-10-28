@@ -126,6 +126,49 @@ test('a run of method v0.2 says it is of the old method, and has no groundedness
   )
 })
 
+test('a tooltip over the first row of an interval plot is shown whole, and no chart box scrolls on a desktop', async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await page.goto('/#/results?run=fixture-v03')
+  const plot = page
+    .getByRole('figure')
+    .filter({ hasText: 'Paired differences in evidence recall' })
+  await plot.locator('[data-mark="hit"]').first().hover()
+  const tip = plot.getByRole('tooltip')
+  await expect(tip).toBeVisible()
+  // No box around the tooltip clips it: every ancestor that clips holds it whole.
+  expect(
+    await tip.evaluate((el) => {
+      const tipBox = el.getBoundingClientRect()
+      for (let box = el.parentElement; box; box = box.parentElement) {
+        const style = getComputedStyle(box)
+        if (style.overflowX === 'visible' && style.overflowY === 'visible')
+          continue
+        const r = box.getBoundingClientRect()
+        if (
+          tipBox.top < r.top ||
+          tipBox.bottom > r.bottom ||
+          tipBox.left < r.left ||
+          tipBox.right > r.right
+        )
+          return false
+      }
+      return true
+    }),
+  ).toBe(true)
+  const scrolling = await page
+    .locator('figure .overflow-x-auto')
+    .evaluateAll(
+      (boxes) =>
+        boxes.filter(
+          (b) =>
+            b.scrollHeight > b.clientHeight || b.scrollWidth > b.clientWidth,
+        ).length,
+    )
+  expect(scrolling).toBe(0)
+})
+
 // The app is built for 16:9 screens; on a phone Results must still read
 // without sideways page scroll: charts and wide tables scroll in their own box.
 test.describe('at phone width', () => {

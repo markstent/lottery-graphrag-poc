@@ -55,8 +55,10 @@ export function ChartFigure({
   ) : (
     <div className="flex flex-col gap-3">
       {legend}
-      {/* Below tablet width the plot keeps a readable width and scrolls in its own box. */}
-      <div className="relative overflow-x-auto">
+      {/* Below tablet width the plot keeps a readable width and scrolls in its
+          own box; from tablet width up nothing clips, so a tooltip over the
+          first row or beside a low bar stays whole. */}
+      <div className="relative overflow-x-auto md:overflow-visible">
         <div ref={plotRef} className="relative min-w-[40rem] md:min-w-0">
           {children}
           {overlay}
