@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from app.api.benchmarks import _instances, _published, _summary_out
 from app.config import METHOD_VERSION
 from app.evaluation.checks import CitationMetrics, GroundednessScore, TokenCheck
 from app.evaluation.claims import Claim
@@ -657,23 +658,34 @@ V03_FIXTURES = Path(__file__).parents[2] / "frontend" / "e2e" / "fixtures"
 V03_FIXTURE_RUN = "fixture-v03"
 V03_FIXTURE_LABEL = "Fixture run (test values)"
 
+
+def v03_fixture_texts(directory: Path) -> dict[str, str]:
+    """Each v0.3 Results fixture's file name and text, byte for byte, as
+    the API serves the synthetic run published under ``directory``."""
+    run = _benchmark("official", h5_per_world=6, label=V03_FIXTURE_LABEL)
+    run_dir = directory / V03_FIXTURE_RUN
+    run_dir.mkdir()
+    (run_dir / "results.json").write_text(json.dumps(run.to_payload()), encoding="utf-8")
+    (run_dir / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
+    served = _summary_out(_published(directory, V03_FIXTURE_RUN))
+    instances = _instances(directory, V03_FIXTURE_RUN)
+    return {
+        "results-v03-summary.json": json.dumps(served.model_dump(mode="json"), indent=2) + "\n",
+        "results-v03-instances.json": json.dumps(
+            [row.model_dump(mode="json") for row in instances], indent=2
+        )
+        + "\n",
+    }
+
+
+def test_the_v03_results_fixtures_are_the_writers_output(tmp_path: Path) -> None:
+    for name, text in v03_fixture_texts(tmp_path).items():
+        assert (V03_FIXTURES / name).read_text(encoding="utf-8") == text, name
+
+
 if __name__ == "__main__":
     import tempfile
 
-    from app.api.benchmarks import _instances, _published, _summary_out
-
-    run = _benchmark("official", h5_per_world=6, label=V03_FIXTURE_LABEL)
     with tempfile.TemporaryDirectory() as directory:
-        run_dir = Path(directory) / V03_FIXTURE_RUN
-        run_dir.mkdir()
-        (run_dir / "results.json").write_text(json.dumps(run.to_payload()), encoding="utf-8")
-        (run_dir / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
-        served = _summary_out(_published(Path(directory), V03_FIXTURE_RUN))
-        instances = _instances(Path(directory), V03_FIXTURE_RUN)
-    (V03_FIXTURES / "results-v03-summary.json").write_text(
-        json.dumps(served.model_dump(mode="json"), indent=2) + "\n", encoding="utf-8"
-    )
-    (V03_FIXTURES / "results-v03-instances.json").write_text(
-        json.dumps([row.model_dump(mode="json") for row in instances], indent=2) + "\n",
-        encoding="utf-8",
-    )
+        for name, text in v03_fixture_texts(Path(directory)).items():
+            (V03_FIXTURES / name).write_text(text, encoding="utf-8")
