@@ -164,7 +164,7 @@ export const COMMAND_GROUPS: readonly {
       ],
       [
         'make addendum-v020',
-        'Rescore the official run v0.2.0 with scorer 2.1.0 and groundedness, beside the run; no model.',
+        'Rescore the official run v0.2.0 with the current scorer and groundedness, beside the run; no model.',
       ],
       [
         'make diagnose-selection',

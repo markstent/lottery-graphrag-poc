@@ -46,7 +46,7 @@ What changed, in short:
 | Graph records | ordered by the shared re-ranker | ordered by the graph relevance rule (D-083) |
 | Context | 12 items, graph share of 6 | one 2,000 token budget, no item limit, channels alternate (D-084) |
 | Prompt | prose record blocks, prompt 2.0.0 | compact facts, path line for graph records, prompt 3.0.0 (D-085) |
-| Scorer, judge | scorer 2.0.0, judge prompt 1.0.0 | scorer 2.1.0, judge prompt 1.1.0 (D-086) |
+| Scorer, judge | scorer 2.0.0, judge prompt 1.0.0 | scorer 2.2.0 (D-086, D-095), judge prompt 1.1.0 (D-086) |
 | Agreement | rate at the 0.5 threshold and Cohen's kappa | three levels, weighted kappa, answered and abstaining apart (D-086) |
 | Tested evidence metric | F1 | recall; F1 and precision descriptive (D-087) |
 | New measures | none | groundedness, descriptive (D-088) |
@@ -196,9 +196,14 @@ Citation markers, identifiers such as `INC_042` and dates are not numbers.
 European grouping (`1.200,00 €`) and space grouping (`1 200`) are not parsed, and a number run together with its unit (`59Kč`) is not read.
 
 Every expected answer scores 1.0 against its own checks, and a test asserts this for every frozen instance.
+The checks are the scorer's answer key, so a frozen bank records the scorer it was grounded for, and a bank grounded for another scorer is stale and grounded again (D-095).
 
 Question-specific rules and open owner questions:
 
+- L02's token check also accepts the version's label, such as `2024.3.0`, when the answer also names that version's platform by its name or id anywhere in the text (scorer 2.2.0, D-095).
+  The grounder writes this into the check from the world's `platform_versions` and `platforms` tables, and only where label and platform identify that one version in the world.
+  A bare label scores 0, because every platform has a version of each label.
+  L07, which also expects a platform version, keeps the id-only check, because the labels showed the rule wrong only on L02.
 - L18's set check leaves out the primary market and the market the answer should name as unaffected, so it measures recall only.
 - L16 and L17 expect every other player linked to the anchor's shared devices or payment instruments in the world data, so the expected sets include baseline players and not only the planted cluster (D-030).
   This is an open owner question.
@@ -324,7 +329,7 @@ make label-agreement    # reports how far each measure agrees with the labels
   The agreement report names only who labelled, and says plainly when there was one labeller.
 - The v0.2.0 sample was labelled by the controller only, a model labeller, by owner decision of 2026-10-28 (D-094).
   No human labelled it, so the report holds no labeller-to-labeller agreement.
-- It reports the agreement of the scorer as recorded, the scorer 2.1.0, the judge as recorded and the judge with the 1.1.0 abstention rule applied mechanically, with the consensus label, overall, per cell and per approach.
+- It reports the agreement of the scorer as recorded, the current scorer (2.2.0) rescored, the judge as recorded and the judge with the 1.1.0 abstention rule applied mechanically, with the consensus label, overall, per cell and per approach.
   A rule changes only where the labels show it wrong on at least 80 percent of its cell, and a cell of fewer than 10 items is never flagged.
   Weighted kappa follows the n rule above.
 - The labels are not committed, and no pipeline can read them.
@@ -339,11 +344,14 @@ make label-agreement    # reports how far each measure agrees with the labels
 make addendum-v020      # no Neo4j, no model
 ```
 
-It rescores the stored answers of v0.2.0 with scorer 2.1.0 and adds groundedness and the three-level agreement, recorded against rescored, and writes `addendum.json` and `addendum.md` into `data/evaluation/addenda/official-2026-10-26-scorer-2.1.0/`, never inside the run (D-090).
+It rescores the stored answers of v0.2.0 with the current scorer, 2.2.0, and adds groundedness and the three-level agreement, recorded against rescored, and writes `addendum.json` and `addendum.md` into `data/evaluation/addenda/official-2026-10-26-scorer-2.2.0/`, never inside the run (D-090).
+Because a scorer rule can live in the checks (D-095), it grounds each world of the run again in memory and scores with the checks grounded now.
+It refuses when an instance of the run is grounded differently in anything but its checks, and it writes no bank file.
+The label agreement rescores the same way.
 Evidence scores, citations, the failure class and the judge's scores stay as recorded, so the recorded failure class can go stale.
 The header says that no model was called and that the original record is unchanged.
 It runs no test and states no p-value.
-On the real run only the H3 answer scores change: A 0.722 to 0.944, B 0.667 to 0.917 and C 0.611 to 0.861.
+The first addendum, written with scorer 2.1.0 on 2026-10-27 into `official-2026-10-26-scorer-2.1.0/`, changed only the H3 answer scores: A 0.722 to 0.944, B 0.667 to 0.917 and C 0.611 to 0.861.
 
 ### Statistics
 
@@ -536,7 +544,7 @@ While only a smoke run or a subset run exists, the Overview shows "No official r
 
 The reproducibility record of every run, stored as `run` (fields every world shares) and `worlds` (each world's full record), holds:
 
-- **Code and bank:** `git_sha`, `git_dirty`, `question_bank_version`, `bank_version`, `bank_hash`, `scorer_version` (2.1.0 in v0.3, 2.0.0 in v0.2.0), `run_kind`, `repeats`, `started_at`.
+- **Code and bank:** `git_sha`, `git_dirty`, `question_bank_version`, `bank_version`, `bank_hash`, `scorer_version` (2.2.0 in v0.3, 2.0.0 in v0.2.0), `run_kind`, `repeats`, `started_at`.
 - **Method:** `method_version` (0.3.0; a record written before the field existed is read as 0.2.0), `record_facts_version`, `prompt_extras` (the path line and the target-type tier for B and C, the ontology target terms for C).
 - **World:** `world_dir`, `generator_version`, `profile`, `world_seed`, `scenario_seed`, `reference_date`, `ontology_version`, `graph_label_version`.
 - **Retrieval:** `embedding_model`, `embedding_dimensions`, `sparse_model`, `rrf_k`, `record_serialiser_version`, `reranker`, `top_k`, `context_budget_tokens`, `context` (the dedupe threshold; v0.2.0 also held its slot counts), `dedupe_threshold`, `graph_limits`, `relationship_types_b`, `relationship_types_c`, `ranking_weights`, `excluded_labels`.
@@ -586,7 +594,8 @@ It uses the stand-in generator, the hashing embedder and the lexical judge.
 - A new metric: compute it in `report.py` beside the others, so the one place that computes numbers stays one place.
 - A new hypothesis stratum needs the Holm family declared again, which changes the correction for every other cell.
 - A new judge dimension changes the judge prompt version and hash.
-- A new scorer rule bumps `SCORER_VERSION`, and a rescoring of an earlier run is a labelled addendum, never a replacement.
+- A new scorer rule bumps `SCORER_VERSION`, which makes every frozen bank stale, so each is grounded again; a rule that depends on world data goes into the checks the grounder writes (D-095).
+  A rescoring of an earlier run is a labelled addendum, never a replacement.
 
 ## Failure modes
 
@@ -595,7 +604,8 @@ It uses the stand-in generator, the hashing embedder and the lexical judge.
 | Generation call fails | That repeat has no score, is left out of every metric and keeps the gateway's message. A run with failures says why. |
 | Judge call fails | Recorded with its reason, never scored as zero. |
 | Retrieval selects different carriers across repeats | The run stops with an error. |
-| Frozen bank is stale or missing | The run refuses to start. The API answers 503 `CONFIGURATION_ERROR` naming `make ground-bank`. |
+| Frozen bank is stale or missing | The run refuses to start. The API answers 503 `CONFIGURATION_ERROR` naming `make ground-bank`. A bank grounded for another scorer is stale. |
+| A rescored run's instance is grounded differently now | The addendum and the label agreement refuse, naming the instance and world, since the stored answers did not answer the question the bank asks now. |
 | Another world is in the graph | The benchmark ingests the one it needs, then restores seed 2026. A server stop during a job can leave a benchmark world in Neo4j. Run `make ingest-graph`. |
 | Run cancelled or failed | No `summary.json` is written, so the run is never published, and the seed 2026 graph is ingested again. |
 | `--repeats` below 3 on an official run | Refused. |

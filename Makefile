@@ -142,7 +142,7 @@ dev-run: ## Development run on seed 2026, not a result (wipes and restores Neo4j
 diagnose-selection: ## Read-only: which claim records each approach finds and the selection keeps (seed 2026; no answer model; reads Neo4j, runs the embedding and re-ranking models)
 	$(UV) run python -m app.evaluation diagnose-selection
 
-addendum-v020: ## Rescore official run v0.2.0 with scorer 2.1.0 and groundedness (no Neo4j, no model)
+addendum-v020: ## Rescore official run v0.2.0 with the current scorer and groundedness (no Neo4j, no model)
 	$(UV) run python -m app.evaluation addendum --run ../data/evaluation/runs/official-2026-10-26
 
 label-sample: ## Build the hand-labelling sample from the official run v0.2.0 (no Neo4j, no model)
