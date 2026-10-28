@@ -200,7 +200,9 @@ These steps write no Neo4j data and call no answer or judge model.
 
 1. `make addendum-v020` rescores official run v0.2.0 with scorer 2.1.0 and writes `data/evaluation/addenda/official-2026-10-26-scorer-2.1.0/`.
 2. `make label-sample` writes `data/evaluation/labels/v0.2.0-sample/`.
-   Give `sheet.md` and `labels-owner.csv` to the owner, label `labels-controller.csv` independently, then settle disagreements into `labels-consensus.csv`.
+   Fill `labels-owner.csv`, `labels-controller.csv` or both, leaving an unused file untouched.
+   With both, settle disagreements into `labels-consensus.csv`.
+   The v0.2.0 sample was labelled by the controller only (D-094).
 3. After labelling, `make label-agreement` reports how far each measure agrees with the labels.
    Weighted kappa is shown only over 10 or more items; below that the page says "too few to say".
 

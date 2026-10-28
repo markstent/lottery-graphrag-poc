@@ -318,8 +318,12 @@ make label-agreement    # reports how far each measure agrees with the labels
   A repeat goes to the first cell it fits, in the order of a hash of a fixed salt, the instance, the pipeline and the repeat.
 - `sheet.md` shows the question, reference answer, key facts, the blocks as the judge saw them (shuffled, renumbered, no titles) and the blinded answer.
   It never shows the approach, the cell or a recorded score; those are in `key.json`, which labellers do not open before labelling.
-- The owner and the controller fill `labels-owner.csv` and `labels-controller.csv` independently.
-  Disagreements are settled in `labels-consensus.csv`, and the analysis refuses a partly filled file or an unsettled disagreement.
+- Either the owner and the controller fill `labels-owner.csv` and `labels-controller.csv` independently, or one of them fills its file and the other is left untouched.
+  With two labellers, disagreements are settled in `labels-consensus.csv`.
+  The analysis refuses a partly filled file, an unsettled disagreement, and a sample with no filled file.
+  The agreement report names only who labelled, and says plainly when there was one labeller.
+- The v0.2.0 sample was labelled by the controller only, a model labeller, by owner decision of 2026-10-28 (D-094).
+  No human labelled it, so the report holds no labeller-to-labeller agreement.
 - It reports the agreement of the scorer as recorded, the scorer 2.1.0, the judge as recorded and the judge with the 1.1.0 abstention rule applied mechanically, with the consensus label, overall, per cell and per approach.
   A rule changes only where the labels show it wrong on at least 80 percent of its cell, and a cell of fewer than 10 items is never flagged.
   Weighted kappa follows the n rule above.
