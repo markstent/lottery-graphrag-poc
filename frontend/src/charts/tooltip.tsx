@@ -13,6 +13,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
+  type Ref,
 } from 'react'
 
 import { pipeline, type PipelineId } from '../design/pipelines'
@@ -34,13 +35,23 @@ interface Placed {
   x: number
   y: number
   side: Side
+  /** The mark's bottom edge, where a tooltip with no room above it goes. */
+  bottom: number
 }
 
-/** Where the tooltip sits against its mark: above it, or beside it on the roomier side. */
-type Side = 'above' | 'right' | 'left'
+/** The space between a tooltip and its mark, in pixels. */
+const GAP = 8
+
+/**
+ * Where the tooltip sits against its mark: above it, below it when the plot
+ * has no room above (a box that scrolls on a phone clips anything over its
+ * top), or beside it on the roomier side.
+ */
+type Side = 'above' | 'below' | 'right' | 'left'
 
 const TRANSFORM: Record<Side, string> = {
-  above: 'translate(-50%, calc(-100% - 8px))',
+  above: `translate(-50%, calc(-100% - ${GAP}px))`,
+  below: `translate(-50%, ${GAP}px)`,
   right: 'none',
   left: 'none',
 }
@@ -52,12 +63,14 @@ const EDGE = 100
 
 function tipElement({
   id,
+  ref,
   content,
   x,
   y,
   side,
 }: {
   id: string
+  ref: Ref<HTMLDivElement>
   content: TipContent
   x: number
   y: number
@@ -66,6 +79,7 @@ function tipElement({
   return (
     <div
       id={id}
+      ref={ref}
       role="tooltip"
       style={{
         // A tooltip beside a mark on the right half hangs from the right edge, so it keeps its width.
@@ -112,6 +126,9 @@ export function useMarkTips(count: number, disabled: boolean) {
   const marks = useRef<(SVGElement | null)[]>([])
   const [current, setCurrent] = useState(0)
   const [placed, setPlaced] = useState<Placed | null>(null)
+  // State-held, like the host, so its height is watched once it is drawn.
+  const [tip, setTip] = useState<HTMLDivElement | null>(null)
+  const [tipHeight, setTipHeight] = useState<number | null>(null)
   const active = Math.min(current, Math.max(count - 1, 0))
 
   // The host is a state-held element so the width follows it in and out of the table view.
@@ -124,20 +141,29 @@ export function useMarkTips(count: number, disabled: boolean) {
     return () => watch.disconnect()
   }, [host])
 
+  useEffect(() => {
+    if (!tip) return
+    const watch = new ResizeObserver(() => setTipHeight(tip.offsetHeight))
+    watch.observe(tip)
+    return () => watch.disconnect()
+  }, [tip])
+
   function show(el: Element, index: number, content: TipContent, place: Place) {
     if (!host) return
     const area = host.getBoundingClientRect()
     const box = el.getBoundingClientRect()
     const centre = box.left - area.left + box.width / 2
     const y = box.top - area.top
+    const bottom = box.bottom - area.top
     if (place === 'beside') {
       const left = area.width > 0 && centre > area.width / 2
       setPlaced({
         index,
         content,
         y,
+        bottom,
         side: left ? 'left' : 'right',
-        x: left ? area.right - box.left + 8 : box.right - area.left + 8,
+        x: left ? area.right - box.left + GAP : box.right - area.left + GAP,
       })
       return
     }
@@ -145,7 +171,7 @@ export function useMarkTips(count: number, disabled: boolean) {
       area.width > 0
         ? Math.min(Math.max(centre, EDGE), area.width - EDGE)
         : centre
-    setPlaced({ index, content, x, y, side: 'above' })
+    setPlaced({ index, content, x, y, bottom, side: 'above' })
   }
 
   function markProps(
@@ -192,13 +218,18 @@ export function useMarkTips(count: number, disabled: boolean) {
     }
   }
 
+  // A tooltip above a mark too near the plot's top would stick out of it,
+  // and a box that scrolls on a phone cuts it off, so it goes below the mark.
+  const below =
+    placed?.side === 'above' && tipHeight !== null && placed.y < tipHeight + GAP
   const tooltip: ReactNode = placed
     ? tipElement({
         id: tipId,
+        ref: setTip,
         content: placed.content,
         x: placed.x,
-        y: placed.y,
-        side: placed.side,
+        y: below ? placed.bottom : placed.y,
+        side: below ? 'below' : placed.side,
       })
     : null
   /** `width` is the measured width of the plot area, null until it is measured. */

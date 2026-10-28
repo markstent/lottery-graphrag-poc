@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 
 import { expectNoUnmockedRequests, mockApi } from './mock-api'
 
@@ -152,6 +152,29 @@ test('a run of method v0.2 says it is of the old method, and has no groundedness
   )
 })
 
+/**
+ * No box around the tooltip clips it: every ancestor that clips holds it
+ * whole. `vertical` checks its top and bottom only, for a box that scrolls
+ * sideways, where the reader scrolls to the rest.
+ */
+const shownWhole = (tip: Locator, vertical = false) =>
+  tip.evaluate((el, vertical) => {
+    const tipBox = el.getBoundingClientRect()
+    for (let box = el.parentElement; box; box = box.parentElement) {
+      const style = getComputedStyle(box)
+      if (style.overflowX === 'visible' && style.overflowY === 'visible')
+        continue
+      const r = box.getBoundingClientRect()
+      if (
+        tipBox.top < r.top ||
+        tipBox.bottom > r.bottom ||
+        (!vertical && (tipBox.left < r.left || tipBox.right > r.right))
+      )
+        return false
+    }
+    return true
+  }, vertical)
+
 test('a tooltip over the first row of an interval plot is shown whole, and no chart box scrolls on a desktop', async ({
   page,
 }) => {
@@ -163,26 +186,7 @@ test('a tooltip over the first row of an interval plot is shown whole, and no ch
   await plot.locator('[data-mark="hit"]').first().hover()
   const tip = plot.getByRole('tooltip')
   await expect(tip).toBeVisible()
-  // No box around the tooltip clips it: every ancestor that clips holds it whole.
-  expect(
-    await tip.evaluate((el) => {
-      const tipBox = el.getBoundingClientRect()
-      for (let box = el.parentElement; box; box = box.parentElement) {
-        const style = getComputedStyle(box)
-        if (style.overflowX === 'visible' && style.overflowY === 'visible')
-          continue
-        const r = box.getBoundingClientRect()
-        if (
-          tipBox.top < r.top ||
-          tipBox.bottom > r.bottom ||
-          tipBox.left < r.left ||
-          tipBox.right > r.right
-        )
-          return false
-      }
-      return true
-    }),
-  ).toBe(true)
+  expect(await shownWhole(tip)).toBe(true)
   const scrolling = await page
     .locator('figure .overflow-x-auto')
     .evaluateAll(
@@ -234,5 +238,24 @@ test.describe('at phone width', () => {
         .getByRole('navigation', { name: 'Primary' })
         .evaluate((nav) => nav.getBoundingClientRect().width),
     ).toBeLessThan(100)
+  })
+
+  test('a tooltip on the first row of a chart opens below it, so its scrolling box never cuts off its top', async ({
+    page,
+  }) => {
+    await mockApi(page, 'v03')
+    await page.goto('/#/results?run=fixture-v03')
+    for (const title of [
+      'Paired differences in evidence recall',
+      'Evidence recall by kind of question',
+    ]) {
+      const plot = page.getByRole('figure').filter({ hasText: title })
+      const mark = plot.locator('[data-mark="hit"]').first()
+      await mark.focus()
+      const tip = plot.getByRole('tooltip')
+      await expect(tip).toBeVisible()
+      expect(await shownWhole(tip, true), title).toBe(true)
+      await mark.blur()
+    }
   })
 })
