@@ -26,7 +26,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from app.evaluation.addendum import rescore_instance
+from app.evaluation.addendum import Checks, rescore_instance, rescoring_checks
 from app.evaluation.checks import SCORER_VERSION, SetCheck, is_abstention
 from app.evaluation.grounding import BankInstance
 from app.evaluation.judge import Agreement, JudgeItem, agreement, answer_level, blind
@@ -475,10 +475,11 @@ def _binary(labels: Sequence[tuple[bool, bool]]) -> dict[str, Any]:
 
 
 def _measure_levels(
-    payload: dict[str, Any], items: dict[str, dict[str, Any]]
+    payload: dict[str, Any], items: dict[str, dict[str, Any]], checks: Checks
 ) -> dict[str, tuple[dict[str, int], bool]]:
     """Each item's level under every measure and whether its verdict is an
-    abstention, read from the stored run and rescored with the current scorer."""
+    abstention, read from the stored run and rescored with the current scorer
+    under ``checks``, the run's instances grounded now."""
     entries = {
         entry["instance"]["instance_id"]: entry
         for world in payload["worlds"]
@@ -490,7 +491,7 @@ def _measure_levels(
         if entry is None:
             raise ValueError(f"{item_id}: the run holds no instance {keyed['instance_id']}")
         recorded = instance_result_from_payload(entry)
-        rescored = rescore_instance(entry)
+        rescored = rescore_instance(entry, checks)
         pipeline, repeat = keyed["pipeline"], keyed["repeat"]
         index = next(
             (i for i, run in enumerate(recorded.runs.get(pipeline, [])) if run.repeat == repeat),
@@ -544,7 +545,7 @@ def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
     consensus, disputed = _consensus(sample_dir, first, second)
     payload = load_results(run_dir)
     record = payload["reproducibility"]["run"]
-    levels = _measure_levels(payload, items)
+    levels = _measure_levels(payload, items, rescoring_checks(payload))
 
     def pairs(measure: str, field: str | None = None, value: str = "") -> list[tuple[int, int]]:
         return [

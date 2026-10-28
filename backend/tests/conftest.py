@@ -5,6 +5,7 @@ the check that no run worker or benchmark job thread outlives its test."""
 from __future__ import annotations
 
 import _socket
+import json
 import os
 import socket
 import sys
@@ -21,6 +22,10 @@ from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.taxonomies import local_name_variants
 from app.datasets.world import build_world
+from app.evaluation import addendum
+from app.evaluation.bank import BANK_VERSION
+from app.evaluation.checks import SCORER_VERSION
+from app.evaluation.grounding import FrozenBank, instance_from_payload
 from app.lab import Lab
 from app.ontology.loader import load_ontology
 from app.ontology.terms import TermMatcher, build_term_table
@@ -30,6 +35,8 @@ from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
+from app.scenarios.engine import apply_scenarios
+from app.scenarios.ledger import build_ledger, write_ledger
 
 from tests import live
 from tests.test_graph_rag import make_settings
@@ -305,6 +312,47 @@ def tiny_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
     dataset_dir = tmp_path_factory.mktemp("tiny-world-api")
     write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
     return dataset_dir
+
+
+@pytest.fixture(scope="session")
+def tiny_planted(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
+    """A planted tiny world (seed 42) with its manifest, and the ledger of the
+    same planting, built once per session."""
+    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
+    outcomes = apply_scenarios(world)
+    root = tmp_path_factory.mktemp("tiny-world-grounding")
+    dataset_dir = root / "tiny-seed42"
+    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
+    manifest = json.dumps(world.manifest, indent=2, sort_keys=True) + "\n"
+    (dataset_dir / "_manifest.json").write_text(manifest)
+    ledger_path = write_ledger(root / "ledger.json", build_ledger(outcomes, world))
+    return dataset_dir, ledger_path
+
+
+@pytest.fixture
+def banks_as_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Rescoring grounds a run's worlds again (D-095); a test run has no
+    world on disk, so each world's bank is its recorded instances as they are."""
+
+    def recorded(payload: dict[str, Any]) -> dict[int, FrozenBank]:
+        return {
+            int(world["world_seed"]): FrozenBank(
+                bank_version=BANK_VERSION,
+                world_seed=int(world["world_seed"]),
+                world_manifest_hash="",
+                record_serialiser_version="",
+                scorer_version=SCORER_VERSION,
+                ledger_hash="",
+                instances=tuple(
+                    instance_from_payload(entry["instance"]) for entry in world["results"]
+                ),
+                unavailable=(),
+                bank_hash="",
+            )
+            for world in payload["worlds"]
+        }
+
+    monkeypatch.setattr(addendum, "current_banks", recorded)
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, stub: StubLiteLLM) -> StubLiteLLM:

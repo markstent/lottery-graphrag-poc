@@ -19,10 +19,6 @@ from typing import Any, cast
 import duckdb
 import pytest
 from app.config import REPO_ROOT
-from app.datasets.config import GenerationConfig
-from app.datasets.parquet import write_world
-from app.datasets.schema import TABLE_SCHEMAS
-from app.datasets.world import build_world
 from app.evaluation.__main__ import main as cli_main
 from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, BANK_VERSION, question_by_id
 from app.evaluation.checks import (
@@ -48,8 +44,6 @@ from app.evaluation.grounding import (
 )
 from app.evaluation.truth_ledger import TruthLedger, TruthScenario, load_ledger
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
-from app.scenarios.engine import apply_scenarios
-from app.scenarios.ledger import build_ledger, write_ledger
 
 from tests import live
 
@@ -70,20 +64,6 @@ def dev_world[Test: Callable[..., Any]](test: Test) -> Test:
 @pytest.fixture
 def dev_world_present() -> None:
     live.require_paths(DEV_WORLD, DEV_LEDGER)
-
-
-@pytest.fixture(scope="module")
-def tiny_planted(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
-    """A planted tiny world with its manifest, and the ledger of the same planting."""
-    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
-    outcomes = apply_scenarios(world)
-    root = tmp_path_factory.mktemp("tiny-world-grounding")
-    dataset_dir = root / "tiny-seed42"
-    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
-    manifest = json.dumps(world.manifest, indent=2, sort_keys=True) + "\n"
-    (dataset_dir / "_manifest.json").write_text(manifest)
-    ledger_path = write_ledger(root / "ledger.json", build_ledger(outcomes, world))
-    return dataset_dir, ledger_path
 
 
 @pytest.fixture(scope="module")

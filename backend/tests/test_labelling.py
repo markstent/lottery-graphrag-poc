@@ -13,7 +13,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from app.evaluation import labelling
+from app.evaluation import addendum, labelling
+from app.evaluation.checks import TokenCheck
+from app.evaluation.grounding import FrozenBank
 from app.evaluation.judge import JUDGE_SYSTEM_PROMPT, JudgeItem, blind
 from app.evaluation.labelling import (
     CELLS,
@@ -25,6 +27,8 @@ from app.evaluation.labelling import (
 )
 from app.evaluation.runner import ShownBlock
 from app.models import gateway
+
+pytestmark = pytest.mark.usefixtures("banks_as_recorded")
 
 RUN_NAME = "official-2026-10-26"
 # Distinctive recorded values, so a leak into the sheet is visible.
@@ -551,6 +555,35 @@ def test_agreement_reports_every_measure_per_cell(sample_dir: Path, run_dir: Pat
     assert abstention["judge_abstention_rule"]["agreement"] == 1.0
     assert result["abstention"]["agreement"] == 1.0
     assert result["run"] == RUN_NAME
+
+
+def test_agreement_rescores_with_the_checks_grounded_now(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Scorer 2.2.0 (D-095): the version label beside its platform lives in
+    # the L02 check as grounded now, not in the check the run recorded.
+    answer = "Incident INC_003 was seen on version 2024.3.0 [1]. It hit the Web Portal."
+    run = _write_run(
+        tmp_path / RUN_NAME, [_entry("L02", "INC_003", [("C", 1, "2024.3.0", answer, 0.0, 2)])]
+    )
+    sample = write_sample(run, tmp_path / "labels")
+    _write_labels(sample / "labels-controller.csv", _all(sample, "2"))
+    recorded = addendum.current_banks
+
+    def grounded_now(payload: dict[str, Any]) -> dict[int, FrozenBank]:
+        check = TokenCheck("PLV_WEB_3", qualified=(("2024.3.0", ("Web Portal", "PLT_WEB")),))
+        return {
+            seed: dataclasses.replace(
+                bank,
+                instances=tuple(dataclasses.replace(i, checks=(check,)) for i in bank.instances),
+            )
+            for seed, bank in recorded(payload).items()
+        }
+
+    monkeypatch.setattr(addendum, "current_banks", grounded_now)
+    measures = label_agreement(sample, run)["cells"]["version_label"]["measures"]
+    assert measures["scorer_recorded"]["agreement"] == 0.0
+    assert measures["scorer_rescored"]["agreement"] == 1.0
 
 
 def test_agreement_reports_every_measure_per_approach(sample_dir: Path, run_dir: Path) -> None:

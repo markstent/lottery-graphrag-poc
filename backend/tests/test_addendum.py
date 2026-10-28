@@ -3,16 +3,22 @@ groundedness measure, model-free, written beside the run and never into it."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 from typing import Any
 
 import pytest
 from app.evaluation import addendum
-from app.evaluation.addendum import rescore, write_addendum
+from app.evaluation.addendum import current_checks, rescore, rescoring_checks, write_addendum
+from app.evaluation.checks import TokenCheck
+from app.evaluation.grounding import FrozenBank, freeze_bank
+from app.evaluation.official import world_paths
 from app.evaluation.report import kappa_text
 from app.evaluation.runner import instance_result_from_payload
 from app.models import gateway
+
+pytestmark = pytest.mark.usefixtures("banks_as_recorded")
 
 DATE_ANSWER = "The incident started on 2025-10-07T00:00:00 [1]."
 BLOCK_TEXT = "Incident INC_024 started 2025-10-07T00:00:00. Source: record INC_024."
@@ -125,7 +131,8 @@ def _snapshot(directory: Path) -> dict[str, bytes]:
 def test_rescoring_changes_only_answer_scores() -> None:
     payload = _payload()
     recorded = instance_result_from_payload(payload["worlds"][0]["results"][0])
-    rescored = addendum.rescore_instance(payload["worlds"][0]["results"][0])
+    checks = rescoring_checks(payload)
+    rescored = addendum.rescore_instance(payload["worlds"][0]["results"][0], checks)
     before = recorded.scores["A"][0]
     after = rescored.scores["A"][0]
     assert before is not None
@@ -141,7 +148,8 @@ def test_rescoring_changes_only_answer_scores() -> None:
 
 
 def test_rescore_reports_old_and_new_side_by_side() -> None:
-    result = rescore(_payload())
+    payload = _payload()
+    result = rescore(payload, rescoring_checks(payload))
     cell = result["strata"]["H3"]["A"]
     assert cell["repeats"] == 1
     assert cell["answer_recorded"] == {"n": 1, "mean": 0.0}
@@ -152,6 +160,81 @@ def test_rescore_reports_old_and_new_side_by_side() -> None:
     assert cell["agreement"]["answered"]["rescored"]["agreement"] == 1.0
     assert result["recorded_scorer_version"] == "2.0.0"
     assert result["recorded_judge_prompt_version"] == "1.0.0"
+
+
+# Scorer 2.2.0 (D-095): the L02 rule lives in the check the grounder builds.
+VERSION_ANSWER = (
+    "Incident INC_022 was seen on platform version 2024.3.0 [1]. It hit the Web Portal."
+)
+
+
+def _l02_payload() -> dict[str, Any]:
+    payload = _payload()
+    (entry,) = payload["worlds"][0]["results"]
+    entry["instance"].update(
+        instance_id="L02-2026-INC_022",
+        question_id="L02",
+        anchor_id="INC_022",
+        text="Which platform version was incident INC_022 seen on?",
+        expected_answer="Incident INC_022 was seen on platform version PLV_WEB_3.",
+        checks=[TokenCheck("PLV_WEB_3").to_payload()],
+    )
+    entry["runs"]["A"][0].update(verdict="2024.3.0", answer=VERSION_ANSWER)
+    return payload
+
+
+def _grounded_now(payload: dict[str, Any], **changes: Any) -> dict[int, FrozenBank]:
+    """The run's bank as grounded now: the L02 check with its version label."""
+    (bank,) = addendum.current_banks(payload).values()
+    (instance,) = bank.instances
+    check = TokenCheck("PLV_WEB_3", qualified=(("2024.3.0", ("Web Portal", "PLT_WEB")),))
+    now = dataclasses.replace(instance, checks=(check,), **changes)
+    return {bank.world_seed: dataclasses.replace(bank, instances=(now,))}
+
+
+def test_rescoring_scores_with_the_checks_grounded_now() -> None:
+    payload = _l02_payload()
+    result = rescore(payload, current_checks(payload, _grounded_now(payload)))
+    cell = result["strata"]["H3"]["A"]
+    assert cell["answer_recorded"] == {"n": 1, "mean": 0.0}
+    assert cell["answer_rescored"] == {"n": 1, "mean": 1.0}
+
+
+def test_rescoring_refuses_an_instance_grounded_differently_now() -> None:
+    payload = _l02_payload()
+    changed = _grounded_now(payload, text="Which platform version did INC_022 hit?")
+    with pytest.raises(ValueError, match="L02-2026-INC_022 of world 2026 is not grounded now"):
+        current_checks(payload, changed)
+
+
+def test_rescoring_refuses_an_instance_the_bank_lacks() -> None:
+    payload = _l02_payload()
+    (bank,) = addendum.current_banks(payload).values()
+    empty = {bank.world_seed: dataclasses.replace(bank, instances=())}
+    with pytest.raises(ValueError, match="not grounded now as the run recorded it"):
+        current_checks(payload, empty)
+
+
+def test_current_banks_ground_the_runs_worlds_again(
+    tiny_planted: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    world_dir, ledger = tiny_planted
+    monkeypatch.undo()  # the real current_banks, not the recorded instances
+    monkeypatch.setattr(
+        addendum,
+        "world_paths",
+        lambda seed: dataclasses.replace(
+            world_paths(seed), world_dir=world_dir, ledger_path=ledger
+        ),
+    )
+    bank = freeze_bank(world_dir, ledger)
+    (l02, *_) = [i for i in bank.instances if i.question_id == "L02"]
+    (check,) = l02.checks
+    assert isinstance(check, TokenCheck) and check.qualified
+    # As a run of scorer 2.1.0 recorded it: the same instance, the id-only check.
+    recorded = dataclasses.replace(l02, checks=(TokenCheck(check.expected),))
+    payload = {"worlds": [{"world_seed": 42, "results": [{"instance": recorded.to_payload()}]}]}
+    assert addendum.rescoring_checks(payload) == {l02.instance_id: (check,)}
 
 
 def test_addendum_never_writes_into_the_run(run_dir: Path, tmp_path: Path) -> None:
