@@ -567,3 +567,48 @@ test('presentation mode keeps the scorecard label on one line', async ({
   await expect(corner).toBeVisible()
   expect(await lineCount(corner)).toBe(1)
 })
+
+// The app is built for 16:9 screens; on a phone Live Lab stacks the canvas
+// and the three approaches, and wide tables scroll in their own box.
+test.describe('at phone width', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('a finished recording fits the page, with the approaches stacked', async ({
+    page,
+  }) => {
+    await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+    await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
+    await page.getByRole('button', { name: 'Pause' }).click()
+    await toEnd(page)
+    await expect(page.getByRole('region', { name: 'Scorecard' })).toBeVisible()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true)
+    const canvas = (await page
+      .getByRole('region', { name: 'Graph canvas' })
+      .boundingBox())!
+    const panels = await Promise.all(
+      ['A · Text search', 'B · Graph', 'C · Graph + Ontology'].map(
+        async (name) =>
+          (await page
+            .getByRole('region', { name, exact: true })
+            .boundingBox())!,
+      ),
+    )
+    expect(panels[0].y).toBeGreaterThan(canvas.y + canvas.height - 1)
+    for (const [above, below] of [
+      [panels[0], panels[1]],
+      [panels[1], panels[2]],
+    ])
+      expect(below.y).toBeGreaterThan(above.y + above.height - 1)
+    for (const panel of panels) expect(panel.x).toBe(canvas.x)
+    const scorecard = page
+      .getByRole('region', { name: 'Scorecard' })
+      .locator('.overflow-x-auto')
+    expect(
+      await scorecard.evaluate((box) => box.scrollWidth > box.clientWidth),
+    ).toBe(true)
+  })
+})

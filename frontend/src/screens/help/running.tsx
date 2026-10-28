@@ -25,7 +25,7 @@ export function Running() {
         ))}
       </ol>
       <h3 className="text-base font-semibold text-text-primary">Recovery</h3>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Recovery</caption>
           <thead className="text-text-muted">
@@ -59,7 +59,7 @@ export function Running() {
         every setting. Its defaults put fixed programs in place of the answer
         model and the judge, so they run without a language model.
       </p>
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Model configuration</caption>
           <thead className="text-text-muted">
@@ -96,7 +96,7 @@ export function Running() {
         Every command
       </h3>
       {COMMAND_GROUPS.map(({ group, rows }) => (
-        <div key={group} className="overflow-x-auto">
+        <div key={group} className="relative overflow-x-auto">
           <table className="w-full min-w-[36rem] text-left text-sm">
             <caption className="py-2 text-left font-semibold text-text-primary">
               {group}

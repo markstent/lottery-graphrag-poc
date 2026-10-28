@@ -192,7 +192,7 @@ function QuestionTable({
           shownCount === total ? total : `Showing ${shownCount} of ${total}`
         }
       />
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Benchmark questions</caption>
           <thead className="text-text-muted">

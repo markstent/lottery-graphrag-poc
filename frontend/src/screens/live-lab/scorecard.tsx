@@ -138,46 +138,48 @@ export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
       aria-label="Scorecard"
       className="overflow-hidden rounded-card border border-hairline bg-surface"
     >
-      <table className="w-full table-fixed text-left text-sm">
-        <thead>
-          <tr>
-            <td className="w-72 px-3 py-1 text-sm font-medium leading-tight text-text-primary">
-              {card.scored ? card.label : null}
-            </td>
-            {rows.map((row) => (
-              <th
-                key={row.name}
-                scope="col"
-                className={`px-3 py-1 font-medium leading-tight text-text-secondary ${row.wide ? 'w-[26%]' : ''}`}
-              >
-                {row.name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-hairline">
-          {PIPELINES.map(({ id, label, tint, strong }) => (
-            <tr key={id}>
-              <th
-                scope="row"
-                className="px-3 py-1 align-top text-base font-semibold leading-tight"
-                style={{ backgroundColor: tint, color: strong }}
-              >
-                {label}
-              </th>
+      <div className="relative overflow-x-auto">
+        <table className="w-full min-w-[56rem] table-fixed text-left text-sm md:min-w-0">
+          <thead>
+            <tr>
+              <td className="w-40 px-3 py-1 text-sm font-medium leading-tight text-text-primary md:w-72">
+                {card.scored ? card.label : null}
+              </td>
               {rows.map((row) => (
-                <Cell
+                <th
                   key={row.name}
-                  row={row}
-                  id={id}
-                  column={card.columns[id]}
-                  base={card.columns.A}
-                />
+                  scope="col"
+                  className={`px-3 py-1 font-medium leading-tight text-text-secondary ${row.wide ? 'w-[26%]' : ''}`}
+                >
+                  {row.name}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-hairline">
+            {PIPELINES.map(({ id, label, tint, strong }) => (
+              <tr key={id}>
+                <th
+                  scope="row"
+                  className="px-3 py-1 align-top text-base font-semibold leading-tight"
+                  style={{ backgroundColor: tint, color: strong }}
+                >
+                  {label}
+                </th>
+                {rows.map((row) => (
+                  <Cell
+                    key={row.name}
+                    row={row}
+                    id={id}
+                    column={card.columns[id]}
+                    base={card.columns.A}
+                  />
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {!card.scored && <Note>{unscoredNote(results)}</Note>}
     </section>
   )

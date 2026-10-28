@@ -51,7 +51,7 @@ const whole = (v: number) => formatNumber(v, { decimals: 0 })
 const twoPlaces = (v: number) => formatNumber(v, { decimals: 2 })
 
 const SELECT =
-  'w-auto max-w-xs rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary'
+  'w-auto min-w-0 max-w-xs rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary'
 const BUTTON =
   'rounded-chip border border-border px-3 py-1 text-sm text-text-primary hover:bg-surface-raised disabled:cursor-not-allowed disabled:text-text-muted'
 
@@ -225,7 +225,7 @@ function Filters({
   )
   return (
     <div className="flex flex-wrap items-center gap-4 text-sm text-text-primary">
-      <label className="flex items-center gap-2">
+      <label className="flex min-w-0 max-w-full items-center gap-2">
         {QUESTION_HEADS.kind}
         <select
           className={SELECT}
@@ -242,7 +242,7 @@ function Filters({
           ))}
         </select>
       </label>
-      <label className="flex items-center gap-2">
+      <label className="flex min-w-0 max-w-full items-center gap-2">
         {QUESTION_HEADS.world}
         <select
           className={SELECT}
@@ -323,7 +323,7 @@ function Table({
           )
         }}
       />
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full border-collapse text-sm text-text-primary">
           <caption className="sr-only">{CAPTIONS.questions}</caption>
           <thead>

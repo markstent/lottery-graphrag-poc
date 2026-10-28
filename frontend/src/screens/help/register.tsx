@@ -27,7 +27,7 @@ export function Register() {
     ? [...PLAIN_COLUMNS, ...TECHNICAL_COLUMNS]
     : PLAIN_COLUMNS
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table
         className={`w-full text-left text-sm ${technical ? 'min-w-[64rem]' : 'min-w-[36rem]'}`}
       >

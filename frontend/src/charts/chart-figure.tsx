@@ -55,9 +55,12 @@ export function ChartFigure({
   ) : (
     <div className="flex flex-col gap-3">
       {legend}
-      <div ref={plotRef} className="relative">
-        {children}
-        {overlay}
+      {/* Below tablet width the plot keeps a readable width and scrolls in its own box. */}
+      <div className="relative overflow-x-auto">
+        <div ref={plotRef} className="relative min-w-[40rem] md:min-w-0">
+          {children}
+          {overlay}
+        </div>
       </div>
     </div>
   )

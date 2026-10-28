@@ -17,10 +17,10 @@ export function CoverageMatrix({
       <h3 className="text-base font-semibold text-text-primary">
         Market coverage
       </h3>
-      <div className="overflow-hidden rounded-card border border-hairline bg-surface">
+      <div className="relative overflow-x-auto rounded-card border border-hairline bg-surface">
         <table
           aria-label="Market coverage"
-          className="w-full table-fixed text-left"
+          className="w-full min-w-[36rem] table-fixed text-left md:min-w-0"
         >
           <thead>
             <tr>

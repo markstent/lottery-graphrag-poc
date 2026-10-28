@@ -228,7 +228,7 @@ export function LiveLab() {
       {stored !== null && state.status === 'completed' && (
         <Scorecard results={stored} />
       )}
-      <div className="grid grid-cols-[3fr_2fr] gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr]">
         {/* Canvas first, as it is on screen; the three panels follow it. */}
         {run.phase !== 'idle' ? (
           <CanvasArea
@@ -250,7 +250,7 @@ export function LiveLab() {
           <CanvasPlaceholder />
         )}
         <div className="relative min-w-0">
-          <div className="absolute inset-0 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 md:absolute md:inset-0">
             {PIPELINES.map(({ id }) => (
               <PipelineColumn
                 key={id}
@@ -274,12 +274,12 @@ export function LiveLab() {
       />
       {stored !== null && (
         <>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {PIPELINES.map(({ id }) => (
               <AnswerBlock key={id} id={id} results={stored} onOpen={open} />
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <PathStrip
               id="B"
               state={state}

@@ -18,7 +18,7 @@ export function DataTable({
   rows: readonly DataTableRow[]
 }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="w-full border-collapse text-sm text-text-primary">
         <caption className="sr-only">{caption}</caption>
         <thead>

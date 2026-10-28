@@ -27,7 +27,7 @@ export function FailurePanel({
   return (
     <div className="space-y-3">
       <RunBadge label={badge} />
-      <div className="overflow-x-auto">
+      <div className="relative overflow-x-auto">
         <table className="w-full border-collapse text-sm text-text-primary">
           <caption className="sr-only">{CAPTIONS.failures}</caption>
           <thead>

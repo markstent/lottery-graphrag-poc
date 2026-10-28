@@ -125,3 +125,45 @@ test('a run of method v0.2 says it is of the old method, and has no groundedness
     0,
   )
 })
+
+// The app is built for 16:9 screens; on a phone Results must still read
+// without sideways page scroll: charts and wide tables scroll in their own box.
+test.describe('at phone width', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('a run fits the page, and its charts scroll inside their own box', async ({
+    page,
+  }) => {
+    await mockApi(page, 'v03')
+    await page.goto('/#/results?run=fixture-v03')
+    const charts = page.getByRole('region', {
+      name: 'Scores by kind of question',
+    })
+    await expect(charts.getByRole('img').first()).toBeVisible()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true)
+    // Each plot keeps a readable width and its box scrolls sideways.
+    const boxes = await charts.getByRole('img').evaluateAll((plots) =>
+      plots.map((plot) => {
+        const box = plot.closest('.overflow-x-auto')!
+        return box.scrollWidth > box.clientWidth
+      }),
+    )
+    expect(boxes.length).toBeGreaterThan(1)
+    expect(boxes.every(Boolean)).toBe(true)
+    // The reproducibility record puts each value under its name.
+    const repro = page.getByRole('region', { name: 'Reproducibility' })
+    const name = repro.getByText('git_sha', { exact: true }).first()
+    const value = repro.getByText('abc123', { exact: true }).first()
+    const [n, v] = [await name.boundingBox(), await value.boundingBox()]
+    expect(v!.y).toBeGreaterThan(n!.y + n!.height - 1)
+    expect(
+      await page
+        .getByRole('navigation', { name: 'Primary' })
+        .evaluate((nav) => nav.getBoundingClientRect().width),
+    ).toBeLessThan(100)
+  })
+})

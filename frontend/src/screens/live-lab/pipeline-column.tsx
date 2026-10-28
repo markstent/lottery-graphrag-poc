@@ -57,7 +57,7 @@ export function PipelineColumn({
   return (
     <section
       aria-label={label}
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-hairline bg-surface"
+      className="flex max-h-[30rem] min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-hairline bg-surface md:max-h-none"
     >
       <header
         className="flex shrink-0 items-baseline justify-between gap-2 px-4 py-2"
