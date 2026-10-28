@@ -15,13 +15,12 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
-from app.evaluation.checks import answer_score, groundedness, is_abstention
+from app.evaluation.checks import SCORER_VERSION, answer_score, groundedness, is_abstention
 from app.evaluation.grounding import BankInstance
 from app.evaluation.judge import agreement, judge_pairs
 from app.evaluation.official import DATA_DIR, load_results, method_of
 from app.evaluation.report import MIN_KAPPA_ITEMS, kappa_text, stratum_key
 from app.evaluation.runner import (
-    SCORER_VERSION,
     InstanceResult,
     PipelineRun,
     RunScore,

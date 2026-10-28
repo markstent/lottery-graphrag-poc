@@ -152,6 +152,44 @@ def test_time_suffix_rule_applies_only_to_iso_dates() -> None:
     assert check_score(TokenCheck("INC_024"), "", "INC_024T00:00") == 0.0
 
 
+# Scorer 2.2.0 (D-095): a version label counts beside its platform.
+VERSION_CHECK = TokenCheck("PLV_WEB_3", qualified=(("2024.3.0", ("Web Portal", "PLT_WEB")),))
+
+
+def test_a_version_label_with_its_platform_name_scores_full() -> None:
+    answer = (
+        "Incident INC_022 was seen on platform version 2024.3.0 [7][3]. "
+        "This incident affected the Web Portal platform in Greece."
+    )
+    assert check_score(VERSION_CHECK, "2024.3.0", answer) == 1.0
+
+
+def test_a_version_label_with_its_platform_id_scores_full() -> None:
+    assert check_score(VERSION_CHECK, "", "It ran on PLT_WEB version 2024.3.0 [2].") == 1.0
+
+
+def test_a_bare_version_label_scores_zero() -> None:
+    assert check_score(VERSION_CHECK, "2024.3.0", "Platform version 2024.3.0 [1].") == 0.0
+
+
+def test_a_version_label_with_another_platform_scores_zero() -> None:
+    answer = "Version 2024.3.0 of the Payments Gateway (PLT_PAYMENTS) [1]."
+    assert check_score(VERSION_CHECK, "", answer) == 0.0
+
+
+def test_a_platform_without_its_label_scores_zero() -> None:
+    assert check_score(VERSION_CHECK, "", "Web Portal 2024.2.0 [1].") == 0.0
+
+
+def test_the_version_id_alone_still_scores_full() -> None:
+    assert check_score(VERSION_CHECK, "PLV_WEB_3", "See [1].") == 1.0
+
+
+def test_a_qualified_alias_matches_whole_words_only() -> None:
+    assert check_score(VERSION_CHECK, "", "Web Portal 2024.3.01 [1].") == 0.0
+    assert check_score(VERSION_CHECK, "", "Web Portals, 2024.3.0 [1].") == 0.0
+
+
 @pytest.mark.parametrize(
     ("verdict", "expected"),
     [
@@ -194,6 +232,7 @@ def test_a_citation_to_a_missing_block_is_inaccurate() -> None:
         NumberCheck("2.5", "GBP"),
         NumberCheck("7", None),
         TokenCheck("MKT_CZ", ("Czech Republic",)),
+        TokenCheck("PLV_WEB_3", qualified=(("2024.3.0", ("Web Portal", "PLT_WEB")),)),
         VerdictCheck("no"),
     ],
 )
@@ -201,6 +240,13 @@ def test_every_check_kind_round_trips(
     check: NumberCheck | TokenCheck | VerdictCheck,
 ) -> None:
     assert check_from_payload(check.to_payload()) == check
+
+
+def test_a_token_check_without_qualified_aliases_keeps_its_payload() -> None:
+    # Banks and runs written before scorer 2.2.0 hold no "qualified" key.
+    stored = {"kind": "token", "expected": "PLV_WEB_3", "aliases": []}
+    assert TokenCheck("PLV_WEB_3").to_payload() == stored
+    assert check_from_payload(stored) == TokenCheck("PLV_WEB_3")
 
 
 def test_unknown_check_kind_is_rejected() -> None:

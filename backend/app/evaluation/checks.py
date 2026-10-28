@@ -5,7 +5,10 @@ fact stated only in the verdict counts; the verdict check reads the verdict
 only. Every check scores 0..1 from the text alone: no model is involved.
 
 Scorer 2.1.0 adds one rule: a token whose whole text is an ISO date also
-matches when a time follows it ("2025-10-07T09:30"). `is_abstention` reads a
+matches when a time follows it ("2025-10-07T09:30"). Scorer 2.2.0 adds one
+more: a token check may hold qualified aliases, an alias that counts only
+beside one of its qualifiers (a version label beside its platform, D-095);
+the grounder decides which checks have them. `is_abstention` reads a
 verdict that opens with the word "unknown". `groundedness` (D-088) is a
 descriptive measure of whether the ids, dates and numbers an answer states
 come from the blocks it cites; it reads no answer key.
@@ -18,9 +21,13 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from app.evaluation.claims import Claim, word_pattern
+
+# The version of the answer checks and their scoring; recorded with every run
+# and every frozen bank, whose checks are grounded for it.
+SCORER_VERSION = "2.2.0"
 
 _CITATION = r"\[\d+(?:\s*,\s*\d+)*\]"
 _CITATION_PATTERN = re.compile(_CITATION)
@@ -99,13 +106,30 @@ class SetCheck:
 
 @dataclass(frozen=True, slots=True)
 class TokenCheck:
-    """The answer names `expected` or one of its aliases."""
+    """The answer names `expected` or one of its aliases, or names a qualified
+    alias together with one of that alias's qualifiers.
+
+    `qualified` holds (alias, qualifiers) pairs: the alias counts only in an
+    answer that also names one of its qualifiers, anywhere in the text. The
+    grounder sets it (scorer 2.2.0, D-095: a version label beside its platform).
+    """
 
     expected: str
     aliases: tuple[str, ...] = ()
+    qualified: tuple[tuple[str, tuple[str, ...]], ...] = ()
 
     def to_payload(self) -> dict[str, object]:
-        return {"kind": "token", "expected": self.expected, "aliases": list(self.aliases)}
+        payload: dict[str, object] = {
+            "kind": "token",
+            "expected": self.expected,
+            "aliases": list(self.aliases),
+        }
+        # Left out when empty, so every other token check keeps its payload.
+        if self.qualified:
+            payload["qualified"] = [
+                [alias, list(qualifiers)] for alias, qualifiers in self.qualified
+            ]
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,7 +165,12 @@ def check_from_payload(payload: Mapping[str, object]) -> Check:
             cast(dict[str, list[str]], payload["universe"]),
         )
     if kind == "token":
-        return TokenCheck(str(payload["expected"]), tuple(cast(list[str], payload["aliases"])))
+        qualified = cast(list[list[Any]], payload.get("qualified", []))
+        return TokenCheck(
+            str(payload["expected"]),
+            tuple(cast(list[str], payload["aliases"])),
+            tuple((str(alias), tuple(map(str, qualifiers))) for alias, qualifiers in qualified),
+        )
     if kind == "verdict":
         expected = payload["expected"]
         if expected not in _VERDICTS:
@@ -160,7 +189,11 @@ def check_score(check: Check, verdict: str, answer: str) -> float:
         return _number_score(check, text)
     if isinstance(check, TokenCheck):
         names = (check.expected, *check.aliases)
-        return 1.0 if any(_mentions(text, name) for name in names) else 0.0
+        named = any(_mentions(text, name) for name in names) or any(
+            _mentions(text, alias) and any(_mentions(text, q) for q in qualifiers)
+            for alias, qualifiers in check.qualified
+        )
+        return 1.0 if named else 0.0
     return _set_score(check, text)
 
 

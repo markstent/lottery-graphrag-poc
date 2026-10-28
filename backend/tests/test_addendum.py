@@ -1,4 +1,4 @@
-"""The v0.2.0 addendum: a stored run rescored with scorer 2.1.0 and the
+"""The v0.2.0 addendum: a stored run rescored with the current scorer and the
 groundedness measure, model-free, written beside the run and never into it."""
 
 from __future__ import annotations
@@ -156,7 +156,7 @@ def test_rescore_reports_old_and_new_side_by_side() -> None:
 
 def test_addendum_never_writes_into_the_run(run_dir: Path, tmp_path: Path) -> None:
     before = _snapshot(run_dir)
-    out = write_addendum(run_dir, tmp_path / "addenda" / "official-2026-10-26-scorer-2.1.0")
+    out = write_addendum(run_dir, tmp_path / "addenda" / "official-2026-10-26-scorer-2.2.0")
     assert _snapshot(run_dir) == before
     assert {path.name for path in out.iterdir()} == {"addendum.json", "addendum.md"}
     with pytest.raises(ValueError, match="inside the run"):
@@ -176,7 +176,7 @@ def test_addendum_header_labels_it(run_dir: Path, tmp_path: Path) -> None:
     text = (out / "addendum.md").read_text(encoding="utf-8")
     assert text.startswith("# Addendum to the official run v0.2.0")
     assert (
-        "rescored with scorer 2.1.0 and the groundedness measure, no model was called, "
+        "rescored with scorer 2.2.0 and the groundedness measure, no model was called, "
         "and the original record is unchanged"
     ) in text
     assert "scorer 2.0.0" in text

@@ -27,13 +27,12 @@ from pathlib import Path
 from typing import Any
 
 from app.evaluation.addendum import rescore_instance
-from app.evaluation.checks import SetCheck, is_abstention
+from app.evaluation.checks import SCORER_VERSION, SetCheck, is_abstention
 from app.evaluation.grounding import BankInstance
 from app.evaluation.judge import Agreement, JudgeItem, agreement, answer_level, blind
 from app.evaluation.official import DATA_DIR, load_results
 from app.evaluation.report import MIN_KAPPA_ITEMS, TOO_FEW_FOR_KAPPA
 from app.evaluation.runner import (
-    SCORER_VERSION,
     PipelineRun,
     RunScore,
     instance_result_from_payload,

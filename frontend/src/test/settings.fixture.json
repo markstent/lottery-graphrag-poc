@@ -30,7 +30,7 @@
     ],
     "ontology_version": "2.0.0",
     "graph_label_version": "v2",
-    "scorer_version": "2.1.0",
+    "scorer_version": "2.2.0",
     "prompt_hash": "ac71b7bebd16b82f96fa0988c535966973bb5abb94c819a2b9424fa790b98daa",
     "relationship_types_b": [
       "AFFECTS",

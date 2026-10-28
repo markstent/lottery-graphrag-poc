@@ -523,7 +523,7 @@ def test_agreement_reports_every_measure_per_cell(sample_dir: Path, run_dir: Pat
     ]
     assert list(result["measures"]) == measures
     assert "scorer 2.0.0" in result["measures"]["scorer_recorded"]
-    assert "scorer 2.1.0" in result["measures"]["scorer_rescored"]
+    assert "scorer 2.2.0" in result["measures"]["scorer_rescored"]
     assert "judge 1.0.0" in result["measures"]["judge_recorded"]
     assert set(result["cells"]) == {name for name, _ in CELLS}
     for cell in result["cells"].values():
@@ -676,7 +676,7 @@ def test_eighty_percent_rule_flags_a_cell(tmp_path: Path) -> None:
     }
     assert flags == {
         "- scorer 2.0.0 as recorded": True,
-        "- scorer 2.1.0 rescored": True,
+        "- scorer 2.2.0 rescored": True,
         "- judge 1.0.0 as recorded": False,
         "- judge 1.0.0 with the 1.1.0 abstention rule applied mechanically": True,
     }

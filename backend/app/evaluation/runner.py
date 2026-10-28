@@ -45,6 +45,7 @@ from app.config import (
 )
 from app.evaluation.bank import BANK_VERSION
 from app.evaluation.checks import (
+    SCORER_VERSION,
     CitationMetrics,
     GroundednessScore,
     answer_score,
@@ -98,7 +99,6 @@ SMOKE_LABEL = "scorer smoke test"
 DEV_LABEL = "development run on seed 2026, not a result"
 # The label a run of each kind always carries; other kinds carry none of their own.
 KIND_LABELS = {"smoke": SMOKE_LABEL, "dev": DEV_LABEL}
-SCORER_VERSION = "2.1.0"
 PIPELINES = ("A", "B", "C")
 # An official result reports repeat variance, which needs at least three repeats.
 OFFICIAL_MIN_REPEATS = 3
