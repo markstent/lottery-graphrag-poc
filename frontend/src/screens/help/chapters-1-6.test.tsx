@@ -180,4 +180,11 @@ describe('chapters 1 to 6', () => {
         .map((figure) => within(figure).getByText(/^[ABC] · /).textContent),
     ).toEqual(['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
   })
+
+  it('names the path line as the one way a piece is shown differently', () => {
+    const [first] = CHAPTER_COPY.approaches.plain
+    expect(first).toContain(
+      'how a piece is shown are the same for all three, apart from the line that says how the graph reached a record (chapter 6)',
+    )
+  })
 })
