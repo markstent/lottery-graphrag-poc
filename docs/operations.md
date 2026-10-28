@@ -248,7 +248,8 @@ The product shows the failed check and its plain reason.
 | Embedding model not listed | Ollama is not running or the model is not pulled | Start Ollama, then `make pull-models` |
 | Answer model not listed or unreachable | The model is not pulled, or the provider is down | `ollama pull <model>`, or fix `GENERATION_API_BASE` |
 | A run fails with `MODEL_ERROR` | The gateway call failed or returned nothing | Check the model. A thinking model needs `GENERATION_REASONING=off`. A failure naming reasoning tokens means the provider ignored `off`; use another model. |
-| 503 "the question bank has not been grounded" | No frozen bank for this world | `make ground-bank` (`make ground-demo-bank` for the demo world) |
+| 503 "the question bank has not been grounded" | No frozen bank for this world and scorer | `make ground-bank` (`make ground-demo-bank` for the demo world) |
+| Grounding says the bank file "holds another bank" | The world, its ledger or the code changed since that bank was written, and runs were made with that file | Move the file aside on purpose, then ground again (D-095) |
 | 503 "the question bank does not match the active world" | The world, ledger or serialiser changed since grounding | Re-run the grounding command. |
 | 409 "a benchmark run is using the graph" | A job is running | Retry when it ends. |
 | Server stopped during a benchmark job | Jobs are in memory, and Neo4j may hold a benchmark world | `make ingest-graph`, then check readiness |

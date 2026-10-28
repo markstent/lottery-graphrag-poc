@@ -128,7 +128,9 @@ The bank has no "not planted" questions.
 
 ### Grounding and freezing
 
-`python -m app.evaluation ground` (`make ground-bank`) grounds the bank into one world and writes `data/evaluation/bank/bank-2.0.0-<dataset directory name>.json`.
+`python -m app.evaluation ground` (`make ground-bank`) grounds the bank into one world and writes `data/evaluation/bank/bank-2.0.0-scorer-2.2.0-<dataset directory name>.json`.
+The file name carries the scorer the bank is grounded for, so a bank for a new scorer is a new file, and grounding never replaces a bank file that holds another bank, because runs were made with it (D-095).
+The v0.2.0 bank files, `bank-2.0.0-<dataset directory name>.json`, stay as they were and still load.
 Anchors are chosen in a stable hash order (sha256 of `bank version:question id:anchor`), among anchors inside fixed eligibility bounds: an answer set of 1 to 6 members once the anchor is excluded, with bounds of their own for L06, L11, L13 and L14 (D-030).
 The file is frozen with its hash, the world manifest hash, the ledger hash and the record serialiser version.
 A run refuses a bank that is missing, fails its own hash, or names another bank version, world, ledger or serialiser.
@@ -196,14 +198,15 @@ Citation markers, identifiers such as `INC_042` and dates are not numbers.
 European grouping (`1.200,00 €`) and space grouping (`1 200`) are not parsed, and a number run together with its unit (`59Kč`) is not read.
 
 Every expected answer scores 1.0 against its own checks, and a test asserts this for every frozen instance.
-The checks are the scorer's answer key, so a frozen bank records the scorer it was grounded for, and a bank grounded for another scorer is stale and grounded again (D-095).
+The checks are the scorer's answer key, so a frozen bank records the scorer it was grounded for, and a bank grounded for another scorer is stale; the bank for the current scorer goes into a file of its own (D-095).
 
 Question-specific rules and open owner questions:
 
-- L02's token check also accepts the version's label, such as `2024.3.0`, when the answer also names that version's platform by its name or id anywhere in the text (scorer 2.2.0, D-095).
-  The grounder writes this into the check from the world's `platform_versions` and `platforms` tables, and only where label and platform identify that one version in the world.
-  A bare label scores 0, because every platform has a version of each label.
-  L07, which also expects a platform version, keeps the id-only check, because the labels showed the rule wrong only on L02.
+- Every check whose answer is a version also accepts the version's label when the answer also names what the version belongs to, anywhere in the text (scorer 2.2.0, D-095).
+  For a platform version (L02, L07) that is the platform's name or id, from the world's `platform_versions` and `platforms` tables, such as `2024.3.0` with `Payments Gateway`.
+  For an app release (L15) it is the market's English or local name or id, from `app_versions` and `markets`, such as `5.3.1` with `Greece`.
+  The grounder writes the accepted label and names into the check, and only where label and name identify that one version in the world.
+  A bare label scores 0, because every platform and every market has a version of each label.
 - L18's set check leaves out the primary market and the market the answer should name as unaffected, so it measures recall only.
 - L16 and L17 expect every other player linked to the anchor's shared devices or payment instruments in the world data, so the expected sets include baseline players and not only the planted cluster (D-030).
   This is an open owner question.
@@ -605,6 +608,7 @@ It uses the stand-in generator, the hashing embedder and the lexical judge.
 | Judge call fails | Recorded with its reason, never scored as zero. |
 | Retrieval selects different carriers across repeats | The run stops with an error. |
 | Frozen bank is stale or missing | The run refuses to start. The API answers 503 `CONFIGURATION_ERROR` naming `make ground-bank`. A bank grounded for another scorer is stale. |
+| Grounding finds a bank file of the same name that holds another bank | Grounding refuses and leaves the file as it is. Move the file aside on purpose to ground that world again. |
 | A rescored run's instance is grounded differently now | The addendum and the label agreement refuse, naming the instance and world, since the stored answers did not answer the question the bank asks now. |
 | Another world is in the graph | The benchmark ingests the one it needs, then restores seed 2026. A server stop during a job can leave a benchmark world in Neo4j. Run `make ingest-graph`. |
 | Run cancelled or failed | No `summary.json` is written, so the run is never published, and the seed 2026 graph is ingested again. |
