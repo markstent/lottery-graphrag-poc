@@ -199,6 +199,38 @@ describe('Results', () => {
     }
   })
 
+  it('a development run is never opened first and is labelled not a result in every figure', async () => {
+    const DEV_RUN = {
+      ...OFFICIAL_RUN,
+      run_id: 'fixture-dev',
+      run_kind: 'dev',
+      started_at: '2026-10-21T09:00:00Z',
+    }
+    stubApi({
+      ...ROUTES,
+      '/api/v1/benchmarks': [DEV_RUN, ...RUNS],
+      '/api/v1/benchmarks/fixture-dev': summaryOf(
+        'fixture-dev',
+        'dev',
+        OFFICIAL,
+      ),
+    })
+    const first = open()
+    expect(await screen.findByRole('combobox', { name: 'Run' })).toHaveValue(
+      'fixture-official',
+    )
+    first.unmount()
+    open('fixture-dev')
+    expect(
+      await within(await verdict()).findByText('Development run, not a result'),
+    ).toBeVisible()
+    await screen.findAllByRole('figure')
+    for (const figure of scoreFigures())
+      expect(
+        within(figure).getByText('Development run, not a result'),
+      ).toBeVisible()
+  })
+
   it('a whole-bank run carries no subset label in its figures', async () => {
     stubApi(ROUTES)
     open()

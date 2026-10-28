@@ -189,12 +189,12 @@ A concept wears C's tones with its own shape.
 
 Purpose: every official run, every question, every score, with intervals.
 
-A whole-bank run or a subset shows all panels, and a quick check shows only the Verdict and Reproducibility.
+A whole-bank run, a subset or a development run shows all panels, and a quick check shows only the Verdict and Reproducibility.
 
-1. **Benchmark runs.** A select of every published run, newest first, with its standing in words (Result, Subset run or Quick check), and a "Start a run" button.
+1. **Benchmark runs.** A select of every published run, newest first, with its standing in words (Result, Subset run, Quick check, or the kind followed by ", not a result", such as "Development run, not a result"), and a "Start a run" button.
 2. **Verdict.** The method badge, "Method v0.3" or "Method v0.2 (old method)", with a v0.3 run's `method_note` beside it as plain text (none for v0.2).
    Three tiles, each with the method's evidence metric ("Evidence score" for v0.2, its F1; "Evidence recall" for v0.3) and the answer score, then the run's headline sentences as the harness wrote them.
-   A subset run says what it covered, and a quick check says its numbers are not results.
+   A subset run says what it covered, a development run says it is not a result, and a quick check says its numbers are not results.
 3. **Scores by kind of question.** A switch between the method's evidence metric and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
    A v0.3 run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
@@ -216,7 +216,8 @@ An untested cell with fewer than six groups shows "Too few groups for an interva
 A run written before that rule can carry such an interval in its recorded headlines, which are never rewritten.
 For that run the Verdict adds one note under the headlines saying the charts omit it.
 Single facts show "No evidence score by design".
-While a run is a subset or a quick check, every chart and table carries its label.
+While a run is not a result (a subset, a quick check or a development run), every chart and table carries its label.
+The screen opens the newest result, else the newest subset run, and a development run only when there is nothing else.
 
 **Starting a run.** The form asks for the kind, "Development run" (the default) or "Quick check", the worlds, the repeats (at least 1), the scope and optionally a limit of instances per question.
 A development run uses world 2026 only, so 2027 and 2028 are disabled with "World 2026 only" beside them; a quick check may use any seen world.

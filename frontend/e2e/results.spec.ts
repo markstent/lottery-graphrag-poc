@@ -32,6 +32,32 @@ test('the run picker is reachable by keyboard and a chosen run goes to the addre
   ).toHaveCount(0)
 })
 
+test('a newer development run is never opened first, and opened it says it is not a result on every panel', async ({
+  page,
+}) => {
+  await mockApi(page, 'dev')
+  await page.goto('/#/results')
+  const picker = page.getByRole('combobox', { name: 'Run' })
+  await expect(picker).toHaveValue('fixture-v03')
+  await picker.selectOption('fixture-dev')
+  await expect(page).toHaveURL(/#\/results\?run=fixture-dev$/)
+  const notResult = 'Development run, not a result'
+  await expect(
+    page.getByRole('region', { name: 'Verdict' }).getByText(notResult),
+  ).toBeVisible()
+  for (const name of [
+    'Scores by kind of question',
+    'Questions',
+    'Efficiency',
+    'Failures',
+    'Judge',
+    'Groundedness',
+  ])
+    await expect(
+      page.getByRole('region', { name }).getByText(notResult).first(),
+    ).toBeVisible()
+})
+
 test('the metric switch redraws the charts for the other score', async ({
   page,
 }) => {

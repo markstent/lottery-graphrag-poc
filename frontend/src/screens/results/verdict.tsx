@@ -6,7 +6,11 @@ import { percent } from '../../app/score-words'
 import { StatTile } from '../../charts/stat-tile'
 import { MethodBadge } from '../../components/method-badge'
 import { pipeline, type PipelineId } from '../../design/pipelines'
-import { selectionText, type RunStanding } from '../../results/runs'
+import {
+  selectionText,
+  standingWord,
+  type RunStanding,
+} from '../../results/runs'
 import { printsIntervalBelowFloor, tiles } from '../../results/strata'
 
 type Run = Schemas['BenchmarkRunOut']
@@ -59,10 +63,10 @@ export function Verdict({
   return (
     <div className="space-y-4">
       <MethodBadge method={method} note={summary.method_note} />
-      {kind === 'subset' && (
+      {kind !== 'result' && (
         <p className="text-sm font-medium text-text-primary">
           <span className="mr-1 rounded-chip border border-border px-2 py-0.5">
-            Subset run
+            {standingWord(run)}
           </span>{' '}
           {selectionText(run.selection)}
         </p>

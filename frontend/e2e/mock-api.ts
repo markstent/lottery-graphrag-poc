@@ -122,12 +122,34 @@ const LATEST = {
 
 /**
  * The run list Results sees: as published, with the generated whole-bank run
- * too, with the generated method v0.3 run as well, none, or failing.
+ * too, with the generated method v0.3 run as well, with a newer development
+ * run on top of those, none, or failing.
  */
 export type RunsMode =
-  'published' | 'official' | 'v03' | 'none' | 'unavailable' | 'pending'
+  'published' | 'official' | 'v03' | 'dev' | 'none' | 'unavailable' | 'pending'
 
 export type LatestRun = keyof typeof LATEST | 'unavailable' | 'pending'
+
+/**
+ * A development run: the generated v0.3 run's numbers under
+ * kind "dev" with the label and fixed headline the harness gives that kind
+ * (backend/app/evaluation/runner.py, report.py).
+ */
+const DEV_LABEL = 'development run on seed 2026, not a result'
+const DEV_SUMMARY = {
+  ...v03Summary,
+  run_id: 'fixture-dev',
+  run_kind: 'dev',
+  label: DEV_LABEL,
+  summary: {
+    ...v03Summary.summary,
+    run_kind: 'dev',
+    label: DEV_LABEL,
+    headlines: [
+      'Development run on seed 2026, not a result: the tables are descriptive and no claim is made.',
+    ],
+  },
+}
 
 /**
  * The runs Results can open, by id: the captured pilot and quick check, and
@@ -140,11 +162,13 @@ const RUN_SUMMARIES: Record<string, unknown> = {
   '20261019T164733Z-smoke': smokeSummary,
   [officialSummary.run_id]: officialSummary,
   [v03Summary.run_id]: v03Summary,
+  [DEV_SUMMARY.run_id]: DEV_SUMMARY,
 }
 const RUN_INSTANCES: Record<string, unknown> = {
   'pilot-2026-nothink': pilotInstances,
   [officialSummary.run_id]: officialInstances,
   [v03Summary.run_id]: v03Instances,
+  [DEV_SUMMARY.run_id]: v03Instances,
 }
 
 /** The generated whole-bank run as the run list shows it, newest of all. */
@@ -169,6 +193,16 @@ const V03_RUN = {
   selection: v03Summary.summary.selection,
   worlds: v03Summary.summary.worlds,
   headlines: v03Summary.summary.headlines,
+}
+
+/** The development run as the run list shows it, newest of all. */
+const DEV_RUN = {
+  ...V03_RUN,
+  run_id: DEV_SUMMARY.run_id,
+  run_kind: DEV_SUMMARY.run_kind,
+  label: DEV_LABEL,
+  started_at: '2026-10-20T09:45:00+00:00',
+  headlines: DEV_SUMMARY.summary.headlines,
 }
 
 /** The models as captured, with a judge, which the capture ran without. */
@@ -276,6 +310,8 @@ export async function mockApi(
       return route.fulfill(json([OFFICIAL_RUN, ...RUNS]))
     if (path === '/api/v1/benchmarks' && runs === 'v03')
       return route.fulfill(json([V03_RUN, OFFICIAL_RUN, ...RUNS]))
+    if (path === '/api/v1/benchmarks' && runs === 'dev')
+      return route.fulfill(json([DEV_RUN, V03_RUN, OFFICIAL_RUN, ...RUNS]))
     if (path === '/api/v1/benchmarks' && runs !== 'published')
       return route.fulfill(
         runs === 'none'

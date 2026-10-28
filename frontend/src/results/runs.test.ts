@@ -2,7 +2,13 @@ import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../api/client'
 import { RUNS } from './results.fixtures'
-import { defaultRun, selectionText, standing } from './runs'
+import {
+  defaultRun,
+  newestResult,
+  selectionText,
+  standing,
+  standingWord,
+} from './runs'
 
 type Run = Schemas['BenchmarkRunOut']
 
@@ -28,6 +34,7 @@ const subset = run('p', 'official', '2026-10-18T00:00:00Z', {
   limit: 2,
 })
 const full = run('f', 'official', '2026-10-17T00:00:00Z')
+const dev = run('d', 'dev', '2026-10-21T00:00:00Z')
 
 describe('standing', () => {
   it('quick check is never a result', () =>
@@ -52,6 +59,13 @@ describe('standing', () => {
     ).toBe('subset'))
   it('an official run of the whole bank is a result', () =>
     expect(standing(full)).toBe('result'))
+  it('a development run or a depth sweep is never a result, whole bank or not', () => {
+    const sweep = run('w', 'sweep', '2026-10-21T00:00:00Z')
+    expect(standing(dev)).toBe('not-a-result')
+    expect(standing(sweep)).toBe('not-a-result')
+    expect(standingWord(dev)).toBe('Development run, not a result')
+    expect(standingWord(sweep)).toBe('Depth sweep, not a result')
+  })
   it('classifies the captured runs', () =>
     expect(RUNS.map((r) => [r.run_id, standing(r)])).toEqual([
       ['pilot-2026-nothink', 'subset'],
@@ -67,6 +81,11 @@ describe('defaultRun', () => {
     expect(
       defaultRun([full, run('g', 'official', '2026-10-20T00:00:00Z')]),
     ).toBe('g'))
+  it('never prefers a newer development run to a result or a subset', () => {
+    expect(defaultRun([dev, smoke, subset, full])).toBe('f')
+    expect(defaultRun([dev, smoke, subset])).toBe('p')
+    expect(newestResult([dev])).toBeNull()
+  })
   it('falls back to the newest subset, then to the newest run', () => {
     expect(defaultRun([smoke, subset])).toBe('p')
     expect(defaultRun([smoke])).toBe('s')

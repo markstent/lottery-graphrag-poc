@@ -38,7 +38,7 @@ function RunView({ run }: { run: Run }) {
   const kind = standing(run)
   const ready = load.status === 'ready'
   const grounded = ready ? groundednessRows(load.data.summary) : null
-  const badge = kind === 'subset' ? standingWord(run) : undefined
+  const badge = kind === 'result' ? undefined : standingWord(run)
   const { params } = useRoute()
   const tableRef = useRef<HTMLDivElement>(null)
   const filterBy = (pipeline: string, cls: string) => {
