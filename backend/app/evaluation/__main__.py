@@ -24,6 +24,7 @@ from pathlib import Path
 from app.config import REPO_ROOT
 from app.evaluation import addendum, diagnostics, labelling, official
 from app.evaluation.bank import BANK, NAME_ANCHORED, STRATA, LogicalQuestion
+from app.evaluation.checks import TokenCheck
 from app.evaluation.grounding import (
     BankInstance,
     FrozenBank,
@@ -333,6 +334,7 @@ def render_bank_doc(bank: FrozenBank) -> str:
         f"World manifest hash: `{bank.world_manifest_hash}`.",
         f"Ledger hash: `{bank.ledger_hash}`.",
         f"Record serialiser version: `{bank.record_serialiser_version}`.",
+        f"Scorer version: `{bank.scorer_version or 'unrecorded'}`.",
         "",
     ]
     unavailable = {u.question_id: u.reason for u in bank.unavailable}
@@ -362,6 +364,12 @@ def _question_section(
             f"- Instance `{instance.instance_id}`",
             f"  - Question: {instance.text}",
             f"  - Expected answer: {instance.expected_answer}",
+            *(
+                f"  - Also accepted: {alias} with {' or '.join(qualifiers)}."
+                for check in instance.checks
+                if isinstance(check, TokenCheck)
+                for alias, qualifiers in check.qualified
+            ),
         ]
     return [*lines, ""]
 

@@ -534,6 +534,14 @@ def test_bank_doc_lists_every_question_and_instance(
         assert f"### {question.question_id}" in doc
     for instance in load_frozen_bank(bank_path).instances:
         assert instance.text in doc and instance.expected_answer in doc
+    assert f"Scorer version: `{SCORER_VERSION}`." in doc
+    # Scorer 2.2.0 (D-095): the page names what else an L02 check accepts.
+    for instance in load_frozen_bank(bank_path).instances:
+        for check in instance.checks:
+            if isinstance(check, TokenCheck):
+                for alias, qualifiers in check.qualified:
+                    names = " or ".join(qualifiers)
+                    assert f"  - Also accepted: {alias} with {names}." in doc
 
 
 @dev_world
