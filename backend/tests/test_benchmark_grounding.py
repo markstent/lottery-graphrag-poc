@@ -29,7 +29,7 @@ from app.evaluation.checks import (
     check_score,
     normalise,
 )
-from app.evaluation.grounders import Draft, PlatformVersion, ground_l01, version_label_alias
+from app.evaluation.grounders import Draft, Version, ground_l01, version_label_alias
 from app.evaluation.grounding import (
     FrozenBank,
     GroundingError,
@@ -165,9 +165,7 @@ def test_l01_expects_the_record_price(grounding: WorldGrounding, tiny_dataset: P
         assert f"{price:.2f} {currency}" in instance.expected_answer
 
 
-def test_l02_accepts_the_version_label_beside_its_platform(
-    grounding: WorldGrounding, tiny_dataset: Path
-) -> None:
+def _platform_versions(tiny_dataset: Path) -> dict[str, tuple[str, str, str]]:
     rows = duckdb.execute(
         "SELECT v.platform_version_id, v.version_label, p.platform_name, p.platform_id"
         " FROM read_parquet(?) v JOIN read_parquet(?) p USING (platform_id)",
@@ -176,8 +174,16 @@ def test_l02_accepts_the_version_label_beside_its_platform(
             (tiny_dataset / "platforms.parquet").as_posix(),
         ],
     ).fetchall()
-    versions = {str(r[0]): (str(r[1]), str(r[2]), str(r[3])) for r in rows}
-    instances = grounding.ground(question_by_id("L02")).instances
+    return {str(r[0]): (str(r[1]), str(r[2]), str(r[3])) for r in rows}
+
+
+# Scorer 2.2.0 (D-095): every question whose answer is a platform version.
+@pytest.mark.parametrize("question_id", ["L02", "L07"])
+def test_a_platform_version_answer_accepts_its_label_beside_its_platform(
+    grounding: WorldGrounding, tiny_dataset: Path, question_id: str
+) -> None:
+    versions = _platform_versions(tiny_dataset)
+    instances = grounding.ground(question_by_id(question_id)).instances
     assert instances
     for instance in instances:
         (check,) = instance.checks
@@ -186,11 +192,46 @@ def test_l02_accepts_the_version_label_beside_its_platform(
         assert check.qualified == ((label, (name, platform_id)),)
 
 
+def test_an_app_release_answer_accepts_its_label_beside_its_market(
+    grounding: WorldGrounding, tiny_dataset: Path
+) -> None:
+    rows = duckdb.execute(
+        "SELECT a.app_version_id, a.version_label, a.market_id, m.market_name"
+        " FROM read_parquet(?) a JOIN read_parquet(?) m USING (market_id)",
+        [
+            (tiny_dataset / "app_versions.parquet").as_posix(),
+            (tiny_dataset / "markets.parquet").as_posix(),
+        ],
+    ).fetchall()
+    releases = {str(r[0]): (str(r[1]), str(r[2]), str(r[3])) for r in rows}
+    (instance,) = grounding.ground(question_by_id("L15")).instances
+    (check,) = instance.checks
+    assert isinstance(check, TokenCheck)
+    label, market, name = releases[check.expected]
+    ((alias, qualifiers),) = check.qualified
+    # The market by its English name, its local name and its id.
+    assert alias == label and qualifiers[0] == name and qualifiers[-1] == market
+
+
+def test_every_version_id_check_accepts_a_label_beside_its_owner(
+    tiny_dataset: Path, tiny_ledger: Path
+) -> None:
+    # A version id is a platform version (PLV_) or an app release (APPV_);
+    # no check may expect one without the label rule.
+    found = [
+        check
+        for instance in freeze_bank(tiny_dataset, tiny_ledger).instances
+        for check in instance.checks
+        if isinstance(check, TokenCheck) and check.expected.startswith(("PLV_", "APPV_"))
+    ]
+    assert found and all(check.qualified for check in found)
+
+
 # Two platforms share every label in a generated world; that is the normal case.
 SHARED_LABELS = {
-    "PLV_WEB_1": PlatformVersion("2024.1.0", "PLT_WEB", "Web Portal"),
-    "PLV_WEB_2": PlatformVersion("2024.2.0", "PLT_WEB", "Web Portal"),
-    "PLV_DRAW_1": PlatformVersion("2024.1.0", "PLT_DRAW", "Draw Engine"),
+    "PLV_WEB_1": Version("2024.1.0", ("Web Portal", "PLT_WEB")),
+    "PLV_WEB_2": Version("2024.2.0", ("Web Portal", "PLT_WEB")),
+    "PLV_DRAW_1": Version("2024.1.0", ("Draw Engine", "PLT_DRAW")),
 }
 
 
@@ -205,15 +246,15 @@ def test_a_label_two_platforms_share_counts_beside_its_own_platform() -> None:
 
 def test_a_label_two_versions_of_one_platform_share_never_counts() -> None:
     # Label and platform would not say which of the two versions is meant.
-    versions = {**SHARED_LABELS, "PLV_WEB_9": PlatformVersion("2024.1.0", "PLT_WEB", "Web Portal")}
+    versions = {**SHARED_LABELS, "PLV_WEB_9": Version("2024.1.0", ("Web Portal", "PLT_WEB"))}
     assert version_label_alias(versions, "PLV_WEB_1") == ()
     assert version_label_alias(versions, "PLV_WEB_2") == (("2024.2.0", ("Web Portal", "PLT_WEB")),)
 
 
 def test_a_platform_name_two_platforms_share_is_not_a_qualifier() -> None:
     versions = {
-        "PLV_A_1": PlatformVersion("2024.1.0", "PLT_A", "Portal"),
-        "PLV_B_1": PlatformVersion("2024.1.0", "PLT_B", "portal"),
+        "PLV_A_1": Version("2024.1.0", ("Portal", "PLT_A")),
+        "PLV_B_1": Version("2024.1.0", ("portal", "PLT_B")),
     }
     assert version_label_alias(versions, "PLV_A_1") == (("2024.1.0", ("PLT_A",)),)
 
@@ -335,7 +376,8 @@ def test_planted_anchors_and_answers_come_from_the_ledger(
     truth = scenario(ledger, "SCN-001").truth
     (instance,) = grounding.ground(question_by_id("L15")).instances
     assert instance.anchor_id == truth["incident_id"]
-    assert instance.checks == (TokenCheck(truth["app_version_id"]),)
+    (release,) = instance.checks
+    assert isinstance(release, TokenCheck) and release.expected == truth["app_version_id"]
 
 
 def test_planted_claims_follow_the_required_evidence(

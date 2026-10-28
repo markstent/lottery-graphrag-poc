@@ -18,7 +18,14 @@ import duckdb
 
 from app.evaluation.checks import Check, NumberCheck, SetCheck, TokenCheck, normalise
 from app.evaluation.claims import ClaimSpec
-from app.evaluation.grounders import Draft, World, price_forms, render_list, without
+from app.evaluation.grounders import (
+    Draft,
+    World,
+    price_forms,
+    render_list,
+    version_check,
+    without,
+)
 from app.evaluation.truth_ledger import TruthScenario
 
 PlantedGrounder = Callable[[TruthScenario, World, duckdb.DuckDBPyConnection], Draft]
@@ -35,7 +42,7 @@ def ground_l15(scenario: TruthScenario, world: World, _: duckdb.DuckDBPyConnecti
     incident = _text(scenario, "incident_id")
     release = _text(scenario, "app_version_id")
     answer = f"Incident {incident} was caused by app release {release}."
-    return _draft(scenario, world, incident, answer, (TokenCheck(release),))
+    return _draft(scenario, world, incident, answer, (version_check(world.app_releases, release),))
 
 
 def ground_l16(
