@@ -118,7 +118,8 @@ Grounding fills the slot for a given world.
 Each structural question is grounded to up to three anchors per world.
 Each planted question is grounded to one instance, read from the truth ledger.
 The seed 2026 world's frozen bank has 50 instances: 14 structural questions at three anchors, and 8 planted questions at one.
-The three benchmark worlds (seeds 2026, 2027 and 2028) therefore give 150 instances.
+The official run v0.2.0 used three worlds, seeds 2026, 2027 and 2028, which gave 150 instances.
+The official run of method v0.3 uses the six unseen worlds, seeds 2029 to 2034 (D-091), so it has at most 300 instances; each of their banks is grounded when that run first prepares the world.
 The full text, checks and claims of the seed 2026 instances are in [evaluation/question-bank.md](evaluation/question-bank.md).
 
 Every question carries its plain-English text, what it tests in one sentence, its stratum, its scenario or base fact, an `ontology_dependent` flag, an expected answer and the claims a correct answer makes.
@@ -373,7 +374,8 @@ The API and the frontend show `summary.json` and never recompute a score.
   - "No detectable difference between Graph and text search on single facts (36 pairs in 12 groups)."
   - "Too few pairs to say for Graph and text search on planted patterns (8 pairs in 8 groups)."
 
-The arithmetic of the design: per world the bank gives 12 H1 instances, 18 H2 (12 id-anchored and 6 name-anchored), 12 H3 and 8 H5, so three worlds give at most 36, 36, 36 and 24 pairs for the H1, H2 (id-anchored), H3 and H5 headline cells.
+The arithmetic of the design: per world the bank gives 12 H1 instances, 18 H2 (12 id-anchored and 6 name-anchored), 12 H3 and 8 H5, so the six worlds of the v0.3 official run give at most 72, 72, 72 and 48 pairs for the H1, H2 (id-anchored), H3 and H5 headline cells.
+The three worlds of the official run v0.2.0 gave at most 36, 36, 36 and 24.
 H3 has no evidence pairs by design.
 
 The `ontology_split` in `summary.json` compares B with A and C with B on the ontology-dependent instances (from the per-instance flag, across every stratum) and on all others.
@@ -500,7 +502,7 @@ Each world is brought up to date before it is scored:
 | Index the vectors | The world was just generated, the collection is empty, or the index names another serialiser version or collection |
 | Ground and freeze the bank | The bank is missing, fails its hash, or names another bank version, world, ledger or serialiser |
 
-Seeds 2027 and 2028 use the collection name plus `_seed<seed>`.
+Every seed other than 2026, the seen 2027 and 2028 and the unseen 2029 to 2034, uses the collection name plus `_seed<seed>`.
 After the last world, and after a failed world, the seed 2026 graph is ingested again so the Live Lab and Data Model read the world they expect.
 When that restore fails, run `make ingest-graph`.
 
