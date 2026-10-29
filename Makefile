@@ -123,16 +123,16 @@ ground-demo-bank: ## Ground bank 2.0.0 into the demo world and its ledger (files
 run-smoke: ## Scorer smoke test on three worlds (wipes and restores Neo4j, indexes new worlds in Qdrant; fake generator and judge, so no answer or judge model)
 	$(UV) run python -m app.evaluation run --kind smoke --seeds $(SEEDS)
 
-run-benchmark: ## Official run on the six unseen worlds, 3 repeats (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the answer and judge models, reads GENERATION_* and JUDGE_*); OUT=DIR names the run, OUT=DIR RESUME=1 continues a failed one
+run-benchmark: ## Official run on the six unseen worlds, each question asked once (D-097; REPEATS=N asks each N times) (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the answer and judge models, reads GENERATION_* and JUDGE_*); OUT=DIR names the run, OUT=DIR RESUME=1 continues a failed one
 	@test -z "$(RESUME)" || test -n "$(OUT)" || { echo "RESUME=1 needs OUT=<the run directory to continue>"; exit 1; }
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
-	$(UV) run python -m app.evaluation run --kind official --seeds $(OFFICIAL_SEEDS) --repeats 3 $(if $(OUT),--out $(OUT)) $(if $(and $(OUT),$(RESUME)),--resume)
+	$(UV) run python -m app.evaluation run --kind official --seeds $(OFFICIAL_SEEDS) --repeats $(or $(REPEATS),1) $(if $(OUT),--out $(OUT)) $(if $(and $(OUT),$(RESUME)),--resume)
 
-dry-run: ## Four-question dry run of the official settings (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the answer and judge models; owner approval required)
+dry-run: ## Four-question dry run of the official settings, each question asked once (D-097; REPEATS=N asks each N times) (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the answer and judge models; owner approval required)
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }
-	$(UV) run python -m app.evaluation run --kind official --seeds 2026 --repeats 3 --limit 1 --questions $$($(UV) run python -m app.evaluation dry-run-questions) $(if $(OUT),--out $(OUT))
+	$(UV) run python -m app.evaluation run --kind official --seeds 2026 --repeats $(or $(REPEATS),1) --limit 1 --questions $$($(UV) run python -m app.evaluation dry-run-questions) $(if $(OUT),--out $(OUT))
 
 dev-run: ## Development run on seed 2026, not a result (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the answer and judge models; owner go-ahead required)
 	@test "$$GENERATION_PROVIDER" = litellm || { echo "set GENERATION_PROVIDER=litellm and the GENERATION_* model (see .env.example)"; exit 1; }

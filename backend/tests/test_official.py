@@ -1059,7 +1059,7 @@ def test_cli_run_passes_its_options(captured: dict[str, Any], tmp_path: Path) ->
     args, kwargs = captured["run"]
     assert args == ("official", (2026, 2027))
     assert kwargs == {
-        "repeats": 3,
+        "repeats": 1,
         "out_dir": out,
         "strata": ["H1", "H3"],
         "limit": 2,
@@ -1098,7 +1098,7 @@ def test_cli_sweep_passes_its_depths(captured: dict[str, Any], data_dir: Path) -
     args, kwargs = captured["sweep"]
     assert args == ((2026,),)
     assert kwargs["depths"] == (1, 3)
-    assert kwargs["repeats"] == 3
+    assert kwargs["repeats"] == 1
     assert kwargs["out_dir"].name.endswith("-sweep")
 
 
@@ -1342,7 +1342,7 @@ def test_cli_resolves_a_relative_out_from_the_repository_root(captured: dict[str
     [
         ("nightly", 1, {}, "unknown run kind"),
         ("smoke", 0, {}, "repeats"),
-        ("official", 1, {}, "at least 3 repeats"),
+        ("official", 0, {}, "repeats"),
         ("official", 3, {"GENERATION_PROVIDER": "fake"}, "fake generator"),
         ("official", 3, {"GENERATION_MODEL_FAMILY": ""}, "GENERATION_MODEL_FAMILY"),
         ("official", 3, {"JUDGE_PROVIDER": "fake"}, "JUDGE_PROVIDER"),
@@ -1381,6 +1381,19 @@ def test_settings_are_checked_before_any_world_is_prepared(
                 runner_factory=recorder.runner,
             )
     assert recorder.generated == recorder.ingested == []
+
+
+def test_an_official_run_asks_once_by_default_and_keeps_the_minimum_guard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D-097: one repeat is enough for an official run; the guard still refuses
+    fewer repeats than the minimum, whatever the minimum is."""
+    assert runner_module.OFFICIAL_MIN_REPEATS == 1
+    runner_module.check_run_config("official", 1, False, "family")
+    monkeypatch.setattr(runner_module, "OFFICIAL_MIN_REPEATS", 3)
+    with pytest.raises(ValueError, match="at least 3 repeats, got 2"):
+        runner_module.check_run_config("official", 2, False, "family")
+    runner_module.check_run_config("official", 3, False, "family")
 
 
 # --- Kept worlds and resume ------------------------------------------------------
@@ -1762,22 +1775,35 @@ def test_make_dry_run_recipe_passes_the_official_run_checks() -> None:
     official.check_seeds(arguments.kind, arguments.seeds, full_bank=False)
 
 
-def _make_run_arguments(target: str) -> Any:
+def _make_run_arguments(target: str, **variables: str) -> Any:
     """The CLI arguments of a make target's run line, as ``make -n`` prints it."""
     env = {**os.environ, "GENERATION_PROVIDER": "litellm", "JUDGE_PROVIDER": "litellm"}
+    env.pop("REPEATS", None)
+    env.update(variables)
     repo = Path(__file__).resolve().parents[2]
     printed = subprocess.run(
         ["make", "-n", target], cwd=repo, env=env, capture_output=True, text=True, check=True
     ).stdout
     line = next(row for row in printed.splitlines() if "app.evaluation run" in row)
-    return cli.build_parser().parse_args(shlex.split(line.split("app.evaluation", 1)[1]))
+    words = shlex.split(line.split("app.evaluation", 1)[1])
+    # The dry run's question ids come from a shell substitution that make -n does not run.
+    if "--questions" in words:
+        words = words[: words.index("--questions")]
+    return cli.build_parser().parse_args(words)
 
 
 def test_make_run_benchmark_runs_the_unseen_seeds() -> None:
     arguments = _make_run_arguments("run-benchmark")
-    assert arguments.kind == "official" and arguments.repeats == 3
+    assert arguments.kind == "official" and arguments.repeats == 1
     assert arguments.seeds == OFFICIAL_SEEDS == (2029, 2030, 2031, 2032, 2033, 2034)
     official.check_seeds(arguments.kind, arguments.seeds, full_bank=True)
+
+
+@pytest.mark.parametrize("target", ["run-benchmark", "dry-run"])
+def test_make_official_targets_ask_once_unless_repeats_is_set(target: str) -> None:
+    """D-097: each question once by default; REPEATS=N asks each N times."""
+    assert _make_run_arguments(target).repeats == 1
+    assert _make_run_arguments(target, REPEATS="3").repeats == 3
 
 
 def test_make_dev_run_is_a_dev_run_on_seed_2026() -> None:
@@ -1971,7 +1997,7 @@ def test_cli_run_defaults_its_seeds_and_repeats_by_kind(
     captured: dict[str, Any], data_dir: Path
 ) -> None:
     for kind, seeds, repeats in (
-        ("official", OFFICIAL_SEEDS, 3),
+        ("official", OFFICIAL_SEEDS, 1),
         ("dev", (2026,), 1),
         ("smoke", SEEN_SEEDS, 1),
     ):

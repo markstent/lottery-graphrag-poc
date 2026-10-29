@@ -82,7 +82,7 @@
     "generation_quantisation": null,
     "generation_model_family": "generation-family",
     "generation_reasoning": "default",
-    "repeats": 3,
+    "repeats": 1,
     "run_kind": "official",
     "judge_model": "judge-model",
     "judge_model_family": "judge-family",

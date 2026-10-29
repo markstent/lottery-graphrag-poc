@@ -359,6 +359,64 @@ def test_pairs_cluster_by_question_and_world(synthetic_summary: dict[str, Any]) 
     assert h1["low"] <= h1["mean"] <= h1["high"]
 
 
+def _first_repeat_only(run: BenchmarkRun) -> BenchmarkRun:
+    """The same run as if every question had been asked once (D-097)."""
+
+    def once(result: InstanceResult) -> InstanceResult:
+        return dataclasses.replace(
+            result,
+            runs={tag: runs[:1] for tag, runs in result.runs.items()},
+            scores={tag: scores[:1] for tag, scores in result.scores.items()},
+        )
+
+    worlds = [
+        dataclasses.replace(world, results=[once(r) for r in world.results]) for world in run.worlds
+    ]
+    return dataclasses.replace(
+        run, record=dataclasses.replace(run.record, repeats=1), worlds=worlds
+    )
+
+
+def test_one_repeat_gives_the_same_pairs_groups_and_tests(
+    synthetic_run: BenchmarkRun, synthetic_summary: dict[str, Any]
+) -> None:
+    """D-097: a pair is one instance and a group one question in one world, so
+    asking once instead of twice changes no count, interval or p-value when
+    the repeats agree; only the repeat counts follow the number of answers."""
+    once = _first_repeat_only(synthetic_run)
+    summary = summarize(once)
+
+    def kept(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # H3 is left out: its A repeats differ by design, so its answer mean moves.
+        return [c for c in cells if c["stratum"] != "H3" or c["metric"] == "evidence_recall"]
+
+    assert kept(summary["comparisons"]) == kept(synthetic_summary["comparisons"])
+    for c, d in zip(summary["ontology_split"], synthetic_summary["ontology_split"], strict=True):
+        assert (c["n"], c["clusters"]) == (d["n"], d["clusters"])
+        if c["metric"] == "evidence_recall":
+            assert c == d
+
+    def not_h3(lines: list[str]) -> list[str]:
+        return [line for line in lines if not line.endswith("on single facts.")]
+
+    assert not_h3(summary["headlines"]) == not_h3(synthetic_summary["headlines"])
+    assert len(not_h3(summary["headlines"])) == len(summary["headlines"]) - 2
+    tested = [c for c in summary["comparisons"] if c["reason"] == "tested"]
+    assert tested and all(c["p_holm"] is not None for c in tested)
+    h1 = summary["metrics"]["H1"]["evidence_recall"]
+    assert all((h1[tag]["n"], h1[tag]["repeats"]) == (12, 12) for tag in ("A", "B", "C"))
+    h3 = summary["metrics"]["H3"]["answer"]["A"]
+    assert (h3["mean"], h3["n"], h3["repeats"]) == (pytest.approx(1.0), 12, 12)
+    # One answer per instance and approach: 54 instances, none failed.
+    assert summary["failures"]["repeats"] == {"A": 54, "B": 54, "C": 54}
+    assert summary["failures"]["generation"] == {"A": 0, "B": 0, "C": 0}
+    assert summary["judge_agreement"]["overall"]["answered"]["n"] == 3 * 54
+    assert summary["reproducibility"]["run"]["repeats"] == 1
+    report = render_report(once)
+    assert "three repeats" not in report and "3 repeats" not in report
+    json.dumps(summary, allow_nan=False)
+
+
 def test_counts_failures_agreement_and_basis(synthetic_summary: dict[str, Any]) -> None:
     summary = synthetic_summary
     assert summary["worlds"] == [2026, 2027]

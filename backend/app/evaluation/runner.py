@@ -101,8 +101,10 @@ DEV_LABEL = "development run on seed 2026, not a result"
 # The label a run of each kind always carries; other kinds carry none of their own.
 KIND_LABELS = {"smoke": SMOKE_LABEL, "dev": DEV_LABEL}
 PIPELINES = ("A", "B", "C")
-# An official result reports repeat variance, which needs at least three repeats.
-OFFICIAL_MIN_REPEATS = 3
+# An official run asks each question once (D-097): at temperature 0 with
+# deterministic retrieval the repeats of v0.2.0 gave word-for-word identical
+# answers. --repeats N asks each question N times.
+OFFICIAL_MIN_REPEATS = 1
 WORLD_MANIFEST = "_manifest.json"
 
 logger = logging.getLogger(__name__)
@@ -820,7 +822,7 @@ def check_run_config(
 
     Smoke runs need the fake generator; sweep, dev and official runs refuse
     it, so no answer metric of theirs comes from the fake model; an official
-    run needs three repeats and the generation model family. Which seeds a
+    run needs at least OFFICIAL_MIN_REPEATS repeats and the generation model family. Which seeds a
     kind may run is checked by the orchestration (``official.check_seeds``).
     """
     if kind not in RUN_KINDS:

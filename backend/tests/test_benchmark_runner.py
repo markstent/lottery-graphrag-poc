@@ -444,7 +444,7 @@ def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> 
     with pytest.raises(ValueError, match="fake generator"):
         BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="smoke", repeats=1)
     with pytest.raises(ValueError, match="repeats"):
-        BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="official", repeats=2)
+        BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="official", repeats=0)
     with pytest.raises(ValueError, match="model family"):
         BenchmarkRunner(
             scripted,
@@ -461,7 +461,7 @@ def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> 
         frozen_bank,
         world_dir,
         kind="official",
-        repeats=3,
+        repeats=1,
         judge=gateway_judge(),
     )
     assert official.label is None
