@@ -127,6 +127,8 @@ At 1920 by 1080, the first screen of a running run holds the question bar, the g
    A reason only the old method gave (`slot_limit`, `superseded_by_structured_fact`) reads "Set aside under the old method".
 4. **Timeline**, docked under both: rewind, play or pause, replay, a position slider, the time, speeds 0.5x to 4x, and one track for each approach.
 5. After the run: the three answers as the model wrote them, with each citation marker a button, the evidence path rows for B and C, and the market coverage table.
+   Each answer card keeps its own height, capped at 24rem; a longer answer scrolls inside the card, which then takes keyboard focus with the shared focus ring so the arrow keys scroll it, and one long answer no longer stretches the row (D-096).
+   An answer that stops before the model finished it carries a note under its text: "The answer stopped at the 4,096-token limit.", with the limit the answer was generated under as recorded with it, or "The answer stops part-way." when the limit is not known to be the cause.
 
 Sources: a **recorded run** replays one of four real captures through the API on the dev world, with qwen3.6 through Ollama and reasoning off (`frontend/src/run/fixtures/recorded/`, D-056).
 They need no model, and they are not edited.
@@ -204,6 +206,7 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
    A v0.3 run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
 4. **Questions.** One row per question and world, with filters, the answer, the method's evidence metric (headed "Evidence recall" or "Evidence score") and judge score of each approach, and an expanding table of every measure.
+   The table's last row, "Answers cut off", counts each approach's repeats whose answer stops before the model finished it and how many of them stopped at the run's recorded output limit, such as "2 (1 at the 4,096-token limit)", and reads "Not recorded" for a run made before D-096.
    "Open" goes to the question in Live Lab when its world is loaded.
    Fifty rows a page.
 5. **Efficiency.** Latency and context size, with means only.

@@ -557,7 +557,7 @@ The reproducibility record of every run, stored as `run` (fields every world sha
 - **Method:** `method_version` (0.3.0; a record written before the field existed is read as 0.2.0), `record_facts_version`, `prompt_extras` (the path line and the target-type tier for B and C, the ontology target terms for C).
 - **World:** `world_dir`, `generator_version`, `profile`, `world_seed`, `scenario_seed`, `reference_date`, `ontology_version`, `graph_label_version`.
 - **Retrieval:** `embedding_model`, `embedding_dimensions`, `sparse_model`, `rrf_k`, `record_serialiser_version`, `reranker`, `top_k`, `context_budget_tokens`, `context` (the dedupe threshold; v0.2.0 also held its slot counts), `dedupe_threshold`, `graph_limits`, `relationship_types_b`, `relationship_types_c`, `ranking_weights`, `excluded_labels`.
-- **Generation:** `generation_model`, `generation_model_family`, `generation_quantisation`, `generation_temperature`, `max_tokens`, `generation_reasoning`, `prompt_version`, `prompt_hash`.
+- **Generation:** `generation_model`, `generation_model_family`, `generation_quantisation`, `generation_temperature`, `max_tokens` (4096 from D-096, 1200 in v0.2.0), `generation_reasoning`, `prompt_version`, `prompt_hash`, `answer_parser_version` (2.0.0 from D-096; a record without it was read by parser 1.0.0).
 - **Judge:** `judge_model`, `judge_model_family`, `judge_reasoning`, `judge_temperature`, `judge_prompt_version`, `judge_prompt_hash`.
 
 Each repeat also records its own repeat index.

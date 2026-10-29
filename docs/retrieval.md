@@ -245,10 +245,29 @@ The prompt numbers the selected blocks in prompt order, whatever their kind, and
 The prompt version is `PROMPT_VERSION` 3.0.0 (D-085), recorded with every benchmark run (2.0.0, D-024, was the prompt of v0.2.0).
 It tells the model that the verdict is the answer itself in one line and never a status word such as "success" or "ok", and that a source line starting with "reached from" shows how that record connects to an entity named in the question.
 The same prompt serves A, B and C.
-`parse_answer` tries strict JSON, then fenced JSON, then plain text with an empty verdict.
+The answer parser is version `ANSWER_PARSER_VERSION` 2.0.0 (D-096), recorded with every run as `answer_parser_version`; a run recorded without it was read by parser 1.0.0, which tried strict JSON, then fenced JSON, then plain text.
+`parse_answer` reads every output the same way, whatever the pipeline, and `answer_from` builds the recorded answer from it for A, B and C alike:
+
+1. **json**: the output is the JSON object, read with control characters inside its strings accepted (`strict=False`), or the object inside a code fence.
+2. **Field by field**, when no JSON reader accepts the output, it opens with `{"verdict": "`, and it holds no complete JSON value followed by more text:
+   - the verdict is its string up to the first double quote no backslash escapes;
+   - then the answer key must follow, as the prompt orders the keys;
+   - **repaired**: the answer string runs to the last bare quote, followed only by the closing brace, and every bare quote before it is the model's own text (the real case: the model quoted the question without escaping its quotes);
+   - **cut_off**: the output ends before the object closes; the verdict is kept when its string closed, else it is empty, and the answer is the text up to where the output ends, unescaped, less an escape the end cut short.
+3. **plain**: anything else, such as an answer-first object or one object, a correction and a second object, is the whole output as the answer with an empty verdict.
+   Choosing one of several objects would drop answer text the model wrote, so the parser does not choose.
+
+The parser never invents content and never drops text the model wrote into its answer.
+Every stored output that parser 1.0.0 read as JSON reads the same under 2.0.0; only outputs it left as plain text read differently (D-096).
 A citation `[n]` or `[n, m]` counts only if it points at a block the model was shown, so an answer cannot cite a source it was not given.
 Ranges such as `[1-3]` are not supported.
 The result keeps the parsed answer, the verdict, the cited block numbers, the model's raw text and the token usage.
+It also records how the output was read and ended: `answer_form`, the provider's `finish_reason`, `token_limit_reached`, the call's `max_tokens` and `cut_off`.
+`token_limit_reached` is true when the stop reason is `length` or the completion token count reached `max_tokens`, false when fewer tokens were reported, and null when the provider reports neither.
+The count is read as well because LiteLLM's `ollama/` adapter reports `stop` for every answer, also for one Ollama stopped at the limit (`tests/test_gateway.py` runs it offline).
+An answer is `cut_off` when its form is `cut_off` or it stopped at the limit; Live Lab and Results say so in plain words.
+The output limit `GENERATION_MAX_TOKENS` is 4096 from D-096, the same for A, B and C; 1200, the limit of v0.2.0, cut off answers in which the model wrote its reasoning inside the answer.
+With prompts of about 3,400 tokens, 4096 output tokens fit well inside the 32,768-token context the local Ollama server runs with.
 A gateway failure or an empty output raises an error.
 The parser never turns a failed call into an answer.
 
@@ -336,7 +355,7 @@ Never edit the generated file.
 | `QDRANT_URL`, `QDRANT_COLLECTION` | `http://localhost:6333`, `semantic_context_lab` | The shared collection |
 | `RAG_TOP_K` | 40 | Dense and sparse hits each before fusion |
 | `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_DEDUPE_THRESHOLD` | 2000, 0.85 | The shared token budget, and the near-duplicate threshold. `RAG_EVIDENCE_SLOTS` and `RAG_GRAPH_SLOTS` are removed and refused if set (D-084). |
-| `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S` | `fake`, `fake-answer-v1`, 0, 1200, 120 | The answer model. `fake` is the deterministic CI generator. |
+| `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S` | `fake`, `fake-answer-v1`, 0, 4096, 120 | The answer model. `fake` is the deterministic CI generator. |
 | `GENERATION_API_BASE`, `GENERATION_MODEL_FAMILY`, `GENERATION_MODEL_QUANTISATION`, `GENERATION_REASONING` | unset, unset, unset, `default` | Gateway address, and the facts recorded with each benchmark run. `off` asks a thinking model not to think. |
 | `GRAPH_*` | see [graph-and-ontology.md](graph-and-ontology.md) | Traversal caps and the reference date |
 

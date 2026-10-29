@@ -266,6 +266,8 @@ Each pipeline's result carries it:
   For a graph node `rank` is its graph rank.
 - `GraphEvidence` (B and C's `node_evidence`): node id and label, `hops`, `path` (node ids from the seed), the relationship type, the composite score and its `components`, `tier`, `graph_rank`, `selected`, `discard_reason` and `authoritative`, the facts read from the structured layer.
 - `Citation`: one for each block shown to the model, in prompt order, with chunk, document, title, source system, source record, record table, market and language. `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
+- `RagAnswer` (each pipeline's `answer`): the parsed `text` and `verdict`, `cited_blocks`, `raw_text`, the model, latency, context tokens, citations and `usage`, and how the output was read and ended (D-096): `answer_form` (`json`, `repaired`, `cut_off` or `plain`), `finish_reason` as the gateway reported it, `token_limit_reached`, `max_tokens` (the output limit of the call) and `cut_off`.
+  Each of the five is null in an answer recorded before answer parser 2.0.0.
 - B and C also carry `ontology_concepts`, the concepts their expansion used.
 
 An edge is a recorded `graph.relationship.traversed` event, and has no id of its own: it is the triple of its two node ids and its type.
@@ -286,7 +288,7 @@ A malformed `summary.json` is a server error and is never silently skipped.
   `latest` is the newest official run of the whole bank, else the newest run of any kind.
   It is a 404 when nothing is published.
   A key the harness adds later is ignored on read, so an older client keeps working.
-- `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, and its failure classes.
+- `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, its failure classes, and `cut_off_repeats` and `token_limit_repeats`, the repeats whose answer was cut off and those among them that stopped at the output limit (null for a run recorded before answer parser 2.0.0, D-096).
   It carries the question text and scores only, never the expected answer, claims, checks, answer text or context blocks.
   A run without `results.json` is a 404.
 - `GET /benchmarks/questions` lists the presentation world's bank for the Help screen, with each question's expected answer, the hidden truth of a planted question, and per-pipeline scores (`answer`, `evidence_recall` and `evidence_f1`, means over the scored repeats) from the run named by the optional `run_id`, else the newest official run.
