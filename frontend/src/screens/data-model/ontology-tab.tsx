@@ -158,13 +158,7 @@ export function OntologyTab({ params }: { params: URLSearchParams }) {
     )
   const { concepts } = load.data
   if (concepts.length === 0)
-    return (
-      <Panel
-        title="Concepts"
-        state="empty"
-        message="The ontology has no concepts yet."
-      />
-    )
+    return <Panel title="Concepts" state="empty" message="None yet." />
   const concept =
     concepts.find((c) => c.concept_id === params.get('concept')) ?? concepts[0]
   const kinds = concepts.filter((c) => c.parent_id === concept.concept_id)

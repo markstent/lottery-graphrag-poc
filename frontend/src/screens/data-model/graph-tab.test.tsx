@@ -219,9 +219,7 @@ describe('Graph tab map', () => {
       '/api/v1/graph/schema': { ...SCHEMA, labels: [] },
     })
     const empty = renderTab()
-    expect(
-      await screen.findByText('The graph has no kinds of record yet.'),
-    ).toBeVisible()
+    expect(await screen.findByText('None yet.')).toBeVisible()
     empty.unmount()
 
     let fail = true

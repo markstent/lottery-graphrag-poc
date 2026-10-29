@@ -65,11 +65,7 @@ describe('EvidencePathList', () => {
     const view = graphView(early.graph.C, options)
     expect(view.pathRecorded).toBe(false)
     render(<EvidencePathList view={view} />)
-    expect(
-      screen.getByText(
-        'The evidence path appears when this pipeline records it.',
-      ),
-    ).toBeVisible()
+    expect(screen.getByText('No evidence path yet.')).toBeVisible()
   })
 
   it('says no path was recorded when the pipeline ended before recording one', () => {

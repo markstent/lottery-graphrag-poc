@@ -663,18 +663,8 @@ test.describe('Data Model', () => {
 
   // The Graph and Ontology tabs have their own loading, empty and error states.
   const TABS = [
-    [
-      'graph',
-      '#/data-model?tab=graph',
-      'Kinds of record',
-      'The graph has no kinds of record yet.',
-    ],
-    [
-      'ontology',
-      '#/data-model?tab=ontology',
-      'Concepts',
-      'The ontology has no concepts yet.',
-    ],
+    ['graph', '#/data-model?tab=graph', 'Kinds of record', 'None yet.'],
+    ['ontology', '#/data-model?tab=ontology', 'Concepts', 'None yet.'],
   ] as const
   for (const [tab, hash, title, none] of TABS)
     for (const state of ['pending', 'empty', 'error'] as const)

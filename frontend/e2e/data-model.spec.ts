@@ -366,9 +366,7 @@ for (const state of ['pending', 'empty', 'error'] as const)
     if (state === 'pending')
       await expect(page.getByRole('status')).toContainText('Loading Concepts')
     if (state === 'empty')
-      await expect(
-        concepts.getByText('The ontology has no concepts yet.'),
-      ).toBeVisible()
+      await expect(concepts.getByText('None yet.')).toBeVisible()
     if (state === 'error')
       await expect(page.getByRole('alert')).toContainText(
         'The data is unavailable.',

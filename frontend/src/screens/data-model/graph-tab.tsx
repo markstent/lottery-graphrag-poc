@@ -368,7 +368,7 @@ function Kinds({ scale }: { scale: number }) {
       <Panel
         title="Kinds of record"
         state={empty ? 'empty' : load.status}
-        message="The graph has no kinds of record yet."
+        message="None yet."
         error={load.status === 'error' ? load.error : undefined}
         onRetry={load.retry}
       />

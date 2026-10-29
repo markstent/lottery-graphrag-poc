@@ -18,12 +18,9 @@
  * owner raised it to 1,360 on 2026-10-27 (D-055), because method v0.3 labels
  * two methods: the method badge, evidence recall, the split judge agreement,
  * the groundedness table, the graph order in Live Lab and the start form's
- * reason for not starting the official run. D-096 (2026-10-29) added 9 words,
- * to 1,369, for the cut-off notes the controller's brief asked for: the Live
- * Lab note under a cut-off answer and the Results row "Answers cut off"; the
- * copy was at the cap before, so the owner is asked to confirm the rise.
+ * reason for not starting the official run.
  */
-export const OUTSIDE_HELP_WORD_CAP = 1369
+export const OUTSIDE_HELP_WORD_CAP = 1360
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length
