@@ -87,7 +87,7 @@ from app.retrieval.standard.context import (
 )
 from app.retrieval.standard.corpus import CorpusChunk, RecordFacts, hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
-from app.retrieval.standard.generation import AnswerGenerator, citations_for, parse_answer
+from app.retrieval.standard.generation import AnswerGenerator, answer_from
 from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import SearchHit, VectorStore
@@ -728,18 +728,7 @@ def _generate(
     and C."""
     emitter.emit(GRAPH_GENERATION_STARTED, model=generator.model_name)
     output = generator.generate(question, assembly.selected)
-    parsed = parse_answer(output.raw_text, block_count=len(assembly.selected))
-    answer = RagAnswer(
-        text=parsed.answer,
-        verdict=parsed.verdict,
-        cited_blocks=parsed.cited_blocks,
-        raw_text=output.raw_text,
-        model=generator.model_name,
-        latency_ms=round(output.latency_ms, 1),
-        context_tokens=assembly.context_tokens,
-        citations=citations_for(assembly.selected),
-        usage=output.usage,
-    )
+    answer = answer_from(output, assembly.selected, generator.model_name, assembly.context_tokens)
     emitter.emit(
         GRAPH_GENERATION_COMPLETED,
         model=generator.model_name,

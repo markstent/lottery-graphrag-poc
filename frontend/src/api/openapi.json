@@ -3081,6 +3081,17 @@
             ],
             "title": "Context Tokens"
           },
+          "cut_off_repeats": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cut Off Repeats"
+          },
           "efficiency_per_1k": {
             "anyOf": [
               {
@@ -3202,6 +3213,17 @@
             "title": "Repeats",
             "type": "integer"
           },
+          "token_limit_repeats": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Token Limit Repeats"
+          },
           "unscored_repeats": {
             "title": "Unscored Repeats",
             "type": "integer"
@@ -3223,7 +3245,9 @@
           "judge_faithfulness",
           "judge_citation_accuracy",
           "judge_abstention",
-          "failure_classes"
+          "failure_classes",
+          "cut_off_repeats",
+          "token_limit_repeats"
         ],
         "title": "InstancePipelineOut",
         "type": "object"
@@ -4606,6 +4630,24 @@
       "RagAnswer": {
         "description": "Generated answer plus its cost and grounded citations.\n\n`citations` lists every block shown to the model in prompt order (the\nselection's order, whatever its kind), so\n`cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.",
         "properties": {
+          "answer_form": {
+            "anyOf": [
+              {
+                "enum": [
+                  "json",
+                  "repaired",
+                  "cut_off",
+                  "plain"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the parser read the output: json | repaired | cut_off | plain",
+            "title": "Answer Form"
+          },
           "citations": {
             "items": {
               "$ref": "#/components/schemas/Citation"
@@ -4625,9 +4667,45 @@
             "title": "Context Tokens",
             "type": "integer"
           },
+          "cut_off": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The answer stops before the model finished it: cut_off form or token limit",
+            "title": "Cut Off"
+          },
+          "finish_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The provider's stop reason as the gateway reported it",
+            "title": "Finish Reason"
+          },
           "latency_ms": {
             "title": "Latency Ms",
             "type": "number"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The output token cap of the call; None for the fake model",
+            "title": "Max Tokens"
           },
           "model": {
             "title": "Model",
@@ -4642,6 +4720,18 @@
             "description": "Parsed prose answer; what the evaluator scores",
             "title": "Text",
             "type": "string"
+          },
+          "token_limit_reached": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether the output stopped at max_tokens: the stop reason is 'length' or the completion token count reached the cap; None when the provider reports neither",
+            "title": "Token Limit Reached"
           },
           "usage": {
             "anyOf": [

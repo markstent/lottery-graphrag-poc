@@ -15,6 +15,13 @@ from pydantic import BaseModel, Field, model_validator
 # that hold a type the question asks about, then every other node.
 GraphTier = Literal["seed", "target", "other"]
 
+# How the answer parser read a model output (D-096): "json" the prompted
+# object, alone or in a code fence; "repaired" the prompted object closed but
+# with bare double quotes inside its answer; "cut_off" the prompted object
+# never closed, read up to where the output ends; "plain" anything else, read
+# as plain text with an empty verdict.
+AnswerForm = Literal["json", "repaired", "cut_off", "plain"]
+
 
 class EvidenceChunk(BaseModel):
     """One retrieved chunk with its provenance and ranking outcome."""
@@ -144,6 +151,28 @@ class RagAnswer(BaseModel):
     citations: list[Citation]
     usage: dict[str, int] | None = Field(
         default=None, description="Gateway token counts when the provider reports them"
+    )
+    # D-096. Each is None in an answer recorded before answer parser 2.0.0.
+    answer_form: AnswerForm | None = Field(
+        default=None,
+        description="How the parser read the output: json | repaired | cut_off | plain",
+    )
+    finish_reason: str | None = Field(
+        default=None, description="The provider's stop reason as the gateway reported it"
+    )
+    token_limit_reached: bool | None = Field(
+        default=None,
+        description=(
+            "Whether the output stopped at max_tokens: the stop reason is 'length' or the"
+            " completion token count reached the cap; None when the provider reports neither"
+        ),
+    )
+    max_tokens: int | None = Field(
+        default=None, description="The output token cap of the call; None for the fake model"
+    )
+    cut_off: bool | None = Field(
+        default=None,
+        description="The answer stops before the model finished it: cut_off form or token limit",
     )
 
 

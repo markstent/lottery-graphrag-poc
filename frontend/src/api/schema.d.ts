@@ -1859,6 +1859,8 @@ export interface components {
             citation_accuracy: number | null;
             /** Context Tokens */
             context_tokens: number | null;
+            /** Cut Off Repeats */
+            cut_off_repeats: number | null;
             /** Efficiency Per 1K */
             efficiency_per_1k: number | null;
             /** Evidence F1 */
@@ -1885,6 +1887,8 @@ export interface components {
             latency_ms: number | null;
             /** Repeats */
             repeats: number;
+            /** Token Limit Repeats */
+            token_limit_repeats: number | null;
             /** Unscored Repeats */
             unscored_repeats: number;
         };
@@ -2461,6 +2465,11 @@ export interface components {
          *     `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
          */
         RagAnswer: {
+            /**
+             * Answer Form
+             * @description How the parser read the output: json | repaired | cut_off | plain
+             */
+            answer_form?: ("json" | "repaired" | "cut_off" | "plain") | null;
             /** Citations */
             citations: components["schemas"]["Citation"][];
             /**
@@ -2470,8 +2479,23 @@ export interface components {
             cited_blocks: number[];
             /** Context Tokens */
             context_tokens: number;
+            /**
+             * Cut Off
+             * @description The answer stops before the model finished it: cut_off form or token limit
+             */
+            cut_off?: boolean | null;
+            /**
+             * Finish Reason
+             * @description The provider's stop reason as the gateway reported it
+             */
+            finish_reason?: string | null;
             /** Latency Ms */
             latency_ms: number;
+            /**
+             * Max Tokens
+             * @description The output token cap of the call; None for the fake model
+             */
+            max_tokens?: number | null;
             /** Model */
             model: string;
             /**
@@ -2484,6 +2508,11 @@ export interface components {
              * @description Parsed prose answer; what the evaluator scores
              */
             text: string;
+            /**
+             * Token Limit Reached
+             * @description Whether the output stopped at max_tokens: the stop reason is 'length' or the completion token count reached the cap; None when the provider reports neither
+             */
+            token_limit_reached?: boolean | null;
             /**
              * Usage
              * @description Gateway token counts when the provider reports them

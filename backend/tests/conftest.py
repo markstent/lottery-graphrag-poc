@@ -124,12 +124,17 @@ class StubLiteLLM(types.ModuleType):
         self.calls: list[dict[str, Any]] = []
         self._content = content
         self._error = error
+        # The choice's stop reason; None leaves it out, as a provider may.
+        self.finish_reason: str | None = None
 
     def completion(self, **kwargs: Any) -> dict[str, Any]:
         self.calls.append(kwargs)
         if self._error is not None:
             raise self._error
-        return _Response(choices=[{"message": {"content": self._content}}])
+        choice: dict[str, Any] = {"message": {"content": self._content}}
+        if self.finish_reason is not None:
+            choice["finish_reason"] = self.finish_reason
+        return _Response(choices=[choice])
 
 
 class _Response(dict[str, Any]):

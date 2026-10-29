@@ -4,8 +4,9 @@
     "rrf_k": 60,
     "generation_model": "generation-model",
     "generation_temperature": 0.0,
-    "max_tokens": 1200,
+    "max_tokens": 4096,
     "prompt_version": "3.0.0",
+    "answer_parser_version": "2.0.0",
     "top_k": 40,
     "context_budget_tokens": 2000,
     "context": {

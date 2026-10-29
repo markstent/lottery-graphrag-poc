@@ -29,7 +29,7 @@ import uuid
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from pydantic import ValidationError
@@ -84,6 +84,7 @@ from app.evaluation.report import SUMMARY_SCHEMA_VERSION, instance_means
 from app.evaluation.runner import (
     OFFICIAL_MIN_REPEATS,
     WORLD_MANIFEST,
+    PipelineRun,
     instance_result_from_payload,
     settings_fields,
 )
@@ -210,6 +211,10 @@ def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
                                     ).items()
                                 )
                             ),
+                            cut_off_repeats=_count_answers(result.runs[tag], "cut_off"),
+                            token_limit_repeats=_count_answers(
+                                result.runs[tag], "token_limit_reached"
+                            ),
                             **{
                                 metric: means[tag][metric]
                                 for metric in InstancePipelineOut.model_fields
@@ -221,6 +226,18 @@ def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
                 )
             )
     return out
+
+
+def _count_answers(
+    runs: list[PipelineRun], flag: Literal["cut_off", "token_limit_reached"]
+) -> int | None:
+    """The repeats with an answer whose ``flag`` is true; None when an answer
+    did not record it (written before answer parser 2.0.0, D-096). A repeat
+    whose generation failed has no answer and is not counted."""
+    values = [getattr(run, flag) for run in runs if not run.generation_failed]
+    if any(value is None for value in values):
+        return None
+    return sum(bool(value) for value in values)
 
 
 def presentation_bank() -> FrozenBank | None:

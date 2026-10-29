@@ -81,6 +81,7 @@ from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.standard.context import block_tokens
 from app.retrieval.standard.fusion import RRF_K
 from app.retrieval.standard.generation import (
+    ANSWER_PARSER_VERSION,
     PROMPT_VERSION,
     SYSTEM_PROMPT,
     AnswerGenerator,
@@ -161,6 +162,7 @@ def settings_fields(
         "generation_temperature": settings.generation.temperature,
         "max_tokens": settings.generation.max_tokens,
         "prompt_version": PROMPT_VERSION,
+        "answer_parser_version": ANSWER_PARSER_VERSION,
         "top_k": settings.top_k,
         "context_budget_tokens": settings.context.budget_tokens,
         "context": {"dedupe_threshold": settings.context.dedupe_threshold},
@@ -260,6 +262,8 @@ class ReproducibilityRecord:
     method_version: str | None = None
     record_facts_version: str | None = None
     prompt_extras: dict[str, list[str]] | None = None
+    # D-096; None in a file written before it, whose answers parser 1.0.0 read.
+    answer_parser_version: str | None = None
 
     def to_payload(self) -> dict[str, Any]:
         """Every field, JSON-ready."""
@@ -318,6 +322,12 @@ class PipelineRun:
     generation_failed: bool
     # The gateway's message when generation failed, so results.json says why.
     generation_error: str | None = None
+    # How the answer was read and how the output ended (RagAnswer, D-096);
+    # None when generation failed and in a run recorded before parser 2.0.0.
+    answer_form: str | None = None
+    finish_reason: str | None = None
+    token_limit_reached: bool | None = None
+    cut_off: bool | None = None
 
     def to_payload(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
@@ -743,6 +753,10 @@ class BenchmarkRunner:
             latency_ms=latency_ms,
             generation_failed=answer is None,
             generation_error=error,
+            answer_form=None if answer is None else answer.answer_form,
+            finish_reason=None if answer is None else answer.finish_reason,
+            token_limit_reached=None if answer is None else answer.token_limit_reached,
+            cut_off=None if answer is None else answer.cut_off,
         )
 
 

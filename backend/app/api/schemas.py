@@ -440,6 +440,11 @@ class InstancePipelineOut(BaseModel):
     judge_citation_accuracy: float | None
     judge_abstention: float | None
     failure_classes: dict[str, int]
+    # D-096: repeats whose answer stops before the model finished it, and those
+    # among them that stopped at the output token cap; None for a run recorded
+    # before answer parser 2.0.0, which did not record it.
+    cut_off_repeats: int | None
+    token_limit_repeats: int | None
 
 
 class InstanceResultOut(BaseModel):

@@ -1883,6 +1883,7 @@
   "question": "Why was the draw result publication delayed?",
   "result": {
    "answer": {
+    "answer_form": "json",
     "citations": [
      {
       "chunk_id": "REC_incidents_INC_009",
@@ -2079,9 +2080,13 @@
      1
     ],
     "context_tokens": 1986,
+    "cut_off": false,
+    "finish_reason": null,
+    "max_tokens": null,
     "model": "fake-answer-v1",
     "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 19 retrieved source(s), the strongest evidence for the question is in: incidents: INC_009, games: GAME_UK_02 [1].\"}",
     "text": "[fake-model] Based on 19 retrieved source(s), the strongest evidence for the question is in: incidents: INC_009, games: GAME_UK_02 [1].",
+    "token_limit_reached": null,
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },
@@ -6354,6 +6359,7 @@
   "question": "Which games did INC_025 affect, and was there a payment failure in Greece?",
   "result": {
    "answer": {
+    "answer_form": "json",
     "citations": [
      {
       "chunk_id": "REC_incidents_INC_025",
@@ -6540,9 +6546,13 @@
      1
     ],
     "context_tokens": 1992,
+    "cut_off": false,
+    "finish_reason": null,
+    "max_tokens": null,
     "model": "fake-answer-v1",
     "raw_text": "{\"verdict\": \"[fake-model] answered from the retrieved sources\", \"answer\": \"[fake-model] Based on 18 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, markets: MKT_GR [1].\"}",
     "text": "[fake-model] Based on 18 retrieved source(s), the strongest evidence for the question is in: incidents: INC_025, markets: MKT_GR [1].",
+    "token_limit_reached": null,
     "usage": null,
     "verdict": "[fake-model] answered from the retrieved sources"
    },

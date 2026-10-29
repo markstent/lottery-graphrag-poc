@@ -34,11 +34,11 @@ from app.events import (
     RetrievalEvent,
     new_run_id,
 )
-from app.evidence import RagAnswer, RagRunResult
+from app.evidence import RagRunResult
 from app.retrieval.standard.context import assemble_context
 from app.retrieval.standard.corpus import RecordFacts, hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
-from app.retrieval.standard.generation import AnswerGenerator, citations_for, parse_answer
+from app.retrieval.standard.generation import AnswerGenerator, answer_from
 from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
@@ -147,18 +147,7 @@ class StandardRagPipeline:
 
         self.emitter.emit(RAG_GENERATION_STARTED, model=self.generator.model_name)
         output = self.generator.generate(question, selected)
-        parsed = parse_answer(output.raw_text, block_count=len(selected))
-        answer = RagAnswer(
-            text=parsed.answer,
-            verdict=parsed.verdict,
-            cited_blocks=parsed.cited_blocks,
-            raw_text=output.raw_text,
-            model=self.generator.model_name,
-            latency_ms=round(output.latency_ms, 1),
-            context_tokens=context_tokens,
-            citations=citations_for(selected),
-            usage=output.usage,
-        )
+        answer = answer_from(output, selected, self.generator.model_name, context_tokens)
         self.emitter.emit(
             RAG_GENERATION_COMPLETED,
             model=self.generator.model_name,

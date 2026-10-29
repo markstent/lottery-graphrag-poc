@@ -324,6 +324,19 @@ def test_a_generation_failure_is_recorded_not_fatal(
     assert run.to_payload()["generation_error"] == "gateway down"
 
 
+def test_each_repeat_records_how_its_answer_was_read_and_ended(
+    runner_with_failing_generator: BenchmarkRunner, runner_smoke: BenchmarkRunner
+) -> None:
+    """D-096: the answer's form and cut-off record reach results.json; a
+    failed repeat has no answer and records none."""
+    answered = runner_smoke.run().results[0].runs["A"][0].to_payload()
+    assert (answered["answer_form"], answered["cut_off"]) == ("json", False)
+    assert (answered["finish_reason"], answered["token_limit_reached"]) == (None, None)
+    failed = runner_with_failing_generator.run().results[0].runs["A"][0].to_payload()
+    fields = ("answer_form", "finish_reason", "token_limit_reached", "cut_off")
+    assert [failed[field] for field in fields] == [None] * 4
+
+
 def test_a_failed_repeat_counts_its_rendered_blocks_as_a_successful_one_does(
     runner_with_failing_generator: BenchmarkRunner, runner_smoke: BenchmarkRunner
 ) -> None:
@@ -776,7 +789,7 @@ V2_FIELDS = {
     "graph_label_version",
     "selection_rule",
 }
-V03_FIELDS = {"method_version", "record_facts_version", "prompt_extras"}
+V03_FIELDS = {"method_version", "record_facts_version", "prompt_extras", "answer_parser_version"}
 
 
 def _has_key(value: object, name: str) -> bool:
@@ -796,6 +809,7 @@ def test_record_carries_method_and_versions(offline_lab: Lab) -> None:
     assert fields["scorer_version"] == "2.2.1"
     assert fields["judge_prompt_version"] == "1.1.0"
     assert fields["record_facts_version"] == RECORD_FACTS_VERSION == "1.0.0"
+    assert fields["answer_parser_version"] == "2.0.0"
     assert fields["prompt_extras"] == {
         "path_line": ["B", "C"],
         "target_type_tier": ["B", "C"],
@@ -810,6 +824,7 @@ def test_a_record_written_before_method_v03_still_loads() -> None:
     record = ReproducibilityRecord(**_v02_record_payload())
     assert record.method_version is None
     assert record.record_facts_version is None and record.prompt_extras is None
+    assert record.answer_parser_version is None
 
 
 def _v02_record_payload() -> dict[str, Any]:

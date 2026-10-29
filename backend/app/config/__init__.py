@@ -99,6 +99,14 @@ class RerankSettings:
     model: str  # cross-encoder model (fastembed)
 
 
+# The answer model's output cap (GENERATION_MAX_TOKENS), the same for A, B
+# and C. 1200 (v0.2.0) cut off answers in which the model wrote its reasoning
+# inside the answer, 4 instances so far; 4096 leaves room for those, and with
+# a prompt of about 3,400 tokens stays well inside a 32,768-token context
+# window (D-096).
+DEFAULT_GENERATION_MAX_TOKENS = 4096
+
+
 @dataclass(frozen=True, slots=True)
 class GenerationSettings:
     """Answer generation through the LiteLLM-compatible gateway (ADR-003)."""
@@ -107,7 +115,7 @@ class GenerationSettings:
     model: str
     temperature: float
     api_base: str | None
-    max_tokens: int = 1200
+    max_tokens: int = DEFAULT_GENERATION_MAX_TOKENS
     # Recorded with every benchmark run; an official run requires the family.
     model_family: str | None = None
     quantisation: str | None = None
@@ -336,7 +344,7 @@ def from_env() -> RetrievalSettings:
             model=generation_model,
             temperature=_env_float("GENERATION_TEMPERATURE", 0.0),
             api_base=os.environ.get("GENERATION_API_BASE"),
-            max_tokens=_env_int("GENERATION_MAX_TOKENS", 1200),
+            max_tokens=_env_int("GENERATION_MAX_TOKENS", DEFAULT_GENERATION_MAX_TOKENS),
             model_family=os.environ.get("GENERATION_MODEL_FAMILY") or None,
             quantisation=os.environ.get("GENERATION_MODEL_QUANTISATION") or None,
             reasoning=parse_reasoning_for_model(

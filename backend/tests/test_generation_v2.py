@@ -328,12 +328,24 @@ def test_generation_completed_events_carry_verdict_and_citation_count() -> None:
         assert payload["cited_blocks"] == 1
 
 
-def test_generation_max_tokens_defaults_to_1200(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_generation_max_tokens_defaults_to_4096(monkeypatch: pytest.MonkeyPatch) -> None:
+    """D-096: 1200 cut off answers that held the model's reasoning."""
     from app.config import GenerationSettings, from_env
 
     monkeypatch.delenv("GENERATION_MAX_TOKENS", raising=False)
-    assert from_env().generation.max_tokens == 1200
-    assert GenerationSettings("fake", "m", 0.0, None).max_tokens == 1200
+    assert from_env().generation.max_tokens == 4096
+    assert GenerationSettings("fake", "m", 0.0, None).max_tokens == 4096
+    assert LiteLLMAnswerGenerator(model="m")._max_tokens == 4096
+
+
+def test_the_output_cap_is_recorded_with_every_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.config import from_env
+    from app.evaluation.judge import FakeJudge
+    from app.evaluation.runner import settings_fields
+
+    monkeypatch.setenv("GENERATION_MAX_TOKENS", "2048")
+    fields = settings_fields(from_env(), FakeJudge(), "smoke", 1)
+    assert fields["max_tokens"] == 2048
 
 
 def test_generation_reasoning_comes_from_the_environment(

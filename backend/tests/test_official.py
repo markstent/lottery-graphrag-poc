@@ -1469,10 +1469,10 @@ def test_resume_refuses_different_settings(
     tmp_path: Path, gateway_env: None, data_dir: Path
 ) -> None:
     failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
-    _edit_kept(failing, 2029, lambda saved: saved["record"].update(max_tokens=4096))
+    _edit_kept(failing, 2029, lambda saved: saved["record"].update(max_tokens=1200))
     with pytest.raises(ValueError, match="max_tokens") as error:
         _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
-    assert "4096" in str(error.value)
+    assert "1200" in str(error.value)
     assert fresh.generated == fresh.ingested == [] and fresh.runners == []
 
 
@@ -1575,7 +1575,7 @@ def test_resume_refuses_kept_worlds_that_disagree(tmp_path: Path, data_dir: Path
     failing = Recorder(tmp_path, fail_on=2028)
     with pytest.raises(RuntimeError):
         _run(failing)
-    _edit_kept(failing, 2027, lambda saved: saved["record"].update(max_tokens=4096))
+    _edit_kept(failing, 2027, lambda saved: saved["record"].update(max_tokens=1200))
     fresh = Recorder(tmp_path)
     with pytest.raises(ValueError, match="max_tokens"):
         _run(fresh, resume=True)

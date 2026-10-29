@@ -26,7 +26,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -46,7 +48,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -64,7 +68,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -95,7 +101,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -115,7 +123,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -133,7 +143,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -164,7 +176,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -184,7 +198,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -204,7 +220,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -235,7 +253,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -255,7 +275,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -273,7 +295,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -304,7 +328,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -324,7 +350,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -342,7 +370,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -373,7 +403,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -393,7 +425,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -413,7 +447,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -444,7 +480,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -464,7 +502,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -482,7 +522,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -513,7 +555,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -533,7 +577,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -551,7 +597,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -582,7 +630,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -602,7 +652,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -622,7 +674,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -653,7 +707,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -673,7 +729,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -691,7 +749,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -722,7 +782,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -742,7 +804,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -760,7 +824,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -791,7 +857,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -811,7 +879,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -831,7 +901,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -862,7 +934,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -882,7 +956,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -900,7 +976,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -931,7 +1009,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -951,7 +1031,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -969,7 +1051,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1000,7 +1084,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1020,7 +1106,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1040,7 +1128,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1071,7 +1161,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1089,7 +1181,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1107,7 +1201,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1138,7 +1234,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1156,7 +1254,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1174,7 +1274,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1205,7 +1307,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1225,7 +1329,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1245,7 +1351,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1276,7 +1384,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1296,7 +1406,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1314,7 +1426,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1345,7 +1459,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1365,7 +1481,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1383,7 +1501,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1414,7 +1534,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1434,7 +1556,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1452,7 +1576,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1483,7 +1609,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1503,7 +1631,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1521,7 +1651,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1552,7 +1684,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1572,7 +1706,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1590,7 +1726,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1621,7 +1759,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1641,7 +1781,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1659,7 +1801,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1690,7 +1834,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1710,7 +1856,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1728,7 +1876,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1759,7 +1909,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1779,7 +1931,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1797,7 +1951,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1828,7 +1984,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1846,7 +2004,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1864,7 +2024,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1895,7 +2057,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1915,7 +2079,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -1933,7 +2099,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -1964,7 +2132,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -1984,7 +2154,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2002,7 +2174,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2033,7 +2207,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2053,7 +2229,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2073,7 +2251,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2104,7 +2284,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2124,7 +2306,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2142,7 +2326,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2173,7 +2359,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2193,7 +2381,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2211,7 +2401,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2242,7 +2434,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2262,7 +2456,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2282,7 +2478,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2313,7 +2511,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2333,7 +2533,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2351,7 +2553,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2382,7 +2586,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2402,7 +2608,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2420,7 +2628,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2451,7 +2661,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2471,7 +2683,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2491,7 +2705,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2522,7 +2738,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2542,7 +2760,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2560,7 +2780,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2591,7 +2813,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2611,7 +2835,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2629,7 +2855,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2660,7 +2888,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2680,7 +2910,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2700,7 +2932,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2731,7 +2965,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2751,7 +2987,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2769,7 +3007,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2800,7 +3040,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2820,7 +3062,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2838,7 +3082,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2869,7 +3115,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2889,7 +3137,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2909,7 +3159,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -2940,7 +3192,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -2958,7 +3212,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -2976,7 +3232,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3007,7 +3265,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3025,7 +3285,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3043,7 +3305,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3074,7 +3338,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3094,7 +3360,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3114,7 +3382,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3145,7 +3415,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3165,7 +3437,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3183,7 +3457,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3214,7 +3490,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3234,7 +3512,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3252,7 +3532,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3283,7 +3565,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3303,7 +3587,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3321,7 +3607,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3352,7 +3640,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3372,7 +3662,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3390,7 +3682,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3421,7 +3715,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3441,7 +3737,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3459,7 +3757,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3490,7 +3790,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3510,7 +3812,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3528,7 +3832,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3559,7 +3865,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3579,7 +3887,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3597,7 +3907,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3628,7 +3940,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3648,7 +3962,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3666,7 +3982,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   },
@@ -3697,7 +4015,9 @@
         "judge_abstention": 2.0,
         "failure_classes": {
           "retrieval_failure": 2
-        }
+        },
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "B": {
         "repeats": 2,
@@ -3715,7 +4035,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       },
       "C": {
         "repeats": 2,
@@ -3733,7 +4055,9 @@
         "judge_faithfulness": 2.0,
         "judge_citation_accuracy": 2.0,
         "judge_abstention": 2.0,
-        "failure_classes": {}
+        "failure_classes": {},
+        "cut_off_repeats": null,
+        "token_limit_repeats": null
       }
     }
   }

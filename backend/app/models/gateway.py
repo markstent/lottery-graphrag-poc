@@ -104,11 +104,19 @@ class CompletionRequest:
 
 @dataclass(frozen=True, slots=True)
 class Completion:
-    """Stripped model text, call latency and token usage when reported."""
+    """Stripped model text, call latency and token usage when reported.
+
+    ``finish_reason`` is the provider's stop reason as LiteLLM reports it
+    ("stop", "length", ...), or None when it reports none.
+    ``token_limit_reached`` says whether the output stopped at the request's
+    ``max_tokens`` (`_token_limit_reached`), None when nothing says.
+    """
 
     text: str
     latency_ms: float
     usage: dict[str, int] | None
+    finish_reason: str | None = None
+    token_limit_reached: bool | None = None
 
 
 # LiteLLM imports much of itself on first attribute use. Two threads doing that
@@ -145,7 +153,8 @@ def complete(request: CompletionRequest) -> Completion:
             timeout=request.timeout_s,
             **(off_kwargs or {}),
         )
-        content = response["choices"][0]["message"]["content"]
+        choice = response["choices"][0]
+        content = choice["message"]["content"]
     except Exception as error:
         raise GatewayError(f"Model gateway call failed: {error}") from error
     # Before the empty-answer check: a model that ignores "off" and spends the
@@ -157,7 +166,35 @@ def complete(request: CompletionRequest) -> Completion:
     if not isinstance(content, str) or not content.strip():
         raise EmptyCompletionError("Model gateway returned an empty answer")
     latency_ms = (time.perf_counter() - started) * 1000
-    return Completion(content.strip(), latency_ms, _usage(response))
+    usage = _usage(response)
+    reason = _field(choice, "finish_reason")
+    finish_reason = reason if isinstance(reason, str) else None
+    return Completion(
+        content.strip(),
+        latency_ms,
+        usage,
+        finish_reason,
+        _token_limit_reached(finish_reason, usage, request.max_tokens),
+    )
+
+
+def _token_limit_reached(
+    finish_reason: str | None, usage: dict[str, int] | None, max_tokens: int
+) -> bool | None:
+    """Whether the output stopped at ``max_tokens``: True when the provider
+    says "length" or reports as many completion tokens as the cap; False when
+    it reports fewer; None when it reports neither a count nor "length".
+
+    The count is read as well as the stop reason because LiteLLM's
+    ``ollama/`` adapter reports "stop" for every answer, also for one that
+    Ollama stopped at the cap (tests/test_gateway.py runs it offline).
+    """
+    if finish_reason == "length":
+        return True
+    completion_tokens = (usage or {}).get("completion_tokens")
+    if completion_tokens is None:
+        return None
+    return completion_tokens >= max_tokens
 
 
 def _reasoning_tokens(response: object) -> int:
