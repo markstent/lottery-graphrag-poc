@@ -338,19 +338,41 @@ describe('the group floor for an untested sub-group', () => {
       ).delta?.values.H2_name,
     ).toBe(0.1)
   })
-  it('is told of a run whose recorded interval sits below the floor', () => {
-    expect(printsIntervalBelowFloor(withComparisons(few))).toBe(true)
+  const printed = (groups: string) =>
+    `Name-anchored questions: Graph minus text search -1.8 evidence points (95 percent interval -3.7 to 0.0, 4 pairs in ${groups}); no test is run on this sub-group.`
+  const withHeadlines = (...headlines: string[]): Summary => ({
+    ...OFFICIAL,
+    headlines,
+  })
+  it('is told of a run whose recorded headlines print an interval below the floor', () => {
+    expect(printsIntervalBelowFloor(withHeadlines(printed('2 groups')))).toBe(
+      true,
+    )
+    expect(printsIntervalBelowFloor(withHeadlines(printed('1 group')))).toBe(
+      true,
+    )
+    expect(printsIntervalBelowFloor(withHeadlines(printed('6 groups')))).toBe(
+      false,
+    )
+    expect(printsIntervalBelowFloor(withHeadlines(printed('12 groups')))).toBe(
+      false,
+    )
+  })
+  it('is not told of a run whose headlines print the mean alone below the floor', () => {
     expect(
       printsIntervalBelowFloor(
-        withComparisons({ ...few, clusters: MIN_GROUPS_FOR_INTERVAL }),
+        withHeadlines(
+          'Name-anchored questions: Graph minus text search -1.8 evidence points, too few groups for an interval (4 pairs in 2 groups); no test is run on this sub-group.',
+        ),
       ),
     ).toBe(false)
-    expect(
-      printsIntervalBelowFloor(
-        withComparisons({ ...few, low: null, high: null }),
-      ),
-    ).toBe(false)
-    expect(printsIntervalBelowFloor(withComparisons(cell({})))).toBe(false)
+  })
+  it('is not told of a new run that records an interval below the floor but prints none', () => {
+    const recorded: Summary = {
+      ...withHeadlines(),
+      comparisons: [{ ...few, low: 0.05, high: 0.15 }],
+    }
+    expect(printsIntervalBelowFloor(recorded)).toBe(false)
   })
   it('applies to the split too', () => {
     const [row] =

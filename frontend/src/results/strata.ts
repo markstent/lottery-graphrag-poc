@@ -112,19 +112,21 @@ const hasBar = (values: BarGroup['values']) =>
 const lacksGroups = (cell: Comparison | Split) =>
   cell.reason === 'not_in_family' && cell.clusters < MIN_GROUPS_FOR_INTERVAL
 
+/** A recorded line that prints an interval and says it spans K groups: "(95 percent interval a to b, N pairs in K groups)". */
+const PRINTED_INTERVAL_GROUPS = /95 percent interval[^)]*\bin (\d+) groups?\)/
+
 /**
- * Whether a run written before the group floor carries an interval over fewer
- * groups than the floor: its recorded headlines and sub-group lines print it,
- * and the charts withdraw it.
+ * Whether a run made before the group floor prints an interval over fewer
+ * groups than the floor in its recorded headlines. The harness still records
+ * low and high for such cells (the table view shows them), so the cells cannot
+ * tell an old run from a new one; the printed lines can, because a run made
+ * under the rule prints the mean alone there.
  */
 export function printsIntervalBelowFloor(summary: Summary): boolean {
-  const cells: (Comparison | Split)[] = [
-    ...summary.comparisons,
-    ...(summary.ontology_split ?? []),
-  ]
-  return cells.some(
-    (cell) => lacksGroups(cell) && cell.low != null && cell.high != null,
-  )
+  return summary.headlines.some((line) => {
+    const groups = PRINTED_INTERVAL_GROUPS.exec(line)?.[1]
+    return groups !== undefined && Number(groups) < MIN_GROUPS_FOR_INTERVAL
+  })
 }
 
 /** Grouped bars of a metric per stratum, with B minus A as the delta; a cell with too few pairs or groups has none. */
