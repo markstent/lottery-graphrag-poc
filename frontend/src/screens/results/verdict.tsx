@@ -20,7 +20,7 @@ export const QUICK_CHECK_WARNING =
   'A quick check tests the scoring code with a stand-in model. Its numbers are not results.'
 
 export const BELOW_FLOOR_NOTE =
-  'Intervals over fewer than six groups predate the rule; charts omit them.'
+  'This run predates the six-group rule; charts leave out its intervals over fewer than six groups.'
 
 /** The recorded headlines, never rewritten; a run from before the group floor gets a note under them. */
 const Headlines = ({ summary }: { summary: Summary }) => (
