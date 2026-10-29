@@ -1,6 +1,6 @@
 /**
  * The replay clock over a recorded A, B, C run made with a local model (the
- * H1 recording, 35.6 s with real pauses while the model answers), with a
+ * H1 recording, 70.8 s with real pauses while the model answers), with a
  * hand-driven clock and scheduler so no real timer is involved.
  */
 
@@ -62,7 +62,7 @@ describe('timeline', () => {
     recorded.forEach((event, i) => {
       expect(replay.offsets[i]).toBeCloseTo(event.t_ms - origin, 6)
     })
-    expect(replay.duration).toBeCloseTo(42862.3, 1)
+    expect(replay.duration).toBeCloseTo(70779.9, 1)
   })
 
   it('orders events by sequence whatever order they arrive in', () => {

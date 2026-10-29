@@ -44,8 +44,14 @@ const loadActual = (id: string) =>
 const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const durationOf = (run: (typeof RECORDINGS)[number]) =>
   run.events.at(-1)!.t_ms - run.events[0].t_ms
-/** A recording whose length is not a whole number of milliseconds. */
-const fractional = RECORDINGS.find((run) => durationOf(run) % 1 > 0)!
+/**
+ * A recording whose length is a whole number of milliseconds plus less than
+ * half of one, so rounding it would fall short of the end.
+ */
+const fractional = RECORDINGS.find((run) => {
+  const fraction = durationOf(run) % 1
+  return fraction > 0 && fraction < 0.5
+})!
 const QUESTIONS = [
   ...RECORDINGS.map((run) => ({
     instance_id: run.instance_id,
@@ -748,7 +754,7 @@ describe('Live Lab, timeline', () => {
   })
 
   it('completes the run when the slider is moved to its far end, whatever the fraction of a millisecond', async () => {
-    // A run of 42 862.3 ms: a slider that stops at 42 862 would never apply the last event.
+    // A run of, say, 21 695.3 ms: a slider that stops at 21 695 would never apply the last event.
     const exact = durationOf(fractional)
     expect(exact % 1).toBeGreaterThan(0)
     expect(exact % 1).toBeLessThan(0.5)
@@ -762,7 +768,7 @@ describe('Live Lab, timeline', () => {
   })
 
   it('slider reads its maximum at the end of a run', async () => {
-    // A run of 42 862.3 ms: rounding the cursor would leave the slider 1 below its maximum.
+    // A run of, say, 21 695.3 ms: rounding the cursor would leave the slider 1 below its maximum.
     vi.useFakeTimers({ shouldAdvanceTime: false })
     api({ '/api/v1/health/ready': DOWN })
     open(`#/live-lab?question=${fractional.instance_id}`)

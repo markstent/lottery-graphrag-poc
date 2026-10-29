@@ -134,6 +134,9 @@ At 1920 by 1080, the first screen of a running run holds the question bar, the g
 Sources: a **recorded run** replays one of four real captures through the API on the dev world, with qwen3.6 through Ollama and reasoning off (`frontend/src/run/fixtures/recorded/`, D-056).
 They need no model, and they are not edited.
 All four were re-recorded through the API under method v0.3 (D-092), so their scorecards say "Evidence recall" and the question bar carries no method note.
+They were re-recorded again on 2026-10-29 with answer parser 2.1.1 and the 4,096-token output limit (D-096).
+In the H1 recording C's answer is an object the model never closed: it is shown with its verdict, without braces, in its capped scroll box, and with no cut-off note, because the model stopped at 3,803 of 4,096 tokens.
+Its verdict, "Austria, Czech Republic", and the last line of its answer, "Answer: Czech Republic.", disagree; the parser reads the verdict as written and does not reconcile the two.
 A recording names its method; one that names none was made before the field existed, so it is of the old method and the question bar says "recorded under the old method (v0.2)" beside the source.
 No recording in the repository is of the old method; unit tests cover that reading.
 The tests' own live runs (`frontend/src/run/fixtures/run-*.json`) are runs of typed questions through the API on the tiny world with the fake model, written by `backend/tests/test_run_fixtures.py`, so every selection and budget in them is what the code did.
