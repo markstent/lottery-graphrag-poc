@@ -369,6 +369,57 @@ describe('two methods', () => {
     expect(table.queryByText('0.99')).toBeNull()
   })
 
+  it("a question's details count the answers cut off and name the run's token limit", async () => {
+    const instances = structuredClone(V03_INSTANCES)
+    const first = instances[0]
+    first.pipelines.A!.cut_off_repeats = 0
+    first.pipelines.A!.token_limit_repeats = 0
+    first.pipelines.B!.cut_off_repeats = null
+    first.pipelines.B!.token_limit_repeats = null
+    first.pipelines.C!.cut_off_repeats = 2
+    first.pipelines.C!.token_limit_repeats = 1
+    stubApi({
+      ...routes,
+      [`/api/v1/benchmarks/${V03_RUN.run_id}/instances`]: instances,
+    })
+    open(`run=${V03_RUN.run_id}`)
+    const table = await questionTable()
+    fireEvent.click(
+      await table.findByRole('button', {
+        name: `Details for ${first.instance_id}`,
+      }),
+    )
+    const row = table.getByRole('rowheader', { name: 'Answers cut off' })
+    // The limit is the run's recorded max_tokens (512 here), never a typed number.
+    expect(
+      within(row.closest('tr')!)
+        .getAllByRole('cell')
+        .map((c) => c.textContent),
+    ).toEqual(['0', 'Not recorded', '2 (1 at the 512-token limit)'])
+  })
+
+  it("a run recorded before the cut-off record says so in each approach's cell", async () => {
+    stubApi({
+      ...routes,
+      [`/api/v1/benchmarks/${V03_RUN.run_id}/instances`]: V03_INSTANCES,
+    })
+    open(`run=${V03_RUN.run_id}`)
+    const table = await questionTable()
+    fireEvent.click(
+      await table.findByRole('button', {
+        name: `Details for ${V03_INSTANCES[0].instance_id}`,
+      }),
+    )
+    const row = await table.findByRole('rowheader', {
+      name: 'Answers cut off',
+    })
+    expect(
+      within(row.closest('tr')!)
+        .getAllByRole('cell')
+        .map((c) => c.textContent),
+    ).toEqual(['Not recorded', 'Not recorded', 'Not recorded'])
+  })
+
   it("a v0.2 run's question table keeps its evidence score", async () => {
     stubApi(routes)
     open('run=fixture-official')

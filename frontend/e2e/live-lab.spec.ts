@@ -596,6 +596,34 @@ test('on a desktop the tables fit, so their boxes are neither tab stops nor name
   }
 })
 
+test('a long answer scrolls inside its own capped card and leaves the other cards their height', async ({
+  page,
+}) => {
+  await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+  await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await toEnd(page)
+  const card = (name: string) =>
+    page.getByRole('region', { name: `${name} answer`, exact: true })
+  const a = card('A · Text search')
+  const c = card('C · Graph + Ontology')
+  await expect(c).toBeVisible()
+  // C's answer in this recording is about 3,900 characters: it scrolls in its
+  // card, which the keyboard can reach, and A keeps its own, shorter height.
+  const scroller = page.getByRole('group', {
+    name: 'C · Graph + Ontology answer text',
+  })
+  await expect(scroller).toHaveAttribute('tabindex', '0')
+  await scroller.focus()
+  await page.keyboard.press('PageDown')
+  await expect
+    .poll(() => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0)
+  const height = async (box: Locator) => (await box.boundingBox())!.height
+  expect(await height(c)).toBeLessThanOrEqual(24 * 16 + 60)
+  expect(await height(a)).toBeLessThan(await height(c))
+})
+
 // The app is built for 16:9 screens; on a phone Live Lab stacks the canvas
 // and the three approaches, and wide tables scroll in their own box.
 test.describe('at phone width', () => {

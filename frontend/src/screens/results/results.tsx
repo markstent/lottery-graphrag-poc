@@ -11,6 +11,7 @@ import { hrefFor, useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
 import { filterFromParams, paramsWithFilter } from '../../results/questions'
+import { recordedNumber } from '../../results/reproducibility'
 import { defaultRun, standing, standingWord } from '../../results/runs'
 import { groundednessRows } from '../../results/strata'
 import { Screen } from '../screen'
@@ -80,6 +81,9 @@ function RunView({ run }: { run: Run }) {
           <QuestionsPanel
             runId={run.run_id}
             evidence={evidenceMetric(load.data.method_version)}
+            maxTokens={recordedNumber(
+              load.data.summary.reproducibility.run.max_tokens,
+            )}
             tableRef={tableRef}
             badge={badge}
           />

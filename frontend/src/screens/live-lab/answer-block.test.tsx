@@ -99,4 +99,41 @@ describe('AnswerBlock', () => {
     render(<AnswerBlock id="C" results={none} onOpen={vi.fn()} />)
     expect(screen.getByText('No answer was recorded.')).toBeVisible()
   })
+
+  it('says an answer stopped at the token limit it was generated under', () => {
+    const cut = answering('It began [1] and then')
+    Object.assign(cut.results!.B.answer, {
+      cut_off: true,
+      token_limit_reached: true,
+      max_tokens: 4096,
+    })
+    render(<AnswerBlock id="B" results={cut} onOpen={vi.fn()} />)
+    const block = screen.getByRole('region', { name: 'B · Graph answer' })
+    expect(
+      within(block).getByText('The answer stopped at the 4,096-token limit.'),
+    ).toBeVisible()
+  })
+
+  it('has no note for an answer that finished', () => {
+    const done = answering('Done [1].')
+    Object.assign(done.results!.B.answer, {
+      cut_off: false,
+      token_limit_reached: false,
+      max_tokens: 4096,
+    })
+    render(<AnswerBlock id="B" results={done} onOpen={vi.fn()} />)
+    expect(screen.queryByText(/token limit|part-way/)).toBeNull()
+  })
+
+  it('keeps a long answer inside a card of capped height that scrolls on its own', () => {
+    render(
+      <AnswerBlock
+        id="B"
+        results={answering('A long answer.')}
+        onOpen={vi.fn()}
+      />,
+    )
+    const text = screen.getByText('A long answer.')
+    expect(text.parentElement).toHaveClass('max-h-96', 'overflow-y-auto')
+  })
 })

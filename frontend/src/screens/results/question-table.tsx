@@ -8,6 +8,7 @@ import {
   listDatasets,
   type Schemas,
 } from '../../api/client'
+import { cutOffCount } from '../../app/cut-off'
 import { EVIDENCE_LABELS, type EvidenceMetric } from '../../app/method'
 import { failureWords } from '../../app/plain-words'
 import { hrefFor, useRoute } from '../../app/router'
@@ -65,8 +66,8 @@ const classCounts = (classes: Record<string, number>) =>
     })
     .join('; ') || 'None'
 
-/** The scores of one question in one world, a column per approach. */
-function Details({ row }: { row: Row }) {
+/** The scores of one question in one world, a column per approach; `maxTokens` is the run's recorded output limit. */
+function Details({ row, maxTokens }: { row: Row; maxTokens: number | null }) {
   const rows: [string, (s: PipelineScores) => string][] = [
     [MEASURES.recall, (s) => num(s.evidence_recall, evidenceScore)],
     [MEASURES.precision, (s) => num(s.evidence_precision, evidenceScore)],
@@ -82,6 +83,10 @@ function Details({ row }: { row: Row }) {
     ),
     [MEASURES.failures, (s) => classCounts(s.failure_classes)],
     [MEASURES.unscored, (s) => String(s.unscored_repeats)],
+    [
+      MEASURES.cutOff,
+      (s) => cutOffCount(s.cut_off_repeats, s.token_limit_repeats, maxTokens),
+    ],
   ]
   return (
     <DataTable
@@ -136,6 +141,7 @@ function Scores({
 function QuestionRow({
   row,
   metric,
+  maxTokens,
   open,
   onToggle,
   activeWorld,
@@ -143,6 +149,7 @@ function QuestionRow({
 }: {
   row: Row
   metric: EvidenceMetric
+  maxTokens: number | null
   open: boolean
   onToggle: () => void
   activeWorld: number | null
@@ -211,7 +218,7 @@ function QuestionRow({
           className="border-b border-hairline bg-surface-raised"
         >
           <td colSpan={13} className="p-3">
-            <Details row={row} />
+            <Details row={row} maxTokens={maxTokens} />
           </td>
         </tr>
       )}
@@ -296,6 +303,7 @@ function Filters({
 function Table({
   rows,
   metric,
+  maxTokens,
   tableRef,
   badge,
   activeWorld,
@@ -303,6 +311,7 @@ function Table({
 }: {
   rows: Row[]
   metric: EvidenceMetric
+  maxTokens: number | null
   tableRef: RefObject<HTMLDivElement | null>
   badge?: string
   activeWorld: number | null
@@ -395,6 +404,7 @@ function Table({
                 key={row.instance_id}
                 row={row}
                 metric={metric}
+                maxTokens={maxTokens}
                 open={opened.has(row.instance_id)}
                 onToggle={() => toggle(row.instance_id)}
                 activeWorld={activeWorld}
@@ -439,12 +449,15 @@ function Table({
 export function QuestionsPanel({
   runId,
   evidence,
+  maxTokens,
   tableRef,
   badge,
 }: {
   runId: string
   /** The evidence metric of the run's method: F1 under v0.2, recall from v0.3 (D-087). */
   evidence: EvidenceMetric
+  /** The answer model's output limit the run recorded, or null when it recorded none. */
+  maxTokens: number | null
   tableRef: RefObject<HTMLDivElement | null>
   badge?: string
 }) {
@@ -468,6 +481,7 @@ export function QuestionsPanel({
         <Table
           rows={instances.data}
           metric={evidence}
+          maxTokens={maxTokens}
           tableRef={tableRef}
           badge={badge}
           activeWorld={activeWorld}

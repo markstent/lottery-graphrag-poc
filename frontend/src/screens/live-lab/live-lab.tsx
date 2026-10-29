@@ -278,7 +278,7 @@ export function LiveLab() {
       />
       {stored !== null && (
         <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
             {PIPELINES.map(({ id }) => (
               <AnswerBlock key={id} id={id} results={stored} onOpen={open} />
             ))}

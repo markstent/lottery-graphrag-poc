@@ -10,6 +10,8 @@ export const MEASURES = {
   failures: 'Failures',
   /** Repeats that have no score because the answer model failed: not the generation_failure class. */
   unscored: 'Repeats with no score (generation failed)',
+  /** Repeats whose answer stops before the model finished it (D-096). */
+  cutOff: 'Answers cut off',
   judge: 'Judge (0 to 2)',
   judgeName: 'Judge',
 } as const
