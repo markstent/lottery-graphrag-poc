@@ -2504,6 +2504,11 @@ export interface components {
              */
             raw_text: string;
             /**
+             * Surrogates Replaced
+             * @description Lone UTF-16 surrogates replaced with U+FFFD in the raw text, verdict and answer; None in an answer recorded before answer parser 2.1.1
+             */
+            surrogates_replaced?: number | null;
+            /**
              * Text
              * @description Parsed prose answer; what the evaluator scores
              */

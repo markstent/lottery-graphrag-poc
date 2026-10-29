@@ -10,6 +10,7 @@ for readiness and the models endpoint.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 from collections.abc import Callable, Mapping
@@ -78,8 +79,33 @@ def parse_reasoning_for_model(value: str, variable: str, provider: str, model: s
     return mode
 
 
+# UTF-16 surrogates in a Python string. Python strings can hold them (a JSON
+# escape such as \ud83d decodes to one), but UTF-8 cannot, so a record holding
+# one fails to serialise (D-096, parser 2.1.1). A high surrogate followed by a
+# low one is a pair, the two halves of one character; any other is lone.
+_SURROGATE_PAIR = re.compile("[\ud800-\udbff][\udc00-\udfff]")
+_SURROGATE = re.compile("[\ud800-\udfff]")
+REPLACEMENT_CHARACTER = "\ufffd"
+
+
+def _joined(match: re.Match[str]) -> str:
+    high, low = (ord(half) for half in match.group(0))
+    return chr(0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00))
+
+
+def replace_lone_surrogates(text: str) -> tuple[str, int]:
+    """``text`` with each surrogate pair joined into the one character it
+    stands for, and each lone surrogate replaced by U+FFFD; and how many
+    were replaced. The result always encodes as UTF-8."""
+    return _SURROGATE.subn(REPLACEMENT_CHARACTER, _SURROGATE_PAIR.sub(_joined, text))
+
+
 class GatewayError(RuntimeError):
-    """Raised when the provider call fails or returns no content."""
+    """Raised when the provider call fails or returns no content. Its
+    message, which may quote the provider, holds no lone surrogate."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(replace_lone_surrogates(message)[0])
 
 
 class EmptyCompletionError(GatewayError):
@@ -110,6 +136,8 @@ class Completion:
     ("stop", "length", ...), or None when it reports none.
     ``token_limit_reached`` says whether the output stopped at the request's
     ``max_tokens`` (`_token_limit_reached`), None when nothing says.
+    ``surrogates_replaced`` counts the lone surrogates in the provider's text
+    that ``text`` holds as U+FFFD (`replace_lone_surrogates`).
     """
 
     text: str
@@ -117,6 +145,7 @@ class Completion:
     usage: dict[str, int] | None
     finish_reason: str | None = None
     token_limit_reached: bool | None = None
+    surrogates_replaced: int = 0
 
 
 # LiteLLM imports much of itself on first attribute use. Two threads doing that
@@ -169,12 +198,14 @@ def complete(request: CompletionRequest) -> Completion:
     usage = _usage(response)
     reason = _field(choice, "finish_reason")
     finish_reason = reason if isinstance(reason, str) else None
+    text, replaced = replace_lone_surrogates(content.strip())
     return Completion(
-        content.strip(),
+        text,
         latency_ms,
         usage,
         finish_reason,
         _token_limit_reached(finish_reason, usage, request.max_tokens),
+        replaced,
     )
 
 

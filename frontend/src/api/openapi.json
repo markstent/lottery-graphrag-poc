@@ -4716,6 +4716,18 @@
             "title": "Raw Text",
             "type": "string"
           },
+          "surrogates_replaced": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lone UTF-16 surrogates replaced with U+FFFD in the raw text, verdict and answer; None in an answer recorded before answer parser 2.1.1",
+            "title": "Surrogates Replaced"
+          },
           "text": {
             "description": "Parsed prose answer; what the evaluator scores",
             "title": "Text",

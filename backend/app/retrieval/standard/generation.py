@@ -27,7 +27,12 @@ from typing import Protocol
 
 from app.config import DEFAULT_GENERATION_MAX_TOKENS
 from app.evidence import AnswerForm, Citation, EvidenceChunk, RagAnswer
-from app.models.gateway import CompletionRequest, GatewayError, complete
+from app.models.gateway import (
+    CompletionRequest,
+    GatewayError,
+    complete,
+    replace_lone_surrogates,
+)
 
 PROMPT_VERSION = "3.0.0"
 
@@ -50,7 +55,9 @@ SYSTEM_PROMPT = (
 # escapes kept as written, "unclosed" in place of "cut_off", a second object
 # or text after a closed object is plain, a verdict needs its comma, a final
 # bare quote is kept, and a high surrogate cut from its pair is left out.
-ANSWER_PARSER_VERSION = "2.1.0"
+# 2.1.1: a lone surrogate anywhere in the verdict or the answer, as a JSON
+# escape or in the text itself, becomes U+FFFD and is counted.
+ANSWER_PARSER_VERSION = "2.1.1"
 
 FENCED_JSON = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
@@ -94,6 +101,8 @@ class GenerationOutput:
     finish_reason: str | None = None
     token_limit_reached: bool | None = None
     max_tokens: int | None = None
+    # Lone surrogates the gateway replaced with U+FFFD in the raw text.
+    surrogates_replaced: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +113,8 @@ class ParsedAnswer:
     answer: str
     cited_blocks: list[int]
     form: AnswerForm
+    # Lone surrogates replaced with U+FFFD in the verdict and the answer.
+    surrogates_replaced: int = 0
 
 
 class AnswerGenerator(Protocol):
@@ -290,13 +301,23 @@ def parse_answer(raw: str, block_count: int) -> ParsedAnswer:
         form, verdict, answer = read
     else:
         form, verdict, answer = "plain", "", raw
+    # A JSON escape such as \ud83d decodes to a lone surrogate, which no record
+    # can serialise; it becomes U+FFFD, counted, and a proper pair stays.
+    verdict, in_verdict = replace_lone_surrogates(verdict)
+    answer, in_answer = replace_lone_surrogates(answer)
     cited: list[int] = []
     for match in CITATION.finditer(answer):
         for part in match.group(1).split(","):
             number = int(part)
             if 1 <= number <= block_count and number not in cited:
                 cited.append(number)
-    return ParsedAnswer(verdict=verdict, answer=answer, cited_blocks=cited, form=form)
+    return ParsedAnswer(
+        verdict=verdict,
+        answer=answer,
+        cited_blocks=cited,
+        form=form,
+        surrogates_replaced=in_verdict + in_answer,
+    )
 
 
 def is_cut_off(form: AnswerForm, token_limit_reached: bool | None) -> bool:
@@ -311,13 +332,15 @@ def answer_from(
     output: GenerationOutput, contexts: list[EvidenceChunk], model: str, context_tokens: int
 ) -> RagAnswer:
     """The recorded answer for ``output`` over ``contexts`` (prompt order),
-    built the same way by A, B and C."""
-    parsed = parse_answer(output.raw_text, block_count=len(contexts))
+    built the same way by A, B and C. Every lone surrogate in the raw text,
+    the verdict and the answer is U+FFFD by now, and counted."""
+    raw_text, in_raw = replace_lone_surrogates(output.raw_text)
+    parsed = parse_answer(raw_text, block_count=len(contexts))
     return RagAnswer(
         text=parsed.answer,
         verdict=parsed.verdict,
         cited_blocks=parsed.cited_blocks,
-        raw_text=output.raw_text,
+        raw_text=raw_text,
         model=model,
         latency_ms=round(output.latency_ms, 1),
         context_tokens=context_tokens,
@@ -328,6 +351,7 @@ def answer_from(
         token_limit_reached=output.token_limit_reached,
         max_tokens=output.max_tokens,
         cut_off=is_cut_off(parsed.form, output.token_limit_reached),
+        surrogates_replaced=output.surrogates_replaced + in_raw + parsed.surrogates_replaced,
     )
 
 
@@ -395,4 +419,5 @@ class LiteLLMAnswerGenerator:
             completion.finish_reason,
             completion.token_limit_reached,
             self._max_tokens,
+            completion.surrogates_replaced,
         )

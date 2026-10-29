@@ -245,8 +245,8 @@ The prompt numbers the selected blocks in prompt order, whatever their kind, and
 The prompt version is `PROMPT_VERSION` 3.0.0 (D-085), recorded with every benchmark run (2.0.0, D-024, was the prompt of v0.2.0).
 It tells the model that the verdict is the answer itself in one line and never a status word such as "success" or "ok", and that a source line starting with "reached from" shows how that record connects to an entity named in the question.
 The same prompt serves A, B and C.
-The answer parser is version `ANSWER_PARSER_VERSION` 2.1.0 (D-096), recorded with every run as `answer_parser_version`; a run recorded without it was read by parser 1.0.0, which tried strict JSON, then fenced JSON, then plain text.
-Parser 2.0.0 was in use for a few hours on 2026-10-29 (the Live Lab re-recordings of that day); 2.1.0 carries the fixes of its review.
+The answer parser is version `ANSWER_PARSER_VERSION` 2.1.1 (D-096), recorded with every run as `answer_parser_version`; a run recorded without it was read by parser 1.0.0, which tried strict JSON, then fenced JSON, then plain text.
+Parser 2.0.0 was in use for a few hours on 2026-10-29 (the Live Lab re-recordings of that day); 2.1.0 carries the fixes of its review, and 2.1.1 makes every answer encodable (below).
 `parse_answer` reads every output the same way, whatever the pipeline, and `answer_from` builds the recorded answer from it for A, B and C alike:
 
 1. **json**: the output is the JSON object, read with control characters inside its strings accepted (`strict=False`), or the object inside a code fence.
@@ -263,12 +263,14 @@ Parser 2.0.0 was in use for a few hours on 2026-10-29 (the Live Lab re-recording
    Choosing one of several objects would drop answer text the model wrote, so the parser does not choose.
 
 The parser never invents content and never drops text the model wrote into its answer.
+One exception keeps every record writable: a lone UTF-16 surrogate, half of a character pair standing alone, cannot be encoded as UTF-8, so a Live Lab stream or a results file holding one would fail.
+The gateway (`replace_lone_surrogates`, for answer and judge text alike, and for its error messages) and then the parser (for what a JSON escape such as `\ud83d` decodes to, in the verdict and the answer) join each proper pair into its one character and replace each lone surrogate with U+FFFD; the answer records how many in `surrogates_replaced` (parser 2.1.1).
 The verdict is read from its slot as written and is never reconciled with the answer text, so an answer can contradict its own verdict, as the re-recorded H1 C answer does (verdict "Austria, Czech Republic", answer ending "Answer: Czech Republic.").
 Every stored output that parser 1.0.0 read as JSON reads the same under 2.0.0; only outputs it left as plain text read differently (D-096).
 A citation `[n]` or `[n, m]` counts only if it points at a block the model was shown, so an answer cannot cite a source it was not given.
 Ranges such as `[1-3]` are not supported.
 The result keeps the parsed answer, the verdict, the cited block numbers, the model's raw text and the token usage.
-It also records how the output was read and ended: `answer_form`, the provider's `finish_reason`, `token_limit_reached`, the call's `max_tokens` and `cut_off`.
+It also records how the output was read and ended: `answer_form`, the provider's `finish_reason`, `token_limit_reached`, the call's `max_tokens`, `cut_off` and `surrogates_replaced`.
 `token_limit_reached` is true when the stop reason is `length` or the completion token count reached `max_tokens`, false when fewer tokens were reported, and null when the provider reports neither.
 The count is read as well because LiteLLM's `ollama/` adapter reports `stop` for every answer, also for one Ollama stopped at the limit (`tests/test_gateway.py` runs it offline).
 An answer is `cut_off` when it stopped at the limit, or when its form is `unclosed` and the provider reported neither a stop reason of `length` nor a token count; an unclosed object that stopped below the limit is how the model ended its reply, not a cut (the re-recorded H1 C answer: `stop`, 3,803 of 4,096 tokens).

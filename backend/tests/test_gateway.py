@@ -462,3 +462,34 @@ def test_litellm_is_loaded_by_one_thread_at_a_time(monkeypatch: pytest.MonkeyPat
     for thread in threads:
         thread.join()
     assert stub.most_inside == 1
+
+
+@pytest.mark.parametrize(
+    ("content", "text", "replaced"),
+    [
+        ("a \ud83d b", "a \ufffd b", 1),
+        ("pair \ud83d\ude00 ok", "pair \U0001f600 ok", 0),
+        ("end \ud83d", "end \ufffd", 1),
+        ("\ude00 start and \udbff\udbff", "\ufffd start and \ufffd\ufffd", 3),
+    ],
+)
+def test_model_text_with_a_lone_surrogate_is_made_encodable(
+    monkeypatch: pytest.MonkeyPatch, content: str, text: str, replaced: int
+) -> None:
+    """Answer and judge text both pass through here (parser 2.1.1, D-096)."""
+    monkeypatch.setitem(sys.modules, "litellm", StubLiteLLM(content))
+    result = complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0))
+    assert (result.text, result.surrogates_replaced) == (text, replaced)
+    result.text.encode("utf-8")
+
+
+def test_a_gateway_error_message_with_a_lone_surrogate_is_made_encodable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(
+        sys.modules, "litellm", StubLiteLLM(None, RuntimeError("provider said \ud83d"))
+    )
+    with pytest.raises(GatewayError) as raised:
+        complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0))
+    assert "\ufffd" in str(raised.value)
+    str(raised.value).encode("utf-8")

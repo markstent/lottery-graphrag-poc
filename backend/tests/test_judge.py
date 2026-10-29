@@ -428,3 +428,27 @@ def test_pairs_split_answered_and_abstained() -> None:
         "answered": [(2, 2), (1, 1), (0, 0)],
         "abstained": [(0, 2), (2, 0)],
     }
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        # Lone surrogates as escapes inside the reply, around valid scores.
+        '{"note": "\\ud83d", "correctness": 2, "completeness": 1, "faithfulness": 1, '
+        '"citation_accuracy": 1, "abstention": 2}',
+        # A lone surrogate as a score: a recorded failure, not a crash.
+        '{"correctness": "\\ud83d", "completeness": 1, "faithfulness": 1, '
+        '"citation_accuracy": 1, "abstention": 2}',
+    ],
+)
+def test_a_judge_reply_with_a_lone_surrogate_never_crashes_the_record(
+    stub_gateway_returning: Callable[[str], Gateway], raw: str
+) -> None:
+    verdict = GatewayJudge(SETTINGS, gateway=stub_gateway_returning(raw)).judge(ITEM)
+    json.dumps(dataclasses.asdict(verdict), ensure_ascii=False).encode("utf-8")
+
+
+def test_the_judge_reads_an_answer_with_a_replacement_character() -> None:
+    item = dataclasses.replace(ITEM, answer="It was \ufffd PLV_PAYMENTS_3 [1].")
+    _, user = build_judge_prompt(item)
+    user.encode("utf-8")

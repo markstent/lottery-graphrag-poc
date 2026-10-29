@@ -416,6 +416,7 @@ def test_a_live_score_equals_the_runner_score_for_the_same_results(
             "finish_reason",
             "token_limit_reached",
             "cut_off",
+            "surrogates_replaced",
         ):
             assert getattr(stored, field) == getattr(runner_run, field), (tag, field)
         # A stored run keeps no block texts, so a live score has no groundedness.

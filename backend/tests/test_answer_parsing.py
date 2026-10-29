@@ -59,8 +59,8 @@ def _answer_body(raw: str) -> str:
     return raw.split('"answer": "', 1)[1]
 
 
-def test_the_parser_version_is_2_1_0() -> None:
-    assert ANSWER_PARSER_VERSION == "2.1.0"
+def test_the_parser_version_is_2_1_1() -> None:
+    assert ANSWER_PARSER_VERSION == "2.1.1"
 
 
 @pytest.mark.parametrize(
@@ -411,3 +411,63 @@ def test_results_say_nothing_for_a_run_that_did_not_record_it() -> None:
     runs = [_repeat(None, None), _repeat(None, None)]
     assert _count_answers(runs, "cut_off") is None
     assert _count_answers(runs, "token_limit_reached") is None
+
+
+# --- Lone surrogates (parser 2.1.1) ------------------------------------------------
+# A JSON escape such as \ud83d decodes to half of a UTF-16 pair; alone it cannot
+# be encoded, so model_dump_json, a Live Lab stream or a results file would fail.
+
+
+@pytest.mark.parametrize(
+    ("raw", "verdict", "answer", "replaced"),
+    [
+        # One lone high surrogate in the middle of a valid object.
+        ('{"verdict": "x", "answer": "a \\ud83d b [1]"}', "x", "a \ufffd b [1]", 1),
+        # A proper pair stays one character.
+        ('{"verdict": "x", "answer": "a \\ud83d\\ude00 b"}', "x", "a \U0001f600 b", 0),
+        # One lone surrogate at the end of a valid object, and a lone low one.
+        ('{"verdict": "x", "answer": "end \\ud83d"}', "x", "end \ufffd", 1),
+        ('{"verdict": "x", "answer": "low \\ude00 here"}', "x", "low \ufffd here", 1),
+        # In the verdict, and in a repaired and an unclosed object.
+        ('{"verdict": "\\ud83d yes", "answer": "ok"}', "\ufffd yes", "ok", 1),
+        ('{"verdict": "x", "answer": "a "q" \\ud83d b"}', "x", 'a "q" \ufffd b', 1),
+        ('{"verdict": "x", "answer": "a \\ud83d b', "x", "a \ufffd b", 1),
+    ],
+)
+def test_a_lone_surrogate_becomes_the_replacement_character_and_is_counted(
+    raw: str, verdict: str, answer: str, replaced: int
+) -> None:
+    parsed = parse_answer(raw, block_count=1)
+    assert (parsed.verdict, parsed.answer, parsed.surrogates_replaced) == (
+        verdict,
+        answer,
+        replaced,
+    )
+    (parsed.verdict + parsed.answer).encode("utf-8")
+
+
+def test_plain_text_holding_a_lone_surrogate_is_replaced() -> None:
+    parsed = parse_answer("plain \ud83d text", block_count=0)
+    assert (parsed.form, parsed.answer, parsed.surrogates_replaced) == (
+        "plain",
+        "plain \ufffd text",
+        1,
+    )
+
+
+def test_the_recorded_answer_counts_every_replacement_and_can_be_sent() -> None:
+    """The gateway's count (raw text) and the parser's (decoded escapes) add up."""
+    output = GenerationOutput(
+        '{"verdict": "x", "answer": "a \\ud83d b \ude00 c"}', 1.0, surrogates_replaced=2
+    )
+    answer = answer_from(output, [], "m", 0)
+    assert answer.text == "a \ufffd b \ufffd c"
+    assert answer.raw_text == '{"verdict": "x", "answer": "a \\ud83d b \ufffd c"}'
+    assert answer.surrogates_replaced == 2 + 1 + 1
+    answer.model_dump_json()
+
+
+def test_the_fake_generator_replaces_nothing() -> None:
+    output = FakeAnswerGenerator().generate("q", [])
+    assert output.surrogates_replaced == 0
+    assert answer_from(output, [], "m", 0).surrogates_replaced == 0

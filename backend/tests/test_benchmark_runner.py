@@ -332,9 +332,10 @@ def test_each_repeat_records_how_its_answer_was_read_and_ended(
     answered = runner_smoke.run().results[0].runs["A"][0].to_payload()
     assert (answered["answer_form"], answered["cut_off"]) == ("json", False)
     assert (answered["finish_reason"], answered["token_limit_reached"]) == (None, None)
+    assert answered["surrogates_replaced"] == 0
     failed = runner_with_failing_generator.run().results[0].runs["A"][0].to_payload()
     fields = ("answer_form", "finish_reason", "token_limit_reached", "cut_off")
-    assert [failed[field] for field in fields] == [None] * 4
+    assert [failed[field] for field in (*fields, "surrogates_replaced")] == [None] * 5
 
 
 def test_a_failed_repeat_counts_its_rendered_blocks_as_a_successful_one_does(
@@ -809,7 +810,7 @@ def test_record_carries_method_and_versions(offline_lab: Lab) -> None:
     assert fields["scorer_version"] == "2.2.1"
     assert fields["judge_prompt_version"] == "1.2.0"
     assert fields["record_facts_version"] == RECORD_FACTS_VERSION == "1.0.0"
-    assert fields["answer_parser_version"] == "2.1.0"
+    assert fields["answer_parser_version"] == "2.1.1"
     assert fields["prompt_extras"] == {
         "path_line": ["B", "C"],
         "target_type_tier": ["B", "C"],

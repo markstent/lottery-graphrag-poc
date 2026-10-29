@@ -200,6 +200,7 @@ def stored_pipeline_run(tag: str, result: dict[str, Any], events: Events) -> Pip
         finish_reason=answer.get("finish_reason"),
         token_limit_reached=answer.get("token_limit_reached"),
         cut_off=answer.get("cut_off"),
+        surrogates_replaced=answer.get("surrogates_replaced"),
     )
 
 

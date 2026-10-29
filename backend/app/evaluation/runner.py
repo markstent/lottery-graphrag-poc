@@ -328,6 +328,8 @@ class PipelineRun:
     finish_reason: str | None = None
     token_limit_reached: bool | None = None
     cut_off: bool | None = None
+    # Lone surrogates replaced with U+FFFD (parser 2.1.1); None before it.
+    surrogates_replaced: int | None = None
 
     def to_payload(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
@@ -757,6 +759,7 @@ class BenchmarkRunner:
             finish_reason=None if answer is None else answer.finish_reason,
             token_limit_reached=None if answer is None else answer.token_limit_reached,
             cut_off=None if answer is None else answer.cut_off,
+            surrogates_replaced=None if answer is None else answer.surrogates_replaced,
         )
 
 

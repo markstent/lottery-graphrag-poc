@@ -179,6 +179,13 @@ class RagAnswer(BaseModel):
             " or its object never closed and the provider did not say whether it did"
         ),
     )
+    surrogates_replaced: int | None = Field(
+        default=None,
+        description=(
+            "Lone UTF-16 surrogates replaced with U+FFFD in the raw text, verdict and answer;"
+            " None in an answer recorded before answer parser 2.1.1"
+        ),
+    )
 
 
 class RagRunResult(BaseModel):
