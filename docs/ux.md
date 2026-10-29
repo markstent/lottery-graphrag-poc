@@ -128,7 +128,8 @@ At 1920 by 1080, the first screen of a running run holds the question bar, the g
 4. **Timeline**, docked under both: rewind, play or pause, replay, a position slider, the time, speeds 0.5x to 4x, and one track for each approach.
 5. After the run: the three answers as the model wrote them, with each citation marker a button, the evidence path rows for B and C, and the market coverage table.
    Each answer card keeps its own height, capped at 24rem; a longer answer scrolls inside the card, which then takes keyboard focus with the shared focus ring so the arrow keys scroll it, and one long answer no longer stretches the row (D-096).
-   An answer that stops before the model finished it carries a note under its text: "The answer stopped at the 4,096-token limit.", with the limit the answer was generated under as recorded with it, or "The answer stops part-way." when the limit is not known to be the cause.
+   An answer that stops before the model finished it carries a note under its text: "The answer stopped at the 4,096-token limit.", with the limit the answer was generated under as recorded with it, or "The answer may be cut short." when its object never closed and the provider did not say whether the limit stopped it.
+   An answer whose object never closed but which stopped below the limit carries no note: the model ended it there.
 
 Sources: a **recorded run** replays one of four real captures through the API on the dev world, with qwen3.6 through Ollama and reasoning off (`frontend/src/run/fixtures/recorded/`, D-056).
 They need no model, and they are not edited.

@@ -46,7 +46,7 @@ What changed, in short:
 | Graph records | ordered by the shared re-ranker | ordered by the graph relevance rule (D-083) |
 | Context | 12 items, graph share of 6 | one 2,000 token budget, no item limit, channels alternate (D-084) |
 | Prompt | prose record blocks, prompt 2.0.0 | compact facts, path line for graph records, prompt 3.0.0 (D-085) |
-| Scorer, judge | scorer 2.0.0, judge prompt 1.0.0 | scorer 2.2.1 (D-086, D-095), judge prompt 1.1.0 (D-086) |
+| Scorer, judge | scorer 2.0.0, judge prompt 1.0.0 | scorer 2.2.1 (D-086, D-095), judge prompt 1.2.0 (D-086, D-096) |
 | Agreement | rate at the 0.5 threshold and Cohen's kappa | three levels, weighted kappa, answered and abstaining apart (D-086) |
 | Tested evidence metric | F1 | recall; F1 and precision descriptive (D-087) |
 | New measures | none | groundedness, descriptive (D-088) |
@@ -278,15 +278,18 @@ Its record keeps the gateway's message.
 A judge model scores every successful repeat on five dimensions, each 0 (wrong or absent), 1 (partly) or 2 (fully): correctness, completeness, faithfulness to the shown context, citation accuracy and appropriate abstention.
 The judge is a second opinion and never replaces a deterministic score (D-031).
 
-- It sees the question, the expected answer, the claim statements, the text of each block the generator was shown, and the answer capped at 2,400 characters.
+- It sees the question, the expected answer, the claim statements, the text of each block the generator was shown, and the whole answer (judge prompt 1.2.0, D-096; 1.1.0 and earlier read the first 2,400 characters).
+  The answer is bounded by the answer model's output limit, 4,096 tokens by default, so with a context of at most 2,000 tokens, about 400 tokens of instructions and question and a 300-token reply, a judge call needs about 7,000 tokens, well inside the 32,768-token context the local Ollama server runs gemma4 31B with; no cap is needed.
   The blocks come without titles or ids, in an order shuffled by a hash of the instance, pipeline and repeat, and renumbered from 1.
   Citation markers are rewritten to the new numbers, and any other bracket holding a digit becomes `[?]`.
 - No word of the prompt names a pipeline or how the context was retrieved.
 - It must be of another model family than the generator in an official run, and the run refuses to start otherwise.
 - A judge failure is recorded with its reason and has no scores.
   It is never scored as zero.
-- The prompt version is 1.1.0 (D-086), and `judge_prompt_hash` covers the system prompt, its version and the user-message template.
-  The one change from 1.0.0: correctness is 0 when the answer says the sources do not answer and the reference answer gives an answer.
+- The prompt version is 1.2.0 (D-096), and `judge_prompt_hash` covers the system prompt, its version and the user-message template.
+  The change from 1.1.0: the whole answer is shown; the prompt text is unchanged.
+  The change from 1.0.0 to 1.1.0 (D-086): correctness is 0 when the answer says the sources do not answer and the reference answer gives an answer.
+  The hand-label agreement (D-094) validated judge 1.0.0 with the 1.1.0 abstention rule on answers of at most 1,200 tokens; the full-answer view of 1.2.0 is not separately validated by labels.
   The abstention dimension is unchanged.
 
 What the judge sees of a block (D-085): the rendered prompt block less a document chunk's title line.

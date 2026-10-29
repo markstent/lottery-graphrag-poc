@@ -266,7 +266,7 @@ Each pipeline's result carries it:
   For a graph node `rank` is its graph rank.
 - `GraphEvidence` (B and C's `node_evidence`): node id and label, `hops`, `path` (node ids from the seed), the relationship type, the composite score and its `components`, `tier`, `graph_rank`, `selected`, `discard_reason` and `authoritative`, the facts read from the structured layer.
 - `Citation`: one for each block shown to the model, in prompt order, with chunk, document, title, source system, source record, record table, market and language. `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
-- `RagAnswer` (each pipeline's `answer`): the parsed `text` and `verdict`, `cited_blocks`, `raw_text`, the model, latency, context tokens, citations and `usage`, and how the output was read and ended (D-096): `answer_form` (`json`, `repaired`, `cut_off` or `plain`), `finish_reason` as the gateway reported it, `token_limit_reached`, `max_tokens` (the output limit of the call) and `cut_off`.
+- `RagAnswer` (each pipeline's `answer`): the parsed `text` and `verdict`, `cited_blocks`, `raw_text`, the model, latency, context tokens, citations and `usage`, and how the output was read and ended (D-096): `answer_form` (`json`, `repaired`, `unclosed` or `plain`; answer parser 2.0.0 wrote `cut_off` for `unclosed`), `finish_reason` as the gateway reported it, `token_limit_reached`, `max_tokens` (the output limit of the call) and `cut_off` (stopped at the limit, or unclosed with no report either way).
   Each of the five is null in an answer recorded before answer parser 2.0.0.
 - B and C also carry `ontology_concepts`, the concepts their expansion used.
 
