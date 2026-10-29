@@ -452,3 +452,34 @@ def test_the_judge_reads_an_answer_with_a_replacement_character() -> None:
     item = dataclasses.replace(ITEM, answer="It was \ufffd PLV_PAYMENTS_3 [1].")
     _, user = build_judge_prompt(item)
     user.encode("utf-8")
+
+
+# The crash guards (parser 2.1.1), on the judge's side: a hostile reply is a
+# recorded failure, and a hostile answer is blinded without crashing.
+HOSTILE = [
+    "1" * 5000,
+    "[" * 20000 + "]" * 20000,
+    '{"verdict": "x", "answer": "see [' + "1" * 5000 + ']"}',
+]
+
+
+@pytest.mark.parametrize("raw", HOSTILE, ids=["long-number", "deep-nesting", "huge-citation"])
+def test_a_hostile_judge_reply_is_a_parse_failure(raw: str) -> None:
+    with pytest.raises(JudgeParseError):
+        parse_judge(raw)
+
+
+@pytest.mark.parametrize("raw", HOSTILE, ids=["long-number", "deep-nesting", "huge-citation"])
+def test_a_hostile_judge_reply_is_recorded_not_raised(
+    stub_gateway_returning: Callable[[str], Gateway], raw: str
+) -> None:
+    verdict = GatewayJudge(SETTINGS, gateway=stub_gateway_returning(raw)).judge(ITEM)
+    assert verdict.scores is None and verdict.failure
+
+
+@pytest.mark.parametrize("raw", HOSTILE, ids=["long-number", "deep-nesting", "huge-citation"])
+def test_a_hostile_answer_is_blinded_without_crashing(raw: str) -> None:
+    item = dataclasses.replace(ITEM, answer=raw)
+    _, user = build_judge_prompt(item)
+    if "see [" in raw:
+        assert "see [?]" in user

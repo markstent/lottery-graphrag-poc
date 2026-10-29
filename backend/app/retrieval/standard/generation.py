@@ -60,7 +60,8 @@ SYSTEM_PROMPT = (
 ANSWER_PARSER_VERSION = "2.1.1"
 
 FENCED_JSON = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
-CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
+# At most four digits a number, so a citation never parses a huge integer.
+CITATION = re.compile(r"\[(\d{1,4}(?:\s*,\s*\d{1,4})*)\]")
 _DECODER = json.JSONDecoder(strict=False)
 # The prompted object read field by field: its opening up to the verdict's
 # string, and the answer key after the verdict (a cut-off output may end
@@ -195,7 +196,9 @@ def _structured(text: str) -> tuple[str, str] | None:
     Control characters inside its strings are accepted (D-096)."""
     try:
         payload = json.loads(text, strict=False)
-    except json.JSONDecodeError:
+    except (ValueError, RecursionError):
+        # A malformed object, and also an integer past Python's digit limit or
+        # nesting past the recursion limit: read as something else, never raised.
         return None
     if not isinstance(payload, dict):
         return None
@@ -246,7 +249,7 @@ def _read_fields(text: str) -> tuple[AnswerForm, str, str] | None:
     """
     try:
         _DECODER.raw_decode(text)
-    except json.JSONDecodeError:
+    except (ValueError, RecursionError):
         pass
     else:
         return None

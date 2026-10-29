@@ -269,6 +269,7 @@ The verdict is read from its slot as written and is never reconciled with the an
 Every stored output that parser 1.0.0 read as JSON reads the same under 2.0.0; only outputs it left as plain text read differently (D-096).
 A citation `[n]` or `[n, m]` counts only if it points at a block the model was shown, so an answer cannot cite a source it was not given.
 Ranges such as `[1-3]` are not supported.
+A citation number has at most four digits, and an output holding an integer past Python's 4,300-digit limit or nesting past the recursion limit is read as plain text instead of raising (parser 2.1.1); the judge records such a reply as a parse failure.
 The result keeps the parsed answer, the verdict, the cited block numbers, the model's raw text and the token usage.
 It also records how the output was read and ended: `answer_form`, the provider's `finish_reason`, `token_limit_reached`, the call's `max_tokens`, `cut_off` and `surrogates_replaced`.
 `token_limit_reached` is true when the stop reason is `length` or the completion token count reached `max_tokens`, false when fewer tokens were reported, and null when the provider reports neither.

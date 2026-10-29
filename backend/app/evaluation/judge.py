@@ -248,7 +248,9 @@ def parse_judge(raw: str) -> JudgeScores:
 def _json_object(text: str) -> dict[str, object] | None:
     try:
         payload = json.loads(text)
-    except json.JSONDecodeError:
+    except (ValueError, RecursionError):
+        # Also an integer past Python's digit limit or nesting past the
+        # recursion limit: a JudgeParseError for the caller, never a crash.
         return None
     return payload if isinstance(payload, dict) else None
 

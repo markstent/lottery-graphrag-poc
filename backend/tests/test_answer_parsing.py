@@ -471,3 +471,36 @@ def test_the_fake_generator_replaces_nothing() -> None:
     output = FakeAnswerGenerator().generate("q", [])
     assert output.surrogates_replaced == 0
     assert answer_from(output, [], "m", 0).surrogates_replaced == 0
+
+
+# --- Crash guards (parser 2.1.1) ----------------------------------------------------
+# At temperature 0 a resumed run repeats the same output, so an output that
+# crashes the reader would crash the run again and again.
+
+HOSTILE = [
+    "1" * 5000,  # an integer longer than Python's 4,300-digit limit
+    "[" * 20000 + "]" * 20000,  # nesting deeper than the recursion limit
+    '{"verdict": "x", "answer": "see [' + "1" * 5000 + ']"}',  # a huge citation
+]
+
+
+@pytest.mark.parametrize("raw", HOSTILE, ids=["long-number", "deep-nesting", "huge-citation"])
+def test_a_hostile_output_is_read_without_crashing(raw: str) -> None:
+    parsed = parse_answer(raw, block_count=3)
+    assert parsed.cited_blocks == []
+    if raw.startswith("{"):
+        assert (parsed.form, parsed.verdict) == ("json", "x")
+    else:
+        assert (parsed.form, parsed.answer) == ("plain", raw)
+    answer_from(GenerationOutput(raw, 1.0), [], "m", 0).model_dump_json()
+
+
+def test_an_unclosed_object_with_deep_nesting_is_read_without_crashing() -> None:
+    raw = '{"verdict": "x", "answer": "' + "[" * 20000
+    parsed = parse_answer(raw, block_count=1)
+    assert (parsed.form, parsed.verdict) == ("unclosed", "x")
+
+
+def test_a_citation_has_at_most_four_digits() -> None:
+    parsed = parse_answer('{"verdict": "x", "answer": "a [9999] b [10000] c [2]"}', 3)
+    assert parsed.cited_blocks == [2]
