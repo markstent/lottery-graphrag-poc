@@ -25,7 +25,7 @@ export function cutOffNote(answer: Answer): string | null {
   if (answer.cut_off !== true) return null
   return answer.token_limit_reached === true
     ? `The answer stopped at ${limit(answer.max_tokens)}.`
-    : 'The answer stops part-way.'
+    : 'The answer may be cut short.'
 }
 
 /**

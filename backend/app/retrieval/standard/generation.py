@@ -46,8 +46,11 @@ SYSTEM_PROMPT = (
 # How model outputs are read (D-096); recorded with every run, so runs read by
 # different parsers are never compared or resumed as one experiment. A run
 # recorded before the field existed was read by parser 1.0.0 (strict JSON,
-# then fenced JSON, then plain text).
-ANSWER_PARSER_VERSION = "2.0.0"
+# then fenced JSON, then plain text). 2.1.0 (review of 2.0.0): unknown
+# escapes kept as written, "unclosed" in place of "cut_off", a second object
+# or text after a closed object is plain, a verdict needs its comma, a final
+# bare quote is kept, and a high surrogate cut from its pair is left out.
+ANSWER_PARSER_VERSION = "2.1.0"
 
 FENCED_JSON = re.compile(r"```(?:json)?\s*(.*?)\s*```", re.DOTALL | re.IGNORECASE)
 CITATION = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
@@ -60,9 +63,18 @@ _ANSWER_KEY = re.compile(r'\s*,\s*"answer"\s*:\s*"')
 _ANSWER_KEY_COMPACT = ',"answer":"'
 # An escape sequence, or a bare double quote, inside a JSON string's body.
 _ESCAPE_OR_QUOTE = re.compile(r'(\\.)|"', re.DOTALL)
+# For decoding a body: an escape JSON knows, any other backslash pair (such as
+# LaTeX's \exists, kept as written), or a bare double quote.
+_DECODABLE = re.compile(r'(\\(?:u[0-9a-fA-F]{4}|["\\/bfnrt]))|(\\.)|"', re.DOTALL)
 # An escape cut short at the end of the output: a lone backslash, or \u with
 # fewer than four hex digits, after any whole escaped backslashes.
 _PARTIAL_ESCAPE = re.compile(r"(?<!\\)((?:\\\\)*)\\(?:u[0-9a-fA-F]{0,3})?\Z")
+# A high surrogate escape at the end of the output, whose pair was cut off.
+_HALF_PAIR = re.compile(r"(?<!\\)((?:\\\\)*)\\u[dD][89abAB][0-9a-fA-F]{2}\Z")
+# Another object opening inside the answer: the model began a second reply.
+_SECOND_OBJECT = re.compile(r'\{\s*"verdict"\s*:')
+# A bare quote followed by the closing brace, then whatever follows the brace.
+_CLOSE = re.compile(r"\s*\}(.*)", re.DOTALL)
 
 
 class GenerationError(RuntimeError):
@@ -187,30 +199,39 @@ def _bare_quotes(text: str) -> list[int]:
     return [match.start() for match in _ESCAPE_OR_QUOTE.finditer(text) if match.group(1) is None]
 
 
-def _string_body(body: str) -> str | None:
-    """A JSON string's body decoded, a bare double quote kept as a quote
-    character; None when the body holds an invalid escape."""
-    escaped = _ESCAPE_OR_QUOTE.sub(lambda match: match.group(1) or '\\"', body)
-    try:
-        decoded = json.loads(f'"{escaped}"', strict=False)
-    except json.JSONDecodeError:
-        return None
-    return decoded if isinstance(decoded, str) else None
+def _escaped(match: re.Match[str]) -> str:
+    known, unknown = match.group(1), match.group(2)
+    if known:
+        return known
+    return "\\" + unknown if unknown else '\\"'
+
+
+def _string_body(body: str) -> str:
+    """A JSON string's body decoded: a bare double quote is a quote
+    character, and an escape JSON does not know (``\\e``, or ``\\u`` without
+    four hex digits) is kept as written, backslash and all."""
+    decoded = json.loads(f'"{_DECODABLE.sub(_escaped, body)}"', strict=False)
+    if not isinstance(decoded, str):
+        raise TypeError("a JSON string body decoded to a non-string")
+    return decoded
 
 
 def _read_fields(text: str) -> tuple[AnswerForm, str, str] | None:
     """(form, verdict, answer) for an output that opens the prompted object
     but that no JSON reader accepts, read field by field; None for anything
-    else (D-096).
+    else (D-096, parser 2.1.0).
 
     The object must open with the verdict and follow it with the answer, as
-    the prompt asks. The verdict is its string up to the first bare quote. An
-    answer string followed by the closing brace is "repaired": every bare
-    quote before its last one is the model's text. An output that ends before
-    the object closes is "cut_off": the verdict when its string closed (else
-    empty) and the answer up to the end, with an escape the end cut short
-    left out. An output holding a complete JSON value and more text after it
-    is not read here, so no text the model wrote is ever dropped.
+    the prompt asks. The verdict is its string up to the first bare quote,
+    and counts only when a comma follows that quote. An answer string whose
+    first bare quote followed by a closing brace ends the output is
+    "repaired": every bare quote before it is the model's text. An output
+    that ends before any such brace is "unclosed": the answer runs to where
+    the output ends, less an escape or half a surrogate pair the end cut
+    short. These stay plain text, so no text the model wrote is dropped and
+    no retracted verdict is taken: a complete JSON value followed by more
+    text, a closed object followed by more text, and an answer holding a
+    second ``{"verdict":`` object.
     """
     try:
         _DECODER.raw_decode(text)
@@ -223,31 +244,27 @@ def _read_fields(text: str) -> tuple[AnswerForm, str, str] | None:
         return None
     after_open = text[opening.end() :]
     quotes = _bare_quotes(after_open)
-    if not quotes:
-        return "cut_off", "", ""
-    verdict = _string_body(after_open[: quotes[0]])
-    if verdict is None:
-        return None
-    rest = after_open[quotes[0] + 1 :]
+    rest = after_open[quotes[0] + 1 :] if quotes else ""
+    compact = "".join(rest.split())
+    if not compact.startswith(","):
+        # The output ends inside the verdict, or right after a quote that may
+        # be inside it; anything else after the verdict is not the shape.
+        return ("unclosed", "", "") if compact == "" else None
+    verdict = _string_body(after_open[: quotes[0]]).strip()
     key = _ANSWER_KEY.match(rest)
     if key is None:
-        if _ANSWER_KEY_COMPACT.startswith("".join(rest.split())):
-            return "cut_off", verdict.strip(), ""
-        return None
+        return ("unclosed", verdict, "") if _ANSWER_KEY_COMPACT.startswith(compact) else None
     body = rest[key.end() :]
-    form: AnswerForm = "cut_off"
-    quotes = _bare_quotes(body)
-    tail = body[quotes[-1] + 1 :].strip() if quotes else None
-    if tail == "}":
-        form, body = "repaired", body[: quotes[-1]]
-    elif tail == "":
-        body = body[: quotes[-1]]
-    else:
-        body = _PARTIAL_ESCAPE.sub(r"\1", body)
-    answer = _string_body(body)
-    if answer is None:
+    if _SECOND_OBJECT.search(body):
         return None
-    return form, verdict.strip(), answer.strip()
+    for quote in _bare_quotes(body):
+        closing = _CLOSE.match(body, quote + 1)
+        if closing is not None:
+            if closing.group(1).strip():
+                return None
+            return "repaired", verdict, _string_body(body[:quote]).strip()
+    body = _HALF_PAIR.sub(r"\1", _PARTIAL_ESCAPE.sub(r"\1", body))
+    return "unclosed", verdict, _string_body(body).strip()
 
 
 def parse_answer(raw: str, block_count: int) -> ParsedAnswer:
@@ -283,9 +300,11 @@ def parse_answer(raw: str, block_count: int) -> ParsedAnswer:
 
 
 def is_cut_off(form: AnswerForm, token_limit_reached: bool | None) -> bool:
-    """Whether an answer stops before the model finished it: its object
-    never closed, or its output stopped at the token cap (D-096)."""
-    return form == "cut_off" or token_limit_reached is True
+    """Whether an answer stops before the model finished it (D-096): its
+    output stopped at the token cap, or its object never closed and nothing
+    says whether the cap stopped it. An unclosed object that stopped below
+    the cap is the model's own ending, not a cut."""
+    return token_limit_reached is True or (form == "unclosed" and token_limit_reached is None)
 
 
 def answer_from(

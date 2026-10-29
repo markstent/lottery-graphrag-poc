@@ -3,7 +3,9 @@
 The real outputs are copied verbatim from stored runs into
 ``fixtures/model_outputs_unparsed.json`` (synthetic data): every repeat of
 each instance and approach gave the same text. Parser 1.0.0 read each one as
-plain text with an empty verdict.
+plain text with an empty verdict. The last entry is the H1 Live Lab
+re-recording's C output under the 4096 limit, which parser 2.0.0 still read
+as plain text because of its LaTeX backslashes.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ from app.retrieval.standard.generation import (
     FakeAnswerGenerator,
     GenerationOutput,
     LiteLLMAnswerGenerator,
+    answer_from,
     is_cut_off,
     parse_answer,
 )
@@ -33,10 +36,22 @@ from tests.test_standard_rag import make_corpus
 FIXTURE = Path(__file__).parent / "fixtures" / "model_outputs_unparsed.json"
 
 
-def _real(instance_id: str, pipeline: str) -> str:
+H1_RERECORDED = "live-lab-h1-2026-10-29"
+
+
+def _entry(instance_id: str, pipeline: str, run: str | None = None) -> dict[str, Any]:
     entries: list[dict[str, Any]] = json.loads(FIXTURE.read_text(encoding="utf-8"))
-    (entry,) = [e for e in entries if (e["instance_id"], e["pipeline"]) == (instance_id, pipeline)]
-    return str(entry["raw_text"])
+    (entry,) = [
+        e
+        for e in entries
+        if (e["instance_id"], e["pipeline"]) == (instance_id, pipeline)
+        and (e["run"] == run if run else e["run"] != H1_RERECORDED)
+    ]
+    return entry
+
+
+def _real(instance_id: str, pipeline: str, run: str | None = None) -> str:
+    return str(_entry(instance_id, pipeline, run)["raw_text"])
 
 
 def _answer_body(raw: str) -> str:
@@ -44,8 +59,8 @@ def _answer_body(raw: str) -> str:
     return raw.split('"answer": "', 1)[1]
 
 
-def test_the_parser_version_is_2_0_0() -> None:
-    assert ANSWER_PARSER_VERSION == "2.0.0"
+def test_the_parser_version_is_2_1_0() -> None:
+    assert ANSWER_PARSER_VERSION == "2.1.0"
 
 
 @pytest.mark.parametrize(
@@ -93,16 +108,29 @@ def test_the_repaired_answer_keeps_every_quote_and_citation_the_model_wrote() ->
         ("L05-2026-INC_037", "C", "Austria, Czech Republic", "then Austria is also included"),
     ],
 )
-def test_an_object_cut_off_inside_its_answer_keeps_the_verdict_and_the_text_to_the_cut(
+def test_an_unclosed_object_keeps_the_verdict_and_the_answer_to_where_it_ends(
     instance_id: str, pipeline: str, verdict: str, ending: str
 ) -> None:
     raw = _real(instance_id, pipeline)
     body = _answer_body(raw)
     assert "\\" not in body and '"' not in body  # so the answer is the body itself
     parsed = parse_answer(raw, block_count=15)
-    assert parsed.form == "cut_off"
+    assert parsed.form == "unclosed"
     assert parsed.verdict == verdict
     assert parsed.answer == body and parsed.answer.endswith(ending)
+
+
+def test_the_rerecorded_h1_answer_keeps_its_latex_backslashes_and_its_verdict() -> None:
+    """Review I1: \\exists, \\in and \\land are not JSON escapes; they are kept as
+    written, so the answer is read instead of falling to plain text."""
+    raw = _real("L05-2026-INC_037", "C", H1_RERECORDED)
+    parsed = parse_answer(raw, block_count=17)
+    assert parsed.form == "unclosed"
+    assert parsed.verdict == "Austria, Czech Republic"
+    assert parsed.answer.endswith("Answer: Czech Republic.")
+    assert 13_300 <= len(parsed.answer) <= 13_400
+    assert "\\exists i \\in Incidents" in parsed.answer
+    assert not parsed.answer.startswith("{")
 
 
 def test_the_h1_recording_answer_is_read_with_its_citations() -> None:
@@ -115,7 +143,7 @@ def test_an_output_cut_off_inside_the_verdict_has_no_verdict_and_no_answer() -> 
     assert raw == '{"verdict": "'
     parsed = parse_answer(raw, block_count=3)
     assert (parsed.form, parsed.verdict, parsed.answer, parsed.cited_blocks) == (
-        "cut_off",
+        "unclosed",
         "",
         "",
         [],
@@ -164,14 +192,35 @@ def test_plain_text_is_plain() -> None:
         ('{"verdict": "x", "answer": "', "x", ""),
         ('{"verdict": "x", "ans', "x", ""),
         ('{"verdict": "x",', "x", ""),
-        ('{"verdict": "x"', "x", ""),
+        # Review M8: a quote with nothing after it may be inside the verdict.
+        ('{"verdict": "x"', "", ""),
+        ('{"verdict": "the "', "", ""),
         ('{\n  "verdict" : "x" ,\n  "answer" : "spaced', "x", "spaced"),
         ('{"verdict": "Aust', "", ""),
+        # Review M5: a final bare quote with no brace after it is kept.
+        ('{"verdict": "x", "answer": "abc"', "x", 'abc"'),
+        ('{"verdict": "x", "answer": "He said "no"', "x", 'He said "no"'),
+        # Review M7: a high surrogate the end cut from its pair is left out.
+        ('{"verdict": "x", "answer": "smile \\ud83d', "x", "smile"),
+        ('{"verdict": "x", "answer": "smile \\ud83d\\ude00 ok', "x", "smile \U0001f600 ok"),
+        # Review I1: an escape JSON does not know is kept as written.
+        ('{"verdict": "x", "answer": "$\\exists i \\in M$', "x", "$\\exists i \\in M$"),
+        ('{"verdict": "x", "answer": "id \\u12zz', "x", "id \\u12zz"),
     ],
 )
-def test_a_cut_off_object_is_read_up_to_the_cut(raw: str, verdict: str, answer: str) -> None:
+def test_an_unclosed_object_is_read_up_to_where_it_ends(
+    raw: str, verdict: str, answer: str
+) -> None:
     parsed = parse_answer(raw, block_count=1)
-    assert (parsed.form, parsed.verdict, parsed.answer) == ("cut_off", verdict, answer)
+    assert (parsed.form, parsed.verdict, parsed.answer) == ("unclosed", verdict, answer)
+
+
+def test_an_unclosed_answer_ending_on_half_a_surrogate_pair_can_be_sent() -> None:
+    """Review M7: a lone surrogate would make the answer impossible to encode."""
+    output = GenerationOutput('{"verdict": "x", "answer": "smile \\ud83d', 1.0)
+    answer = answer_from(output, [], "m", 0)
+    assert answer.text == "smile"
+    answer.model_dump_json()
 
 
 @pytest.mark.parametrize(
@@ -179,13 +228,41 @@ def test_a_cut_off_object_is_read_up_to_the_cut(raw: str, verdict: str, answer: 
     [
         '{"answer": "answer first, never closed',
         '{"verdict": "x", "note": "another key',
-        '{"verdict": "x", "answer": "bad escape \\q here"}',
         '{"verdict": "x" "answer": "no comma"}',
         'Here is the answer: {"verdict": "x", "answer": "late',
         '{"verdict": "x"}',
+        # Review M6: a closed object with bare quotes, then more text.
+        '{"verdict": "x", "answer": "a "b" c"}\nMore prose, "quoted".',
+        # Review M10: a fenced object with bare quotes is not read field by field.
+        'Here:\n```json\n{"verdict": "x", "answer": "a "b" c"}\n```',
     ],
 )
 def test_an_output_not_in_the_prompted_shape_stays_plain_text(raw: str) -> None:
+    parsed = parse_answer(raw, block_count=1)
+    assert (parsed.form, parsed.verdict, parsed.answer) == ("plain", "", raw)
+
+
+def test_an_escape_json_does_not_know_is_kept_in_a_repaired_answer() -> None:
+    raw = '{"verdict": "x", "answer": "bad escape \\q here"}'
+    parsed = parse_answer(raw, block_count=1)
+    assert (parsed.form, parsed.verdict, parsed.answer) == ("repaired", "x", "bad escape \\q here")
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        # The first object is unreadable JSON (bare quotes), the second valid.
+        '{"verdict": "unknown", "answer": "It "seems" open."}\nCorrection:\n'
+        '{"verdict": "Greece", "answer": "Greece [1]."}',
+        # The first object is valid JSON, the second has bare quotes.
+        '{"verdict": "unknown", "answer": "It seems open."}\nCorrection:\n'
+        '{"verdict": "Greece", "answer": "It "is" Greece [1]."}',
+        # One object never closes, a second starts inside its answer.
+        '{"verdict": "unknown", "answer": "Let me retry. {"verdict": "Greece", "answer": "Gr',
+    ],
+)
+def test_an_output_holding_a_second_object_stays_plain_whichever_comes_first(raw: str) -> None:
+    """Review I3: the first verdict may be one the model retracted."""
     parsed = parse_answer(raw, block_count=1)
     assert (parsed.form, parsed.verdict, parsed.answer) == ("plain", "", raw)
 
@@ -201,7 +278,8 @@ def test_a_closed_object_with_bare_quotes_and_an_escape_is_repaired() -> None:
 
 
 class RecordedOutputGenerator:
-    """Returns the H1 recording's C output as the gateway reported it."""
+    """Returns the first H1 recording's C output as the gateway reported it:
+    stopped at 1,200 completion tokens, the limit then."""
 
     model_name = "recorded-v1"
 
@@ -225,12 +303,35 @@ def test_a_and_b_record_the_same_reading_of_the_same_output() -> None:
     for answer in answers:
         assert answer.verdict == "Austria, Czech Republic"
         assert answer.text.endswith("then Austria is also included")
-        assert (answer.answer_form, answer.finish_reason) == ("cut_off", "stop")
+        assert (answer.answer_form, answer.finish_reason) == ("unclosed", "stop")
         assert (answer.token_limit_reached, answer.max_tokens, answer.cut_off) == (True, 1200, True)
     fields = ("text", "verdict", "answer_form", "finish_reason", "token_limit_reached", "cut_off")
     assert {tuple(getattr(a, f) for f in fields) for a in answers} == {
         tuple(getattr(answers[0], f) for f in fields)
     }
+
+
+def test_an_unclosed_answer_that_stopped_below_the_limit_is_not_cut_off() -> None:
+    """Review I2: the re-recorded H1 C answer stopped on its own (finish
+    "stop", 3,803 of 4,096 tokens) without closing its object; it is not
+    called cut off."""
+    entry = _entry("L05-2026-INC_037", "C", H1_RERECORDED)
+    usage = entry["usage"]
+    assert (entry["finish_reason"], usage["completion_tokens"], entry["max_tokens"]) == (
+        "stop",
+        3803,
+        4096,
+    )
+    output = GenerationOutput(
+        entry["raw_text"], 1.0, usage, entry["finish_reason"], False, entry["max_tokens"]
+    )
+    answer = answer_from(output, [], "m", 0)
+    assert (answer.answer_form, answer.token_limit_reached, answer.cut_off) == (
+        "unclosed",
+        False,
+        False,
+    )
+    assert answer.verdict == "Austria, Czech Republic"
 
 
 def test_the_litellm_generator_reports_how_the_output_ended(stub_litellm: StubLiteLLM) -> None:
@@ -258,13 +359,17 @@ def test_the_fake_generator_reports_no_cap() -> None:
         ("json", False, False),
         ("json", None, False),
         ("repaired", False, False),
-        ("cut_off", False, True),
-        ("cut_off", None, True),
+        # Review I2: an unclosed object is cut off only when the limit stopped
+        # it, or when nothing says whether it did.
+        ("unclosed", False, False),
+        ("unclosed", None, True),
+        ("unclosed", True, True),
         ("plain", True, True),
+        ("plain", None, False),
         ("json", True, True),
     ],
 )
-def test_an_answer_is_cut_off_when_its_object_never_closed_or_it_hit_the_cap(
+def test_an_answer_is_cut_off_when_it_hit_the_cap_or_may_have(
     form: AnswerForm, reached: bool | None, cut: bool
 ) -> None:
     assert is_cut_off(form, reached) is cut

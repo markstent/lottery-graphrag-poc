@@ -54,7 +54,10 @@ from app.retrieval.standard.generation import CITATION, FENCED_JSON
 if TYPE_CHECKING:
     from app.evaluation.runner import RunScore, ShownBlock
 
-JUDGE_PROMPT_VERSION = "1.1.0"
+# 1.2.0 (D-096): the judge reads the whole answer, as the scorer does; 1.1.0
+# capped it at 2,400 characters. The answer is bounded by the answer model's
+# output limit (max_tokens, recorded with every run).
+JUDGE_PROMPT_VERSION = "1.2.0"
 JUDGE_DIMENSIONS = (
     "correctness",
     "completeness",
@@ -62,10 +65,8 @@ JUDGE_DIMENSIONS = (
     "citation_accuracy",
     "abstention",
 )
-ANSWER_CHAR_CAP = 2400
 JUDGE_MAX_TOKENS = 300
 JUDGE_TIMEOUT_S = 120.0
-TRUNCATION_MARK = " [truncated]"
 
 JUDGE_SYSTEM_PROMPT = (
     "You grade one answer to a question about an enterprise. You are given the "
@@ -171,8 +172,8 @@ def blind(item: JudgeItem) -> tuple[list[ShownBlock], str]:
 def _blind_answer(answer: str, renumber: dict[int, int]) -> str:
     """Rewrite every [n] and [n, m] marker to the shown numbers ([?] for a
     block that was not shown) and every other bracket holding a digit, such
-    as [1-3], to [?], so no stale number points at a reshuffled block; then
-    cap at ``ANSWER_CHAR_CAP`` characters."""
+    as [1-3], to [?], so no stale number points at a reshuffled block. The
+    whole answer is kept (judge prompt 1.2.0, D-096)."""
 
     def rewrite(match: re.Match[str]) -> str:
         citation = CITATION.fullmatch(match.group(0))
@@ -181,10 +182,7 @@ def _blind_answer(answer: str, renumber: dict[int, int]) -> str:
         numbers = (renumber.get(int(part)) for part in citation.group(1).split(","))
         return "[" + ", ".join("?" if n is None else str(n) for n in numbers) + "]"
 
-    blinded = _DIGIT_BRACKET.sub(rewrite, answer)
-    if len(blinded) > ANSWER_CHAR_CAP:
-        blinded = blinded[:ANSWER_CHAR_CAP] + TRUNCATION_MARK
-    return blinded
+    return _DIGIT_BRACKET.sub(rewrite, answer)
 
 
 def build_judge_prompt(item: JudgeItem) -> tuple[str, str]:

@@ -73,7 +73,7 @@ from app.evaluation.judge import (
 )
 from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_score
 from app.events import GRAPH_ENTITY_RESOLVED
-from app.evidence import EvidenceChunk
+from app.evidence import AnswerForm, EvidenceChunk
 from app.lab import Lab, bc_graph_settings, wired_pipelines
 from app.observability.logging import run_context, stage_timer
 from app.ontology import ONTOLOGY_VERSION
@@ -324,7 +324,7 @@ class PipelineRun:
     generation_error: str | None = None
     # How the answer was read and how the output ended (RagAnswer, D-096);
     # None when generation failed and in a run recorded before parser 2.0.0.
-    answer_form: str | None = None
+    answer_form: AnswerForm | None = None
     finish_reason: str | None = None
     token_limit_reached: bool | None = None
     cut_off: bool | None = None

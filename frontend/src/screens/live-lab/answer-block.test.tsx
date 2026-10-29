@@ -122,7 +122,7 @@ describe('AnswerBlock', () => {
       max_tokens: 4096,
     })
     render(<AnswerBlock id="B" results={done} onOpen={vi.fn()} />)
-    expect(screen.queryByText(/token limit|part-way/)).toBeNull()
+    expect(screen.queryByText(/token limit|cut short/)).toBeNull()
   })
 
   it('keeps a long answer inside a card of capped height that scrolls on its own', () => {

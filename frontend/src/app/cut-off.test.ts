@@ -20,7 +20,7 @@ describe('cut-off words', () => {
     ).toBe('The answer stopped at the token limit.')
   })
 
-  it('says only that the answer stops part-way when the limit is not known to be the cause', () => {
+  it('says only that the answer may be cut short when the limit is not known to be the cause', () => {
     for (const reached of [false, null])
       expect(
         cutOffNote({
@@ -28,7 +28,7 @@ describe('cut-off words', () => {
           token_limit_reached: reached,
           max_tokens: 4096,
         }),
-      ).toBe('The answer stops part-way.')
+      ).toBe('The answer may be cut short.')
   })
 
   it('has no note for a finished answer or one recorded before the record existed', () => {

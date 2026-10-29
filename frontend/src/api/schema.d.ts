@@ -2467,9 +2467,9 @@ export interface components {
         RagAnswer: {
             /**
              * Answer Form
-             * @description How the parser read the output: json | repaired | cut_off | plain
+             * @description How the parser read the output: json | repaired | unclosed | plain
              */
-            answer_form?: ("json" | "repaired" | "cut_off" | "plain") | null;
+            answer_form?: ("json" | "repaired" | "unclosed" | "plain") | null;
             /** Citations */
             citations: components["schemas"]["Citation"][];
             /**
@@ -2481,7 +2481,7 @@ export interface components {
             context_tokens: number;
             /**
              * Cut Off
-             * @description The answer stops before the model finished it: cut_off form or token limit
+             * @description The answer stops before the model finished it: it stopped at the token limit, or its object never closed and the provider did not say whether it did
              */
             cut_off?: boolean | null;
             /**

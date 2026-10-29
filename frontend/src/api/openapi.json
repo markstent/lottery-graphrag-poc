@@ -4636,7 +4636,7 @@
                 "enum": [
                   "json",
                   "repaired",
-                  "cut_off",
+                  "unclosed",
                   "plain"
                 ],
                 "type": "string"
@@ -4645,7 +4645,7 @@
                 "type": "null"
               }
             ],
-            "description": "How the parser read the output: json | repaired | cut_off | plain",
+            "description": "How the parser read the output: json | repaired | unclosed | plain",
             "title": "Answer Form"
           },
           "citations": {
@@ -4676,7 +4676,7 @@
                 "type": "null"
               }
             ],
-            "description": "The answer stops before the model finished it: cut_off form or token limit",
+            "description": "The answer stops before the model finished it: it stopped at the token limit, or its object never closed and the provider did not say whether it did",
             "title": "Cut Off"
           },
           "finish_reason": {

@@ -17,7 +17,6 @@ from app.config import JudgeSettings, judge_settings_from_env
 from app.evaluation import judge as judge_module
 from app.evaluation.checks import CitationMetrics
 from app.evaluation.judge import (
-    ANSWER_CHAR_CAP,
     JUDGE_DIMENSIONS,
     JUDGE_MAX_TOKENS,
     JUDGE_PROMPT_VERSION,
@@ -115,9 +114,14 @@ def test_prompt_never_names_a_pipeline() -> None:
     assert not any(word in text for word in ("pipeline", "graph", "ontology", "text search", "rag"))
 
 
-def test_long_answers_are_capped() -> None:
-    _, answer = blind(JudgeItem("q", "e", (), (), "x" * 5000, (), "s"))
-    assert len(answer) <= ANSWER_CHAR_CAP + len(" [truncated]")
+def test_the_judge_reads_the_whole_answer() -> None:
+    """Judge 1.2.0 (D-096): the judge grades what the scorer scores, so a
+    long answer, such as the 13,352-character H1 answer, reaches it whole."""
+    long = "x" * 20_000 + " [1]"
+    _, answer = blind(JudgeItem("q", "e", (), (ShownBlock("R1", "t", "x"),), long, (1,), "s"))
+    assert answer == long
+    _, user = build_judge_prompt(JudgeItem("q", "e", (), (), long, (), "s"))
+    assert "x" * 20_000 in user and "[truncated]" not in user
 
 
 def test_malformed_judge_reply_is_a_recorded_failure(
@@ -141,7 +145,7 @@ def test_judge_family_must_differ() -> None:
 
 
 def test_versioned_constants() -> None:
-    assert JUDGE_PROMPT_VERSION == "1.1.0"
+    assert JUDGE_PROMPT_VERSION == "1.2.0"
     assert JUDGE_DIMENSIONS == (
         "correctness",
         "completeness",
@@ -149,7 +153,8 @@ def test_versioned_constants() -> None:
         "citation_accuracy",
         "abstention",
     )
-    assert (ANSWER_CHAR_CAP, JUDGE_MAX_TOKENS) == (2400, 300)
+    assert JUDGE_MAX_TOKENS == 300
+    assert not hasattr(judge_module, "ANSWER_CHAR_CAP")
 
 
 def test_prompt_hash_covers_the_prompt_its_version_and_the_user_template(
@@ -180,11 +185,13 @@ def test_judge_prompt_1_1_0_scores_unwarranted_abstention_zero() -> None:
 # reproducibility.run.judge_prompt_hash in official-2026-10-26/results.json.
 JUDGE_PROMPT_HASH_1_0_0 = "e89e8a186b6d28d997bc5d7a3d253114369bd770248c42d5bed44ad6f6f19ec4"
 JUDGE_PROMPT_HASH_1_1_0 = "f0db814c57eb3a2e2b28d1387c62f95df57dbf1f75c9d8a1317d38b4e274abd6"
+# 1.2.0 changes no prompt text: the whole answer is shown (D-096).
+JUDGE_PROMPT_HASH_1_2_0 = "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643"
 
 
 def test_judge_prompt_hash_changes_with_version() -> None:
-    assert judge_prompt_hash() == JUDGE_PROMPT_HASH_1_1_0
-    assert JUDGE_PROMPT_HASH_1_1_0 != JUDGE_PROMPT_HASH_1_0_0
+    assert judge_prompt_hash() == JUDGE_PROMPT_HASH_1_2_0
+    assert len({JUDGE_PROMPT_HASH_1_0_0, JUDGE_PROMPT_HASH_1_1_0, JUDGE_PROMPT_HASH_1_2_0}) == 3
 
 
 def test_judge_settings_come_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -236,13 +243,6 @@ def test_markers_outside_the_citation_grammar_point_nowhere(marker: str) -> None
     _, answer = blind(JudgeItem("q", "e", (), blocks, f"A {marker} and B [2].", (2,), "seed"))
     assert marker not in answer
     assert answer.startswith("A [?] and B [")
-
-
-def test_short_answers_are_not_truncated() -> None:
-    _, answer = blind(JudgeItem("q", "e", (), (), "x" * ANSWER_CHAR_CAP, (), "s"))
-    assert answer == "x" * ANSWER_CHAR_CAP
-    _, cut = blind(JudgeItem("q", "e", (), (), "x" * (ANSWER_CHAR_CAP + 1), (), "s"))
-    assert cut == "x" * ANSWER_CHAR_CAP + " [truncated]"
 
 
 # --- Prompt -----------------------------------------------------------------------

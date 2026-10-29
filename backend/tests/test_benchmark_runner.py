@@ -807,9 +807,9 @@ def test_record_carries_method_and_versions(offline_lab: Lab) -> None:
     assert fields["selection_rule"] == SELECTION_RULE
     assert fields["prompt_version"] == PROMPT_VERSION
     assert fields["scorer_version"] == "2.2.1"
-    assert fields["judge_prompt_version"] == "1.1.0"
+    assert fields["judge_prompt_version"] == "1.2.0"
     assert fields["record_facts_version"] == RECORD_FACTS_VERSION == "1.0.0"
-    assert fields["answer_parser_version"] == "2.0.0"
+    assert fields["answer_parser_version"] == "2.1.0"
     assert fields["prompt_extras"] == {
         "path_line": ["B", "C"],
         "target_type_tier": ["B", "C"],

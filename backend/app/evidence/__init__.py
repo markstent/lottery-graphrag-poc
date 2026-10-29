@@ -17,10 +17,12 @@ GraphTier = Literal["seed", "target", "other"]
 
 # How the answer parser read a model output (D-096): "json" the prompted
 # object, alone or in a code fence; "repaired" the prompted object closed but
-# with bare double quotes inside its answer; "cut_off" the prompted object
-# never closed, read up to where the output ends; "plain" anything else, read
-# as plain text with an empty verdict.
-AnswerForm = Literal["json", "repaired", "cut_off", "plain"]
+# with bare double quotes inside its answer; "unclosed" the prompted object
+# never closed, read up to where the output ends (whether the token limit cut
+# it is told by token_limit_reached, not by the form); "plain" anything else,
+# read as plain text with an empty verdict. Parser 2.0.0 called "unclosed"
+# "cut_off".
+AnswerForm = Literal["json", "repaired", "unclosed", "plain"]
 
 
 class EvidenceChunk(BaseModel):
@@ -155,7 +157,7 @@ class RagAnswer(BaseModel):
     # D-096. Each is None in an answer recorded before answer parser 2.0.0.
     answer_form: AnswerForm | None = Field(
         default=None,
-        description="How the parser read the output: json | repaired | cut_off | plain",
+        description="How the parser read the output: json | repaired | unclosed | plain",
     )
     finish_reason: str | None = Field(
         default=None, description="The provider's stop reason as the gateway reported it"
@@ -172,7 +174,10 @@ class RagAnswer(BaseModel):
     )
     cut_off: bool | None = Field(
         default=None,
-        description="The answer stops before the model finished it: cut_off form or token limit",
+        description=(
+            "The answer stops before the model finished it: it stopped at the token limit,"
+            " or its object never closed and the provider did not say whether it did"
+        ),
     )
 
 
