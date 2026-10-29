@@ -9,6 +9,7 @@ import {
 } from '../../run/reduce'
 import cancelled from '../../run/fixtures/run-cancelled.json'
 import runAbc from '../../run/fixtures/run-abc.json'
+import oldMethod from '../../run/fixtures/run-old-method.json'
 import {
   contextLine,
   evidenceRows,
@@ -22,6 +23,7 @@ import type { RunPhase, Timeline as TimelineView } from './use-live-run'
 
 const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const finished = reduceAll(h1.events)
+const oldMethodState = reduceAll(oldMethod.events as unknown as RunEvent[])
 const cancelledState = reduceAll(cancelled.events as unknown as RunEvent[])
 
 const upTo = (events: RunEvent[], type: string): RunState => {
@@ -271,7 +273,7 @@ describe('evidenceRows under method v0.3', () => {
 
 describe('evidenceRows of an old-method recording', () => {
   it('says a record was set aside under the old method, with no graph rank', () => {
-    const rows = evidenceRows('B', finished)
+    const rows = evidenceRows('B', oldMethodState)
     const aside = rows.filter((row) => row.state === 'discarded')
     expect(aside.length).toBeGreaterThan(0)
     expect(
@@ -305,7 +307,7 @@ describe('targetLine', () => {
     ])
     expect(targetLine('B', none)).toBe("Question's target: none named")
     expect(targetLine('A', none)).toBeNull()
-    expect(targetLine('B', finished)).toBeNull()
+    expect(targetLine('B', oldMethodState)).toBeNull()
   })
 })
 
@@ -317,7 +319,7 @@ describe('contextLine', () => {
 
   it('is silent before the context is built and for an old recording, which had no budget', () => {
     expect(contextLine(initialRunState().pipelines.A)).toBeNull()
-    expect(contextLine(finished.pipelines.A)).toBeNull()
+    expect(contextLine(oldMethodState.pipelines.A)).toBeNull()
   })
 })
 
@@ -326,7 +328,7 @@ describe('evidenceSummary', () => {
 
   it('counts what was found, used and set aside', () => {
     expect(evidenceSummary(evidenceRows('A', finished), 'completed')).toBe(
-      '40 found · 12 used · 28 set aside',
+      '40 found · 16 used · 24 set aside',
     )
   })
 

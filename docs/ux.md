@@ -130,8 +130,11 @@ At 1920 by 1080, the first screen of a running run holds the question bar, the g
 
 Sources: a **recorded run** replays one of four real captures through the API on the dev world, with qwen3.6 through Ollama and reasoning off (`frontend/src/run/fixtures/recorded/`, D-056).
 They need no model, and they are not edited.
-All four were made under the old method (v0.2), and the question bar says "recorded under the old method (v0.2)" beside the source; a recording names its method, and one that names none was made before the field existed, so it is of the old method.
+All four were re-recorded through the API under method v0.3 (D-092), so their scorecards say "Evidence recall" and the question bar carries no method note.
+A recording names its method; one that names none was made before the field existed, so it is of the old method and the question bar says "recorded under the old method (v0.2)" beside the source.
+No recording in the repository is of the old method; unit tests cover that reading.
 The tests' own live runs (`frontend/src/run/fixtures/run-*.json`) are runs of typed questions through the API on the tiny world with the fake model, written by `backend/tests/test_run_fixtures.py`, so every selection and budget in them is what the code did.
+The exception is `run-old-method.json`, the events of the H1 recording made under the old method, taken unchanged from git history so that tests can read a recording of the old method.
 A **live run** posts to `/queries`, follows the event stream, resumes with `?after=` if the connection drops, and reads the stored results.
 A bank question is scored after the run (D-035).
 Your own question can only run live.
@@ -166,7 +169,7 @@ Nothing is drawn for effect, and the whole enterprise graph is never drawn.
 - The picture fits the evidence path and the first starting point.
   A path larger than the frame fits from the starting point at a floor of 14 px for labels.
   The strip above the drawing then says how many evidence nodes are out of view, with a button that brings them in (D-050).
-  Six of the eight end states of the four recordings are in this case.
+  The end states of the H1 recording, and C's of the H3 recording, are in this case.
 - Nodes beyond the visible cap (default 24, Settings 12 to 60) fold into group nodes, which open as a list in the evidence drawer.
 - On C's graph, nodes that C's events record as found through the ontology, and that B does not hold at the same point of the run, are marked "added by the ontology" (D-052).
 - The other approach's path overlay needs the run's stored results, so during a live run it reads "Available once the run ends." (D-051).

@@ -41,7 +41,7 @@ test('plays a recording, pauses it and scrubs through it', async ({ page }) => {
   await page.goto(`/#/live-lab?question=${h1.instance_id}`)
   await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
   await page.getByRole('button', { name: 'Pause' }).click()
-  const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+  const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
   await page
     .getByRole('slider', { name: 'Position' })
     .fill(String(Math.round(duration * 0.55)))
@@ -64,7 +64,7 @@ test('a finished recording does not stretch the page past its content', async ({
 }) => {
   await page.goto(`/#/live-lab?question=${h1.instance_id}`)
   await page.getByRole('button', { name: 'Pause' }).click()
-  const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+  const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
   await page.getByRole('slider', { name: 'Position' }).fill(String(duration))
   await expect(page.getByText('The run is complete.')).toBeVisible()
   const { page: height, content } = await page.evaluate(() => ({
@@ -114,32 +114,39 @@ test('shows where the graph put each record under method v0.3, and why one was s
   await shot(page, 'live-v03-end')
 })
 
-test('labels a recording made under the old method, and reads its reasons as old', async ({
+test('shows a recording as made under method v0.3, with its reasons and graph ranks', async ({
   page,
 }) => {
   await page.goto(`/#/live-lab?question=${h1.instance_id}`)
   const bar = page.getByRole('region', { name: 'Question' })
-  await expect(
-    bar.getByText('recorded under the old method (v0.2)'),
-  ).toBeVisible()
+  await expect(bar.getByText('Recorded run', { exact: true })).toBeVisible()
+  await expect(bar.getByText(/old method/)).toHaveCount(0)
   await page.getByRole('button', { name: 'Pause' }).click()
-  const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+  const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
   await page.getByRole('slider', { name: 'Position' }).fill(String(duration))
   await expect(page.getByText('The run is complete.')).toBeVisible()
-  const evidence = page
-    .getByRole('region', { name: 'B · Graph', exact: true })
-    .getByRole('list', { name: 'Evidence' })
+  const graph = page.getByRole('region', { name: 'B · Graph', exact: true })
   await expect(
-    evidence.getByText('Set aside under the old method').first(),
+    graph.getByText("Question's target: incident, market, platform version"),
+  ).toBeVisible()
+  await expect(graph.getByText('Context: 1,998 of 2,000 tokens')).toBeVisible()
+  await expect(
+    graph
+      .getByRole('list', { name: 'Steps' })
+      .getByText('Re-order passages, take turns'),
+  ).toBeVisible()
+  const evidence = graph.getByRole('list', { name: 'Evidence' })
+  await expect(evidence.getByText(/graph rank/).first()).toBeAttached()
+  await expect(
+    evidence.getByText('Set aside: the context was full').first(),
   ).toBeAttached()
-  await expect(evidence.getByText(/graph rank/)).toHaveCount(0)
+  await expect(evidence.getByText(/old method/)).toHaveCount(0)
   await expect(
     page
-      .getByRole('region', { name: 'B · Graph', exact: true })
-      .getByRole('list', { name: 'Steps' })
-      .getByText('Re-order and pick', { exact: true }),
+      .getByRole('region', { name: 'Scorecard' })
+      .getByRole('columnheader', { name: 'Evidence recall' }),
   ).toBeVisible()
-  await shot(page, 'recorded-old-method-end')
+  await shot(page, 'recorded-v03-end')
 })
 
 test('shows a cancelled run as it was recorded, with no score', async ({

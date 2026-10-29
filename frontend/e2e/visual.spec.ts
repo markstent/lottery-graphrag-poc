@@ -769,7 +769,7 @@ test.describe('Live Lab', () => {
   test('live-lab-h1-mid-replay-paused', async ({ page }) => {
     await page.goto(`/#/live-lab?question=${h1.instance_id}`)
     await expect(slider(page)).toBeEnabled()
-    const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+    const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
     // A fixed cursor, through the replay's own seek: no timing is involved.
     await seek(page, Math.round(duration * 0.55))
     await expect(page.getByText(/^Paused at /)).toBeVisible()

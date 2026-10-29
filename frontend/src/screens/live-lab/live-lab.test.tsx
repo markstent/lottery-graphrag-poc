@@ -1,6 +1,7 @@
 import {
   act,
   fireEvent,
+  cleanup,
   render,
   screen,
   waitFor,
@@ -21,6 +22,7 @@ import type { RunStreamHandlers } from '../../api/stream'
 import { SettingsProvider } from '../../app/settings'
 import fixture from '../../run/fixtures/run-abc.json'
 import { loadRecording } from '../../run/recorded'
+import { asOldMethod, indexAsOldMethod } from '../../test/old-method'
 import { RECORDINGS } from '../../test/recordings'
 import type { RunEvent } from '../../run/reduce'
 import { DOWN, failure, json, READY, stubApi } from '../../test/api-stub'
@@ -35,7 +37,15 @@ vi.mock('../../run/recorded', async (original) => {
   return { ...actual, loadRecording: vi.fn(actual.loadRecording) }
 })
 
+const loadActual = (id: string) =>
+  vi
+    .importActual<typeof import('../../run/recorded')>('../../run/recorded')
+    .then((actual) => actual.loadRecording(id))
 const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
+const durationOf = (run: (typeof RECORDINGS)[number]) =>
+  run.events.at(-1)!.t_ms - run.events[0].t_ms
+/** A recording whose length is not a whole number of milliseconds. */
+const fractional = RECORDINGS.find((run) => durationOf(run) % 1 > 0)!
 const QUESTIONS = [
   ...RECORDINGS.map((run) => ({
     instance_id: run.instance_id,
@@ -152,20 +162,38 @@ describe('Live Lab', () => {
     ).toBeVisible()
   })
 
-  it('says a recording was made under the old method when one is chosen, and not for a live run', async () => {
+  it('says nothing of the old method for a recording of method v0.3', async () => {
     api({ '/api/v1/health/ready': DOWN })
     open()
-    const note = 'recorded under the old method (v0.2)'
     await userEvent.click(
       await screen.findByRole('button', { name: h1.question }),
     )
     const source = screen.getByRole('group', { name: 'Source' })
-    expect(within(source).getByText(note)).toBeVisible()
-    await userEvent.type(
-      screen.getByRole('textbox', { name: 'Or ask your own question' }),
-      'Which games run in Greece?',
-    )
-    expect(within(source).queryByText(note)).toBeNull()
+    expect(
+      within(source).getByRole('button', { name: 'Recorded run' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(within(source).queryByText(/old method/)).toBeNull()
+  })
+
+  it('says a recording was made under the old method when one is chosen, and not for a live run', async () => {
+    const undo = indexAsOldMethod(h1.instance_id)
+    try {
+      api({ '/api/v1/health/ready': DOWN })
+      open()
+      const note = 'recorded under the old method (v0.2)'
+      await userEvent.click(
+        await screen.findByRole('button', { name: h1.question }),
+      )
+      const source = screen.getByRole('group', { name: 'Source' })
+      expect(within(source).getByText(note)).toBeVisible()
+      await userEvent.type(
+        screen.getByRole('textbox', { name: 'Or ask your own question' }),
+        'Which games run in Greece?',
+      )
+      expect(within(source).queryByText(note)).toBeNull()
+    } finally {
+      undo()
+    }
   })
 
   it('plays a recorded run to its end at once under reduced motion', async () => {
@@ -190,7 +218,7 @@ describe('Live Lab', () => {
       name: 'Evidence',
     })
     expect(within(evidence).getByText('INC_037')).toBeVisible()
-    expect(within(column('B · Graph')).getByText(/12 used/)).toBeVisible()
+    expect(within(column('B · Graph')).getByText(/15 used/)).toBeVisible()
   })
 
   it('titles evidence records in plain words with the id beside them', async () => {
@@ -208,7 +236,7 @@ describe('Live Lab', () => {
     expect(within(evidence).getByText('REC_incidents_INC_037')).toBeVisible()
     expect(
       within(column('A · Text search')).getByText(
-        '40 found · 12 used · 28 set aside',
+        '40 found · 16 used · 24 set aside',
       ),
     ).toBeVisible()
   })
@@ -241,9 +269,7 @@ describe('Live Lab', () => {
     const bar = await screen.findByRole('region', { name: 'Question' })
     expect(within(bar).getByText(h1.question)).toBeVisible()
     expect(within(bar).getByText('Recorded run')).toBeVisible()
-    expect(
-      within(bar).getByText('recorded under the old method (v0.2)'),
-    ).toBeVisible()
+    expect(within(bar).queryByText(/old method/)).toBeNull()
     expect(
       within(bar).getByRole('button', { name: 'Change question' }),
     ).toBeVisible()
@@ -722,13 +748,12 @@ describe('Live Lab, timeline', () => {
   })
 
   it('completes the run when the slider is moved to its far end, whatever the fraction of a millisecond', async () => {
-    // H3 lasts 20 987.4 ms: a slider that stops at 20 987 would never apply the last event.
-    const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!
-    const exact = h3.events.at(-1)!.t_ms - h3.events[0].t_ms
+    // A run of 42 862.3 ms: a slider that stops at 42 862 would never apply the last event.
+    const exact = durationOf(fractional)
     expect(exact % 1).toBeGreaterThan(0)
     expect(exact % 1).toBeLessThan(0.5)
     api({ '/api/v1/health/ready': DOWN })
-    open(`#/live-lab?question=${h3.instance_id}`)
+    open(`#/live-lab?question=${fractional.instance_id}`)
     const position = () =>
       screen.getByRole('slider', { name: 'Position' }) as HTMLInputElement
     await screen.findByText('Playing the recorded run.')
@@ -737,16 +762,15 @@ describe('Live Lab, timeline', () => {
   })
 
   it('slider reads its maximum at the end of a run', async () => {
-    // H3 lasts 20 987.4 ms: rounding the cursor would leave the slider 1 below its maximum.
+    // A run of 42 862.3 ms: rounding the cursor would leave the slider 1 below its maximum.
     vi.useFakeTimers({ shouldAdvanceTime: false })
-    const h3 = RECORDINGS.find((run) => run.stratum === 'H3')!
     api({ '/api/v1/health/ready': DOWN })
-    open(`#/live-lab?question=${h3.instance_id}`)
+    open(`#/live-lab?question=${fractional.instance_id}`)
     await act(async () => {
-      await loadRecording(h3.instance_id)
+      await loadRecording(fractional.instance_id)
     })
     act(() => {
-      vi.advanceTimersByTime(h3.events.at(-1)!.t_ms - h3.events[0].t_ms + 1000)
+      vi.advanceTimersByTime(durationOf(fractional) + 1000)
     })
     const slider = screen.getByRole('slider', {
       name: 'Position',
@@ -791,7 +815,15 @@ describe('Live Lab, results', () => {
       '/api/v1/health/ready': DOWN,
       '/api/v1/datasets': DATASETS,
       '/api/v1/graph/nodes/INC_037': NODE,
-      '/api/v1/graph/nodes/SUP_00113': { ...NODE, node_id: 'SUP_00113' },
+      '/api/v1/graph/nodes/INC_029': {
+        ...NODE,
+        node_id: 'INC_029',
+        provenance: { ...NODE.provenance, row_id: 'INC_029' },
+      },
+      '/api/v1/graph/nodes/PLV_IDENTITY_2': {
+        ...NODE,
+        node_id: 'PLV_IDENTITY_2',
+      },
       '/api/v1/datasets/dev-seed2026/tables/incidents/rows/INC_017': RECORD,
     })
 
@@ -836,17 +868,18 @@ describe('Live Lab, results', () => {
     it('opens the evidence drawer from a citation by keyboard and returns focus on close', async () => {
       const user = await finishRecording(userEvent.setup())
       const answer = screen.getByRole('region', { name: 'B · Graph answer' })
+      // Source 1 is a passage; source 2 is the graph node INC_029.
       const citation = within(answer).getByRole('button', {
-        name: /^Open source 1/,
+        name: /^Open source 2\b/,
       })
       citation.focus()
       await user.keyboard('{Enter}')
       const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
       expect(await within(dialog).findByText('severity')).toBeVisible()
       expect(
-        within(dialog).getByText('INC_037', { selector: 'dd' }),
+        within(dialog).getByText('INC_029', { selector: 'dd' }),
       ).toBeVisible()
-      expect(opened()).toContain('/api/v1/graph/nodes/INC_037')
+      expect(opened()).toContain('/api/v1/graph/nodes/INC_029')
       await user.keyboard('{Escape}')
       expect(screen.queryByRole('dialog')).toBeNull()
       expect(citation).toHaveFocus()
@@ -857,17 +890,19 @@ describe('Live Lab, results', () => {
       const list = within(column('B · Graph')).getByRole('list', {
         name: 'Evidence',
       })
-      const row = within(list).getAllByRole('button')[0]
+      const row = within(list)
+        .getAllByRole('button')
+        .find((button) => button.textContent?.includes('INC_029'))!
       row.focus()
       await user.keyboard('{Enter}')
       const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
-      // The row is the node INC_037: its properties are the record shown first.
+      // The row is the node INC_029: its properties are the record shown first.
       expect(await within(dialog).findByText('severity')).toBeVisible()
       expect(within(dialog).getByText('MEDIUM')).toBeVisible()
       expect(
-        within(dialog).getByText('INC_037', { selector: 'dd' }),
+        within(dialog).getByText('INC_029', { selector: 'dd' }),
       ).toBeVisible()
-      expect(opened()).toContain('/api/v1/graph/nodes/INC_037')
+      expect(opened()).toContain('/api/v1/graph/nodes/INC_029')
       await user.keyboard('{Escape}')
       expect(row).toHaveFocus()
     })
@@ -1023,12 +1058,12 @@ describe('Live Lab, results', () => {
     })
     const node = within(strip)
       .getAllByRole('button')
-      .find((b) => b.getAttribute('data-node-id') === 'SUP_00113')!
+      .find((b) => b.getAttribute('data-node-id') === 'PLV_IDENTITY_2')!
     node.focus()
     await user.keyboard('{Enter}')
     const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
     expect(
-      within(dialog).getByText(/^Step 2 of 2 on evidence path 2$/),
+      within(dialog).getByText(/^Step 2 of 3 on evidence path 1$/),
     ).toBeVisible()
     await user.keyboard('{Escape}')
     expect(node).toHaveFocus()
@@ -1127,7 +1162,7 @@ describe('Live Lab, results', () => {
     expect(within(card).queryByText('Answer')).toBeNull()
   })
 
-  it('scores a live run on evidence recall and a recording of the old method on its evidence score', async () => {
+  it('scores a live run and a recording of method v0.3 on evidence recall, and a recording of the old method on its evidence score', async () => {
     const scored = structuredClone(h1.results) as typeof h1.results
     for (const id of ['A', 'B', 'C'] as const)
       scored.score!.per_pipeline[id] = {
@@ -1161,8 +1196,24 @@ describe('Live Lab, results', () => {
     await finishRecording(userEvent.setup())
     const recorded = screen.getByRole('region', { name: 'Scorecard' })
     expect(
-      within(recorded).getByRole('columnheader', { name: 'Evidence score' }),
+      within(recorded).getByRole('columnheader', { name: 'Evidence recall' }),
     ).toBeVisible()
-    expect(within(recorded).queryByText('Evidence recall')).toBeNull()
+    expect(within(recorded).queryByText('Evidence score')).toBeNull()
+    cleanup()
+
+    const undo = indexAsOldMethod(h1.instance_id)
+    vi.mocked(loadRecording).mockImplementationOnce(async (id) =>
+      asOldMethod(await loadActual(id)),
+    )
+    try {
+      await finishRecording(userEvent.setup())
+    } finally {
+      undo()
+    }
+    const old = screen.getByRole('region', { name: 'Scorecard' })
+    expect(
+      within(old).getByRole('columnheader', { name: 'Evidence score' }),
+    ).toBeVisible()
+    expect(within(old).queryByText('Evidence recall')).toBeNull()
   })
 })

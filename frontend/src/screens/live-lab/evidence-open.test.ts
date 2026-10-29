@@ -82,15 +82,21 @@ describe('sourceFor', () => {
 
 describe('pathPosition', () => {
   it('gives the first recorded path that holds the node, and the step in it', () => {
-    expect(pathPosition(h1, 'B', 'SUP_00113', true)).toEqual({
-      path: 2,
+    expect(pathPosition(h1, 'B', 'INC_005', true)).toEqual({
+      path: 4,
+      step: 3,
+      of: 3,
+    })
+    // PLV_IDENTITY_2 lies on three recorded paths; the first is the one named.
+    expect(pathPosition(h1, 'B', 'PLV_IDENTITY_2', true)).toEqual({
+      path: 1,
       step: 2,
-      of: 2,
+      of: 3,
     })
     expect(pathPosition(h1, 'B', 'INC_037', true)).toEqual({
       path: 1,
       step: 1,
-      of: 1,
+      of: 3,
     })
   })
 
@@ -99,9 +105,9 @@ describe('pathPosition', () => {
   })
 
   it('is null before the path is recorded, and for pipeline A', () => {
-    expect(pathPosition(h1, 'B', 'SUP_00113', false)).toBeNull()
-    expect(pathPosition(h1, 'A', 'SUP_00113', true)).toBeNull()
-    expect(pathPosition(null, 'B', 'SUP_00113', true)).toBeNull()
+    expect(pathPosition(h1, 'B', 'INC_005', false)).toBeNull()
+    expect(pathPosition(h1, 'A', 'INC_005', true)).toBeNull()
+    expect(pathPosition(null, 'B', 'INC_005', true)).toBeNull()
   })
 })
 

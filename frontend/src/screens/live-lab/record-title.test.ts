@@ -20,9 +20,11 @@ describe('recordTitle', () => {
   })
 
   it('uses a graph node record summary, and nothing for a node without one', () => {
-    expect(recordTitle(h1.results, 'C', 'INC_037')).toBe(
+    expect(recordTitle(h1.results, 'C', 'INC_024')).toBe(
       'Identity service latency causing timeouts',
     )
+    // The starting record is set aside as the question's own, so it carries no summary.
+    expect(recordTitle(h1.results, 'C', 'INC_037')).toBeNull()
     expect(recordTitle(h1.results, 'C', 'CONCEPT_INCIDENT')).toBeNull()
   })
 

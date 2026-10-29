@@ -62,7 +62,7 @@ describe('timeline', () => {
     recorded.forEach((event, i) => {
       expect(replay.offsets[i]).toBeCloseTo(event.t_ms - origin, 6)
     })
-    expect(replay.duration).toBeCloseTo(35596.7, 1)
+    expect(replay.duration).toBeCloseTo(42862.3, 1)
   })
 
   it('orders events by sequence whatever order they arrive in', () => {
