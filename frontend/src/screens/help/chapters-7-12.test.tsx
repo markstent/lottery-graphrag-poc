@@ -284,12 +284,12 @@ describe('chapters 7 to 12', () => {
   })
 
   it('states method v0.3 where Help v2 stated v0.2 facts', () => {
-    // Running it: the official run is the six unseen worlds, with the repeats from settings.
+    // Running it: the official run is the six unseen worlds, each question once (D-097).
     show('technical', [{ kind: 'component', name: 'running' }])
     expect(
-      screen.getByText(/runs every question on the six unseen worlds/),
+      screen.getByText(/runs every question once on the six unseen worlds/),
     ).toHaveTextContent(
-      'runs every question on the six unseen worlds, 2029 to 2034, 3 times each.',
+      'runs every question once on the six unseen worlds, 2029 to 2034 (D-097); REPEATS=N asks each N times.',
     )
     expect(document.body).not.toHaveTextContent(/on three worlds/)
     cleanup()

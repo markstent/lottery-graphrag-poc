@@ -35,7 +35,7 @@ export const running: ChapterCopy = {
         'method_version',
       ],
     },
-    'The official run of method v0.3 uses the six unseen worlds, seeds 2029 to 2034, with {repeats} repeats (make run-benchmark). It starts from the command line after the owner agrees, and only from a clean checkout; the API and Results do not start it, and no other run may use those worlds (D-091). Development uses world 2026 only, through make dev-run or "Development run" on Results.',
+    'The official run of method v0.3 uses the six unseen worlds, seeds 2029 to 2034, and asks each question once (make run-benchmark; REPEATS=N asks each N times; D-097). It starts from the command line after the owner agrees, and only from a clean checkout; the API and Results do not start it, and no other run may use those worlds (D-091). Development uses world 2026 only, through make dev-run or "Development run" on Results.',
     'To repeat an official run:',
     [
       'check out the commit the run recorded (git_sha in its reproducibility record on Results) with a clean tree; the run records its method_version, and runs of different methods are not compared or resumed together;',

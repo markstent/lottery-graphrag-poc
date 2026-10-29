@@ -34,7 +34,7 @@ The guards against fitting the method to the result:
 
 - development runs on the presentation world, seed 2026, only, through the run kind `dev`, and its numbers are never reported as a result;
 - every rule and value is written in a decision record before any official measurement;
-- the official run uses six worlds no one has looked at, seeds 2029 to 2034, with the models of v0.2.0 and three repeats, and starts from the command line after the owner agrees;
+- the official run uses six worlds no one has looked at, seeds 2029 to 2034, with the models of v0.2.0 and each question asked once (D-097), and starts from the command line after the owner agrees;
 - no value is chosen by trying it on those seeds, a mechanical failure is resumed with the same settings, and a result of no difference is the result;
 - v0.2.0 is not rewritten.
   Its rescoring under the new scorer is a labelled addendum beside the run (D-090).
@@ -418,7 +418,7 @@ A dev run does the same: its only headline says it is a development run on seed 
 |---|---|---|
 | smoke | `make run-smoke` | Scores the three seen worlds with the stand-in generator and judge. It tests the scoring code, and its numbers are not results. |
 | dev | `make dev-run` | A development run on seed 2026 only, with the real generator and the gateway judge. It is labelled "development run on seed 2026, not a result" and is never reported as a result of v0.3.0. |
-| official | `make run-benchmark` | The full bank on the six unseen worlds, seeds 2029 to 2034, three repeats, a hosted or local generation model, and a judge of another family. A part of the bank on seed 2026, as the dry run, is also an official run and is labelled a subset run. |
+| official | `make run-benchmark` | The full bank on the six unseen worlds, seeds 2029 to 2034, each question asked once (D-097), a hosted or local generation model, and a judge of another family. A part of the bank on seed 2026, as the dry run, is also an official run and is labelled a subset run. |
 | sweep | `make run-sweep` | The H1 questions with B and C at graph depth 0, 1, 2 and 3. Reports intervals, runs no test. |
 | compare | `python -m app.evaluation compare SMALL_RUN LARGE_RUN` | H7: large minus small per pipeline, stratum and metric, as clustered intervals. Needs two official runs with the same frozen banks and the same settings except the generation model (see Kept worlds and resume). |
 
@@ -432,7 +432,7 @@ and the API accepts only the seen seeds, so the official run starts from the com
 No development, diagnostic or labelling step may use an unseen world.
 A run with `--strata`, `--questions` or `--limit` is labelled a subset run and is never published as the official result.
 `--questions` names logical questions of the bank, and an id the bank does not define is refused before any world is prepared.
-The dry run is `make dry-run`: the first bank instance of each of the strata H1, H2, H3 and H5, chosen as `GET /api/v1/demo/questions` chooses them, on world 2026 with the official three repeats.
+The dry run is `make dry-run`: the first bank instance of each of the strata H1, H2, H3 and H5, chosen as `GET /api/v1/demo/questions` chooses them, on world 2026 with the official settings, each question asked once.
 `python -m app.evaluation dry-run-questions` prints those question ids by reading the frozen bank file, so a bank change cannot leave them stale.
 
 ## Operation
@@ -441,7 +441,7 @@ The dry run is `make dry-run`: the first bank instance of each of the strata H1,
 make ground-bank        # freeze the bank into the active world (seed 2026)
 make run-smoke          # needs the services, no model
 make dev-run            # development run on seed 2026, not a result; wipes and restores Neo4j, calls the models; owner go-ahead first
-make dry-run            # four questions on world 2026, three repeats; the official settings, so owner approval first
+make dry-run            # four questions on world 2026, each asked once; the official settings, so owner approval first
 make run-benchmark      # six unseen worlds; needs GENERATION_PROVIDER=litellm and JUDGE_PROVIDER=litellm; owner agreement first
 make run-sweep
 make addendum-v020      # rescore v0.2.0, no Neo4j, no model
@@ -460,7 +460,9 @@ uv run python -m app.evaluation bank-doc --bank FILE --out FILE
 
 Before any world is prepared, the run checks its kind, its repeats and the generator and judge settings, so a wrong setting fails in seconds.
 `--seeds` defaults by kind: 2029 to 2034 for official, 2026 for dev and 2026, 2027 and 2028 for smoke and sweep.
-`--repeats` defaults to 3 for an official run and 1 otherwise, and an official run refuses fewer than 3.
+`--repeats` defaults to 1 for every kind (D-097).
+An official run refuses fewer repeats than `OFFICIAL_MIN_REPEATS` in `backend/app/evaluation/runner.py`, which is 1 since D-097 and was 3 through v0.2.0.
+`make run-benchmark REPEATS=N` and `make dry-run REPEATS=N` ask each question N times.
 Direct forms of the other commands: `addendum --run DIR [--out DIR]`, `label-sample --run DIR [--out DIR]` and `label-agreement --run DIR [--sample DIR]`.
 A sweep or official run refuses the stand-in generator and needs a gateway judge.
 
@@ -568,7 +570,11 @@ The runner writes one structured log record per repeat with the world seed, bank
 The records never carry an expected answer, the generated answer or a secret.
 
 What is deterministic: generation of a world, grounding, retrieval, scoring and the statistics, for the same code, seeds, models and indices.
-Generation and judging with a real model can vary between repeats even at temperature 0, which is why an official run takes three repeats and reports their mean.
+Generation and judging with a real model can vary between repeats even at temperature 0.
+The official run v0.2.0 asked every question three times, and the answers did not vary: in all 450 sets of three (150 instances by three approaches) the three answers were word for word the same.
+The judge did vary a little: its scores for the same answer differed within 94 of those 450 sets.
+Since D-097 an official run asks each question once.
+`--repeats N` asks each question N times and reports their mean, which shows any variance a new model or setting brings.
 
 ## Configuration
 
@@ -621,7 +627,7 @@ It uses the stand-in generator, the hashing embedder and the lexical judge.
 | A rescored run's instance is grounded differently now | The addendum and the label agreement refuse, naming the instance and world, since the stored answers did not answer the question the bank asks now. |
 | Another world is in the graph | The benchmark ingests the one it needs, then restores seed 2026. A server stop during a job can leave a benchmark world in Neo4j. Run `make ingest-graph`. |
 | Run cancelled or failed | No `summary.json` is written, so the run is never published, and the seed 2026 graph is ingested again. |
-| `--repeats` below 3 on an official run | Refused. |
+| `--repeats` below 1, or below `OFFICIAL_MIN_REPEATS` (1 since D-097) on an official run | Refused. |
 | A seed the run kind may not use (D-091) | Refused before any world is prepared, naming the seeds. |
 | Two runs of different methods compared or resumed | Refused, naming both method versions (D-092). |
 

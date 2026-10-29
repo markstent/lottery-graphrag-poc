@@ -225,9 +225,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Official run',
     meaning:
-      'Every question run on several worlds, three times each, scored identically for all approaches. Only an official run is a result.',
+      'Every question run on several worlds, once each, scored identically for all approaches. Only an official run is a result.',
     technical:
-      'Run kind official over the whole bank, with at least 3 repeats and a gateway answer model and judge (make run-benchmark): for method v0.3 on the six unseen world seeds 2029 to 2034 (D-091); v0.2.0 used seeds 2026, 2027 and 2028.',
+      'Run kind official over the whole bank, with one repeat unless --repeats N asks more (D-097), and a gateway answer model and judge (make run-benchmark): for method v0.3 on the six unseen world seeds 2029 to 2034 (D-091); v0.2.0 used seeds 2026, 2027 and 2028.',
   },
   {
     term: 'Pair',
@@ -305,9 +305,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Repeat',
     meaning:
-      'One of the times a question is asked. Each question is asked more than once, because a model’s answer can vary.',
+      'One of the times a question is asked. An official run asks each question once; a run can ask more than once, to see whether a model’s answer varies.',
     technical:
-      'An official run takes at least 3 repeats; a failed repeat has no score and is left out of every metric.',
+      'An official run takes one repeat unless --repeats N asks more (D-097; v0.2.0 took 3); a failed repeat has no score and is left out of every metric.',
   },
   {
     term: 'Starting point',

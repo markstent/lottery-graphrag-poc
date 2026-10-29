@@ -116,13 +116,13 @@ export const REGISTER: readonly RegisterRow[] = [
   },
   {
     id: 'repeats',
-    item: 'A few repeats',
+    item: 'One try per question',
     plain:
-      'Each question is asked {repeats} times and the scores are averaged, because a model can answer differently each time.',
+      'Each question is asked once, because asking again gave the same answer.',
     reason:
-      'Even at temperature 0 a model can vary between calls; {repeats} repeats average this out within a run time the owner accepted (about 9.5 hours estimated; the official run v0.2.0 took 15 hours 39 minutes, about three of them with the machine asleep).',
-    cost: '{repeats} tries may not settle an answer that varies a lot, which adds noise to the answer score.',
-    decision: 'docs/evaluation.md, "Reproducibility"',
+      'The official run v0.2.0 asked every question three times at temperature 0, and in all 450 sets of three the answers were word for word the same. The extra tries added nothing and tripled the run time (15 hours 39 minutes for v0.2.0).',
+    cost: 'If a model or setting is not deterministic, one try hides how much its answers vary. The judge already varies a little: in v0.2.0 its scores for the same answer differed in 94 of the 450 sets. A run with REPEATS=N shows the variance.',
+    decision: 'D-097; docs/evaluation.md, "Reproducibility"',
   },
   {
     id: 'judge-is-a-model',

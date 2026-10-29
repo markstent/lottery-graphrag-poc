@@ -156,7 +156,7 @@ export const COMMAND_GROUPS: readonly {
       ],
       [
         'make run-benchmark',
-        'Official run: the six unseen worlds, 2029 to 2034, 3 repeats, from a clean checkout; owner agreement first. OUT=DIR names it; OUT=DIR RESUME=1 resumes it.',
+        'Official run: the six unseen worlds, 2029 to 2034, each question once (REPEATS=N asks each N times), from a clean checkout; owner agreement first. OUT=DIR names it; OUT=DIR RESUME=1 resumes it.',
       ],
       [
         'make run-sweep',

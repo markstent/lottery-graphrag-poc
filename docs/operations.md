@@ -154,13 +154,13 @@ A job started from the API never resumes; its failure message names the command 
 | `make demo-reset` | The demo graph load and index build |
 | `make serve-demo-api` | Serves the API against the demo world |
 | `make traces` | Writes the side-by-side example traces with the fake generator (reads Neo4j and Qdrant, runs the embedding and re-ranking models) |
-| `make dry-run` | Four-question dry run of the official settings; it wipes and restores the graph, calls the answer and judge models, and needs owner approval first |
+| `make dry-run` | Four-question dry run of the official settings, each question asked once (`REPEATS=N` for more); it wipes and restores the graph, calls the answer and judge models, and needs owner approval first |
 | `make dev-run` | Development run on seed 2026, not a result; it wipes and restores the graph, calls the answer and judge models, and needs the owner's go-ahead |
 | `make diagnose-selection` | Read-only: which claim records each approach finds and the selection keeps (reads Neo4j, runs the embedding and re-ranking models, no answer model) |
 | `make addendum-v020` | Rescores official run v0.2.0 with the current scorer (2.2.1); no Neo4j, no model |
 | `make label-sample`, `label-agreement` | Builds the hand-labelling sample from run v0.2.0, and reports the agreement of the measures with the labels; no Neo4j, no model |
 | `make run-smoke` | Scorer smoke test on three worlds; it wipes and restores Neo4j and indexes new worlds in Qdrant, with the fake generator and judge (no answer or judge model) |
-| `make run-benchmark`, `run-sweep` | The official run (six unseen worlds, seeds 2029 to 2034, only after the owner agrees) and the depth sweep (see [evaluation.md](evaluation.md)); each wipes and restores Neo4j, indexes new worlds in Qdrant and calls the judge model, and the answer model unless `GENERATION_PROVIDER=fake` |
+| `make run-benchmark`, `run-sweep` | The official run (six unseen worlds, seeds 2029 to 2034, each question asked once as D-097 sets and `REPEATS=N` for more, only after the owner agrees) and the depth sweep (see [evaluation.md](evaluation.md)); each wipes and restores Neo4j, indexes new worlds in Qdrant and calls the judge model, and the answer model unless `GENERATION_PROVIDER=fake` |
 
 The Makefile is the stable command surface.
 
