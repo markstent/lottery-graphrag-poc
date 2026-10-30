@@ -98,7 +98,7 @@ test.describe('Results run list', () => {
   const RUN_LIST = [
     ['published', 'All runs'],
     ['official', 'Descriptive: not part of the tested family.'],
-    ['none', 'No benchmark runs yet.'],
+    ['none', 'No runs yet.'],
     ['unavailable', 'The run list is unavailable.'],
   ] as const
   for (const [runs, text] of RUN_LIST) {
@@ -112,7 +112,8 @@ test.describe('Results run list', () => {
 
 test.describe('Overview latest run', () => {
   const LATEST = [
-    ['official', 'Evidence score, all questions'],
+    ['official', 'Method v0.2 (old method)'],
+    ['v03', 'Method v0.3 was made after seeing the v0.2.0 result'],
     ['smoke', 'Latest run: scorer smoke test'],
     ['none', 'No official run yet'],
     ['unavailable', 'The latest run is unavailable.'],

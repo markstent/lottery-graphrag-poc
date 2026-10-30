@@ -145,7 +145,8 @@ def test_trace_g_counts_the_selected_context_by_kind() -> None:
         rel_type="SEED",
         score=0.9,
         components={},
-        rerank_score=1.5,
+        tier="seed",
+        graph_rank=1,
         selected=True,
     )
     excluded = node.model_copy(
@@ -167,7 +168,8 @@ def test_trace_g_counts_the_selected_context_by_kind() -> None:
     )
     text = "\n".join(trace_g("B", result, []))
     assert "- selected context (4: 1 node, 1 record, 2 document)" in text
-    assert "rerank 1.500" in text
+    assert "score 0.900, tier seed, graph rank 1," in text
+    assert "rerank" not in text.split("selected node evidence")[1].split("discarded nodes")[0]
     assert "- discarded nodes: 1 (excluded_label=1)" in text
     assert "- seeds: (none)" in text
 

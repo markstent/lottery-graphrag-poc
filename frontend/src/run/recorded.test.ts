@@ -4,9 +4,11 @@ import {
   checkRecording,
   loadRecording,
   RECORDED_INDEX,
+  recordingNote,
   UnknownEventTypeError,
 } from './recorded'
 import { reduceAll } from './reduce'
+import { indexAsOldMethod } from '../test/old-method'
 import { RECORDINGS } from '../test/recordings'
 
 describe('recorded runs', () => {
@@ -54,6 +56,28 @@ describe('recorded runs', () => {
     expect(RECORDINGS.map((r) => r.dataset_id)).toEqual(
       RECORDED_INDEX.map((r) => r.dataset_id),
     )
+  })
+
+  it('reads all four recordings as made under method v0.3, with no old-method note', () => {
+    expect(RECORDED_INDEX.map((r) => r.method)).toEqual(Array(4).fill('0.3.0'))
+    expect(RECORDINGS.map((r) => r.method)).toEqual(Array(4).fill('0.3.0'))
+    for (const run of RECORDED_INDEX)
+      expect(recordingNote(run.instance_id)).toBeNull()
+    expect(recordingNote('L99-unknown')).toBeNull()
+  })
+
+  it('reads a recording that names no method as made under the old method', () => {
+    const [first] = RECORDED_INDEX
+    const undo = indexAsOldMethod(first.instance_id)
+    try {
+      expect(recordingNote(first.instance_id)).toBe(
+        'recorded under the old method (v0.2)',
+      )
+      expect(recordingNote(RECORDED_INDEX[1].instance_id)).toBeNull()
+    } finally {
+      undo()
+    }
+    expect(recordingNote(first.instance_id)).toBeNull()
   })
 
   it('loads a recording by its question, and refuses one it does not have', async () => {

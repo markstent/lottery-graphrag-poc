@@ -1,11 +1,15 @@
 """CLI entry point: ``uv run python -m app.evaluation``.
 
+``addendum`` rescores a stored run with no model into a directory beside it;
+``label-sample`` draws the blind hand-labelling sample from a stored run and
+``label-agreement`` measures the answer measures against the returned labels,
+both with no model;
 ``ground`` grounds bank 2.0.0 into one generated world (by default the
 active one, from DATASET_DIR and TRUTH_LEDGER_PATH) and writes the hashed
 frozen bank; ``bank-doc`` renders a frozen bank as the generated question
 bank page. ``dry-run-questions`` prints the four-question dry run's questions;
-``diagnose-selection`` counts, with no answer model, what the shared re-ranker keeps;
-``run`` runs a smoke or official benchmark over one or more
+``diagnose-selection`` counts, with no answer model, what the selection keeps;
+``run`` runs a smoke, dev or official benchmark over one or more
 world seeds, ``sweep`` runs the multi-hop depth sweep and ``compare`` pairs
 two official runs of different generation models (H7). All are
 evaluator-only (ADR-008).
@@ -18,14 +22,15 @@ from collections import Counter
 from pathlib import Path
 
 from app.config import REPO_ROOT
-from app.evaluation import diagnostics, official
+from app.evaluation import addendum, diagnostics, labelling, official
 from app.evaluation.bank import BANK, NAME_ANCHORED, STRATA, LogicalQuestion
+from app.evaluation.checks import TokenCheck
 from app.evaluation.grounding import (
     BankInstance,
     FrozenBank,
     freeze_bank,
     load_frozen_bank,
-    write_frozen_bank,
+    write_new_bank,
 )
 from app.evaluation.runner import OFFICIAL_MIN_REPEATS
 
@@ -52,13 +57,23 @@ def build_parser() -> argparse.ArgumentParser:
     doc.add_argument("--bank", type=Path, required=True, help="Frozen bank JSON to read.")
     doc.add_argument("--out", type=Path, required=True, help="Markdown page to write.")
     run = commands.add_parser("run", help="Run the benchmark over one or more worlds.")
-    run.add_argument("--kind", choices=("smoke", "official"), required=True)
-    _seeds_argument(run)
+    run.add_argument("--kind", choices=("smoke", "dev", "official"), required=True)
+    _seeds_argument(
+        run,
+        default=None,
+        shown=(
+            f"{_joined(official.SEEN_SEEDS)} for smoke, {_joined(official.DEV_SEEDS)} for dev, "
+            f"{_joined(official.OFFICIAL_SEEDS)} for official"
+        ),
+    )
     run.add_argument(
         "--repeats",
         type=_repeats,
         default=None,
-        help=f"Repeats per pipeline (default 1 for smoke, {OFFICIAL_MIN_REPEATS} for official).",
+        help=(
+            f"Repeats per pipeline (default 1 for smoke and dev, "
+            f"{OFFICIAL_MIN_REPEATS} for official)."
+        ),
     )
     run.add_argument("--strata", type=_names, default=None, help="Strata to run, e.g. H1,H3.")
     run.add_argument(
@@ -81,12 +96,12 @@ def build_parser() -> argparse.ArgumentParser:
     commands.add_parser(
         "diagnose-selection",
         help=(
-            "Read-only: what the shared re-ranker keeps of the claim records each approach "
+            "Read-only: what the selection keeps of the claim records each approach "
             "finds (no answer model; the embedding and re-ranking models run)."
         ),
     )
     sweep = commands.add_parser("sweep", help="Run B and C on H1 at each graph depth.")
-    _seeds_argument(sweep)
+    _seeds_argument(sweep, default=official.SEEN_SEEDS, shown=_joined(official.SEEN_SEEDS))
     sweep.add_argument(
         "--depths",
         type=_integers,
@@ -100,6 +115,36 @@ def build_parser() -> argparse.ArgumentParser:
     compare.add_argument("small", type=Path, help="Run directory of the small model.")
     compare.add_argument("large", type=Path, help="Run directory of the large model.")
     compare.add_argument("--out", type=Path, default=None, help="Directory for comparison.json.")
+    rescored = commands.add_parser(
+        "addendum", help="Model-free: rescore a stored run into an addendum beside it."
+    )
+    rescored.add_argument("--run", type=Path, required=True, help="Run directory to rescore.")
+    rescored.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="New addendum directory (default data/evaluation/addenda/<run>-scorer-<version>).",
+    )
+    sample = commands.add_parser(
+        "label-sample", help="Model-free: draw the blind hand-labelling sample from a stored run."
+    )
+    sample.add_argument("--run", type=Path, required=True, help="Run directory to sample.")
+    sample.add_argument(
+        "--out",
+        type=Path,
+        default=None,
+        help="New sample directory (default data/evaluation/labels/v0.2.0-sample).",
+    )
+    agreed = commands.add_parser(
+        "label-agreement", help="Model-free: agreement of the answer measures with the labels."
+    )
+    agreed.add_argument("--run", type=Path, required=True, help="Run directory sampled.")
+    agreed.add_argument(
+        "--sample",
+        type=Path,
+        default=None,
+        help="Sample directory (default data/evaluation/labels/v0.2.0-sample).",
+    )
     return parser
 
 
@@ -120,11 +165,11 @@ def _dispatch(args: argparse.Namespace) -> int:
     if args.command == "run":
         repeats = args.repeats
         if repeats is None:
-            repeats = 1 if args.kind == "smoke" else OFFICIAL_MIN_REPEATS
+            repeats = OFFICIAL_MIN_REPEATS if args.kind == "official" else 1
         out = _resolved(args.out) or official.run_dir(official.run_id(args.kind))
         official.run_benchmark(
             args.kind,
-            args.seeds,
+            args.seeds or official.default_seeds(args.kind),
             repeats=repeats,
             out_dir=out,
             strata=args.strata,
@@ -147,6 +192,30 @@ def _dispatch(args: argparse.Namespace) -> int:
         )
         print(f"wrote {out}")
         return 0
+    if args.command == "addendum":
+        out = _resolved(args.out) or addendum.addendum_dir(args.run)
+        try:
+            print(f"wrote {addendum.write_addendum(args.run, out)}")
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
+        return 0
+    if args.command == "label-sample":
+        out = _resolved(args.out) or labelling.DEFAULT_SAMPLE_DIR
+        try:
+            labelling.write_sample(args.run, out)
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
+        for line in labelling.shortfall_lines(out):
+            print(f"shortfall: {line}")
+        print(f"wrote {out}")
+        return 0
+    if args.command == "label-agreement":
+        sample_dir = _resolved(args.sample) or labelling.DEFAULT_SAMPLE_DIR
+        try:
+            print(f"wrote {labelling.write_agreement(sample_dir, args.run)}")
+        except ValueError as error:
+            raise SystemExit(str(error)) from None
+        return 0
     if args.command == "compare":
         comparison = official.compare_runs(args.small, args.large)
         out = args.out or official.comparison_dir(official.run_id("compare"))
@@ -158,7 +227,7 @@ def _dispatch(args: argparse.Namespace) -> int:
         world = args.world or active.world_dir
         out = args.out or official.bank_path_for(world)
         bank = freeze_bank(world, args.ledger or active.ledger_path)
-        write_frozen_bank(bank, out)
+        write_new_bank(bank, out)
         for line in stratum_counts(bank):
             print(line)
         for item in bank.unavailable:
@@ -203,13 +272,19 @@ def _names(text: str) -> list[str]:
     return [part.strip() for part in text.split(",")]
 
 
-def _seeds_argument(parser: argparse.ArgumentParser) -> None:
+def _seeds_argument(
+    parser: argparse.ArgumentParser, default: tuple[int, ...] | None, shown: str
+) -> None:
     parser.add_argument(
         "--seeds",
         type=_integers,
-        default=official.OFFICIAL_SEEDS,
-        help="Comma-separated world seeds (default 2026,2027,2028).",
+        default=default,
+        help=f"Comma-separated world seeds (default {shown}).",
     )
+
+
+def _joined(seeds: tuple[int, ...]) -> str:
+    return ",".join(str(seed) for seed in seeds)
 
 
 def _limit_argument(parser: argparse.ArgumentParser) -> None:
@@ -259,6 +334,7 @@ def render_bank_doc(bank: FrozenBank) -> str:
         f"World manifest hash: `{bank.world_manifest_hash}`.",
         f"Ledger hash: `{bank.ledger_hash}`.",
         f"Record serialiser version: `{bank.record_serialiser_version}`.",
+        f"Scorer version: `{bank.scorer_version or 'unrecorded'}`.",
         "",
     ]
     unavailable = {u.question_id: u.reason for u in bank.unavailable}
@@ -288,6 +364,13 @@ def _question_section(
             f"- Instance `{instance.instance_id}`",
             f"  - Question: {instance.text}",
             f"  - Expected answer: {instance.expected_answer}",
+            *(
+                f"  - Also accepted: {q.alias} with {' or '.join(q.qualifiers)}"
+                + (f", naming none of {', '.join(q.rivals)}." if q.rivals else ".")
+                for check in instance.checks
+                if isinstance(check, TokenCheck)
+                for q in check.qualified
+            ),
         ]
     return [*lines, ""]
 

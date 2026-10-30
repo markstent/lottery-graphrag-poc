@@ -22,6 +22,7 @@ import {
   useSettingValues,
 } from './settings'
 import { Stories } from './stories'
+import { ScrollBox } from '../../components/scroll-box'
 
 const DIAGRAMS: Record<DiagramName, ReactElement> = {
   approachA: <ApproachDiagram id="A" />,
@@ -49,7 +50,7 @@ function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
   )
   return (
     <>
-      <div className="overflow-x-auto">
+      <ScrollBox label="Settings now and in the newest official run">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">
             Settings now and in the newest official run
@@ -96,7 +97,7 @@ function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
             })}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
       {errors.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
           {errors.map((message) => (

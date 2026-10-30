@@ -28,6 +28,7 @@ from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.models.gateway import GatewayError
+from app.retrieval.graph.traversal import StatedLinksError
 from app.retrieval.standard.embeddings import EmbeddingError
 from app.retrieval.standard.generation import GenerationError
 from app.retrieval.standard.reranking import RerankError
@@ -109,7 +110,9 @@ INTERRUPTED_BODY = ApiErrorBody(
 _TRANSIENT_GRAPH_ERRORS = (ServiceUnavailable, SessionExpired, TransientError, ConnectionPoolError)
 
 # First match wins. The reranker is the judge of context selection, so its
-# failures are context build errors.
+# failures are context build errors. A refused stated-links read (too many
+# reached nodes, or a result that would be cut) is a graph query failure that
+# retrying cannot fix.
 _CLASSIFICATION: tuple[tuple[type[BaseException], ErrorCode, bool], ...] = (
     (GenerationError, ErrorCode.MODEL_ERROR, True),
     (GatewayError, ErrorCode.MODEL_ERROR, True),
@@ -117,6 +120,7 @@ _CLASSIFICATION: tuple[tuple[type[BaseException], ErrorCode, bool], ...] = (
     (SparseEmbeddingError, ErrorCode.EMBEDDING_ERROR, True),
     (VectorStoreError, ErrorCode.VECTOR_RETRIEVAL_ERROR, True),
     (RerankError, ErrorCode.CONTEXT_BUILD_ERROR, False),
+    (StatedLinksError, ErrorCode.GRAPH_QUERY_ERROR, False),
 )
 
 

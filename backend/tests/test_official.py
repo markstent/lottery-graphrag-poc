@@ -28,9 +28,11 @@ from app.evaluation import __main__ as cli
 from app.evaluation import official
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
+from app.evaluation.checks import SCORER_VERSION
 from app.evaluation.grounding import (
     BankInstance,
     FrozenBank,
+    GroundingError,
     Unavailable,
     load_frozen_bank,
     seal_bank,
@@ -40,6 +42,7 @@ from app.evaluation.official import (
     OFFICIAL_SEEDS,
     PRESENTATION_SEED,
     PROFILE,
+    SEEN_SEEDS,
     BenchmarkCancelled,
     InstanceHook,
     NotDevWorld,
@@ -55,7 +58,13 @@ from app.evaluation.official import (
     select_instances,
     world_paths,
 )
-from app.evaluation.runner import BenchmarkRun, ReproducibilityRecord, Selection, WorldRun
+from app.evaluation.runner import (
+    DEV_LABEL,
+    BenchmarkRun,
+    ReproducibilityRecord,
+    Selection,
+    WorldRun,
+)
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
 
 from tests.test_benchmark_report import _graded, _instance, _record, _result, _world
@@ -131,6 +140,7 @@ class Recorder:
             world_seed=paths.seed,
             world_manifest_hash=_sha(paths.world_dir / "_manifest.json"),
             record_serialiser_version=RECORD_SERIALISER_VERSION,
+            scorer_version=SCORER_VERSION,
             ledger_hash=_sha(paths.ledger_path),
             instances=instances,
             unavailable=(Unavailable("L22", "scenario not planted"),),
@@ -385,15 +395,17 @@ def test_compare_requires_matching_banks(
 def test_world_paths_name_the_world_ledger_bank_and_collection(data_dir: Path) -> None:
     presentation = world_paths(PRESENTATION_SEED)
     other = world_paths(2028)
-    assert OFFICIAL_SEEDS == (2026, 2027, 2028)
+    assert OFFICIAL_SEEDS == (2029, 2030, 2031, 2032, 2033, 2034)
+    assert SEEN_SEEDS == (2026, 2027, 2028) and official.FIRST_UNSEEN_SEED == 2029
     assert presentation.world_dir == data_dir / "generated" / "dev-seed2026"
     assert presentation.ledger_path == data_dir / "truth" / "ledger.json"
     assert (
-        presentation.bank_path == data_dir / "evaluation" / "bank" / "bank-2.0.0-dev-seed2026.json"
+        presentation.bank_path
+        == data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.1-dev-seed2026.json"
     )
     assert other.world_dir == data_dir / "generated" / "dev-seed2028"
     assert other.ledger_path == data_dir / "truth" / "dev-seed2028.json"
-    assert other.bank_path.name == "bank-2.0.0-dev-seed2028.json"
+    assert other.bank_path.name == "bank-2.0.0-scorer-2.2.1-dev-seed2028.json"
     assert other.seed == 2028
 
 
@@ -410,6 +422,7 @@ def grounded_world(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> WorldPath
         world_seed=PRESENTATION_SEED,
         world_manifest_hash=_sha(paths.world_dir / "_manifest.json"),
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash=_sha(paths.ledger_path),
         instances=(),
         unavailable=(),
@@ -475,6 +488,37 @@ def test_the_dev_world_is_accepted_for_a_benchmark(data_dir: Path) -> None:
     preflight("smoke", 1)
 
 
+@pytest.mark.parametrize("dirty", [True, None], ids=["dirty", "git-unavailable"])
+def test_an_official_run_starts_only_from_a_known_clean_checkout(
+    recorder: Recorder,
+    gateway_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    dirty: bool | None,
+) -> None:
+    """D-091: a fresh official run, the full run and the dry run alike, is
+    refused before anything is prepared unless git says the tree is clean."""
+    monkeypatch.setattr(runner_module, "_git_dirty", lambda: dirty)
+    with pytest.raises(ValueError, match="starts or resumes only from a clean checkout"):
+        preflight("official", 3)
+    for seeds, questions in ((UNSEEN_RUN, None), ((2026,), ["L05"])):
+        with pytest.raises(ValueError, match="clean checkout"):
+            _run(recorder, seeds, kind="official", repeats=3, questions=questions)
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_an_official_run_starts_from_a_clean_checkout(gateway_env: None, data_dir: Path) -> None:
+    # The autouse ``clean_checkout`` fixture fakes git reporting a clean tree.
+    preflight("official", 3)
+
+
+@pytest.mark.parametrize("kind", ["dev", "sweep", "smoke"])
+def test_other_run_kinds_only_record_a_dirty_checkout(
+    gateway_env: None, data_dir: Path, monkeypatch: pytest.MonkeyPatch, kind: str
+) -> None:
+    monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
+    preflight(kind, 1)
+
+
 def test_the_presentation_world_is_dataset_dir_and_the_truth_ledger_path(
     data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -485,7 +529,10 @@ def test_the_presentation_world_is_dataset_dir_and_the_truth_ledger_path(
     paths = world_paths(PRESENTATION_SEED)
     assert paths.world_dir == data_dir / "generated" / "demo-seed2026"
     assert paths.ledger_path == data_dir / "truth" / "ledger-demo.json"
-    assert paths.bank_path == data_dir / "evaluation" / "bank" / "bank-2.0.0-demo-seed2026.json"
+    assert (
+        paths.bank_path
+        == data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.1-demo-seed2026.json"
+    )
     assert world_paths(2027).world_dir == data_dir / "generated" / "dev-seed2027"
 
 
@@ -519,12 +566,14 @@ def test_the_demo_world_is_grounded_by_its_own_variables(
     monkeypatch.setenv("DATASET_DIR", str(demo))
     monkeypatch.setenv("TRUTH_LEDGER_PATH", str(ledger))
     assert cli.main(["ground"]) == 0
-    bank = data_dir / "evaluation" / "bank" / "bank-2.0.0-demo-seed2026.json"
+    bank = data_dir / "evaluation" / "bank" / "bank-2.0.0-scorer-2.2.1-demo-seed2026.json"
     assert bank.is_file() and f"wrote {bank}" in capsys.readouterr().out
     assert bank_matches_active_world()
 
 
-@pytest.mark.parametrize("stale", ["manifest", "ledger", "serialiser", "version", "no manifest"])
+@pytest.mark.parametrize(
+    "stale", ["manifest", "ledger", "serialiser", "version", "scorer", "no scorer", "no manifest"]
+)
 def test_a_bank_is_not_current_once_what_it_was_grounded_on_changes(
     grounded_world: WorldPaths, stale: str
 ) -> None:
@@ -536,13 +585,35 @@ def test_a_bank_is_not_current_once_what_it_was_grounded_on_changes(
     elif stale == "no manifest":
         (grounded_world.world_dir / "_manifest.json").unlink()
     else:
-        changed = (
-            dataclasses.replace(bank, record_serialiser_version="0.0.1")
-            if stale == "serialiser"
-            else dataclasses.replace(bank, bank_version="0.0.1")
-        )
+        changed = {
+            "serialiser": dataclasses.replace(bank, record_serialiser_version="0.0.1"),
+            "version": dataclasses.replace(bank, bank_version="0.0.1"),
+            # A bank grounded for another scorer holds that scorer's answer key.
+            "scorer": dataclasses.replace(bank, scorer_version="2.1.0"),
+            "no scorer": dataclasses.replace(bank, scorer_version=None),
+        }[stale]
         write_frozen_bank(seal_bank(changed), grounded_world.bank_path)
     assert not bank_matches_active_world()
+
+
+def test_preparing_never_replaces_a_bank_file_a_run_was_made_with(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # D-095: the bank file name carries the scorer, so the v0.2.0 file is
+    # never the current one, and a file of the current name is never replaced.
+    paths = world_paths(2027)
+    paths.bank_path.parent.mkdir(parents=True)
+    v020 = paths.bank_path.parent / "bank-2.0.0-dev-seed2027.json"
+    v020.write_text("the bank v0.2.0 was made with", encoding="utf-8")
+    assert paths.bank_path != v020
+    write_frozen_bank(seal_bank(_bank(())), paths.bank_path)
+    kept = paths.bank_path.read_bytes()
+    grounded_now = seal_bank(dataclasses.replace(_bank(()), ledger_hash="another ledger"))
+    monkeypatch.setattr(official, "freeze_bank", lambda world_dir, ledger: grounded_now)
+    with pytest.raises(GroundingError, match="holds another bank"):
+        official._ground(paths)
+    assert paths.bank_path.read_bytes() == kept
+    assert v020.read_text(encoding="utf-8") == "the bank v0.2.0 was made with"
 
 
 def test_the_presentation_collection_follows_the_environment(
@@ -650,6 +721,7 @@ def _bank(instances: tuple[BankInstance, ...]) -> FrozenBank:
         world_seed=2026,
         world_manifest_hash="m",
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash="l",
         instances=instances,
         unavailable=(Unavailable("L01", "no eligible anchor"), Unavailable("L22", "x")),
@@ -755,7 +827,7 @@ def test_a_run_writes_results_summary_and_report(recorder: Recorder) -> None:
     )
     summary = json.loads((recorder.tmp / "summary.json").read_text())
     results = json.loads((recorder.tmp / "results.json").read_text())
-    assert summary["schema_version"] == "2"
+    assert summary["schema_version"] == "3"
     assert summary["label"] == "scorer smoke test"
     assert summary["worlds"] == [2026, 2027]
     assert [w["world_seed"] for w in results["reproducibility"]["worlds"]] == [2026, 2027]
@@ -987,7 +1059,7 @@ def test_cli_run_passes_its_options(captured: dict[str, Any], tmp_path: Path) ->
     args, kwargs = captured["run"]
     assert args == ("official", (2026, 2027))
     assert kwargs == {
-        "repeats": 3,
+        "repeats": 1,
         "out_dir": out,
         "strata": ["H1", "H3"],
         "limit": 2,
@@ -1014,7 +1086,7 @@ def test_cli_run_defaults_to_three_seeds_and_a_run_directory(
 ) -> None:
     cli.main(["run", "--kind", "smoke"])
     args, kwargs = captured["run"]
-    assert args == ("smoke", OFFICIAL_SEEDS)
+    assert args == ("smoke", SEEN_SEEDS)
     assert kwargs["repeats"] == 1
     out_dir = kwargs["out_dir"]
     assert out_dir.parent == data_dir / "evaluation" / "runs"
@@ -1026,7 +1098,7 @@ def test_cli_sweep_passes_its_depths(captured: dict[str, Any], data_dir: Path) -
     args, kwargs = captured["sweep"]
     assert args == ((2026,),)
     assert kwargs["depths"] == (1, 3)
-    assert kwargs["repeats"] == 3
+    assert kwargs["repeats"] == 1
     assert kwargs["out_dir"].name.endswith("-sweep")
 
 
@@ -1166,7 +1238,7 @@ def test_an_unknown_question_is_refused_before_any_world_is_prepared(recorder: R
 def test_a_full_official_run_has_no_label(recorder: Recorder, gateway_env: None) -> None:
     run_benchmark(
         "official",
-        (2026,),
+        OFFICIAL_SEEDS,
         repeats=3,
         out_dir=recorder.tmp,
         steps=recorder.steps,
@@ -1270,7 +1342,7 @@ def test_cli_resolves_a_relative_out_from_the_repository_root(captured: dict[str
     [
         ("nightly", 1, {}, "unknown run kind"),
         ("smoke", 0, {}, "repeats"),
-        ("official", 1, {}, "at least 3 repeats"),
+        ("official", 0, {}, "repeats"),
         ("official", 3, {"GENERATION_PROVIDER": "fake"}, "fake generator"),
         ("official", 3, {"GENERATION_MODEL_FAMILY": ""}, "GENERATION_MODEL_FAMILY"),
         ("official", 3, {"JUDGE_PROVIDER": "fake"}, "JUDGE_PROVIDER"),
@@ -1311,7 +1383,24 @@ def test_settings_are_checked_before_any_world_is_prepared(
     assert recorder.generated == recorder.ingested == []
 
 
+def test_an_official_run_asks_once_by_default_and_keeps_the_minimum_guard(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """D-097: one repeat is enough for an official run; the guard still refuses
+    fewer repeats than the minimum, whatever the minimum is."""
+    assert runner_module.OFFICIAL_MIN_REPEATS == 1
+    runner_module.check_run_config("official", 1, False, "family")
+    monkeypatch.setattr(runner_module, "OFFICIAL_MIN_REPEATS", 3)
+    with pytest.raises(ValueError, match="at least 3 repeats, got 2"):
+        runner_module.check_run_config("official", 2, False, "family")
+    runner_module.check_run_config("official", 3, False, "family")
+
+
 # --- Kept worlds and resume ------------------------------------------------------
+
+
+# A full-bank official run uses exactly the six unseen worlds.
+UNSEEN_RUN = OFFICIAL_SEEDS
 
 
 def _run(recorder: Recorder, seeds: tuple[int, ...] = (2026, 2027, 2028), **options: Any) -> Any:
@@ -1338,9 +1427,16 @@ def _edit_kept(recorder: Recorder, seed: int, edit: Callable[[dict[str, Any]], N
 
 
 def _failed_then_fresh(tmp_path: Path, **options: Any) -> tuple[Recorder, Recorder]:
-    """A run that kept world 2026 and failed in 2027, and a recorder to resume it."""
-    failing = Recorder(tmp_path, fail_on=2027)
-    with pytest.raises(RuntimeError, match="world 2027 failed"):
+    """A run that kept world 2026 and failed in 2027, and a recorder to resume it.
+
+    A full-bank official run uses the unseen worlds, so it keeps 2029 and fails in 2030.
+    """
+    if options.get("kind") == "official":
+        failing = Recorder(tmp_path, fail_on=2030)
+        options = {"seeds": UNSEEN_RUN, **options}
+    else:
+        failing = Recorder(tmp_path, fail_on=2027)
+    with pytest.raises(RuntimeError, match=r"world 20(27|30) failed"):
         _run(failing, **options)
     return failing, Recorder(tmp_path)
 
@@ -1386,10 +1482,10 @@ def test_resume_refuses_different_settings(
     tmp_path: Path, gateway_env: None, data_dir: Path
 ) -> None:
     failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
-    _edit_kept(failing, 2026, lambda saved: saved["record"].update(max_tokens=4096))
+    _edit_kept(failing, 2029, lambda saved: saved["record"].update(max_tokens=1200))
     with pytest.raises(ValueError, match="max_tokens") as error:
-        _run(fresh, kind="official", repeats=3, resume=True)
-    assert "4096" in str(error.value)
+        _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
+    assert "1200" in str(error.value)
     assert fresh.generated == fresh.ingested == [] and fresh.runners == []
 
 
@@ -1432,11 +1528,11 @@ def test_an_official_run_resumes_only_from_a_clean_checkout(
     failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
     monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
     with pytest.raises(ValueError, match="clean checkout"):
-        _run(fresh, kind="official", repeats=3, resume=True)
+        _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
     monkeypatch.setattr(runner_module, "_git_dirty", lambda: False)
-    _edit_kept(failing, 2026, lambda saved: saved["record"].update(git_dirty=True))
-    with pytest.raises(ValueError, match="kept world 2026 was run on a checkout with uncommitted"):
-        _run(fresh, kind="official", repeats=3, resume=True)
+    _edit_kept(failing, 2029, lambda saved: saved["record"].update(git_dirty=True))
+    with pytest.raises(ValueError, match="kept world 2029 was run on a checkout with uncommitted"):
+        _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
     assert fresh.generated == fresh.ingested == [] and fresh.runners == []
 
 
@@ -1492,7 +1588,7 @@ def test_resume_refuses_kept_worlds_that_disagree(tmp_path: Path, data_dir: Path
     failing = Recorder(tmp_path, fail_on=2028)
     with pytest.raises(RuntimeError):
         _run(failing)
-    _edit_kept(failing, 2027, lambda saved: saved["record"].update(max_tokens=4096))
+    _edit_kept(failing, 2027, lambda saved: saved["record"].update(max_tokens=1200))
     fresh = Recorder(tmp_path)
     with pytest.raises(ValueError, match="max_tokens"):
         _run(fresh, resume=True)
@@ -1539,7 +1635,7 @@ def test_a_stored_selection_without_questions_still_resumes(tmp_path: Path, data
 def test_resume_refuses_a_different_kind(tmp_path: Path, data_dir: Path, gateway_env: None) -> None:
     _, fresh = _failed_then_fresh(tmp_path)
     with pytest.raises(ValueError, match="kept world 2026 was a smoke run"):
-        _run(fresh, resume=True, kind="official", repeats=3)
+        _run(fresh, (2026,), resume=True, kind="dev")
     assert fresh.generated == []
 
 
@@ -1676,3 +1772,235 @@ def test_make_dry_run_recipe_passes_the_official_run_checks() -> None:
     assert arguments.seeds == (2026,)
     assert arguments.limit == 1
     runner_module.check_run_config(arguments.kind, arguments.repeats, False, "family")
+    official.check_seeds(arguments.kind, arguments.seeds, full_bank=False)
+
+
+def _make_run_arguments(target: str, **variables: str) -> Any:
+    """The CLI arguments of a make target's run line, as ``make -n`` prints it."""
+    env = {**os.environ, "GENERATION_PROVIDER": "litellm", "JUDGE_PROVIDER": "litellm"}
+    env.pop("REPEATS", None)
+    env.update(variables)
+    repo = Path(__file__).resolve().parents[2]
+    printed = subprocess.run(
+        ["make", "-n", target], cwd=repo, env=env, capture_output=True, text=True, check=True
+    ).stdout
+    line = next(row for row in printed.splitlines() if "app.evaluation run" in row)
+    words = shlex.split(line.split("app.evaluation", 1)[1])
+    # The dry run's question ids come from a shell substitution that make -n does not run.
+    if "--questions" in words:
+        words = words[: words.index("--questions")]
+    return cli.build_parser().parse_args(words)
+
+
+def test_make_run_benchmark_runs_the_unseen_seeds() -> None:
+    arguments = _make_run_arguments("run-benchmark")
+    assert arguments.kind == "official" and arguments.repeats == 1
+    assert arguments.seeds == OFFICIAL_SEEDS == (2029, 2030, 2031, 2032, 2033, 2034)
+    official.check_seeds(arguments.kind, arguments.seeds, full_bank=True)
+
+
+@pytest.mark.parametrize("target", ["run-benchmark", "dry-run"])
+def test_make_official_targets_ask_once_unless_repeats_is_set(target: str) -> None:
+    """D-097: each question once by default; REPEATS=N asks each N times."""
+    assert _make_run_arguments(target).repeats == 1
+    assert _make_run_arguments(target, REPEATS="3").repeats == 3
+
+
+def test_make_dev_run_is_a_dev_run_on_seed_2026() -> None:
+    arguments = _make_run_arguments("dev-run")
+    assert (arguments.kind, arguments.seeds, arguments.repeats) == ("dev", (2026,), 1)
+    assert arguments.strata is None and arguments.limit is None
+    official.check_seeds(arguments.kind, arguments.seeds, full_bank=True)
+
+
+# --- Method v0.3: the method in the record, unseen seeds and dev runs ------------
+
+
+def test_method_of_defaults_old_runs_to_0_2_0() -> None:
+    assert official.method_of({}) == "0.2.0"
+    assert official.method_of({"method_version": None}) == "0.2.0"
+    assert official.method_of({"method_version": "0.3.0"}) == "0.3.0"
+    assert official.method_of(_record("official").to_payload()) == "0.2.0"
+
+
+def test_compare_refuses_old_and_new_method(tmp_path: Path) -> None:
+    small = _write_run(tmp_path / "small", _official("small-model"))
+    large = _write_run(tmp_path / "large", _official_with("large-model", method_version="0.3.0"))
+    with pytest.raises(ValueError) as error:
+        compare_runs(small, large)
+    message = str(error.value)
+    assert "method v0.2.0" in message and "method v0.3.0" in message
+    # Refused before the settings are compared, with the plain reason only.
+    assert "different settings" not in message
+
+
+@pytest.mark.parametrize(
+    ("method_version", "evidence_metric", "other_metric"),
+    [(None, "evidence_f1", "evidence_recall"), ("0.3.0", "evidence_recall", "evidence_f1")],
+)
+def test_compare_uses_the_evidence_metric_of_the_runs_method(
+    tmp_path: Path, method_version: str | None, evidence_metric: str, other_metric: str
+) -> None:
+    small = _write_run(
+        tmp_path / "small", _official_with("small-model", method_version=method_version)
+    )
+    large = _write_run(
+        tmp_path / "large", _official_with("large-model", method_version=method_version)
+    )
+    metrics = {cell["metric"] for cell in compare_runs(small, large)["cells"]}
+    assert metrics == {evidence_metric, "answer"}
+    assert other_metric not in metrics
+
+
+def test_resume_refuses_a_kept_world_of_the_old_method(tmp_path: Path, data_dir: Path) -> None:
+    failing, fresh = _failed_then_fresh(tmp_path)
+    _edit_kept(failing, 2026, lambda saved: saved["record"].pop("method_version"))
+    with pytest.raises(ValueError, match="method_version") as error:
+        _run(fresh, resume=True)
+    assert "method v0.2.0" in str(error.value) and "method v0.3.0" in str(error.value)
+    assert fresh.generated == fresh.ingested == [] and fresh.runners == []
+
+
+@pytest.mark.parametrize(
+    "seeds",
+    [
+        (2026,),
+        (2028,),
+        (2028, 2029),
+        # A subset of the unseen worlds would use them up before the frozen run.
+        (2029,),
+        (2029, 2030),
+        OFFICIAL_SEEDS[:-1],
+        # A seed outside the plan, alone or beside the six.
+        (2035,),
+        (*OFFICIAL_SEEDS, 2035),
+    ],
+)
+def test_full_official_run_refuses_seen_seeds(
+    recorder: Recorder, gateway_env: None, seeds: tuple[int, ...]
+) -> None:
+    with pytest.raises(ValueError, match="2029"):
+        run_benchmark(
+            "official",
+            seeds,
+            repeats=3,
+            out_dir=recorder.tmp,
+            steps=recorder.steps,
+            runner_factory=recorder.runner,
+        )
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "seeds", "full_bank"),
+    [
+        # Every unseen seed is there, so a comparison of sets alone would pass it.
+        ("official", (*OFFICIAL_SEEDS, 2029), True),
+        ("official", (2026, 2026), False),
+        ("smoke", (2026, 2027, 2026), True),
+        ("sweep", (2027, 2027), False),
+    ],
+)
+def test_repeated_seeds_are_refused(kind: str, seeds: tuple[int, ...], full_bank: bool) -> None:
+    with pytest.raises(ValueError, match="seeds must not repeat"):
+        official.check_seeds(kind, seeds, full_bank=full_bank)
+
+
+def test_a_run_naming_a_seed_twice_is_refused_before_any_world_is_prepared(
+    recorder: Recorder,
+) -> None:
+    with pytest.raises(ValueError, match="seeds must not repeat"):
+        _run(recorder, seeds=(2026, 2027, 2026))
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_the_dry_run_on_seed_2026_passes_the_seed_guard(
+    recorder: Recorder, gateway_env: None
+) -> None:
+    run_benchmark(
+        "official",
+        (2026,),
+        repeats=3,
+        out_dir=recorder.tmp,
+        limit=1,
+        questions=["L01", "L05"],
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    assert [r["seed"] for r in recorder.runners] == [2026]
+
+
+def test_a_full_official_run_on_exactly_the_six_unseen_seeds_passes(
+    recorder: Recorder, gateway_env: None
+) -> None:
+    run_benchmark(
+        "official",
+        OFFICIAL_SEEDS,
+        repeats=3,
+        out_dir=recorder.tmp,
+        steps=recorder.steps,
+        runner_factory=recorder.runner,
+    )
+    assert [r["seed"] for r in recorder.runners] == list(OFFICIAL_SEEDS)
+
+
+@pytest.mark.parametrize("selection", [{"limit": 1}, {"strata": ["H1"]}, {"questions": ["L01"]}])
+@pytest.mark.parametrize("seeds", [(2029,), (2026, 2034)])
+def test_a_dry_run_refuses_unseen_seeds(
+    recorder: Recorder, gateway_env: None, seeds: tuple[int, ...], selection: dict[str, Any]
+) -> None:
+    with pytest.raises(ValueError, match="unseen"):
+        _run(recorder, seeds=seeds, kind="official", repeats=3, **selection)
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_a_smoke_run_refuses_unseen_seeds(recorder: Recorder) -> None:
+    with pytest.raises(ValueError, match="unseen"):
+        _run(recorder, seeds=(2028, 2029))
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_a_sweep_refuses_unseen_seeds(recorder: Recorder, gateway_env: None) -> None:
+    with pytest.raises(ValueError, match="unseen"):
+        run_sweep(
+            (2030,), out_dir=recorder.tmp, steps=recorder.steps, runner_factory=recorder.runner
+        )
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+@pytest.mark.parametrize("seeds", [(2027,), (2026, 2027), (2029,)])
+def test_dev_run_only_on_seed_2026(
+    recorder: Recorder, gateway_env: None, seeds: tuple[int, ...]
+) -> None:
+    with pytest.raises(ValueError, match="seed 2026 only"):
+        _run(recorder, seeds=seeds, kind="dev")
+    assert recorder.generated == recorder.ingested == [] and recorder.runners == []
+
+
+def test_dev_run_accepts_one_repeat(recorder: Recorder, gateway_env: None) -> None:
+    _run(recorder, seeds=(2026,), kind="dev", repeats=1)
+    assert [(r["seed"], r["kind"]) for r in recorder.runners] == [(2026, "dev")]
+    assert _kept(recorder, 2026)["record"]["run_kind"] == "dev"
+
+
+@pytest.mark.parametrize("selection", [{}, {"strata": ["H1"]}])
+def test_dev_run_is_labelled_not_a_result(
+    recorder: Recorder, gateway_env: None, selection: dict[str, Any]
+) -> None:
+    run = _run(recorder, seeds=(2026,), kind="dev", **selection)
+    summary = json.loads((recorder.tmp / "summary.json").read_text())
+    assert run.label == summary["label"] == DEV_LABEL
+    assert summary["run_kind"] == "dev"
+
+
+def test_cli_run_defaults_its_seeds_and_repeats_by_kind(
+    captured: dict[str, Any], data_dir: Path
+) -> None:
+    for kind, seeds, repeats in (
+        ("official", OFFICIAL_SEEDS, 1),
+        ("dev", (2026,), 1),
+        ("smoke", SEEN_SEEDS, 1),
+    ):
+        cli.main(["run", "--kind", kind])
+        assert captured["run"][0] == (kind, seeds)
+        assert captured["run"][1]["repeats"] == repeats

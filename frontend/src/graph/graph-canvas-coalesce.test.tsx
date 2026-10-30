@@ -47,9 +47,9 @@ describe('GraphCanvas layout requests', () => {
         pipeline="C"
       />
     )
-    const { rerender } = render(element(420))
-    for (const sequence of [450, 480, 520, 560]) rerender(element(sequence))
-    const latest = viewAt(560).nodes.length
+    const { rerender } = render(element(180))
+    for (const sequence of [200, 220, 240, 260]) rerender(element(sequence))
+    const latest = viewAt(260).nodes.length
     await waitFor(
       () =>
         expect(

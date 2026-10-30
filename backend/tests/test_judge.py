@@ -17,11 +17,11 @@ from app.config import JudgeSettings, judge_settings_from_env
 from app.evaluation import judge as judge_module
 from app.evaluation.checks import CitationMetrics
 from app.evaluation.judge import (
-    ANSWER_CHAR_CAP,
     JUDGE_DIMENSIONS,
     JUDGE_MAX_TOKENS,
     JUDGE_PROMPT_VERSION,
     JUDGE_SYSTEM_PROMPT,
+    Agreement,
     FakeJudge,
     GatewayJudge,
     JudgeItem,
@@ -29,6 +29,7 @@ from app.evaluation.judge import (
     JudgeScores,
     JudgeVerdict,
     agreement,
+    answer_level,
     blind,
     build_judge_prompt,
     check_families,
@@ -113,9 +114,14 @@ def test_prompt_never_names_a_pipeline() -> None:
     assert not any(word in text for word in ("pipeline", "graph", "ontology", "text search", "rag"))
 
 
-def test_long_answers_are_capped() -> None:
-    _, answer = blind(JudgeItem("q", "e", (), (), "x" * 5000, (), "s"))
-    assert len(answer) <= ANSWER_CHAR_CAP + len(" [truncated]")
+def test_the_judge_reads_the_whole_answer() -> None:
+    """Judge 1.2.0 (D-096): the judge grades what the scorer scores, so a
+    long answer, such as the 13,352-character H1 answer, reaches it whole."""
+    long = "x" * 20_000 + " [1]"
+    _, answer = blind(JudgeItem("q", "e", (), (ShownBlock("R1", "t", "x"),), long, (1,), "s"))
+    assert answer == long
+    _, user = build_judge_prompt(JudgeItem("q", "e", (), (), long, (), "s"))
+    assert "x" * 20_000 in user and "[truncated]" not in user
 
 
 def test_malformed_judge_reply_is_a_recorded_failure(
@@ -135,16 +141,11 @@ def test_judge_family_must_differ() -> None:
         check_families("qwen", "Qwen")
 
 
-def test_agreement_and_kappa() -> None:
-    result = agreement([(True, True), (False, False), (True, False), (True, True)])
-    assert result.n == 4 and result.agreement == 0.75 and result.kappa == pytest.approx(0.5)
-
-
 # --- Constants and settings -------------------------------------------------------
 
 
 def test_versioned_constants() -> None:
-    assert JUDGE_PROMPT_VERSION == "1.0.0"
+    assert JUDGE_PROMPT_VERSION == "1.2.0"
     assert JUDGE_DIMENSIONS == (
         "correctness",
         "completeness",
@@ -152,7 +153,8 @@ def test_versioned_constants() -> None:
         "citation_accuracy",
         "abstention",
     )
-    assert (ANSWER_CHAR_CAP, JUDGE_MAX_TOKENS) == (2400, 300)
+    assert JUDGE_MAX_TOKENS == 300
+    assert not hasattr(judge_module, "ANSWER_CHAR_CAP")
 
 
 def test_prompt_hash_covers_the_prompt_its_version_and_the_user_template(
@@ -165,6 +167,31 @@ def test_prompt_hash_covers_the_prompt_its_version_and_the_user_template(
         judge_module, "JUDGE_USER_TEMPLATE", judge_module.JUDGE_USER_TEMPLATE.replace("\n\n", "\n")
     )
     assert judge_prompt_hash() != before
+
+
+def test_judge_prompt_1_1_0_scores_unwarranted_abstention_zero() -> None:
+    assert (
+        "correctness: the answer agrees with the reference answer; an answer that says the "
+        "sources do not answer scores 0 when the reference answer gives an answer. "
+    ) in JUDGE_SYSTEM_PROMPT
+    assert (
+        "abstention: 2 when the answer correctly says the context does not answer the "
+        "question, or answers when the context does; 0 when it guesses without support "
+        "in the context; 1 otherwise. "
+    ) in JUDGE_SYSTEM_PROMPT
+
+
+# The judge prompt hash of the v0.2.0 official run (prompt 1.0.0), from
+# reproducibility.run.judge_prompt_hash in official-2026-10-26/results.json.
+JUDGE_PROMPT_HASH_1_0_0 = "e89e8a186b6d28d997bc5d7a3d253114369bd770248c42d5bed44ad6f6f19ec4"
+JUDGE_PROMPT_HASH_1_1_0 = "f0db814c57eb3a2e2b28d1387c62f95df57dbf1f75c9d8a1317d38b4e274abd6"
+# 1.2.0 changes no prompt text: the whole answer is shown (D-096).
+JUDGE_PROMPT_HASH_1_2_0 = "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643"
+
+
+def test_judge_prompt_hash_changes_with_version() -> None:
+    assert judge_prompt_hash() == JUDGE_PROMPT_HASH_1_2_0
+    assert len({JUDGE_PROMPT_HASH_1_0_0, JUDGE_PROMPT_HASH_1_1_0, JUDGE_PROMPT_HASH_1_2_0}) == 3
 
 
 def test_judge_settings_come_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -216,13 +243,6 @@ def test_markers_outside_the_citation_grammar_point_nowhere(marker: str) -> None
     _, answer = blind(JudgeItem("q", "e", (), blocks, f"A {marker} and B [2].", (2,), "seed"))
     assert marker not in answer
     assert answer.startswith("A [?] and B [")
-
-
-def test_short_answers_are_not_truncated() -> None:
-    _, answer = blind(JudgeItem("q", "e", (), (), "x" * ANSWER_CHAR_CAP, (), "s"))
-    assert answer == "x" * ANSWER_CHAR_CAP
-    _, cut = blind(JudgeItem("q", "e", (), (), "x" * (ANSWER_CHAR_CAP + 1), (), "s"))
-    assert cut == "x" * ANSWER_CHAR_CAP + " [truncated]"
 
 
 # --- Prompt -----------------------------------------------------------------------
@@ -353,10 +373,33 @@ def test_different_families_pass() -> None:
     check_families("qwen", "gemma")
 
 
-def test_agreement_without_pairs_or_variation() -> None:
-    assert agreement([]).n == 0 and agreement([]).agreement is None and agreement([]).kappa is None
-    same = agreement([(True, True), (True, True)])
-    assert (same.n, same.agreement, same.kappa) == (2, 1.0, None)
+def test_answer_level() -> None:
+    assert [answer_level(s) for s in (0.0, 0.33, 0.92, 1.0)] == [0, 1, 1, 2]
+
+
+def test_agreement_three_level_and_weighted_kappa() -> None:
+    result = agreement([(0, 0), (1, 1), (2, 2), (2, 1), (0, 2)])
+    # Linear weights w = 1 - |i - j| / 2 over the levels 0, 1, 2.
+    # Observed weighted agreement: (1 + 1 + 1 + 0.5 + 0) / 5 = 0.7.
+    # Marginals: answer level 0: 2/5, 1: 1/5, 2: 2/5; judge 0: 1/5, 1: 2/5, 2: 2/5.
+    # Expected weighted agreement, row by row (answer level i, sum_j q_j w_ij):
+    #   i=0: 0.4 * (0.2*1 + 0.4*0.5 + 0.4*0) = 0.4 * 0.4 = 0.16
+    #   i=1: 0.2 * (0.2*0.5 + 0.4*1 + 0.4*0.5) = 0.2 * 0.7 = 0.14
+    #   i=2: 0.4 * (0.2*0 + 0.4*0.5 + 0.4*1) = 0.4 * 0.6 = 0.24
+    #   total 0.54.
+    # Weighted kappa: (0.7 - 0.54) / (1 - 0.54) = 0.16 / 0.46 = 8/23.
+    assert result.n == 5
+    assert result.agreement == pytest.approx(0.6)
+    assert result.weighted_kappa == pytest.approx(8 / 23)
+
+
+def test_kappa_undefined_when_constant() -> None:
+    result = agreement([(2, 2)] * 4)
+    assert (result.n, result.agreement, result.weighted_kappa) == (4, 1.0, None)
+
+
+def test_agreement_without_pairs() -> None:
+    assert agreement([]) == Agreement(0, None, None)
 
 
 def _score(answer: float | None, correctness: int | None, judged: bool = True) -> RunScore:
@@ -369,14 +412,74 @@ def _score(answer: float | None, correctness: int | None, judged: bool = True) -
     return RunScore(answer, evidence, CitationMetrics(None, None), None, verdict)
 
 
-def test_judge_pairs_take_every_judged_repeat_with_an_answer_score() -> None:
-    scores = [
-        _score(1.0, 2),
-        _score(0.5, 1),
-        _score(0.0, 2),
-        _score(None, 2),  # no deterministic answer score
-        _score(1.0, None),  # the judge failed
-        _score(1.0, 2, judged=False),
-        None,  # the generation failed
+def test_pairs_split_answered_and_abstained() -> None:
+    results = [
+        ("answer", _score(1.0, 2)),
+        ("answer", _score(0.5, 1)),
+        ("Unknown: the sources do not say", _score(0.0, 2)),
+        ("unknown", _score(1.0, 0)),
+        ("answer", _score(0.0, 0)),
+        ("answer", _score(None, 2)),  # no deterministic answer score
+        ("answer", _score(1.0, None)),  # the judge failed
+        ("answer", _score(1.0, 2, judged=False)),
+        ("", None),  # the generation failed
     ]
-    assert judge_pairs(scores) == [(True, True), (True, False), (False, True)]
+    assert judge_pairs(results) == {
+        "answered": [(2, 2), (1, 1), (0, 0)],
+        "abstained": [(0, 2), (2, 0)],
+    }
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        # Lone surrogates as escapes inside the reply, around valid scores.
+        '{"note": "\\ud83d", "correctness": 2, "completeness": 1, "faithfulness": 1, '
+        '"citation_accuracy": 1, "abstention": 2}',
+        # A lone surrogate as a score: a recorded failure, not a crash.
+        '{"correctness": "\\ud83d", "completeness": 1, "faithfulness": 1, '
+        '"citation_accuracy": 1, "abstention": 2}',
+    ],
+)
+def test_a_judge_reply_with_a_lone_surrogate_never_crashes_the_record(
+    stub_gateway_returning: Callable[[str], Gateway], raw: str
+) -> None:
+    verdict = GatewayJudge(SETTINGS, gateway=stub_gateway_returning(raw)).judge(ITEM)
+    json.dumps(dataclasses.asdict(verdict), ensure_ascii=False).encode("utf-8")
+
+
+def test_the_judge_reads_an_answer_with_a_replacement_character() -> None:
+    item = dataclasses.replace(ITEM, answer="It was \ufffd PLV_PAYMENTS_3 [1].")
+    _, user = build_judge_prompt(item)
+    user.encode("utf-8")
+
+
+# The crash guards (parser 2.1.1), on the judge's side: a hostile reply is a
+# recorded failure, and a hostile answer is blinded without crashing.
+HOSTILE = [
+    "1" * 5000,
+    "[" * 20000 + "]" * 20000,
+    '{"verdict": "x", "answer": "see [' + "1" * 5000 + ']"}',
+]
+
+
+@pytest.mark.parametrize("raw", HOSTILE, ids=["long-number", "deep-nesting", "huge-citation"])
+def test_a_hostile_judge_reply_is_a_parse_failure(raw: str) -> None:
+    with pytest.raises(JudgeParseError):
+        parse_judge(raw)
+
+
+@pytest.mark.parametrize("raw", HOSTILE, ids=["long-number", "deep-nesting", "huge-citation"])
+def test_a_hostile_judge_reply_is_recorded_not_raised(
+    stub_gateway_returning: Callable[[str], Gateway], raw: str
+) -> None:
+    verdict = GatewayJudge(SETTINGS, gateway=stub_gateway_returning(raw)).judge(ITEM)
+    assert verdict.scores is None and verdict.failure
+
+
+@pytest.mark.parametrize("raw", HOSTILE, ids=["long-number", "deep-nesting", "huge-citation"])
+def test_a_hostile_answer_is_blinded_without_crashing(raw: str) -> None:
+    item = dataclasses.replace(ITEM, answer=raw)
+    _, user = build_judge_prompt(item)
+    if "see [" in raw:
+        assert "see [?]" in user

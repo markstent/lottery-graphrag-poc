@@ -2,15 +2,22 @@
 
 ``GraphRagPipeline.run`` composes them in this order:
 
-    resolve               entity resolution, query expansion (C), the
-                          record-anchored vector fallback seed, seed events
-    traverse              bounded traversal, ontology expansion (C)
-    rank_and_scope        transparent evidence ranking, market scope
-    select_and_attach     excluded labels out, authoritative facts on, one
-                          structured candidate per remaining node
+    resolve               entity resolution, target types, query expansion
+                          (C), the record-anchored vector fallback seed,
+                          seed events
+    traverse              bounded traversal, ontology expansion (C), the
+                          stated links among reached nodes (when the
+                          question names a target type)
+    rank_and_scope        transparent composite score, market scope
+    select_and_attach     graph relevance order (D-083), excluded labels
+                          out, authoritative facts on, one structured
+                          candidate per remaining node with its graph rank
+                          and path
     document_channel      pipeline A's document channel, identical to A
-    assemble_and_generate one judge over both channels, one selection,
-                          generation over the selection in judge order
+    assemble_and_generate the shared cross-encoder over the documents only,
+                          the two ranked channels interleaved into one
+                          token budget (D-084), generation over the
+                          selection in prompt order
 
 Each stage takes only what it needs, emits its own events through the
 pipeline's ``EventEmitter`` (``select_and_attach`` and ``document_channel``
@@ -41,6 +48,7 @@ from app.events import (
     GRAPH_RELATIONSHIP_TRAVERSED,
     GRAPH_RERANK_STARTED,
     GRAPH_SEED_SELECTED,
+    GRAPH_TARGET_TYPES_RESOLVED,
     GRAPH_TRAVERSAL_STARTED,
     EventEmitter,
 )
@@ -49,6 +57,7 @@ from app.ontology.model import Ontology
 from app.retrieval.graph.ranking import (
     STRUCTURED_LABELS,
     ScoredNode,
+    graph_relevance_order,
     score_nodes,
     semantic_scores,
 )
@@ -57,14 +66,18 @@ from app.retrieval.graph.resolution import (
     EntityResolver,
     QueryExpansion,
     ResolvedEntity,
+    TargetTypeMatcher,
     concept_text,
 )
 from app.retrieval.graph.source_lookup import SourceLookup, bare_node_text, label_for_table
 from app.retrieval.graph.traversal import (
     NeighbourProvider,
+    PathStep,
     TraversalResult,
     bounded_traversal,
     expand_ontology,
+    render_path,
+    with_stated_links,
 )
 from app.retrieval.standard.context import (
     NODE_KIND,
@@ -72,9 +85,9 @@ from app.retrieval.standard.context import (
     ContextAssembly,
     assemble_context,
 )
-from app.retrieval.standard.corpus import CorpusChunk, hit_to_evidence
+from app.retrieval.standard.corpus import CorpusChunk, RecordFacts, hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
-from app.retrieval.standard.generation import AnswerGenerator, citations_for, parse_answer
+from app.retrieval.standard.generation import AnswerGenerator, answer_from
 from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import SearchHit, VectorStore
@@ -83,11 +96,12 @@ from app.retrieval.standard.vector_store import SearchHit, VectorStore
 @dataclass(frozen=True, slots=True)
 class VectorLayer:
     """The vector layer shared with pipeline A: same corpus, same dense and
-    sparse models, same hybrid search (retrieval fairness)."""
+    sparse models, same hybrid search, same record facts (retrieval fairness)."""
 
     store: VectorStore
     embeddings: EmbeddingFunction
     sparse: SparseEmbedder
+    facts: RecordFacts
 
     def search(
         self,
@@ -107,7 +121,7 @@ class VectorLayer:
 
 @dataclass(frozen=True, slots=True)
 class NodeReader:
-    """What the pipeline reads about a graph node: its judged text, its
+    """What the pipeline reads about a graph node: its text, its
     validity end and its market, from the source lookup and the ontology."""
 
     source_lookup: SourceLookup | None
@@ -119,7 +133,7 @@ class NodeReader:
     ) -> tuple[dict[str, str], dict[str, date | None]]:
         """Each node's text and validity end, from one fetch per node.
 
-        One text per node serves semantic scoring, the judge and the
+        One text per node serves semantic scoring and the
         prompt: a concept's ontology text (pipeline C), else the record
         block A indexes for the node's row, else "<Label> <id>" (D-028).
         """
@@ -163,6 +177,7 @@ class Resolution:
 
     entities: list[ResolvedEntity]  # resolved, or the vector fallback seed
     search_text: str  # the question; plus concept terms in pipeline C
+    target_types: frozenset[str]  # graph labels the question asks about (D-083)
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,20 +190,22 @@ class Traversal:
 class Ranked:
     scored: list[ScoredNode]  # in-scope nodes by composite score
     node_texts: dict[str, str]
+    labels: dict[str, str]  # every reached node's label, in scope or not
 
 
 @dataclass(frozen=True, slots=True)
 class Selection:
-    """The structured channel, ready to judge, and what never reaches the judge."""
+    """The structured channel in graph relevance order, and the excluded nodes."""
 
     drafts: list[GraphEvidence]  # structured candidates before their outcome
-    excluded: list[GraphEvidence]  # excluded labels, never judged
-    structured: list[EvidenceChunk]  # one judged candidate per draft, same order
+    excluded: list[GraphEvidence]  # excluded labels, never candidates
+    structured: list[EvidenceChunk]  # one candidate per draft, same order
+    stated_links: int | None  # stated links read for the target tier; None when not read
 
 
 @dataclass(frozen=True, slots=True)
 class DocumentCandidates:
-    documents: list[EvidenceChunk]  # A's document channel, ready to judge
+    documents: list[EvidenceChunk]  # A's document channel, ready to re-rank
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,13 +220,15 @@ def resolve(
     scope: Sequence[str] | None,
     resolver: EntityResolver,
     expansion: QueryExpansion | None,
+    targets: TargetTypeMatcher,
     vectors: VectorLayer,
     emitter: EventEmitter,
 ) -> Resolution:
     """Resolve question mentions to seeds; with none, seed the vector
-    layer's best record. Pipeline C searches and ranks with the question
-    plus the resolved concepts' labels and synonyms; A and B use the raw
-    question."""
+    layer's best record. The target types are the graph labels the raw
+    question names (schema words; in C also ontology terms). Pipeline C
+    searches and ranks with the question plus the resolved concepts' labels
+    and synonyms; A and B use the raw question."""
     emitter.emit(GRAPH_ENTITY_RESOLUTION_STARTED, question=question, markets=",".join(scope or []))
     resolved = resolver.resolve(question)
     for entity in resolved:
@@ -222,6 +241,8 @@ def resolve(
             confidence=entity.confidence,
             via_concept=entity.via_concept,
         )
+    target_types = targets.match(question)
+    emitter.emit(GRAPH_TARGET_TYPES_RESOLVED, labels=",".join(sorted(target_types)))
     search_text = question
     if expansion is not None:
         expanded = expansion.expand(question, resolved)
@@ -235,7 +256,7 @@ def resolve(
         resolved = _fallback_seed(search_text, scope, vectors, emitter)
     for entity in resolved:
         emitter.emit(GRAPH_SEED_SELECTED, node_id=entity.entity_id)
-    return Resolution(entities=resolved, search_text=search_text)
+    return Resolution(entities=resolved, search_text=search_text, target_types=target_types)
 
 
 def _fallback_seed(
@@ -284,7 +305,9 @@ def traverse(
 ) -> Traversal:
     """The bounded walk from the seeds, then (pipeline C) the ontology
     expansion from every concept reached, ranked by relevance to the
-    search text."""
+    search text. When the question names a target type, the schema-stated
+    links among every reached node are read last, after any expansion, for
+    the graph relevance order; a refused read raises StatedLinksError."""
     emitter.emit(
         GRAPH_TRAVERSAL_STARTED,
         max_depth=settings.max_depth,
@@ -308,7 +331,7 @@ def traverse(
             hop=hop,
         )
     if not settings.ontology_expansion:
-        return Traversal(result=traversal, concepts=[])
+        return Traversal(result=_stated(traversal, resolution, neighbours, settings), concepts=[])
     traversal, expansion_counts, new_edges = expand_ontology(
         neighbours,
         traversal,
@@ -336,8 +359,22 @@ def traverse(
     for concept_id, added in sorted(expansion_counts.items()):
         emitter.emit(GRAPH_ONTOLOGY_EXPANDED, concept_id=concept_id, bound_entities=added)
     return Traversal(
-        result=traversal, concepts=sorted(_concept_ids(resolution.entities, traversal))
+        result=_stated(traversal, resolution, neighbours, settings),
+        concepts=sorted(_concept_ids(resolution.entities, traversal)),
     )
+
+
+def _stated(
+    traversal: TraversalResult,
+    resolution: Resolution,
+    neighbours: NeighbourProvider,
+    settings: GraphRagSettings,
+) -> TraversalResult:
+    """The traversal with its stated links read when the question names a
+    target type; without one the order needs no links and none are read."""
+    if not resolution.target_types:
+        return traversal
+    return with_stated_links(neighbours, traversal, settings)
 
 
 def _concept_ids(resolved: list[ResolvedEntity], traversal: TraversalResult) -> set[str]:
@@ -381,7 +418,7 @@ def rank_and_scope(
         traversal.result, labels, semantic, settings.ranking, validity, settings.reference_date
     )
     if not scope:
-        return Ranked(scored=scored, node_texts=texts)
+        return Ranked(scored=scored, node_texts=texts, labels=labels)
     in_scope: list[ScoredNode] = []
     for node in scored:
         market = nodes.market(node.node_label, node.node_id)
@@ -392,53 +429,71 @@ def rank_and_scope(
             GRAPH_CANDIDATE_DISCARDED,
             node_id=node.node_id,
             score=node.score,
-            rerank_score=None,
             hops=node.hops,
             seed=node.hops == 0,
             reason="out_of_scope_market",
+            tier=None,
+            graph_rank=None,
         )
-    return Ranked(scored=in_scope, node_texts=texts)
+    return Ranked(scored=in_scope, node_texts=texts, labels=labels)
 
 
 def select_and_attach(
-    ranked: Ranked, excluded_labels: tuple[str, ...], source_lookup: SourceLookup | None
+    ranked: Ranked,
+    traversal: Traversal,
+    targets: frozenset[str],
+    excluded_labels: tuple[str, ...],
+    source_lookup: SourceLookup | None,
 ) -> Selection:
-    """The structured channel: every in-scope traversal node (bounded by the
-    traversal caps) in graph composite score order, except excluded labels.
-    A directly resolved Document may anchor traversal, but its text reaches
-    the model through the document channel.
+    """The graph channel: every in-scope traversal node (bounded by the
+    traversal caps) except excluded labels, in graph relevance order (seeds,
+    then target-type holders, then the rest; composite score, then id,
+    within a tier; D-083). A directly resolved Document may anchor
+    traversal, but its text reaches the model through the document channel.
 
-    Authoritative structured facts are attached to every structured
-    candidate before its judged candidate is built, because the candidate
-    takes its source table from them; selected nodes keep them for
-    citations and the UI. They never enter the judged or prompt text
-    (D-028).
+    Each candidate's ``rank`` is its 1-based graph rank, and its
+    ``graph_path`` the walked path from its seed. Authoritative structured
+    facts are attached to every structured candidate before its candidate is
+    built, because the candidate takes its source table from them; selected
+    nodes keep them for citations and the UI. They never enter the prompt
+    text (D-028): the prompt shows the record block's compact facts (D-085).
     """
     excluded = [
         _to_graph_evidence(node).model_copy(update={"discard_reason": SELECTION_EXCLUDED_LABEL})
         for node in ranked.scored
         if node.node_label in excluded_labels
     ]
+    ordered = graph_relevance_order(ranked.scored, ranked.labels, traversal.result, targets)
     drafts = [
-        _with_facts(_to_graph_evidence(node), source_lookup)
-        for node in ranked.scored
-        if node.node_label not in excluded_labels
+        _with_facts(_to_graph_evidence(node, graph_rank), source_lookup)
+        for graph_rank, node in enumerate(
+            (node for node in ordered if node.node_label not in excluded_labels), start=1
+        )
     ]
     structured = [
         _structured_chunk(
             evidence,
             ranked.node_texts[evidence.node_id],
-            rank,
+            graph_rank,
             source_lookup.record_block(evidence.node_label, evidence.node_id)
             if source_lookup is not None
             else None,
+            traversal.result.steps_to(evidence.node_id, ranked.labels),
         )
-        for rank, evidence in enumerate(drafts, start=1)
+        for graph_rank, evidence in enumerate(drafts, start=1)
     ]
-    return Selection(drafts=drafts, excluded=excluded, structured=structured)
+    links = traversal.result.stated_links
+    return Selection(
+        drafts=drafts,
+        excluded=excluded,
+        structured=structured,
+        stated_links=None if links is None else len(links),
+    )
 
 
-def _to_graph_evidence(node: ScoredNode) -> GraphEvidence:
+def _to_graph_evidence(node: ScoredNode, graph_rank: int | None = None) -> GraphEvidence:
+    """A node's evidence; ``graph_rank`` (and with it the tier) only for a
+    node in the graph channel."""
     return GraphEvidence(
         node_id=node.node_id,
         node_label=node.node_label,
@@ -447,6 +502,8 @@ def _to_graph_evidence(node: ScoredNode) -> GraphEvidence:
         rel_type=node.rel_type,
         score=node.score,
         components=node.components,
+        tier=node.tier if graph_rank is not None else None,
+        graph_rank=graph_rank,
     )
 
 
@@ -460,16 +517,25 @@ def _with_facts(evidence: GraphEvidence, source_lookup: SourceLookup | None) -> 
 
 
 def _structured_chunk(
-    evidence: GraphEvidence, text: str, rank: int, record: CorpusChunk | None
+    evidence: GraphEvidence,
+    text: str,
+    graph_rank: int,
+    record: CorpusChunk | None,
+    steps: list[PathStep],
 ) -> EvidenceChunk:
-    """A graph node as a context candidate, ranked within its channel.
+    """A graph node as a context candidate, ranked within its channel by
+    its graph rank.
 
     A node whose row has a record block in A's corpus takes that block's
-    title, market, language and provenance from the source lookup, whether
-    or not the search returned the block, so the generator sees the same
-    block for the same fact in A, B and C. Any other node is shown as
-    "<Label>: <id>" with no market or language: its text is "<Label> <id>"
-    only (D-028). Its authoritative facts stay on the node's evidence.
+    title, market, language, provenance and compact facts from the source
+    lookup, whether or not the search returned the block, so the generator
+    sees the same block for the same row in A, B and C, apart from the
+    declared path line (D-085). Any other node carries the title
+    "<Label>: <id>" for citations and the UI only, with no market or
+    language; the prompt never renders that title, only "<Label> <id>" and,
+    for a concept in C, its ontology text (D-028). steps is the walked path
+    from the node's seed (none for a seed). Its authoritative facts stay on
+    the node's evidence.
     """
     authoritative = evidence.authoritative or {}
     source_table = authoritative.get("source_table")
@@ -487,8 +553,12 @@ def _structured_chunk(
         record_table=record.record_table if record else source_table,
         valid_from=record.valid_from if record else None,
         valid_to=record.valid_to if record else None,
+        facts_heading=record.facts_heading if record else None,
+        facts=list(record.facts) if record else [],
         similarity=evidence.score,
-        rank=rank,
+        rank=graph_rank,
+        graph_path=render_path(steps) or None,
+        graph_seed=steps[0].from_id if steps else None,
         discovered_via="graph_traversal",
     )
 
@@ -510,13 +580,15 @@ def document_channel(
     retrieval fairness): same corpus (document chunks and record blocks),
     same dense and sparse models, same hybrid search and top_k, same
     market scope. Pipeline C embeds the expanded ``search_text`` (dense
-    and sparse); judging always uses the raw question. Record blocks of
-    structured candidates are judged here too, each once; selection refuses
-    one only when its node holds a graph slot (design 10a.8).
+    and sparse); re-ranking always uses the raw question. Record blocks of
+    graph candidates stay in this channel too; selection takes a row once,
+    at its first appearance in either channel.
     """
     hits = vectors.search(search_text, limit=top_k, markets=scope)
     return DocumentCandidates(
-        documents=[hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
+        documents=[
+            hit_to_evidence(hit, rank, vectors.facts) for rank, hit in enumerate(hits, start=1)
+        ]
     )
 
 
@@ -529,12 +601,14 @@ def assemble_and_generate(
     context: ContextSettings,
     emitter: EventEmitter,
 ) -> Answer:
-    """One judge (the shared reranker, raw question) over the structured then
-    the document channel, one selection (budget and slot count as A, with the
-    graph share, D-081), then the LLM over the selection in judge order."""
-    judged = [*selection.structured, *documents.documents]
-    emitter.emit(GRAPH_RERANK_STARTED, candidates=len(judged), model=reranker.model_name)
-    reranked = reranker.rerank(question, judged)
+    """The shared cross-encoder re-ranks the document channel only (raw
+    question, exactly as in A); the documents and the graph channel are
+    interleaved into the one token budget (D-084); then the LLM answers
+    over the selection in prompt order."""
+    emitter.emit(
+        GRAPH_RERANK_STARTED, candidates=len(documents.documents), model=reranker.model_name
+    )
+    reranked = reranker.rerank(question, documents.documents)
     for candidate in reranked:
         emitter.emit(
             GRAPH_CANDIDATE_RERANKED,
@@ -543,9 +617,9 @@ def assemble_and_generate(
             rerank_score=candidate.rerank_score,
             rank=candidate.rank,
         )
-    assembly = assemble_context(reranked, context)
-    node_evidence = _node_outcomes(selection, reranked, assembly, emitter)
-    selected_chunks, discarded_chunks = _document_outcomes(documents, assembly, emitter)
+    assembly = assemble_context(reranked, selection.structured, context)
+    node_evidence = _node_outcomes(selection, assembly, emitter)
+    selected_chunks, discarded_chunks = _document_outcomes(assembly, emitter)
 
     evidence_paths = [evidence.path for evidence in node_evidence if evidence.selected]
     emitter.emit(
@@ -558,7 +632,8 @@ def assemble_and_generate(
         structured_nodes=len(assembly.structured_selected),
         document_chunks=len(selected_chunks),
         context_tokens=assembly.context_tokens,
-        evidence_slots=context.evidence_slots,
+        budget_tokens=context.budget_tokens,
+        stated_links=selection.stated_links,
     )
     return Answer(
         answer=_generate(question, assembly, generator, emitter),
@@ -568,26 +643,17 @@ def assemble_and_generate(
 
 
 def _node_outcomes(
-    selection: Selection,
-    reranked: list[EvidenceChunk],
-    assembly: ContextAssembly,
-    emitter: EventEmitter,
+    selection: Selection, assembly: ContextAssembly, emitter: EventEmitter
 ) -> list[GraphEvidence]:
     """Each node's selection outcome, emitted as a selected or discarded
-    event; returns the judged nodes followed by the excluded ones."""
-    judged = {chunk.chunk_id: chunk for chunk in reranked}
+    event; returns the graph channel in graph order, then the excluded nodes."""
     node_reasons = {
         chunk.chunk_id: chunk.discard_reason
         for chunk in assembly.discarded
         if chunk.kind == NODE_KIND
     }
     node_evidence = [
-        _with_outcome(
-            evidence,
-            node_reasons.get(evidence.node_id),
-            judged[evidence.node_id].rerank_score,
-        )
-        for evidence in selection.drafts
+        _with_outcome(evidence, node_reasons.get(evidence.node_id)) for evidence in selection.drafts
     ]
     node_evidence.extend(selection.excluded)
     for evidence in node_evidence:
@@ -595,9 +661,10 @@ def _node_outcomes(
             payload: dict[str, str | int | float | None] = {
                 "node_id": evidence.node_id,
                 "score": evidence.score,
-                "rerank_score": evidence.rerank_score,
                 "hops": evidence.hops,
                 "seed": evidence.hops == 0,
+                "tier": evidence.tier,
+                "graph_rank": evidence.graph_rank,
             }
             for key, value in evidence.components.items():
                 payload[f"weight_{key}"] = value
@@ -607,35 +674,30 @@ def _node_outcomes(
                 GRAPH_CANDIDATE_DISCARDED,
                 node_id=evidence.node_id,
                 score=evidence.score,
-                rerank_score=evidence.rerank_score,
                 hops=evidence.hops,
                 seed=evidence.hops == 0,
                 reason=evidence.discard_reason,
+                tier=evidence.tier,
+                graph_rank=evidence.graph_rank,
             )
     return node_evidence
 
 
-def _with_outcome(
-    evidence: GraphEvidence, discard_reason: str | None, rerank_score: float | None
-) -> GraphEvidence:
+def _with_outcome(evidence: GraphEvidence, discard_reason: str | None) -> GraphEvidence:
     """Selection outcome on a node; only selected nodes keep their facts."""
     if discard_reason is None:
-        return evidence.model_copy(update={"selected": True, "rerank_score": rerank_score})
+        return evidence.model_copy(update={"selected": True})
     return evidence.model_copy(
-        update={
-            "selected": False,
-            "discard_reason": discard_reason,
-            "rerank_score": rerank_score,
-            "authoritative": None,
-        }
+        update={"selected": False, "discard_reason": discard_reason, "authoritative": None}
     )
 
 
 def _document_outcomes(
-    documents: DocumentCandidates, assembly: ContextAssembly, emitter: EventEmitter
+    assembly: ContextAssembly, emitter: EventEmitter
 ) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
-    """The selected and the discarded document candidates (superseded record
-    blocks included, in judge order), each emitted as an event."""
+    """The selected and the discarded document candidates (record blocks
+    refused as ``same_record`` included, in cross-encoder order), each
+    emitted as an event."""
     selected = assembly.document_selected
     discarded = sorted(
         (chunk for chunk in assembly.discarded if chunk.kind != NODE_KIND),
@@ -661,23 +723,12 @@ def _document_outcomes(
 def _generate(
     question: str, assembly: ContextAssembly, generator: AnswerGenerator, emitter: EventEmitter
 ) -> RagAnswer:
-    """The answer over the selection in judge order, exactly as pipeline A
+    """The answer over the selection in prompt order, exactly as pipeline A
     hands it over: the same selected evidence gives the same prompt in A, B
     and C."""
     emitter.emit(GRAPH_GENERATION_STARTED, model=generator.model_name)
     output = generator.generate(question, assembly.selected)
-    parsed = parse_answer(output.raw_text, block_count=len(assembly.selected))
-    answer = RagAnswer(
-        text=parsed.answer,
-        verdict=parsed.verdict,
-        cited_blocks=parsed.cited_blocks,
-        raw_text=output.raw_text,
-        model=generator.model_name,
-        latency_ms=round(output.latency_ms, 1),
-        context_tokens=assembly.context_tokens,
-        citations=citations_for(assembly.selected),
-        usage=output.usage,
-    )
+    answer = answer_from(output, assembly.selected, generator.model_name, assembly.context_tokens)
     emitter.emit(
         GRAPH_GENERATION_COMPLETED,
         model=generator.model_name,

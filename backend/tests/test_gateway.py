@@ -42,6 +42,63 @@ def test_complete_returns_text_usage_and_latency(stub_litellm: StubLiteLLM) -> N
     assert stub_litellm.calls[0]["max_tokens"] == 50
     assert stub_litellm.calls[0]["messages"][0] == {"role": "system", "content": "sys"}
     assert stub_litellm.calls[0]["base_url"] is None and stub_litellm.calls[0]["timeout"] == 5.0
+    # No stop reason reported; fewer completion tokens than the cap.
+    assert result.finish_reason is None and result.token_limit_reached is False
+
+
+@pytest.mark.parametrize(
+    ("finish_reason", "usage", "reached"),
+    [
+        ("length", None, True),
+        ("length", types.SimpleNamespace(completion_tokens=3), True),
+        ("stop", types.SimpleNamespace(completion_tokens=50), True),
+        ("stop", types.SimpleNamespace(completion_tokens=49), False),
+        ("stop", None, None),
+        (None, None, None),
+    ],
+)
+def test_complete_says_whether_the_output_stopped_at_the_token_limit(
+    stub_litellm: StubLiteLLM,
+    monkeypatch: pytest.MonkeyPatch,
+    finish_reason: str | None,
+    usage: object,
+    reached: bool | None,
+) -> None:
+    stub_litellm.finish_reason = finish_reason
+    monkeypatch.setattr("tests.conftest._Response.usage", usage)
+    result = complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0))
+    assert (result.finish_reason, result.token_limit_reached) == (finish_reason, reached)
+
+
+# LiteLLM 1.104 warns about a TypedDict qualifier when it first builds a response.
+@pytest.mark.filterwarnings("ignore:Item 'summary' on TypedDict:UserWarning")
+def test_an_ollama_answer_cut_at_the_cap_is_seen_by_its_token_count(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The real gateway and the real litellm.completion; only the HTTP send is
+    replaced. Ollama says done_reason "length", LiteLLM's ``ollama/`` adapter
+    reports "stop", and the completion token count shows the cap was reached."""
+
+    def send(self: httpx.Client, request: httpx.Request, **kwargs: object) -> httpx.Response:
+        body = {
+            "model": "qwen3.6:latest",
+            "created_at": "2026-10-29T10:00:00Z",
+            "response": '{"verdict": "x", "answer": "cut',
+            "done": True,
+            "done_reason": "length",
+            "prompt_eval_count": 7,
+            "eval_count": 50,
+        }
+        return httpx.Response(200, json=body, request=request)
+
+    monkeypatch.setattr(httpx.Client, "send", send)
+    request = CompletionRequest(
+        "ollama/qwen3.6:latest", "s", "u", 0.0, 50, "http://localhost:11434", 5.0
+    )
+    result = complete(request)
+    assert result.text == '{"verdict": "x", "answer": "cut'
+    assert result.finish_reason == "stop" and result.usage is not None
+    assert result.usage["completion_tokens"] == 50 and result.token_limit_reached is True
 
 
 def test_complete_raises_gateway_error_on_empty_content(stub_litellm_empty: StubLiteLLM) -> None:
@@ -72,7 +129,8 @@ def test_reasoning_off_for_ollama_sends_think_false() -> None:
     from litellm.llms.ollama.chat.transformation import OllamaChatConfig
     from litellm.utils import get_optional_params
 
-    kwargs: dict[str, Any] = _reasoning_off_kwargs("ollama/qwen3.6:latest") or {}
+    # LiteLLM types each keyword it takes; the gateway's extra keywords are passed as they are.
+    kwargs: dict[str, Any] = dict(_reasoning_off_kwargs("ollama/qwen3.6:latest") or {})
     messages = [{"role": "user", "content": "hi"}]
     for provider, config in (("ollama_chat", OllamaChatConfig()), ("ollama", OllamaConfig())):
         params = get_optional_params(
@@ -94,7 +152,7 @@ def test_reasoning_off_for_openrouter_sends_reasoning_disabled(model: str) -> No
     from litellm.llms.openrouter.chat.transformation import OpenrouterConfig
     from litellm.utils import get_optional_params
 
-    kwargs: dict[str, Any] = _reasoning_off_kwargs(f"openrouter/{model}") or {}
+    kwargs: dict[str, Any] = dict(_reasoning_off_kwargs(f"openrouter/{model}") or {})
     params = get_optional_params(
         model=model, custom_llm_provider="openrouter", max_tokens=5, **kwargs
     )
@@ -404,3 +462,34 @@ def test_litellm_is_loaded_by_one_thread_at_a_time(monkeypatch: pytest.MonkeyPat
     for thread in threads:
         thread.join()
     assert stub.most_inside == 1
+
+
+@pytest.mark.parametrize(
+    ("content", "text", "replaced"),
+    [
+        ("a \ud83d b", "a \ufffd b", 1),
+        ("pair \ud83d\ude00 ok", "pair \U0001f600 ok", 0),
+        ("end \ud83d", "end \ufffd", 1),
+        ("\ude00 start and \udbff\udbff", "\ufffd start and \ufffd\ufffd", 3),
+    ],
+)
+def test_model_text_with_a_lone_surrogate_is_made_encodable(
+    monkeypatch: pytest.MonkeyPatch, content: str, text: str, replaced: int
+) -> None:
+    """Answer and judge text both pass through here (parser 2.1.1, D-096)."""
+    monkeypatch.setitem(sys.modules, "litellm", StubLiteLLM(content))
+    result = complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0))
+    assert (result.text, result.surrogates_replaced) == (text, replaced)
+    result.text.encode("utf-8")
+
+
+def test_a_gateway_error_message_with_a_lone_surrogate_is_made_encodable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(
+        sys.modules, "litellm", StubLiteLLM(None, RuntimeError("provider said \ud83d"))
+    )
+    with pytest.raises(GatewayError) as raised:
+        complete(CompletionRequest("m", "s", "u", 0.0, 50, None, 5.0))
+    assert "\ufffd" in str(raised.value)
+    str(raised.value).encode("utf-8")

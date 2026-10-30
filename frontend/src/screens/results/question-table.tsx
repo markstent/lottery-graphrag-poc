@@ -8,6 +8,8 @@ import {
   listDatasets,
   type Schemas,
 } from '../../api/client'
+import { cutOffCount } from '../../app/cut-off'
+import { EVIDENCE_LABELS, type EvidenceMetric } from '../../app/method'
 import { failureWords } from '../../app/plain-words'
 import { hrefFor, useRoute } from '../../app/router'
 import { evidenceScore, MISSING, percent } from '../../app/score-words'
@@ -37,6 +39,7 @@ import {
   STRATUM_ORDER,
 } from '../../results/strata'
 import { RunBadge } from './run-badge'
+import { ScrollBox } from '../../components/scroll-box'
 
 type Row = Schemas['InstanceResultOut']
 type PipelineScores = Schemas['InstancePipelineOut']
@@ -51,7 +54,7 @@ const whole = (v: number) => formatNumber(v, { decimals: 0 })
 const twoPlaces = (v: number) => formatNumber(v, { decimals: 2 })
 
 const SELECT =
-  'w-auto max-w-xs rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary'
+  'w-auto min-w-0 max-w-xs rounded-chip border border-border bg-surface px-3 py-1 text-sm text-text-primary'
 const BUTTON =
   'rounded-chip border border-border px-3 py-1 text-sm text-text-primary hover:bg-surface-raised disabled:cursor-not-allowed disabled:text-text-muted'
 
@@ -63,8 +66,8 @@ const classCounts = (classes: Record<string, number>) =>
     })
     .join('; ') || 'None'
 
-/** The scores of one question in one world, a column per approach. */
-function Details({ row }: { row: Row }) {
+/** The scores of one question in one world, a column per approach; `maxTokens` is the run's recorded output limit. */
+function Details({ row, maxTokens }: { row: Row; maxTokens: number | null }) {
   const rows: [string, (s: PipelineScores) => string][] = [
     [MEASURES.recall, (s) => num(s.evidence_recall, evidenceScore)],
     [MEASURES.precision, (s) => num(s.evidence_precision, evidenceScore)],
@@ -80,6 +83,10 @@ function Details({ row }: { row: Row }) {
     ),
     [MEASURES.failures, (s) => classCounts(s.failure_classes)],
     [MEASURES.unscored, (s) => String(s.unscored_repeats)],
+    [
+      MEASURES.cutOff,
+      (s) => cutOffCount(s.cut_off_repeats, s.token_limit_repeats, maxTokens),
+    ],
   ]
   return (
     <DataTable
@@ -100,12 +107,21 @@ function Details({ row }: { row: Row }) {
 
 const CELL = 'tabular whitespace-nowrap px-2 py-2 text-right'
 
-function Scores({ row, id }: { row: Row; id: string }) {
+/** One approach's cells; `metric` is the evidence metric of the run's method. */
+function Scores({
+  row,
+  id,
+  metric,
+}: {
+  row: Row
+  id: string
+  metric: EvidenceMetric
+}) {
   const s = row.pipelines[id]
   const evidence = s
-    ? s.evidence_f1 === null && row.stratum === 'H3'
+    ? s[metric] === null && row.stratum === 'H3'
       ? NO_EVIDENCE
-      : num(s.evidence_f1, evidenceScore)
+      : num(s[metric], evidenceScore)
     : MISSING
   return (
     <>
@@ -124,12 +140,16 @@ function Scores({ row, id }: { row: Row; id: string }) {
 
 function QuestionRow({
   row,
+  metric,
+  maxTokens,
   open,
   onToggle,
   activeWorld,
   worldsFailed,
 }: {
   row: Row
+  metric: EvidenceMetric
+  maxTokens: number | null
   open: boolean
   onToggle: () => void
   activeWorld: number | null
@@ -167,7 +187,7 @@ function QuestionRow({
         <td className="px-2 py-2">{STRATUM_SHORT[stratumOf(row)]}</td>
         <td className={CELL}>{row.world_seed}</td>
         {PIPELINES.map(({ id }) => (
-          <Scores key={id} row={row} id={id} />
+          <Scores key={id} row={row} id={id} metric={metric} />
         ))}
         <td className="px-2 py-2">
           {'href' in link ? (
@@ -198,7 +218,7 @@ function QuestionRow({
           className="border-b border-hairline bg-surface-raised"
         >
           <td colSpan={13} className="p-3">
-            <Details row={row} />
+            <Details row={row} maxTokens={maxTokens} />
           </td>
         </tr>
       )}
@@ -225,7 +245,7 @@ function Filters({
   )
   return (
     <div className="flex flex-wrap items-center gap-4 text-sm text-text-primary">
-      <label className="flex items-center gap-2">
+      <label className="flex min-w-0 max-w-full items-center gap-2">
         {QUESTION_HEADS.kind}
         <select
           className={SELECT}
@@ -242,7 +262,7 @@ function Filters({
           ))}
         </select>
       </label>
-      <label className="flex items-center gap-2">
+      <label className="flex min-w-0 max-w-full items-center gap-2">
         {QUESTION_HEADS.world}
         <select
           className={SELECT}
@@ -282,12 +302,16 @@ function Filters({
 
 function Table({
   rows,
+  metric,
+  maxTokens,
   tableRef,
   badge,
   activeWorld,
   worldsFailed,
 }: {
   rows: Row[]
+  metric: EvidenceMetric
+  maxTokens: number | null
   tableRef: RefObject<HTMLDivElement | null>
   badge?: string
   activeWorld: number | null
@@ -323,7 +347,7 @@ function Table({
           )
         }}
       />
-      <div className="overflow-x-auto">
+      <ScrollBox label={CAPTIONS.questions}>
         <table className="w-full border-collapse text-sm text-text-primary">
           <caption className="sr-only">{CAPTIONS.questions}</caption>
           <thead>
@@ -360,7 +384,7 @@ function Table({
               {PIPELINES.flatMap(({ id }) =>
                 [
                   QUESTION_HEADS.answer,
-                  QUESTION_HEADS.evidence,
+                  EVIDENCE_LABELS[metric],
                   MEASURES.judge,
                 ].map((name) => (
                   <th
@@ -379,6 +403,8 @@ function Table({
               <QuestionRow
                 key={row.instance_id}
                 row={row}
+                metric={metric}
+                maxTokens={maxTokens}
                 open={opened.has(row.instance_id)}
                 onToggle={() => toggle(row.instance_id)}
                 activeWorld={activeWorld}
@@ -387,7 +413,7 @@ function Table({
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
       {kept.length === 0 ? (
         <p className="text-sm text-text-secondary">No match</p>
       ) : (
@@ -422,10 +448,16 @@ function Table({
 /** Loads the run's per-question scores and the loaded world; a failure here leaves the rest of the screen alone. */
 export function QuestionsPanel({
   runId,
+  evidence,
+  maxTokens,
   tableRef,
   badge,
 }: {
   runId: string
+  /** The evidence metric of the run's method: F1 under v0.2, recall from v0.3 (D-087). */
+  evidence: EvidenceMetric
+  /** The answer model's output limit the run recorded, or null when it recorded none. */
+  maxTokens: number | null
   tableRef: RefObject<HTMLDivElement | null>
   badge?: string
 }) {
@@ -448,6 +480,8 @@ export function QuestionsPanel({
       {instances.status === 'ready' && (
         <Table
           rows={instances.data}
+          metric={evidence}
+          maxTokens={maxTokens}
           tableRef={tableRef}
           badge={badge}
           activeWorld={activeWorld}

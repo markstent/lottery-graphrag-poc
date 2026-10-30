@@ -8,17 +8,22 @@ import {
   type RunState,
 } from '../../run/reduce'
 import cancelled from '../../run/fixtures/run-cancelled.json'
+import runAbc from '../../run/fixtures/run-abc.json'
+import oldMethod from '../../run/fixtures/run-old-method.json'
 import {
+  contextLine,
   evidenceRows,
   evidenceSummary,
   pipelineNotice,
   runStatusLine,
   stageRows,
+  targetLine,
 } from './columns'
 import type { RunPhase, Timeline as TimelineView } from './use-live-run'
 
 const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const finished = reduceAll(h1.events)
+const oldMethodState = reduceAll(oldMethod.events as unknown as RunEvent[])
 const cancelledState = reduceAll(cancelled.events as unknown as RunEvent[])
 
 const upTo = (events: RunEvent[], type: string): RunState => {
@@ -32,14 +37,14 @@ describe('stageRows', () => {
     expect(stageRows('A', start.pipelines.A).map((row) => row.label)).toEqual([
       'Embed the question',
       'Search passages',
-      'Re-order and pick',
+      'Re-order and pick passages',
       'Build the context',
       'Write the answer',
     ])
     expect(stageRows('B', start.pipelines.B).map((row) => row.label)).toEqual([
       'Find starting points',
       'Follow relationships',
-      'Re-order and pick',
+      'Re-order passages, take turns',
       'Build the context',
       'Write the answer',
     ])
@@ -49,7 +54,7 @@ describe('stageRows', () => {
       'Add ontology terms',
       'Follow relationships',
       'Add linked records',
-      'Re-order and pick',
+      'Re-order passages, take turns',
       'Build the context',
       'Write the answer',
     ])
@@ -85,14 +90,28 @@ describe('stageRows', () => {
     const statuses = (id: 'A' | 'B' | 'C') =>
       stageRows(id, cancelledState.pipelines[id]).map((row) => row.status)
     expect(statuses('A')).toEqual(['done', 'done', 'done', 'done', 'done'])
+    // B was cancelled while it followed the graph's relationships.
     expect(statuses('B')).toEqual([
-      'done',
       'done',
       'cancelled',
       'not-reached',
       'not-reached',
+      'not-reached',
     ])
     expect(statuses('C')).toEqual(Array(7).fill('not-reached'))
+  })
+})
+
+describe('stageRows, the re-rank step by method', () => {
+  it('names what v0.3 does, and keeps the old name for a recording of the old method', () => {
+    const start = initialRunState()
+    const rerank = (id: 'A' | 'B', old: boolean) =>
+      stageRows(id, start.pipelines[id], old).find(
+        (row) => row.stage === 'rerank',
+      )?.label
+    expect(rerank('A', false)).toBe('Re-order and pick passages')
+    expect(rerank('B', false)).toBe('Re-order passages, take turns')
+    expect(rerank('B', true)).toBe('Re-order and pick')
   })
 })
 
@@ -102,7 +121,8 @@ describe('stageRows, a step the pipeline never ran', () => {
 
   it('says "Not run" for a step a completed pipeline skipped, such as C with no ontology links', () => {
     expect(state.pipelines.C.status).toBe('completed')
-    const rows = stageRows('C', state.pipelines.C)
+    // The recording was made under the old method, so it keeps that step name.
+    const rows = stageRows('C', state.pipelines.C, true)
     expect(rows.map((row) => [row.label, row.status])).toEqual([
       ['Find starting points', 'done'],
       ['Add ontology terms', 'done'],
@@ -161,11 +181,145 @@ describe('evidenceRows', () => {
   })
 
   it('names a graph node by its kind and id, and says why one was set aside', () => {
-    const rows = evidenceRows('B', finished)
-    const inc = rows.find((row) => row.id === 'INC_037')!
+    const rows = evidenceRows(
+      'B',
+      reduceAll(runAbc.events as unknown as RunEvent[]),
+    )
+    const inc = rows.find((row) => row.id === 'INC_022')!
     expect(inc).toMatchObject({ kind: 'incident', state: 'selected' })
     const aside = rows.find((row) => row.state === 'discarded')!
     expect(aside.detail).toMatch(/^Set aside: /)
+  })
+})
+
+describe('evidenceRows under method v0.3', () => {
+  const v03 = reduceAll(runAbc.events as unknown as RunEvent[])
+  const outcome = (sequence: number, type: string, payload: object): RunEvent =>
+    ({
+      event_id: `e${sequence}`,
+      timestamp: '2026-01-01T10:00:00+00:00',
+      run_id: 'RUN-TEST',
+      pipeline: 'B',
+      event_type: type,
+      t_ms: sequence,
+      payload,
+      sequence,
+    }) as unknown as RunEvent
+  const node = (id: string, tier: string | null, rank: number | null) => ({
+    node_id: id,
+    score: 0.5,
+    hops: 1,
+    seed: tier === 'seed',
+    tier,
+    graph_rank: rank,
+  })
+  const built = reduceAll([
+    outcome(1, 'graph.candidate.selected', {
+      ...node('INC_1', 'seed', 1),
+      weight_graph_distance: 1,
+      weight_relationship_type: 1,
+      weight_semantic_relevance: 1,
+      weight_temporal_validity: 1,
+    }),
+    outcome(2, 'graph.candidate.discarded', {
+      ...node('PLV_1', 'target', 2),
+      reason: 'same_record',
+    }),
+    outcome(3, 'graph.candidate.discarded', {
+      ...node('PLT_1', 'other', 3),
+      reason: 'context_budget',
+    }),
+    outcome(4, 'graph.candidate.discarded', {
+      ...node('MKT_1', null, null),
+      reason: 'out_of_scope_market',
+    }),
+  ])
+  const row = (id: string) =>
+    evidenceRows('B', built).find((candidate) => candidate.id === id)!
+
+  it('places each graph record by its tier and graph rank', () => {
+    expect(row('INC_1').place).toBe('starting point · graph rank 1')
+    expect(row('PLV_1').place).toBe("question's target · graph rank 2")
+    expect(row('PLT_1').place).toBe('other · graph rank 3')
+    // A record refused before the graph order has no place in it.
+    expect(row('MKT_1').place).toBeNull()
+  })
+
+  it('says why a record was set aside, in the words of the v0.3 reasons', () => {
+    expect(row('PLV_1').detail).toBe(
+      'Set aside: the same record is already in the context',
+    )
+    expect(row('PLT_1').detail).toBe('Set aside: the context was full')
+    expect(row('MKT_1').detail).toBe(
+      'Set aside: outside the markets asked about',
+    )
+  })
+
+  it('gives a document no place in the graph order', () => {
+    const rows = evidenceRows('B', v03)
+    const documents = rows.filter(
+      (r) => r.kind === 'passage' || r.kind === 'source record',
+    )
+    expect(documents.length).toBeGreaterThan(0)
+    expect(documents.every((r) => r.place === null)).toBe(true)
+    expect(rows.find((r) => r.id === 'INC_021')?.place).toBe(
+      'starting point · graph rank 1',
+    )
+    expect(rows.find((r) => r.id === 'INC_022')?.place).toBe(
+      "question's target · graph rank 2",
+    )
+  })
+})
+
+describe('evidenceRows of an old-method recording', () => {
+  it('says a record was set aside under the old method, with no graph rank', () => {
+    const rows = evidenceRows('B', oldMethodState)
+    const aside = rows.filter((row) => row.state === 'discarded')
+    expect(aside.length).toBeGreaterThan(0)
+    expect(
+      aside.every((row) => row.detail === 'Set aside under the old method'),
+    ).toBe(true)
+    expect(rows.every((row) => row.place === null)).toBe(true)
+  })
+})
+
+describe('targetLine', () => {
+  it("names the question's target types in plain words", () => {
+    expect(
+      targetLine('C', reduceAll(runAbc.events as unknown as RunEvent[])),
+    ).toBe(
+      "Question's target: incident, incident type, market, platform version",
+    )
+  })
+
+  it('says when the question named none, and is silent for A and old recordings', () => {
+    const none = reduceAll([
+      {
+        event_id: 'e1',
+        timestamp: '2026-01-01T10:00:00+00:00',
+        run_id: 'RUN-TEST',
+        pipeline: 'B',
+        event_type: 'graph.target_types.resolved',
+        t_ms: 1,
+        payload: { labels: '' },
+        sequence: 1,
+      } as unknown as RunEvent,
+    ])
+    expect(targetLine('B', none)).toBe("Question's target: none named")
+    expect(targetLine('A', none)).toBeNull()
+    expect(targetLine('B', oldMethodState)).toBeNull()
+  })
+})
+
+describe('contextLine', () => {
+  it('gives the context size against its budget', () => {
+    const v03 = reduceAll(runAbc.events as unknown as RunEvent[])
+    expect(contextLine(v03.pipelines.B)).toBe('Context: 1,996 of 2,000 tokens')
+  })
+
+  it('is silent before the context is built and for an old recording, which had no budget', () => {
+    expect(contextLine(initialRunState().pipelines.A)).toBeNull()
+    expect(contextLine(oldMethodState.pipelines.A)).toBeNull()
   })
 })
 
@@ -174,7 +328,7 @@ describe('evidenceSummary', () => {
 
   it('counts what was found, used and set aside', () => {
     expect(evidenceSummary(evidenceRows('A', finished), 'completed')).toBe(
-      '40 found · 12 used · 28 set aside',
+      '40 found · 16 used · 24 set aside',
     )
   })
 

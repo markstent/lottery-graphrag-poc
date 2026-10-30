@@ -102,7 +102,7 @@ function loaded(source: Fetched, followInto?: (nodeId: string) => string) {
                 <Fact term="Table">{record.table}</Fact>
                 <Fact term="Dataset">{datasetName(source.datasetId)}</Fact>
                 <Fact term="Graph node">
-                  {record.graph_node_id ?? 'This row has no node in the graph.'}
+                  {record.graph_node_id ?? 'This row has no graph node.'}
                 </Fact>
                 {(record.edges ?? []).map((edge) => (
                   <Fact

@@ -1,10 +1,11 @@
 /**
- * How evidence is chosen, as one picture: the pieces found, the one
- * re-ordering model, the places in the prompt (all for passages and record
- * texts in A; a share kept for graph records in B and C) and the one token
- * budget. Every number comes from the settings, as the prose's do, so the
- * picture cannot drift from the code; a number that is not known is said to
- * be not available and is not drawn.
+ * How evidence is chosen under method v0.3, as one picture: the passages and
+ * record texts in the re-ordering model's order; in B and C also the graph's
+ * records in the graph's own order; and the one token budget each approach
+ * fills, A from its one list and B and C from the two lists in turn, a
+ * passage first. The blocks drawn show the order of taking, not a count: no
+ * item limit exists. The budget comes from the settings, as the prose's
+ * numbers do; a value that is not known is said to be not available.
  */
 
 import { useId } from 'react'
@@ -22,6 +23,8 @@ const PAD = 8
 const SLOTS_X = 76
 const SLOTS_W = WIDTH - PAD - SLOTS_X
 const SLOT_GAP = 4
+/** Blocks drawn per budget: an illustration of the order of taking, not a count. */
+const BLOCKS = 6
 const SLOT_H = 28
 const FONT = 14
 const SMALL = 12
@@ -53,10 +56,12 @@ function Box({
   y,
   height,
   lines,
+  stroke = SHARED.stroke,
 }: {
   y: number
   height: number
   lines: readonly string[]
+  stroke?: string
 }) {
   const step = 19
   const first = y + height / 2 - ((lines.length - 1) * step) / 2
@@ -69,7 +74,7 @@ function Box({
         height={height}
         rx={8}
         fill={SHARED.fill}
-        stroke={SHARED.stroke}
+        stroke={stroke}
         strokeWidth={2}
       />
       {lines.map((line, index) => (
@@ -90,86 +95,70 @@ function Box({
   )
 }
 
-/** One row of places: the first `graph` drawn as graph places, the rest as places for passages and record texts. */
-function Places({
-  y,
-  slots,
-  graph,
-}: {
-  y: number
-  slots: number
-  graph: number
-}) {
-  const width = (SLOTS_W - SLOT_GAP * (slots - 1)) / slots
-  return Array.from({ length: slots }, (_, index) => (
-    <rect
-      key={index}
-      x={SLOTS_X + index * (width + SLOT_GAP)}
-      y={y}
-      width={width}
-      height={SLOT_H}
-      rx={4}
-      fill={index < graph ? GRAPH : DOCUMENT.fill}
-      stroke={index < graph ? GRAPH : DOCUMENT.stroke}
-      strokeWidth={1.5}
-    />
-  ))
-}
+/** The kinds of the blocks one row takes, in the order it takes them. */
+type Taken = readonly ('document' | 'graph')[]
+const A_TAKES: Taken = Array.from({ length: BLOCKS }, () => 'document')
+const BC_TAKES: Taken = Array.from({ length: BLOCKS }, (_, index) =>
+  index % 2 === 0 ? 'document' : 'graph',
+)
 
-function Note({ y, text }: { y: number; text: string }) {
+/** One budget, drawn as a dashed box, and the blocks taken into it in order. */
+function Budget({ y, takes }: { y: number; takes: Taken }) {
+  const inner = SLOTS_W - 2 * SLOT_GAP
+  const width = (inner - SLOT_GAP * (takes.length - 1)) / takes.length
   return (
-    <text
-      x={SLOTS_X}
-      y={y + SLOT_H / 2}
-      dominantBaseline="central"
-      fontSize={FONT}
-      fill="var(--color-text-secondary)"
-    >
-      {text}
-    </text>
+    <g>
+      <rect
+        x={SLOTS_X}
+        y={y}
+        width={SLOTS_W}
+        height={SLOT_H + 2 * SLOT_GAP}
+        rx={6}
+        fill="none"
+        stroke={SHARED.stroke}
+        strokeDasharray="4 3"
+      />
+      {takes.map((kind, index) => (
+        <rect
+          key={index}
+          x={SLOTS_X + SLOT_GAP + index * (width + SLOT_GAP)}
+          y={y + SLOT_GAP}
+          width={width}
+          height={SLOT_H}
+          rx={4}
+          fill={kind === 'graph' ? GRAPH : DOCUMENT.fill}
+          stroke={kind === 'graph' ? GRAPH : DOCUMENT.stroke}
+          strokeWidth={1.5}
+        />
+      ))}
+    </g>
   )
 }
 
 export function EvidenceDiagram() {
   const values = useSettingValues()
   const { loading } = values
-  const slots = wholeNumber(EVIDENCE_DIAGRAM_KEYS[0], values)
-  const graph = wholeNumber(EVIDENCE_DIAGRAM_KEYS[1], values)
-  const budget = wholeNumber(EVIDENCE_DIAGRAM_KEYS[2], values)
+  const budget = wholeNumber(EVIDENCE_DIAGRAM_KEYS[0], values)
   const unknown = loading ? 'loading' : 'not available'
-  const known = slots !== null && slots > 0
-  const share = known && graph !== null && graph <= slots ? graph : null
   const marker = `${useId().replace(/[^\w-]/g, '')}-arrow`
 
-  const BOX = 74
-  const rowA = 2 * BOX + 3 * PAD + 50
-  const rowBC = rowA + SLOT_H + 44
-  const budgetY = rowBC + SLOT_H + 14
-  const answerY = budgetY + SLOT_H + 24
+  const BOX = 56
+  const graphY = 2 * PAD + BOX
+  const rowA = graphY + BOX + 44
+  const rowBC = rowA + SLOT_H + 2 * SLOT_GAP + 36
+  const budgetY = rowBC + SLOT_H + 2 * SLOT_GAP + 20
+  const answerY = budgetY + 30
   const height = answerY + 40 + PAD
-  const arrow = (from: number, to: number) => (
-    <path
-      d={`M${WIDTH / 2} ${from} V${to}`}
-      stroke={SHARED.stroke}
-      strokeWidth={2}
-      markerEnd={`url(#${marker})`}
-    />
-  )
-  const places = known ? `${slots}` : unknown
+  const tokens = budget !== null ? `${showNumber(budget)} tokens` : null
   const description = loading
     ? 'How evidence is chosen. The settings it quotes are loading.'
     : [
         'How evidence is chosen.',
-        'The pieces found are passages and record texts, and in B and C also the records the graph reached.',
-        'One re-ordering model scores every piece against the question.',
-        known
-          ? `The answer model sees at most ${slots} pieces. In A all ${slots} places go to passages and record texts.`
-          : 'The number of places is not available.',
-        share !== null && known
-          ? `In B and C, ${share} places are kept for graph records and ${slots - share} go to passages and record texts.`
-          : 'The number of places kept for graph records is not available.',
-        budget !== null
-          ? `All the pieces picked share one budget of ${showNumber(budget)} tokens.`
+        "The passages and record texts are put in order by the re-ordering model. In B and C, the records the graph reached form a second list, in the graph's own order.",
+        'A takes pieces from its one list in order until its budget is full.',
+        'B and C take one piece from each list in turn, a passage or record text first, until the budget is full.',
+        tokens !== null
+          ? `Each approach has one budget of ${tokens}, and no limit on the number of pieces.`
           : 'The token budget is not available.',
       ].join(' ')
 
@@ -200,78 +189,59 @@ export function EvidenceDiagram() {
             y={PAD}
             height={BOX}
             lines={[
-              'Pieces found',
-              'Passages and record texts,',
-              'and in B and C, graph records',
+              'Passages and record texts',
+              "in the re-ordering model's order",
             ]}
           />
-          {arrow(PAD + BOX, 2 * PAD + BOX + 14)}
           <Box
-            y={2 * PAD + BOX + 14}
+            y={graphY}
             height={BOX}
-            lines={[
-              'Re-ordering model',
-              'Scores every piece against',
-              'the question, in one list',
-            ]}
+            stroke={GRAPH}
+            lines={['Graph records (B and C)', "in the graph's own order"]}
           />
-          {arrow(2 * PAD + 2 * BOX + 14, rowA - 22)}
           <g fontSize={FONT} fontWeight={600} fill={SHARED.text}>
-            <text x={PAD} y={rowA + SLOT_H / 2} dominantBaseline="central">
+            <text
+              x={PAD}
+              y={rowA + SLOT_GAP + SLOT_H / 2}
+              dominantBaseline="central"
+            >
               A
             </text>
-            <text x={PAD} y={rowBC + SLOT_H / 2} dominantBaseline="central">
+            <text
+              x={PAD}
+              y={rowBC + SLOT_GAP + SLOT_H / 2}
+              dominantBaseline="central"
+            >
               B and C
             </text>
           </g>
           <g fontSize={SMALL} fill="var(--color-text-secondary)">
             <text x={SLOTS_X} y={rowA - 8}>
-              {`${places} places for passages and record texts`}
+              Passages and record texts, in order
             </text>
-            {share !== null && known && (
-              <>
-                <text x={SLOTS_X} y={rowBC - 24} fill={GRAPH} fontWeight={600}>
-                  {`${share} for graph records`}
-                </text>
-                <text x={SLOTS_X} y={rowBC - 8}>
-                  {`${slots - share} for passages and record texts`}
-                </text>
-              </>
-            )}
+            <text x={SLOTS_X} y={rowBC - 8}>
+              One from each list, in turn
+            </text>
           </g>
-          {known ? (
-            <Places y={rowA} slots={slots} graph={0} />
-          ) : (
-            <Note y={rowA} text={`Places ${unknown}`} />
-          )}
-          {known && share !== null ? (
-            <Places y={rowBC} slots={slots} graph={share} />
-          ) : (
-            <Note y={rowBC} text={`Places ${unknown}`} />
-          )}
-          <rect
+          <Budget y={rowA} takes={A_TAKES} />
+          <Budget y={rowBC} takes={BC_TAKES} />
+          <text
             x={SLOTS_X}
             y={budgetY}
-            width={SLOTS_W}
-            height={SLOT_H}
-            rx={4}
-            fill={SHARED.fill}
-            stroke={SHARED.stroke}
-            strokeDasharray="4 3"
-          />
-          <text
-            x={SLOTS_X + SLOTS_W / 2}
-            y={budgetY + SLOT_H / 2}
-            textAnchor="middle"
             dominantBaseline="central"
             fontSize={SMALL}
             fill={SHARED.text}
           >
-            {budget !== null
-              ? `All picked pieces share ${showNumber(budget)} tokens`
+            {tokens !== null
+              ? `Each dashed box: one budget of ${tokens}`
               : `Token budget ${unknown}`}
           </text>
-          {arrow(budgetY + SLOT_H, answerY)}
+          <path
+            d={`M${WIDTH / 2} ${budgetY + 10} V${answerY}`}
+            stroke={SHARED.stroke}
+            strokeWidth={2}
+            markerEnd={`url(#${marker})`}
+          />
           <rect
             x={WIDTH / 2 - 80}
             y={answerY}

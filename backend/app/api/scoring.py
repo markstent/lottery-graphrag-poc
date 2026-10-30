@@ -46,7 +46,8 @@ FAILED = "failed"
 INTERRUPTED = "interrupted"
 # The pipelines that resolve entities before retrieval (the runner's ``seeded``).
 SEEDED_PIPELINES = frozenset({"B", "C"})
-LIVE_METRICS = ("answer", "evidence_f1", "anchor_resolution")
+# Method v0.3 compares evidence recall (D-087), so a live score holds no F1.
+LIVE_METRICS = ("answer", "evidence_recall", "anchor_resolution")
 
 Results = dict[str, dict[str, Any]]
 Events = list[dict[str, Any]]
@@ -194,6 +195,12 @@ def stored_pipeline_run(tag: str, result: dict[str, Any], events: Events) -> Pip
         context_tokens=answer["context_tokens"],
         latency_ms=answer["latency_ms"],
         generation_failed=False,
+        # Absent from an answer recorded before answer parser 2.0.0 (D-096).
+        answer_form=answer.get("answer_form"),
+        finish_reason=answer.get("finish_reason"),
+        token_limit_reached=answer.get("token_limit_reached"),
+        cut_off=answer.get("cut_off"),
+        surrogates_replaced=answer.get("surrogates_replaced"),
     )
 
 

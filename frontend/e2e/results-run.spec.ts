@@ -37,7 +37,7 @@ test('starts a quick check, follows it and opens the run it made', async ({
   await page.goto('/#/results')
   await page.getByRole('button', { name: 'Start a run' }).click()
   await page.getByRole('radio', { name: 'Quick check' }).click()
-  await page.getByRole('checkbox', { name: '2027' }).click()
+  await page.getByRole('checkbox', { name: '2028' }).click()
   await page.getByRole('radio', { name: 'Chosen kinds' }).click()
   await page.getByRole('checkbox', { name: 'Multi-hop questions' }).click()
   await page.getByRole('button', { name: 'Start', exact: true }).click()

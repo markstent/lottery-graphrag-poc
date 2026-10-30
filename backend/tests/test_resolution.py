@@ -8,25 +8,35 @@ by semantic relevance and capped per concept.
 
 from __future__ import annotations
 
+import inspect
 import re
+from pathlib import Path
 
 import pytest
 from app.config import DEFAULT_RANKING_WEIGHTS, DEFAULT_REFERENCE_DATE, GraphRagSettings
 from app.datasets.taxonomies import local_name_variants
+from app.graph.statements import NODE_LABELS
 from app.ontology.loader import load_ontology
+from app.ontology.model import BINDING_KINDS, Binding, Concept, Ontology
 from app.ontology.terms import TermMatcher, build_term_table
+from app.retrieval.graph import resolution
 from app.retrieval.graph.resolution import (
+    BINDING_KIND_LABELS,
     IdEntityResolver,
     QueryExpansion,
     QueryExpansionResult,
     ResolvedEntity,
+    TargetTypeMatcher,
     TermEntityResolver,
+    schema_target_phrases,
 )
 from app.retrieval.graph.traversal import (
     bounded_traversal,
     expand_ontology,
     load_static_provider_from_rows,
 )
+
+from tests.test_truth_ledger_isolation import FORBIDDEN_STRINGS, _imported_modules, _tree
 
 # Graph nodes of the modelled world: concepts are not looked up, codes and ids are.
 _NODES = {
@@ -311,3 +321,147 @@ def test_concept_terms_match_whole_phrases_in_any_language(question: str) -> Non
 
 def test_concept_term_match_is_whole_word() -> None:
     assert c_resolver().resolve("A withdrawal was delayed") == []
+
+
+# ------------------------------------------------------------ target types
+
+
+def _concept(concept_id: str, parent_id: str | None, en: str, de: str) -> Concept:
+    return Concept(
+        concept_id=concept_id,
+        parent_id=parent_id,
+        concept_type="product",
+        labels={"en": en, "el": f"{en} el", "de": de, "cs": f"{en} cs"},
+        synonyms={"en": (f"{en} game",), "de": ()},
+        definition=f"{en}.",
+    )
+
+
+def _target_ontology() -> Ontology:
+    """Scratch card (bound to a category) with a child bound to a family and a
+    grandchild bound to a mechanic; an unbound concept names nothing."""
+    return Ontology(
+        version="test",
+        concepts=(
+            _concept("C_SCRATCH", None, "Scratch card", "Rubbellos"),
+            _concept("C_ONLINE_SCRATCH", "C_SCRATCH", "Online scratch card", "Online-Rubbellos"),
+            _concept("C_REVEAL", "C_ONLINE_SCRATCH", "Reveal", "Aufdecken"),
+            _concept("C_UNBOUND", None, "Jackpot", "Jackpot"),
+        ),
+        bindings=(
+            Binding("category", "CAT_UK_SCRATCH", "MKT_UK", "C_SCRATCH"),
+            Binding("family", "FAM_AT_RUBBELLOS", "MKT_AT", "C_ONLINE_SCRATCH"),
+            Binding("mechanic", "MECH_AT_RUBBELN", "MKT_AT", "C_REVEAL"),
+        ),
+    )
+
+
+def test_every_binding_kind_names_a_graph_label() -> None:
+    assert BINDING_KIND_LABELS.keys() == BINDING_KINDS
+    assert set(BINDING_KIND_LABELS.values()) <= set(NODE_LABELS)
+
+
+def test_schema_phrases_from_labels_and_tables() -> None:
+    phrases = schema_target_phrases()
+    assert phrases["platform version"] == {"PlatformVersion"}
+    assert phrases["mechanic"] == {"GameMechanic"}
+    assert "version" not in phrases
+    assert "category" not in phrases
+    assert "type" not in phrases
+    assert phrases["support cases"] == {"SupportCase"}
+    assert phrases["case"] == {"SupportCase"}
+    assert phrases["platform"] == {"Platform"}
+    assert not {"business concept", "document", "document chunk", "chunk"} & phrases.keys()
+
+
+def test_matches_whole_words_and_plurals() -> None:
+    question = "Which other markets had incidents on the same platform version as incident INC_037?"
+    assert TargetTypeMatcher().match(question) == {"Market", "Incident", "PlatformVersion"}
+
+
+def test_longest_phrase_consumes_its_words() -> None:
+    matcher = TargetTypeMatcher()
+    assert matcher.match("Which game mechanic is used most?") == {"GameMechanic"}
+    assert matcher.match("Which player segments churned?") == {"PlayerSegment"}
+    assert matcher.match("Which platform had the outage?") == {"Platform"}
+    assert matcher.match("Which game and which platform version?") == {"Game", "PlatformVersion"}
+
+
+def test_match_is_casefolded_and_whole_word() -> None:
+    matcher = TargetTypeMatcher()
+    assert matcher.match("PLATFORM VERSIONS released in March") == {"PlatformVersion"}
+    assert matcher.match("Supermarkets and gameplay") == frozenset()
+    assert matcher.match("GAME_UK_01 sales") == frozenset()
+
+
+def test_no_match_gives_empty_set() -> None:
+    assert TargetTypeMatcher().match("What happened last Tuesday?") == frozenset()
+
+
+def test_b_matcher_ignores_ontology_terms() -> None:
+    assert TargetTypeMatcher().match("How did Rubbellos sell?") == frozenset()
+    assert TargetTypeMatcher().match("How did the scratch card sell?") == frozenset()
+
+
+def test_c_matcher_adds_bound_kind_labels() -> None:
+    matcher = TargetTypeMatcher(_target_ontology())
+    # The concept's own binding and those of its descendants, recursively.
+    expected = {"GameCategory", "GameFamily", "GameMechanic"}
+    assert matcher.match("How did the scratch card sell?") == expected
+    assert matcher.match("Wie lief Rubbellos?") == expected
+    assert matcher.match("Which online scratch cards sold?") == {"GameFamily", "GameMechanic"}
+    assert matcher.match("Which Aufdecken titles?") == {"GameMechanic"}
+    assert matcher.match("Who won the jackpot?") == frozenset()
+    # Schema phrases still match in C, in their own pass: the synonym
+    # "scratch card game" does not consume the schema word "game".
+    assert matcher.match("How did the scratch card game sell?") == {"Game", *expected}
+    assert matcher.match("Which markets sold scratch cards?") == {"Market", *expected}
+
+
+def test_plural_of_a_last_word_ending_in_y() -> None:
+    matcher = TargetTypeMatcher()
+    assert matcher.match("Which game categories sold best?") == {"GameCategory"}
+    assert matcher.match("Which currencies are used?") == {"Currency"}
+    assert matcher.match("Which game category sold best?") == {"GameCategory"}
+    assert TargetTypeMatcher(_target_ontology()).match("How do online scratch cards sell?") == {
+        "GameFamily",
+        "GameMechanic",
+    }
+
+
+@pytest.mark.parametrize("question", ["Which payment incidents happened in Austria?", "draw games"])
+def test_c_keeps_what_b_names_with_the_real_ontology(question: str) -> None:
+    b = TargetTypeMatcher().match(question)
+    c = TargetTypeMatcher(load_ontology()).match(question)
+    assert b
+    assert c >= b
+    assert c > b  # the ontology adds its bound labels on top
+
+
+def test_c_contains_b_for_every_ontology_term() -> None:
+    ontology = load_ontology()
+    b_matcher, c_matcher = TargetTypeMatcher(), TargetTypeMatcher(ontology)
+    terms = {
+        term
+        for concept in ontology.concepts
+        for term in (
+            *concept.labels.values(),
+            *(synonym for synonyms in concept.synonyms.values() for synonym in synonyms),
+        )
+    }
+    missing = {
+        term: b_matcher.match(term) - c_matcher.match(term)
+        for term in sorted(terms)
+        if not b_matcher.match(term) <= c_matcher.match(term)
+    }
+    assert missing == {}
+
+
+def test_vocabulary_reads_only_schema_and_ontology() -> None:
+    path = Path(inspect.getfile(resolution))
+    imports = _imported_modules(_tree(path), path)
+    forbidden = ("app.evaluation", "app.scenarios", "app.datasets.bank")
+    assert not any(name.startswith(forbidden) for name in imports)
+    source = path.read_text(encoding="utf-8")
+    assert not any(marker in source for marker in FORBIDDEN_STRINGS)
+    assert list(inspect.signature(TargetTypeMatcher.__init__).parameters) == ["self", "ontology"]

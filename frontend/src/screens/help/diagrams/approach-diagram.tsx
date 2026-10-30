@@ -29,9 +29,11 @@ const PASSAGES = 'Passages and record texts'
 
 const APPROACHES: Record<PipelineId, Approach> = {
   A: {
-    lanes: [{ label: PASSAGES, steps: [STEP.searchPassages] }],
+    lanes: [
+      { label: PASSAGES, steps: [STEP.searchPassages, STEP.reorderPassages] },
+    ],
     description:
-      'The question goes to one search over passages and record texts. A re-ordering model ranks what the search found and picks the evidence, and the answer model writes the answer from it.',
+      'The question goes to one search over passages and record texts. A re-ordering model puts what the search found in order, the pieces are taken in that order until one budget is full, and the answer model writes the answer from them.',
     row: 'hidden @2xl:block',
     column: '@2xl:hidden',
   },
@@ -39,12 +41,16 @@ const APPROACHES: Record<PipelineId, Approach> = {
     lanes: [
       {
         label: 'Graph',
-        steps: [STEP.findStartingPoints, STEP.followRelationships],
+        steps: [
+          STEP.findStartingPoints,
+          STEP.followRelationships,
+          STEP.rankByGraph,
+        ],
       },
-      { label: PASSAGES, steps: [STEP.searchPassages] },
+      { label: PASSAGES, steps: [STEP.searchPassages, STEP.reorderPassages] },
     ],
     description:
-      'Two searches start from the question. The graph search finds starting points named in the question and follows relationships to linked records. The passage search is the same as in A. A re-ordering model ranks both together and picks the evidence, and the answer model writes the answer from it.',
+      "Two searches start from the question. The graph search finds starting points named in the question, follows relationships to linked records and puts them in the graph's own order. The passage search is the same as in A. The two lists take turns filling one budget, a passage first, and the answer model writes the answer from them.",
     row: 'hidden @4xl:block',
     column: '@4xl:hidden',
   },
@@ -57,19 +63,23 @@ const APPROACHES: Record<PipelineId, Approach> = {
           STEP.addOntologyTerms,
           STEP.followRelationships,
           STEP.addLinkedRecords,
+          STEP.rankByGraph,
         ],
       },
-      { label: PASSAGES, steps: ['Search with added terms'] },
+      {
+        label: PASSAGES,
+        steps: ['Search with added terms', STEP.reorderPassages],
+      },
     ],
     description:
-      'As in B, two searches start from the question, and the ontology adds three things. Starting points are also found from local names in four languages. The ontology terms are added to the passage search. Records linked through a concept are added to the graph search. A re-ordering model ranks everything together and picks the evidence, and the answer model writes the answer from it.',
+      "As in B, two searches start from the question, and the ontology adds three things. Starting points are also found from local names in four languages. The ontology terms are added to the passage search. Records linked through a concept are added to the graph search. As in B, the graph's list and the passages take turns filling one budget, and the answer model writes the answer from them.",
     row: 'hidden @6xl:block',
     column: '@6xl:hidden',
   },
 }
 
 const QUESTION = 'Question'
-const TAIL = [STEP.reorderAndPick, STAGE_LABELS.generation] as const
+const TAIL = ['Fill one budget', STAGE_LABELS.generation] as const
 
 const BOX_H = 40
 const GAP = 28

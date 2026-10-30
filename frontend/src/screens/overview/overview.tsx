@@ -5,6 +5,7 @@
  */
 
 import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
+import { EVIDENCE_LABELS } from '../../app/method'
 import { datasetName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { MISSING } from '../../app/score-words'
@@ -12,6 +13,8 @@ import { MODEL_LABELS } from '../../app/settings-labels'
 import { useLoad, type Load } from '../../app/use-load'
 import { StatTile } from '../../charts/stat-tile'
 import { plural } from '../../charts/scale'
+import { DisagreementNote } from '../../components/disagreement-note'
+import { MethodBadge } from '../../components/method-badge'
 import { Panel, type PanelState } from '../../components/panel'
 import { PIPELINES } from '../../design/pipelines'
 import { Screen } from '../screen'
@@ -35,7 +38,14 @@ async function loadConfiguration(signal: AbortSignal) {
   return { dataset: datasets.find((d) => d.active) ?? null, models }
 }
 
-function Tile({ figures }: { figures: TileFigures }) {
+function Tile({
+  figures,
+  label,
+}: {
+  figures: TileFigures
+  /** What the tile measures, such as "Evidence score, questions with claims". */
+  label: string
+}) {
   const pipeline = PIPELINES.find((p) => p.id === figures.pipeline)!
   return (
     <div
@@ -50,7 +60,7 @@ function Tile({ figures }: { figures: TileFigures }) {
         {pipeline.label}
       </h3>
       <StatTile
-        label="Evidence score, all questions"
+        label={label}
         value={figures.mean}
         unit=""
         decimals={2}
@@ -73,7 +83,7 @@ function LatestRun() {
       error={errorOf(load)}
       onRetry={load.retry}
       skeleton={
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {PIPELINES.map((p) => (
             <div key={p.id} className="skeleton-bar h-24 rounded-card" />
           ))}
@@ -82,9 +92,14 @@ function LatestRun() {
     >
       {verdict?.kind === 'official' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <MethodBadge method={verdict.method} note={verdict.note} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {verdict.tiles.map((figures) => (
-              <Tile key={figures.pipeline} figures={figures} />
+              <Tile
+                key={figures.pipeline}
+                figures={figures}
+                label={`${EVIDENCE_LABELS[verdict.metric]}, questions with claims`}
+              />
             ))}
           </div>
           <ul className="list-disc space-y-1 pl-5 text-base text-text-primary">
@@ -92,6 +107,10 @@ function LatestRun() {
               <li key={`${index}-${line}`}>{line}</li>
             ))}
           </ul>
+          <DisagreementNote
+            count={verdict.disagreements}
+            href={hrefFor('results')}
+          />
         </div>
       )}
       {verdict?.kind === 'none' && (
@@ -188,7 +207,7 @@ export function Overview() {
       <Panel title={FLOW_TITLE} state="ready">
         <FlowDiagram />
       </Panel>
-      <div className="grid grid-cols-2 items-start gap-4">
+      <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-2">
         <RunAQuestion />
         <Configuration />
       </div>

@@ -7,6 +7,7 @@
  */
 
 import type { Schemas } from '../../api/client'
+import type { EvidenceMetric } from '../../app/method'
 import { failureWords } from '../../app/plain-words'
 import type { PipelineId } from '../../design/pipelines'
 import { coverage } from '../../run/coverage'
@@ -17,7 +18,8 @@ type Results = Schemas['QueryResults']
 export interface ScoreColumn {
   /** Null where the run holds no score for this pipeline. */
   answer: number | null
-  evidenceF1: number | null
+  /** The scorecard's evidence metric: recall, or F1 for a recording of the old method. */
+  evidence: number | null
   anchorResolution: number | null
   failureClass: string | null
   failure: string | null
@@ -30,13 +32,19 @@ export interface ScoreColumn {
 export interface Scorecard {
   scored: boolean
   label: string
+  /** What the evidence measure is: the method's evidence metric (D-087). */
+  metric: EvidenceMetric
   /** Null for a pipeline with no stored result. */
   columns: Record<PipelineId, ScoreColumn | null>
 }
 
 const SCORE_LABEL = 'scored against the answer key'
 
-export function scorecard(results: Results): Scorecard {
+/**
+ * The card of a run made under a method comparing `metric`: evidence recall
+ * for a live run, evidence F1 for a recording of the old method (v0.2).
+ */
+export function scorecard(results: Results, metric: EvidenceMetric): Scorecard {
   const score = results.score ?? null
   const scored =
     results.answer_key === 'available' &&
@@ -49,7 +57,7 @@ export function scorecard(results: Results): Scorecard {
     const own = scored ? (score.per_pipeline[id] ?? null) : null
     return {
       answer: own?.answer ?? null,
-      evidenceF1: own?.evidence_f1 ?? null,
+      evidence: own?.[metric] ?? null,
       anchorResolution: own?.anchor_resolution ?? null,
       failureClass: own?.failure_class ?? null,
       failure: failureWords(own?.failure_class ?? null),
@@ -61,6 +69,7 @@ export function scorecard(results: Results): Scorecard {
   return {
     scored,
     label: SCORE_LABEL,
+    metric,
     columns: { A: column('A'), B: column('B'), C: column('C') },
   }
 }

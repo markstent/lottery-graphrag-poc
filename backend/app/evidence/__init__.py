@@ -7,7 +7,22 @@ chunk: provenance, scores and the selected/discarded outcome
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from typing import Literal
+
+from pydantic import BaseModel, Field, model_validator
+
+# Graph relevance tiers (method v0.3, D-083), in order: the seeds, the nodes
+# that hold a type the question asks about, then every other node.
+GraphTier = Literal["seed", "target", "other"]
+
+# How the answer parser read a model output (D-096): "json" the prompted
+# object, alone or in a code fence; "repaired" the prompted object closed but
+# with bare double quotes inside its answer; "unclosed" the prompted object
+# never closed, read up to where the output ends (whether the token limit cut
+# it is told by token_limit_reached, not by the form); "plain" anything else,
+# read as plain text with an empty verdict. Parser 2.0.0 called "unclosed"
+# "cut_off".
+AnswerForm = Literal["json", "repaired", "unclosed", "plain"]
 
 
 class EvidenceChunk(BaseModel):
@@ -46,7 +61,36 @@ class EvidenceChunk(BaseModel):
     sparse_rank: int | None = Field(
         default=None, description="1-based rank in the sparse channel; None if absent or unknown"
     )
-    rank: int = Field(description="Position after ranking (1-based)")
+    rank: int = Field(
+        description=(
+            "1-based position in its channel: cross-encoder order for chunks and records,"
+            " graph relevance order for graph nodes"
+        )
+    )
+    graph_path: str | None = Field(
+        default=None,
+        description=(
+            "A graph node's walked path from its seed, one line"
+            " (INC_1 -AFFECTS-> GAME_1); None for a seed and for documents"
+        ),
+    )
+    graph_seed: str | None = Field(
+        default=None,
+        description=(
+            "The seed id a graph node's walked path starts at; set exactly when graph_path is"
+        ),
+    )
+    facts_heading: str | None = Field(
+        default=None,
+        description=(
+            "Heading of a record's compact facts (Incident INC_024), for a record block"
+            " and a graph node with one; None for documents and nodes without a record block"
+        ),
+    )
+    facts: list[tuple[str, str]] = Field(
+        default_factory=list,
+        description="A record's compact facts as (name, value), in prompt order",
+    )
     discovered_via: str = Field(
         default="vector",
         description=(
@@ -55,16 +99,23 @@ class EvidenceChunk(BaseModel):
         ),
     )
     rerank_score: float | None = Field(
-        default=None, description="Reranker score when reranking is enabled"
+        default=None,
+        description="Cross-encoder score of a chunk or record; None for graph nodes",
     )
     selected: bool = False
     discard_reason: str | None = Field(
         default=None,
         description=(
-            "Why the chunk was not selected: context_budget | slot_limit | duplicate"
-            " | superseded_by_structured_fact"
+            "Why the chunk was not selected: context_budget | duplicate | same_record"
+            " (its row is already selected through the other channel)"
         ),
     )
+
+    @model_validator(mode="after")
+    def _path_has_its_seed(self) -> EvidenceChunk:
+        if (self.graph_path is None) != (self.graph_seed is None):
+            raise ValueError(f"{self.chunk_id}: graph_seed must be set exactly when graph_path is")
+        return self
 
 
 class Citation(BaseModel):
@@ -86,7 +137,7 @@ class RagAnswer(BaseModel):
     """Generated answer plus its cost and grounded citations.
 
     `citations` lists every block shown to the model in prompt order (the
-    selected evidence in judge order, whatever its kind), so
+    selection's order, whatever its kind), so
     `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
     """
 
@@ -102,6 +153,38 @@ class RagAnswer(BaseModel):
     citations: list[Citation]
     usage: dict[str, int] | None = Field(
         default=None, description="Gateway token counts when the provider reports them"
+    )
+    # D-096. Each is None in an answer recorded before answer parser 2.0.0.
+    answer_form: AnswerForm | None = Field(
+        default=None,
+        description="How the parser read the output: json | repaired | unclosed | plain",
+    )
+    finish_reason: str | None = Field(
+        default=None, description="The provider's stop reason as the gateway reported it"
+    )
+    token_limit_reached: bool | None = Field(
+        default=None,
+        description=(
+            "Whether the output stopped at max_tokens: the stop reason is 'length' or the"
+            " completion token count reached the cap; None when the provider reports neither"
+        ),
+    )
+    max_tokens: int | None = Field(
+        default=None, description="The output token cap of the call; None for the fake model"
+    )
+    cut_off: bool | None = Field(
+        default=None,
+        description=(
+            "The answer stops before the model finished it: it stopped at the token limit,"
+            " or its object never closed and the provider did not say whether it did"
+        ),
+    )
+    surrogates_replaced: int | None = Field(
+        default=None,
+        description=(
+            "Lone UTF-16 surrogates replaced with U+FFFD in the raw text, verdict and answer;"
+            " None in an answer recorded before answer parser 2.1.1"
+        ),
     )
 
 
@@ -130,8 +213,13 @@ class GraphEvidence(BaseModel):
     rel_type: str
     score: float
     components: dict[str, float]
-    rerank_score: float | None = Field(
-        default=None, description="Shared reranker score; None when the node was never judged"
+    tier: GraphTier | None = Field(
+        default=None,
+        description="Graph relevance tier; None for a node refused before the graph order",
+    )
+    graph_rank: int | None = Field(
+        default=None,
+        description="1-based position in the graph channel; None when refused before the order",
     )
     selected: bool = False
     discard_reason: str | None = None

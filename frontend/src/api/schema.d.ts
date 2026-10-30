@@ -539,16 +539,25 @@ export interface components {
     schemas: {
         /**
          * AgreementOut
-         * @description Agreement of the judge with the deterministic answer score over ``n``
-         *     judged repeats; None where none were judged.
+         * @description Three-level agreement of the judge's correctness with the answer
+         *     level (method v0.3) over ``n`` judged repeats, and the linearly
+         *     weighted kappa; None where it is undefined.
          */
         AgreementOut: {
             /** Agreement */
             agreement: number | null;
-            /** Kappa */
-            kappa: number | null;
             /** N */
             n: number;
+            /** Weighted Kappa */
+            weighted_kappa: number | null;
+        };
+        /**
+         * AgreementSplitOut
+         * @description Agreement over the answers that answered and those that abstained.
+         */
+        AgreementSplitOut: {
+            abstained: components["schemas"]["AgreementOut"];
+            answered: components["schemas"]["AgreementOut"];
         };
         /**
          * ApiErrorBody
@@ -585,13 +594,16 @@ export interface components {
         /**
          * BenchmarkRunOut
          * @description One published run in GET /api/v1/benchmarks, from its ``summary.json``:
-         *     ``selection`` is the part of the bank it scored, ``worlds`` its seeds.
+         *     ``selection`` is the part of the bank it scored, ``worlds`` its seeds,
+         *     ``method_version`` the method it was made under.
          */
         BenchmarkRunOut: {
             /** Headlines */
             headlines: string[];
             /** Label */
             label: string | null;
+            /** Method Version */
+            method_version: string;
             /** Run Id */
             run_id: string;
             /** Run Kind */
@@ -608,14 +620,17 @@ export interface components {
         /**
          * BenchmarkStart
          * @description Request for POST /api/v1/benchmarks; the seeds, strata and kind are
-         *     checked against the harness's own before a job starts.
+         *     checked against the harness's own before a job starts. A dev run uses
+         *     seed 2026 only; a full-bank official run uses the unseen seeds, which
+         *     the API never accepts (D-091), so an official job covers part of the
+         *     bank on a seen seed, as the dry run does.
          */
         BenchmarkStart: {
             /**
              * Kind
              * @enum {string}
              */
-            kind: "smoke" | "official";
+            kind: "smoke" | "dev" | "official";
             /** Limit */
             limit?: number | null;
             /** Repeats */
@@ -629,14 +644,18 @@ export interface components {
          * BenchmarkSummary
          * @description Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
          *
-         *     ``summary`` is the run's ``summary.json`` (schema 2), typed: the only
+         *     ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
          *     benchmark source the API publishes. ``run_kind`` and ``label`` are
          *     copied out of it so a client can tell a smoke or sweep run from an
-         *     official result without reading the summary.
+         *     official result without reading the summary. ``method_version`` is the
+         *     method the run was made under, from its record: 0.2.0 for a run recorded
+         *     before the field existed (such as v0.2.0).
          */
         BenchmarkSummary: {
             /** Label */
             label: string | null;
+            /** Method Version */
+            method_version: string;
             /** Run Id */
             run_id: string;
             /** Run Kind */
@@ -883,7 +902,7 @@ export interface components {
             dense_rank?: number | null;
             /**
              * Discard Reason
-             * @description Why the chunk was not selected: context_budget | slot_limit | duplicate | superseded_by_structured_fact
+             * @description Why the chunk was not selected: context_budget | duplicate | same_record (its row is already selected through the other channel)
              */
             discard_reason?: string | null;
             /**
@@ -897,6 +916,29 @@ export interface components {
             /** Document Type */
             document_type: string;
             /**
+             * Facts
+             * @description A record's compact facts as (name, value), in prompt order
+             */
+            facts?: [
+                string,
+                string
+            ][];
+            /**
+             * Facts Heading
+             * @description Heading of a record's compact facts (Incident INC_024), for a record block and a graph node with one; None for documents and nodes without a record block
+             */
+            facts_heading?: string | null;
+            /**
+             * Graph Path
+             * @description A graph node's walked path from its seed, one line (INC_1 -AFFECTS-> GAME_1); None for a seed and for documents
+             */
+            graph_path?: string | null;
+            /**
+             * Graph Seed
+             * @description The seed id a graph node's walked path starts at; set exactly when graph_path is
+             */
+            graph_seed?: string | null;
+            /**
              * Kind
              * @description chunk (document text) | record (table row) | node (graph block)
              * @default chunk
@@ -908,7 +950,7 @@ export interface components {
             market_id: string;
             /**
              * Rank
-             * @description Position after ranking (1-based)
+             * @description 1-based position in its channel: cross-encoder order for chunks and records, graph relevance order for graph nodes
              */
             rank: number;
             /**
@@ -918,7 +960,7 @@ export interface components {
             record_table?: string | null;
             /**
              * Rerank Score
-             * @description Reranker score when reranking is enabled
+             * @description Cross-encoder score of a chunk or record; None for graph nodes
              */
             rerank_score?: number | null;
             /**
@@ -1024,7 +1066,7 @@ export interface components {
              */
             event_type: "graph.candidate.discarded";
             /** Payload */
-            payload: components["schemas"]["GraphNodeDiscarded"] | components["schemas"]["GraphChunkDiscarded"];
+            payload: components["schemas"]["GraphNodeDiscarded"] | components["schemas"]["OldMethodGraphNodeDiscarded"] | components["schemas"]["GraphChunkDiscarded"] | components["schemas"]["OldMethodGraphChunkDiscarded"];
             /**
              * Pipeline
              * @enum {string}
@@ -1039,7 +1081,11 @@ export interface components {
             /** Timestamp */
             timestamp: string;
         };
-        /** GraphCandidateReranked */
+        /**
+         * GraphCandidateReranked
+         * @description A document candidate's cross-encoder outcome (old-method runs also
+         *     re-ranked nodes, with ``kind`` "node").
+         */
         GraphCandidateReranked: {
             /** Candidate Id */
             candidate_id: string;
@@ -1087,7 +1133,7 @@ export interface components {
              */
             event_type: "graph.candidate.selected";
             /** Payload */
-            payload: components["schemas"]["GraphNodeSelected"] | components["schemas"]["GraphChunkSelected"];
+            payload: components["schemas"]["GraphNodeSelected"] | components["schemas"]["OldMethodGraphNodeSelected"] | components["schemas"]["GraphChunkSelected"];
             /**
              * Pipeline
              * @enum {string}
@@ -1110,7 +1156,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "excluded_label" | "out_of_scope_market" | "superseded_by_structured_fact" | "context_budget" | "slot_limit" | "duplicate";
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate";
             /** Rerank Score */
             rerank_score: number | null;
         };
@@ -1123,14 +1169,21 @@ export interface components {
             /** Rerank Score */
             rerank_score: number | null;
         };
-        /** GraphContextAssembled */
+        /**
+         * GraphContextAssembled
+         * @description ``stated_links`` counts the schema-stated links read among the reached
+         *     nodes for the target-type tier; None when none were read (the question
+         *     names no target type).
+         */
         GraphContextAssembled: {
+            /** Budget Tokens */
+            budget_tokens: number;
             /** Context Tokens */
             context_tokens: number;
             /** Document Chunks */
             document_chunks: number;
-            /** Evidence Slots */
-            evidence_slots: number;
+            /** Stated Links */
+            stated_links: number | null;
             /** Structured Nodes */
             structured_nodes: number;
         };
@@ -1143,7 +1196,8 @@ export interface components {
              * @enum {string}
              */
             event_type: "graph.context.assembled";
-            payload: components["schemas"]["GraphContextAssembled"];
+            /** Payload */
+            payload: components["schemas"]["GraphContextAssembled"] | components["schemas"]["OldMethodGraphContextAssembled"];
             /**
              * Pipeline
              * @enum {string}
@@ -1258,6 +1312,11 @@ export interface components {
             };
             /** Discard Reason */
             discard_reason?: string | null;
+            /**
+             * Graph Rank
+             * @description 1-based position in the graph channel; None when refused before the order
+             */
+            graph_rank?: number | null;
             /** Hops */
             hops: number;
             /** Node Id */
@@ -1268,11 +1327,6 @@ export interface components {
             path: string[];
             /** Rel Type */
             rel_type: string;
-            /**
-             * Rerank Score
-             * @description Shared reranker score; None when the node was never judged
-             */
-            rerank_score?: number | null;
             /** Score */
             score: number;
             /**
@@ -1280,6 +1334,11 @@ export interface components {
              * @default false
              */
             selected: boolean;
+            /**
+             * Tier
+             * @description Graph relevance tier; None for a node refused before the graph order
+             */
+            tier?: ("seed" | "target" | "other") | null;
         };
         /** GraphEvidencePathCompleted */
         GraphEvidencePathCompleted: {
@@ -1360,8 +1419,14 @@ export interface components {
             /** Timestamp */
             timestamp: string;
         };
-        /** GraphNodeDiscarded */
+        /**
+         * GraphNodeDiscarded
+         * @description ``tier`` and ``graph_rank`` are None only for a node refused before
+         *     the graph order (``out_of_scope_market``, ``excluded_label``).
+         */
         GraphNodeDiscarded: {
+            /** Graph Rank */
+            graph_rank: number | null;
             /** Hops */
             hops: number;
             /** Node Id */
@@ -1370,13 +1435,13 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "excluded_label" | "out_of_scope_market" | "superseded_by_structured_fact" | "context_budget" | "slot_limit" | "duplicate";
-            /** Rerank Score */
-            rerank_score: number | null;
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate";
             /** Score */
             score: number;
             /** Seed */
             seed: boolean;
+            /** Tier */
+            tier: ("seed" | "target" | "other") | null;
         };
         /** GraphNodeDiscovered */
         GraphNodeDiscovered: {
@@ -1413,18 +1478,27 @@ export interface components {
             /** Timestamp */
             timestamp: string;
         };
-        /** GraphNodeSelected */
+        /**
+         * GraphNodeSelected
+         * @description ``tier`` and ``graph_rank`` place the node in the graph channel's
+         *     relevance order (D-083).
+         */
         GraphNodeSelected: {
+            /** Graph Rank */
+            graph_rank: number;
             /** Hops */
             hops: number;
             /** Node Id */
             node_id: string;
-            /** Rerank Score */
-            rerank_score: number | null;
             /** Score */
             score: number;
             /** Seed */
             seed: boolean;
+            /**
+             * Tier
+             * @enum {string}
+             */
+            tier: "seed" | "target" | "other";
             /** Weight Graph Distance */
             weight_graph_distance: number;
             /** Weight Relationship Type */
@@ -1658,6 +1732,39 @@ export interface components {
              */
             source: "ingestion";
         };
+        /**
+         * GraphTargetTypesResolved
+         * @description The graph labels the question asks about, sorted and comma-joined; ""
+         *     when it names none (D-083).
+         */
+        GraphTargetTypesResolved: {
+            /** Labels */
+            labels: string;
+        };
+        /** GraphTargetTypesResolvedEvent */
+        GraphTargetTypesResolvedEvent: {
+            /** Event Id */
+            event_id: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            event_type: "graph.target_types.resolved";
+            payload: components["schemas"]["GraphTargetTypesResolved"];
+            /**
+             * Pipeline
+             * @enum {string}
+             */
+            pipeline: "A" | "B" | "C" | "run";
+            /** Run Id */
+            run_id: string;
+            /** Sequence */
+            sequence: number;
+            /** T Ms */
+            t_ms: number;
+            /** Timestamp */
+            timestamp: string;
+        };
         /** GraphTraversalStarted */
         GraphTraversalStarted: {
             /** Max Depth */
@@ -1752,6 +1859,8 @@ export interface components {
             citation_accuracy: number | null;
             /** Context Tokens */
             context_tokens: number | null;
+            /** Cut Off Repeats */
+            cut_off_repeats: number | null;
             /** Efficiency Per 1K */
             efficiency_per_1k: number | null;
             /** Evidence F1 */
@@ -1778,6 +1887,8 @@ export interface components {
             latency_ms: number | null;
             /** Repeats */
             repeats: number;
+            /** Token Limit Repeats */
+            token_limit_repeats: number | null;
             /** Unscored Repeats */
             unscored_repeats: number;
         };
@@ -1827,16 +1938,20 @@ export interface components {
         JsonValue: unknown;
         /** JudgeAgreementOut */
         JudgeAgreementOut: {
-            overall: components["schemas"]["AgreementOut"];
+            overall: components["schemas"]["AgreementSplitOut"];
             /** Pipelines */
             pipelines: {
-                [key: string]: components["schemas"]["AgreementOut"];
+                [key: string]: components["schemas"]["AgreementSplitOut"];
             };
         };
         /**
          * LivePipelineScore
          * @description One pipeline's deterministic scores on a live bank question; None
          *     where the instance does not define the metric.
+         *
+         *     Method v0.3 scores evidence recall, the evidence metric it compares
+         *     (D-087). ``evidence_f1`` is set only in a score stored under method
+         *     v0.2, which had no recall; each is None in a score of the other method.
          */
         LivePipelineScore: {
             /** Anchor Resolution */
@@ -1844,7 +1959,9 @@ export interface components {
             /** Answer */
             answer: number | null;
             /** Evidence F1 */
-            evidence_f1: number | null;
+            evidence_f1?: number | null;
+            /** Evidence Recall */
+            evidence_recall?: number | null;
             /** Failure Class */
             failure_class: string | null;
         };
@@ -1974,6 +2091,107 @@ export interface components {
             };
             provenance: components["schemas"]["ProvenanceOut"] | null;
         };
+        /**
+         * OldMethodGraphChunkDiscarded
+         * @description Old method (v0.2) only: a discard with a reason of the slot rule.
+         */
+        OldMethodGraphChunkDiscarded: {
+            /** Chunk Id */
+            chunk_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate" | "superseded_by_structured_fact" | "slot_limit";
+            /** Rerank Score */
+            rerank_score: number | null;
+        };
+        /**
+         * OldMethodGraphContextAssembled
+         * @description Old method (v0.2) only: it recorded its evidence-slot count.
+         */
+        OldMethodGraphContextAssembled: {
+            /** Context Tokens */
+            context_tokens: number;
+            /** Document Chunks */
+            document_chunks: number;
+            /** Evidence Slots */
+            evidence_slots: number;
+            /** Structured Nodes */
+            structured_nodes: number;
+        };
+        /**
+         * OldMethodGraphNodeDiscarded
+         * @description Old method (v0.2) only: nodes were re-ranked with the documents.
+         */
+        OldMethodGraphNodeDiscarded: {
+            /** Hops */
+            hops: number;
+            /** Node Id */
+            node_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate" | "superseded_by_structured_fact" | "slot_limit";
+            /** Rerank Score */
+            rerank_score: number | null;
+            /** Score */
+            score: number;
+            /** Seed */
+            seed: boolean;
+        };
+        /**
+         * OldMethodGraphNodeSelected
+         * @description Old method (v0.2) only: nodes were re-ranked with the documents.
+         */
+        OldMethodGraphNodeSelected: {
+            /** Hops */
+            hops: number;
+            /** Node Id */
+            node_id: string;
+            /** Rerank Score */
+            rerank_score: number | null;
+            /** Score */
+            score: number;
+            /** Seed */
+            seed: boolean;
+            /** Weight Graph Distance */
+            weight_graph_distance: number;
+            /** Weight Relationship Type */
+            weight_relationship_type: number;
+            /** Weight Semantic Relevance */
+            weight_semantic_relevance: number;
+            /** Weight Temporal Validity */
+            weight_temporal_validity: number;
+        };
+        /**
+         * OldMethodRagContextAssembled
+         * @description Old method (v0.2) only: it recorded its evidence-slot count.
+         */
+        OldMethodRagContextAssembled: {
+            /** Context Tokens */
+            context_tokens: number;
+            /** Discarded */
+            discarded: number;
+            /** Evidence Slots */
+            evidence_slots: number;
+            /** Selected */
+            selected: number;
+        };
+        /**
+         * OldMethodRagEvidenceDiscarded
+         * @description Old method (v0.2) only: a discard with a reason of the slot rule.
+         */
+        OldMethodRagEvidenceDiscarded: {
+            /** Chunk Id */
+            chunk_id: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate" | "superseded_by_structured_fact" | "slot_limit";
+        };
         /** OntologyOut */
         OntologyOut: {
             /** Concepts */
@@ -2063,6 +2281,8 @@ export interface components {
             answer: number | null;
             /** Evidence F1 */
             evidence_f1: number | null;
+            /** Evidence Recall */
+            evidence_recall: number | null;
         };
         /** PipelineStarted */
         PipelineStarted: {
@@ -2241,10 +2461,15 @@ export interface components {
          * @description Generated answer plus its cost and grounded citations.
          *
          *     `citations` lists every block shown to the model in prompt order (the
-         *     selected evidence in judge order, whatever its kind), so
+         *     selection's order, whatever its kind), so
          *     `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
          */
         RagAnswer: {
+            /**
+             * Answer Form
+             * @description How the parser read the output: json | repaired | unclosed | plain
+             */
+            answer_form?: ("json" | "repaired" | "unclosed" | "plain") | null;
             /** Citations */
             citations: components["schemas"]["Citation"][];
             /**
@@ -2254,8 +2479,23 @@ export interface components {
             cited_blocks: number[];
             /** Context Tokens */
             context_tokens: number;
+            /**
+             * Cut Off
+             * @description The answer stops before the model finished it: it stopped at the token limit, or its object never closed and the provider did not say whether it did
+             */
+            cut_off?: boolean | null;
+            /**
+             * Finish Reason
+             * @description The provider's stop reason as the gateway reported it
+             */
+            finish_reason?: string | null;
             /** Latency Ms */
             latency_ms: number;
+            /**
+             * Max Tokens
+             * @description The output token cap of the call; None for the fake model
+             */
+            max_tokens?: number | null;
             /** Model */
             model: string;
             /**
@@ -2264,10 +2504,20 @@ export interface components {
              */
             raw_text: string;
             /**
+             * Surrogates Replaced
+             * @description Lone UTF-16 surrogates replaced with U+FFFD in the raw text, verdict and answer; None in an answer recorded before answer parser 2.1.1
+             */
+            surrogates_replaced?: number | null;
+            /**
              * Text
              * @description Parsed prose answer; what the evaluator scores
              */
             text: string;
+            /**
+             * Token Limit Reached
+             * @description Whether the output stopped at max_tokens: the stop reason is 'length' or the completion token count reached the cap; None when the provider reports neither
+             */
+            token_limit_reached?: boolean | null;
             /**
              * Usage
              * @description Gateway token counts when the provider reports them
@@ -2357,12 +2607,12 @@ export interface components {
         };
         /** RagContextAssembled */
         RagContextAssembled: {
+            /** Budget Tokens */
+            budget_tokens: number;
             /** Context Tokens */
             context_tokens: number;
             /** Discarded */
             discarded: number;
-            /** Evidence Slots */
-            evidence_slots: number;
             /** Selected */
             selected: number;
         };
@@ -2375,7 +2625,8 @@ export interface components {
              * @enum {string}
              */
             event_type: "rag.context.assembled";
-            payload: components["schemas"]["RagContextAssembled"];
+            /** Payload */
+            payload: components["schemas"]["RagContextAssembled"] | components["schemas"]["OldMethodRagContextAssembled"];
             /**
              * Pipeline
              * @enum {string}
@@ -2453,7 +2704,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "excluded_label" | "out_of_scope_market" | "superseded_by_structured_fact" | "context_budget" | "slot_limit" | "duplicate";
+            reason: "excluded_label" | "out_of_scope_market" | "same_record" | "context_budget" | "duplicate";
         };
         /** RagEvidenceDiscardedEvent */
         RagEvidenceDiscardedEvent: {
@@ -2464,7 +2715,8 @@ export interface components {
              * @enum {string}
              */
             event_type: "rag.evidence.discarded";
-            payload: components["schemas"]["RagEvidenceDiscarded"];
+            /** Payload */
+            payload: components["schemas"]["RagEvidenceDiscarded"] | components["schemas"]["OldMethodRagEvidenceDiscarded"];
             /**
              * Pipeline
              * @enum {string}
@@ -2701,7 +2953,7 @@ export interface components {
          * @description One execution event: the envelope shared by replay and the stream
          *     (docs/reference/07 section 6). ``pipeline`` is ``run`` for run lifecycle events.
          */
-        RecordedEvent: components["schemas"]["RunStarted"] | components["schemas"]["PipelineStarted"] | components["schemas"]["PipelineCompleted"] | components["schemas"]["PipelineFailed"] | components["schemas"]["PipelineCancelled"] | components["schemas"]["RunCompleted"] | components["schemas"]["RunFailed"] | components["schemas"]["RunCancelled"] | components["schemas"]["RagQueryReceivedEvent"] | components["schemas"]["RagEmbeddingStartedEvent"] | components["schemas"]["RagEmbeddingCompletedEvent"] | components["schemas"]["RagVectorSearchStartedEvent"] | components["schemas"]["RagCandidateRetrievedEvent"] | components["schemas"]["RagRerankStartedEvent"] | components["schemas"]["RagCandidateRerankedEvent"] | components["schemas"]["RagEvidenceSelectedEvent"] | components["schemas"]["RagEvidenceDiscardedEvent"] | components["schemas"]["RagContextAssembledEvent"] | components["schemas"]["RagGenerationStartedEvent"] | components["schemas"]["RagGenerationCompletedEvent"] | components["schemas"]["GraphEntityResolutionStartedEvent"] | components["schemas"]["GraphEntityResolvedEvent"] | components["schemas"]["GraphQueryExpandedEvent"] | components["schemas"]["GraphSeedSelectedEvent"] | components["schemas"]["GraphTraversalStartedEvent"] | components["schemas"]["GraphNodeDiscoveredEvent"] | components["schemas"]["GraphRelationshipTraversedEvent"] | components["schemas"]["GraphOntologyExpandedEvent"] | components["schemas"]["GraphRerankStartedEvent"] | components["schemas"]["GraphCandidateRerankedEvent"] | components["schemas"]["GraphCandidateSelectedEvent"] | components["schemas"]["GraphCandidateDiscardedEvent"] | components["schemas"]["GraphEvidencePathCompletedEvent"] | components["schemas"]["GraphContextAssembledEvent"] | components["schemas"]["GraphGenerationStartedEvent"] | components["schemas"]["GraphGenerationCompletedEvent"];
+        RecordedEvent: components["schemas"]["RunStarted"] | components["schemas"]["PipelineStarted"] | components["schemas"]["PipelineCompleted"] | components["schemas"]["PipelineFailed"] | components["schemas"]["PipelineCancelled"] | components["schemas"]["RunCompleted"] | components["schemas"]["RunFailed"] | components["schemas"]["RunCancelled"] | components["schemas"]["RagQueryReceivedEvent"] | components["schemas"]["RagEmbeddingStartedEvent"] | components["schemas"]["RagEmbeddingCompletedEvent"] | components["schemas"]["RagVectorSearchStartedEvent"] | components["schemas"]["RagCandidateRetrievedEvent"] | components["schemas"]["RagRerankStartedEvent"] | components["schemas"]["RagCandidateRerankedEvent"] | components["schemas"]["RagEvidenceSelectedEvent"] | components["schemas"]["RagEvidenceDiscardedEvent"] | components["schemas"]["RagContextAssembledEvent"] | components["schemas"]["RagGenerationStartedEvent"] | components["schemas"]["RagGenerationCompletedEvent"] | components["schemas"]["GraphEntityResolutionStartedEvent"] | components["schemas"]["GraphEntityResolvedEvent"] | components["schemas"]["GraphQueryExpandedEvent"] | components["schemas"]["GraphTargetTypesResolvedEvent"] | components["schemas"]["GraphSeedSelectedEvent"] | components["schemas"]["GraphTraversalStartedEvent"] | components["schemas"]["GraphNodeDiscoveredEvent"] | components["schemas"]["GraphRelationshipTraversedEvent"] | components["schemas"]["GraphOntologyExpandedEvent"] | components["schemas"]["GraphRerankStartedEvent"] | components["schemas"]["GraphCandidateRerankedEvent"] | components["schemas"]["GraphCandidateSelectedEvent"] | components["schemas"]["GraphCandidateDiscardedEvent"] | components["schemas"]["GraphEvidencePathCompletedEvent"] | components["schemas"]["GraphContextAssembledEvent"] | components["schemas"]["GraphGenerationStartedEvent"] | components["schemas"]["GraphGenerationCompletedEvent"];
         /**
          * RelTypeOut
          * @description One relationship type between the labels it joins.
@@ -2966,7 +3218,9 @@ export interface components {
         };
         /**
          * SummaryOut
-         * @description A run's ``summary.json`` (schema 2), every key the harness writes.
+         * @description A run's ``summary.json``, every key the harness writes: schema 2 for a
+         *     run of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose
+         *     comparisons add C_vs_A cells and test evidence recall.
          *
          *     A key added later is ignored, so an older client keeps reading.
          */
@@ -2983,9 +3237,12 @@ export interface components {
             /** Headlines */
             headlines: string[];
             instances: components["schemas"]["InstanceCounts"];
-            judge_agreement: components["schemas"]["JudgeAgreementOut"] | null;
+            /** Judge Agreement */
+            judge_agreement: components["schemas"]["JudgeAgreementOut"] | components["schemas"]["ThresholdJudgeAgreementOut"] | null;
             /** Label */
             label: string | null;
+            /** Method Note */
+            method_note?: string | null;
             /** Metrics */
             metrics: {
                 [key: string]: {
@@ -2999,8 +3256,11 @@ export interface components {
             reproducibility: components["schemas"]["ReproducibilityOut"];
             /** Run Kind */
             run_kind: string;
-            /** Schema Version */
-            schema_version: string;
+            /**
+             * Schema Version
+             * @enum {string}
+             */
+            schema_version: "2" | "3";
             selection: components["schemas"]["SelectionOut"];
             /** Unavailable */
             unavailable: {
@@ -3040,6 +3300,27 @@ export interface components {
             source_system: string;
             /** Table */
             table: string;
+        };
+        /**
+         * ThresholdAgreementOut
+         * @description Agreement as runs before method v0.3 recorded it: judge correctness 2
+         *     against an answer score of at least 0.5, with Cohen's kappa.
+         */
+        ThresholdAgreementOut: {
+            /** Agreement */
+            agreement: number | null;
+            /** Kappa */
+            kappa: number | null;
+            /** N */
+            n: number;
+        };
+        /** ThresholdJudgeAgreementOut */
+        ThresholdJudgeAgreementOut: {
+            overall: components["schemas"]["ThresholdAgreementOut"];
+            /** Pipelines */
+            pipelines: {
+                [key: string]: components["schemas"]["ThresholdAgreementOut"];
+            };
         };
         /**
          * UnavailableOut

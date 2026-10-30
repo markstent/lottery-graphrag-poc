@@ -84,6 +84,7 @@ const graphOf = (nodes: GraphNode[]): GraphEvents => ({
   relationships: [],
   concepts: [],
   evidencePath: { paths: 1, maxHops: 1 },
+  targetTypes: null,
 })
 
 describe('the recorded run', () => {
@@ -102,23 +103,23 @@ describe('the recorded run', () => {
 
   it('gives the fixture these node states and outcomes', () => {
     const b = graphView(full.graph.B, options)
-    expect(countStates(b)).toEqual({ seed: 1, selected: 3, discarded: 37 })
-    expect(countOutcomes(b)).toEqual({ selected: 4, discarded: 37 })
+    expect(countStates(b)).toEqual({ seed: 1, selected: 13, discarded: 21 })
+    expect(countOutcomes(b)).toEqual({ selected: 13, discarded: 22 })
     const c = graphView(full.graph.C, options)
     expect(countStates(c)).toEqual({
       seed: 2,
       concept: 3,
-      selected: 3,
-      discarded: 53,
+      selected: 14,
+      discarded: 34,
     })
-    expect(countOutcomes(c)).toEqual({ selected: 4, discarded: 57 })
+    expect(countOutcomes(c)).toEqual({ selected: 15, discarded: 38 })
   })
 
   it('reads the seeds as seeds and the three ontology concepts as concepts', () => {
     const b = graphView(full.graph.B, options)
-    expect(stateOf(b, 'INC_037')).toBe('seed')
+    expect(stateOf(b, 'INC_021')).toBe('seed')
     const c = graphView(full.graph.C, options)
-    expect(stateOf(c, 'INC_037')).toBe('seed')
+    expect(stateOf(c, 'INC_021')).toBe('seed')
     expect(stateOf(c, 'CONCEPT_INCIDENT')).toBe('seed')
     const concepts = c.nodes.filter((n) => n.kind === 'concept')
     expect(concepts.map((n) => n.id).sort()).toEqual(
@@ -131,14 +132,15 @@ describe('the recorded run', () => {
   it('keeps the verdict of a seed or concept in outcome for a badge', () => {
     const c = graphView(full.graph.C, options)
     const outcomeOf = (id: string) => c.nodes.find((n) => n.id === id)?.outcome
-    expect(outcomeOf('INC_037')).toBe('selected')
-    expect(outcomeOf('CONCEPT_INCIDENT')).toBe('discarded')
+    // A's record of the seed is already in the context, so the node is set aside.
+    expect(outcomeOf('INC_021')).toBe('discarded')
+    expect(outcomeOf('CONCEPT_INCIDENT')).toBe('selected')
     expect(outcomeOf('CONCEPT_APPLICATION_INCIDENT')).toBe('discarded')
   })
 
   it('labels a node with its recorded label and an edge with its target state', () => {
     const view = graphView(full.graph.B, options)
-    expect(view.nodes[0]).toMatchObject({ id: 'INC_037', label: 'Incident' })
+    expect(view.nodes[0]).toMatchObject({ id: 'INC_021', label: 'Incident' })
     for (const edge of view.edges)
       expect(edge.state).toBe(stateOf(view, edge.target))
   })
@@ -155,15 +157,42 @@ describe('state: role first (seed, concept), then outcome (selected, discarded, 
     expect(stateOf(view, 'CONCEPT_APPLICATION_INCIDENT')).toBe('traversed')
   })
 
-  it('a node the reranker judged, with no verdict yet, is a candidate', () => {
-    const seq = sequenceOf('graph.candidate.reranked', 'C', 'SUP_00113')
-    const view = graphView(graphAt('C', seq), options)
-    expect(stateOf(view, 'SUP_00113')).toBe('candidate')
+  it('a node the reranker judged, with no verdict yet, is a candidate (old-method runs only)', () => {
+    // Method v0.3 never re-ranks graph nodes; a recording of the old method did.
+    const envelope = {
+      timestamp: '2026-01-01T10:00:00+00:00',
+      run_id: 'RUN-TEST',
+      pipeline: 'C',
+    }
+    const graph = reduceAll([
+      {
+        ...envelope,
+        event_id: 'e1',
+        sequence: 1,
+        t_ms: 1,
+        event_type: 'graph.node.discovered',
+        payload: { node_id: 'SUP_00113', node_label: 'SupportCase', hop: 1 },
+      },
+      {
+        ...envelope,
+        event_id: 'e2',
+        sequence: 2,
+        t_ms: 2,
+        event_type: 'graph.candidate.reranked',
+        payload: {
+          candidate_id: 'SUP_00113',
+          kind: 'node',
+          rank: 1,
+          rerank_score: 0.4,
+        },
+      },
+    ] as unknown as RunEvent[]).graph.C
+    expect(stateOf(graphView(graph, options), 'SUP_00113')).toBe('candidate')
   })
 
   it('a node with a verdict shows it', () => {
     const view = graphView(full.graph.C, options)
-    expect(stateOf(view, 'SUP_00113')).toBe('selected')
+    expect(stateOf(view, 'SUP_00036')).toBe('selected')
     const discarded = full.graph.C.nodes.find(
       (n) => n.outcome === 'discarded' && !n.seed,
     )
@@ -177,7 +206,7 @@ describe('state: role first (seed, concept), then outcome (selected, discarded, 
       'CONCEPT_APPLICATION_INCIDENT',
     )
     const judged = sequenceOf(
-      'graph.candidate.reranked',
+      'graph.candidate.discarded',
       'C',
       'CONCEPT_APPLICATION_INCIDENT',
     )
@@ -188,18 +217,17 @@ describe('state: role first (seed, concept), then outcome (selected, discarded, 
   })
 
   it('a seed is a seed from its event on, whatever its verdict', () => {
-    const seq = sequenceOf('graph.seed.selected', 'B', 'INC_037')
+    const seq = sequenceOf('graph.seed.selected', 'B', 'INC_021')
     const early = graphView(graphAt('B', seq), options)
-    expect(stateOf(early, 'INC_037')).toBe('seed')
+    expect(stateOf(early, 'INC_021')).toBe('seed')
     expect(early.nodes[0].outcome).toBe('discovered')
-    expect(stateOf(graphView(full.graph.B, options), 'INC_037')).toBe('seed')
+    expect(stateOf(graphView(full.graph.B, options), 'INC_021')).toBe('seed')
   })
 
   it('a node with a source record is one until a verdict or role replaces it', () => {
     const sourceRecordIds = sourceRecordsFromResult(resultOf('C'))
-    expect([...sourceRecordIds].sort()).toEqual(
-      ['INC_037', 'SUP_00005', 'SUP_00113', 'SUP_00121'].sort(),
-    )
+    expect(sourceRecordIds.has('SUP_00036')).toBe(true)
+    expect(sourceRecordIds.size).toBe(14)
     const found: GraphNode = {
       ...node('X', 'SupportCase'),
       outcome: 'discovered',
@@ -210,8 +238,8 @@ describe('state: role first (seed, concept), then outcome (selected, discarded, 
     })
     expect(stateOf(once, 'X')).toBe('source_record')
     const done = graphView(full.graph.C, { ...options, sourceRecordIds })
-    expect(stateOf(done, 'SUP_00113')).toBe('selected')
-    expect(stateOf(done, 'INC_037')).toBe('seed')
+    expect(stateOf(done, 'SUP_00036')).toBe('selected')
+    expect(stateOf(done, 'INC_021')).toBe('seed')
   })
 })
 
@@ -250,13 +278,14 @@ describe('evidence paths', () => {
     const view = graphView(full.graph.C, { ...options, paths })
     expect(view.paths).toEqual(paths)
     expect(view.path).toEqual([...new Set(paths.flat())])
-    expect(view.path[0]).toBe('INC_037')
+    // The selected concept seed is a path of its own, first as recorded.
+    expect(view.path[0]).toBe('CONCEPT_INCIDENT')
+    expect(view.path[1]).toBe('INC_021')
     const onPath = view.nodes.filter((n) => n.onPath).map((n) => n.id)
     expect(new Set(onPath)).toEqual(new Set(view.path))
     const edgesOnPath = view.edges.filter((e) => e.onPath)
-    expect(edgesOnPath.map((e) => e.target).sort()).toEqual(
-      ['SUP_00005', 'SUP_00113', 'SUP_00121'].sort(),
-    )
+    expect(edgesOnPath.map((e) => e.target)).toContain('INC_022')
+    expect(edgesOnPath.map((e) => e.target)).toContain('SUP_00036')
   })
 
   it('agree with the path event the backend recorded', () => {
@@ -272,9 +301,9 @@ describe('evidence paths', () => {
   it('leave out an id no event recorded rather than invent a node', () => {
     const view = graphView(full.graph.B, {
       ...options,
-      paths: [['INC_037', 'NOT_RECORDED', 'SUP_00113']],
+      paths: [['INC_021', 'NOT_RECORDED', 'SUP_00036']],
     })
-    expect(view.paths).toEqual([['INC_037', 'SUP_00113']])
+    expect(view.paths).toEqual([['INC_021', 'SUP_00036']])
     expect(view.nodes.some((n) => n.id === 'NOT_RECORDED')).toBe(false)
   })
 
@@ -294,10 +323,10 @@ describe('added by the ontology', () => {
     const b = new Set(full.graph.B.nodes.map((n) => n.id))
     const view = graphView(full.graph.C, { ...options, overlay: full.graph.B })
     const added = view.nodes.filter((n) => n.addedByOntology)
-    expect(full.graph.B.nodes).toHaveLength(41)
-    expect(full.graph.C.nodes).toHaveLength(61)
-    // 20 nodes are new to B; 15 of them are concepts or were reached through one.
-    expect(full.graph.C.nodes.filter((n) => !b.has(n.id))).toHaveLength(20)
+    expect(full.graph.B.nodes).toHaveLength(35)
+    expect(full.graph.C.nodes).toHaveLength(53)
+    // 18 nodes are new to B; 15 of them are concepts or were reached through one.
+    expect(full.graph.C.nodes.filter((n) => !b.has(n.id))).toHaveLength(18)
     expect(added).toHaveLength(15)
     for (const node of full.graph.C.nodes)
       expect(
@@ -356,7 +385,7 @@ describe('the other pipeline path', () => {
   it('counts the steps of the other path that this graph does not hold', () => {
     const only = graphView(full.graph.B, {
       ...options,
-      otherPaths: [['INC_037', 'NOT_IN_THIS_GRAPH']],
+      otherPaths: [['INC_021', 'NOT_IN_THIS_GRAPH']],
     })
     expect(only.otherPathMissing).toEqual(['NOT_IN_THIS_GRAPH'])
     expect(only.nodes.some((n) => n.id === 'NOT_IN_THIS_GRAPH')).toBe(false)
@@ -405,7 +434,7 @@ describe('clustering', () => {
 
   it('groups the largest (hop, label) group of C above the cap and drops nothing', () => {
     const view = graphView(full.graph.C, { ...options, cap: 50 })
-    expect(view.nodes).toHaveLength(61)
+    expect(view.nodes).toHaveLength(53)
     expect(view.clusters).toHaveLength(1)
     const [cluster] = view.clusters
     expect(cluster).toMatchObject({
@@ -447,7 +476,7 @@ describe('clustering', () => {
     for (const n of view.nodes)
       if (n.onPath || n.outcome === 'selected' || seeds.includes(n.id))
         expect(n.clusterId).toBeUndefined()
-    expect(view.nodes.filter((n) => n.outcome === 'selected')).toHaveLength(4)
+    expect(view.nodes.filter((n) => n.outcome === 'selected')).toHaveLength(15)
   })
 
   it('never makes a cluster of one node', () => {
@@ -525,7 +554,7 @@ describe('clustering', () => {
     expect(view.clusters.length).toBeGreaterThan(0)
     for (const n of view.nodes)
       if (n.onPath) expect(n.clusterId).toBeUndefined()
-    expect(view.nodes).toHaveLength(41)
+    expect(view.nodes).toHaveLength(35)
   })
 })
 
@@ -609,7 +638,7 @@ describe('path steps', () => {
 
 describe('withClustersOf', () => {
   const finalView = graphView(full.graph.C, { ...options, cap: 20 })
-  const partial = graphView(graphAt('C', 405), { ...options, cap: 1000 })
+  const partial = graphView(graphAt('C', 212), { ...options, cap: 1000 })
   const shown = withClustersOf(partial, finalView)
 
   it('keeps the nodes, edges and paths of the view it is given', () => {

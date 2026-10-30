@@ -14,6 +14,7 @@ from app.lab import Lab
 from app.main import create_app
 from app.models.gateway import GatewayError
 from app.retrieval.graph.neo4j_adapter import GraphReader
+from app.retrieval.graph.traversal import StatedLinksError
 from app.retrieval.standard.embeddings import EmbeddingError
 from app.retrieval.standard.generation import GenerationError
 from app.retrieval.standard.reranking import RerankError
@@ -42,6 +43,7 @@ from tests.test_standard_rag import make_settings
         (SparseEmbeddingError("x"), "EMBEDDING_ERROR", True),
         (VectorStoreError("x"), "VECTOR_RETRIEVAL_ERROR", True),
         (RerankError("x"), "CONTEXT_BUILD_ERROR", False),
+        (StatedLinksError("x"), "GRAPH_QUERY_ERROR", False),
         (ValueError("x"), "RUN_ERROR", False),
     ],
 )

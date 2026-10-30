@@ -22,12 +22,13 @@ const LAST_SIX: readonly ChapterId[] = [
   'running',
 ]
 
-/** Settings now of 10 slots, 4 for the graph, 1500 tokens and depth 2. */
+/** Settings now of 1500 tokens, a duplicate threshold of 0.9 and depth 2. */
 function helpData(level: HelpData['level']): HelpData {
   return {
     level,
     bank: { status: 'loading', retry: () => undefined },
     scores: 'none',
+    evidence: 'evidence_f1',
     story: null,
     settings: {
       status: 'ready',
@@ -36,7 +37,7 @@ function helpData(level: HelpData['level']): HelpData {
         judge_configured: true,
         values: {
           context_budget_tokens: 1500,
-          context: { evidence_slots: 10, graph_slots: 4 },
+          context: { dedupe_threshold: 0.9 },
           graph_limits: { depth: 2 },
           repeats: 3,
         },
@@ -122,14 +123,15 @@ describe('chapters 7 to 12', () => {
         'synthetic-data',
         'one-company-shape',
         'evidence-limits',
-        'graph-share',
+        'graph-order',
         'reasoning-off',
         'answer-model',
         'judge-is-a-model',
         'judge-agreement',
         'bank-size',
         'question-groups',
-        'reranker-graph-records',
+        'interval-and-test',
+        'method-after-result',
         'bank-authors',
       ]),
     )
@@ -141,10 +143,30 @@ describe('chapters 7 to 12', () => {
   it("the register states the official run's own limits with their source", () => {
     const row = (id: string) => REGISTER.find((r) => r.id === id)!
     const agreement = row('judge-agreement')
-    expect(agreement.plain).toContain('53 percent')
-    expect(agreement.reason).toMatch(/kappa 0\.07/)
-    expect(agreement.reason).toContain('2026-10-26')
-    expect(row('question-groups').plain).toContain('12 groups')
+    // The official run v0.3.0 (official-2026-10-29) is the current result.
+    expect(agreement.plain).toContain('88 percent')
+    expect(agreement.plain).toContain('70 percent')
+    expect(agreement.reason).toMatch(/weighted kappa 0\.77/)
+    expect(agreement.reason).toMatch(/weighted kappa 0\.25/)
+    expect(agreement.reason).toContain('2026-10-29')
+    expect(agreement.reason).toContain('D-096')
+    expect(row('question-groups').plain).toContain('24 groups')
+    expect(row('interval-and-test').plain).toContain('five tested comparisons')
+    expect(row('method-after-result').plain).toContain('v0.2.0')
+  })
+
+  it('names the official run v0.3.0 as the current result, and v0.2.0 as the earlier one', () => {
+    for (const id of ['why', 'results'] as const) {
+      const text = chapterText(id)
+      expect(text, id).toContain('official run v0.3.0')
+      expect(text, id).not.toMatch(
+        /result so far|will use six worlds|will be published whatever/,
+      )
+    }
+    expect(chapterText('results')).toContain(
+      'The earlier official run, v0.2.0, under the old method',
+    )
+    expect(chapterText('why')).toContain('22.1 percentage points')
   })
 
   it('plain shows item and plain only, technical adds reason and cost', () => {
@@ -181,13 +203,10 @@ describe('chapters 7 to 12', () => {
 
   it('the register fills current settings into its rows and types none of them', () => {
     const table = showRegister('plain')
-    const limits = within(table).getByRole('row', {
-      name: /^The evidence limits/,
+    const budget = within(table).getByRole('row', {
+      name: /^The evidence budget/,
     })
-    expect(limits).toHaveTextContent('at most 10 pieces')
-    expect(limits).toHaveTextContent('1,500 tokens')
-    const share = within(table).getByRole('row', { name: /^The graph's share/ })
-    expect(share).toHaveTextContent('4 of the 10 places')
+    expect(budget).toHaveTextContent('1,500 tokens')
     expect(table).not.toHaveTextContent(/not available/)
     // Every cell the register fills, at both levels, takes current settings from placeholders.
     const cells = REGISTER.flatMap((row) => [
@@ -282,5 +301,56 @@ describe('chapters 7 to 12', () => {
         /\b2,?000[- ]tokens?\b|\b12 (?:places|pieces|evidence)\b|\b6 graph\b/,
       )
     }
+  })
+
+  it('states method v0.3 where Help v2 stated v0.2 facts', () => {
+    // Running it: the official run is the six unseen worlds, each question once (D-097).
+    show('technical', [{ kind: 'component', name: 'running' }])
+    expect(
+      screen.getByText(/runs every question once on the six unseen worlds/),
+    ).toHaveTextContent(
+      'runs every question once on the six unseen worlds, 2029 to 2034 (D-097); REPEATS=N asks each N times.',
+    )
+    expect(document.body).not.toHaveTextContent(/on three worlds/)
+    cleanup()
+    // The questions: 150 instances belong to v0.2.0, not to the official run now.
+    const questions = chapterText('questions')
+    expect(questions).toContain(
+      'the three worlds of the official run v0.2.0 gave 150',
+    )
+    expect(questions).not.toMatch(/the three official worlds/)
+    // A token is charged for the whole block, not the bare text.
+    const token = GLOSSARY_TERMS.find(({ term }) => term === 'Token')!
+    expect(token.technical).toContain('over the whole block the prompt shows')
+    expect(token.technical).not.toContain('text only')
+    // The approaches differ in their graph order and turns too, and say so.
+    const approaches = strings(CHAPTER_COPY.approaches.plain).join(' ')
+    expect(approaches).not.toMatch(/chosen and answered is the same/)
+    expect(approaches).toContain("in the graph's own order")
+  })
+
+  it('names every declared difference rather than one', () => {
+    const answer = strings(CHAPTER_COPY.answer.plain).join(' ')
+    expect(answer).not.toMatch(/the one thing B and C show/)
+    expect(answer).toContain('only B and C can pick')
+    expect(answer).toContain('the shared concepts only C shows')
+    const why = strings(CHAPTER_COPY.why.technical).join(' ')
+    expect(why).not.toMatch(/the one declared extra/)
+    expect(why).toContain('target-type tier')
+    expect(why).toContain("C's concept text")
+  })
+
+  it("says only B shares A's first block, and that turns are one for one", () => {
+    const evidence = chapterText('evidence')
+    expect(evidence).not.toMatch(/so their first block is A's first block/)
+    expect(evidence).toContain("so B's first block is A's first block")
+    expect(evidence).toContain('its ontology terms')
+    for (const text of [evidence, chapterText('limits')]) {
+      expect(text).not.toMatch(/share to choose|a share that someone/)
+      expect(text).toMatch(/one for one/)
+    }
+    expect(chapterText('scoring')).toContain(
+      'it is computed the same way for all three approaches',
+    )
   })
 })

@@ -15,9 +15,11 @@ import { STRATUM_LABELS } from '../../results/strata'
 import {
   DEFAULT_FORM,
   errorsOf,
+  KIND_WORLDS,
   progressFraction,
   progressText,
   startBody,
+  START_KINDS,
   STRATA,
   WORLD_SEEDS,
   serverErrors,
@@ -36,7 +38,11 @@ const FIELD =
 const NOT_KNOWN = 'Not known'
 const SET_IN_CONFIGURATION = 'Set in configuration'
 
-const KINDS: StartForm['kind'][] = ['official', 'smoke']
+/** What each kind asks, and why the official run is not offered here. */
+export const KINDS_NOTE =
+  'Neither is a result. Official runs use the unseen worlds 2029 to 2034, from the command line.'
+
+const DEV_WORLDS_NOTE = 'World 2026 only'
 const NOTHING_FROM_SERVER: ReturnType<typeof serverErrors> = {
   fields: {},
   rest: null,
@@ -80,7 +86,7 @@ function Group({
 }) {
   return (
     <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1">
-      <legend className="float-left w-56 text-sm font-semibold text-text-primary">
+      <legend className="w-full text-sm sm:float-left sm:w-56 font-semibold text-text-primary">
         {legend}
       </legend>
       {children}
@@ -136,7 +142,7 @@ function Setup() {
       : null
   return (
     <>
-      <dl className="grid grid-cols-[14rem_auto] gap-x-4 gap-y-1 text-sm">
+      <dl className="grid grid-cols-1 gap-x-4 sm:grid-cols-[14rem_auto] gap-y-1 text-sm">
         <dt className="text-text-secondary">Question bank</dt>
         <dd className="text-text-primary">{bank}</dd>
         <dt className="text-text-secondary">Generation model</dt>
@@ -212,11 +218,11 @@ function Form({
       }}
     >
       <Group legend="Kind">
-        {KINDS.map((kind) => (
+        {START_KINDS.map((kind) => (
           <Choice
             key={kind}
             type="radio"
-            inputRef={kind === KINDS[0] ? first : undefined}
+            inputRef={kind === START_KINDS[0] ? first : undefined}
             checked={form.kind === kind}
             onChange={() => {
               setFromServer(NOTHING_FROM_SERVER)
@@ -227,22 +233,29 @@ function Form({
           </Choice>
         ))}
       </Group>
+      <div className="sm:pl-60">
+        <p className="max-w-prose text-sm text-text-secondary">{KINDS_NOTE}</p>
+      </div>
       <Group legend="Worlds" error={shown.worlds}>
         {WORLD_SEEDS.map((seed) => (
           <Choice
             key={seed}
             type="checkbox"
+            disabled={!KIND_WORLDS[form.kind].includes(seed)}
             checked={form.worlds.includes(seed)}
             onChange={() => change({ worlds: toggled(form.worlds, seed) })}
           >
             {String(seed)}
           </Choice>
         ))}
+        {form.kind === 'dev' && (
+          <span className="text-sm text-text-muted">{DEV_WORLDS_NOTE}</span>
+        )}
       </Group>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <label
           htmlFor="start-repeats"
-          className="w-56 text-sm font-semibold text-text-primary"
+          className="w-full text-sm font-semibold text-text-primary sm:w-56"
         >
           Repeats
         </label>
@@ -251,9 +264,7 @@ function Form({
           type="number"
           min={1}
           value={form.repeats}
-          onChange={(event) =>
-            change({ repeats: event.target.value, repeatsEdited: true })
-          }
+          onChange={(event) => change({ repeats: event.target.value })}
           className={`${FIELD} w-20`}
         />
         {shown.repeats && (
@@ -279,7 +290,7 @@ function Form({
       <div
         role="group"
         aria-label="Kinds of question"
-        className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-60"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:pl-60"
       >
         {STRATA.map((stratum) => (
           <Choice
@@ -299,7 +310,7 @@ function Form({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
         <label
           htmlFor="start-limit"
-          className="w-56 text-sm font-semibold text-text-primary"
+          className="w-full text-sm font-semibold text-text-primary sm:w-56"
         >
           At most N per question
         </label>

@@ -8,8 +8,12 @@ const values = (
   loading = false,
 ) => ({ current, recorded, loading })
 
-const NOW = { top_k: 20, context: { graph_slots: 6 }, judge_model: null }
-const THEN = { top_k: 10, context: { graph_slots: 6 } }
+const NOW = {
+  top_k: 20,
+  context: { dedupe_threshold: 0.85 },
+  judge_model: null,
+}
+const THEN = { top_k: 10, context: { dedupe_threshold: 0.85 } }
 
 describe('settingValue', () => {
   it('reads the setting now and in the run, and whether they differ', () => {
@@ -21,9 +25,9 @@ describe('settingValue', () => {
   })
 
   it('follows dots into nested settings', () => {
-    expect(settingValue('context.graph_slots', NOW, THEN)).toEqual({
-      current: '6',
-      recorded: '6',
+    expect(settingValue('context.dedupe_threshold', NOW, THEN)).toEqual({
+      current: '0.85',
+      recorded: '0.85',
       differs: false,
     })
   })
@@ -46,10 +50,10 @@ describe('fillSettings', () => {
   it('fills each placeholder from the settings now', () => {
     expect(
       fillSettings(
-        'Up to {top_k} items, {context.graph_slots} for the graph.',
+        'Up to {top_k} items, duplicates at {context.dedupe_threshold}.',
         values(NOW, THEN),
       ),
-    ).toBe('Up to 20 items, 6 for the graph.')
+    ).toBe('Up to 20 items, duplicates at 0.85.')
   })
 
   it('falls back to the newest official run, then to "not available"', () => {

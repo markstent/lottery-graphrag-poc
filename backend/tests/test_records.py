@@ -1,9 +1,19 @@
-"""Structured records serialised into text blocks for the shared vector collection."""
+"""Structured records serialised into text blocks for the shared vector collection,
+and the compact facts the prompt shows for them (D-085).
+
+The fact-block goldens pin the rendered prompt block of the first record of
+each table in the tiny world (seed 42, scenarios applied); regenerate them
+only for an intended, reviewed change (``python -m tests.test_records`` from
+backend/).
+"""
 
 from __future__ import annotations
 
+import json
+import re
 from collections import Counter
 from pathlib import Path
+from typing import Any
 
 import duckdb
 import pytest
@@ -12,23 +22,55 @@ from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.retrieval.graph.source_lookup import NODE_SOURCES, SNIPPET_COLUMNS
+from app.retrieval.standard.generation import context_block
 from app.retrieval.standard.records import (
+    _QUERIES,
+    FACT_SERIALISERS,
     RECORD_SERIALISER_VERSION,
     SERIALISERS,
     RecordBlock,
+    _fact_value,
+    _rows,
     records_manifest,
     serialise_records,
 )
 from app.scenarios.engine import apply_scenarios
 
+FACT_BLOCKS = Path(__file__).parent / "fixtures" / "golden" / "fact_blocks.json"
+
+
+def write_tiny_world(dataset_dir: Path) -> Path:
+    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
+    apply_scenarios(world)
+    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
+    return dataset_dir
+
 
 @pytest.fixture(scope="module")
 def world_dir(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
-    apply_scenarios(world)
-    dataset_dir = tmp_path_factory.mktemp("tiny-world-records")
-    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
-    return dataset_dir
+    return write_tiny_world(tmp_path_factory.mktemp("tiny-world-records"))
+
+
+def fact_blocks(dataset_dir: Path) -> dict[str, str]:
+    """The prompt block of the first record of each table, as A shows it."""
+    rendered: dict[str, str] = {}
+    for block in serialise_records(dataset_dir):
+        if block.table not in rendered:
+            evidence = block.to_corpus_chunk().to_evidence(similarity=0.0, rank=1)
+            rendered[block.table] = context_block(evidence)
+    return rendered
+
+
+def first_rows(dataset_dir: Path) -> dict[str, dict[str, Any]]:
+    """The first row of each serialised table, as the serialisers read it."""
+    connection = duckdb.connect()
+    try:
+        for table in TABLE_SCHEMAS:
+            path = (dataset_dir / f"{table}.parquet").as_posix()
+            connection.execute(f"CREATE VIEW {table} AS SELECT * FROM read_parquet('{path}')")
+        return {table: _rows(connection, query)[0] for table, query in _QUERIES.items()}
+    finally:
+        connection.close()
 
 
 @pytest.fixture(scope="module")
@@ -209,3 +251,109 @@ def test_experiment_market_platform_and_channel_blocks(blocks: list[RecordBlock]
 def test_payment_provider_block_market_is_its_home_market(blocks: list[RecordBlock]) -> None:
     provider = next(b for b in blocks if b.table == "payment_providers" and b.market_id)
     assert provider.market_id is not None and provider.market_id.startswith("MKT_")
+
+
+# -- compact facts (D-085) --------------------------------------------------------------
+
+_SENTINEL = re.compile(r"SNT\d+X")
+
+
+def _sentinel_row(row: dict[str, Any]) -> dict[str, Any]:
+    """The row with a unique sentinel in every column; flags keep their
+    booleans (they select channels, not text) and a list gets two sentinels."""
+    count = 0
+    marked: dict[str, Any] = {}
+    for column, value in row.items():
+        if isinstance(value, bool):
+            marked[column] = value
+            continue
+        size = 2 if isinstance(value, list) else 1
+        values = [f"SNT{count + index}X" for index in range(size)]
+        count += size
+        marked[column] = values if isinstance(value, list) else values[0]
+    return marked
+
+
+def _fact_text(table: str, row: dict[str, Any]) -> str:
+    heading, facts = FACT_SERIALISERS[table](row)
+    return "\n".join([heading, *(f"{name}: {value}" for name, value in facts)])
+
+
+def test_every_serialised_table_has_facts() -> None:
+    assert FACT_SERIALISERS.keys() == SERIALISERS.keys()
+
+
+def test_facts_hold_no_column_absent_from_the_record_block(world_dir: Path) -> None:
+    """D-028 holds for the facts: every value they state is in the record
+    block A indexes, or is its market id, which every v0.2 prompt block
+    showed on its title line."""
+    for table, row in first_rows(world_dir).items():
+        marked = _sentinel_row(row)
+        stated = set(_SENTINEL.findall(_fact_text(table, marked)))
+        indexed = set(_SENTINEL.findall(SERIALISERS[table](marked)))
+        assert stated, table
+        assert stated <= indexed | {marked.get("market_id")}, table
+
+
+def test_facts_state_every_column_of_the_record_block(world_dir: Path) -> None:
+    """Facts are the record block with less filler, never with less content."""
+    for table, row in first_rows(world_dir).items():
+        marked = _sentinel_row(row)
+        indexed = set(_SENTINEL.findall(SERIALISERS[table](marked)))
+        assert indexed <= set(_SENTINEL.findall(_fact_text(table, marked))), table
+
+
+@pytest.mark.parametrize("table", list(SERIALISERS))
+def test_fact_block_golden(world_dir: Path, table: str) -> None:
+    expected = json.loads(FACT_BLOCKS.read_text(encoding="utf-8"))
+    assert fact_blocks(world_dir)[table] == expected[table]
+
+
+def test_fact_block_golden_covers_every_table() -> None:
+    assert json.loads(FACT_BLOCKS.read_text(encoding="utf-8")).keys() == SERIALISERS.keys()
+
+
+def test_midnight_dropped_other_times_kept() -> None:
+    assert _fact_value("2025-08-19T00:00:00") == "2025-08-19"
+    assert _fact_value("2025-03-05T23:32:47") == "2025-03-05 23:32:47"
+    assert _fact_value("2025-08-19") == "2025-08-19"
+    assert _fact_value("Seen at 2025-08-19T00:00:00.") == "Seen at 2025-08-19T00:00:00."
+    assert _fact_value(-0.295) == "-0.295"
+
+
+def test_omitted_facts_are_never_printed_as_none(blocks: list[RecordBlock]) -> None:
+    for block in blocks:
+        assert all(value != "None" for _name, value in block.facts), block.record_id
+        assert block.heading.endswith(f" {block.record_id}")
+
+
+def test_index_payload_unchanged(blocks: list[RecordBlock]) -> None:
+    """The facts never reach the index: the payload keys and the indexed text
+    are those of serialiser 2.1.0, so no re-index is needed."""
+    chunk = next(b for b in blocks if b.table == "incidents").to_corpus_chunk()
+    assert chunk.facts_heading is not None and chunk.facts
+    assert chunk.to_payload().keys() == {
+        "chunk_id",
+        "document_id",
+        "chunk_index",
+        "title",
+        "document_type",
+        "market_id",
+        "language_code",
+        "source_system",
+        "valid_from",
+        "valid_to",
+        "text",
+        "kind",
+        "record_table",
+    }
+    assert chunk.to_payload()["text"] == chunk.text
+    assert RECORD_SERIALISER_VERSION == "2.1.0"
+
+
+if __name__ == "__main__":
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as directory:
+        rendered = fact_blocks(write_tiny_world(Path(directory)))
+    FACT_BLOCKS.write_text(json.dumps(rendered, indent=1, ensure_ascii=False) + "\n")

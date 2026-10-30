@@ -23,7 +23,7 @@ function stepText(
     : null
 }
 
-const PATH_PENDING = 'The evidence path appears when this pipeline records it.'
+const PATH_PENDING = 'No evidence path yet.'
 const PATH_ABSENT = 'No evidence path was recorded.'
 
 export function EvidencePathList({

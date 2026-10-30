@@ -37,41 +37,42 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'one-company-shape',
     item: 'One company shape',
     plain:
-      'All three worlds are the same kind of company in the same four markets; only the random draws differ.',
+      'Every world is the same kind of company in the same four markets; only the random draws differ.',
     reason:
-      'The official worlds are the dev profile with world seeds 2026, 2027 and 2028, from generator 0.2.0, so a difference between worlds is noise, not design.',
+      'The official worlds are the dev profile with one generator: seeds 2029 to 2034 for method v0.3, and 2026, 2027 and 2028 in v0.2.0, so a difference between worlds is noise, not design.',
     cost: 'A result may not hold for a company with other markets, other languages, more systems or other links between them.',
-    decision: 'OFFICIAL_SEEDS in backend/app/evaluation/official.py; D-001',
+    decision:
+      'OFFICIAL_SEEDS in backend/app/evaluation/official.py; D-001, D-091',
   },
   {
     id: 'evidence-limits',
-    item: 'The evidence limits',
+    item: 'The evidence budget',
     plain:
-      'The answer model sees at most {context.evidence_slots} pieces of evidence within {context_budget_tokens} tokens, the same for all three approaches.',
+      'The answer model sees what fits in {context_budget_tokens} tokens, the same for all three approaches, with no limit on the number of pieces.',
     reason:
-      'Equal limits mean a difference comes from what each approach found, not from how much it could show; a model reads only so much at once.',
-    cost: "Too tight a limit cuts facts an approach found: on 2026-10-25 the selection diagnostic found that the cut on places, not the token budget, kept 26 (B) and 53 (C) of the graph's claims out of the prompt. Too loose a limit can bury the fact that matters.",
-    decision: 'D-023, D-081',
+      'An equal budget means a difference comes from what each approach found, not from how much it could show; a model reads only so much at once. In v0.2.0 a limit of 12 pieces decided what the model saw, and the budget never did.',
+    cost: 'Too small a budget cuts facts an approach found; too large a one lets A show almost all it found, so its order stops mattering, and can bury the fact that matters. No other budget was tried.',
+    decision: 'D-023, D-084',
   },
   {
-    id: 'graph-share',
-    item: "The graph's share",
+    id: 'graph-order',
+    item: "The graph's own order",
     plain:
-      'In B and C, {context.graph_slots} of the {context.evidence_slots} places are kept for graph records. The share was fixed before it was measured, and no other share was tried.',
+      "In B and C the graph's records are ordered by the graph, records of a kind the question asks about first, and they take turns with the passages; A gets no such help.",
     reason:
-      'The diagnostic of 2026-10-25 showed one shared cut dropped about half of the claims the graph found (26 of 55 for B, 53 of 88 for C). Half was chosen in advance so that it could not be tuned to the question bank.',
-    cost: 'Another share might help or hurt B and C, and no run has measured one.',
-    decision: 'D-081',
+      'Each approach ranks with what it has: text relevance for passages, connection to the question for graph records. Taking turns one for one leaves no proportion to tune, and the kinds a question asks about are matched by fixed word lists, with no model.',
+    cost: 'Common words such as "market" or "game" name broad kinds, so the first group may hold many records and add little; this cue is a declared difference that A does not have.',
+    decision: 'D-083, D-084',
   },
   {
-    id: 'reranker-graph-records',
-    item: 'The re-ordering model scores graph records low',
+    id: 'method-after-result',
+    item: 'The method was changed after a result',
     plain:
-      'The model that ranks the evidence tends to score graph records low, so many of the facts the graph finds, about half when last measured, do not reach the answer model.',
+      'Method v0.3 was made after the v0.2.0 result was seen, in which the graph did not help; every v0.3 result says so.',
     reason:
-      "One re-ranker orders every candidate for A, B and C, so all three are chosen by the same rule (D-025, D-081). The diagnostic run once after D-081 (2026-10-25) still left 23 of 55 (B) and 51 of 88 (C) of the graph's claims out of the prompt, because within the graph places it ranked other graph records higher.",
-    cost: "The experiment measures the re-ranker's view of record text as much as the graph's reach. A better selection could change the result either way.",
-    decision: 'D-080, D-081; docs/evaluation/official-run-proposal.md',
+      "In v0.2.0 the re-ordering model scored graph records low, and the limit on pieces kept about half of the graph's facts from the answer model (diagnostic of 2026-10-25: 23 of 55 for B, 51 of 88 for C). Every rule of v0.3 was written down before it was measured, development uses world 2026 only, and the official run uses six worlds no one has looked at.",
+    cost: 'The guards limit what the change could have been fitted to but do not remove the doubt. The official run v0.3.0 (2026-10-29) is published as it came out, and v0.2.0 stays as published.',
+    decision: 'D-091, D-092, D-093; docs/evaluation/v0.3-method-proposal.md',
   },
   {
     id: 'record-texts',
@@ -115,13 +116,13 @@ export const REGISTER: readonly RegisterRow[] = [
   },
   {
     id: 'repeats',
-    item: 'A few repeats',
+    item: 'One try per question',
     plain:
-      'Each question is asked {repeats} times and the scores are averaged, because a model can answer differently each time.',
+      'Each question is asked once, because asking again gave the same answer.',
     reason:
-      'Even at temperature 0 a model can vary between calls; {repeats} repeats average this out within a run time the owner accepted (about 9.5 hours estimated; the official run took 15 hours 39 minutes, about three of them with the machine asleep).',
-    cost: '{repeats} tries may not settle an answer that varies a lot, which adds noise to the answer score.',
-    decision: 'docs/evaluation.md, "Reproducibility"',
+      'The official run v0.2.0 asked every question three times at temperature 0, and in all 450 sets of three the answers were word for word the same. The extra tries added nothing and tripled the run time (15 hours 39 minutes for v0.2.0).',
+    cost: 'If a model or setting is not deterministic, one try hides how much its answers vary. The judge already varies a little: in v0.2.0 its scores for the same answer differed in 94 of the 450 sets. A run with REPEATS=N shows the variance.',
+    decision: 'D-097; docs/evaluation.md, "Reproducibility"',
   },
   {
     id: 'judge-is-a-model',
@@ -135,13 +136,13 @@ export const REGISTER: readonly RegisterRow[] = [
   },
   {
     id: 'judge-agreement',
-    item: 'The judge and the rules often disagree',
+    item: 'The judge and the rules disagree on "unknown"',
     plain:
-      'In the official run, the judge and the answer score agreed on whether an answer was right for 53 percent of answers, little better than chance.',
+      'In the official run v0.3.0, the judge and the answer score agreed on 88 percent of the answers that answered, but on only 70 percent of those that said "unknown", which is weak agreement once chance is allowed for.',
     reason:
-      "Measured in the official run of 2026-10-26: agreement 53 percent on 1,348 judged answers, Cohen's kappa 0.07 (A 0.16, B 0.00, C 0.06).",
-    cost: 'Neither measure of a right answer can be read alone: a check may be too strict, or the judge too lenient.',
-    decision: 'docs/evaluation.md, "Status of results"',
+      'Measured in the official run of 2026-10-29 on three levels: answered, 88 percent of 637, weighted kappa 0.77; said "unknown", 70 percent of 263, weighted kappa 0.25 (A 0.38, B 0.21, C 0.17). Judge prompt 1.2.0 reads the whole answer and was not checked against hand labels; the labels that checked the earlier judge came from one model labeller, and no human labelled them (D-094, D-096). In v0.2.0, by the old yes-or-no rule, agreement was 53 percent on 1,348 judged answers, Cohen\'s kappa 0.07.',
+    cost: 'Neither measure of a right answer can be read alone, least of all for answers that said "unknown": a check may be too strict, or the judge too lenient.',
+    decision: 'D-086, D-094, D-096; docs/evaluation.md, "Status of results"',
   },
   {
     id: 'judge-blinding',
@@ -149,15 +150,15 @@ export const REGISTER: readonly RegisterRow[] = [
     plain:
       'The judge is not told which approach wrote an answer, but the form of some evidence can hint at it.',
     reason:
-      "A graph node with no record text reaches the judge as '<Label> <id>', which can differ in form from the record text A shows for the same row.",
+      "B and C show how a graph record was reached, a line A never shows; a graph node with no record reaches the judge as '<Label> <id>'; and C's concept records show their ontology text.",
     cost: 'The judge could favour or penalise an approach it recognises.',
-    decision: 'D-031; docs/evaluation.md, "The judge"',
+    decision: 'D-031, D-085; docs/evaluation.md, "The judge"',
   },
   {
     id: 'bank-size',
     item: 'A small question bank',
     plain:
-      'There are 22 questions, each asked of three worlds in up to three forms: 150 in all.',
+      'There are 22 questions, each asked of each world in up to three forms: 300 in all over the six worlds of v0.3.0, and 150 over the three worlds of v0.2.0.',
     reason:
       'Each question is written by hand with its checks and claims, and is grounded in each world from the data or the truth ledger.',
     cost: 'A small difference between approaches cannot be detected with this many questions.',
@@ -167,11 +168,21 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'question-groups',
     item: 'Few question groups per comparison',
     plain:
-      'Each tested comparison rests on 12 groups of alike questions (24 for planted stories), so only a large difference can be detected.',
+      'In v0.3.0 each tested comparison rested on 24 groups of alike questions (48 for planted stories), so a difference had to be large to be detected: a mean difference of 18.9 evidence points (C against B, ontology-dependent questions) did not pass.',
     reason:
-      'Questions made from one question in one world share a template, so each group counts once (official run of 2026-10-26: 12 groups for H1, H2 and H3, 24 for H5).',
+      'Questions made from one question in one world share a template, so each group counts once (official run of 2026-10-29: 24 groups for H1, H2 and H3, 48 for H5; v0.2.0 had 12 groups, and 24 for H5). The six worlds of v0.3 doubled the groups without new questions written after seeing results.',
     cost: 'A modest effect of the graph or the ontology would read as "no detectable difference".',
-    decision: 'D-032',
+    decision: 'D-032, D-091',
+  },
+  {
+    id: 'interval-and-test',
+    item: 'An interval and the test can disagree',
+    plain:
+      'In v0.3.0 five tested comparisons have an interval that leaves out zero but do not pass the test; under the rule set before the run they are not findings.',
+    reason:
+      'The interval looks at one comparison alone, through its mean; the test ranks group differences (Wilcoxon on group means) and allows for 14 comparisons made at once (Holm), so it asks for more. For one of the five, planted-story answers, the test fails even before that allowance (unadjusted p 0.14). The rule written before the run is the test (official run of 2026-10-29: H2 C against B on evidence and on answers, H1 B against A on answers, H5 B against A on evidence and on answers).',
+    cost: 'Some of the five may be real differences this many questions cannot confirm, and the one finding may still be chance: the test keeps the chance of any false finding among the 14 at or below 5 percent, not at zero.',
+    decision: 'D-032, D-087; docs/evaluation.md, "Statistics"',
   },
   {
     id: 'bank-authors',

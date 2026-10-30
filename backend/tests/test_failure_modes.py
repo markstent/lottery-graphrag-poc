@@ -14,7 +14,7 @@ from app.api.errors import classify
 from app.evidence import EvidenceChunk
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.resolution import StaticEntityResolver
-from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.corpus import CorpusChunk, record_facts_of
 from app.retrieval.standard.embeddings import EmbeddingFunction, HashingEmbedder
 from app.retrieval.standard.generation import AnswerGenerator, GenerationError, GenerationOutput
 from app.retrieval.standard.pipeline import StandardRagPipeline
@@ -102,6 +102,7 @@ def build_standard(
         generator=generator,
         settings=settings,
         reranker=build_reranker(settings),
+        record_facts=record_facts_of(make_corpus()),
     )
 
 
@@ -120,6 +121,7 @@ def build_graph(
         generator=generator,
         settings=settings,
         reranker=build_reranker(settings),
+        record_facts=record_facts_of(corpus.values()),
     )
 
 

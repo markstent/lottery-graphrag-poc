@@ -1,8 +1,8 @@
 """Standard RAG pipeline (docs/reference/retrieval/standard-rag.md).
 
     question -> dense + sparse embedding -> hybrid search (RRF) -> top-k
-             -> the shared judge (reranker) -> one selection (shared budget
-                and slots) -> LLM -> answer + citations
+             -> the shared cross-encoder -> its order cut at the shared
+                token budget (no item limit, D-084) -> LLM -> answer + citations
 
 Every candidate and selected chunk is recorded with its scores; every stage
 emits typed events. The baseline is never weakened: chunking comes from the
@@ -34,11 +34,11 @@ from app.events import (
     RetrievalEvent,
     new_run_id,
 )
-from app.evidence import RagAnswer, RagRunResult
+from app.evidence import RagRunResult
 from app.retrieval.standard.context import assemble_context
-from app.retrieval.standard.corpus import hit_to_evidence
+from app.retrieval.standard.corpus import RecordFacts, hit_to_evidence
 from app.retrieval.standard.embeddings import EmbeddingFunction
-from app.retrieval.standard.generation import AnswerGenerator, citations_for, parse_answer
+from app.retrieval.standard.generation import AnswerGenerator, answer_from
 from app.retrieval.standard.reranking import Reranker
 from app.retrieval.standard.sparse import SparseEmbedder
 from app.retrieval.standard.vector_store import VectorStore
@@ -56,6 +56,7 @@ class StandardRagPipeline:
         generator: AnswerGenerator,
         settings: RetrievalSettings,
         reranker: Reranker,
+        record_facts: RecordFacts,
         pipeline: str = "A",
         sink: EventSink | None = None,
     ) -> None:
@@ -65,6 +66,8 @@ class StandardRagPipeline:
         self.generator = generator
         self.settings = settings
         self.reranker = reranker
+        # The prompt facts of every record block, shared with B and C (D-085).
+        self.record_facts = record_facts
         self.pipeline = pipeline
         self.sink: EventSink = sink if sink is not None else ListEventSink()
         self.emitter = EventEmitter(pipeline, self.sink)
@@ -96,7 +99,9 @@ class StandardRagPipeline:
             query_vector, query_terms, limit=self.settings.top_k, markets=scope
         )
         # similarity holds the fused (RRF) score of the hybrid search.
-        candidates = [hit_to_evidence(hit, rank) for rank, hit in enumerate(hits, start=1)]
+        candidates = [
+            hit_to_evidence(hit, rank, self.record_facts) for rank, hit in enumerate(hits, start=1)
+        ]
         for candidate in candidates:
             self.emitter.emit(
                 RAG_CANDIDATE_RETRIEVED,
@@ -121,7 +126,8 @@ class StandardRagPipeline:
                 rank=candidate.rank,
             )
 
-        assembly = assemble_context(candidates, self.settings.context)
+        # A has no graph channel: its selection is the re-ranked order cut at the budget.
+        assembly = assemble_context(candidates, [], self.settings.context)
         selected, discarded = assembly.selected, assembly.discarded
         for chunk in selected:
             self.emitter.emit(RAG_EVIDENCE_SELECTED, chunk_id=chunk.chunk_id, rank=chunk.rank)
@@ -136,23 +142,12 @@ class StandardRagPipeline:
             selected=len(selected),
             discarded=len(discarded),
             context_tokens=context_tokens,
-            evidence_slots=self.settings.context.evidence_slots,
+            budget_tokens=self.settings.context.budget_tokens,
         )
 
         self.emitter.emit(RAG_GENERATION_STARTED, model=self.generator.model_name)
         output = self.generator.generate(question, selected)
-        parsed = parse_answer(output.raw_text, block_count=len(selected))
-        answer = RagAnswer(
-            text=parsed.answer,
-            verdict=parsed.verdict,
-            cited_blocks=parsed.cited_blocks,
-            raw_text=output.raw_text,
-            model=self.generator.model_name,
-            latency_ms=round(output.latency_ms, 1),
-            context_tokens=context_tokens,
-            citations=citations_for(selected),
-            usage=output.usage,
-        )
+        answer = answer_from(output, selected, self.generator.model_name, context_tokens)
         self.emitter.emit(
             RAG_GENERATION_COMPLETED,
             model=self.generator.model_name,

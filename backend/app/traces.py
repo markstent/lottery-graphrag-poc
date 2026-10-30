@@ -56,7 +56,7 @@ VIA_CONCEPT_SHOWN = 5
 HEADER_LINES: tuple[str, ...] = (
     "# Example Traces: A/B/C Retrieval Comparison",
     "",
-    "Status: HITL-08 artefact, regenerated for pipelines v2 against the development world.",
+    "Status: HITL-08 artefact, regenerated for method v0.3 against the development world.",
     "",
     "## What this document is",
     "",
@@ -66,7 +66,7 @@ HEADER_LINES: tuple[str, ...] = (
     (
         "- **A, conventional RAG**: dense (bge-m3) plus sparse embedding, hybrid search "
         "fused by reciprocal rank, cross-encoder reranking, one shared context budget "
-        "and slot limit, generation."
+        "with no item limit, generation."
     ),
     (
         "  The index holds document chunks and structured record blocks, so A can "
@@ -75,9 +75,11 @@ HEADER_LINES: tuple[str, ...] = (
     (
         "- **B, graph relationships**: an id and market resolver seeds a bounded "
         "traversal over the structured-record subgraph (when nothing resolves, the "
-        "graph node of the best-matching record block); every traversal node joins A's "
-        "document channel as a structured candidate, judged and shown as the record "
-        "block A indexes for its row (or only `<Label> <id>` when the row has none); "
+        "graph node of the best-matching record block); every traversal node joins the "
+        "graph list, ordered by graph relevance (seeds, then nodes holding what "
+        "the question asks for, then the rest), and is shown as the record block A "
+        "indexes for its row (or only `<Label> <id>` when the row has none); the "
+        "document and graph lists take turns filling the budget, documents first; "
         "nodes carry authoritative facts from the source tables for citations."
     ),
     "  No ontology: no concept seeds, no `MAPS_TO` expansion, no query expansion.",
@@ -89,9 +91,9 @@ HEADER_LINES: tuple[str, ...] = (
     ),
     "",
     (
-        "Same question, same synthetic world, same embedding model, one reranker that "
-        "judges every candidate against the raw question, same generator and prompt "
-        "(the selection in judge order), one context budget and slot count."
+        "Same question, same synthetic world, same embedding model, one re-ranker that "
+        "orders the document candidates against the raw question, same generator and "
+        "prompt, and one token budget with no item limit (the selection in prompt order)."
     ),
     "Only the retrieval layers differ.",
     "",
@@ -223,10 +225,6 @@ def _fmt_timings(
     return line
 
 
-def _fmt_score(score: float | None) -> str:
-    return "-" if score is None else f"{score:.3f}"
-
-
 def _fmt_answer(answer: RagAnswer) -> list[str]:
     shown = len(answer.citations)
     cited = (
@@ -350,7 +348,8 @@ def trace_g(
             )
         lines.append(
             f"  - `{node.node_id}` ({node.node_label}, {node.hops} hop(s) via "
-            f"{node.rel_type}, score {node.score:.3f}, rerank {_fmt_score(node.rerank_score)}, "
+            f"{node.rel_type}, score {node.score:.3f}, tier {node.tier}, "
+            f"graph rank {node.graph_rank}, "
             f"components {node.components}){facts}"
         )
     reasons: dict[str, int] = {}

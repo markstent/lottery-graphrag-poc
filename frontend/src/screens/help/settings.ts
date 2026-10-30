@@ -60,7 +60,7 @@ export function useSettingValues(): SettingValues {
   }
 }
 
-/** A value by its name, following dots into nested settings: `context.graph_slots`. */
+/** A value by its name, following dots into nested settings: `context.dedupe_threshold`. */
 function lookup(values: Values | null, key: SettingKey): unknown {
   let value: unknown = values
   for (const part of key.split('.')) {
@@ -134,8 +134,4 @@ export function fillSettings(text: string, values: SettingValues): string {
 }
 
 /** The settings the picture reads. */
-export const EVIDENCE_DIAGRAM_KEYS = [
-  'context.evidence_slots',
-  'context.graph_slots',
-  'context_budget_tokens',
-] as const
+export const EVIDENCE_DIAGRAM_KEYS = ['context_budget_tokens'] as const

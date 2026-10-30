@@ -6,6 +6,7 @@
  * the route, so a filtered table is a link. Scores read as on Live Lab.
  */
 
+import { EVIDENCE_LABELS } from '../../app/method'
 import { answerWords, evidenceScore } from '../../app/score-words'
 import { hrefFor, useRoute } from '../../app/router'
 import { plural } from '../../charts/scale'
@@ -18,6 +19,7 @@ import {
 } from './bank'
 import { useHelpData } from './help-data'
 import { helpHref } from './level'
+import { ScrollBox } from '../../components/scroll-box'
 
 const LINK = 'text-text-primary underline'
 const SELECT =
@@ -25,11 +27,14 @@ const SELECT =
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
 const NO_RUN = 'No official run yet'
 
+/** What an empty score cell says to a screen reader; with no run to score, there are no score cells. */
 const LABELS = {
-  none: NO_RUN,
   unreadable: 'Scores could not be read',
   loading: 'Scores are loading',
 }
+
+/** The states with score columns, which a cell can be in. */
+type CellState = 'shown' | keyof typeof LABELS
 
 const counted = (questions: number, instances: number) =>
   `${plural(questions, 'question')}, ${plural(instances, 'instance')}`
@@ -41,14 +46,13 @@ function ScoreCell({
 }: {
   question: Question
   id: PipelineId
-  state: ScoreState
+  state: CellState
 }) {
+  const { evidence } = useHelpData()
   if (state !== 'shown')
     return (
       <td className={CELL}>
-        <span className="sr-only">
-          {LABELS[state as Exclude<ScoreState, 'shown'>]}
-        </span>
+        <span className="sr-only">{LABELS[state]}</span>
       </td>
     )
   const score = question.scores?.[id]
@@ -56,7 +60,9 @@ function ScoreCell({
   return (
     <td className={`${CELL} whitespace-nowrap tabular-nums`}>
       <div>Answer: {answerWords(score.answer)}</div>
-      <div>Evidence score: {evidenceScore(score.evidence_f1)}</div>
+      <div>
+        {EVIDENCE_LABELS[evidence]}: {evidenceScore(score[evidence])}
+      </div>
     </td>
   )
 }
@@ -171,14 +177,19 @@ function QuestionTable({
     shown.length,
     shown.reduce((sum, group) => sum + group.length, 0),
   )
-  const columns = 2 + PIPELINES.length
+  // With no score to show, the score columns would be empty: leave them out.
+  const cellState: CellState | null =
+    scores === 'none' || scores === 'elsewhere' ? null : scores
+  const columns = 2 + (cellState ? PIPELINES.length : 0)
   return (
     <>
-      {(scores === 'none' || scores === 'unreadable') && (
+      {scores !== 'shown' && scores !== 'loading' && (
         <p>
           {scores === 'none'
             ? `${NO_RUN}. Scores appear after a full official run. `
-            : 'The latest run could not be read, so scores are hidden. '}
+            : scores === 'elsewhere'
+              ? 'The newest official run scored none of these world 2026 questions; its scores are on Results. '
+              : 'The latest run could not be read, so scores are hidden. '}
           <a href={hrefFor('results')} className={LINK}>
             Go to Results
           </a>
@@ -192,7 +203,7 @@ function QuestionTable({
           shownCount === total ? total : `Showing ${shownCount} of ${total}`
         }
       />
-      <div className="overflow-x-auto">
+      <ScrollBox label="Benchmark questions">
         <table className="w-full min-w-[36rem] text-left text-sm">
           <caption className="sr-only">Benchmark questions</caption>
           <thead className="text-text-muted">
@@ -203,15 +214,16 @@ function QuestionTable({
               <th scope="col" className={CELL}>
                 Answer key
               </th>
-              {PIPELINES.map(({ id, label }) => (
-                <th
-                  key={id}
-                  scope="col"
-                  className={`${CELL} whitespace-nowrap`}
-                >
-                  {label}
-                </th>
-              ))}
+              {cellState &&
+                PIPELINES.map(({ id, label }) => (
+                  <th
+                    key={id}
+                    scope="col"
+                    className={`${CELL} whitespace-nowrap`}
+                  >
+                    {label}
+                  </th>
+                ))}
             </tr>
           </thead>
           {shown.map((group) => {
@@ -258,21 +270,22 @@ function QuestionTable({
                   <tr key={question.instance_id}>
                     <td className={CELL}>{question.text}</td>
                     <td className={CELL}>{question.expected_answer}</td>
-                    {PIPELINES.map(({ id }) => (
-                      <ScoreCell
-                        key={id}
-                        question={question}
-                        id={id}
-                        state={scores}
-                      />
-                    ))}
+                    {cellState &&
+                      PIPELINES.map(({ id }) => (
+                        <ScoreCell
+                          key={id}
+                          question={question}
+                          id={id}
+                          state={cellState}
+                        />
+                      ))}
                   </tr>
                 ))}
               </tbody>
             )
           })}
         </table>
-      </div>
+      </ScrollBox>
       {shown.length === 0 && (
         <p>
           No question matches these filters.{' '}

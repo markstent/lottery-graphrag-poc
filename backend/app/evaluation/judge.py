@@ -8,11 +8,17 @@ are shuffled by a hashed seed and renumbered, the answer's citations are
 rewritten to the new numbers, and the prompt never names the pipeline or
 how the context was retrieved.
 
-Blinding removes the systematic tell, block titles: a graph node without a
-record block is titled "<Label>: <id>" where a record block of pipeline A is
-titled "<table>: <id>", so the judge sees block text only. A residual tell
-remains: the text of such a node reads "<Label> <id>", which can differ in
-form from the text of the record block A retrieves for the same record.
+The judge reads each block's ``ShownBlock.judge_text``: the
+rendered prompt block less a document chunk's title line. A record reads
+the same in A, B and C (its facts heading, source and facts), so record
+blocks carry no tell of their own. Two tells remain, both declared (D-085):
+a graph record reached by a walk ends with its "reached from" path line,
+which only B and C show; and a graph node without a record block, which
+only B and C can select. Such a node shows exactly "<Label> <id>" (for
+example "Device DEV_UK_000009", as the v0.2 judge saw it), followed in C by
+a concept's ontology text for a BusinessConcept node, and by its path line
+when it was reached by a walk. The judge is secondary to the deterministic
+scores (D-031).
 
 A judge failure (gateway error or unusable reply) is recorded as
 a verdict without scores.
@@ -30,11 +36,13 @@ import json
 import random
 import re
 import time
+from collections import Counter
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
 from app.config import FAKE_JUDGE_MODEL, JudgeSettings
+from app.evaluation.checks import is_abstention
 from app.models.gateway import (
     Completion,
     CompletionRequest,
@@ -46,7 +54,10 @@ from app.retrieval.standard.generation import CITATION, FENCED_JSON
 if TYPE_CHECKING:
     from app.evaluation.runner import RunScore, ShownBlock
 
-JUDGE_PROMPT_VERSION = "1.0.0"
+# 1.2.0 (D-096): the judge reads the whole answer, as the scorer does; 1.1.0
+# capped it at 2,400 characters. The answer is bounded by the answer model's
+# output limit (max_tokens, recorded with every run).
+JUDGE_PROMPT_VERSION = "1.2.0"
 JUDGE_DIMENSIONS = (
     "correctness",
     "completeness",
@@ -54,13 +65,8 @@ JUDGE_DIMENSIONS = (
     "citation_accuracy",
     "abstention",
 )
-ANSWER_CHAR_CAP = 2400
 JUDGE_MAX_TOKENS = 300
 JUDGE_TIMEOUT_S = 120.0
-TRUNCATION_MARK = " [truncated]"
-# A deterministic answer score at or above this counts as correct when the
-# judge's correctness is compared with it.
-AGREEMENT_ANSWER_THRESHOLD = 0.5
 
 JUDGE_SYSTEM_PROMPT = (
     "You grade one answer to a question about an enterprise. You are given the "
@@ -69,7 +75,8 @@ JUDGE_SYSTEM_PROMPT = (
     "sources as [n]; [?] marks a citation of a source that was not shown. Score "
     "five dimensions, each 0, 1 or 2, where 0 means wrong or absent, 1 means "
     "partly and 2 means fully. "
-    "correctness: the answer agrees with the reference answer. "
+    "correctness: the answer agrees with the reference answer; an answer that says the "
+    "sources do not answer scores 0 when the reference answer gives an answer. "
     "completeness: the answer states the key facts. "
     "faithfulness: every statement in the answer is supported by the context sources. "
     "citation_accuracy: each citation points at a source that supports the "
@@ -165,8 +172,8 @@ def blind(item: JudgeItem) -> tuple[list[ShownBlock], str]:
 def _blind_answer(answer: str, renumber: dict[int, int]) -> str:
     """Rewrite every [n] and [n, m] marker to the shown numbers ([?] for a
     block that was not shown) and every other bracket holding a digit, such
-    as [1-3], to [?], so no stale number points at a reshuffled block; then
-    cap at ``ANSWER_CHAR_CAP`` characters."""
+    as [1-3], to [?], so no stale number points at a reshuffled block. The
+    whole answer is kept (judge prompt 1.2.0, D-096)."""
 
     def rewrite(match: re.Match[str]) -> str:
         citation = CITATION.fullmatch(match.group(0))
@@ -175,21 +182,19 @@ def _blind_answer(answer: str, renumber: dict[int, int]) -> str:
         numbers = (renumber.get(int(part)) for part in citation.group(1).split(","))
         return "[" + ", ".join("?" if n is None else str(n) for n in numbers) + "]"
 
-    blinded = _DIGIT_BRACKET.sub(rewrite, answer)
-    if len(blinded) > ANSWER_CHAR_CAP:
-        blinded = blinded[:ANSWER_CHAR_CAP] + TRUNCATION_MARK
-    return blinded
+    return _DIGIT_BRACKET.sub(rewrite, answer)
 
 
 def build_judge_prompt(item: JudgeItem) -> tuple[str, str]:
-    """(system, user) for one blinded item: block text only, no titles, and
-    nothing that names how the context was retrieved."""
+    """(system, user) for one blinded item: each block's shown text (no
+    document title line), and nothing that names how the context was
+    retrieved beyond the declared tells in the module docstring."""
     order, renumber = _blinding(item)
     shown = [item.blocks[old] for old in order]
     answer = _blind_answer(item.answer, renumber)
     facts = "\n".join(f"- {statement}" for statement in item.claim_statements) or "- (none)"
     sources = (
-        "\n\n".join(f"[{n}] {block.text}" for n, block in enumerate(shown, start=1))
+        "\n\n".join(f"[{n}] {block.judge_text}" for n, block in enumerate(shown, start=1))
         or "(no context was shown)"
     )
     cited = [str(renumber[n]) for n in item.cited_blocks if n in renumber]
@@ -243,7 +248,9 @@ def parse_judge(raw: str) -> JudgeScores:
 def _json_object(text: str) -> dict[str, object] | None:
     try:
         payload = json.loads(text)
-    except json.JSONDecodeError:
+    except (ValueError, RecursionError):
+        # Also an integer past Python's digit limit or nesting past the
+        # recursion limit: a JudgeParseError for the caller, never a crash.
         return None
     return payload if isinstance(payload, dict) else None
 
@@ -322,37 +329,67 @@ def check_families(generation_family: str | None, judge_family: str | None) -> N
         )
 
 
+def answer_level(score: float) -> int:
+    """The deterministic answer score on the judge's three levels: 0 when
+    it is 0, 2 when it is exactly 1, and 1 for anything between."""
+    if score == 0:
+        return 0
+    return 2 if score == 1 else 1
+
+
 @dataclass(frozen=True, slots=True)
 class Agreement:
-    """Agreement of the judge with the deterministic answer score."""
+    """Agreement of the judge's correctness with the answer level over
+    ``n`` judged repeats: exact three-level agreement and the linearly
+    weighted kappa; None where it is undefined."""
 
     n: int
     agreement: float | None
-    kappa: float | None
+    weighted_kappa: float | None
 
 
-def agreement(pairs: Sequence[tuple[bool, bool]]) -> Agreement:
-    """Percent agreement and Cohen's kappa; kappa is None when chance
-    agreement is 1 (both raters constant and equal)."""
+def agreement(pairs: Sequence[tuple[int, int]]) -> Agreement:
+    """Exact agreement and Cohen's kappa with linear weights over the
+    levels 0, 1 and 2 of (answer level, judge correctness) pairs.
+
+    The kappa is computed as one minus observed over expected linear
+    disagreement (|i - j|), which equals the agreement-weight form with
+    weights 1 - |i - j| / 2. It is None when the expected disagreement is
+    0, which happens when both raters use one and the same level. The
+    sums are integers, so that test is exact.
+    """
     n = len(pairs)
     if n == 0:
         return Agreement(0, None, None)
     observed = sum(a == b for a, b in pairs) / n
-    p_a = sum(a for a, _ in pairs) / n
-    p_b = sum(b for _, b in pairs) / n
-    expected = p_a * p_b + (1 - p_a) * (1 - p_b)
-    kappa = None if expected == 1 else (observed - expected) / (1 - expected)
-    return Agreement(n, observed, kappa)
+    levels_a = Counter(a for a, _ in pairs)
+    levels_b = Counter(b for _, b in pairs)
+    expected = sum(
+        count_a * count_b * abs(a - b)
+        for a, count_a in levels_a.items()
+        for b, count_b in levels_b.items()
+    )
+    if expected == 0:
+        return Agreement(n, observed, None)
+    disagreement = n * sum(abs(a - b) for a, b in pairs)
+    return Agreement(n, observed, 1 - disagreement / expected)
 
 
-def judge_pairs(scores: Iterable[RunScore | None]) -> list[tuple[bool, bool]]:
-    """(deterministic answer score >= 0.5, judge correctness == 2) for every
-    judged repeat that has a deterministic answer score."""
-    return [
-        (score.answer >= AGREEMENT_ANSWER_THRESHOLD, score.judge.scores.correctness == 2)
-        for score in scores
-        if score is not None
-        and score.answer is not None
-        and score.judge is not None
-        and score.judge.scores is not None
-    ]
+def judge_pairs(
+    results: Iterable[tuple[str, RunScore | None]],
+) -> dict[str, list[tuple[int, int]]]:
+    """(answer level, judge correctness) for every judged repeat with a
+    deterministic answer score, keyed "answered" or "abstained" by its
+    verdict; a repeat without a score (failed generation) is left out."""
+    pairs: dict[str, list[tuple[int, int]]] = {"answered": [], "abstained": []}
+    for verdict, score in results:
+        if (
+            score is None
+            or score.answer is None
+            or score.judge is None
+            or score.judge.scores is None
+        ):
+            continue
+        key = "abstained" if is_abstention(verdict) else "answered"
+        pairs[key].append((answer_level(score.answer), score.judge.scores.correctness))
+    return pairs

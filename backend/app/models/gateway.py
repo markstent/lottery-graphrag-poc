@@ -10,6 +10,7 @@ for readiness and the models endpoint.
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 from collections.abc import Callable, Mapping
@@ -78,8 +79,33 @@ def parse_reasoning_for_model(value: str, variable: str, provider: str, model: s
     return mode
 
 
+# UTF-16 surrogates in a Python string. Python strings can hold them (a JSON
+# escape such as \ud83d decodes to one), but UTF-8 cannot, so a record holding
+# one fails to serialise (D-096, parser 2.1.1). A high surrogate followed by a
+# low one is a pair, the two halves of one character; any other is lone.
+_SURROGATE_PAIR = re.compile("[\ud800-\udbff][\udc00-\udfff]")
+_SURROGATE = re.compile("[\ud800-\udfff]")
+REPLACEMENT_CHARACTER = "\ufffd"
+
+
+def _joined(match: re.Match[str]) -> str:
+    high, low = (ord(half) for half in match.group(0))
+    return chr(0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00))
+
+
+def replace_lone_surrogates(text: str) -> tuple[str, int]:
+    """``text`` with each surrogate pair joined into the one character it
+    stands for, and each lone surrogate replaced by U+FFFD; and how many
+    were replaced. The result always encodes as UTF-8."""
+    return _SURROGATE.subn(REPLACEMENT_CHARACTER, _SURROGATE_PAIR.sub(_joined, text))
+
+
 class GatewayError(RuntimeError):
-    """Raised when the provider call fails or returns no content."""
+    """Raised when the provider call fails or returns no content. Its
+    message, which may quote the provider, holds no lone surrogate."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(replace_lone_surrogates(message)[0])
 
 
 class EmptyCompletionError(GatewayError):
@@ -104,11 +130,22 @@ class CompletionRequest:
 
 @dataclass(frozen=True, slots=True)
 class Completion:
-    """Stripped model text, call latency and token usage when reported."""
+    """Stripped model text, call latency and token usage when reported.
+
+    ``finish_reason`` is the provider's stop reason as LiteLLM reports it
+    ("stop", "length", ...), or None when it reports none.
+    ``token_limit_reached`` says whether the output stopped at the request's
+    ``max_tokens`` (`_token_limit_reached`), None when nothing says.
+    ``surrogates_replaced`` counts the lone surrogates in the provider's text
+    that ``text`` holds as U+FFFD (`replace_lone_surrogates`).
+    """
 
     text: str
     latency_ms: float
     usage: dict[str, int] | None
+    finish_reason: str | None = None
+    token_limit_reached: bool | None = None
+    surrogates_replaced: int = 0
 
 
 # LiteLLM imports much of itself on first attribute use. Two threads doing that
@@ -145,7 +182,8 @@ def complete(request: CompletionRequest) -> Completion:
             timeout=request.timeout_s,
             **(off_kwargs or {}),
         )
-        content = response["choices"][0]["message"]["content"]
+        choice = response["choices"][0]
+        content = choice["message"]["content"]
     except Exception as error:
         raise GatewayError(f"Model gateway call failed: {error}") from error
     # Before the empty-answer check: a model that ignores "off" and spends the
@@ -157,7 +195,37 @@ def complete(request: CompletionRequest) -> Completion:
     if not isinstance(content, str) or not content.strip():
         raise EmptyCompletionError("Model gateway returned an empty answer")
     latency_ms = (time.perf_counter() - started) * 1000
-    return Completion(content.strip(), latency_ms, _usage(response))
+    usage = _usage(response)
+    reason = _field(choice, "finish_reason")
+    finish_reason = reason if isinstance(reason, str) else None
+    text, replaced = replace_lone_surrogates(content.strip())
+    return Completion(
+        text,
+        latency_ms,
+        usage,
+        finish_reason,
+        _token_limit_reached(finish_reason, usage, request.max_tokens),
+        replaced,
+    )
+
+
+def _token_limit_reached(
+    finish_reason: str | None, usage: dict[str, int] | None, max_tokens: int
+) -> bool | None:
+    """Whether the output stopped at ``max_tokens``: True when the provider
+    says "length" or reports as many completion tokens as the cap; False when
+    it reports fewer; None when it reports neither a count nor "length".
+
+    The count is read as well as the stop reason because LiteLLM's
+    ``ollama/`` adapter reports "stop" for every answer, also for one that
+    Ollama stopped at the cap (tests/test_gateway.py runs it offline).
+    """
+    if finish_reason == "length":
+        return True
+    completion_tokens = (usage or {}).get("completion_tokens")
+    if completion_tokens is None:
+        return None
+    return completion_tokens >= max_tokens
 
 
 def _reasoning_tokens(response: object) -> int:

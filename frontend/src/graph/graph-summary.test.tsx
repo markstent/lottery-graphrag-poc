@@ -79,9 +79,7 @@ describe('GraphSummary', () => {
         view={graphView(full.graph.C, { cap: 1000, focus: false })}
       />,
     )
-    expect(
-      screen.getByText(/No evidence path has been recorded yet/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/No evidence path yet/)).toBeInTheDocument()
   })
 
   it('uses none of the banned words', () => {

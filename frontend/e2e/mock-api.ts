@@ -28,7 +28,10 @@ import pilotInstances from './fixtures/results-pilot-instances.json' with { type
 import pilotSummary from './fixtures/results-pilot-summary.json' with { type: 'json' }
 import runsFixture from './fixtures/results-runs.json' with { type: 'json' }
 import smokeSummary from './fixtures/results-smoke-summary.json' with { type: 'json' }
+import v03Instances from './fixtures/results-v03-instances.json' with { type: 'json' }
+import v03Summary from './fixtures/results-v03-summary.json' with { type: 'json' }
 import world from './fixtures/world-shell.json' with { type: 'json' }
+import settingsFixture from '../src/test/settings.fixture.json' with { type: 'json' }
 
 /** The captured bank: its instance count (Help shows it) and the repeats of an official run. */
 const BANK_INSTANCES = scoredQuestions.length
@@ -47,71 +50,11 @@ const RUNS = runsFixture
 const DEMO_QUESTIONS = world.demo_questions
 
 /**
- * What GET /settings answers: fixed test values for the settings Help shows,
- * in the shape `runner.settings_fields()` gives them, not a capture of the system.
+ * What GET /settings answers: the API's own answer for a fixed test
+ * environment (src/test/settings.fixture.json, written by
+ * backend/tests/test_settings_fixture.py), not a capture of the system.
  */
-const SETTINGS = {
-  judge_configured: true,
-  values: {
-    generation_model: 'fixture-model',
-    generation_model_family: 'fixture-family',
-    generation_temperature: 0,
-    generation_reasoning: 'off',
-    max_tokens: 1024,
-    prompt_version: '2.0.0',
-    prompt_hash: 'fixture-prompt-hash',
-    top_k: 20,
-    rrf_k: 60,
-    context_budget_tokens: 2000,
-    context: { dedupe_threshold: 0.85, evidence_slots: 12, graph_slots: 6 },
-    graph_limits: {
-      depth: 2,
-      nodes_per_hop: 100,
-      edges_per_node_type: 4,
-      total_nodes: 200,
-      relationship_types: 22,
-    },
-    ranking_weights: {
-      graph_distance: 0.25,
-      relationship_type: 0.25,
-      semantic_relevance: 0.35,
-      temporal_validity: 0.15,
-    },
-    reference_date: '2026-01-01',
-    excluded_labels: ['Document'],
-    ontology_version: '2.0.0',
-    graph_label_version: 'v2',
-    relationship_types_b: [
-      'AFFECTS',
-      'AFFECTS_MARKET',
-      'AVAILABLE_IN',
-      'BELONGS_TO',
-      'CATEGORISED_AS',
-      'CONCERNS',
-      'FROM_MARKET',
-      'HAS_MECHANIC',
-      'INSTANCE_OF',
-      'OF_TYPE',
-      'PROVIDED_BY',
-      'RELATED_TO',
-      'RELATED_TO_APP_VERSION',
-      'RELATED_TO_VERSION',
-      'RUNS_ON',
-      'TARGETS',
-      'USES',
-      'USES_PAYMENT',
-      'VERSION_OF',
-    ],
-    repeats: 3,
-    judge_model: 'fixture-judge',
-    judge_model_family: 'fixture-judge-family',
-    judge_temperature: 0,
-    judge_reasoning: 'off',
-    judge_prompt_version: '1.0.0',
-    judge_prompt_hash: 'fixture-judge-prompt-hash',
-    selection_rule: 'reranker-graph-share',
-  },
-}
+const SETTINGS = settingsFixture
 
 const cell = (mean: number, repeats: number) => ({
   mean,
@@ -129,6 +72,7 @@ const FIXTURE_OFFICIAL = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: null,
+  method_version: '0.2.0',
   summary: {
     bank_version: 'fixture-bank (test value)',
     selection: { strata: null, limit: null },
@@ -148,22 +92,64 @@ const FIXTURE_OFFICIAL = {
   },
 }
 
+/** The same test values as a whole-bank run of method v0.3, which compares evidence recall. */
+const FIXTURE_OFFICIAL_V03 = {
+  ...FIXTURE_OFFICIAL,
+  run_id: 'fixture-official-v03',
+  method_version: '0.3.0',
+  summary: {
+    ...FIXTURE_OFFICIAL.summary,
+    method_note: v03Summary.summary.method_note,
+    metrics: {
+      overall: {
+        evidence_recall: FIXTURE_OFFICIAL.summary.metrics.overall.evidence_f1,
+      },
+    },
+  },
+}
+
 /**
- * What GET /benchmarks/latest answers: the invented official run, the newest
- * smoke run, or the newest published run as captured (a subset run, so
- * Overview says there is no official run yet).
+ * What GET /benchmarks/latest answers: the invented official run of either
+ * method, the newest smoke run, or the newest published run as captured (a
+ * subset run, so Overview says there is no official run yet).
  */
 const LATEST = {
   official: FIXTURE_OFFICIAL,
+  v03: FIXTURE_OFFICIAL_V03,
   smoke: world.latest_smoke,
   none: world.latest,
 } as const
 
-/** The run list Results sees: as published, with the generated whole-bank run too, none, or failing. */
+/**
+ * The run list Results sees: as published, with the generated whole-bank run
+ * too, with the generated method v0.3 run as well, with a newer development
+ * run on top of those, none, or failing.
+ */
 export type RunsMode =
-  'published' | 'official' | 'none' | 'unavailable' | 'pending'
+  'published' | 'official' | 'v03' | 'dev' | 'none' | 'unavailable' | 'pending'
 
 export type LatestRun = keyof typeof LATEST | 'unavailable' | 'pending'
+
+/**
+ * A development run: the generated v0.3 run's numbers under
+ * kind "dev" with the label and fixed headline the harness gives that kind
+ * (backend/app/evaluation/runner.py, report.py).
+ */
+const DEV_LABEL = 'development run on seed 2026, not a result'
+const DEV_SUMMARY = {
+  ...v03Summary,
+  run_id: 'fixture-dev',
+  run_kind: 'dev',
+  label: DEV_LABEL,
+  summary: {
+    ...v03Summary.summary,
+    run_kind: 'dev',
+    label: DEV_LABEL,
+    headlines: [
+      'Development run on seed 2026, not a result: the tables are descriptive and no claim is made.',
+    ],
+  },
+}
 
 /**
  * The runs Results can open, by id: the captured pilot and quick check, and
@@ -175,10 +161,14 @@ const RUN_SUMMARIES: Record<string, unknown> = {
   'pilot-2026-nothink': pilotSummary,
   '20261019T164733Z-smoke': smokeSummary,
   [officialSummary.run_id]: officialSummary,
+  [v03Summary.run_id]: v03Summary,
+  [DEV_SUMMARY.run_id]: DEV_SUMMARY,
 }
 const RUN_INSTANCES: Record<string, unknown> = {
   'pilot-2026-nothink': pilotInstances,
   [officialSummary.run_id]: officialInstances,
+  [v03Summary.run_id]: v03Instances,
+  [DEV_SUMMARY.run_id]: v03Instances,
 }
 
 /** The generated whole-bank run as the run list shows it, newest of all. */
@@ -186,10 +176,33 @@ const OFFICIAL_RUN = {
   run_id: officialSummary.run_id,
   run_kind: officialSummary.run_kind,
   label: officialSummary.label,
+  method_version: officialSummary.method_version,
   started_at: '2026-10-20T09:00:00+00:00',
   selection: officialSummary.summary.selection,
   worlds: [2026],
   headlines: officialSummary.summary.headlines,
+}
+
+/** The generated method v0.3 run as the run list shows it, newest of all. */
+const V03_RUN = {
+  run_id: v03Summary.run_id,
+  run_kind: v03Summary.run_kind,
+  label: v03Summary.label,
+  method_version: v03Summary.method_version,
+  started_at: '2026-10-20T09:30:00+00:00',
+  selection: v03Summary.summary.selection,
+  worlds: v03Summary.summary.worlds,
+  headlines: v03Summary.summary.headlines,
+}
+
+/** The development run as the run list shows it, newest of all. */
+const DEV_RUN = {
+  ...V03_RUN,
+  run_id: DEV_SUMMARY.run_id,
+  run_kind: DEV_SUMMARY.run_kind,
+  label: DEV_LABEL,
+  started_at: '2026-10-20T09:45:00+00:00',
+  headlines: DEV_SUMMARY.summary.headlines,
 }
 
 /** The models as captured, with a judge, which the capture ran without. */
@@ -295,6 +308,10 @@ export async function mockApi(
       return new Promise<void>(() => undefined)
     if (path === '/api/v1/benchmarks' && runs === 'official')
       return route.fulfill(json([OFFICIAL_RUN, ...RUNS]))
+    if (path === '/api/v1/benchmarks' && runs === 'v03')
+      return route.fulfill(json([V03_RUN, OFFICIAL_RUN, ...RUNS]))
+    if (path === '/api/v1/benchmarks' && runs === 'dev')
+      return route.fulfill(json([DEV_RUN, V03_RUN, OFFICIAL_RUN, ...RUNS]))
     if (path === '/api/v1/benchmarks' && runs !== 'published')
       return route.fulfill(
         runs === 'none'

@@ -35,6 +35,8 @@ from typing import Any
 
 from app.config import (
     LABEL_VERSION,
+    METHOD_VERSION,
+    PROMPT_EXTRAS,
     REPO_ROOT,
     SELECTION_RULE,
     GraphConfig,
@@ -42,7 +44,14 @@ from app.config import (
     judge_settings_from_env,
 )
 from app.evaluation.bank import BANK_VERSION
-from app.evaluation.checks import CitationMetrics, answer_score, citation_metrics
+from app.evaluation.checks import (
+    SCORER_VERSION,
+    CitationMetrics,
+    GroundednessScore,
+    answer_score,
+    citation_metrics,
+    groundedness,
+)
 from app.evaluation.claims import selection_carrier
 from app.evaluation.grounding import (
     BankInstance,
@@ -64,29 +73,38 @@ from app.evaluation.judge import (
 )
 from app.evaluation.scoring import EvidenceScore, classify_failure, evidence_score
 from app.events import GRAPH_ENTITY_RESOLVED
-from app.evidence import EvidenceChunk
+from app.evidence import AnswerForm, EvidenceChunk
 from app.lab import Lab, bc_graph_settings, wired_pipelines
 from app.observability.logging import run_context, stage_timer
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.pipeline import GraphRagPipeline
-from app.retrieval.standard.context import estimate_tokens
+from app.retrieval.standard.context import block_tokens
 from app.retrieval.standard.fusion import RRF_K
 from app.retrieval.standard.generation import (
+    ANSWER_PARSER_VERSION,
     PROMPT_VERSION,
     SYSTEM_PROMPT,
     AnswerGenerator,
     FakeAnswerGenerator,
     GenerationError,
     GenerationOutput,
+    context_block,
 )
 from app.retrieval.standard.pipeline import StandardRagPipeline
+from app.retrieval.standard.records import RECORD_FACTS_VERSION
 
-RUN_KINDS = ("smoke", "official", "sweep")
+# A dev run (D-091) is a development run on the presentation world: real
+# generator and judge, any repeats, never a result.
+RUN_KINDS = ("smoke", "official", "sweep", "dev")
 SMOKE_LABEL = "scorer smoke test"
-SCORER_VERSION = "2.0.0"
+DEV_LABEL = "development run on seed 2026, not a result"
+# The label a run of each kind always carries; other kinds carry none of their own.
+KIND_LABELS = {"smoke": SMOKE_LABEL, "dev": DEV_LABEL}
 PIPELINES = ("A", "B", "C")
-# An official result reports repeat variance, which needs at least three repeats.
-OFFICIAL_MIN_REPEATS = 3
+# An official run asks each question once (D-097): at temperature 0 with
+# deterministic retrieval the repeats of v0.2.0 gave word-for-word identical
+# answers. --repeats N asks each question N times.
+OFFICIAL_MIN_REPEATS = 1
 WORLD_MANIFEST = "_manifest.json"
 
 logger = logging.getLogger(__name__)
@@ -113,6 +131,19 @@ def _git_dirty() -> bool | None:
     return None if output is None else bool(output.strip())
 
 
+def require_clean_checkout(kind: str) -> None:
+    """Refuse an official run, over the whole bank or part of it (the dry
+    run, the official settings rehearsal), unless the checkout is known to be
+    clean (D-091): uncommitted code must never reach an official result, and
+    a checkout git cannot read is not known to be clean. Other kinds only
+    record git_dirty."""
+    if kind == "official" and _git_dirty() is not False:
+        raise ValueError(
+            "an official run starts or resumes only from a clean checkout, and this one has "
+            "uncommitted changes (or git is unavailable); commit them first"
+        )
+
+
 def settings_fields(
     settings: RetrievalSettings, judge: Judge, kind: str, repeats: int
 ) -> dict[str, Any]:
@@ -133,13 +164,10 @@ def settings_fields(
         "generation_temperature": settings.generation.temperature,
         "max_tokens": settings.generation.max_tokens,
         "prompt_version": PROMPT_VERSION,
+        "answer_parser_version": ANSWER_PARSER_VERSION,
         "top_k": settings.top_k,
         "context_budget_tokens": settings.context.budget_tokens,
-        "context": {
-            "dedupe_threshold": settings.context.dedupe_threshold,
-            "evidence_slots": settings.context.evidence_slots,
-            "graph_slots": settings.context.graph_slots,
-        },
+        "context": {"dedupe_threshold": settings.context.dedupe_threshold},
         "graph_limits": {
             "depth": settings.graph.max_depth,
             "nodes_per_hop": settings.graph.max_nodes_per_hop,
@@ -169,6 +197,9 @@ def settings_fields(
         "judge_temperature": judge.temperature,
         "judge_reasoning": judge.reasoning,
         "selection_rule": SELECTION_RULE,
+        "method_version": METHOD_VERSION,
+        "record_facts_version": RECORD_FACTS_VERSION,
+        "prompt_extras": {extra: list(tags) for extra, tags in PROMPT_EXTRAS.items()},
     }
 
 
@@ -229,6 +260,12 @@ class ReproducibilityRecord:
     judge_reasoning: str | None
     # Which rule chose the evidence in context; None in a file written before it was recorded.
     selection_rule: str | None = None
+    # Method v0.3 (D-092); None in a file written before them, which is method 0.2.0.
+    method_version: str | None = None
+    record_facts_version: str | None = None
+    prompt_extras: dict[str, list[str]] | None = None
+    # D-096; None in a file written before it, whose answers parser 1.0.0 read.
+    answer_parser_version: str | None = None
 
     def to_payload(self) -> dict[str, Any]:
         """Every field, JSON-ready."""
@@ -237,11 +274,30 @@ class ReproducibilityRecord:
 
 @dataclass(frozen=True, slots=True)
 class ShownBlock:
-    """One context block the generator was shown, with the carrier it is."""
+    """One context block the generator was shown, with the carrier it is.
+
+    ``text`` is exactly what the model was shown for the source: the
+    rendered ``context_block`` without its [n], so groundedness measures
+    support against everything the model saw. ``kind`` is the evidence kind
+    (chunk, record, node); None in a block recorded before method v0.3,
+    whose ``text`` is the bare chunk text.
+    """
 
     carrier_id: str
     title: str
     text: str
+    kind: str | None = None
+
+    @property
+    def judge_text(self) -> str:
+        """What the judge and the labelling sheet read (F12): ``text`` less a
+        document chunk's "{title} ({market}, {language})" line. A record's
+        heading with its source, a graph node's "<Label> <id>" heading and a
+        graph record's path line stay; a block recorded before v0.3 holds no
+        title line and is read as is."""
+        if self.kind == "chunk":
+            return self.text.partition("\n")[2]
+        return self.text
 
 
 @dataclass(frozen=True, slots=True)
@@ -268,6 +324,14 @@ class PipelineRun:
     generation_failed: bool
     # The gateway's message when generation failed, so results.json says why.
     generation_error: str | None = None
+    # How the answer was read and how the output ended (RagAnswer, D-096);
+    # None when generation failed and in a run recorded before parser 2.0.0.
+    answer_form: AnswerForm | None = None
+    finish_reason: str | None = None
+    token_limit_reached: bool | None = None
+    cut_off: bool | None = None
+    # Lone surrogates replaced with U+FFFD (parser 2.1.1); None before it.
+    surrogates_replaced: int | None = None
 
     def to_payload(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
@@ -282,6 +346,9 @@ class RunScore:
     citations: CitationMetrics
     failure_class: str | None
     judge: JudgeVerdict | None = None
+    # Descriptive (D-088); None in a score written before it was recorded, and
+    # in a Live Lab score, whose rebuilt blocks carry no text.
+    groundedness: GroundednessScore | None = None
 
     def to_payload(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
@@ -325,6 +392,7 @@ def instance_result_from_payload(payload: dict[str, Any]) -> InstanceResult:
 
 def _score_from_payload(payload: dict[str, Any]) -> RunScore:
     judge = payload["judge"]
+    grounded = payload.get("groundedness")
     return RunScore(
         answer=payload["answer"],
         evidence=EvidenceScore(**payload["evidence"]),
@@ -338,6 +406,7 @@ def _score_from_payload(payload: dict[str, Any]) -> RunScore:
                 "scores": None if judge["scores"] is None else JudgeScores(**judge["scores"]),
             }
         ),
+        groundedness=None if grounded is None else GroundednessScore(**grounded),
     )
 
 
@@ -503,7 +572,7 @@ class BenchmarkRunner:
         self.bank = bank
         self.world_dir = world_dir
         self.kind = kind
-        self.label = SMOKE_LABEL if kind == "smoke" else None
+        self.label = KIND_LABELS.get(kind)
         self.repeats = repeats
         self.pipelines = pipelines
         self.started_at = datetime.now(UTC).isoformat(timespec="seconds")
@@ -657,7 +726,12 @@ class BenchmarkRunner:
         latency_ms = (time.perf_counter() - started) * 1000
         contexts = self._shown.contexts
         blocks = tuple(
-            ShownBlock(selection_carrier(c.kind, c.chunk_id, c.document_id), c.title, c.text)
+            ShownBlock(
+                selection_carrier(c.kind, c.chunk_id, c.document_id),
+                c.title,
+                context_block(c),
+                c.kind,
+            )
             for c in contexts
         )
         resolved = tuple(
@@ -677,13 +751,17 @@ class BenchmarkRunner:
             resolved_ids=resolved,
             seeded=isinstance(pipeline, GraphRagPipeline),
             context_tokens=(
-                sum(estimate_tokens(c.text) for c in contexts)
-                if answer is None
-                else answer.context_tokens
+                # The selection's rendered-block tokens, as a pipeline records them.
+                sum(block_tokens(c) for c in contexts) if answer is None else answer.context_tokens
             ),
             latency_ms=latency_ms,
             generation_failed=answer is None,
             generation_error=error,
+            answer_form=None if answer is None else answer.answer_form,
+            finish_reason=None if answer is None else answer.finish_reason,
+            token_limit_reached=None if answer is None else answer.token_limit_reached,
+            cut_off=None if answer is None else answer.cut_off,
+            surrogates_replaced=None if answer is None else answer.surrogates_replaced,
         )
 
 
@@ -694,7 +772,9 @@ def score_pipeline_run(
 
     The benchmark runner passes the judge's verdict; Live Lab scoring
     (``app.api.scoring``) runs no judge and passes none, so a live score
-    equals the deterministic part of the runner's score for the same run.
+    equals the deterministic part of the runner's score for the same run,
+    groundedness apart: a stored run keeps no block texts, so when every
+    shown block's text is empty there is no groundedness (None).
     """
     answer = answer_score(instance.checks, run.verdict, run.answer)
     evidence = evidence_score(
@@ -706,8 +786,19 @@ def score_pipeline_run(
         [frozenset({block.carrier_id}) for block in run.blocks],
         instance.claims,
     )
+    texts = [block.text for block in run.blocks]
+    grounded = (
+        None
+        if texts and not any(texts)
+        else groundedness(instance.text, run.verdict, run.answer, texts)
+    )
     return RunScore(
-        answer, evidence, citations, classify_failure(answer, evidence, run.seeded), verdict
+        answer,
+        evidence,
+        citations,
+        classify_failure(answer, evidence, run.seeded),
+        verdict,
+        grounded,
     )
 
 
@@ -729,9 +820,10 @@ def check_run_config(
 ) -> None:
     """Refuse a run kind, repeat count or generator that do not fit together.
 
-    Smoke runs need the fake generator; sweep and official runs refuse it, so
-    no answer metric of theirs comes from the fake model; an official run
-    needs three repeats and the generation model family.
+    Smoke runs need the fake generator; sweep, dev and official runs refuse
+    it, so no answer metric of theirs comes from the fake model; an official
+    run needs at least OFFICIAL_MIN_REPEATS repeats and the generation model family. Which seeds a
+    kind may run is checked by the orchestration (``official.check_seeds``).
     """
     if kind not in RUN_KINDS:
         raise ValueError(f"unknown run kind {kind!r}; expected one of {RUN_KINDS}")
@@ -790,6 +882,11 @@ def check_bank(bank: FrozenBank, world_dir: Path, lab: Lab) -> dict[str, Any]:
         raise GroundingError(
             f"the frozen bank has bank version {bank.bank_version}, the code has "
             f"{BANK_VERSION}; ground the bank again"
+        )
+    if bank.scorer_version != SCORER_VERSION:
+        raise GroundingError(
+            f"the frozen bank was grounded for scorer {bank.scorer_version or 'unrecorded'}, "
+            f"the code has scorer {SCORER_VERSION}; ground the bank again"
         )
     built_by = lab.record_serialiser_version
     if bank.record_serialiser_version != built_by:

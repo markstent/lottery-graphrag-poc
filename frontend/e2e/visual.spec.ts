@@ -7,6 +7,7 @@ import {
   listRecordedQuestions,
   live,
   RECORDED_RUNS,
+  runTyped,
   serveLiveRun,
   serveRunInProgress,
 } from './live-lab-fixtures'
@@ -19,6 +20,7 @@ import {
   type LatestRun,
   type RunsMode,
 } from './mock-api'
+import { graphNode } from './mock-data-model'
 
 /**
  * Visual regression baselines for the foundation. Run locally only:
@@ -142,13 +144,31 @@ test.describe('shell', () => {
 
   test('with the evidence drawer open', async ({ page }) => {
     await page.goto('/#/__graph?shell=1&evidence=1')
-    await page.locator('[data-node-id]').first().click()
-    await expect(page.getByRole('dialog', { name: 'Evidence' })).toBeVisible()
-    await expect(
-      page.getByText('Identity service latency causing timeouts.', {
-        exact: false,
-      }),
-    ).toBeVisible()
+    await expect(page.locator('[data-layout-ready="true"]')).toBeVisible()
+    // The first node the framed drawing wholly shows (the fit can leave others
+    // outside it) that the mocked graph API holds a record for.
+    const inFrame = await page.evaluate(() => {
+      const frame = document
+        .querySelector('.react-flow')!
+        .getBoundingClientRect()
+      return [...document.querySelectorAll('[data-node-id]')]
+        .filter((node) => {
+          const box = node.getBoundingClientRect()
+          return (
+            box.left >= frame.left &&
+            box.top >= frame.top &&
+            box.right <= frame.right &&
+            box.bottom <= frame.bottom
+          )
+        })
+        .map((node) => node.getAttribute('data-node-id') ?? '')
+    })
+    const id = inFrame.find((candidate) => graphNode(candidate) !== null) ?? ''
+    expect(id).not.toBe('')
+    await page.locator(`[data-node-id="${id}"]`).click()
+    const drawer = page.getByRole('dialog', { name: 'Evidence' })
+    await expect(drawer).toBeVisible()
+    await expect(drawer.getByText(id).first()).toBeVisible()
     await settle(page)
     await expectScreen(
       page.getByRole('dialog', { name: 'Evidence' }),
@@ -296,8 +316,13 @@ async function screenShot(
 
 test.describe('Overview', () => {
   const STATES = [
-    ['overview-fixture-official', 'official', 'Evidence score, all questions'],
+    [
+      'overview-fixture-official',
+      'official',
+      'Evidence score, questions with claims',
+    ],
     ['overview-no-official-run', 'none', 'No official run yet'],
+    ['overview-fixture-v03', 'v03', 'Evidence recall, questions with claims'],
     ['overview-smoke-only', 'smoke', 'Latest run: scorer smoke test'],
     ['overview-error', 'unavailable', 'The latest run is unavailable.'],
   ] as const
@@ -322,7 +347,7 @@ test.describe('Results', () => {
       'official',
       'Descriptive: not part of the tested family.',
     ],
-    ['results-empty', 'none', 'No benchmark runs yet.'],
+    ['results-empty', 'none', 'No runs yet.'],
     ['results-error', 'unavailable', 'The run list is unavailable.'],
   ] as const
   for (const [name, runs, text] of STATES)
@@ -336,6 +361,20 @@ test.describe('Results', () => {
     await openScreen(page, '#/results?run=pilot-2026-nothink')
     await expect(page.getByText('This run predates the split.')).toBeVisible()
     await screenShot(page, 'results-subset')
+  })
+
+  test('results-v03', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-v03', { runs: 'v03' })
+    await expect(page.getByText('Method v0.3', { exact: true })).toBeVisible()
+    await screenShot(page, 'results-v03')
+  })
+
+  test('results-v03-agreement-and-groundedness', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-v03', { runs: 'v03' })
+    const grounded = page.getByRole('region', { name: 'Groundedness' })
+    await expect(grounded.getByText(/Descriptive, not tested/)).toBeVisible()
+    await grounded.evaluate((el) => el.scrollIntoView({ block: 'end' }))
+    await screenShot(page, 'results-v03-agreement-and-groundedness', 'keep')
   })
 
   test('results-quick-check', async ({ page }) => {
@@ -624,18 +663,8 @@ test.describe('Data Model', () => {
 
   // The Graph and Ontology tabs have their own loading, empty and error states.
   const TABS = [
-    [
-      'graph',
-      '#/data-model?tab=graph',
-      'Kinds of record',
-      'The graph has no kinds of record yet.',
-    ],
-    [
-      'ontology',
-      '#/data-model?tab=ontology',
-      'Concepts',
-      'The ontology has no concepts yet.',
-    ],
+    ['graph', '#/data-model?tab=graph', 'Kinds of record', 'None yet.'],
+    ['ontology', '#/data-model?tab=ontology', 'Concepts', 'None yet.'],
   ] as const
   for (const [tab, hash, title, none] of TABS)
     for (const state of ['pending', 'empty', 'error'] as const)
@@ -690,11 +719,9 @@ test.describe('Live Lab', () => {
     await canvasReady(page)
   }
 
-  async function liveRun(page: Page, waitFor: string) {
-    await page.goto('/#/live-lab')
-    await page.getByRole('button', { name: h1.question }).click()
-    await page.getByRole('button', { name: 'Live', exact: true }).click()
-    await page.getByRole('button', { name: 'Run', exact: true }).click()
+  /** Runs the fixture's own typed question live. */
+  async function liveRun(page: Page, question: string, waitFor: string) {
+    await runTyped(page, question)
     await expect(page.getByText(waitFor).first()).toBeVisible()
   }
 
@@ -720,7 +747,7 @@ test.describe('Live Lab', () => {
       live.events,
       Math.floor(live.events.length * 0.55),
     )
-    await liveRun(page, 'The run is in progress.')
+    await liveRun(page, live.question, 'The run is in progress.')
     await expect(page.getByRole('button', { name: 'Cancel run' })).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Run', exact: true }),
@@ -732,7 +759,7 @@ test.describe('Live Lab', () => {
   test('live-lab-h1-mid-replay-paused', async ({ page }) => {
     await page.goto(`/#/live-lab?question=${h1.instance_id}`)
     await expect(slider(page)).toBeEnabled()
-    const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+    const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
     // A fixed cursor, through the replay's own seek: no timing is involved.
     await seek(page, Math.round(duration * 0.55))
     await expect(page.getByText(/^Paused at /)).toBeVisible()
@@ -795,7 +822,7 @@ test.describe('Live Lab', () => {
       cancelled.events as unknown as typeof live.events,
       cancelled.results,
     )
-    await liveRun(page, 'The run was cancelled.')
+    await liveRun(page, cancelled.question, 'The run was cancelled.')
     // C never started, and the toggle says so.
     await expect(page.getByText('C did not run.')).toBeVisible()
     await expect(
@@ -838,7 +865,7 @@ test.describe('Live Lab', () => {
         }),
       }),
     )
-    await liveRun(page, 'Another run is using the graph.')
+    await liveRun(page, live.question, 'Another run is using the graph.')
     await expect(
       page.getByRole('alert').getByRole('button', { name: 'Retry' }),
     ).toBeVisible()
@@ -871,7 +898,7 @@ test.describe('presentation mode', () => {
     [
       'overview-fixture-official',
       '#/overview',
-      'Evidence score, all questions',
+      'Evidence score, questions with claims',
     ],
     ['results', '#/results', 'This run predates the split.'],
     ['data-model', '#/data-model', 'Incident management'],

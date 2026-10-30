@@ -346,7 +346,7 @@ describe('EvidenceDrawer', () => {
       const provenance = await screen.findByRole('region', {
         name: 'Provenance',
       })
-      expect(provenance).toHaveTextContent('This row has no node in the graph.')
+      expect(provenance).toHaveTextContent('This row has no graph node.')
       expect(screen.queryByRole('link')).toBeNull()
     })
   })

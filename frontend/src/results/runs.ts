@@ -2,30 +2,41 @@
 
 import type { Schemas } from '../api/client'
 import { plainName } from '../app/plain-words'
+import { kindWord } from '../app/run-kinds'
 import { plural } from '../charts/scale'
 import { STRATUM_LABELS } from './strata'
 
 type Run = Schemas['BenchmarkRunOut']
 
-/** A result is a whole-bank official run; a subset covers part of the bank; a quick check is a scorer test. */
-export type RunStanding = 'result' | 'subset' | 'quick-check'
+/**
+ * A result is a whole-bank official run; a subset covers part of the bank; a
+ * quick check is a scorer test; any other kind, such as a development run or a
+ * depth sweep, is not a result.
+ */
+export type RunStanding = 'result' | 'subset' | 'quick-check' | 'not-a-result'
 
 export function standing(run: Run): RunStanding {
   if (run.run_kind === 'smoke') return 'quick-check'
+  if (run.run_kind !== 'official') return 'not-a-result'
   const { strata, limit, questions } = run.selection
-  return run.run_kind === 'official' &&
-    (strata != null || limit != null || questions != null)
+  return strata != null || limit != null || questions != null
     ? 'subset'
     : 'result'
 }
 
-const STANDING_WORDS: Record<RunStanding, string> = {
+const STANDING_WORDS: Record<Exclude<RunStanding, 'not-a-result'>, string> = {
   result: 'Result',
   subset: 'Subset run',
   'quick-check': 'Quick check',
 }
 
-export const standingWord = (run: Run): string => STANDING_WORDS[standing(run)]
+/** The standing in words; a run that is not a result says so after its kind, "Development run, not a result". */
+export function standingWord(run: Run): string {
+  const kind = standing(run)
+  return kind === 'not-a-result'
+    ? `${kindWord(run.run_kind)}, not a result`
+    : STANDING_WORDS[kind]
+}
 
 const startedAt = (run: Run) => Date.parse(run.started_at)
 
@@ -42,7 +53,7 @@ const of = (runs: readonly Run[], kind: RunStanding) =>
 export const newestResult = (runs: readonly Run[]): Run | null =>
   newest(of(runs, 'result'))
 
-/** The newest result, else the newest subset, else the newest run; null with no runs. */
+/** The newest result, else the newest subset, else the newest run of any kind; null with no runs. */
 export function defaultRun(runs: readonly Run[]): string | null {
   return (
     (newestResult(runs) ?? newest(of(runs, 'subset')) ?? newest(runs))

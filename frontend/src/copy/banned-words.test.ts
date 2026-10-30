@@ -94,6 +94,13 @@ function textsOf(node: ts.Node | undefined): string[] {
     ]
   if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node))
     return textsOf(node.expression)
+  // `plural(n, 'noun')` draws its noun next to a number; the number is data.
+  if (
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 'plural'
+  )
+    return textsOf(node.arguments[1])
   if (ts.isConditionalExpression(node))
     return [...textsOf(node.whenTrue), ...textsOf(node.whenFalse)]
   if (ts.isBinaryExpression(node)) {
@@ -374,9 +381,28 @@ describe('copy budget outside Help', () => {
       'Two words',
     ])
   })
+
+  it('counts a plural noun in the budget', () => {
+    const sample = `export const X = () => <p>{plural(n, 'tested comparison')} failed</p>`
+    const words = budgetCopyIn(sample, 'x.tsx').reduce(
+      (total, text) => total + wordsIn(text),
+      0,
+    )
+    expect(words).toBe(3)
+  })
 })
 
 describe('copy in expressions', () => {
+  it('counts the noun passed to plural(), in JSX and in templates', () => {
+    const sample = `export const X = () => <p>{plural(n, 'tested comparison')}{\`Bound to \${plural(k, 'local term')} here\`}</p>`
+    expect(copyIn(sample).map(({ text }) => text)).toEqual([
+      'tested comparison',
+      'Bound to ',
+      'local term',
+      ' here',
+    ])
+  })
+
   it('counts what a condition shows, not what it compares', () => {
     const sample = `export const X = () => <p>{ready && 'Shown text'}{status === 'ready' ? 'Yes now' : 'No'}{a || 'Fallback words'}</p>`
     expect(copyIn(sample).map(({ text }) => text)).toEqual([

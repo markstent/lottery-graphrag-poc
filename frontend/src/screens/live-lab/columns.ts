@@ -7,13 +7,14 @@
 import type { Schemas } from '../../api/client'
 import { nodeLabel } from '../../design/node-labels'
 import type { PipelineId } from '../../design/pipelines'
-import { STAGE_LABELS, STEPS } from '../../run/lanes'
+import { stageLabel, STEPS } from '../../run/lanes'
 import { formatDuration } from './format'
 import { recordTitle } from './record-title'
 import type { RunPhase, Timeline } from './use-live-run'
 import type {
   CandidateKind,
   DiscardReason,
+  GraphTier,
   PipelineState,
   RunState,
   Stage,
@@ -44,10 +45,15 @@ function unseen(status: PipelineState['status']): StageRowStatus {
   return status === 'completed' ? 'not-run' : 'not-reached'
 }
 
-export function stageRows(id: PipelineId, pipeline: PipelineState): StageRow[] {
+export function stageRows(
+  id: PipelineId,
+  pipeline: PipelineState,
+  /** A recording of the old method, which keeps its own step names. */
+  oldMethod = false,
+): StageRow[] {
   return STEPS[id].map((stage) => {
     const recorded = pipeline.stages[stage]
-    const label = STAGE_LABELS[stage]
+    const label = stageLabel(id, stage, oldMethod)
     if (recorded === undefined)
       return {
         stage,
@@ -78,15 +84,47 @@ export interface EvidenceRow {
   state: EvidenceRowState
   /** Why it was set aside; null for the other states. */
   detail: string | null
+  /**
+   * Where a graph record stood in the graph's own order (method v0.3), such
+   * as "question's target · graph rank 2"; null for a passage, a record
+   * refused before the order, and every record of an old-method run.
+   */
+  place: string | null
 }
 
-const DISCARD_WORDS: Record<DiscardReason, string> = {
+/** The reasons method v0.3 gives. A recording made under the old method
+ * (v0.2) may carry others, which it read under rules no longer in use. */
+const DISCARD_WORDS: Partial<Record<DiscardReason, string>> = {
   excluded_label: 'a kind of record this question does not use',
   out_of_scope_market: 'outside the markets asked about',
-  superseded_by_structured_fact: 'a table value already answers it',
+  same_record: 'the same record is already in the context',
   context_budget: 'the context was full',
-  slot_limit: 'no slot left',
   duplicate: 'a duplicate',
+}
+
+const OLD_METHOD_DISCARD = 'Set aside under the old method'
+
+function discardText(reason: DiscardReason): string {
+  const words = DISCARD_WORDS[reason]
+  return words === undefined ? OLD_METHOD_DISCARD : `Set aside: ${words}`
+}
+
+const TIER_WORDS: Record<GraphTier, string> = {
+  seed: 'starting point',
+  target: "question's target",
+  other: 'other',
+}
+
+function placeText({
+  tier,
+  graphRank,
+}: {
+  tier: GraphTier | null
+  graphRank: number | null
+}): string | null {
+  return tier === null || graphRank === null
+    ? null
+    : `${TIER_WORDS[tier]} · graph rank ${graphRank}`
 }
 
 const ORDER: Record<EvidenceRowState, number> = {
@@ -118,6 +156,7 @@ export function evidenceRows(
     kind: CandidateKind,
     state: EvidenceRowState,
     detail: string | null,
+    place: string | null = null,
   ) =>
     rows.set(recordId, {
       id: recordId,
@@ -125,19 +164,43 @@ export function evidenceRows(
       kind: kindOf(recordId, kind),
       state,
       detail,
+      place,
     })
 
   for (const { id: recordId, kind } of pipeline.candidates)
     put(recordId, kind, 'candidate', null)
-  for (const { id: recordId, kind } of pipeline.selected)
-    put(recordId, kind, 'selected', null)
-  for (const { id: recordId, reason } of pipeline.discarded) {
+  for (const outcome of pipeline.selected)
+    put(outcome.id, outcome.kind, 'selected', null, placeText(outcome))
+  for (const outcome of pipeline.discarded) {
     const kind: CandidateKind =
-      pipeline.candidates.find((c) => c.id === recordId)?.kind ??
-      (nodes.some((node) => node.id === recordId) ? 'node' : 'chunk')
-    put(recordId, kind, 'discarded', `Set aside: ${DISCARD_WORDS[reason]}`)
+      pipeline.candidates.find((c) => c.id === outcome.id)?.kind ??
+      (nodes.some((node) => node.id === outcome.id) ? 'node' : 'chunk')
+    put(
+      outcome.id,
+      kind,
+      'discarded',
+      discardText(outcome.reason),
+      placeText(outcome),
+    )
   }
   return [...rows.values()].sort((a, b) => ORDER[a.state] - ORDER[b.state])
+}
+
+/** The graph labels the question named, for B and C; null for A, before the
+ * event and for an old-method recording, which did not look for them. */
+export function targetLine(id: PipelineId, run: RunState): string | null {
+  const targets = id === 'A' ? null : run.graph[id].targetTypes
+  if (targets === null) return null
+  return `Question's target: ${targets.length === 0 ? 'none named' : targets.map(nodeLabel).join(', ')}`
+}
+
+/** The context's size against its budget once it is built; null before, and
+ * for an old-method recording, which recorded no budget. */
+export function contextLine(pipeline: PipelineState): string | null {
+  const context = pipeline.context
+  if (context === null || context.budgetTokens === null) return null
+  const tokens = (value: number) => value.toLocaleString('en-GB')
+  return `Context: ${tokens(context.tokens)} of ${tokens(context.budgetTokens)} tokens`
 }
 
 /** One sentence when the pipeline did not finish, or null. */

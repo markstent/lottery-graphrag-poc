@@ -1,8 +1,9 @@
-"""``summary.json`` v2 and ``report.md`` for a benchmark run (Phase 3 benchmark v2).
+"""``summary.json`` schema 3 and ``report.md`` for a benchmark run (method v0.3).
 
 ``summarize`` is the only place a benchmark number is computed: per-stratum
 means, clustered paired comparisons with Holm over the declared family,
-generated headlines, judge agreement and failure counts. ``render_report``
+generated headlines, judge agreement, failure counts and the descriptive
+groundedness of answers. ``render_report``
 renders that summary as Markdown and computes nothing of its own.
 
 An observation is one bank instance in one world. Its value for a metric and
@@ -25,10 +26,12 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
+from app.config import METHOD_VERSION
 from app.evaluation.bank import STRATA
 from app.evaluation.grounding import BankInstance
 from app.evaluation.judge import JUDGE_DIMENSIONS, agreement, judge_pairs
 from app.evaluation.runner import (
+    DEV_LABEL,
     PIPELINES,
     SMOKE_LABEL,
     BenchmarkRun,
@@ -48,11 +51,22 @@ from app.evaluation.statistics import (
     wilcoxon_p,
 )
 
-SUMMARY_SCHEMA_VERSION = "2"
+# Schema 3 (method v0.3): evidence recall tested, C_vs_A cells, groundedness
+# metrics and the judge agreement split by abstention. Schema 2 is method v0.2.
+SUMMARY_SCHEMA_VERSION = "3"
 SMOKE_HEADLINE = (
     "Scorer smoke test: the fake generator answers from titles only; "
     "these numbers are not a result."
 )
+DEV_HEADLINE = f"{DEV_LABEL.capitalize()}: the tables are descriptive and no claim is made."
+# Declared wherever v0.3.0 is reported (proposal section 3, item 6; D-093): in
+# the header of every method v0.3 report and as ``method_note`` in its summary.
+METHOD_NOTE = (
+    "Method v0.3 was made after seeing the v0.2.0 result, in which the graph did not win; "
+    "why, and what changed, is in Help, chapter 9 (D-093)."
+)
+# Kinds whose headlines are one fixed line in place of the generated ones.
+FIXED_HEADLINES = {"smoke": SMOKE_HEADLINE, "dev": DEV_HEADLINE}
 # H2 splits into its id-anchored cell ("H2") and its name-anchored sub-group.
 STRATUM_KEYS = ("H1", "H2", "H2_name", "H3", "H5")
 OVERALL = "overall"
@@ -64,24 +78,41 @@ STRATUM_LABELS = {
     "H5": STRATA["H5"],
     OVERALL: "every question",
 }
-COMPARISONS = {"B_vs_A": ("B", "A"), "C_vs_B": ("C", "B")}
-COMPARED_METRICS = ("evidence_f1", "answer")
-METRIC_UNITS = {"evidence_f1": "evidence points", "answer": "answer points"}
+COMPARISONS = {"B_vs_A": ("B", "A"), "C_vs_B": ("C", "B"), "C_vs_A": ("C", "A")}
+# The comparisons in the Holm family, with headlines and the ontology split;
+# C_vs_A is reported descriptively, never tested (D-087).
+TESTED_COMPARISONS = ("B_vs_A", "C_vs_B")
+# Evidence F1 and precision are descriptive tables only (D-087).
+COMPARED_METRICS = ("evidence_recall", "answer")
+METRIC_UNITS = {"evidence_recall": "evidence points", "answer": "answer points"}
 # The headline metric of each tested stratum.
-PRIMARY_METRIC = {"H1": "evidence_f1", "H2": "evidence_f1", "H3": "answer", "H5": "evidence_f1"}
+PRIMARY_METRIC = {
+    "H1": "evidence_recall",
+    "H2": "evidence_recall",
+    "H3": "answer",
+    "H5": "evidence_recall",
+}
+# The tested cells: (comparison, stratum, metric).
 HOLM_FAMILY = frozenset(
-    {
-        ("H1", "evidence_f1"),
-        ("H2", "evidence_f1"),
-        ("H5", "evidence_f1"),
+    (comparison, stratum, metric)
+    for comparison in TESTED_COMPARISONS
+    for stratum, metric in (
+        ("H1", "evidence_recall"),
+        ("H2", "evidence_recall"),
+        ("H5", "evidence_recall"),
         ("H1", "answer"),
         ("H2", "answer"),
         ("H3", "answer"),
         ("H5", "answer"),
-    }
+    )
 )
+# Descriptive (D-088): the share of an answer's checkable atoms its cited
+# blocks hold, and the share no shown block holds.
+GROUNDEDNESS_METRICS = ("grounded_supported", "grounded_unsupported")
 # The two groups of the ontology-dependent split, by the instance flag.
 ONTOLOGY_GROUPS = {"ontology_dependent": True, "other": False}
+# Kinds whose tested cells are never a result, and the words their table says.
+NOT_A_RESULT = {"smoke": "smoke run", "dev": "development run"}
 REASON_WORDS = {
     "tested": "tested",
     "too_few": "not tested: too few pairs or groups",
@@ -89,6 +120,12 @@ REASON_WORDS = {
 }
 # Pipeline A resolves no entities, so its anchor resolution reads the selection only.
 ANCHOR_RESOLUTION_BASIS = {"A": "selection", "B": "resolution", "C": "resolution"}
+
+# The owner's rule of 2026-10-27: a weighted kappa is shown only over at least
+# this many items; below it the page says "too few to say". Exact agreement is
+# always shown, with its n.
+MIN_KAPPA_ITEMS = 10
+TOO_FEW_FOR_KAPPA = "too few to say"
 
 Extractor = Callable[[RunScore, PipelineRun], float | None]
 
@@ -114,6 +151,12 @@ METRICS: dict[str, Extractor] = {
     "latency_ms": lambda _s, r: r.latency_ms,
     "context_tokens": lambda _s, r: float(r.context_tokens),
     **{f"judge_{d}": _judge_dimension(d) for d in JUDGE_DIMENSIONS},
+    "grounded_supported": lambda s, _r: (
+        None if s.groundedness is None else s.groundedness.supported_share
+    ),
+    "grounded_unsupported": lambda s, _r: (
+        None if s.groundedness is None else s.groundedness.unsupported_share
+    ),
 }
 
 
@@ -172,8 +215,11 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
     observations = [_observe(result) for result in results]
     comparisons = _comparisons(observations)
     smoke = run.kind == "smoke"
+    reproducibility = run.reproducibility()
+    run_record = reproducibility["run"]
     return {
         "schema_version": SUMMARY_SCHEMA_VERSION,
+        "method_note": METHOD_NOTE if run_record.get("method_version") == METHOD_VERSION else None,
         "run_kind": run.kind,
         "label": SMOKE_LABEL if smoke else run.label,
         "bank_version": run.record.bank_version,
@@ -193,11 +239,13 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
         "metrics": metric_tables(results),
         "comparisons": [c.to_payload() for c in comparisons],
         "ontology_split": _ontology_split(observations),
-        "headlines": [SMOKE_HEADLINE] if smoke else _headlines(comparisons),
+        "headlines": (
+            [FIXED_HEADLINES[run.kind]] if run.kind in FIXED_HEADLINES else _headlines(comparisons)
+        ),
         "judge_agreement": _judge_agreement(results, pipelines),
         "failures": _failures(results, pipelines),
         "selection": run.selection.to_payload(),
-        "reproducibility": run.reproducibility(),
+        "reproducibility": reproducibility,
     }
 
 
@@ -330,7 +378,7 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
         for metric in COMPARED_METRICS:
             for comparison, (x, y) in COMPARISONS.items():
                 paired = _pairs(members, metric, x, y)
-                if (stratum, metric) not in HOLM_FAMILY:
+                if (comparison, stratum, metric) not in HOLM_FAMILY:
                     reason = "not_in_family"
                 elif paired.too_few:
                     reason = "too_few"
@@ -365,7 +413,8 @@ def _ontology_split(observations: Sequence[_Observation]) -> list[dict[str, Any]
     for group, flag in ONTOLOGY_GROUPS.items():
         members = [o for o in observations if o.ontology_dependent is flag]
         for metric in COMPARED_METRICS:
-            for comparison, (x, y) in COMPARISONS.items():
+            for comparison in TESTED_COMPARISONS:
+                x, y = COMPARISONS[comparison]
                 paired = _pairs(members, metric, x, y)
                 interval = paired.interval
                 cells.append(
@@ -391,7 +440,7 @@ def _headlines(comparisons: Sequence[_Comparison]) -> list[str]:
     cells = {(c.stratum, c.metric, c.comparison): c for c in comparisons}
     lines = []
     for stratum, metric in PRIMARY_METRIC.items():
-        for comparison in COMPARISONS:
+        for comparison in TESTED_COMPARISONS:
             cell = cells[(stratum, metric, comparison)]
             # A cell without pairs takes the "too few" form, which reads only n and clusters.
             interval = cell.interval or Interval(0.0, 0.0, 0.0, 0, 0)
@@ -400,26 +449,35 @@ def _headlines(comparisons: Sequence[_Comparison]) -> list[str]:
                     comparison, STRATUM_LABELS[stratum], METRIC_UNITS[metric], interval, cell.p_holm
                 )
             )
-    for comparison in COMPARISONS:
-        cell = cells[("H2_name", "evidence_f1", comparison)]
+    for comparison in TESTED_COMPARISONS:
+        cell = cells[("H2_name", "evidence_recall", comparison)]
         lines.append(
             subgroup_line(
-                comparison, STRATUM_LABELS["H2_name"], METRIC_UNITS["evidence_f1"], cell.interval
+                comparison,
+                STRATUM_LABELS["H2_name"],
+                METRIC_UNITS["evidence_recall"],
+                cell.interval,
             )
         )
     return lines
 
 
 def _judge_agreement(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> dict[str, Any]:
-    def scores(tags: Sequence[str]) -> list[RunScore | None]:
-        return [s for r in results for tag in tags for s in r.scores.get(tag, [])]
+    """Three-level agreement of the judge with the answer score, split by
+    whether the answer abstained, overall and per pipeline."""
 
-    return {
-        "overall": dataclasses.asdict(agreement(judge_pairs(scores(pipelines)))),
-        "pipelines": {
-            tag: dataclasses.asdict(agreement(judge_pairs(scores([tag])))) for tag in pipelines
-        },
-    }
+    def split(tags: Sequence[str]) -> dict[str, Any]:
+        repeats: list[tuple[str, RunScore | None]] = [
+            (run.verdict, score)
+            for r in results
+            for tag in tags
+            for run, score in zip(r.runs.get(tag, []), r.scores.get(tag, []), strict=True)
+        ]
+        return {
+            key: dataclasses.asdict(agreement(pairs)) for key, pairs in judge_pairs(repeats).items()
+        }
+
+    return {"overall": split(pipelines), "pipelines": {tag: split([tag]) for tag in pipelines}}
 
 
 def _failures(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> dict[str, Any]:
@@ -446,6 +504,7 @@ def render_report(run: BenchmarkRun) -> str:
     lines = [
         "# Benchmark run",
         "",
+        *([summary["method_note"], ""] if summary["method_note"] else []),
         f"Run kind: {summary['run_kind']}.",
         *([f"Label: {summary['label']}."] if summary["label"] else []),
         f"Selection: {run.selection.describe()}.",
@@ -460,8 +519,9 @@ def render_report(run: BenchmarkRun) -> str:
     ]
     for key in (*STRATUM_KEYS, OVERALL):
         lines += _stratum_section(summary, key)
-    lines += _comparison_section(summary["comparisons"], smoke=run.kind == "smoke")
+    lines += _comparison_section(summary["comparisons"], NOT_A_RESULT.get(run.kind))
     lines += _ontology_split_section(summary["ontology_split"])
+    lines += _groundedness_section(summary)
     lines += _agreement_section(summary["judge_agreement"])
     lines += _failure_section(summary["failures"], summary["unavailable"])
     lines += reproducibility_section(summary["reproducibility"])
@@ -496,6 +556,8 @@ def _stratum_section(summary: dict[str, Any], key: str) -> list[str]:
         "|---" * (len(pipelines) + 1) + "|",
     ]
     for metric, cells in table.items():
+        if metric in GROUNDEDNESS_METRICS:
+            continue
         row = []
         for tag in pipelines:
             cell = cells[tag]
@@ -514,16 +576,21 @@ def _stratum_section(summary: dict[str, Any], key: str) -> list[str]:
     return [*lines, ""]
 
 
-def _comparison_section(comparisons: Sequence[dict[str, Any]], smoke: bool) -> list[str]:
-    """The comparisons table; a smoke run's tested cells say they are not a result."""
+def _comparison_section(
+    comparisons: Sequence[dict[str, Any]], not_a_result: str | None
+) -> list[str]:
+    """The comparisons table; the tested cells of a smoke or dev run say they are not a result."""
     words = (
-        {**REASON_WORDS, "tested": "tested (smoke run, not a result)"} if smoke else REASON_WORDS
+        REASON_WORDS
+        if not_a_result is None
+        else {**REASON_WORDS, "tested": f"tested ({not_a_result}, not a result)"}
     )
     lines = [
         "## Comparisons",
         "",
         "Differences in points (one point is 0.01 on the 0 to 1 scale); "
-        "p is Wilcoxon on group means, Holm-adjusted over the family.",
+        "p is Wilcoxon on group means, Holm-adjusted over the family. "
+        "C_vs_A is reported for reference and never tested.",
         "",
         "| Stratum | Metric | Comparison | Pairs | Groups | Mean | 95 percent interval "
         "| p | Holm p | Test |",
@@ -566,20 +633,58 @@ def _ontology_split_section(cells: Sequence[dict[str, Any]]) -> list[str]:
     return [*lines, ""]
 
 
+def _groundedness_section(summary: dict[str, Any]) -> list[str]:
+    """Per stratum and pipeline, the mean shares of supported and unsupported atoms."""
+    lines = [
+        "## Groundedness (descriptive)",
+        "",
+        "The share of an answer's checkable atoms (ids, dates, numbers) that the blocks "
+        "it cites hold, and the share no shown block holds. "
+        "Answers with no such atom are left out; no test is run.",
+        "",
+        "| Stratum | Pipeline | Supported share | Unsupported share |",
+        "|---|---|---|---|",
+    ]
+    for key in (*STRATUM_KEYS, OVERALL):
+        table = summary["metrics"][key]
+        for tag in summary["anchor_resolution_basis"]:
+            shown = [
+                "-"
+                if (cell := table[metric][tag])["mean"] is None
+                else f"{cell['mean']:.3f} (n {cell['n']})"
+                for metric in GROUNDEDNESS_METRICS
+            ]
+            lines.append(f"| {key} | {tag} | " + " | ".join(shown) + " |")
+    return [*lines, ""]
+
+
 def _agreement_section(agreements: dict[str, Any]) -> list[str]:
     lines = [
         "## Judge agreement",
         "",
-        "Agreement of judge correctness 2 with a deterministic answer score of at least 0.5.",
+        "The deterministic answer score is put on the judge's three correctness levels.",
         "",
-        "| Pipeline | Judged repeats | Agreement | Kappa |",
-        "|---|---|---|---|",
+        "- Level 0: the answer score is 0, and the judge gives correctness 0.",
+        "- Level 1: the answer score is between 0 and 1, and the judge gives correctness 1.",
+        "- Level 2: the answer score is exactly 1, and the judge gives correctness 2.",
+        "",
+        "Agreement is the share of judged repeats on the same level; the weighted kappa "
+        "(linear weights) discounts chance and counts a one-level gap as half a disagreement.",
+        f"The weighted kappa is shown only over at least {MIN_KAPPA_ITEMS} judged repeats; "
+        f"below that the table says {TOO_FEW_FOR_KAPPA}.",
+        "Answers that say the sources do not answer are reported apart from answers that answer.",
+        "",
+        "| Pipeline | Answers | Judged repeats | Agreement | Weighted kappa |",
+        "|---|---|---|---|---|",
     ]
     rows = [("all", agreements["overall"]), *agreements["pipelines"].items()]
-    for name, row in rows:
-        lines.append(
-            f"| {name} | {row['n']} | {_ratio(row['agreement'])} | {_ratio(row['kappa'])} |"
-        )
+    for name, split in rows:
+        for answers in ("answered", "abstained"):
+            row = split[answers]
+            lines.append(
+                f"| {name} | {answers} | {row['n']} | {_ratio(row['agreement'])} "
+                f"| {kappa_text(row['n'], row['weighted_kappa'], undefined='-')} |"
+            )
     return [*lines, ""]
 
 
@@ -611,6 +716,13 @@ def _number(metric: str, value: float) -> str:
 
 def _p(value: float | None) -> str:
     return "-" if value is None else f"{value:.4f}"
+
+
+def kappa_text(n: int, kappa: float | None, undefined: str = "undefined") -> str:
+    """A weighted kappa as shown: only over :data:`MIN_KAPPA_ITEMS` items or more."""
+    if n < MIN_KAPPA_ITEMS:
+        return TOO_FEW_FOR_KAPPA
+    return undefined if kappa is None else f"{kappa:.3f}"
 
 
 def _ratio(value: float | None) -> str:

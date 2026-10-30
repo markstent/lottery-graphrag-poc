@@ -8,6 +8,7 @@ import {
   live,
   plainAnswers,
   RECORDED_RUNS,
+  runTyped,
   serveLiveRun,
 } from './live-lab-fixtures'
 import { expectNoUnmockedRequests, mockApi } from './mock-api'
@@ -40,7 +41,7 @@ test('plays a recording, pauses it and scrubs through it', async ({ page }) => {
   await page.goto(`/#/live-lab?question=${h1.instance_id}`)
   await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
   await page.getByRole('button', { name: 'Pause' }).click()
-  const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+  const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
   await page
     .getByRole('slider', { name: 'Position' })
     .fill(String(Math.round(duration * 0.55)))
@@ -63,7 +64,7 @@ test('a finished recording does not stretch the page past its content', async ({
 }) => {
   await page.goto(`/#/live-lab?question=${h1.instance_id}`)
   await page.getByRole('button', { name: 'Pause' }).click()
-  const duration = Math.round(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+  const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
   await page.getByRole('slider', { name: 'Position' }).fill(String(duration))
   await expect(page.getByText('The run is complete.')).toBeVisible()
   const { page: height, content } = await page.evaluate(() => ({
@@ -81,12 +82,71 @@ test('follows a live run and offers the timeline when it ends', async ({
   page,
 }) => {
   await serveLiveRun(page, live.events, live.results)
-  await page.goto('/#/live-lab')
-  await page.getByRole('button', { name: h1.question }).click()
-  await page.getByRole('button', { name: 'Live', exact: true }).click()
-  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await runTyped(page, live.question)
   await expect(page.getByText('The run is complete.')).toBeVisible()
   await expect(page.getByRole('slider', { name: 'Position' })).toBeEnabled()
+})
+
+test('shows where the graph put each record under method v0.3, and why one was set aside', async ({
+  page,
+}) => {
+  await serveLiveRun(page, live.events, live.results)
+  await runTyped(page, live.question)
+  await expect(page.getByText('The run is complete.')).toBeVisible()
+  const graph = page.getByRole('region', { name: 'B · Graph', exact: true })
+  await expect(
+    graph.getByText("Question's target: incident, market, platform version"),
+  ).toBeVisible()
+  await expect(graph.getByText('Context: 1,996 of 2,000 tokens')).toBeVisible()
+  await expect(
+    graph
+      .getByRole('list', { name: 'Steps' })
+      .getByText('Re-order passages, take turns'),
+  ).toBeVisible()
+  const evidence = graph.getByRole('list', { name: 'Evidence' })
+  await expect(
+    evidence.getByText('starting point · graph rank 1'),
+  ).toBeVisible()
+  await expect(
+    evidence.getByText('Set aside: the context was full').first(),
+  ).toBeAttached()
+  await expect(evidence.getByText(/old method/)).toHaveCount(0)
+  await shot(page, 'live-v03-end')
+})
+
+test('shows a recording as made under method v0.3, with its reasons and graph ranks', async ({
+  page,
+}) => {
+  await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+  const bar = page.getByRole('region', { name: 'Question' })
+  await expect(bar.getByText('Recorded run', { exact: true })).toBeVisible()
+  await expect(bar.getByText(/old method/)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Pause' }).click()
+  const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
+  await page.getByRole('slider', { name: 'Position' }).fill(String(duration))
+  await expect(page.getByText('The run is complete.')).toBeVisible()
+  const graph = page.getByRole('region', { name: 'B · Graph', exact: true })
+  await expect(
+    graph.getByText("Question's target: incident, market, platform version"),
+  ).toBeVisible()
+  await expect(graph.getByText('Context: 1,998 of 2,000 tokens')).toBeVisible()
+  await expect(
+    graph
+      .getByRole('list', { name: 'Steps' })
+      .getByText('Re-order passages, take turns'),
+  ).toBeVisible()
+  const evidence = graph.getByRole('list', { name: 'Evidence' })
+  await expect(evidence.getByText(/graph rank/).first()).toBeAttached()
+  await expect(
+    evidence.getByText('Set aside: the context was full').first(),
+  ).toBeAttached()
+  await expect(evidence.getByText(/old method/)).toHaveCount(0)
+  await expect(
+    page
+      .getByRole('region', { name: 'Scorecard' })
+      .getByRole('columnheader', { name: 'Evidence recall' }),
+  ).toBeVisible()
+  await shot(page, 'recorded-v03-end')
 })
 
 test('shows a cancelled run as it was recorded, with no score', async ({
@@ -97,10 +157,7 @@ test('shows a cancelled run as it was recorded, with no score', async ({
     cancelled.events as unknown as typeof live.events,
     plainAnswers(cancelled.results),
   )
-  await page.goto('/#/live-lab')
-  await page.getByRole('button', { name: h1.question }).click()
-  await page.getByRole('button', { name: 'Live', exact: true }).click()
-  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await runTyped(page, cancelled.question)
   await expect(page.getByText('The run was cancelled.')).toBeVisible()
   await expect(
     page.getByRole('region', { name: 'B · Graph', exact: true }),
@@ -464,10 +521,7 @@ test('shows only what can be measured for a question with no answer key', async 
     score: null,
   }
   await serveLiveRun(page, live.events, adHoc)
-  await page.goto('/#/live-lab')
-  await page.getByRole('button', { name: h1.question }).click()
-  await page.getByRole('button', { name: 'Live', exact: true }).click()
-  await page.getByRole('button', { name: 'Run', exact: true }).click()
+  await runTyped(page, live.question)
   await expect(
     page.getByText('No answer key exists for this question.'),
   ).toBeVisible()
@@ -519,4 +573,108 @@ test('presentation mode keeps the scorecard label on one line', async ({
   const corner = page.getByText('scored against the answer key')
   await expect(corner).toBeVisible()
   expect(await lineCount(corner)).toBe(1)
+})
+
+test('on a desktop the tables fit, so their boxes are neither tab stops nor named groups', async ({
+  page,
+}) => {
+  await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+  await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await toEnd(page)
+  await expect(page.getByRole('region', { name: 'Scorecard' })).toBeVisible()
+  await expect(
+    page.getByRole('table', { name: 'Market coverage' }),
+  ).toBeVisible()
+  // A named group around a table that fits would only be announced twice.
+  for (const name of ['Scorecard', 'Market coverage'])
+    await expect(page.getByRole('group', { name })).toHaveCount(0)
+  const boxes = page.locator('.overflow-x-auto')
+  for (const box of await boxes.all()) {
+    await expect(box).not.toHaveAttribute('tabindex')
+    await expect(box).not.toHaveAttribute('role')
+  }
+})
+
+test('a long answer scrolls inside its own capped card and leaves the other cards their height', async ({
+  page,
+}) => {
+  await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+  await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
+  await page.getByRole('button', { name: 'Pause' }).click()
+  await toEnd(page)
+  const card = (name: string) =>
+    page.getByRole('region', { name: `${name} answer`, exact: true })
+  const a = card('A · Text search')
+  const c = card('C · Graph + Ontology')
+  await expect(c).toBeVisible()
+  // C's answer in this recording is about 3,900 characters: it scrolls in its
+  // card, which the keyboard can reach, and A keeps its own, shorter height.
+  const scroller = page.getByRole('group', {
+    name: 'C · Graph + Ontology answer text',
+  })
+  await expect(scroller).toHaveAttribute('tabindex', '0')
+  await scroller.focus()
+  await page.keyboard.press('PageDown')
+  await expect
+    .poll(() => scroller.evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(0)
+  const height = async (box: Locator) => (await box.boundingBox())!.height
+  expect(await height(c)).toBeLessThanOrEqual(24 * 16 + 60)
+  expect(await height(a)).toBeLessThan(await height(c))
+})
+
+// The app is built for 16:9 screens; on a phone Live Lab stacks the canvas
+// and the three approaches, and wide tables scroll in their own box.
+test.describe('at phone width', () => {
+  test.use({ viewport: { width: 390, height: 844 } })
+
+  test('a finished recording fits the page, with the approaches stacked', async ({
+    page,
+  }) => {
+    await page.goto(`/#/live-lab?question=${h1.instance_id}`)
+    await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
+    await page.getByRole('button', { name: 'Pause' }).click()
+    await toEnd(page)
+    await expect(page.getByRole('region', { name: 'Scorecard' })).toBeVisible()
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true)
+    const canvas = (await page
+      .getByRole('region', { name: 'Graph canvas' })
+      .boundingBox())!
+    const panels = await Promise.all(
+      ['A · Text search', 'B · Graph', 'C · Graph + Ontology'].map(
+        async (name) =>
+          (await page
+            .getByRole('region', { name, exact: true })
+            .boundingBox())!,
+      ),
+    )
+    expect(panels[0].y).toBeGreaterThan(canvas.y + canvas.height - 1)
+    for (const [above, below] of [
+      [panels[0], panels[1]],
+      [panels[1], panels[2]],
+    ])
+      expect(below.y).toBeGreaterThan(above.y + above.height - 1)
+    for (const panel of panels) expect(panel.x).toBe(canvas.x)
+    const scorecard = page
+      .getByRole('region', { name: 'Scorecard' })
+      .locator('.overflow-x-auto')
+    expect(
+      await scorecard.evaluate((box) => box.scrollWidth > box.clientWidth),
+    ).toBe(true)
+    // A box that scrolls takes focus, with its name, and the arrow keys scroll it.
+    for (const name of ['Scorecard', 'Market coverage']) {
+      const box = page.getByRole('group', { name })
+      await box.focus()
+      await expect(box).toBeFocused()
+      await page.keyboard.press('ArrowRight')
+      await expect
+        .poll(() => box.evaluate((el) => el.scrollLeft))
+        .toBeGreaterThan(0)
+    }
+  })
 })

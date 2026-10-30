@@ -144,23 +144,39 @@ export const COMMAND_GROUPS: readonly {
       ],
       [
         'make run-smoke',
-        'Quick check: score three worlds with fixed programs in place of the answer model and the judge; needs the services.',
+        'Quick check: score the three seen worlds, 2026 to 2028, with fixed programs in place of the answer model and the judge; needs the services.',
       ],
       [
         'make dry-run',
         'Four questions on world 2026 with the official settings; owner approval first.',
       ],
       [
+        'make dev-run',
+        'Development run on world 2026 with the configured models; not a result; owner go-ahead first.',
+      ],
+      [
         'make run-benchmark',
-        'Official run: three worlds, 3 repeats. OUT=DIR names it; OUT=DIR RESUME=1 resumes it.',
+        'Official run: the six unseen worlds, 2029 to 2034, each question once (REPEATS=N asks each N times), from a clean checkout; owner agreement first. OUT=DIR names it; OUT=DIR RESUME=1 resumes it.',
       ],
       [
         'make run-sweep',
-        'Depth sweep: the H1 questions for B and C at depths 0 to 3, on three worlds.',
+        'Depth sweep: the H1 questions for B and C at depths 0 to 3, on the three seen worlds.',
+      ],
+      [
+        'make addendum-v020',
+        'Rescore the official run v0.2.0 with the current scorer and groundedness, beside the run; no model.',
       ],
       [
         'make diagnose-selection',
         'Read-only: which claims each approach finds and which reach the prompt, on world 2026 with no answer model.',
+      ],
+      [
+        'make label-sample',
+        'Build the hand-labelling sample from the official run v0.2.0; no model.',
+      ],
+      [
+        'make label-agreement',
+        'How far the measures agree with the hand labels on that sample; no model.',
       ],
     ],
   },

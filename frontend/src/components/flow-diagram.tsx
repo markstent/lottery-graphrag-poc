@@ -5,7 +5,13 @@
  */
 
 import { PIPELINES } from '../design/pipelines'
-import { LANES, SHARED_AFTER, SHARED_BEFORE, STEP_LINES } from '../run/lanes'
+import {
+  LANES,
+  SHARED_AFTER,
+  SHARED_BEFORE,
+  STEP_LINES,
+  TURNS_LINE,
+} from '../run/lanes'
 
 /** The picture's name, and the heading of the panel that holds it. */
 export const FLOW_TITLE = 'How the three approaches differ'
@@ -20,7 +26,8 @@ const QUESTION_X = 8
 const QUESTION_W = 88
 const BUS_X = QUESTION_X + QUESTION_W + 16
 const STEPS_X = BUS_X + 24
-const STEPS_END = STEPS_X + 4 * STEP_W + 3 * STEP_GAP
+const MOST_STEPS = Math.max(...LANES.map((lane) => lane.steps.length))
+const STEPS_END = STEPS_X + MOST_STEPS * STEP_W + (MOST_STEPS - 1) * STEP_GAP
 const RIGHT_BUS_X = STEPS_END + 20
 const AFTER_X = RIGHT_BUS_X + 20
 const AFTER_W = [136, 156]
@@ -223,6 +230,9 @@ export function FlowDiagram() {
           />
         </g>
       </svg>
+      <figcaption aria-hidden className="mt-2 text-text-secondary">
+        {TURNS_LINE}
+      </figcaption>
       <ol className="sr-only">
         {STEP_LINES.map((line) => (
           <li key={line}>{line}</li>

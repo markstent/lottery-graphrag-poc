@@ -33,6 +33,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 from app.evaluation import load_ledger
 from app.scenarios.catalogue import ENABLED
 from app.scenarios.engine import apply_scenarios
@@ -58,6 +59,8 @@ FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "TRUTH_LEDGER"
 # The only API modules that may import app.evaluation (Phase 4).
 EVALUATION_API_MODULES = frozenset({"benchmarks.py", "scoring.py"})
 LEDGER_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "TRUTH_LEDGER")
+# The hand-label files and their directory (D-089).
+LABEL_STRINGS = ("labels-", "evaluation/labels")
 API_DIR = APP_DIR / "api"
 
 
@@ -119,6 +122,16 @@ def test_isolated_namespaces_never_reference_evaluator_truth() -> None:
         )
 
 
+def test_retrieval_never_names_the_labels_directory() -> None:
+    """The hand labels (D-089) are evaluator-only, as the ledger is: no
+    isolated module names their directory or their files."""
+    for path in _isolated_paths():
+        source = path.read_text(encoding="utf-8")
+        assert not any(marker in source for marker in LABEL_STRINGS), (
+            f"{path.relative_to(APP_DIR)} names the hand labels"
+        )
+
+
 def test_only_two_api_modules_import_evaluation() -> None:
     importing = {path.name for path in sorted(API_DIR.rglob("*.py")) if _imports_evaluation(path)}
     assert importing <= EVALUATION_API_MODULES, importing - EVALUATION_API_MODULES
@@ -144,20 +157,36 @@ def test_operator_tools_never_import_evaluation_or_name_the_ledger() -> None:
         assert not any(marker in source for marker in LEDGER_STRINGS), f"{name} names the ledger"
 
 
+# The modules method v0.3 added or rewrote, and what none of them may load:
+# the evaluator (bank, answer keys, truth ledger, hand labels) and the
+# scenario engine, which plants the truth and writes the ledger.
+V03_RETRIEVAL_MODULES = (
+    "app.retrieval.graph.resolution",
+    "app.retrieval.graph.ranking",
+    "app.retrieval.standard.context",
+    "app.retrieval.standard.records",
+    "app.retrieval.standard.corpus",
+    "app.retrieval.standard.generation",
+)
+TRUTH_PREFIXES = ("app.evaluation", "app.scenarios")
+
+
 def _retrieval_modules() -> list[str]:
     import app.retrieval
 
     return [m.name for m in pkgutil.walk_packages(app.retrieval.__path__, "app.retrieval.")]
 
 
-def _evaluation_modules_loaded_by(modules: list[str]) -> list[str]:
-    """The ``app.evaluation`` modules a fresh interpreter has loaded after
+def _evaluation_modules_loaded_by(
+    modules: list[str], prefixes: tuple[str, ...] = ("app.evaluation",)
+) -> list[str]:
+    """The modules under ``prefixes`` a fresh interpreter has loaded after
     importing ``modules``; run in a subprocess so nothing else has loaded them."""
     code = (
         "import importlib, sys\n"
         f"for name in {modules!r}:\n"
         "    importlib.import_module(name)\n"
-        "print('\\n'.join(sorted(n for n in sys.modules if n.startswith('app.evaluation'))))\n"
+        f"print('\\n'.join(sorted(n for n in sys.modules if n.startswith({prefixes!r}))))\n"
     )
     done = subprocess.run(
         [sys.executable, "-c", code], capture_output=True, text=True, check=True, timeout=120
@@ -165,15 +194,30 @@ def _evaluation_modules_loaded_by(modules: list[str]) -> list[str]:
     return done.stdout.split()
 
 
-def test_the_lab_and_every_retrieval_module_load_no_evaluation_module() -> None:
+def test_the_lab_and_every_retrieval_module_load_no_evaluation_or_scenario_module() -> None:
     modules = ["app.lab", *_retrieval_modules()]
     assert len(modules) > 10  # the walk found the retrieval packages
-    assert _evaluation_modules_loaded_by(modules) == []
+    assert _evaluation_modules_loaded_by(modules, TRUTH_PREFIXES) == []
 
 
 def test_the_runtime_check_sees_an_evaluation_module_when_one_is_loaded() -> None:
     """The check is not vacuous: a module that does load the evaluator is caught."""
     assert "app.evaluation.grounding" in _evaluation_modules_loaded_by(["app.api.scoring"])
+
+
+@pytest.mark.parametrize("module", V03_RETRIEVAL_MODULES)
+def test_each_v03_retrieval_module_alone_loads_no_evaluation_or_scenario_module(
+    module: str,
+) -> None:
+    """Each module alone, in a fresh interpreter, loads no evaluator or
+    scenario module, so its isolation does not lean on what else is imported."""
+    assert _evaluation_modules_loaded_by([module], TRUTH_PREFIXES) == []
+
+
+def test_the_runtime_check_sees_a_scenario_module_when_one_is_loaded() -> None:
+    assert "app.scenarios.planter" in _evaluation_modules_loaded_by(
+        ["app.scenarios.engine"], TRUTH_PREFIXES
+    )
 
 
 def test_retrieval_imports_nothing_from_api() -> None:

@@ -1,67 +1,63 @@
-"""Context budget selection (docs/reference/retrieval/context-budgeting.md).
+"""Context selection: one token budget, two ranked channels (method v0.3, D-084).
 
-Every pipeline answers from one total token budget and one evidence-slot
-count (retrieval fairness), and one judge orders the candidates: the shared
-reranker scores every candidate a pipeline has, and selection walks the
-reranked list once, in judge order. Pipeline A's candidates are its hybrid
-hits; pipelines B and C add structured graph candidates to the same list.
+Every pipeline answers from one total token budget with no item limit, and
+every item is charged the tokens of the block the prompt shows for it
+(``block_tokens``), so A, B and C pay the same for the same block; a
+graph record's declared path line (D-085) is paid for from the same budget.
 
-The graph share (D-081, which superseded D-025's single shared cut and
-D-023's "no reserved slots per channel"): of the evidence slots,
-``graph_slots`` are reserved for graph nodes and the rest go to documents
-(chunks and records). Before the walk, the first ``graph_slots`` usable nodes
-in judge order are given a graph slot; a node is usable when its own tokens
-fit the whole budget. Every other node is refused as ``slot_limit``. During
-the walk a document is admitted only while the selected items plus the graph
-slots still waiting for their node leave room, so documents never take a
-graph slot. The share goes one way: a graph slot that no node fills (fewer
-usable nodes than the share) goes to documents, but a document slot that no
-document fills never goes to a node. Pipeline A has no nodes and so keeps
-every slot for documents, exactly as under D-025.
+There are two ranked channels:
 
-A record block competes as a document under its own rank, except when its
-node holds a graph slot: then the node is the authoritative copy (design
-10a.8, D-028) and the block is refused as ``superseded_by_structured_fact``,
-so one fact never takes two slots. A node refused by the share leaves its
-record block to compete as a document.
+- documents: document chunks and record blocks from the shared hybrid
+  search, in cross-encoder order (the shared re-ranker, identical in A, B
+  and C);
+- graph: structured graph nodes (pipelines B and C only), in graph
+  relevance order (seeds, then target-type holders, then the rest; D-083).
+  Nodes are never re-ranked by the cross-encoder.
 
-Known limitation: the walk is single-pass. A node that holds a slot but is
-refused by the budget releases its slot at that point, so a later, lower
-ranked document may take it, while a document already refused as
-``slot_limit`` stays refused, because the walk never revisits a decision.
-The budget rarely binds (pilot prompts used about 1,130 of 2,000 tokens).
+``interleave_by_budget`` takes one item from each channel in turn, starting
+with the documents. B's document channel is A's, so B's first block is A's
+first block; C searches documents with its expanded question, so its first
+block is the first of its own hits. Each
+offered item is checked in a fixed order, and the first failing check is its
+discard reason:
 
-For each candidate the checks run in a fixed order, and the first failing
-check is the discard reason:
+1. ``same_record``: a record block or a node whose row (``document_id``) is
+   already selected through the other channel. A row reaches the prompt
+   once, at its first appearance;
+2. ``context_budget``: its block does not fit the tokens left;
+3. ``duplicate``: a document chunk that is a near-duplicate (Jaccard at or
+   above the threshold) of a selected chunk. Records and nodes are never
+   near-duplicates: two distinct rows with similar columns are different
+   facts.
 
-1. budget: the candidate's tokens do not fit the remaining budget
-   (``context_budget``); a smaller later candidate may still fit. Nodes and
-   documents share the one budget in judge order, so neither channel
-   reserves any of it;
-2. slots: the candidate's channel has no slot left (``slot_limit``);
-3. duplicates: a document chunk is a near-duplicate of a selected chunk
-   (``duplicate``). Records and graph nodes have unique ids and are never
-   near-duplicates of each other: two distinct authoritative rows with
-   similar columns are different facts.
+A refused item is recorded and the same channel offers its next item; an
+admitted item passes the turn to the other channel. When one channel is used
+up, the other continues alone. The walk is single-pass: a refused item is
+never offered again. Every refusal is final anyway (the budget only shrinks,
+and a selected row or chunk stays selected), so the single pass loses no
+item that a second pass would admit.
 
-The selected list stays in judge order whatever the channel. The final token
-count is recorded on the event stream.
+Pipeline A has no graph channel, so its selection is its cross-encoder order
+cut at the budget. The selected list is in prompt order.
+
+History: D-025 (one shared cut over 12 slots) and D-081 (a graph share of
+the slots) are superseded by D-083 and D-084; see DECISIONS.md.
 """
 
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from app.config import ContextSettings
 from app.evidence import EvidenceChunk
+from app.retrieval.standard.generation import context_block
 
 SELECTION_BUDGET = "context_budget"
 SELECTION_DUPLICATE = "duplicate"
-SELECTION_SLOT_LIMIT = "slot_limit"
-# A record block whose node holds a graph slot (design 10a.8): the node is
-# the authoritative copy.
-SELECTION_SUPERSEDED = "superseded_by_structured_fact"
+# A record block or node whose row is already selected through the other channel.
+SELECTION_SAME_RECORD = "same_record"
 # A graph node whose label is in GraphRagSettings.excluded_labels (a
 # directly resolved Document seed): it may anchor traversal but is never a
 # structured candidate; its text reaches the model through the document channel.
@@ -69,11 +65,18 @@ SELECTION_EXCLUDED_LABEL = "excluded_label"
 
 # EvidenceChunk.kind of a structured graph candidate.
 NODE_KIND = "node"
+# Kinds that stand for one authoritative row (``document_id`` is its id).
+_ROW_KINDS = frozenset({"record", NODE_KIND})
 
 
 def estimate_tokens(text: str) -> int:
     """Cheap deterministic token estimate (~4 characters per token)."""
     return max(1, math.ceil(len(text) / 4))
+
+
+def block_tokens(chunk: EvidenceChunk) -> int:
+    """The tokens an item costs: its rendered prompt block, not its bare text."""
+    return estimate_tokens(context_block(chunk))
 
 
 def _token_set(text: str) -> set[str]:
@@ -87,95 +90,64 @@ def _jaccard(left: set[str], right: set[str]) -> float:
     return len(left & right) / len(union)
 
 
-def select_context(
-    candidates: list[EvidenceChunk],
+def interleave_by_budget(
+    documents: Sequence[EvidenceChunk],
+    graph: Sequence[EvidenceChunk],
     budget_tokens: int,
-    dedupe_threshold: float = 0.85,
-    max_items: int | None = None,
-    *,
-    graph_slots: int,
+    dedupe_threshold: float,
 ) -> tuple[list[EvidenceChunk], list[EvidenceChunk]]:
-    """Split ranked candidates into (selected, discarded-with-reason).
+    """Merge the two ranked channels into (selected, discarded-with-reason).
 
-    ``max_items`` caps how many candidates are selected (evidence slots);
-    None means no cap and no graph share. ``graph_slots`` of those slots are
-    reserved for graph nodes, as the module docstring describes. The
-    near-duplicate check compares document chunks (``kind == "chunk"``) with
-    the chunks already selected; records and nodes skip it. Discarded
-    candidates keep their discard_reason so the UI and the benchmark can show
-    why context looks the way it does.
+    ``selected`` is in prompt order; ``discarded`` in the order the items
+    were offered. The module docstring states the rule.
     """
+    channels = (list(documents), list(graph))
+    heads = [0, 0]
+    turn = 0  # the document channel starts
     selected: list[EvidenceChunk] = []
     discarded: list[EvidenceChunk] = []
     used = 0
-    selected_token_sets: list[set[str]] = []
+    rows: set[str] = set()
+    chunk_token_sets: list[set[str]] = []
 
-    holders = _graph_slot_holders(candidates, budget_tokens, max_items, graph_slots)
-    waiting = len(holders)
-    # A node holding a slot is the authoritative copy of its record's fact.
-    superseding = {candidates[index].chunk_id for index in holders}
-
-    for index, candidate in enumerate(candidates):
-        tokens = estimate_tokens(candidate.text)
-        holds_slot = index in holders
-        if holds_slot:
-            waiting -= 1  # its slot is filled below or released by a refusal
-        if candidate.kind == "record" and candidate.document_id in superseding:
-            discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_SUPERSEDED}))
+    while heads[0] < len(channels[0]) or heads[1] < len(channels[1]):
+        channel = turn if heads[turn] < len(channels[turn]) else 1 - turn
+        candidate = channels[channel][heads[channel]]
+        heads[channel] += 1
+        tokens = block_tokens(candidate)
+        token_set = _token_set(candidate.text) if candidate.kind == "chunk" else set()
+        reason: str | None = None
+        if candidate.kind in _ROW_KINDS and candidate.document_id in rows:
+            reason = SELECTION_SAME_RECORD
+        elif used + tokens > budget_tokens:
+            reason = SELECTION_BUDGET
+        elif candidate.kind == "chunk" and any(
+            _jaccard(token_set, kept) >= dedupe_threshold for kept in chunk_token_sets
+        ):
+            reason = SELECTION_DUPLICATE
+        if reason is not None:
+            discarded.append(candidate.model_copy(update={"discard_reason": reason}))
             continue
-        if used + tokens > budget_tokens:
-            discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_BUDGET}))
-            continue
-        if candidate.kind == NODE_KIND:
-            slot_free = holds_slot or max_items is None
-        else:
-            slot_free = max_items is None or len(selected) + waiting < max_items
-        if not slot_free:
-            discarded.append(candidate.model_copy(update={"discard_reason": SELECTION_SLOT_LIMIT}))
-            continue
-        if candidate.kind == "chunk":
-            token_set = _token_set(candidate.text)
-            if any(
-                _jaccard(token_set, existing) >= dedupe_threshold
-                for existing in selected_token_sets
-            ):
-                discarded.append(
-                    candidate.model_copy(update={"discard_reason": SELECTION_DUPLICATE})
-                )
-                continue
-            selected_token_sets.append(token_set)
         selected.append(candidate.model_copy(update={"selected": True}))
         used += tokens
+        if candidate.kind in _ROW_KINDS:
+            rows.add(candidate.document_id)
+        if candidate.kind == "chunk":
+            chunk_token_sets.append(token_set)
+        turn = 1 - channel
 
     return selected, discarded
 
 
-def _graph_slot_holders(
-    candidates: list[EvidenceChunk],
-    budget_tokens: int,
-    max_items: int | None,
-    graph_slots: int,
-) -> set[int]:
-    """Indexes of the nodes given a graph slot: the first usable ones in judge order."""
-    if max_items is None:
-        return set()
-    share = min(graph_slots, max_items)
-    usable = [
-        index
-        for index, candidate in enumerate(candidates)
-        if candidate.kind == NODE_KIND and estimate_tokens(candidate.text) <= budget_tokens
-    ]
-    return set(usable[:share])
-
-
 @dataclass(frozen=True, slots=True)
 class ContextAssembly:
-    """Outcome of one context selection under the shared budget and slots.
+    """Outcome of one context selection under the shared budget.
 
     ``selected`` is the one list every pipeline hands the generator, in
-    judge order whatever the kind. ``document_selected`` (chunks and
-    records) and ``structured_selected`` (graph nodes) are the same
-    selection split by channel, for telemetry only.
+    prompt order. ``document_selected`` (chunks and records) and
+    ``structured_selected`` (graph nodes) are the same selection split by
+    channel, for telemetry only. ``context_tokens`` is the sum of the
+    selected items' block tokens.
     """
 
     selected: list[EvidenceChunk]
@@ -185,19 +157,19 @@ class ContextAssembly:
     context_tokens: int
 
 
-def assemble_context(candidates: list[EvidenceChunk], settings: ContextSettings) -> ContextAssembly:
-    """Select reranked candidates into one budget, one slot count and the graph share."""
-    selected, discarded = select_context(
-        candidates,
-        budget_tokens=settings.budget_tokens,
-        dedupe_threshold=settings.dedupe_threshold,
-        max_items=settings.evidence_slots,
-        graph_slots=settings.graph_slots,
+def assemble_context(
+    documents: Sequence[EvidenceChunk],
+    graph: Sequence[EvidenceChunk],
+    settings: ContextSettings,
+) -> ContextAssembly:
+    """Select the ranked document and graph channels into the one budget."""
+    selected, discarded = interleave_by_budget(
+        documents, graph, settings.budget_tokens, settings.dedupe_threshold
     )
     return ContextAssembly(
         selected=selected,
         structured_selected=[chunk for chunk in selected if chunk.kind == NODE_KIND],
         document_selected=[chunk for chunk in selected if chunk.kind != NODE_KIND],
         discarded=discarded,
-        context_tokens=sum(estimate_tokens(chunk.text) for chunk in selected),
+        context_tokens=sum(block_tokens(chunk) for chunk in selected),
     )

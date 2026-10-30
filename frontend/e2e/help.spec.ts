@@ -72,41 +72,41 @@ test('the questions table filters by story, and the filter is in the address', a
   await shot(page, 'questions-filtered-by-story')
 })
 
-test('with no official run the score column says so and shows no number', async ({
+test('with no official run the screen says so above the table, which has no score columns', async ({
   page,
 }) => {
   await open(page, '#/help?section=questions', 'none')
   const table = page.getByRole('table', { name: 'Benchmark questions' })
-  await expect(table.getByText('No official run yet').first()).toBeVisible()
+  await expect(page.getByText(/^No official run yet\./)).toBeVisible()
+  await expect(table.getByRole('columnheader')).toHaveText([
+    'Instance',
+    'Answer key',
+  ])
   await expect(table).not.toContainText('Evidence score')
   await expect(page.getByRole('link', { name: 'Go to Results' })).toBeVisible()
   await shot(page, 'questions-no-official-run')
 })
 
-test('the score column headings sit on one line each, with or without scores', async ({
-  page,
-}) => {
-  for (const latest of ['none', 'official'] as const) {
-    await open(page, '#/help?section=questions', latest)
-    for (const name of ['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
-      expect(
-        await page
-          .getByRole('columnheader', { name })
-          .evaluate((el) => el.getBoundingClientRect().height),
-      ).toBeLessThan(40)
-  }
+test('the score column headings sit on one line each', async ({ page }) => {
+  await open(page, '#/help?section=questions', 'official')
+  for (const name of ['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
+    expect(
+      await page
+        .getByRole('columnheader', { name })
+        .evaluate((el) => el.getBoundingClientRect().height),
+    ).toBeLessThan(40)
 })
 
 test('a quick check as the newest run shows no scores either', async ({
   page,
 }) => {
   await open(page, '#/help?section=questions', 'smoke')
+  await expect(page.getByText(/^No official run yet\./)).toBeVisible()
   await expect(
     page
       .getByRole('table', { name: 'Benchmark questions' })
-      .getByText('No official run yet')
-      .first(),
-  ).toBeVisible()
+      .getByRole('columnheader'),
+  ).toHaveText(['Instance', 'Answer key'])
 })
 
 test('presentation mode keeps the table and the sections readable', async ({
@@ -153,24 +153,27 @@ test('the settings table shows the settings now and Not recorded for a run witho
 }) => {
   await open(page, '#/help?section=running&level=technical')
   const row = page.locator('#running').getByRole('row', { name: /^top_k/ })
-  await expect(row).toContainText('20')
+  await expect(row).toContainText('40')
   await expect(row).toContainText('Not recorded')
   await shot(page, 'running-settings')
 })
 
-test('chapter 5 draws and states its places and budget from the settings', async ({
+test('chapter 5 draws and states its budget from the settings', async ({
   page,
 }) => {
   await open(page, '#/help?section=evidence')
   const chapter = page.locator('#evidence')
-  await expect(chapter).toContainText('at most 12 pieces of evidence')
-  await expect(chapter).toContainText('6 of the 12 places')
+  await expect(chapter).toContainText('a budget of 2,000 tokens')
+  await expect(chapter).toContainText(
+    'There is no other limit on the number of pieces',
+  )
   await expect(
-    chapter.getByRole('img', { name: /at most 12 pieces/ }),
+    chapter.getByRole('img', { name: /one budget of 2,000 tokens/ }),
   ).toBeVisible()
   await shot(page, 'evidence-plain')
   await page.getByRole('radio', { name: 'Technical' }).click()
-  await expect(chapter).toContainText('the 2,000-token budget')
+  await expect(chapter).toContainText('until the 2,000-token budget is full')
+  await expect(chapter).toContainText('a Jaccard index of 0.85 or more')
   await shot(page, 'evidence-technical')
 })
 
@@ -231,6 +234,12 @@ test.describe('at phone width', () => {
           () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
       ).toBe(true)
+      // Every table box that scrolls can take focus.
+      for (const box of await page
+        .locator('[role="group"].overflow-x-auto')
+        .all())
+        if (await box.evaluate((el) => el.scrollWidth > el.clientWidth))
+          await expect(box).toHaveAttribute('tabindex', '0')
       expect(
         await page
           .getByRole('navigation', { name: 'Primary' })

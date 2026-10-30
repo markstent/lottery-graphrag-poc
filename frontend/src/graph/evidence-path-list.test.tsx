@@ -39,18 +39,18 @@ describe('EvidencePathList', () => {
   it('names the state, the label and the relationship that reached each node', () => {
     const view = graphView(full.graph.B, {
       ...options,
-      paths: [['INC_037', 'SUP_00113']],
+      paths: [['INC_021', 'SUP_00036']],
     })
     render(<EvidencePathList view={view} />)
     const [first, second] = screen.getAllByRole('listitem')
     expect(first).toHaveTextContent(
-      `${EVIDENCE_STATES.seed.label}: incident (INC_037)`,
+      `${EVIDENCE_STATES.seed.label}: incident (INC_021)`,
     )
     expect(first).not.toHaveTextContent('related')
-    const edge = full.graph.B.relationships.find((r) => r.to === 'SUP_00113')
+    const edge = full.graph.B.relationships.find((r) => r.to === 'SUP_00036')
     expect(edge).toBeDefined()
     expect(second).toHaveTextContent(
-      `${EVIDENCE_STATES.selected.label}: support case (SUP_00113), incident is related to support case`,
+      `${EVIDENCE_STATES.selected.label}: support case (SUP_00036), incident is related to support case`,
     )
   })
 
@@ -65,11 +65,7 @@ describe('EvidencePathList', () => {
     const view = graphView(early.graph.C, options)
     expect(view.pathRecorded).toBe(false)
     render(<EvidencePathList view={view} />)
-    expect(
-      screen.getByText(
-        'The evidence path appears when this pipeline records it.',
-      ),
-    ).toBeVisible()
+    expect(screen.getByText('No evidence path yet.')).toBeVisible()
   })
 
   it('says no path was recorded when the pipeline ended before recording one', () => {
@@ -82,14 +78,14 @@ describe('EvidencePathList', () => {
   it('says a step was not recorded and does not join its neighbours', () => {
     const view = graphView(full.graph.B, {
       ...options,
-      paths: [['INC_037', 'NOT_A_NODE', 'SUP_00113']],
+      paths: [['INC_021', 'NOT_A_NODE', 'SUP_00036']],
     })
     expect(view.droppedPathIds).toEqual(['NOT_A_NODE'])
     render(<EvidencePathList view={view} />)
     const [first, gap, last] = screen.getAllByRole('listitem')
-    expect(first).toHaveTextContent('incident (INC_037)')
+    expect(first).toHaveTextContent('incident (INC_021)')
     expect(gap).toHaveTextContent('A step that was not recorded (NOT_A_NODE)')
-    expect(last).toHaveTextContent('support case (SUP_00113)')
+    expect(last).toHaveTextContent('support case (SUP_00036)')
     expect(last).not.toHaveTextContent('related')
     expect(last).not.toHaveTextContent('incident')
   })
@@ -97,12 +93,12 @@ describe('EvidencePathList', () => {
   it('names no step between two recorded nodes with no recorded edge', () => {
     const view = graphView(full.graph.B, {
       ...options,
-      paths: [['SUP_00005', 'MKT_UK']],
+      paths: [['SUP_00036', 'GAME_UK_02']],
     })
     expect(view.pathSteps).toEqual([[null]])
     render(<EvidencePathList view={view} />)
     const [, second] = screen.getAllByRole('listitem')
-    expect(second).toHaveTextContent('market (MKT_UK)')
+    expect(second).toHaveTextContent('game (GAME_UK_02)')
     expect(second).not.toHaveTextContent(',')
   })
 
@@ -126,7 +122,7 @@ describe('EvidencePathList', () => {
     const paths = pathsOf('C')
     const view = graphView(graph, { ...options, paths })
     expect(view).toEqual(graphView(full.graph.C, { ...options, paths }))
-    expect(view.nodes).toHaveLength(61)
+    expect(view.nodes).toHaveLength(53)
     render(<EvidencePathList view={view} />)
     expect(screen.getAllByRole('list')).toHaveLength(paths.length)
     expect(screen.getAllByRole('listitem')).toHaveLength(

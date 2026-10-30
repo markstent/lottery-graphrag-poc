@@ -21,6 +21,7 @@ import {
   RECORDED_RUNS,
   OFFICIAL_STRATA,
   OFFICIAL_SUBSET,
+  OFFICIAL_V03,
   SCENARIOS,
   SCORED,
   SMOKE,
@@ -112,10 +113,17 @@ describe('Help', () => {
   it('states the official result in chapter 1 as it is, with its dates', async () => {
     await renderHelp()
     const why = section('1. Why this exists')
+    // The current result is the official run v0.3.0; v0.2.0 is the earlier one.
     expect(why).toHaveTextContent(
-      /from 2026-10-26 to 2026-10-27, found no detectable difference/,
+      /official run v0\.3\.0, which started on 2026-10-29/,
     )
-    expect(why).toHaveTextContent(/0\.44 for all three/)
+    expect(why).toHaveTextContent(
+      /Of the 14 comparisons tested, one showed a difference/,
+    )
+    expect(why).toHaveTextContent(/0\.42 for A, 0\.45 for B and 0\.57 for C/)
+    expect(why).toHaveTextContent(
+      /v0\.2\.0 \(2026-10-26 to 2026-10-27\), had found no detectable difference/,
+    )
   })
 
   it('draws each approach as a picture named by its letter and plain name', async () => {
@@ -127,9 +135,7 @@ describe('Help', () => {
       figures.map((figure) => figure.querySelector('figcaption')!.textContent),
     ).toEqual(['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
     for (const figure of figures)
-      expect(within(figure).getByRole('img')).toHaveAccessibleName(
-        /re-ordering model/,
-      )
+      expect(within(figure).getByRole('img')).toHaveAccessibleName(/one budget/)
   })
 
   it('links the data tour to the Data Model tabs', async () => {
@@ -300,8 +306,84 @@ describe('the questions table', () => {
     ).toHaveLength(3)
     expect(within(rows()[0]).getAllByText('Answer: Correct')).toHaveLength(3)
     expect(
-      within(section('7. How scoring works')).getByText(/reads Missing/),
+      within(section('7. How scoring works')).getByText(/read Missing/),
     ).toBeVisible()
+  })
+
+  it('shows evidence recall, never F1, when the newest official run is of method v0.3', async () => {
+    const questions = structuredClone(SCORED)
+    for (const question of questions)
+      for (const score of Object.values(question.scores ?? {}))
+        if (score) score.evidence_recall = 0.9
+    await renderHelp('#/help?section=questions&story=SCN-007', {
+      questions,
+      latest: OFFICIAL_V03,
+    })
+    const row = rows()[0]
+    expect(within(row).getAllByText('Evidence recall: 0.90')).toHaveLength(3)
+    expect(row).not.toHaveTextContent('Evidence score')
+  })
+
+  it('says the newest official run scored none of these questions, never that there is none', async () => {
+    await renderHelp('#/help?section=questions', {
+      questions: UNSCORED,
+      latest: OFFICIAL_V03,
+    })
+    const questions = section('10. The questions')
+    expect(
+      within(questions).getByText(
+        /^The newest official run scored none of these world 2026 questions; its scores are on Results\./,
+      ),
+    ).toBeVisible()
+    expect(within(questions).queryByText(/No official run yet/)).toBeNull()
+  })
+
+  it('hides the score columns when the newest official run scored none of these questions, and keeps the note and its link', async () => {
+    await renderHelp('#/help?section=questions', {
+      questions: UNSCORED,
+      latest: OFFICIAL_V03,
+    })
+    const questions = section('10. The questions')
+    const table = within(questions).getByRole('table', {
+      name: 'Benchmark questions',
+    })
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Instance', 'Answer key'])
+    expect(
+      within(questions).queryByText('Not scored by the newest official run'),
+    ).toBeNull()
+    const note = within(questions).getByText(
+      /^The newest official run scored none of these world 2026 questions/,
+    )
+    expect(
+      within(note).getByRole('link', { name: 'Go to Results' }),
+    ).toHaveAttribute('href', '#/results')
+  })
+
+  it('hides the score columns when there is no official run', async () => {
+    await renderHelp('#/help?section=questions', {
+      questions: UNSCORED,
+      latest: null,
+    })
+    const table = within(section('10. The questions')).getByRole('table', {
+      name: 'Benchmark questions',
+    })
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Instance', 'Answer key'])
+  })
+
+  it('keeps the score columns when the newest official run scored these questions', async () => {
+    await renderHelp()
+    const table = within(section('10. The questions')).getByRole('table', {
+      name: 'Benchmark questions',
+    })
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(5)
   })
 
   it('says an instance was not part of the run when it has no scores', async () => {
@@ -341,10 +423,13 @@ describe('the questions table', () => {
       ).toHaveAttribute('href', '#/results')
       const table = questionTable()
       expect(table).not.toHaveTextContent(/Answer:|Evidence score/)
-      // The cells are visibly empty and carry the words for a screen reader.
-      const labels = within(table).getAllByText('No official run yet')
-      expect(labels).toHaveLength(SCORED.length * 3)
-      for (const label of labels) expect(label).toHaveClass('sr-only')
+      // With nothing to score, the table has no score columns at all.
+      expect(within(table).queryByText('No official run yet')).toBeNull()
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((cell) => cell.textContent),
+      ).toEqual(['Instance', 'Answer key'])
     },
   )
 
@@ -404,7 +489,7 @@ describe('scoring and glossary', () => {
     await renderHelp()
     expect(
       within(section('7. How scoring works')).getByText(
-        /The evidence score runs from 0 to 1/,
+        /Evidence recall is the share of the claims that the chosen evidence covers, from 0 to 1/,
       ),
     ).toBeVisible()
   })
@@ -714,8 +799,8 @@ describe('settings in Help', () => {
     await renderHelp('#/help?section=running&level=technical', {
       ...RECORDED_RUNS,
     })
-    const row = settingsRow('context.graph_slots')
-    expect(await within(row).findAllByText('6')).toHaveLength(2)
+    const row = settingsRow('context.dedupe_threshold')
+    expect(await within(row).findAllByText('0.85')).toHaveLength(2)
   })
 
   it('a setting the run did not record reads Not recorded', async () => {

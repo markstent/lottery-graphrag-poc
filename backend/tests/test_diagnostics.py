@@ -11,12 +11,14 @@ from types import SimpleNamespace
 from typing import cast
 
 import pytest
-from app.config import SELECTION_RULE, GraphConfig
+from app.config import METHOD_VERSION, SELECTION_RULE, GraphConfig
 from app.evaluation import diagnostics, official
-from app.evaluation.checks import TokenCheck
+from app.evaluation.checks import SCORER_VERSION, TokenCheck
 from app.evaluation.claims import Claim, selection_carrier
 from app.evaluation.diagnostics import (
     Candidates,
+    DroppedCarrier,
+    DroppedClaim,
     GenerationAttempted,
     NoGeneration,
     Retriever,
@@ -31,7 +33,6 @@ from app.evaluation.diagnostics import (
 from app.evaluation.grounding import BankInstance, FrozenBank, GroundingError
 from app.events import (
     GRAPH_CANDIDATE_DISCARDED,
-    GRAPH_CANDIDATE_RERANKED,
     GRAPH_CANDIDATE_SELECTED,
     GRAPH_NODE_DISCOVERED,
     GRAPH_SEED_SELECTED,
@@ -106,6 +107,7 @@ def bank_of(*instances: BankInstance) -> FrozenBank:
         world_seed=2026,
         world_manifest_hash="m",
         record_serialiser_version="s",
+        scorer_version=SCORER_VERSION,
         ledger_hash="l",
         instances=instances,
         unavailable=(),
@@ -117,10 +119,14 @@ GRAPH_EVENTS = [
     event(GRAPH_SEED_SELECTED, node_id=ANCHOR),
     event(GRAPH_NODE_DISCOVERED, node_id="CLM_1", node_label="Claim", hop=1),
     event(GRAPH_NODE_DISCOVERED, node_id="CLM_2", node_label="Claim", hop=1),
-    event(GRAPH_CANDIDATE_SELECTED, node_id="CLM_2", score=1.0, rerank_score=0.9),
-    event(GRAPH_CANDIDATE_RERANKED, candidate_id="CLM_1", kind="node", rerank_score=0.2, rank=3),
+    event(GRAPH_CANDIDATE_SELECTED, node_id="CLM_2", score=1.0, tier="target", graph_rank=1),
     event(
-        GRAPH_CANDIDATE_DISCARDED, node_id="CLM_1", score=0.5, rerank_score=0.2, reason="slot_limit"
+        GRAPH_CANDIDATE_DISCARDED,
+        node_id="CLM_1",
+        score=0.5,
+        reason="context_budget",
+        tier="other",
+        graph_rank=3,
     ),
     event(GRAPH_CANDIDATE_DISCARDED, chunk_id="CH1", rerank_score=0.1, reason="context_budget"),
 ]
@@ -168,22 +174,54 @@ def test_dropped_list_names_instance_and_carrier() -> None:
         ("L05-2026-X", "C", "c1"),
     ]
     carrier = diagnostic.dropped[0].carriers[0]
-    assert (carrier.carrier, carrier.reason, carrier.rerank_score, carrier.rank) == (
-        "CLM_1",
-        "slot_limit",
-        0.2,
-        3,
-    )
+    assert (carrier.carrier, carrier.reason) == ("CLM_1", "context_budget")
     assert diagnostic.dropped[0].selected_count == 1
-    assert diagnostic.dropped_by_reason()["B"] == {"slot_limit": 1}
+    assert diagnostic.dropped_by_reason()["B"] == {"context_budget": 1}
     markdown = render_markdown(diagnostic)
     assert "Approach B, question `L05-2026-X`, claim `c1`" in markdown
-    assert "`CLM_1` (reason slot_limit, score 0.200, rank 3)" in markdown
-    assert "Approach B: 1 claims (slot_limit 1)." in markdown
-    assert "`slot_limit` means the slots for its kind were full" in markdown
+    assert "`CLM_1` (reason context_budget, tier other, graph rank 3)" in markdown
+    assert "score" not in markdown.split("## Found by the graph", 1)[1].split("Reasons:", 1)[1]
+    assert "Approach B: 1 claims (context_budget 1)." in markdown
+    assert "`same_record` means the same record was already kept" in markdown
     assert "| B: documents and the graph | 1 | 2 | 2 | 0 | 1 |" in markdown
     assert "| A: documents only | 1 | 2 | - | 0 | 0 |" in markdown
     assert "## H2: ontology-dependent questions" in markdown
+
+
+def test_dropped_carrier_reports_tier_and_graph_rank() -> None:
+    claims = (Claim("c1", "s", frozenset({"CLM_1"})),)
+    carrier = run_diagnose(claims).dropped[0].carriers[0]
+    assert (carrier.reason, carrier.tier, carrier.graph_rank) == ("context_budget", "other", 3)
+    fate = read_candidates("B", GRAPH_EVENTS, CORPUS).fates["CLM_2"]
+    assert (fate.reason, fate.tier, fate.graph_rank) == (None, "target", 1)
+
+
+def test_closest_carrier_is_lowest_graph_rank() -> None:
+    carriers = (
+        DroppedCarrier("CLM_9", "context_budget", "other", 7),
+        DroppedCarrier("CLM_8", "context_budget", None, None),
+        DroppedCarrier("CLM_7", "duplicate", "target", 2),
+    )
+    drop = DroppedClaim("i", "B", "c1", carriers, 0)
+    assert drop.reason == "duplicate"
+    unranked = DroppedClaim("i", "B", "c1", (DroppedCarrier("CLM_8", None, None, None),), 0)
+    assert unranked.reason == "not offered"
+    ranked_without_reason = DroppedClaim(
+        "i", "B", "c1", (DroppedCarrier("CLM_6", None, "seed", 1),), 0
+    )
+    assert ranked_without_reason.reason == "not offered"
+    unranked_with_reason = DroppedClaim(
+        "i", "B", "c1", (DroppedCarrier("CLM_5", "context_budget", None, None),), 0
+    )
+    assert unranked_with_reason.reason == "context_budget"
+
+
+def test_legend_describes_tier_and_graph_rank_not_node_scores() -> None:
+    claims = (Claim("c1", "s", frozenset({"CLM_1"})),)
+    markdown = render_markdown(run_diagnose(claims))
+    assert "graph rank 1 is the graph's most relevant record" in markdown
+    assert "not judged" not in markdown
+    assert "slots" not in markdown
 
 
 def test_excluded_label_seeds_are_not_graph_candidates() -> None:
@@ -271,10 +309,12 @@ def test_other_errors_are_not_swallowed() -> None:
         diagnose(bank_of(instance(claims)), {"B": cast(Retriever, Broken())}, CORPUS)
 
 
-def test_settings_block_records_the_selection_rule_and_graph_share() -> None:
+def test_settings_block_records_method_and_budget() -> None:
     record = settings_record(build_lab_offline(), node_count=7)
-    assert record["selection_rule"] == SELECTION_RULE
-    assert (record["evidence_slots"], record["graph_slots"]) == (12, 6)
+    assert record["method_version"] == METHOD_VERSION == "0.3.0"
+    assert record["selection_rule"] == SELECTION_RULE == "graph-rank-interleave-budget"
+    assert record["context_budget_tokens"] == 2000
+    assert not {"evidence_slots", "graph_slots"} & set(record)
 
 
 def test_writes_json_and_markdown(tmp_path: Path) -> None:
@@ -283,7 +323,7 @@ def test_writes_json_and_markdown(tmp_path: Path) -> None:
     payload = json.loads((out / "selection.json").read_text("utf-8"))
     assert payload["totals"]["B"]["graph_found"] == 1
     assert payload["dropped"][0]["claim_id"] == "c1"
-    assert (out / "selection.md").read_text("utf-8").startswith("# What the shared re-ranker keeps")
+    assert (out / "selection.md").read_text("utf-8").startswith("# What the selection keeps")
     assert diagnostics_dir(datetime(2026, 10, 25, 9, 8, 7, tzinfo=UTC)).name == (
         "20261025T090807Z-selection"
     )
