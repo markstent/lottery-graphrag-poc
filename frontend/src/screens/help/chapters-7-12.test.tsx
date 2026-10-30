@@ -130,6 +130,7 @@ describe('chapters 7 to 12', () => {
         'judge-agreement',
         'bank-size',
         'question-groups',
+        'interval-and-test',
         'method-after-result',
         'bank-authors',
       ]),
@@ -142,11 +143,30 @@ describe('chapters 7 to 12', () => {
   it("the register states the official run's own limits with their source", () => {
     const row = (id: string) => REGISTER.find((r) => r.id === id)!
     const agreement = row('judge-agreement')
-    expect(agreement.plain).toContain('53 percent')
-    expect(agreement.reason).toMatch(/kappa 0\.07/)
-    expect(agreement.reason).toContain('2026-10-26')
-    expect(row('question-groups').plain).toContain('12 groups')
+    // The official run v0.3.0 (official-2026-10-29) is the current result.
+    expect(agreement.plain).toContain('88 percent')
+    expect(agreement.plain).toContain('70 percent')
+    expect(agreement.reason).toMatch(/weighted kappa 0\.77/)
+    expect(agreement.reason).toMatch(/weighted kappa 0\.25/)
+    expect(agreement.reason).toContain('2026-10-29')
+    expect(agreement.reason).toContain('D-096')
+    expect(row('question-groups').plain).toContain('24 groups')
+    expect(row('interval-and-test').plain).toContain('five tested comparisons')
     expect(row('method-after-result').plain).toContain('v0.2.0')
+  })
+
+  it('names the official run v0.3.0 as the current result, and v0.2.0 as the earlier one', () => {
+    for (const id of ['why', 'results'] as const) {
+      const text = chapterText(id)
+      expect(text, id).toContain('official run v0.3.0')
+      expect(text, id).not.toMatch(
+        /result so far|will use six worlds|will be published whatever/,
+      )
+    }
+    expect(chapterText('results')).toContain(
+      'The earlier official run, v0.2.0, under the old method',
+    )
+    expect(chapterText('why')).toContain('22.1 percentage points')
   })
 
   it('plain shows item and plain only, technical adds reason and cost', () => {

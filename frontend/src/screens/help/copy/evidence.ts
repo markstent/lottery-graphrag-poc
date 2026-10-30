@@ -16,7 +16,7 @@ export const evidence: ChapterCopy = {
     'The two lists take turns: one passage or record text, then one graph record, then a passage again, until the budget is full. A record already in the evidence is not taken again, and when one list runs out the other carries on alone.',
     { kind: 'diagram', name: 'evidence' },
     'Why one budget: a model can read only so much at once, and more text is slower and can bury the fact that matters. The budget is the same for all three approaches, so a difference in their answers comes from what each found, not from how much each could show. Taking turns, one for one, gives the graph room with no proportion that had to be tuned.',
-    'This is method v0.3, in use since 2026-10-27. The official run v0.2.0 used the old method: the answer model saw at most 12 pieces, and one re-ordering model put the passages and the graph records in one list. A check on 2026-10-25 found that it scored graph records low, so about half of the facts the graph found did not reach the answer model. The method was changed after that result was seen (chapter 9).',
+    'This is method v0.3, in use since 2026-10-27. The official run v0.2.0 used the old method: the answer model saw at most 12 pieces, and one re-ordering model put the passages and the graph records in one list. A check on 2026-10-25 found that it scored graph records low, so about half of the facts the graph found did not reach the answer model. The method was changed after that result was seen (chapter 9), and the official run v0.3.0 used the method of this chapter (chapter 1).',
   ],
   technical: [
     'The settings in this chapter, now and in the newest official run:',
@@ -57,6 +57,7 @@ export const evidence: ChapterCopy = {
       "D-081 (2026-10-25) kept 6 of the 12 places for graph nodes, still in the cross-encoder's order, recorded as reranker-graph-share; run once after the change, the diagnostic still left 23 (B) and 51 (C) of the graph's claims out.",
       'The official run v0.2.0 (2026-10-26 to 2026-10-27) used D-081 and found no detectable difference between the approaches (chapter 1). In it the 12 places bound in all 1,350 prompts and the 2,000-token budget never did: the largest prompt held 1,489 tokens (D-084).',
       'Method v0.3 (D-083, D-084, approved on 2026-10-27 with docs/evaluation/v0.3-method-proposal.md) was made after seeing that result. Each rule was written down before it was measured, and development uses seed 2026 only (D-093).',
+      'The official run v0.3.0 (started 2026-10-29) used this rule, recorded as graph-rank-interleave-budget. Its prompts held on average 1,972 (A), 1,985 (B) and 1,986 (C) context tokens of the 2,000, and on multi-hop questions B got 22.1 evidence-recall points more to the answer model than A, its one detectable difference (chapter 8).',
     ],
   ],
   terms: [

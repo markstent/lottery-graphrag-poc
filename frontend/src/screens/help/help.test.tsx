@@ -113,10 +113,17 @@ describe('Help', () => {
   it('states the official result in chapter 1 as it is, with its dates', async () => {
     await renderHelp()
     const why = section('1. Why this exists')
+    // The current result is the official run v0.3.0; v0.2.0 is the earlier one.
     expect(why).toHaveTextContent(
-      /from 2026-10-26 to 2026-10-27, found no detectable difference/,
+      /official run v0\.3\.0, which started on 2026-10-29/,
     )
-    expect(why).toHaveTextContent(/0\.44 for all three/)
+    expect(why).toHaveTextContent(
+      /Of the 14 comparisons tested, one showed a difference/,
+    )
+    expect(why).toHaveTextContent(/0\.42 for A, 0\.45 for B and 0\.57 for C/)
+    expect(why).toHaveTextContent(
+      /v0\.2\.0 \(2026-10-26 to 2026-10-27\), had found no detectable difference/,
+    )
   })
 
   it('draws each approach as a picture named by its letter and plain name', async () => {

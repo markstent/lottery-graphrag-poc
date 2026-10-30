@@ -71,7 +71,7 @@ export const REGISTER: readonly RegisterRow[] = [
       'Method v0.3 was made after the v0.2.0 result was seen, in which the graph did not help; every v0.3 result says so.',
     reason:
       "In v0.2.0 the re-ordering model scored graph records low, and the limit on pieces kept about half of the graph's facts from the answer model (diagnostic of 2026-10-25: 23 of 55 for B, 51 of 88 for C). Every rule of v0.3 was written down before it was measured, development uses world 2026 only, and the official run uses six worlds no one has looked at.",
-    cost: 'The guards limit what the change could have been fitted to but do not remove the doubt. v0.3 is published whatever it shows, and v0.2.0 stays as published.',
+    cost: 'The guards limit what the change could have been fitted to but do not remove the doubt. The official run v0.3.0 (2026-10-29) is published as it came out, and v0.2.0 stays as published.',
     decision: 'D-091, D-092, D-093; docs/evaluation/v0.3-method-proposal.md',
   },
   {
@@ -136,13 +136,13 @@ export const REGISTER: readonly RegisterRow[] = [
   },
   {
     id: 'judge-agreement',
-    item: 'The judge and the rules often disagreed',
+    item: 'The judge and the rules disagree on "unknown"',
     plain:
-      'In the official run v0.2.0, the judge and the answer score agreed on whether an answer was right for 53 percent of answers, little better than chance.',
+      'In the official run v0.3.0, the judge and the answer score agreed on 88 percent of the answers that answered, but on only 70 percent of those that said "unknown", which is weak agreement once chance is allowed for.',
     reason:
-      "Measured in the official run of 2026-10-26 with the old yes-or-no rule: agreement 53 percent on 1,348 judged answers, Cohen's kappa 0.07 (A 0.16, B 0.00, C 0.06). The judge marked 290 abstentions correct and a correct date with a time scored 0; v0.3 fixes both and compares three levels, separately for answers and abstentions.",
-    cost: 'Neither measure of a right answer can be read alone: a check may be too strict, or the judge too lenient.',
-    decision: 'D-086; docs/evaluation.md, "Status of results"',
+      'Measured in the official run of 2026-10-29 on three levels: answered, 88 percent of 637, weighted kappa 0.77; said "unknown", 70 percent of 263, weighted kappa 0.25 (A 0.38, B 0.21, C 0.17). Judge prompt 1.2.0 reads the whole answer and was not checked against hand labels; the labels that checked the earlier judge came from one model labeller, and no human labelled them (D-094, D-096). In v0.2.0, by the old yes-or-no rule, agreement was 53 percent on 1,348 judged answers, Cohen\'s kappa 0.07.',
+    cost: 'Neither measure of a right answer can be read alone, least of all for answers that said "unknown": a check may be too strict, or the judge too lenient.',
+    decision: 'D-086, D-094, D-096; docs/evaluation.md, "Status of results"',
   },
   {
     id: 'judge-blinding',
@@ -158,7 +158,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'bank-size',
     item: 'A small question bank',
     plain:
-      'There are 22 questions, each asked of each world in up to three forms: 150 in all over the three worlds of v0.2.0.',
+      'There are 22 questions, each asked of each world in up to three forms: 300 in all over the six worlds of v0.3.0, and 150 over the three worlds of v0.2.0.',
     reason:
       'Each question is written by hand with its checks and claims, and is grounded in each world from the data or the truth ledger.',
     cost: 'A small difference between approaches cannot be detected with this many questions.',
@@ -168,11 +168,21 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'question-groups',
     item: 'Few question groups per comparison',
     plain:
-      'In v0.2.0 each tested comparison rested on 12 groups of alike questions (24 for planted stories), so only a large difference could be detected.',
+      'In v0.3.0 each tested comparison rested on 24 groups of alike questions (48 for planted stories), so a difference had to be large to be detected: an 18.9-point gain in evidence was not.',
     reason:
-      'Questions made from one question in one world share a template, so each group counts once (official run of 2026-10-26: 12 groups for H1, H2 and H3, 24 for H5). The v0.3 official run uses six worlds to double the groups without writing new questions after seeing results.',
+      'Questions made from one question in one world share a template, so each group counts once (official run of 2026-10-29: 24 groups for H1, H2 and H3, 48 for H5; v0.2.0 had 12 groups, and 24 for H5). The six worlds of v0.3 doubled the groups without new questions written after seeing results.',
     cost: 'A modest effect of the graph or the ontology would read as "no detectable difference".',
     decision: 'D-032, D-091',
+  },
+  {
+    id: 'interval-and-test',
+    item: 'An interval and the test can disagree',
+    plain:
+      'In v0.3.0 five tested comparisons have an interval that leaves out zero but do not pass the test; under the rule set before the run they are not findings.',
+    reason:
+      'The interval is a bootstrap of one comparison alone; the test (Wilcoxon on group means, Holm-adjusted over the 14 tests) allows for making 14 comparisons at once, and the rule written before the run is the test (official run of 2026-10-29: H2 C against B on evidence and on answers, H1 B against A on answers, H5 B against A on evidence and on answers).',
+    cost: 'Some of the five may be real differences this many questions cannot confirm, and the one finding may still be chance: the test keeps the chance of any false finding among the 14 at 5 percent, not at zero.',
+    decision: 'D-032, D-087; docs/evaluation.md, "Statistics"',
   },
   {
     id: 'bank-authors',
