@@ -44,8 +44,8 @@ class LexicalReranker:
     """Scores query-token coverage of the candidate text; deterministic.
 
     ``score = |query tokens in text| / |query tokens|``; ties break on
-    ``chunk_id``. The incoming rank plays no part, so a graph node judged on
-    a record's exact text scores exactly what the record would.
+    ``chunk_id``. The incoming rank plays no part, so the same candidate
+    scores the same in every pipeline.
     """
 
     def __init__(self) -> None:

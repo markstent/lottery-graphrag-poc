@@ -9,7 +9,7 @@ export const BRING_UP: readonly [string, string][] = [
   ['make pull-models', 'Pull the embedding model into Ollama.'],
   ['make generate-dev-data', 'Generate the synthetic world.'],
   ['make ingest-graph', 'Load the world into Neo4j.'],
-  ['make index-vector', 'Build the passage index in Qdrant.'],
+  ['make index-vector', 'Build the passage and record-text index in Qdrant.'],
   ['make ground-bank', 'Fit the question bank to this world.'],
   [
     'make dev',
@@ -66,4 +66,118 @@ export const MODELS: readonly [string, string, string][] = [
     'JUDGE_PROVIDER, JUDGE_MODEL',
     'Another model family than the answer model.',
   ],
+]
+
+/** Every Makefile target, by what it is for. A test checks that each target is here and that each command exists. */
+export const COMMAND_GROUPS: readonly {
+  group: string
+  rows: readonly [string, string][]
+}[] = [
+  {
+    group: 'Develop',
+    rows: [
+      ['make help', 'List the targets.'],
+      ['make setup', 'Install the Python, frontend and browser dependencies.'],
+      ['make dev', 'Run the API and the screens together.'],
+      ['make dev-backend', 'Run the API alone, on port 8000, with reload.'],
+      ['make dev-frontend', 'Run the screens alone, on the Vite dev server.'],
+      ['make test', 'Backend and frontend unit tests, offline; no live graph.'],
+      ['make test-graph', 'The live graph tests. They wipe Neo4j.'],
+      ['make lint', 'ruff and oxlint.'],
+      ['make typecheck', 'mypy and the TypeScript checks.'],
+      ['make format', 'ruff and Prettier formatting.'],
+      ['make build', 'Build the frontend for production.'],
+      [
+        'make api-contract',
+        'Export the OpenAPI schema and regenerate the frontend types.',
+      ],
+      ['make e2e', 'Build the frontend and run the Playwright tests.'],
+    ],
+  },
+  {
+    group: 'Data and services',
+    rows: [
+      ['make services-up', 'Start Neo4j and Qdrant in Docker.'],
+      ['make services-down', 'Stop and remove them.'],
+      ['make pull-models', 'Pull the embedding model, bge-m3, into Ollama.'],
+      [
+        'make generate-dev-data',
+        'Generate the dev world, seed 2026, and its truth ledger.',
+      ],
+      ['make ingest-graph', 'Wipe Neo4j and load the dev world into it.'],
+      [
+        'make index-vector',
+        'Build the passage and record-text index in Qdrant.',
+      ],
+      [
+        'make traces',
+        'Write docs/evaluation/example-traces.md with the fixed program in place of the answer model; needs the dev graph and index.',
+      ],
+    ],
+  },
+  {
+    group: 'Demo world',
+    rows: [
+      [
+        'make generate-demo-data',
+        'Generate the larger demo world (5 million tickets) with its own ledger.',
+      ],
+      ['make ingest-demo-graph', 'Load the demo world into Neo4j.'],
+      ['make index-demo-vector', 'Build the demo index in its own collection.'],
+      ['make serve-demo-api', 'Serve the API against the demo world.'],
+      [
+        'make demo-reset',
+        'Load the demo graph and index again; restart the demo API after.',
+      ],
+      [
+        'make ground-demo-bank',
+        'Ground the question bank into the demo world.',
+      ],
+    ],
+  },
+  {
+    group: 'Benchmark',
+    rows: [
+      [
+        'make ground-bank',
+        'Ground and freeze the question bank for the active world.',
+      ],
+      [
+        'make run-smoke',
+        'Quick check: score the three seen worlds, 2026 to 2028, with fixed programs in place of the answer model and the judge; needs the services.',
+      ],
+      [
+        'make dry-run',
+        'Four questions on world 2026 with the official settings; owner approval first.',
+      ],
+      [
+        'make dev-run',
+        'Development run on world 2026 with the configured models; not a result; owner go-ahead first.',
+      ],
+      [
+        'make run-benchmark',
+        'Official run: the six unseen worlds, 2029 to 2034, each question once (REPEATS=N asks each N times), from a clean checkout; owner agreement first. OUT=DIR names it; OUT=DIR RESUME=1 resumes it.',
+      ],
+      [
+        'make run-sweep',
+        'Depth sweep: the H1 questions for B and C at depths 0 to 3, on the three seen worlds.',
+      ],
+      [
+        'make addendum-v020',
+        'Rescore the official run v0.2.0 with the current scorer and groundedness, beside the run; no model.',
+      ],
+      [
+        'make diagnose-selection',
+        'Read-only: which claims each approach finds and which reach the prompt, on world 2026 with no answer model.',
+      ],
+      [
+        'make label-sample',
+        'Build the hand-labelling sample from the official run v0.2.0; no model.',
+      ],
+      [
+        'make label-agreement',
+        'How far the measures agree with the hand labels on that sample; no model.',
+      ],
+    ],
+  },
 ]

@@ -10,6 +10,8 @@ export const MEASURES = {
   failures: 'Failures',
   /** Repeats that have no score because the answer model failed: not the generation_failure class. */
   unscored: 'Repeats with no score (generation failed)',
+  /** Repeats whose answer stops before the model finished it (D-096). */
+  cutOff: 'Answers cut off',
   judge: 'Judge (0 to 2)',
   judgeName: 'Judge',
 } as const
@@ -19,7 +21,6 @@ export const QUESTION_HEADS = {
   kind: 'Kind',
   world: 'World',
   answer: 'Answer',
-  evidence: 'Evidence',
   liveLab: 'Live Lab',
 } as const
 
@@ -31,6 +32,10 @@ export const TABLE_HEADS = {
   pairs: 'Pairs judged',
   agreement: 'Agreement',
   kappa: 'Kappa',
+  weightedKappa: 'Weighted kappa',
+  supported: 'Held by cited blocks',
+  unsupported: 'In no shown block',
+  questions: 'Questions',
   total: 'in all',
 } as const
 
@@ -41,4 +46,5 @@ export const CAPTIONS = {
   failures: 'Failures',
   judge: 'Judge',
   agreement: 'Agreement',
+  groundedness: 'Groundedness',
 } as const

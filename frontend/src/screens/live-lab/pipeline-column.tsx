@@ -11,10 +11,12 @@ import { pipeline, type PipelineId } from '../../design/pipelines'
 import type { PipelineStatus, RunState } from '../../run/reduce'
 import type { Schemas } from '../../api/client'
 import {
+  contextLine,
   evidenceRows,
   evidenceSummary,
   pipelineNotice,
   stageRows,
+  targetLine,
 } from './columns'
 import { StageTracker } from './stage-tracker'
 
@@ -33,9 +35,12 @@ export function PipelineColumn({
   results,
   canOpen,
   onOpen,
+  oldMethod = false,
 }: {
   id: PipelineId
   run: RunState
+  /** A recording of the old method, which keeps its own step names. */
+  oldMethod?: boolean
   /** The run's stored results, once there are any; they name the records. */
   results: Schemas['QueryResults'] | null
   /** Whether a row's record can be shown in the evidence drawer yet. */
@@ -46,11 +51,13 @@ export function PipelineColumn({
   const state = run.pipelines[id]
   const rows = evidenceRows(id, run, results)
   const notice = pipelineNotice(state)
+  const target = targetLine(id, run)
+  const context = contextLine(state)
 
   return (
     <section
       aria-label={label}
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-hairline bg-surface"
+      className="flex max-h-[30rem] min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-card border border-hairline bg-surface md:max-h-none"
     >
       <header
         className="flex shrink-0 items-baseline justify-between gap-2 px-4 py-2"
@@ -70,7 +77,7 @@ export function PipelineColumn({
         tabIndex={0}
         className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4"
       >
-        <StageTracker rows={stageRows(id, state)} />
+        <StageTracker rows={stageRows(id, state, oldMethod)} />
         {notice !== null && (
           <p
             role={state.status === 'failed' ? 'alert' : undefined}
@@ -85,6 +92,12 @@ export function PipelineColumn({
           <p className="tabular text-sm text-text-secondary">
             {evidenceSummary(rows, state.status)}
           </p>
+          {target !== null && (
+            <p className="text-sm text-text-secondary">{target}</p>
+          )}
+          {context !== null && (
+            <p className="tabular text-sm text-text-secondary">{context}</p>
+          )}
           {rows.length === 0 ? (
             <p className="text-sm text-text-muted">Nothing found yet.</p>
           ) : (
@@ -116,6 +129,11 @@ export function PipelineColumn({
                         {row.id}
                       </span>
                       <span className="text-text-muted">{` · ${row.kind}`}</span>
+                      {row.place !== null && (
+                        <span className="block text-text-muted">
+                          {row.place}
+                        </span>
+                      )}
                       {row.detail !== null && (
                         <span className="block text-text-muted">
                           {row.detail}

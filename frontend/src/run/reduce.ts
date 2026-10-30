@@ -19,7 +19,12 @@ export type PipelineId = NonNullable<
 export type GraphPipelineId = Exclude<PipelineId, 'A'>
 export type ErrorPayload = Schemas['ErrorPayload']
 export type CandidateKind = Schemas['GraphCandidateReranked']['kind']
-export type DiscardReason = Schemas['GraphNodeDiscarded']['reason']
+/** Every discard reason a run may carry: the current ones, and the two only
+ * stored old-method (v0.2) runs gave, which still replay. */
+export type DiscardReason = Schemas['OldMethodGraphNodeDiscarded']['reason']
+/** Where method v0.3 put a graph record in its own order: a seed, a holder of
+ * the question's target type, or another record. */
+export type GraphTier = Schemas['GraphNodeSelected']['tier']
 
 export type RunStatus =
   'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
@@ -51,18 +56,36 @@ export interface Candidate {
   rerankScore: number | null
 }
 
-export interface Selected {
+/**
+ * Where a graph record stood in the graph's own order (method v0.3): its tier
+ * and its 1-based graph rank. Both null for a document, for a record refused
+ * before the order, and for every record of an old-method (v0.2) run.
+ */
+interface GraphPlace {
+  tier: GraphTier | null
+  graphRank: number | null
+}
+
+export interface Selected extends GraphPlace {
   id: string
   kind: CandidateKind
-  /** Null for a graph node: nodes are ordered by score, not by rank. */
+  /** Null for a graph node: nodes are ordered by the graph, not by rank. */
   rank: number | null
+  /** A document's re-rank score; a node's only in an old-method run. */
   rerankScore: number | null
 }
 
-export interface Discarded {
+export interface Discarded extends GraphPlace {
   id: string
   reason: DiscardReason
   rerankScore: number | null
+}
+
+/** The context the pipeline built: its size, and the budget it was built
+ * within (null for an old-method run, which recorded slots instead). */
+export interface ContextSize {
+  tokens: number
+  budgetTokens: number | null
 }
 
 /** The generation event's telemetry; the answer text arrives with the run's results. */
@@ -80,6 +103,7 @@ export interface PipelineState {
   candidates: Candidate[]
   selected: Selected[]
   discarded: Discarded[]
+  context: ContextSize | null
   answer: Answer | null
   error: ErrorPayload | null
 }
@@ -127,6 +151,11 @@ export interface GraphEvents {
    * longest in hops. The paths themselves are in the run's results.
    */
   evidencePath: { paths: number; maxHops: number } | null
+  /**
+   * The graph labels the question named (`graph.target_types.resolved`):
+   * empty when it named none, null before the event and in old-method runs.
+   */
+  targetTypes: string[] | null
 }
 
 /** An event the reducer has no rule for, kept as received. */
@@ -154,6 +183,7 @@ const emptyPipeline = (): PipelineState => ({
   candidates: [],
   selected: [],
   discarded: [],
+  context: null,
   answer: null,
   error: null,
 })
@@ -164,6 +194,7 @@ const emptyGraph = (): GraphEvents => ({
   relationships: [],
   concepts: [],
   evidencePath: null,
+  targetTypes: null,
 })
 
 export const initialRunState = (): RunState => ({
@@ -238,10 +269,15 @@ function assembled(
   pipeline: PipelineState,
   t: number,
   previous: Stage,
+  payload: { context_tokens: number; budget_tokens?: number },
 ): PipelineState {
   const done = leave(pipeline, previous, t)
   return {
     ...done,
+    context: {
+      tokens: payload.context_tokens,
+      budgetTokens: payload.budget_tokens ?? null,
+    },
     stages: {
       ...done.stages,
       context: { status: 'completed', startedMs: t, endedMs: t },
@@ -335,17 +371,20 @@ const kindOf = (
 ): CandidateKind =>
   pipeline.candidates.find((candidate) => candidate.id === id)?.kind ?? fallback
 
+const NO_PLACE: GraphPlace = { tier: null, graphRank: null }
+
 const selectedIn = (
   pipeline: PipelineState,
   id: string,
   fallback: CandidateKind,
   rank: number | null,
   rerankScore: number | null,
+  place: GraphPlace = NO_PLACE,
 ): PipelineState => ({
   ...pipeline,
   selected: [
     ...pipeline.selected,
-    { id, kind: kindOf(pipeline, id, fallback), rank, rerankScore },
+    { id, kind: kindOf(pipeline, id, fallback), rank, rerankScore, ...place },
   ],
 })
 
@@ -354,9 +393,10 @@ const discardedIn = (
   id: string,
   reason: DiscardReason,
   rerankScore: number | null,
+  place: GraphPlace = NO_PLACE,
 ): PipelineState => ({
   ...pipeline,
-  discarded: [...pipeline.discarded, { id, reason, rerankScore }],
+  discarded: [...pipeline.discarded, { id, reason, rerankScore, ...place }],
 })
 
 function discovered(
@@ -403,6 +443,27 @@ function seeded(graph: GraphEvents, id: string): GraphEvents {
     seed: true,
     hop: 0,
   })
+}
+
+/** A node's re-rank score, which only old-method (v0.2) runs recorded:
+ * method v0.3 orders nodes by the graph and never re-ranks them. */
+function oldMethodRerankScore(payload: object): number | null {
+  return 'rerank_score' in payload && typeof payload.rerank_score === 'number'
+    ? payload.rerank_score
+    : null
+}
+
+/** A node outcome's place in the graph order, which only method v0.3 records. */
+function placeOf(
+  payload:
+    | Schemas['GraphNodeSelected']
+    | Schemas['GraphNodeDiscarded']
+    | Schemas['OldMethodGraphNodeSelected']
+    | Schemas['OldMethodGraphNodeDiscarded'],
+): GraphPlace {
+  return 'tier' in payload
+    ? { tier: payload.tier, graphRank: payload.graph_rank }
+    : NO_PLACE
 }
 
 function unknownEvent(
@@ -509,7 +570,9 @@ function apply(state: RunState, event: RunEvent): RunState {
       )
     }
     case 'rag.context.assembled':
-      return updatePipeline(state, id, (p) => assembled(p, t, 'rerank'))
+      return updatePipeline(state, id, (p) =>
+        assembled(p, t, 'rerank', event.payload),
+      )
     case 'rag.generation.started':
       return updatePipeline(state, id, (p) => enter(p, 'generation', t))
     case 'rag.generation.completed':
@@ -535,6 +598,13 @@ function apply(state: RunState, event: RunEvent): RunState {
       return updateGraph(state, id, (g) => ({
         ...g,
         entities: [...g.entities, entity],
+      }))
+    }
+    case 'graph.target_types.resolved': {
+      const { labels } = event.payload
+      return updateGraph(state, id, (g) => ({
+        ...g,
+        targetTypes: labels === '' ? [] : labels.split(','),
       }))
     }
     case 'graph.query.expanded':
@@ -616,11 +686,18 @@ function apply(state: RunState, event: RunEvent): RunState {
           changeNode(g, payload.node_id, {
             outcome: 'selected',
             score: payload.score,
-            rerankScore: payload.rerank_score,
+            rerankScore: oldMethodRerankScore(payload),
           }),
         )
         return updatePipeline(next, id, (p) =>
-          selectedIn(p, payload.node_id, 'node', null, payload.rerank_score),
+          selectedIn(
+            p,
+            payload.node_id,
+            'node',
+            null,
+            oldMethodRerankScore(payload),
+            placeOf(payload),
+          ),
         )
       }
       return updatePipeline(state, id, (p) =>
@@ -641,11 +718,17 @@ function apply(state: RunState, event: RunEvent): RunState {
             outcome: 'discarded',
             reason: payload.reason,
             score: payload.score,
-            rerankScore: payload.rerank_score,
+            rerankScore: oldMethodRerankScore(payload),
           }),
         )
         return updatePipeline(next, id, (p) =>
-          discardedIn(p, payload.node_id, payload.reason, payload.rerank_score),
+          discardedIn(
+            p,
+            payload.node_id,
+            payload.reason,
+            oldMethodRerankScore(payload),
+            placeOf(payload),
+          ),
         )
       }
       return updatePipeline(state, id, (p) =>
@@ -660,7 +743,9 @@ function apply(state: RunState, event: RunEvent): RunState {
       }))
     }
     case 'graph.context.assembled':
-      return updatePipeline(state, id, (p) => assembled(p, t, 'rerank'))
+      return updatePipeline(state, id, (p) =>
+        assembled(p, t, 'rerank', event.payload),
+      )
     case 'graph.generation.started':
       return updatePipeline(state, id, (p) => enter(p, 'generation', t))
     case 'graph.generation.completed':

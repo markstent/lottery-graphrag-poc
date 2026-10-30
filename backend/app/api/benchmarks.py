@@ -29,7 +29,7 @@ import uuid
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter
 from pydantic import ValidationError
@@ -48,6 +48,7 @@ from app.api.schemas import (
     BenchmarkRunOut,
     BenchmarkStart,
     BenchmarkSummary,
+    ExperimentSettings,
     InstancePipelineOut,
     InstanceResultOut,
     JobProgress,
@@ -58,31 +59,54 @@ from app.api.schemas import (
     error_responses,
 )
 from app.api.scoring import require_bank
-from app.config import REPO_ROOT
+from app.config import REPO_ROOT, from_env, judge_settings_from_env
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
+from app.evaluation.judge import FakeJudge, GatewayJudge
 from app.evaluation.official import (
-    OFFICIAL_SEEDS,
     PRESENTATION_SEED,
+    SEEN_SEEDS,
     BenchmarkCancelled,
     NotDevWorld,
     bank_matches_active_world,
+    check_seeds,
     ground_command,
     kept_world_count,
     load_results,
+    method_of,
     preflight,
     run_benchmark,
     run_id,
     world_paths,
 )
 from app.evaluation.report import SUMMARY_SCHEMA_VERSION, instance_means
-from app.evaluation.runner import WORLD_MANIFEST, instance_result_from_payload
+from app.evaluation.runner import (
+    OFFICIAL_MIN_REPEATS,
+    WORLD_MANIFEST,
+    PipelineRun,
+    instance_result_from_payload,
+    settings_fields,
+)
 from app.observability.logging import run_context
 
 logger = logging.getLogger(__name__)
 
+# The summary schemas the API publishes: 2 for runs of method v0.2 (such as
+# the official run v0.2.0), the current one for method v0.3.
+PUBLISHED_SCHEMA_VERSIONS = frozenset({"2", SUMMARY_SCHEMA_VERSION})
+# The worlds a benchmark job may name: the seen ones only. The official run on
+# the unseen seeds goes through ``make run-benchmark`` after the owner's
+# go-ahead, never through the API (D-091); ``check_seeds`` still refuses a
+# full-bank official start on them.
+JOB_SEEDS = SEEN_SEEDS
+
 Published = tuple[str, dict[str, Any]]
+
+# What a run records about the checkout, which is not a setting.
+_GIT_FIELDS = frozenset({"git_sha", "git_dirty"})
+# The fields that name the judge model; the offline judge is no model.
+_JUDGE_MODEL_FIELDS = ("judge_model", "judge_model_family", "judge_reasoning", "judge_temperature")
 
 
 def stale_bank_message() -> str:
@@ -97,7 +121,7 @@ def published_runs(runs_dir: Path) -> list[Published]:
     runs: list[Published] = []
     for path in runs_dir.glob("*/summary.json"):
         summary = json.loads(path.read_text(encoding="utf-8"))
-        if summary.get("schema_version") == SUMMARY_SCHEMA_VERSION:
+        if summary.get("schema_version") in PUBLISHED_SCHEMA_VERSIONS:
             runs.append((path.parent.name, summary))
     return sorted(runs, key=_started, reverse=True)
 
@@ -142,7 +166,13 @@ def _summary_out(run: Published) -> BenchmarkSummary:
         raise RuntimeError(
             f"the summary of benchmark run {name!r} is malformed: {error}"
         ) from error
-    return BenchmarkSummary(run_id=name, run_kind=typed.run_kind, label=typed.label, summary=typed)
+    return BenchmarkSummary(
+        run_id=name,
+        run_kind=typed.run_kind,
+        label=typed.label,
+        method_version=method_of(summary["reproducibility"]["run"]),
+        summary=typed,
+    )
 
 
 def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
@@ -181,6 +211,10 @@ def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
                                     ).items()
                                 )
                             ),
+                            cut_off_repeats=_count_answers(result.runs[tag], "cut_off"),
+                            token_limit_repeats=_count_answers(
+                                result.runs[tag], "token_limit_reached"
+                            ),
                             **{
                                 metric: means[tag][metric]
                                 for metric in InstancePipelineOut.model_fields
@@ -192,6 +226,18 @@ def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
                 )
             )
     return out
+
+
+def _count_answers(
+    runs: list[PipelineRun], flag: Literal["cut_off", "token_limit_reached"]
+) -> int | None:
+    """The repeats with an answer whose ``flag`` is true; None when an answer
+    did not record it (written before answer parser 2.0.0, D-096). A repeat
+    whose generation failed has no answer and is not counted."""
+    values = [getattr(run, flag) for run in runs if not run.generation_failed]
+    if any(value is None for value in values):
+        return None
+    return sum(bool(value) for value in values)
 
 
 def presentation_bank() -> FrozenBank | None:
@@ -471,15 +517,20 @@ def _with_kept_worlds(
 
 
 def _check(request: BenchmarkStart) -> None:
-    """Refuse seeds and strata the harness does not run, as a 422."""
-    if unknown := sorted(set(request.seeds) - set(OFFICIAL_SEEDS)):
+    """Refuse seeds and strata the harness does not run, and seeds the
+    request's kind may not use (the unseen worlds, D-091), as a 422."""
+    if unknown := sorted(set(request.seeds) - set(JOB_SEEDS)):
         raise ApiError(
             422,
             ErrorCode.VALIDATION_ERROR,
-            f"unknown seeds {unknown}; expected some of {list(OFFICIAL_SEEDS)}",
+            f"unknown seeds {unknown}; expected some of {list(JOB_SEEDS)}",
         )
-    if len(set(request.seeds)) != len(request.seeds):
-        raise ApiError(422, ErrorCode.VALIDATION_ERROR, "seeds must not repeat")
+    try:
+        check_seeds(
+            request.kind, request.seeds, full_bank=request.strata is None and request.limit is None
+        )
+    except ValueError as error:
+        raise ApiError(422, ErrorCode.VALIDATION_ERROR, f"seeds: {error}") from None
     if request.strata is not None and (unknown_strata := sorted(set(request.strata) - set(STRATA))):
         raise ApiError(
             422,
@@ -488,9 +539,31 @@ def _check(request: BenchmarkStart) -> None:
         )
 
 
+def _experiment_settings() -> ExperimentSettings:
+    """The fields an official run records, from the environment now. The judge is
+    built without a model call; with no judge model set its fields are None."""
+    try:
+        judge_settings = judge_settings_from_env()
+        configured = judge_settings.provider != "fake"
+        judge = GatewayJudge(judge_settings) if configured else FakeJudge()
+        fields = settings_fields(from_env(), judge, "official", OFFICIAL_MIN_REPEATS)
+    except ValueError as error:
+        raise ApiError(
+            503, ErrorCode.CONFIGURATION_ERROR, f"invalid configuration: {error}"
+        ) from error
+    values = {key: value for key, value in fields.items() if key not in _GIT_FIELDS}
+    if not configured:
+        values.update({key: None for key in _JUDGE_MODEL_FIELDS})
+    return ExperimentSettings(values=values, judge_configured=configured)
+
+
 def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
     """The benchmark routes over ``runs_dir`` (ApiSettings.benchmark_dir)."""
     router = APIRouter()
+
+    @router.get("/settings", response_model=ExperimentSettings, responses=error_responses(503))
+    def read_settings() -> ExperimentSettings:
+        return _experiment_settings()
 
     @router.get("/benchmarks", response_model=list[BenchmarkRunOut], responses=error_responses())
     def list_benchmarks() -> list[BenchmarkRunOut]:
@@ -499,6 +572,7 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
                 run_id=name,
                 run_kind=summary["run_kind"],
                 label=summary["label"],
+                method_version=method_of(summary["reproducibility"]["run"]),
                 started_at=summary["reproducibility"]["run"]["started_at"],
                 selection=summary["selection"],
                 worlds=summary["worlds"],

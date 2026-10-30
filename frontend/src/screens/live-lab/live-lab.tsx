@@ -226,9 +226,13 @@ export function LiveLab() {
         </p>
       )}
       {stored !== null && state.status === 'completed' && (
-        <Scorecard results={stored} />
+        <Scorecard
+          results={stored}
+          // A live run is of the current method, which compares recall (D-087).
+          metric={run.oldMethod ? 'evidence_f1' : 'evidence_recall'}
+        />
       )}
-      <div className="grid grid-cols-[3fr_2fr] gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr]">
         {/* Canvas first, as it is on screen; the three panels follow it. */}
         {run.phase !== 'idle' ? (
           <CanvasArea
@@ -250,7 +254,7 @@ export function LiveLab() {
           <CanvasPlaceholder />
         )}
         <div className="relative min-w-0">
-          <div className="absolute inset-0 flex flex-col gap-2">
+          <div className="flex flex-col gap-2 md:absolute md:inset-0">
             {PIPELINES.map(({ id }) => (
               <PipelineColumn
                 key={id}
@@ -259,6 +263,7 @@ export function LiveLab() {
                 results={results}
                 canOpen={(recordId) => sourceOf(id, recordId) !== null}
                 onOpen={(recordId) => open(id, recordId)}
+                oldMethod={run.oldMethod}
               />
             ))}
           </div>
@@ -266,18 +271,19 @@ export function LiveLab() {
       </div>
       <Timeline
         state={state}
+        oldMethod={run.oldMethod}
         originMs={run.originMs}
         timeline={run.timeline}
         controls={run.controls}
       />
       {stored !== null && (
         <>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 items-start gap-4 md:grid-cols-3">
             {PIPELINES.map(({ id }) => (
               <AnswerBlock key={id} id={id} results={stored} onOpen={open} />
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <PathStrip
               id="B"
               state={state}

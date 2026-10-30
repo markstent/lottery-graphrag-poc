@@ -116,7 +116,11 @@ Set `GENERATION_MODEL` to an `openrouter/...` model and `OPENROUTER_API_KEY` in 
 Never commit a key or write it to a log.
 
 **Official run.**
-The generation model and the judge for the official run are chosen at CP3, with an estimated cost and duration.
+An official run of method v0.3 uses the six unseen worlds, seeds 2029 to 2034, and starts from the command line (`make run-benchmark`) only after the owner agrees (D-091).
+The official run v0.3.0 (`official-2026-10-29`) did so with the models of v0.2.0, from 2026-10-29 14:41 UTC to about 02:06 UTC on 2026-10-30 (when summary.json was written; the run record has no end time).
+The API never starts it.
+The Results start panel offers a development run on seed 2026 (the default) and a quick check, and neither is a result.
+Development uses seed 2026 only, through `make dev-run`; no development, diagnostic or labelling step may use seeds 2029 to 2034.
 An official run requires `GENERATION_MODEL_FAMILY`, `JUDGE_MODEL_FAMILY` (different), `GENERATION_PROVIDER=litellm` and `JUDGE_PROVIDER=litellm`.
 
 **A failed official run.**
@@ -126,6 +130,7 @@ Continue it with `make run-benchmark OUT=data/evaluation/runs/<run id> RESUME=1`
 `OUT` is relative to the repository root, and the directory must exist.
 Resume refuses any setting that differs from the kept worlds and says which (see [evaluation.md](evaluation.md)).
 An official run resumes only from a clean checkout at the same revision, so any code change, committed or not, means a new run rather than a resume.
+A fresh official run, the dry run included, also starts only when git reports a clean checkout; a checkout with uncommitted changes, or one git cannot read, is refused before any world is prepared.
 A job started from the API never resumes; its failure message names the command to run.
 
 ## Command reference
@@ -149,11 +154,85 @@ A job started from the API never resumes; its failure message names the command 
 | `make ground-bank`, `ground-demo-bank` | Freezes the question bank into a world |
 | `make demo-reset` | The demo graph load and index build |
 | `make serve-demo-api` | Serves the API against the demo world |
-| `make traces` | Writes the side-by-side example traces (needs the dev graph, index and bank) |
-| `make dry-run` | Four-question dry run of the official settings; it wipes and restores the graph, and needs owner approval first |
-| `make run-smoke`, `run-benchmark`, `run-sweep` | The benchmark runs (see [evaluation.md](evaluation.md)) |
+| `make traces` | Writes the side-by-side example traces with the fake generator (reads Neo4j and Qdrant, runs the embedding and re-ranking models) |
+| `make dry-run` | Four-question dry run of the official settings, each question asked once (`REPEATS=N` for more); it wipes and restores the graph, calls the answer and judge models, and needs owner approval first |
+| `make dev-run` | Development run on seed 2026, not a result; it wipes and restores the graph, calls the answer and judge models, and needs the owner's go-ahead |
+| `make diagnose-selection` | Read-only: which claim records each approach finds and the selection keeps (reads Neo4j, runs the embedding and re-ranking models, no answer model) |
+| `make addendum-v020` | Rescores official run v0.2.0 with the current scorer (2.2.1); no Neo4j, no model |
+| `make label-sample`, `label-agreement` | Builds the hand-labelling sample from run v0.2.0, and reports the agreement of the measures with the labels; no Neo4j, no model |
+| `make run-smoke` | Scorer smoke test on three worlds; it wipes and restores Neo4j and indexes new worlds in Qdrant, with the fake generator and judge (no answer or judge model) |
+| `make run-benchmark`, `run-sweep` | The official run (six unseen worlds, seeds 2029 to 2034, each question asked once as D-097 sets and `REPEATS=N` for more, only after the owner agrees) and the depth sweep (see [evaluation.md](evaluation.md)); each wipes and restores Neo4j, indexes new worlds in Qdrant and calls the judge model, and the answer model unless `GENERATION_PROVIDER=fake` |
 
 The Makefile is the stable command surface.
+
+## CP4 stop 1 runbook
+
+This is the controller's order of work for method v0.3 up to the first stop of the CP4 checkpoint.
+The owner decides at each step marked as needing a go-ahead; a passing command is not approval.
+The runbook is a copy of the plan's Task 17 (`docs/superpowers/plans/2026-10-27-method-v03.md`).
+
+Development uses the seed 2026 world only.
+The official seeds 2029 to 2034 are unseen: no development, dry, diagnostic or label step may run on them, and only a full-bank official run (`make run-benchmark`) does.
+
+### Setup
+
+The worktree has no `data/` and no root `.env`.
+From inside the worktree root, link the main checkout's `data/` directory with `ln -s ../lottery-graphrag-poc/data data`; the target is the main checkout's data directory.
+The root `/data` pattern in `.gitignore` ignores the link; a pattern ending in `/` would not, because git sees a symlink as a file.
+An unignored link would make the checkout dirty, and `make dry-run` and `make run-benchmark` refuse a dirty checkout.
+The API on port 8000 and the UI on port 5173 keep running from the main checkout throughout.
+
+Because there is no root `.env`, the Makefile reads no settings, so supply the environment explicitly in the shell that runs the targets.
+Start from the defaults in `.env.example`, then add the run settings:
+
+```bash
+set -a; . ./.env.example; set +a
+export GENERATION_PROVIDER=litellm GENERATION_MODEL=<model> GENERATION_MODEL_FAMILY=<family>
+export JUDGE_PROVIDER=litellm JUDGE_MODEL=<model> JUDGE_MODEL_FAMILY=<other family>
+```
+
+The two `export` lines are needed only for steps 6 to 9, which call the answer and judge models.
+Steps 1 to 5 need only the `.env.example` defaults, whose providers are fakes.
+An official run requires the judge's model family to differ from the generator's.
+
+### Safe without the owner's go-ahead
+
+These steps write no Neo4j data and call no answer or judge model.
+
+1. `make addendum-v020` rescores official run v0.2.0 with the current scorer (2.2.1) and writes `data/evaluation/addenda/official-2026-10-26-scorer-2.2.1/`.
+   It grounds the run's worlds, seeds 2026 to 2028, again in memory, so their data under `data/generated/` and their ledgers must be on disk; it writes no bank file (D-095).
+   `make label-agreement` does the same.
+2. `make label-sample` writes `data/evaluation/labels/v0.2.0-sample/`.
+   Fill `labels-owner.csv`, `labels-controller.csv` or both, leaving an unused file untouched.
+   With both, settle disagreements into `labels-consensus.csv`.
+   The v0.2.0 sample was labelled by the controller only (D-094).
+3. After labelling, `make label-agreement` reports how far each measure agrees with the labels.
+   Weighted kappa is shown only over 10 or more items; below that the page says "too few to say".
+
+### Reads Neo4j, runs local models
+
+4. `make diagnose-selection`, once, on seed 2026 under the new selection rule.
+   It is read-only for Neo4j: every statement is a centralised `MATCH` read, and it never ingests or wipes.
+   It refuses unless the live graph is the seed 2026 world.
+   On a single Neo4j instance the server does not enforce read routing, so its read-only status rests on the statements; record the node count (36,888) before and after.
+   It calls no answer or judge model, and it runs the embedding model and the cross-encoder.
+   No re-index is needed.
+5. `make traces` reads the dev graph and index with the fake generator and rewrites `docs/evaluation/example-traces.md`.
+   Commit it as `docs: example traces under method v0.3`.
+
+### Needs the owner's explicit go-ahead
+
+These steps wipe and restore Neo4j or call the answer or judge model.
+
+6. `make dev-run` is a development run on seed 2026, not a result.
+   Narrow it with `STRATA=` or `LIMIT=`.
+7. Optionally re-judge the labelled sample with judge 1.1.0 (judge model).
+8. `make dry-run` is the four-question dry run on seed 2026.
+   Check that the record's `method_version` is "0.3.0", check the versions, and check that the node count is back to 36,888.
+9. Re-record the four Live Lab recordings through the API under v0.3 (answer model), setting `"method": "0.3.0"` in `index.json`.
+10. Report to the owner with the artefacts, the diagnostic, the addendum, the label agreement, the dry run and the Live Lab screenshots, update `HITL_STATUS.md`, and stop at CP4 stop 1.
+
+Only the project owner marks the stop approved.
 
 ## Recovery and troubleshooting
 
@@ -170,7 +249,8 @@ The product shows the failed check and its plain reason.
 | Embedding model not listed | Ollama is not running or the model is not pulled | Start Ollama, then `make pull-models` |
 | Answer model not listed or unreachable | The model is not pulled, or the provider is down | `ollama pull <model>`, or fix `GENERATION_API_BASE` |
 | A run fails with `MODEL_ERROR` | The gateway call failed or returned nothing | Check the model. A thinking model needs `GENERATION_REASONING=off`. A failure naming reasoning tokens means the provider ignored `off`; use another model. |
-| 503 "the question bank has not been grounded" | No frozen bank for this world | `make ground-bank` (`make ground-demo-bank` for the demo world) |
+| 503 "the question bank has not been grounded" | No frozen bank for this world and scorer | `make ground-bank` (`make ground-demo-bank` for the demo world) |
+| Grounding says the bank file "holds another bank" | The world, its ledger or the code changed since that bank was written, and runs were made with that file | Move the file aside on purpose, then ground again (D-095) |
 | 503 "the question bank does not match the active world" | The world, ledger or serialiser changed since grounding | Re-run the grounding command. |
 | 409 "a benchmark run is using the graph" | A job is running | Retry when it ends. |
 | Server stopped during a benchmark job | Jobs are in memory, and Neo4j may hold a benchmark world | `make ingest-graph`, then check readiness |
@@ -187,6 +267,9 @@ Cancel it from the screen, or stop the server, and the next start-up marks it in
 
 ## Configuration reference
 
+`RAG_EVIDENCE_SLOTS` and `RAG_GRAPH_SLOTS` were removed with method v0.3 (D-084).
+A value left set, in the environment or in a `.env` that the Makefile exports, stops the API and the benchmark at start-up with a message naming the variable; delete the line.
+
 Every variable below is read from the process environment.
 `.env.example` has the same list with comments.
 A key shown commented in that file must stay unset, not empty, to get its default.
@@ -199,9 +282,9 @@ A key shown commented in that file must stay unset, not empty, to get its defaul
 | World | `DATASET_DIR`, `TRUTH_LEDGER_PATH` | `data/generated/dev-seed2026`, `data/truth/ledger.json` |
 | Embeddings | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSIONS`, `OLLAMA_HOST` | `ollama`, `bge-m3`, 1024, `http://localhost:11434` |
 | Sparse | `SPARSE_PROVIDER`, `SPARSE_MODEL`, `FASTEMBED_CACHE` | unset, `Qdrant/bm25`, `~/.cache/fastembed` |
-| Retrieval | `RAG_TOP_K`, `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_EVIDENCE_SLOTS`, `RAG_GRAPH_SLOTS`, `RAG_DEDUPE_THRESHOLD` | 40, 2000, 12, 6, 0.85 |
+| Retrieval | `RAG_TOP_K`, `RAG_CONTEXT_TOKEN_BUDGET`, `RAG_DEDUPE_THRESHOLD` | 40, 2000, 0.85 |
 | Re-ranker | `RERANK_PROVIDER`, `RERANK_MODEL` | `cross_encoder`, `BAAI/bge-reranker-v2-m3` |
-| Generation | `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_API_BASE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S`, `GENERATION_MODEL_FAMILY`, `GENERATION_MODEL_QUANTISATION`, `GENERATION_REASONING` | `fake`, `fake-answer-v1`, 0, unset, 1200, 120, unset, unset, `default` |
+| Generation | `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_API_BASE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S`, `GENERATION_MODEL_FAMILY`, `GENERATION_MODEL_QUANTISATION`, `GENERATION_REASONING` | `fake`, `fake-answer-v1`, 0, unset, 4096, 120, unset, unset, `default` |
 | Judge | `JUDGE_PROVIDER`, `JUDGE_MODEL`, `JUDGE_MODEL_FAMILY`, `JUDGE_API_BASE`, `JUDGE_TEMPERATURE`, `JUDGE_REASONING` | `fake`, `fake-judge-v1`, unset, unset, 0, `default` |
 | Graph | `GRAPH_DEPTH`, `GRAPH_MAX_NODES_PER_HOP`, `GRAPH_MAX_EDGES_PER_NODE_TYPE`, `GRAPH_MAX_TOTAL_NODES`, `GRAPH_REFERENCE_DATE` | 2, 100, 4, 200, end of the dataset window |
 | API | `CORS_ORIGINS`, `BENCHMARK_DIR`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `LOG_LEVEL` | the two `localhost:5173` and `127.0.0.1:5173` origins, `data/evaluation/runs`, `data/app.db`, 500, 15, `INFO` |

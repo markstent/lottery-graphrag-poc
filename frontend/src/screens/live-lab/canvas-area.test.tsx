@@ -6,11 +6,12 @@ import {
   within,
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { SettingsProvider } from '../../app/settings'
 import { RECORDINGS } from '../../test/recordings'
+import { warmLayout } from '../../test/warm-layout'
 import { initialRunState, reduceAll, type RunEvent } from '../../run/reduce'
 import { CanvasArea, type FoldedGroup } from './canvas-area'
 
@@ -60,6 +61,7 @@ const nodes = () =>
     .filter((el) => el.hasAttribute('data-node-id'))
 const placed = () => waitFor(() => expect(nodes().length).toBeGreaterThan(0))
 
+beforeAll(warmLayout)
 beforeEach(() => window.localStorage.clear())
 
 describe('CanvasArea', () => {
@@ -154,12 +156,12 @@ describe('CanvasArea', () => {
   })
 
   describe('the other approach path', () => {
-    /** B's path loses SUP_00005, which C's path keeps and B's graph holds. */
+    /** B's path loses INC_024, which C's path keeps and B's graph holds. */
     const results = (() => {
       const out = structuredClone(h1.results) as Results
       const b = out.results!.B as Schemas['GraphRunResult']
       for (const n of b.node_evidence)
-        if (n.node_id === 'SUP_00005') n.selected = false
+        if (n.node_id === 'INC_024') n.selected = false
       return out
     })()
 
@@ -184,7 +186,7 @@ describe('CanvasArea', () => {
             '[data-on-other-path="true"][data-node-id]',
           ),
         ).map((el) => el.getAttribute('data-node-id'))
-      await waitFor(() => expect(marked()).toEqual(['SUP_00005']))
+      await waitFor(() => expect(marked()).toEqual(['INC_024']))
       expect(screen.getByText('C path')).toBeVisible()
       await user.click(screen.getByRole('button', { name: "Show C's path" }))
       await waitFor(() => expect(marked()).toEqual([]))
@@ -203,7 +205,8 @@ describe('CanvasArea', () => {
 
     it('says how many steps of the other path this graph does not hold', async () => {
       const user = userEvent.setup()
-      show(h3)
+      // C's path starts at the ontology concept CONCEPT_INCIDENT, which B's graph never holds.
+      show(h1)
       await placed()
       await user.click(screen.getByRole('button', { name: "Show C's path" }))
       expect(
@@ -436,9 +439,7 @@ describe('CanvasArea', () => {
       mode: 'live',
       results: null,
     })
-    expect(
-      screen.getByText('No graph activity has been recorded yet.'),
-    ).toBeVisible()
+    expect(screen.getByText('No graph activity yet.')).toBeVisible()
   })
 
   it('gives a text alternative that lists the evidence paths', async () => {

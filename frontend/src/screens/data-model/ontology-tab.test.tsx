@@ -319,9 +319,7 @@ describe('OntologyTab', () => {
   it('says so when the ontology has no concepts', async () => {
     stubApi({ '/api/v1/ontology': { version: '2.0.0', concepts: [] } })
     renderAt()
-    expect(
-      await screen.findByText('The ontology has no concepts yet.'),
-    ).toBeVisible()
+    expect(await screen.findByText('None yet.')).toBeVisible()
   })
 
   it('shows the API error with a retry', async () => {

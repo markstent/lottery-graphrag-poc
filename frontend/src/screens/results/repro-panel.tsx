@@ -13,11 +13,15 @@ function FieldList({
   worlds?: readonly Fields[]
 }) {
   return (
-    <dl className="grid grid-cols-[minmax(0,20rem)_1fr] gap-x-6 gap-y-1 text-sm">
+    <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm md:grid-cols-[minmax(0,20rem)_1fr]">
       {reproFields(record, worlds).map(({ key, value }) => (
         <div key={key} className="contents">
-          <dt className="font-mono text-text-secondary">{key}</dt>
-          <dd className="break-words font-mono text-text-primary">{value}</dd>
+          <dt className="wrap-anywhere font-mono text-text-secondary md:wrap-normal">
+            {key}
+          </dt>
+          <dd className="wrap-anywhere pl-4 font-mono text-text-primary md:break-words md:pl-0">
+            {value}
+          </dd>
         </div>
       ))}
     </dl>

@@ -13,7 +13,9 @@ import { EVIDENCE_STATES } from '../design/evidence-states'
 import { NODE_LABELS, countedLabel, nodeLabel } from '../design/node-labels'
 import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
-import { APPROACH_LINES } from '../screens/help/approach-lines'
+import { CHAPTER_COPY } from '../screens/help/copy'
+import { REGISTER } from '../screens/help/copy/limits'
+import type { Block, ChapterCopy } from '../screens/help/chapters'
 import { STRATUM_NAMES } from '../screens/help/bank'
 import { KIND_WORDS } from '../app/run-kinds'
 import {
@@ -92,6 +94,13 @@ function textsOf(node: ts.Node | undefined): string[] {
     ]
   if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node))
     return textsOf(node.expression)
+  // `plural(n, 'noun')` draws its noun next to a number; the number is data.
+  if (
+    ts.isCallExpression(node) &&
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === 'plural'
+  )
+    return textsOf(node.arguments[1])
   if (ts.isConditionalExpression(node))
     return [...textsOf(node.whenTrue), ...textsOf(node.whenFalse)]
   if (ts.isBinaryExpression(node)) {
@@ -372,9 +381,28 @@ describe('copy budget outside Help', () => {
       'Two words',
     ])
   })
+
+  it('counts a plural noun in the budget', () => {
+    const sample = `export const X = () => <p>{plural(n, 'tested comparison')} failed</p>`
+    const words = budgetCopyIn(sample, 'x.tsx').reduce(
+      (total, text) => total + wordsIn(text),
+      0,
+    )
+    expect(words).toBe(3)
+  })
 })
 
 describe('copy in expressions', () => {
+  it('counts the noun passed to plural(), in JSX and in templates', () => {
+    const sample = `export const X = () => <p>{plural(n, 'tested comparison')}{\`Bound to \${plural(k, 'local term')} here\`}</p>`
+    expect(copyIn(sample).map(({ text }) => text)).toEqual([
+      'tested comparison',
+      'Bound to ',
+      'local term',
+      ' here',
+    ])
+  })
+
   it('counts what a condition shows, not what it compares', () => {
     const sample = `export const X = () => <p>{ready && 'Shown text'}{status === 'ready' ? 'Yes now' : 'No'}{a || 'Fallback words'}</p>`
     expect(copyIn(sample).map(({ text }) => text)).toEqual([
@@ -383,6 +411,44 @@ describe('copy in expressions', () => {
       'No',
       'Fallback words',
     ])
+  })
+})
+
+/** The sentences of the Plain blocks of a chapter: paragraphs and list items. Technical blocks are not read. */
+const plainTexts = ({ plain, plainHint }: ChapterCopy): string[] => [
+  ...plain.flatMap((block: Block) =>
+    typeof block === 'string' ? [block] : 'kind' in block ? [] : [...block],
+  ),
+  ...(plainHint ? [plainHint] : []),
+]
+
+describe('Help chapters', () => {
+  it('reads the Plain blocks and skips the Technical blocks', () => {
+    const sample: ChapterCopy = {
+      plain: [
+        'A seed node',
+        ['a fake one', 'fine'],
+        { kind: 'diagram', name: 'evidence' },
+      ],
+      technical: ['The seed is chosen', ['a chunk']],
+    }
+    expect(plainTexts(sample).filter((text) => violation(text))).toEqual([
+      'A seed node',
+      'a fake one',
+    ])
+  })
+
+  it('has no banned word in the Plain blocks of any chapter', () => {
+    const texts = Object.values(CHAPTER_COPY).flatMap(plainTexts)
+    expect(texts.length).toBeGreaterThan(5)
+    expect(texts.filter((text) => violation(text))).toEqual([])
+  })
+
+  it('has no banned word in what the register shows at Plain', () => {
+    // The Technical columns (reason, cost, decision) are not read, as with Technical blocks.
+    const texts = REGISTER.flatMap(({ item, plain }) => [item, plain])
+    expect(texts.length).toBeGreaterThan(20)
+    expect(texts.filter((text) => violation(text))).toEqual([])
   })
 })
 
@@ -403,7 +469,6 @@ describe('generated copy', () => {
     ...Object.values(MODEL_LABELS),
     // Display maps in screens: a bare "Ontology" as a value is caught here.
     ...Object.values(STRATUM_NAMES),
-    ...Object.values(APPROACH_LINES),
     ...Object.values(KIND_WORDS),
     ...Object.values(STRATUM_LABELS),
     ...Object.values(COMPARISON_LABELS),

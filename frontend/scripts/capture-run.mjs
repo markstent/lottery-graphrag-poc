@@ -154,6 +154,12 @@ if (values.adhoc) {
 } else if (OUT_DIR) {
   mkdirSync(OUT_DIR, { recursive: true })
   const { generation } = await api('/models')
+  // The retrieval method the server runs, as GET /settings reports it: a
+  // recording keeps the method it was made under, so Live Lab can label one
+  // made under an older method.
+  const { method_version: method } = (await api('/settings')).values
+  if (typeof method !== 'string')
+    throw new Error('GET /settings reported no method_version')
   // The recordings name the world they were captured on, so Live Lab can
   // refuse to open their records from a different active world.
   const active = (await api('/datasets')).find((dataset) => dataset.active)
@@ -169,6 +175,7 @@ if (values.adhoc) {
       run_id: runId,
       model: generation.model,
       captured_at: new Date().toISOString(),
+      method,
       results: run,
       events,
     }

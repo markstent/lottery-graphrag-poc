@@ -5,6 +5,7 @@ import { Check, Minus } from 'lucide-react'
 import type { Schemas } from '../../api/client'
 import { PIPELINES } from '../../design/pipelines'
 import { coverage, MARKETS } from '../../run/coverage'
+import { ScrollBox } from '../../components/scroll-box'
 
 export function CoverageMatrix({
   results,
@@ -17,10 +18,13 @@ export function CoverageMatrix({
       <h3 className="text-base font-semibold text-text-primary">
         Market coverage
       </h3>
-      <div className="overflow-hidden rounded-card border border-hairline bg-surface">
+      <ScrollBox
+        label="Market coverage"
+        className="rounded-card border border-hairline bg-surface"
+      >
         <table
           aria-label="Market coverage"
-          className="w-full table-fixed text-left"
+          className="w-full min-w-[36rem] table-fixed text-left md:min-w-0"
         >
           <thead>
             <tr>
@@ -63,7 +67,7 @@ export function CoverageMatrix({
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollBox>
     </section>
   )
 }

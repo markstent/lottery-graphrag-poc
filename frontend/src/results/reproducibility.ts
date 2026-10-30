@@ -6,7 +6,7 @@ import { yesNo } from '../app/score-words'
 
 type JsonValue = Schemas['JsonValue']
 
-const NOT_RECORDED = 'Not recorded'
+export const NOT_RECORDED = 'Not recorded'
 
 /** Every field of docs/reference/evaluation/reproducibility.md in the order it is shown, by the name the record gives it. */
 export const REPRO_KEYS = [
@@ -50,6 +50,7 @@ export const REPRO_KEYS = [
   'generation_reasoning',
   'prompt_version',
   'prompt_hash',
+  'answer_parser_version',
   'judge_model',
   'judge_model_family',
   'judge_reasoning',
@@ -57,6 +58,11 @@ export const REPRO_KEYS = [
   'judge_prompt_version',
   'judge_prompt_hash',
 ] as const
+
+/** A recorded field read as a number, or null when the run recorded none (or something else). */
+export function recordedNumber(value: JsonValue | undefined): number | null {
+  return typeof value === 'number' ? value : null
+}
 
 function show(value: JsonValue | undefined): string {
   if (value === null || value === undefined) return NOT_RECORDED

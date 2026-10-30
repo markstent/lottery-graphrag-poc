@@ -17,13 +17,27 @@ import json
 import logging
 import subprocess
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import pytest
-from app.config import LABEL_VERSION, SELECTION_RULE, GraphConfig, JudgeSettings, from_env
+from app.config import (
+    LABEL_VERSION,
+    METHOD_VERSION,
+    REPO_ROOT,
+    SELECTION_RULE,
+    GraphConfig,
+    JudgeSettings,
+    from_env,
+)
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
-from app.evaluation.checks import TokenCheck, answer_score, citation_metrics
+from app.evaluation.checks import (
+    SCORER_VERSION,
+    TokenCheck,
+    answer_score,
+    citation_metrics,
+    groundedness,
+)
 from app.evaluation.claims import Claim
 from app.evaluation.grounding import (
     BankInstance,
@@ -40,12 +54,15 @@ from app.evaluation.judge import (
     judge_prompt_hash,
 )
 from app.evaluation.runner import (
+    DEV_LABEL,
     RUN_KINDS,
-    SCORER_VERSION,
     SMOKE_LABEL,
     BenchmarkRun,
     BenchmarkRunner,
+    ReproducibilityRecord,
     RunScore,
+    ShownBlock,
+    settings_fields,
 )
 from app.evaluation.scoring import classify_failure, evidence_score
 from app.evidence import EvidenceChunk
@@ -54,15 +71,17 @@ from app.models.gateway import CompletionRequest
 from app.ontology import ONTOLOGY_VERSION
 from app.retrieval.graph.neo4j_adapter import GraphReader
 from app.retrieval.graph.resolution import StaticEntityResolver
+from app.retrieval.standard.context import estimate_tokens
 from app.retrieval.standard.fusion import RRF_K
 from app.retrieval.standard.generation import (
     PROMPT_VERSION,
     SYSTEM_PROMPT,
     GenerationError,
     GenerationOutput,
+    context_block,
 )
 from app.retrieval.standard.index import index_corpus
-from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
+from app.retrieval.standard.records import RECORD_FACTS_VERSION, RECORD_SERIALISER_VERSION
 from app.retrieval.standard.sparse import SparseVector
 from app.retrieval.standard.vector_store import InMemoryVectorStore, SearchHit, VectorStore
 
@@ -138,17 +157,19 @@ class ScriptedGenerator:
 
 
 def indexed_lab(world_dir: Path, store: VectorStore | None = None, **overrides: object) -> Lab:
-    """The offline lab over ``world_dir`` with the test corpus indexed and a
-    current index manifest."""
+    """The offline lab over ``world_dir`` with the test corpus loaded and
+    indexed, and a current index manifest."""
     lab = build_lab_offline()
+    corpus = [*build_corpus().values(), INCIDENT]
     values: dict[str, object] = {
         "settings": dataclasses.replace(lab.settings, dataset_dir=str(world_dir)),
         "store": store or InMemoryVectorStore(),
         "index_manifest": {"record_serialiser_version": RECORD_SERIALISER_VERSION},
+        "corpus": {chunk.chunk_id: chunk for chunk in corpus},
         **overrides,
     }
     lab = dataclasses.replace(lab, **values)  # type: ignore[arg-type]
-    index_corpus(lab.store, lab.embeddings, lab.sparse, [*build_corpus().values(), INCIDENT])
+    index_corpus(lab.store, lab.embeddings, lab.sparse, corpus)
     return lab
 
 
@@ -200,6 +221,7 @@ def frozen_bank(world_dir: Path) -> FrozenBank:
         world_seed=2026,
         world_manifest_hash=manifest_hash,
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash="ledger-hash",
         instances=(
             _instance(
@@ -302,6 +324,33 @@ def test_a_generation_failure_is_recorded_not_fatal(
     assert run.to_payload()["generation_error"] == "gateway down"
 
 
+def test_each_repeat_records_how_its_answer_was_read_and_ended(
+    runner_with_failing_generator: BenchmarkRunner, runner_smoke: BenchmarkRunner
+) -> None:
+    """D-096: the answer's form and cut-off record reach results.json; a
+    failed repeat has no answer and records none."""
+    answered = runner_smoke.run().results[0].runs["A"][0].to_payload()
+    assert (answered["answer_form"], answered["cut_off"]) == ("json", False)
+    assert (answered["finish_reason"], answered["token_limit_reached"]) == (None, None)
+    assert answered["surrogates_replaced"] == 0
+    failed = runner_with_failing_generator.run().results[0].runs["A"][0].to_payload()
+    fields = ("answer_form", "finish_reason", "token_limit_reached", "cut_off")
+    assert [failed[field] for field in (*fields, "surrogates_replaced")] == [None] * 5
+
+
+def test_a_failed_repeat_counts_its_rendered_blocks_as_a_successful_one_does(
+    runner_with_failing_generator: BenchmarkRunner, runner_smoke: BenchmarkRunner
+) -> None:
+    failed = runner_with_failing_generator.run().results[0].runs
+    answered = runner_smoke.run().results[0].runs
+    for tag in ("A", "B", "C"):
+        run, ok = failed[tag][0], answered[tag][0]
+        assert run.generation_failed and not ok.generation_failed
+        assert run.selected == ok.selected
+        assert run.context_tokens == ok.context_tokens
+        assert run.context_tokens == sum(estimate_tokens(block.text) for block in run.blocks)
+
+
 def test_smoke_runs_are_labelled_and_official_runs_refuse_the_fake_generator(
     offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path
 ) -> None:
@@ -313,7 +362,7 @@ def test_smoke_runs_are_labelled_and_official_runs_refuse_the_fake_generator(
 
 def test_reproducibility_record_names_the_bank_and_scorer(runner_smoke: BenchmarkRunner) -> None:
     payload = runner_smoke.record().to_payload()
-    assert payload["bank_version"] == "2.0.0" and payload["scorer_version"] == "2.0.0"
+    assert payload["bank_version"] == "2.0.0" and payload["scorer_version"] == "2.2.1"
     assert payload["repeats"] == 2
 
 
@@ -325,6 +374,17 @@ def test_runner_refuses_a_bank_of_another_version(
 ) -> None:
     old = dataclasses.replace(frozen_bank, bank_version="1.0.0")
     with pytest.raises(GroundingError, match=r"bank version 1\.0\.0"):
+        BenchmarkRunner(offline_lab, GRAPH, old, world_dir, kind="smoke", repeats=1)
+
+
+@pytest.mark.parametrize("grounded_for", ["2.1.0", None])
+def test_runner_refuses_a_bank_grounded_for_another_scorer(
+    offline_lab: Lab, frozen_bank: FrozenBank, world_dir: Path, grounded_for: str | None
+) -> None:
+    # The checks are the scorer's answer key: an L02 check grounded before
+    # scorer 2.2.0 has no version label, so it would score by the old rule.
+    old = dataclasses.replace(frozen_bank, scorer_version=grounded_for)
+    with pytest.raises(GroundingError, match=f"grounded for scorer {grounded_for or 'unrecorded'}"):
         BenchmarkRunner(offline_lab, GRAPH, old, world_dir, kind="smoke", repeats=1)
 
 
@@ -375,7 +435,7 @@ def test_runner_refuses_an_index_of_another_serialiser_before_any_question(
 
 
 def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> None:
-    assert RUN_KINDS == ("smoke", "official", "sweep")
+    assert RUN_KINDS == ("smoke", "official", "sweep", "dev")
     fake, scripted = indexed_lab(world_dir), indexed_lab(world_dir, generator=ScriptedGenerator())
     with pytest.raises(ValueError, match="run kind"):
         BenchmarkRunner(fake, GRAPH, frozen_bank, world_dir, kind="trial", repeats=1)
@@ -384,7 +444,7 @@ def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> 
     with pytest.raises(ValueError, match="fake generator"):
         BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="smoke", repeats=1)
     with pytest.raises(ValueError, match="repeats"):
-        BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="official", repeats=2)
+        BenchmarkRunner(scripted, GRAPH, frozen_bank, world_dir, kind="official", repeats=0)
     with pytest.raises(ValueError, match="model family"):
         BenchmarkRunner(
             scripted,
@@ -401,7 +461,7 @@ def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> 
         frozen_bank,
         world_dir,
         kind="official",
-        repeats=3,
+        repeats=1,
         judge=gateway_judge(),
     )
     assert official.label is None
@@ -409,6 +469,22 @@ def test_run_kinds_and_their_rules(frozen_bank: FrozenBank, world_dir: Path) -> 
         scripted, GRAPH, frozen_bank, world_dir, kind="sweep", repeats=1, judge=gateway_judge()
     )
     assert sweep.label is None
+
+
+def test_a_dev_run_takes_the_real_generator_and_judge_and_is_labelled(
+    frozen_bank: FrozenBank, world_dir: Path
+) -> None:
+    fake, scripted = indexed_lab(world_dir), indexed_lab(world_dir, generator=ScriptedGenerator())
+    with pytest.raises(ValueError, match="fake generator"):
+        BenchmarkRunner(fake, GRAPH, frozen_bank, world_dir, kind="dev", repeats=1)
+    with pytest.raises(ValueError, match="gateway judge"):
+        BenchmarkRunner(
+            scripted, GRAPH, frozen_bank, world_dir, kind="dev", repeats=1, judge=FakeJudge()
+        )
+    dev = BenchmarkRunner(
+        scripted, GRAPH, frozen_bank, world_dir, kind="dev", repeats=1, judge=gateway_judge()
+    )
+    assert dev.label == DEV_LABEL == "development run on seed 2026, not a result"
 
 
 def test_unknown_pipelines_are_refused(
@@ -421,6 +497,81 @@ def test_unknown_pipelines_are_refused(
 
 
 # --- What a run records ------------------------------------------------------------
+
+
+RECORD_BLOCK = (
+    "Record INC_S007_GR (source: warehouse.incidents, record INC_S007_GR)\n"
+    "- summary: Incident INC_S007_GR in Greece: checkout failed."
+)
+PATH = "INC_S007_GR -RELATED_TO_VERSION-> PLV_PAYMENTS_3"
+WALKED_BLOCK = (
+    "Record PLV_PAYMENTS_3 (source: warehouse.platform_versions, record PLV_PAYMENTS_3)\n"
+    "- summary: Version 3.\n"
+    f"- reached from INC_S007_GR: {PATH}"
+)
+
+
+def _three_kinds() -> tuple[EvidenceChunk, EvidenceChunk, EvidenceChunk]:
+    """A document chunk, a record and a graph node reached by a walk."""
+    document = build_corpus()["CHNK_S007_GR_00"].to_evidence(similarity=0.1, rank=1)
+    record = INCIDENT.to_evidence(similarity=0.1, rank=2)
+    node = record_corpus_chunk("platform_versions", "PLV_PAYMENTS_3", "Version 3.", market_id="")
+    walked = node.to_evidence(similarity=0.1, rank=1).model_copy(
+        update={
+            "kind": "node",
+            "chunk_id": "PLV_PAYMENTS_3",
+            "graph_path": PATH,
+            "graph_seed": "INC_S007_GR",
+        }
+    )
+    return document, record, walked
+
+
+def test_shown_blocks_hold_what_the_model_was_shown() -> None:
+    """F12-R: ``text`` is the rendered block without its [n], document title
+    line included; ``judge_text`` drops only a document chunk's title line."""
+    document, record, walked = _three_kinds()
+    title_line = "Incident Report: INC_S007_GR (MKT_GR, el)"
+    assert context_block(document) == f"{title_line}\n{document.text}"
+    assert context_block(record) == RECORD_BLOCK
+    assert context_block(walked) == WALKED_BLOCK
+    blocks = [ShownBlock("c", c.title, context_block(c), c.kind) for c in _three_kinds()]
+    assert [block.judge_text for block in blocks] == [document.text, RECORD_BLOCK, WALKED_BLOCK]
+    # A block recorded before v0.3 stored bare text and no kind: read as is.
+    assert ShownBlock("c", "t", document.text).judge_text == document.text
+
+
+def test_runs_record_the_rendered_blocks(runner_smoke: BenchmarkRunner) -> None:
+    result = runner_smoke.run().results[0]
+    a, b = result.runs["A"][0], result.runs["B"][0]
+    shown_a = dict(zip(a.selected, a.blocks, strict=True))
+    document, record, _walked = _three_kinds()
+    assert shown_a["CHNK_S007_GR_00"].text == context_block(document)
+    assert shown_a["CHNK_S007_GR_00"].kind == "chunk"
+    assert shown_a["INC_S007_GR"].text == context_block(record) == RECORD_BLOCK
+    assert all("- reached from " not in block.text for block in a.blocks)
+    assert any("\n- reached from INC_S007_GR: " in block.text for block in b.blocks)
+
+
+def test_the_judge_omits_a_document_title_but_keeps_headings_and_paths() -> None:
+    blocks = tuple(ShownBlock("c", c.title, context_block(c), c.kind) for c in _three_kinds())
+    item = JudgeItem("Q?", "A.", ("a fact",), blocks, "INC_S007_GR [1].", (1,), "seed")
+    _system, user = build_judge_prompt(item)
+    assert "Incident Report: INC_S007_GR (MKT_GR, el)" not in user
+    assert build_corpus()["CHNK_S007_GR_00"].text in user
+    assert RECORD_BLOCK in user and WALKED_BLOCK in user
+
+
+def test_an_id_only_in_a_document_title_is_shown_support() -> None:
+    """Groundedness reads ``ShownBlock.text``: everything the model saw."""
+    document, _record, _walked = _three_kinds()
+    block = ShownBlock("c", document.title, context_block(document), document.kind)
+    assert "INC_S007_GR" not in block.judge_text
+    answer = "It is INC_S007_GR [1]."
+    score = groundedness("Which incident?", "INC_S007_GR", answer, [block.text])
+    assert (score.atoms, score.supported_share) == (1, 1.0)
+    without_title = groundedness("Which incident?", "INC_S007_GR", answer, [block.judge_text])
+    assert without_title.supported_share == 0.0
 
 
 def test_runs_record_the_shown_blocks_and_selected_carriers(
@@ -466,7 +617,16 @@ def test_every_repeat_is_scored_with_the_v2_scorers(runner_smoke: BenchmarkRunne
                     instance.claims,
                 )
                 expected = RunScore(
-                    answer, evidence, citations, classify_failure(answer, evidence, run.seeded)
+                    answer,
+                    evidence,
+                    citations,
+                    classify_failure(answer, evidence, run.seeded),
+                    groundedness=groundedness(
+                        instance.text,
+                        run.verdict,
+                        run.answer,
+                        [block.text for block in run.blocks],
+                    ),
                 )
                 assert dataclasses.replace(score, judge=None) == expected
 
@@ -557,10 +717,23 @@ def test_benchmark_run_payload_is_json(runner_smoke: BenchmarkRunner) -> None:
     first = world["results"][0]
     assert first["instance"]["instance_id"] == "L05-2026-INC_S007_GR"
     assert [run["repeat"] for run in first["runs"]["A"]] == [0, 1]
-    assert first["runs"]["A"][0]["blocks"][0].keys() == {"carrier_id", "title", "text"}
+    assert first["runs"]["A"][0]["blocks"][0].keys() == {"carrier_id", "title", "text", "kind"}
     score = first["scores"]["B"][0]
-    assert score.keys() == {"answer", "evidence", "citations", "failure_class", "judge"}
+    assert score.keys() == {
+        "answer",
+        "evidence",
+        "citations",
+        "failure_class",
+        "judge",
+        "groundedness",
+    }
     assert "recall" in score["evidence"] and "accuracy" in score["citations"]
+    assert score["groundedness"].keys() == {
+        "atoms",
+        "supported_share",
+        "unsupported_share",
+        "abstained",
+    }
 
 
 # --- Reproducibility record (Phase 2 fields kept, v2 fields added) ----------------
@@ -617,6 +790,48 @@ V2_FIELDS = {
     "graph_label_version",
     "selection_rule",
 }
+V03_FIELDS = {"method_version", "record_facts_version", "prompt_extras", "answer_parser_version"}
+
+
+def _has_key(value: object, name: str) -> bool:
+    """Whether ``name`` is a key anywhere in nested mappings and lists."""
+    if isinstance(value, dict):
+        return name in value or any(_has_key(v, name) for v in value.values())
+    if isinstance(value, list):
+        return any(_has_key(v, name) for v in value)
+    return False
+
+
+def test_record_carries_method_and_versions(offline_lab: Lab) -> None:
+    fields = settings_fields(offline_lab.settings, FakeJudge(), "smoke", 1)
+    assert fields["method_version"] == METHOD_VERSION == "0.3.0"
+    assert fields["selection_rule"] == SELECTION_RULE
+    assert fields["prompt_version"] == PROMPT_VERSION
+    assert fields["scorer_version"] == "2.2.1"
+    assert fields["judge_prompt_version"] == "1.2.0"
+    assert fields["record_facts_version"] == RECORD_FACTS_VERSION == "1.0.0"
+    assert fields["answer_parser_version"] == "2.1.1"
+    assert fields["prompt_extras"] == {
+        "path_line": ["B", "C"],
+        "target_type_tier": ["B", "C"],
+        "ontology_target_terms": ["C"],
+    }
+    assert not _has_key(fields, "evidence_slots")
+    assert not _has_key(fields, "graph_slots")
+    json.dumps(fields)
+
+
+def test_a_record_written_before_method_v03_still_loads() -> None:
+    record = ReproducibilityRecord(**_v02_record_payload())
+    assert record.method_version is None
+    assert record.record_facts_version is None and record.prompt_extras is None
+    assert record.answer_parser_version is None
+
+
+def _v02_record_payload() -> dict[str, Any]:
+    """A v0.2 run record: every field it held, none of the v0.3 ones."""
+    names = {field.name for field in dataclasses.fields(ReproducibilityRecord)} - V03_FIELDS
+    return {name: None for name in names}
 
 
 def test_reproducibility_payload_carries_every_field(
@@ -626,7 +841,7 @@ def test_reproducibility_payload_carries_every_field(
     record = runner_smoke.record()
     payload = record.to_payload()
     assert set(payload) == {field.name for field in dataclasses.fields(record)}
-    assert set(payload) == PHASE2_FIELDS | V2_FIELDS
+    assert set(payload) == PHASE2_FIELDS | V2_FIELDS | V03_FIELDS
     settings = offline_lab.settings
     settings_b, settings_c = bc_graph_settings(settings)
     assert payload["question_bank_version"] == BANK_VERSION
@@ -660,7 +875,7 @@ def test_reproducibility_payload_carries_every_field(
     assert payload["judge_prompt_hash"] == judge_prompt_hash()
     assert payload["generation_reasoning"] == settings.generation.reasoning
     assert payload["selection_rule"] == SELECTION_RULE
-    assert payload["context"]["graph_slots"] == settings.context.graph_slots
+    assert payload["context"] == {"dedupe_threshold": settings.context.dedupe_threshold}
     assert payload["judge_reasoning"] is None  # the fake judge calls no model
     assert payload["judge_temperature"] is None
     assert payload["graph_label_version"] == LABEL_VERSION
@@ -858,6 +1073,16 @@ def test_git_dirty_is_none_without_git(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subprocess, "run", missing)
     assert runner_module._git_dirty() is None
     assert runner_module._git_sha() == "unknown"
+
+
+def test_a_linked_data_directory_leaves_the_checkout_clean() -> None:
+    """The runbook links a worktree's ``data`` to the main checkout's; a
+    symlink is a file to git, so only a root ``/data`` pattern ignores it, and
+    without one the link alone makes an official run refuse to start."""
+    ignored = subprocess.run(
+        ["git", "check-ignore", "--no-index", "-q", "data"], cwd=REPO_ROOT, check=False
+    )
+    assert ignored.returncode == 0
 
 
 def test_every_repeat_writes_one_structured_log_record(

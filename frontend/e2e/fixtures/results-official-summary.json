@@ -2,8 +2,10 @@
   "run_id": "fixture-official",
   "run_kind": "official",
   "label": "Fixture run (test values)",
+  "method_version": "0.2.0",
   "summary": {
     "schema_version": "2",
+    "method_note": null,
     "run_kind": "official",
     "label": "Fixture run (test values)",
     "bank_version": "2.0.0",
@@ -2075,7 +2077,8 @@
     },
     "selection": {
       "strata": null,
-      "limit": null
+      "limit": null,
+      "questions": null
     },
     "reproducibility": {
       "run": {

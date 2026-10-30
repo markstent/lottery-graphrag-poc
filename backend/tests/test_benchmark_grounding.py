@@ -8,6 +8,7 @@ dev-world tests run only with ``LIVE_WORLD_E2E=1``, and fail when
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from collections import Counter
@@ -19,14 +20,18 @@ from typing import Any, cast
 import duckdb
 import pytest
 from app.config import REPO_ROOT
-from app.datasets.config import GenerationConfig
-from app.datasets.parquet import write_world
-from app.datasets.schema import TABLE_SCHEMAS
-from app.datasets.world import build_world
 from app.evaluation.__main__ import main as cli_main
 from app.evaluation.bank import ANCHORS_PER_QUESTION, BANK, BANK_VERSION, question_by_id
-from app.evaluation.checks import NumberCheck, SetCheck, TokenCheck, check_score, normalise
-from app.evaluation.grounders import Draft, ground_l01
+from app.evaluation.checks import (
+    SCORER_VERSION,
+    NumberCheck,
+    QualifiedAlias,
+    SetCheck,
+    TokenCheck,
+    check_score,
+    normalise,
+)
+from app.evaluation.grounders import Draft, Version, ground_l01, version_label_alias
 from app.evaluation.grounding import (
     FrozenBank,
     GroundingError,
@@ -37,12 +42,12 @@ from app.evaluation.grounding import (
     load_frozen_bank,
     name_anchor_order,
     sample_anchors,
+    seal_bank,
     write_frozen_bank,
+    write_new_bank,
 )
 from app.evaluation.truth_ledger import TruthLedger, TruthScenario, load_ledger
 from app.retrieval.standard.records import RECORD_SERIALISER_VERSION
-from app.scenarios.engine import apply_scenarios
-from app.scenarios.ledger import build_ledger, write_ledger
 
 from tests import live
 
@@ -63,20 +68,6 @@ def dev_world[Test: Callable[..., Any]](test: Test) -> Test:
 @pytest.fixture
 def dev_world_present() -> None:
     live.require_paths(DEV_WORLD, DEV_LEDGER)
-
-
-@pytest.fixture(scope="module")
-def tiny_planted(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
-    """A planted tiny world with its manifest, and the ledger of the same planting."""
-    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
-    outcomes = apply_scenarios(world)
-    root = tmp_path_factory.mktemp("tiny-world-grounding")
-    dataset_dir = root / "tiny-seed42"
-    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
-    manifest = json.dumps(world.manifest, indent=2, sort_keys=True) + "\n"
-    (dataset_dir / "_manifest.json").write_text(manifest)
-    ledger_path = write_ledger(root / "ledger.json", build_ledger(outcomes, world))
-    return dataset_dir, ledger_path
 
 
 @pytest.fixture(scope="module")
@@ -176,6 +167,118 @@ def test_l01_expects_the_record_price(grounding: WorldGrounding, tiny_dataset: P
         (check,) = instance.checks
         assert check == NumberCheck(format(Decimal(price).normalize(), "f"), currency)
         assert f"{price:.2f} {currency}" in instance.expected_answer
+
+
+def _platform_versions(tiny_dataset: Path) -> dict[str, tuple[str, str, str]]:
+    rows = duckdb.execute(
+        "SELECT v.platform_version_id, v.version_label, p.platform_name, p.platform_id"
+        " FROM read_parquet(?) v JOIN read_parquet(?) p USING (platform_id)",
+        [
+            (tiny_dataset / "platform_versions.parquet").as_posix(),
+            (tiny_dataset / "platforms.parquet").as_posix(),
+        ],
+    ).fetchall()
+    return {str(r[0]): (str(r[1]), str(r[2]), str(r[3])) for r in rows}
+
+
+# Scorer 2.2.1 (D-095): every question whose answer is a platform version.
+@pytest.mark.parametrize("question_id", ["L02", "L07"])
+def test_a_platform_version_answer_accepts_its_label_beside_its_platform(
+    grounding: WorldGrounding, tiny_dataset: Path, question_id: str
+) -> None:
+    versions = _platform_versions(tiny_dataset)
+    instances = grounding.ground(question_by_id(question_id)).instances
+    assert instances
+    for instance in instances:
+        (check,) = instance.checks
+        assert isinstance(check, TokenCheck)
+        label, name, platform_id = versions[check.expected]
+        # Every other platform has a version of the same label: each is a rival.
+        rivals = {
+            owner
+            for version, (other, *owners) in versions.items()
+            if other == label and version != check.expected
+            for owner in owners
+        }
+        (alias,) = check.qualified
+        assert (alias.alias, alias.qualifiers) == (label, (name, platform_id))
+        assert set(alias.rivals) == rivals
+
+
+def test_an_app_release_answer_accepts_its_label_beside_its_market(
+    grounding: WorldGrounding, tiny_dataset: Path
+) -> None:
+    rows = duckdb.execute(
+        "SELECT a.app_version_id, a.version_label, a.market_id, m.market_name"
+        " FROM read_parquet(?) a JOIN read_parquet(?) m USING (market_id)",
+        [
+            (tiny_dataset / "app_versions.parquet").as_posix(),
+            (tiny_dataset / "markets.parquet").as_posix(),
+        ],
+    ).fetchall()
+    releases = {str(r[0]): (str(r[1]), str(r[2]), str(r[3])) for r in rows}
+    (instance,) = grounding.ground(question_by_id("L15")).instances
+    (check,) = instance.checks
+    assert isinstance(check, TokenCheck)
+    label, market, name = releases[check.expected]
+    (alias,) = check.qualified
+    # The market by its English name, its local name and its id.
+    assert alias.alias == label
+    assert alias.qualifiers[0] == name and alias.qualifiers[-1] == market
+    # Every other market has a release of that label, so names a rival.
+    rivals = {other for _, (lab, other, _) in releases.items() if lab == label} - {market}
+    assert rivals and rivals <= set(alias.rivals) and market not in alias.rivals
+
+
+def test_every_version_id_check_accepts_a_label_beside_its_owner(
+    tiny_dataset: Path, tiny_ledger: Path
+) -> None:
+    # A version id is a platform version (PLV_) or an app release (APPV_);
+    # no check may expect one without the label rule.
+    found = [
+        check
+        for instance in freeze_bank(tiny_dataset, tiny_ledger).instances
+        for check in instance.checks
+        if isinstance(check, TokenCheck) and check.expected.startswith(("PLV_", "APPV_"))
+    ]
+    assert found and all(check.qualified for check in found)
+
+
+# Two platforms share every label in a generated world; that is the normal case.
+SHARED_LABELS = {
+    "PLV_WEB_1": Version("2024.1.0", ("Web Portal", "PLT_WEB")),
+    "PLV_WEB_2": Version("2024.2.0", ("Web Portal", "PLT_WEB")),
+    "PLV_DRAW_1": Version("2024.1.0", ("Draw Engine", "PLT_DRAW")),
+}
+
+
+def test_a_label_two_platforms_share_counts_beside_its_own_platform() -> None:
+    assert version_label_alias(SHARED_LABELS, "PLV_WEB_1") == (
+        QualifiedAlias("2024.1.0", ("Web Portal", "PLT_WEB"), ("Draw Engine", "PLT_DRAW")),
+    )
+    assert version_label_alias(SHARED_LABELS, "PLV_DRAW_1") == (
+        QualifiedAlias("2024.1.0", ("Draw Engine", "PLT_DRAW"), ("Web Portal", "PLT_WEB")),
+    )
+
+
+def test_a_label_two_versions_of_one_platform_share_never_counts() -> None:
+    # Label and platform would not say which of the two versions is meant.
+    versions = {**SHARED_LABELS, "PLV_WEB_9": Version("2024.1.0", ("Web Portal", "PLT_WEB"))}
+    assert version_label_alias(versions, "PLV_WEB_1") == ()
+    assert version_label_alias(versions, "PLV_WEB_2") == (
+        QualifiedAlias("2024.2.0", ("Web Portal", "PLT_WEB")),
+    )
+
+
+def test_a_platform_name_two_platforms_share_is_not_a_qualifier() -> None:
+    versions = {
+        "PLV_A_1": Version("2024.1.0", ("Portal", "PLT_A")),
+        "PLV_B_1": Version("2024.1.0", ("portal", "PLT_B")),
+    }
+    # The shared name is no qualifier, and naming it names the rival too.
+    assert version_label_alias(versions, "PLV_A_1") == (
+        QualifiedAlias("2024.1.0", ("PLT_A",), ("portal", "PLT_B")),
+    )
 
 
 def test_grounding_is_deterministic(
@@ -295,7 +398,8 @@ def test_planted_anchors_and_answers_come_from_the_ledger(
     truth = scenario(ledger, "SCN-001").truth
     (instance,) = grounding.ground(question_by_id("L15")).instances
     assert instance.anchor_id == truth["incident_id"]
-    assert instance.checks == (TokenCheck(truth["app_version_id"]),)
+    (release,) = instance.checks
+    assert isinstance(release, TokenCheck) and release.expected == truth["app_version_id"]
 
 
 def test_planted_claims_follow_the_required_evidence(
@@ -425,12 +529,49 @@ def test_frozen_bank_records_its_inputs_and_round_trips(
     assert bank.world_manifest_hash == hashlib.sha256(manifest).hexdigest()
     assert bank.ledger_hash == hashlib.sha256(tiny_ledger.read_bytes()).hexdigest()
     assert bank.record_serialiser_version == RECORD_SERIALISER_VERSION
+    assert bank.scorer_version == SCORER_VERSION
     assert (bank.bank_version, bank.world_seed) == (BANK_VERSION, 42)
     path = tmp_path / "bank.json"
     write_frozen_bank(bank, path)
     text = path.read_text(encoding="utf-8")
     assert text.endswith("}\n") and text.startswith('{\n  "bank_hash"')
     assert load_frozen_bank(path) == bank
+
+
+def test_grounding_never_replaces_a_bank_file_whose_content_differs(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    # A bank file belongs to every run made with it (D-095).
+    path = tmp_path / "bank.json"
+    bank = freeze_bank(tiny_dataset, tiny_ledger)
+    write_new_bank(bank, path)
+    written = path.read_bytes()
+    write_new_bank(bank, path)  # the same bank again is no change
+    assert path.read_bytes() == written
+    other = seal_bank(dataclasses.replace(bank, scorer_version="2.1.0"))
+    with pytest.raises(GroundingError, match="holds another bank"):
+        write_new_bank(other, path)
+    assert path.read_bytes() == written
+
+
+def test_a_bank_file_written_before_the_scorer_was_recorded_still_loads(
+    tiny_dataset: Path, tiny_ledger: Path, tmp_path: Path
+) -> None:
+    # The v0.2 bank files hold no scorer_version; their hash covers what they hold.
+    content = json.loads(_written(freeze_bank(tiny_dataset, tiny_ledger), tmp_path))
+    del content["bank_hash"], content["scorer_version"]
+    text = json.dumps(content, sort_keys=True, indent=2, ensure_ascii=False) + "\n"
+    content["bank_hash"] = hashlib.sha256(text.encode()).hexdigest()
+    path = tmp_path / "old.json"
+    path.write_text(json.dumps(content), encoding="utf-8")
+    old = load_frozen_bank(path)
+    assert old.scorer_version is None and old.bank_hash == content["bank_hash"]
+
+
+def _written(bank: FrozenBank, directory: Path) -> str:
+    path = directory / "written.json"
+    write_frozen_bank(bank, path)
+    return path.read_text(encoding="utf-8")
 
 
 def test_loading_a_tampered_bank_fails(
@@ -493,6 +634,15 @@ def test_bank_doc_lists_every_question_and_instance(
         assert f"### {question.question_id}" in doc
     for instance in load_frozen_bank(bank_path).instances:
         assert instance.text in doc and instance.expected_answer in doc
+    assert f"Scorer version: `{SCORER_VERSION}`." in doc
+    # Scorer 2.2.0 (D-095): the page names what else a version check accepts.
+    for instance in load_frozen_bank(bank_path).instances:
+        for check in instance.checks:
+            if isinstance(check, TokenCheck):
+                for q in check.qualified:
+                    names, rivals = " or ".join(q.qualifiers), ", ".join(q.rivals)
+                    line = f"  - Also accepted: {q.alias} with {names}, naming none of {rivals}."
+                    assert line in doc
 
 
 @dev_world

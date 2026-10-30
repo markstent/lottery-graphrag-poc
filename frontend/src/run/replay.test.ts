@@ -1,15 +1,16 @@
 /**
- * The replay clock over the recorded A, B, C run, with a hand-driven clock
- * and scheduler so no real timer is involved.
+ * The replay clock over a recorded A, B, C run made with a local model (the
+ * H1 recording, 70.8 s with real pauses while the model answers), with a
+ * hand-driven clock and scheduler so no real timer is involved.
  */
 
 import { describe, expect, it } from 'vitest'
 
-import fixture from './fixtures/run-abc.json'
+import { RECORDINGS } from '../test/recordings'
 import { reduceAll, type RunEvent } from './reduce'
 import { createReplay, type Scheduler } from './replay'
 
-const recorded = fixture.events as unknown as RunEvent[]
+const recorded = RECORDINGS.find((run) => run.stratum === 'H1')!.events
 
 function fakeTime() {
   let time = 0
@@ -61,7 +62,7 @@ describe('timeline', () => {
     recorded.forEach((event, i) => {
       expect(replay.offsets[i]).toBeCloseTo(event.t_ms - origin, 6)
     })
-    expect(replay.duration).toBeCloseTo(17191.6, 1)
+    expect(replay.duration).toBeCloseTo(70779.9, 1)
   })
 
   it('orders events by sequence whatever order they arrive in', () => {
@@ -210,7 +211,7 @@ describe('playback', () => {
   it('play while already playing keeps the clock where it is', () => {
     const { replay, advance } = make()
     replay.play()
-    advance(8000) // inside the recorded pause after the event at 5154
+    advance(8000) // inside the recorded pause after the event at 3818
     replay.play()
     expect(replay.snapshot().playing).toBe(true)
     advance(3000)

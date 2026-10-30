@@ -53,28 +53,42 @@ class VectorSettings:
     collection: str
 
 
-# The rule that picks the evidence items placed in context, as built (D-081):
-# one re-ranker over every candidate, `graph_slots` of the `evidence_slots`
-# reserved for graph nodes and the rest for documents, one token budget in
-# judge order. A run records it, so runs made under different rules never
-# compare or resume as one experiment; change this value with the rule. The
-# slot counts are not in the label: they are recorded as context settings.
-# The pilot runs used "shared-reranker-12-slots" (D-025).
-SELECTION_RULE = "reranker-graph-share"
+# The rule that picks the evidence items placed in context, as built (method
+# v0.3, D-083 and D-084): documents in cross-encoder order and graph records
+# in graph relevance order, taken in turn (documents first) into one token
+# budget with no item limit. A run records it, so runs made under different
+# rules never compare or resume as one experiment; change this value with the
+# rule. Earlier labels: "shared-reranker-12-slots" (D-025, the pilot) and
+# "reranker-graph-share" (D-081, v0.2.0).
+SELECTION_RULE = "graph-rank-interleave-budget"
+
+# Settings of the v0.2 slot method (D-025, D-081). Method v0.3 has no item
+# limit (D-084); a value left in the environment is refused, never ignored.
+REMOVED_SLOT_VARIABLES = ("RAG_EVIDENCE_SLOTS", "RAG_GRAPH_SLOTS")
+
+# The version of the experimental method as a whole (selection, prompt,
+# scoring, judge and tested family), recorded with every run. Runs of
+# different methods never compare or resume as one experiment; a run recorded
+# before this field existed is method 0.2.0 (D-092).
+METHOD_VERSION = "0.3.0"
+
+# The prompt additions of method v0.3 and the pipelines shown each, recorded
+# with every run.
+PROMPT_EXTRAS: dict[str, tuple[str, ...]] = {
+    "path_line": ("B", "C"),
+    "target_type_tier": ("B", "C"),
+    "ontology_target_terms": ("C",),
+}
 
 
 @dataclass(frozen=True, slots=True)
 class ContextSettings:
-    """Context budget (docs/reference/retrieval/context-budgeting.md)."""
+    """The one context budget A, B and C share (D-084): total tokens of the
+    rendered prompt blocks, and the near-duplicate threshold for document
+    chunks. There is no item limit."""
 
     budget_tokens: int
     dedupe_threshold: float
-    # Evidence items (structured graph blocks plus document chunks) any
-    # pipeline may place in context: the same count for A, B and C.
-    evidence_slots: int = 12
-    # How many of the evidence slots graph nodes may take (D-081); documents
-    # get the rest, and any slot the graph does not fill. A has no nodes.
-    graph_slots: int = 6
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +99,14 @@ class RerankSettings:
     model: str  # cross-encoder model (fastembed)
 
 
+# The answer model's output cap (GENERATION_MAX_TOKENS), the same for A, B
+# and C. 1200 (v0.2.0) cut off answers in which the model wrote its reasoning
+# inside the answer, 4 instances so far; 4096 leaves room for those, and with
+# a prompt of about 3,400 tokens stays well inside a 32,768-token context
+# window (D-096).
+DEFAULT_GENERATION_MAX_TOKENS = 4096
+
+
 @dataclass(frozen=True, slots=True)
 class GenerationSettings:
     """Answer generation through the LiteLLM-compatible gateway (ADR-003)."""
@@ -93,7 +115,7 @@ class GenerationSettings:
     model: str
     temperature: float
     api_base: str | None
-    max_tokens: int = 1200
+    max_tokens: int = DEFAULT_GENERATION_MAX_TOKENS
     # Recorded with every benchmark run; an official run requires the family.
     model_family: str | None = None
     quantisation: str | None = None
@@ -287,13 +309,13 @@ def from_env() -> RetrievalSettings:
     )
     generation_model = os.environ.get("GENERATION_MODEL", "fake-answer-v1")
     generation_provider = os.environ.get("GENERATION_PROVIDER", "fake")
-    evidence_slots = _env_int("RAG_EVIDENCE_SLOTS", 12)
-    graph_slots = _env_int("RAG_GRAPH_SLOTS", 6)
-    if not 0 <= graph_slots <= evidence_slots:
-        raise ValueError(
-            f"RAG_GRAPH_SLOTS must be between 0 and RAG_EVIDENCE_SLOTS ({evidence_slots}), "
-            f"got {graph_slots}"
-        )
+    for name in REMOVED_SLOT_VARIABLES:
+        if name in os.environ:
+            raise ValueError(
+                f"{name} is set, but method v0.3 has no evidence slots: every approach fills "
+                "one token budget (RAG_CONTEXT_TOKEN_BUDGET) with no item limit (D-084). "
+                f"Remove {name} from the environment and .env."
+            )
     return RetrievalSettings(
         dataset_dir=os.environ.get("DATASET_DIR", str(DEFAULT_DATASET_DIR)),
         top_k=_env_int("RAG_TOP_K", 40),
@@ -312,8 +334,6 @@ def from_env() -> RetrievalSettings:
         context=ContextSettings(
             budget_tokens=_env_int("RAG_CONTEXT_TOKEN_BUDGET", 2000),
             dedupe_threshold=_env_float("RAG_DEDUPE_THRESHOLD", 0.85),
-            evidence_slots=evidence_slots,
-            graph_slots=graph_slots,
         ),
         rerank=RerankSettings(
             provider=os.environ.get("RERANK_PROVIDER", default_rerank_provider),
@@ -324,7 +344,7 @@ def from_env() -> RetrievalSettings:
             model=generation_model,
             temperature=_env_float("GENERATION_TEMPERATURE", 0.0),
             api_base=os.environ.get("GENERATION_API_BASE"),
-            max_tokens=_env_int("GENERATION_MAX_TOKENS", 1200),
+            max_tokens=_env_int("GENERATION_MAX_TOKENS", DEFAULT_GENERATION_MAX_TOKENS),
             model_family=os.environ.get("GENERATION_MODEL_FAMILY") or None,
             quantisation=os.environ.get("GENERATION_MODEL_QUANTISATION") or None,
             reasoning=parse_reasoning_for_model(

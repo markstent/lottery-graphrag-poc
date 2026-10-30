@@ -37,7 +37,7 @@ export function plainAnswers<T extends { results?: Record<string, unknown> }>(
     const answer = (result as { answer: { text: string; raw_text: string } })
       .answer
     answer.text =
-      'Incident INC_037 runs on platform version 2024.2.0 [1]. No other market is named in the sources.'
+      'Incident INC_021 shares platform version PLV_IDENTITY_2 with incident INC_022 in Greece [1].'
     answer.raw_text = answer.text
   }
   return copy
@@ -120,4 +120,17 @@ export async function serveRunInProgress(
       body: sse(events.slice(0, count)),
     })
   })
+}
+
+/**
+ * Runs a typed question live. The run fixtures are runs of typed questions
+ * on the tiny world (backend/tests/test_run_fixtures.py), so the screen shows
+ * the question each was made for.
+ */
+export async function runTyped(page: Page, question: string) {
+  await page.goto('/#/live-lab')
+  await page
+    .getByRole('textbox', { name: 'Or ask your own question' })
+    .fill(question)
+  await page.getByRole('button', { name: 'Run', exact: true }).click()
 }

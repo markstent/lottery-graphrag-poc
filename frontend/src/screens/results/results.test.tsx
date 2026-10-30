@@ -1,5 +1,6 @@
 import {
   act,
+  cleanup,
   fireEvent,
   render,
   screen,
@@ -24,6 +25,7 @@ const OFFICIAL_RUN: Schemas['BenchmarkRunOut'] = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: 'Fixture run (test values)',
+  method_version: '0.2.0',
   started_at: '2026-10-20T09:00:00Z',
   selection: { strata: null, limit: null },
   worlds: [2026],
@@ -35,7 +37,7 @@ const summaryOf = (
   run_id: string,
   run_kind: string,
   summary: Schemas['SummaryOut'],
-) => ({ run_id, run_kind, label: null, summary })
+) => ({ run_id, run_kind, label: null, method_version: '0.2.0', summary })
 
 const ROUTES = {
   '/api/v1/benchmarks/jobs': [],
@@ -136,6 +138,57 @@ describe('Results', () => {
     expect(within(panel).getByText(BELOW_FLOOR_NOTE)).toBeVisible()
   })
 
+  it('says under the headlines how many tested cells the interval and the test disagree on, and points at the paired differences', async () => {
+    const disagreeing = (over: Partial<Schemas['ComparisonCell']>) => ({
+      ...OFFICIAL.comparisons[0],
+      in_family: true,
+      reason: 'tested',
+      low: 0.062,
+      high: 0.332,
+      p_holm: 0.385,
+      ...over,
+    })
+    stubApi({
+      ...ROUTES,
+      '/api/v1/benchmarks/fixture-official': summaryOf(
+        'fixture-official',
+        'official',
+        {
+          ...OFFICIAL,
+          comparisons: [
+            disagreeing({}),
+            disagreeing({ low: -0.148, high: -0.019, p_holm: 1 }),
+            disagreeing({ low: 0.104, high: 0.341, p_holm: 0.03 }),
+          ],
+        },
+      ),
+    })
+    open('fixture-official')
+    const panel = await verdict()
+    expect(
+      await within(panel).findByText(
+        '2 tested comparisons whose interval excludes zero failed the test; see Paired differences.',
+      ),
+    ).toBeVisible()
+    // The line points at a chart that is on this screen.
+    expect(
+      screen.getByText(/^Paired differences in evidence score$/),
+    ).toBeVisible()
+  })
+
+  it('has no interval-and-test line when they agree, and none for a quick check', async () => {
+    stubApi(ROUTES)
+    open('fixture-official')
+    const panel = await verdict()
+    await within(panel).findByRole('list')
+    expect(within(panel).queryByText(/failed the test/)).toBeNull()
+    cleanup()
+    open('20261019T164733Z-smoke')
+    const smoke = await verdict()
+    await within(smoke).findByRole('list')
+    expect(within(smoke).queryByText(/failed the test/)).toBeNull()
+  })
+
   it('has no such note for a run that follows the rule', async () => {
     stubApi(ROUTES)
     open('fixture-official')
@@ -196,6 +249,38 @@ describe('Results', () => {
       expect(within(figure).getByRole('table')).toBeVisible()
       expect(within(figure).getByText('Subset run')).toBeVisible()
     }
+  })
+
+  it('a development run is never opened first and is labelled not a result in every figure', async () => {
+    const DEV_RUN = {
+      ...OFFICIAL_RUN,
+      run_id: 'fixture-dev',
+      run_kind: 'dev',
+      started_at: '2026-10-21T09:00:00Z',
+    }
+    stubApi({
+      ...ROUTES,
+      '/api/v1/benchmarks': [DEV_RUN, ...RUNS],
+      '/api/v1/benchmarks/fixture-dev': summaryOf(
+        'fixture-dev',
+        'dev',
+        OFFICIAL,
+      ),
+    })
+    const first = open()
+    expect(await screen.findByRole('combobox', { name: 'Run' })).toHaveValue(
+      'fixture-official',
+    )
+    first.unmount()
+    open('fixture-dev')
+    expect(
+      await within(await verdict()).findByText('Development run, not a result'),
+    ).toBeVisible()
+    await screen.findAllByRole('figure')
+    for (const figure of scoreFigures())
+      expect(
+        within(figure).getByText('Development run, not a result'),
+      ).toBeVisible()
   })
 
   it('a whole-bank run carries no subset label in its figures', async () => {
@@ -300,7 +385,7 @@ describe('Results', () => {
     const heading = await screen.findByRole('heading', {
       name: 'Ontology-dependent split',
     })
-    const figure = figureOf(/Differences in evidence score, by question group/)
+    const figure = figureOf(/^Differences in evidence score$/)
     expect(heading.nextElementSibling).toBe(figure)
     expect(
       within(figure).getByText('Descriptive: not part of the tested family.'),
@@ -374,7 +459,7 @@ describe('Results', () => {
   it('says so when there are no runs', async () => {
     stubApi({ ...ROUTES, '/api/v1/benchmarks': [] })
     open()
-    expect(await screen.findByText('No benchmark runs yet.')).toBeVisible()
+    expect(await screen.findByText('No runs yet.')).toBeVisible()
   })
 
   it('shows the error and tries again on retry', async () => {

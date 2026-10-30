@@ -134,10 +134,16 @@ class RunHistory(BaseModel):
 
 class LivePipelineScore(BaseModel):
     """One pipeline's deterministic scores on a live bank question; None
-    where the instance does not define the metric."""
+    where the instance does not define the metric.
+
+    Method v0.3 scores evidence recall, the evidence metric it compares
+    (D-087). ``evidence_f1`` is set only in a score stored under method
+    v0.2, which had no recall; each is None in a score of the other method.
+    """
 
     answer: float | None
-    evidence_f1: float | None
+    evidence_recall: float | None = None
+    evidence_f1: float | None = None
     anchor_resolution: float | None
     failure_class: str | None
 
@@ -256,17 +262,39 @@ class SplitCell(BaseModel):
 
 
 class AgreementOut(BaseModel):
-    """Agreement of the judge with the deterministic answer score over ``n``
-    judged repeats; None where none were judged."""
+    """Three-level agreement of the judge's correctness with the answer
+    level (method v0.3) over ``n`` judged repeats, and the linearly
+    weighted kappa; None where it is undefined."""
+
+    n: int
+    agreement: float | None
+    weighted_kappa: float | None
+
+
+class AgreementSplitOut(BaseModel):
+    """Agreement over the answers that answered and those that abstained."""
+
+    answered: AgreementOut
+    abstained: AgreementOut
+
+
+class JudgeAgreementOut(BaseModel):
+    overall: AgreementSplitOut
+    pipelines: dict[str, AgreementSplitOut]
+
+
+class ThresholdAgreementOut(BaseModel):
+    """Agreement as runs before method v0.3 recorded it: judge correctness 2
+    against an answer score of at least 0.5, with Cohen's kappa."""
 
     n: int
     agreement: float | None
     kappa: float | None
 
 
-class JudgeAgreementOut(BaseModel):
-    overall: AgreementOut
-    pipelines: dict[str, AgreementOut]
+class ThresholdJudgeAgreementOut(BaseModel):
+    overall: ThresholdAgreementOut
+    pipelines: dict[str, ThresholdAgreementOut]
 
 
 class FailuresOut(BaseModel):
@@ -297,14 +325,19 @@ class ReproducibilityOut(BaseModel):
 
 
 class SummaryOut(BaseModel):
-    """A run's ``summary.json`` (schema 2), every key the harness writes.
+    """A run's ``summary.json``, every key the harness writes: schema 2 for a
+    run of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose
+    comparisons add C_vs_A cells and test evidence recall.
 
     A key added later is ignored, so an older client keeps reading.
     """
 
     model_config = ConfigDict(extra="ignore")
 
-    schema_version: str
+    schema_version: Literal["2", "3"]
+    # Method v0.3's declaration that it was made after seeing v0.2.0 (D-093);
+    # None for a run of method v0.2.
+    method_note: str | None = None
     run_kind: str
     label: str | None
     bank_version: str
@@ -316,7 +349,8 @@ class SummaryOut(BaseModel):
     comparisons: list[ComparisonCell]
     ontology_split: list[SplitCell] | None = None
     headlines: list[str]
-    judge_agreement: JudgeAgreementOut | None
+    # A run published before method v0.3 (such as v0.2.0) keeps its threshold agreement.
+    judge_agreement: JudgeAgreementOut | ThresholdJudgeAgreementOut | None
     failures: FailuresOut
     selection: SelectionOut
     reproducibility: ReproducibilityOut
@@ -325,25 +359,30 @@ class SummaryOut(BaseModel):
 class BenchmarkSummary(BaseModel):
     """Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
 
-    ``summary`` is the run's ``summary.json`` (schema 2), typed: the only
+    ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
     benchmark source the API publishes. ``run_kind`` and ``label`` are
     copied out of it so a client can tell a smoke or sweep run from an
-    official result without reading the summary.
+    official result without reading the summary. ``method_version`` is the
+    method the run was made under, from its record: 0.2.0 for a run recorded
+    before the field existed (such as v0.2.0).
     """
 
     run_id: str
     run_kind: str
     label: str | None
+    method_version: str
     summary: SummaryOut
 
 
 class BenchmarkRunOut(BaseModel):
     """One published run in GET /api/v1/benchmarks, from its ``summary.json``:
-    ``selection`` is the part of the bank it scored, ``worlds`` its seeds."""
+    ``selection`` is the part of the bank it scored, ``worlds`` its seeds,
+    ``method_version`` the method it was made under."""
 
     run_id: str
     run_kind: str
     label: str | None
+    method_version: str
     started_at: str
     selection: dict[str, Any]
     worlds: list[int]
@@ -355,6 +394,8 @@ class PipelineScore(BaseModel):
     where no scored repeat defines the metric."""
 
     answer: float | None
+    # The run's method says which evidence metric to read (D-087).
+    evidence_recall: float | None
     evidence_f1: float | None
 
 
@@ -399,6 +440,11 @@ class InstancePipelineOut(BaseModel):
     judge_citation_accuracy: float | None
     judge_abstention: float | None
     failure_classes: dict[str, int]
+    # D-096: repeats whose answer stops before the model finished it, and those
+    # among them that stopped at the output token cap; None for a run recorded
+    # before answer parser 2.0.0, which did not record it.
+    cut_off_repeats: int | None
+    token_limit_repeats: int | None
 
 
 class InstanceResultOut(BaseModel):
@@ -420,11 +466,14 @@ class InstanceResultOut(BaseModel):
 
 class BenchmarkStart(BaseModel):
     """Request for POST /api/v1/benchmarks; the seeds, strata and kind are
-    checked against the harness's own before a job starts."""
+    checked against the harness's own before a job starts. A dev run uses
+    seed 2026 only; a full-bank official run uses the unseen seeds, which
+    the API never accepts (D-091), so an official job covers part of the
+    bank on a seen seed, as the dry run does."""
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["smoke", "official"]
+    kind: Literal["smoke", "dev", "official"]
     seeds: list[int] = Field(min_length=1)
     repeats: int = Field(ge=1)
     strata: list[str] | None = Field(default=None, min_length=1)
@@ -432,6 +481,16 @@ class BenchmarkStart(BaseModel):
 
 
 JobStatus = Literal["running", "completed", "failed", "cancelled"]
+
+
+class ExperimentSettings(BaseModel):
+    """The settings a run records, as the system would record them now.
+
+    No secret and no git state.
+    """
+
+    values: dict[str, Any]
+    judge_configured: bool
 
 
 class JobProgress(BaseModel):

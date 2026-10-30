@@ -7,11 +7,12 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 
 import type { components } from '../api/schema'
 import { EvidenceDrawer } from '../components/evidence-drawer'
 import { stubApi } from '../test/api-stub'
+import { warmLayout } from '../test/warm-layout'
 import { EVIDENCE_STATES } from '../design/evidence-states'
 import { TOKENS } from '../design/tokens'
 import fixture from '../run/fixtures/run-abc.json'
@@ -96,6 +97,12 @@ const nodeButton = (id: string) =>
     (el) => el.getAttribute('data-node-id') === id,
   ) as HTMLElement
 
+/**
+ * The ready flag waits for the layout and the animated fit, which can pass
+ * waitFor's default second when the whole suite runs in parallel.
+ */
+const READY = { timeout: 5000 }
+
 /** Waits for the async layout to place every node. */
 async function placed(count: number) {
   await waitFor(() => expect(nodeButtons()).toHaveLength(count))
@@ -110,13 +117,16 @@ const transformOf = (id: string) => {
   return wrapper.style.transform
 }
 
+beforeAll(warmLayout)
+
 describe('GraphCanvas', () => {
   it('flags the canvas ready only once the layout is placed and the fit applied', async () => {
     const view = viewAt('B')
     render(canvas(view))
     const group = screen.getByRole('group', { name: 'Evidence graph' })
-    await waitFor(() =>
-      expect(group).toHaveAttribute('data-layout-ready', 'true'),
+    await waitFor(
+      () => expect(group).toHaveAttribute('data-layout-ready', 'true'),
+      READY,
     )
     expect(nodeButtons()).toHaveLength(view.nodes.length)
   })
@@ -141,7 +151,7 @@ describe('GraphCanvas', () => {
       group.querySelector<HTMLElement>('.react-flow__viewport')!.style.transform
     await waitFor(
       () => expect(group).toHaveAttribute('data-layout-ready', 'true'),
-      { interval: 5 },
+      { ...READY, interval: 5 },
     )
     const atReady = viewport()
     await new Promise((resolve) => setTimeout(resolve, 400))
@@ -152,16 +162,17 @@ describe('GraphCanvas', () => {
     const view = viewAt('B')
     render(canvas(view, { reducedMotion: true }))
     const group = screen.getByRole('group', { name: 'Evidence graph' })
-    await waitFor(() =>
-      expect(group).toHaveAttribute('data-layout-ready', 'true'),
+    await waitFor(
+      () => expect(group).toHaveAttribute('data-layout-ready', 'true'),
+      READY,
     )
   })
 
   it('draws one DOM node for each node of the view', async () => {
     const view = viewAt('B')
-    expect(view.nodes).toHaveLength(41)
+    expect(view.nodes).toHaveLength(35)
     render(canvas(view))
-    await placed(41)
+    await placed(35)
     expect(nodeButtons().map((el) => el.dataset.nodeId)).toEqual(
       view.nodes.map((n) => n.id),
     )
@@ -170,11 +181,11 @@ describe('GraphCanvas', () => {
   it('names each node by its state and its label in plain words', async () => {
     const view = viewAt('C')
     render(canvas(view))
-    await placed(61)
-    const seed = nodeButton('INC_037')
+    await placed(53)
+    const seed = nodeButton('INC_021')
     expect(seed).toHaveAccessibleName(`${EVIDENCE_STATES.seed.label}: incident`)
     expect(seed).toHaveAccessibleDescription(
-      'INC_037, used as evidence, on an evidence path',
+      'INC_021, set aside, on an evidence path',
     )
     expect(nodeButton('CONCEPT_INCIDENT')).toHaveAccessibleName(
       `${EVIDENCE_STATES.seed.label}: business concept`,
@@ -205,7 +216,7 @@ describe('GraphCanvas', () => {
   it('tags every evidence path edge even when the view is crowded', async () => {
     const view = viewAt('C')
     render(canvas(view))
-    await placed(61)
+    await placed(53)
     await waitFor(() =>
       expect(
         document.querySelectorAll('[data-edge-id]').length,
@@ -237,7 +248,7 @@ describe('GraphCanvas', () => {
   it('dims every node and edge off the path to 25 percent in focus mode', async () => {
     const view = viewAt('C')
     render(canvas(view, { focusMode: true }))
-    await placed(61)
+    await placed(53)
     for (const node of view.nodes) {
       const el = nodeButton(node.id)
       expect(el.dataset.dimmed).toBe(String(!node.onPath))
@@ -252,7 +263,7 @@ describe('GraphCanvas', () => {
 
   it('leaves nothing dimmed with focus mode off', async () => {
     render(canvas(viewAt('B')))
-    await placed(41)
+    await placed(35)
     for (const el of nodeButtons()) expect(el.style.opacity).toBe('1')
   })
 
@@ -260,7 +271,7 @@ describe('GraphCanvas', () => {
     const user = userEvent.setup()
     const view = viewAt('B')
     render(canvas(view))
-    await placed(41)
+    await placed(35)
     const tabbable = nodeButtons().filter((el) => el.tabIndex === 0)
     expect(tabbable).toHaveLength(1)
     await user.tab()
@@ -272,7 +283,7 @@ describe('GraphCanvas', () => {
     const user = userEvent.setup()
     const view = viewAt('B')
     render(canvas(view))
-    await placed(41)
+    await placed(35)
     await user.tab()
     const start = (document.activeElement as HTMLElement).dataset.nodeId
     const linked = new Set(
@@ -304,7 +315,7 @@ describe('GraphCanvas', () => {
   it('stays on a node when no edge leads the way of the arrow key', async () => {
     const user = userEvent.setup()
     render(canvas(viewAt('B')))
-    await placed(41)
+    await placed(35)
     await user.tab()
     const start = document.activeElement
     await user.keyboard('{ArrowLeft}')
@@ -315,16 +326,16 @@ describe('GraphCanvas', () => {
     const user = userEvent.setup()
     const onSelectNode = vi.fn()
     render(canvas(viewAt('B'), { onSelectNode }))
-    await placed(41)
+    await placed(35)
     await user.tab()
     await user.keyboard('{Enter}')
-    expect(onSelectNode).toHaveBeenCalledExactlyOnceWith('INC_037')
+    expect(onSelectNode).toHaveBeenCalledExactlyOnceWith('INC_021')
   })
 
   it('opens the evidence drawer on Enter and returns focus to the node on close', async () => {
     stubApi({
-      '/api/v1/graph/nodes/INC_037': {
-        node_id: 'INC_037',
+      '/api/v1/graph/nodes/INC_021': {
+        node_id: 'INC_021',
         labels: ['Incident'],
         properties: { title: 'Payment outage' },
         provenance: null,
@@ -344,10 +355,10 @@ describe('GraphCanvas', () => {
     }
     const user = userEvent.setup()
     render(<Page />)
-    await placed(41)
+    await placed(35)
     await user.tab()
     const node = document.activeElement
-    expect(node).toHaveAttribute('data-node-id', 'INC_037')
+    expect(node).toHaveAttribute('data-node-id', 'INC_021')
     await user.keyboard('{Enter}')
     expect(
       await screen.findByRole('dialog', { name: 'Evidence' }),
@@ -362,10 +373,10 @@ describe('GraphCanvas', () => {
   it('calls onSelectNode on a click', async () => {
     const onSelectNode = vi.fn()
     render(canvas(viewAt('B'), { onSelectNode }))
-    await placed(41)
+    await placed(35)
     // user-event's pointer sequence reaches d3-drag, which needs a real window.
-    fireEvent.click(nodeButton('SUP_00113'))
-    expect(onSelectNode).toHaveBeenCalledExactlyOnceWith('SUP_00113')
+    fireEvent.click(nodeButton('SUP_00036'))
+    expect(onSelectNode).toHaveBeenCalledExactlyOnceWith('SUP_00036')
   })
 
   it('moves focus past the canvas on Escape', async () => {
@@ -376,7 +387,7 @@ describe('GraphCanvas', () => {
         <button type="button">After the graph</button>
       </>,
     )
-    await placed(41)
+    await placed(35)
     await user.tab()
     expect(document.activeElement?.hasAttribute('data-node-id')).toBe(true)
     await user.keyboard('{Escape}')
@@ -414,9 +425,7 @@ describe('GraphCanvas', () => {
 
   it('says so when there is nothing to draw', () => {
     render(canvas(viewAt('B', { sequence: 0 })))
-    expect(
-      screen.getByText('No graph activity has been recorded yet.'),
-    ).toBeVisible()
+    expect(screen.getByText('No graph activity yet.')).toBeVisible()
   })
 
   it('gives the canvas a name and a description that covers the whole view', async () => {
@@ -474,7 +483,7 @@ describe('GraphCanvas', () => {
 
   it('gives a node the focus ring class', async () => {
     render(canvas(viewAt('B')))
-    await placed(41)
+    await placed(35)
     expect(nodeButtons()[0].className).toContain('graph-node')
   })
 })
@@ -527,7 +536,7 @@ describe('pipeline identity', () => {
     expect(ring()).toContain(TOKENS['color-pipeline-b-strong'])
     unmount()
     render(canvas(overlayView('C'), { pipeline: 'C' }))
-    await placed(61)
+    await placed(53)
     expect(ring()).toContain(TOKENS['color-pipeline-c-strong'])
   })
 
@@ -576,7 +585,7 @@ describe('pipeline identity', () => {
   })
 })
 
-const MID = 405
+const MID = 212
 
 describe('replay and live', () => {
   const CAP = 20
@@ -629,7 +638,7 @@ describe('replay and live', () => {
     )
     await waitFor(() => expect(routeKinds().length).toBeGreaterThan(0))
     expect(routeKinds().every((kind) => kind === 'elk')).toBe(true)
-    for (const sequence of [500, 650, Infinity]) {
+    for (const sequence of [240, 280, Infinity]) {
       const next = midC(sequence)
       rerender(canvas(next, { replayOf: final }))
       await placed(drawn(next, final))
@@ -693,7 +702,7 @@ describe('replay and live', () => {
   it('in replay draws a group from two revealed members, and a lone member as itself in the group place', async () => {
     const final = fullC()
     // A cursor at which some group has two members revealed and another has one.
-    const cursor = Array.from({ length: 80 }, (_, i) => 388 + i * 4).find(
+    const cursor = Array.from({ length: 80 }, (_, i) => 160 + i * 2).find(
       (sequence) => {
         const some = withClustersOf(midC(sequence), final)
         return (
@@ -785,12 +794,12 @@ describe('what a screen reader is given', () => {
     const state = reduceAll(recorded)
     const withoutOnPath = {
       ...state.graph.B,
-      nodes: state.graph.B.nodes.filter((n) => n.id !== 'SUP_00005'),
+      nodes: state.graph.B.nodes.filter((n) => n.id !== 'SUP_00036'),
     }
     const viaConcept = {
       ...state.graph.C,
       nodes: state.graph.C.nodes.map((n) =>
-        n.id === 'SUP_00005' ? { ...n, viaConcept: 'CONCEPT_INCIDENT' } : n,
+        n.id === 'SUP_00036' ? { ...n, viaConcept: 'CONCEPT_INCIDENT' } : n,
       ),
     }
     const v = graphView(viaConcept, {
@@ -823,13 +832,13 @@ describe('what a screen reader is given', () => {
     expect(summary?.textContent).toContain(', added by the ontology')
     const pathList = document.getElementById('paths')
     const onPathAdded = added.filter((n) => n.onPath)
-    expect(onPathAdded.map((n) => n.id)).toContain('SUP_00005')
+    expect(onPathAdded.map((n) => n.id)).toContain('SUP_00036')
     expect(pathList?.textContent).toContain(
-      'support case (SUP_00005), added by the ontology',
+      'support case (SUP_00036), added by the ontology',
     )
     // A path node the ontology did not add is not marked.
     expect(pathList?.textContent).not.toContain(
-      'support case (SUP_00113), added by the ontology',
+      'support case (SUP_00009), added by the ontology',
     )
   })
 })

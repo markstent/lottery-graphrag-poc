@@ -52,7 +52,7 @@ export function RunPicker({
         >
           {current ? null : (
             <option value="" disabled>
-              Choose a run
+              Choose
             </option>
           )}
           {runs.map((run) => (

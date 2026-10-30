@@ -10,6 +10,7 @@
 import type { ReactNode } from 'react'
 
 import type { Schemas } from '../../api/client'
+import { EVIDENCE_LABELS, type EvidenceMetric } from '../../app/method'
 import {
   answerWords,
   evidenceScore,
@@ -26,6 +27,7 @@ import {
   type DeltaKind,
   type ScoreColumn,
 } from './score'
+import { ScrollBox } from '../../components/scroll-box'
 
 const sentence = (text: string) => text.charAt(0).toUpperCase() + text.slice(1)
 
@@ -40,17 +42,18 @@ interface Row {
   measure?: { kind: DeltaKind; value: (column: ScoreColumn) => number | null }
 }
 
-const ROWS: Row[] = [
+/** The rows of a card whose evidence measure is `metric`. */
+const rowsFor = (metric: EvidenceMetric): Row[] => [
   {
     name: 'Answer',
     scoreOnly: true,
     show: (c) => answerWords(c.answer),
   },
   {
-    name: 'Evidence score',
+    name: EVIDENCE_LABELS[metric],
     scoreOnly: true,
-    show: (c) => evidenceScore(c.evidenceF1),
-    measure: { kind: 'score', value: (c) => c.evidenceF1 },
+    show: (c) => evidenceScore(c.evidence),
+    measure: { kind: 'score', value: (c) => c.evidence },
   },
   {
     name: 'Starting record',
@@ -130,54 +133,63 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="px-4 py-2 text-sm text-text-secondary">{children}</p>
 }
 
-export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
-  const card = scorecard(results)
-  const rows = ROWS.filter((row) => card.scored || !row.scoreOnly)
+export function Scorecard({
+  results,
+  metric,
+}: {
+  results: Schemas['QueryResults']
+  /** The run method's evidence metric: recall, or F1 for a recording of the old method. */
+  metric: EvidenceMetric
+}) {
+  const card = scorecard(results, metric)
+  const rows = rowsFor(metric).filter((row) => card.scored || !row.scoreOnly)
   return (
     <section
       aria-label="Scorecard"
       className="overflow-hidden rounded-card border border-hairline bg-surface"
     >
-      <table className="w-full table-fixed text-left text-sm">
-        <thead>
-          <tr>
-            <td className="w-72 px-3 py-1 text-sm font-medium leading-tight text-text-primary">
-              {card.scored ? card.label : null}
-            </td>
-            {rows.map((row) => (
-              <th
-                key={row.name}
-                scope="col"
-                className={`px-3 py-1 font-medium leading-tight text-text-secondary ${row.wide ? 'w-[26%]' : ''}`}
-              >
-                {row.name}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-hairline">
-          {PIPELINES.map(({ id, label, tint, strong }) => (
-            <tr key={id}>
-              <th
-                scope="row"
-                className="px-3 py-1 align-top text-base font-semibold leading-tight"
-                style={{ backgroundColor: tint, color: strong }}
-              >
-                {label}
-              </th>
+      <ScrollBox label="Scorecard">
+        <table className="w-full min-w-[56rem] table-fixed text-left text-sm md:min-w-0">
+          <thead>
+            <tr>
+              <td className="w-40 px-3 py-1 text-sm font-medium leading-tight text-text-primary md:w-72">
+                {card.scored ? card.label : null}
+              </td>
               {rows.map((row) => (
-                <Cell
+                <th
                   key={row.name}
-                  row={row}
-                  id={id}
-                  column={card.columns[id]}
-                  base={card.columns.A}
-                />
+                  scope="col"
+                  className={`px-3 py-1 font-medium leading-tight text-text-secondary ${row.wide ? 'w-[26%]' : ''}`}
+                >
+                  {row.name}
+                </th>
               ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-hairline">
+            {PIPELINES.map(({ id, label, tint, strong }) => (
+              <tr key={id}>
+                <th
+                  scope="row"
+                  className="px-3 py-1 align-top text-base font-semibold leading-tight"
+                  style={{ backgroundColor: tint, color: strong }}
+                >
+                  {label}
+                </th>
+                {rows.map((row) => (
+                  <Cell
+                    key={row.name}
+                    row={row}
+                    id={id}
+                    column={card.columns[id]}
+                    base={card.columns.A}
+                  />
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </ScrollBox>
       {!card.scored && <Note>{unscoredNote(results)}</Note>}
     </section>
   )

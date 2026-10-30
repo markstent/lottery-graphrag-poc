@@ -29,6 +29,7 @@ export const EVENT_TYPES = {
   'graph.entity_resolution.started': true,
   'graph.entity.resolved': true,
   'graph.query.expanded': true,
+  'graph.target_types.resolved': true,
   'graph.seed.selected': true,
   'graph.traversal.started': true,
   'graph.node.discovered': true,

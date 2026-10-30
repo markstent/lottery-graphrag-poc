@@ -5,21 +5,33 @@ import type { Schemas } from '../api/client'
 type Start = Schemas['BenchmarkStart']
 type Progress = Schemas['JobProgress']
 
-/** The worlds the harness runs. */
+/** The seen worlds, the only ones a run started here may use. */
 export const WORLD_SEEDS = [2026, 2027, 2028]
 
 /** The kinds of question a run can be limited to; "all questions" and the name-anchored group are views, not strata. */
 export const STRATA = ['H1', 'H2', 'H3', 'H5']
 
-const MIN_REPEATS: Record<Start['kind'], number> = { official: 3, smoke: 1 }
+/**
+ * The kinds of run this form starts. The official run is not one of them: it
+ * uses the six unseen worlds, 2029 to 2034, which the API never accepts
+ * (D-091), and it starts from the command line after the owner's go-ahead.
+ */
+export type StartKind = Exclude<Start['kind'], 'official'>
+export const START_KINDS: StartKind[] = ['dev', 'smoke']
+
+/** The worlds each kind may use: a development run the presentation world only. */
+export const KIND_WORLDS: Record<StartKind, number[]> = {
+  dev: [2026],
+  smoke: WORLD_SEEDS,
+}
+
+const MIN_REPEATS = 1
 
 export interface StartForm {
-  kind: Start['kind']
+  kind: StartKind
   worlds: number[]
   /** As typed, so an empty box is an error and not a zero. */
   repeats: string
-  /** The reader has typed in Repeats, so a change of kind leaves it alone. */
-  repeatsEdited: boolean
   scope: 'bank' | 'chosen'
   /** The kinds of question, used only when the scope is chosen. */
   strata: string[]
@@ -27,22 +39,22 @@ export interface StartForm {
   limit: string
 }
 
+/** A development run of the whole bank on world 2026, once: a request the API accepts as it stands. */
 export const DEFAULT_FORM: StartForm = {
-  kind: 'official',
-  worlds: WORLD_SEEDS,
-  repeats: String(MIN_REPEATS.official),
-  repeatsEdited: false,
+  kind: 'dev',
+  worlds: KIND_WORLDS.dev,
+  repeats: String(MIN_REPEATS),
   scope: 'bank',
   strata: [],
   limit: '',
 }
 
-/** Another kind; Repeats follows the kind's own minimum until the reader has typed in it. */
-export const withKind = (form: StartForm, kind: Start['kind']): StartForm => ({
-  ...form,
-  kind,
-  repeats: form.repeatsEdited ? form.repeats : String(MIN_REPEATS[kind]),
-})
+/** Another kind; the chosen worlds the kind may use stay chosen, else all it may use. */
+export function withKind(form: StartForm, kind: StartKind): StartForm {
+  const allowed = KIND_WORLDS[kind]
+  const kept = form.worlds.filter((seed) => allowed.includes(seed))
+  return { ...form, kind, worlds: kept.length > 0 ? kept : allowed }
+}
 
 type Field = 'worlds' | 'repeats' | 'limit' | 'strata'
 
@@ -82,12 +94,11 @@ export function errorsOf(form: StartForm): Partial<Record<Field, string>> {
   const errors: Partial<
     Record<'worlds' | 'repeats' | 'limit' | 'strata', string>
   > = {}
-  const min = MIN_REPEATS[form.kind]
   if (form.worlds.length === 0) errors.worlds = 'Choose at least one world.'
   if (form.scope === 'chosen' && form.strata.length === 0)
     errors.strata = 'Choose at least one kind.'
-  if (!wholeNumber(form.repeats) || Number(form.repeats) < min)
-    errors.repeats = wholeAtLeast(min)
+  if (!wholeNumber(form.repeats) || Number(form.repeats) < MIN_REPEATS)
+    errors.repeats = wholeAtLeast(MIN_REPEATS)
   if (
     form.limit.trim() !== '' &&
     (!wholeNumber(form.limit) || Number(form.limit) < 1)

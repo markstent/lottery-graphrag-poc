@@ -35,13 +35,22 @@ export const OFFICIAL = {
   run_id: 'official',
   run_kind: 'official',
   label: null,
+  method_version: '0.2.0',
   summary: summary({ strata: null, limit: null }),
 }
 export const SMOKE = {
   run_id: 'smoke',
   run_kind: 'smoke',
   label: 'scorer smoke test',
+  method_version: '0.2.0',
   summary: summary({ strata: null, limit: null }),
+}
+
+/** A whole-bank official run of method v0.3, which compares evidence recall. */
+export const OFFICIAL_V03 = {
+  ...OFFICIAL,
+  run_id: 'official-v03',
+  method_version: '0.3.0',
 }
 
 /** An official run of part of the bank, as the backend publishes today. */
@@ -56,6 +65,73 @@ export const OFFICIAL_STRATA = {
   summary: summary({ strata: ['H1'], limit: null }),
 }
 
+/** `GET /settings`: the settings the system runs with now. */
+export const SETTINGS = {
+  judge_configured: true,
+  values: {
+    generation_model: 'model-now',
+    generation_temperature: 0,
+    max_tokens: 1024,
+    top_k: 20,
+    context_budget_tokens: 2000,
+    context: { dedupe_threshold: 0.85 },
+    judge_model: 'judge-now',
+  },
+}
+
+/** A listed run, as `GET /benchmarks` gives it. */
+const listed = (run_id: string, run_kind: string, started_at: string) => ({
+  run_id,
+  run_kind,
+  label: null,
+  headlines: [],
+  selection: { strata: null, limit: null, questions: null },
+  started_at,
+  worlds: [2026],
+})
+
+/** An official run that recorded some of those settings, one of them with another value. */
+const OFFICIAL_RECORDED = {
+  ...OFFICIAL,
+  run_id: 'official-recorded',
+  summary: {
+    ...OFFICIAL.summary,
+    reproducibility: {
+      run: {
+        generation_model: 'model-then',
+        top_k: 20,
+        context_budget_tokens: 1500,
+        context: { dedupe_threshold: 0.85 },
+      },
+      worlds: [],
+    },
+  },
+}
+
+/** The run list and run records of a published official run, older than any quick check. */
+export const RECORDED_RUNS = {
+  runs: [listed('official-recorded', 'official', '2026-10-01T00:00:00Z')],
+  details: { 'official-recorded': OFFICIAL_RECORDED },
+}
+
+/** A newer quick check listed beside the older official run, whose record has other values. */
+export const QUICK_CHECK_NEWER = {
+  runs: [
+    listed('quick', 'smoke', '2026-10-20T00:00:00Z'),
+    listed('official-recorded', 'official', '2026-10-01T00:00:00Z'),
+  ],
+  details: {
+    quick: {
+      ...SMOKE,
+      summary: {
+        ...SMOKE.summary,
+        reproducibility: { run: { top_k: 99 }, worlds: [] },
+      },
+    },
+    'official-recorded': OFFICIAL_RECORDED,
+  },
+}
+
 export const NOT_FOUND = () =>
   json(
     { error: { error_code: 'NOT_FOUND', message: 'none', retryable: false } },
@@ -67,6 +143,12 @@ export interface BankStub {
   latest?: unknown
   failQuestions?: boolean
   failLatest?: boolean
+  settings?: unknown
+  failSettings?: boolean
+  /** The run list and the record of each run, by id. */
+  runs?: unknown[]
+  details?: Record<string, unknown>
+  failRuns?: boolean
 }
 
 /** A fetch stand-in for everything Help loads; the shell's routes are included. */
@@ -75,6 +157,11 @@ export function stubBank({
   latest = OFFICIAL,
   failQuestions = false,
   failLatest = false,
+  settings = SETTINGS,
+  failSettings = false,
+  runs = [],
+  details = {},
+  failRuns = false,
 }: BankStub = {}) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const path = new URL(String(input), 'http://localhost').pathname
@@ -92,6 +179,39 @@ export function stubBank({
               503,
             )
           : json(questions),
+      )
+    if (path === '/api/v1/benchmarks')
+      return Promise.resolve(
+        failRuns
+          ? json(
+              {
+                error: {
+                  error_code: 'RUN_ERROR',
+                  message: 'The run list is unavailable.',
+                  retryable: true,
+                },
+              },
+              503,
+            )
+          : json(runs),
+      )
+    const detail = /^\/api\/v1\/benchmarks\/([^/]+)$/.exec(path)?.[1]
+    if (detail && detail in details)
+      return Promise.resolve(json(details[detail]))
+    if (path === '/api/v1/settings')
+      return Promise.resolve(
+        failSettings
+          ? json(
+              {
+                error: {
+                  error_code: 'CONFIGURATION_ERROR',
+                  message: 'The settings are invalid.',
+                  retryable: true,
+                },
+              },
+              503,
+            )
+          : json(settings),
       )
     if (path === '/api/v1/scenarios') return Promise.resolve(json(SCENARIOS))
     if (path === '/api/v1/benchmarks/latest' && failLatest)

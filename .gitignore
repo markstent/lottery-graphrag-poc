@@ -13,15 +13,14 @@ playwright-report/
 test-results/
 .DS_Store
 *.log
-data/generated/
-data/truth/
-data/evaluation/
 backend/data/
 .ai-project
 .superpowers/
 
-# The API run store (its default path)
-data/app.db*
+# Generated worlds, truth ledgers, benchmark runs and the API run store
+# (data/app.db). With no trailing slash it also matches a worktree's data
+# symlink to the main checkout's data/ (docs/operations.md).
+/data
 
 # Browser automation scratch output
 .playwright-mcp/

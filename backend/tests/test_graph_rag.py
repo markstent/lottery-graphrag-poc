@@ -9,6 +9,7 @@ expansion, telemetry and determinism are covered offline. A live-graph test
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
 from typing import ClassVar
@@ -42,8 +43,9 @@ from app.events import (
     GRAPH_TRAVERSAL_STARTED,
     RetrievalEvent,
 )
-from app.evidence import EvidenceChunk
+from app.evidence import EvidenceChunk, GraphRunResult
 from app.ontology.loader import load_ontology
+from app.retrieval.graph import stages
 from app.retrieval.graph.pipeline import GraphRagPipeline
 from app.retrieval.graph.ranking import score_nodes, temporal_validity
 from app.retrieval.graph.resolution import (
@@ -65,8 +67,13 @@ from app.retrieval.graph.traversal import (
     expand_ontology,
     load_static_provider_from_rows,
 )
-from app.retrieval.standard.context import SELECTION_EXCLUDED_LABEL, SELECTION_SUPERSEDED
-from app.retrieval.standard.corpus import CorpusChunk
+from app.retrieval.standard.context import (
+    SELECTION_EXCLUDED_LABEL,
+    SELECTION_SAME_RECORD,
+    ContextAssembly,
+    assemble_context,
+)
+from app.retrieval.standard.corpus import CorpusChunk, record_facts_of
 from app.retrieval.standard.embeddings import HashingEmbedder
 from app.retrieval.standard.generation import (
     FakeAnswerGenerator,
@@ -217,6 +224,7 @@ def build_pipeline(
         generator=FakeAnswerGenerator(),
         settings=settings,
         reranker=build_reranker(settings),
+        record_facts=record_facts_of(corpus.values()),
         expansion=expansion,
     )
 
@@ -430,11 +438,11 @@ class TestQueryExpansionInPipeline:
 
 
 class TestRankingAndEvidence:
-    def test_platform_version_is_judged_and_uk_document_surfaces(self) -> None:
+    def test_platform_version_is_ranked_and_uk_document_surfaces(self) -> None:
         pipeline = build_pipeline()
         result = pipeline.run("Why did checkout fail in Greece?")
         version = next(e for e in result.node_evidence if e.node_id == "PLV_PAYMENTS_3")
-        assert version.rerank_score is not None
+        assert version.graph_rank is not None and version.tier == "other"
         # Documents do not travel through the graph layer: the UK release
         # note enters the context through the shared vector channel, the
         # same one pipeline A uses.
@@ -478,17 +486,20 @@ class TestRankingAndEvidence:
         )
         assert abs(top.score - expected) < 0.001
 
-    def test_beyond_slot_nodes_discarded_with_reason(self) -> None:
+    def test_nodes_beyond_the_budget_discarded_with_reason(self) -> None:
         settings = make_settings()
-        context = dataclasses.replace(settings.context, evidence_slots=2)
+        context = dataclasses.replace(settings.context, budget_tokens=60)
         settings = dataclasses.replace(settings, context=context)
         pipeline = build_pipeline(settings)
         result = pipeline.run("Why did checkout fail in Greece?")
-        discarded = [evidence for evidence in result.node_evidence if not evidence.selected]
+        discarded = [
+            evidence
+            for evidence in result.node_evidence
+            if not evidence.selected and evidence.discard_reason != SELECTION_EXCLUDED_LABEL
+        ]
         assert discarded
-        assert all(evidence.discard_reason == "slot_limit" for evidence in discarded)
-        selected_documents = [chunk for chunk in result.document_evidence if chunk.selected]
-        assert sum(e.selected for e in result.node_evidence) + len(selected_documents) == 2
+        assert all(evidence.discard_reason == "context_budget" for evidence in discarded)
+        assert result.answer.context_tokens <= 60
         assert sum(
             event.event_type == GRAPH_CANDIDATE_DISCARDED for event in pipeline.events
         ) >= len(discarded)
@@ -587,14 +598,8 @@ class TestSourceLookup:
         )
         connection.close()
 
-        # The test is about facts attached to a selected node, so the graph
-        # share (D-081) is widened to keep the low-ranked incident selected.
-        base = make_settings(dataset_dir=str(source_dir))
-        pipeline = build_pipeline(
-            settings=dataclasses.replace(
-                base, context=dataclasses.replace(base.context, graph_slots=12)
-            ),
-        )
+        # The incident is the seed, so it heads the graph channel and is selected.
+        pipeline = build_pipeline(settings=make_settings(dataset_dir=str(source_dir)))
         pipeline.source_lookup = SourceLookup(source_dir, {})
         result = pipeline.run("Why did checkout fail in Greece?")
 
@@ -748,7 +753,7 @@ class TestMarketScope:
         pipeline.source_lookup = SourceLookup(
             source_dir, {(r.record_table or "", r.document_id): r for r in records}
         )
-        index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, records)
+        index_records(pipeline, records)
         lab_a = StandardRagPipeline(
             embeddings=pipeline.embeddings,
             sparse=pipeline.sparse,
@@ -756,6 +761,7 @@ class TestMarketScope:
             generator=pipeline.generator,
             settings=dataclasses.replace(pipeline.settings, top_k=10),
             reranker=pipeline.reranker,
+            record_facts=pipeline.record_facts,
         )
         pipeline.settings = dataclasses.replace(pipeline.settings, top_k=10)
         result_a = lab_a.run(QUESTION, markets=["MKT_GR"])
@@ -804,7 +810,7 @@ class TestTelemetryAndDeterminism:
                 expansion=QueryExpansion(load_ontology()),
             )
             pipeline.ontology = load_ontology()
-            index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+            index_records(pipeline, [record])
             pipeline.source_lookup = SourceLookup(tmp_path, {("incidents", "INC_S007_GR"): record})
             result = pipeline.run(QUESTION, markets=markets)
             runs.append(
@@ -816,7 +822,15 @@ class TestTelemetryAndDeterminism:
                 )
             )
         assert runs[0] == runs[1]
-        assert (record.chunk_id, False, SELECTION_SUPERSEDED) in runs[0][2]
+        # The incident's row reaches the prompt once. Its record block is
+        # admitted first (the document channel opens the alternation and the
+        # block is admitted on that first turn), so the seed node is the copy
+        # refused.
+        refused = [
+            outcome for outcome in [*runs[0][1], *runs[0][2]] if outcome[2] == SELECTION_SAME_RECORD
+        ]
+        assert refused == [("INC_S007_GR", False, SELECTION_SAME_RECORD)]
+        assert (record.chunk_id, True, None) in runs[0][2]
 
     def test_empty_question_rejected(self) -> None:
         with pytest.raises(ValueError, match="empty"):
@@ -904,14 +918,46 @@ def record_corpus_chunk(
         valid_to=None,
         kind="record",
         record_table=table,
+        facts_heading=f"Record {record_id}",
+        facts=(("summary", text),),
     )
+
+
+def index_records(pipeline: GraphRagPipeline, records: list[CorpusChunk]) -> None:
+    """Index record blocks into the pipeline's store with their prompt
+    facts, as the lab does for its corpus."""
+    index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, records)
+    pipeline.record_facts = {**pipeline.record_facts, **record_facts_of(records)}
 
 
 QUESTION = "Why did checkout fail in Greece?"
 
 
-class TestOneJudgeSelection:
-    def test_one_rerank_call_judges_nodes_and_documents_on_the_raw_question(self) -> None:
+def graph_channel(
+    pipeline: GraphRagPipeline,
+    question: str,
+    monkeypatch: pytest.MonkeyPatch,
+    markets: Sequence[str] | None = None,
+) -> tuple[GraphRunResult, list[EvidenceChunk]]:
+    """Run ``question`` and return the result and the graph channel the
+    selection received, in graph relevance order."""
+    captured: list[EvidenceChunk] = []
+    assemble = assemble_context
+
+    def spy(
+        documents: Sequence[EvidenceChunk],
+        graph: Sequence[EvidenceChunk],
+        settings: ContextSettings,
+    ) -> ContextAssembly:
+        captured.extend(graph)
+        return assemble(documents, graph, settings)
+
+    monkeypatch.setattr(stages, "assemble_context", spy)
+    return pipeline.run(question, markets), captured
+
+
+class TestDocumentOnlyReranking:
+    def test_one_rerank_call_on_the_documents_and_the_raw_question(self) -> None:
         concept = ResolvedEntity(
             "CONCEPT_PLATFORM_INCIDENT", "BusinessConcept", "platform incident", "term", 0.8
         )
@@ -924,10 +970,10 @@ class TestOneJudgeSelection:
         pipeline.run(QUESTION)
         assert len(reranker.calls) == 1
         question, candidates = reranker.calls[0]
-        assert question == QUESTION  # expansion feeds retrieval, never the judge
-        assert {candidate.kind for candidate in candidates} == {"node", "chunk"}
+        assert question == QUESTION  # expansion feeds retrieval, never the re-ranker
+        assert {candidate.kind for candidate in candidates} == {"chunk"}
 
-    def test_reranked_events_cover_every_judged_candidate(self) -> None:
+    def test_reranked_events_cover_every_document_candidate(self) -> None:
         pipeline = build_pipeline()
         reranker = RecordingReranker()
         pipeline.reranker = reranker
@@ -935,7 +981,7 @@ class TestOneJudgeSelection:
         events = [e for e in pipeline.events if e.event_type == GRAPH_CANDIDATE_RERANKED]
         judged = reranker.calls[0][1]
         assert len(events) == len(judged)
-        assert {str(e.payload["kind"]) for e in events} == {"node", "chunk"}
+        assert {str(e.payload["kind"]) for e in events} == {"chunk"}
         assert all(
             set(e.payload) == {"candidate_id", "kind", "rerank_score", "rank"} for e in events
         )
@@ -945,18 +991,27 @@ class TestOneJudgeSelection:
             for e in pipeline.events
             if e.event_type in (GRAPH_CANDIDATE_SELECTED, GRAPH_CANDIDATE_DISCARDED)
         ]
-        assert outcomes and all("rerank_score" in e.payload for e in outcomes)
+        chunks = [e for e in outcomes if "chunk_id" in e.payload]
+        nodes = [e for e in outcomes if "node_id" in e.payload]
+        assert chunks and all("rerank_score" in e.payload for e in chunks)
+        assert nodes and all(
+            {"tier", "graph_rank"} <= set(e.payload) and "rerank_score" not in e.payload
+            for e in nodes
+        )
 
-    def test_every_traversal_node_reaches_the_judge(self) -> None:
-        pipeline = build_pipeline()
-        reranker = RecordingReranker()
-        pipeline.reranker = reranker
-        result = pipeline.run(QUESTION)
-        judged_nodes = [c.chunk_id for c in reranker.calls[0][1] if c.kind == "node"]
-        assert judged_nodes == [e.node_id for e in result.node_evidence]
-        assert all(e.rerank_score is not None for e in result.node_evidence)
+    def test_every_traversal_node_enters_the_graph_channel_in_graph_order(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        result, channel = graph_channel(build_pipeline(), QUESTION, monkeypatch)
+        ranked = [e for e in result.node_evidence if e.graph_rank is not None]
+        assert [c.chunk_id for c in channel] == [e.node_id for e in ranked]
+        assert [c.rank for c in channel] == list(range(1, len(channel) + 1))
+        assert [e.graph_rank for e in ranked] == [c.rank for c in channel]
+        assert all(c.rerank_score is None for c in channel)
 
-    def test_a_resolved_document_seeds_traversal_but_is_never_a_candidate(self) -> None:
+    def test_a_resolved_document_seeds_traversal_but_is_never_a_candidate(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         document = ResolvedEntity("DOC_9", "Document", "DOC_9", "id", 1.0)
         pipeline = build_pipeline(resolver=StaticEntityResolver([document]))
         pipeline.neighbours = load_static_provider_from_rows(
@@ -964,13 +1019,12 @@ class TestOneJudgeSelection:
         )
         reranker = RecordingReranker()
         pipeline.reranker = reranker
-        result = pipeline.run(QUESTION)
+        result, channel = graph_channel(pipeline, QUESTION, monkeypatch)
         seeds = [
             e.payload["node_id"] for e in pipeline.events if e.event_type == GRAPH_SEED_SELECTED
         ]
         assert seeds == ["DOC_9"]
-        judged = {c.chunk_id for c in reranker.calls[0][1] if c.kind == "node"}
-        assert judged == {"MKT_GR"}
+        assert [c.chunk_id for c in channel] == ["MKT_GR"]
         outcome = {e.node_id: e.discard_reason for e in result.node_evidence}
         assert outcome["DOC_9"] == SELECTION_EXCLUDED_LABEL
         discards = [
@@ -979,8 +1033,8 @@ class TestOneJudgeSelection:
             if e.event_type == GRAPH_CANDIDATE_DISCARDED and e.payload.get("node_id") == "DOC_9"
         ]
         assert [e.payload["reason"] for e in discards] == [SELECTION_EXCLUDED_LABEL]
-        assert discards[0].payload["rerank_score"] is None
-        # The document's text still reaches the judge through the document channel.
+        assert (discards[0].payload["tier"], discards[0].payload["graph_rank"]) == (None, None)
+        # The document's text still reaches the re-ranker through the document channel.
         assert any(c.kind == "chunk" for c in reranker.calls[0][1])
 
 
@@ -990,7 +1044,7 @@ class TestFallbackSeed:
         record = record_corpus_chunk(
             "incidents", "INC_S007_GR", "Incident INC_S007_GR in Greece: checkout failed."
         )
-        index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+        index_records(pipeline, [record])
         result = pipeline.run("checkout regression in Greece")
         seeds = [
             e.payload["node_id"] for e in pipeline.events if e.event_type == GRAPH_SEED_SELECTED
@@ -1085,24 +1139,24 @@ class TestNodeText:
     def _record(cls) -> CorpusChunk:
         return record_corpus_chunk("incidents", "INC_S007_GR", cls.RECORD_TEXT)
 
-    def test_a_node_with_a_record_block_is_judged_and_shown_as_that_block(
-        self, tmp_path: Path
+    def test_a_node_with_a_record_block_is_shown_as_that_block(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         pipeline = build_pipeline()
         record = self._record()
         pipeline.source_lookup = SourceLookup(tmp_path, {("incidents", "INC_S007_GR"): record})
-        reranker, generator = RecordingReranker(), PromptCapture()
-        pipeline.reranker, pipeline.generator = reranker, generator
-        pipeline.run(QUESTION)
-        node = next(c for c in reranker.calls[0][1] if c.chunk_id == "INC_S007_GR")
+        generator = PromptCapture()
+        pipeline.generator = generator
+        _result, channel = graph_channel(pipeline, QUESTION, monkeypatch)
+        node = next(c for c in channel if c.chunk_id == "INC_S007_GR")
         assert node.text == self.RECORD_TEXT
         shown = next(c for c in generator.contexts if c.chunk_id == "INC_S007_GR")
         # The prompt block is A's record block: same title line, same text.
         assert context_block(shown) == context_block(record.to_evidence(similarity=0.0, rank=1))
         assert "Graph path" not in generator.prompt
 
-    def test_a_superseding_node_takes_the_block_from_the_source_lookup(
-        self, tmp_path: Path
+    def test_a_node_takes_the_block_from_the_source_lookup(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """Same fact, same block, whether or not the record was a top-k hit."""
         record = self._record()
@@ -1111,18 +1165,19 @@ class TestNodeText:
         for indexed in (True, False):
             pipeline = build_pipeline()
             if indexed:
-                index_corpus(pipeline.store, pipeline.embeddings, pipeline.sparse, [record])
+                index_records(pipeline, [record])
             pipeline.source_lookup = lookup
-            reranker = RecordingReranker()
-            pipeline.reranker = reranker
-            result = pipeline.run(QUESTION)
-            superseded = [
+            result, channel = graph_channel(pipeline, QUESTION, monkeypatch)
+            # Indexed, the row is in both channels and reaches the prompt once.
+            refused = [
                 c.chunk_id
                 for c in result.document_evidence
-                if c.discard_reason == SELECTION_SUPERSEDED
+                if c.discard_reason == SELECTION_SAME_RECORD
+            ] + [
+                e.node_id for e in result.node_evidence if e.discard_reason == SELECTION_SAME_RECORD
             ]
-            assert superseded == ([record.chunk_id] if indexed else [])
-            judged = {c.chunk_id: c for c in reranker.calls[0][1] if c.kind == "node"}
+            assert len(refused) == (1 if indexed else 0)
+            judged = {c.chunk_id: c for c in channel}
             nodes[indexed] = judged["INC_S007_GR"]
             # A node without a record block keeps its graph title, no market or language.
             game = judged["GAME_GR_01"]
@@ -1156,7 +1211,7 @@ class TestNodeText:
         # The authoritative row exists (facts for citations and the UI) ...
         facts = lookup.fetch("SupportCase", "SUP_1")
         assert facts is not None and facts.columns["summary_text"] == "Login failed"
-        # ... but the judge and the model see no warehouse text A cannot index.
+        # ... but the model sees no warehouse text A cannot index.
         assert lookup.node_text("SupportCase", "SUP_1") == "SupportCase SUP_1"
         assert lookup.node_text("Supplier", "SUPP_1") == "Supplier SUPP_1"
 
@@ -1169,12 +1224,12 @@ class TestNodeText:
             "el: βλάβη πλατφόρμας; de: Plattformausfall; cs: výpadek platformy."
         )
 
-    def test_pipeline_c_judges_concept_nodes_on_their_ontology_text(self) -> None:
+    def test_pipeline_c_shows_concept_nodes_with_their_ontology_text(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         ontology = load_ontology()
         pipeline = build_pipeline()
         pipeline.ontology = ontology
-        reranker = RecordingReranker()
-        pipeline.reranker = reranker
-        pipeline.run(QUESTION)
-        concept = next(c for c in reranker.calls[0][1] if c.chunk_id == "CONCEPT_PLATFORM_INCIDENT")
+        _result, channel = graph_channel(pipeline, QUESTION, monkeypatch)
+        concept = next(c for c in channel if c.chunk_id == "CONCEPT_PLATFORM_INCIDENT")
         assert concept.text == concept_text(ontology.concept("CONCEPT_PLATFORM_INCIDENT"))

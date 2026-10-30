@@ -17,7 +17,7 @@ equivalence comes from ``load_ontology()`` bindings; Neo4j is never read.
 
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
@@ -31,6 +31,7 @@ from app.evaluation.checks import (
     UNIT_SYMBOLS,
     Check,
     NumberCheck,
+    QualifiedAlias,
     SetCheck,
     TokenCheck,
     VerdictCheck,
@@ -74,6 +75,16 @@ class Incident:
 
 
 @dataclass(frozen=True, slots=True)
+class Version:
+    """A platform version or an app release: its label ("2024.3.0", "5.3.1")
+    and the names of what it belongs to (a platform's name and id, or a
+    market's names and id)."""
+
+    label: str
+    owners: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class MechanicUse:
     game_id: str
     mechanic_id: str
@@ -95,6 +106,8 @@ class World:
     markets: Mapping[str, tuple[str, ...]]
     games: Mapping[str, Game]
     incidents: Mapping[str, Incident]
+    platform_versions: Mapping[str, Version]
+    app_releases: Mapping[str, Version]
     incident_games: Mapping[str, tuple[str, ...]]
     mechanic_uses: tuple[MechanicUse, ...]
     mechanic_markets: Mapping[str, str]
@@ -154,6 +167,20 @@ def load_world(connection: duckdb.DuckDBPyConnection, ontology: Ontology) -> Wor
         affected = {games[game_id].market_id for game_id in incident_games[incident_id]}
         belongs = frozenset({market_id} if market_id is not None else affected)
         incidents[incident_id] = Incident(market_id, _text(r[2]), str(r[3]), _date(r[4]), belongs)
+    platform_versions = {
+        str(r[0]): Version(str(r[1]), (str(r[2]), str(r[3])))
+        for r in rows(
+            "SELECT v.platform_version_id, v.version_label, p.platform_name, p.platform_id"
+            " FROM platform_versions v JOIN platforms p ON p.platform_id = v.platform_id"
+            " ORDER BY 1"
+        )
+    }
+    app_releases = {
+        str(r[0]): Version(str(r[1]), (*markets[str(r[2])], str(r[2])))
+        for r in rows(
+            "SELECT app_version_id, version_label, market_id FROM app_versions ORDER BY 1"
+        )
+    }
     uses = tuple(
         MechanicUse(
             str(r[0]), str(r[1]), float(str(r[2])), _optional_date(r[3]), _optional_date(r[4])
@@ -167,6 +194,8 @@ def load_world(connection: duckdb.DuckDBPyConnection, ontology: Ontology) -> Wor
         markets=markets,
         games=games,
         incidents=incidents,
+        platform_versions=platform_versions,
+        app_releases=app_releases,
         incident_games={key: tuple(value) for key, value in incident_games.items()},
         mechanic_uses=uses,
         mechanic_markets=_pairs(rows("SELECT mechanic_id, market_id FROM game_mechanics")),
@@ -243,8 +272,56 @@ def ground_l02(world: World) -> list[Draft]:
             continue
         statement = f"Incident {incident_id} was seen on platform version {version}."
         spec = ClaimSpec("version", statement, (incident_id,), ((incident_id,), (version,)))
-        drafts.append(Draft(incident_id, incident_id, statement, (TokenCheck(version),), (spec,)))
+        drafts.append(
+            Draft(
+                incident_id,
+                incident_id,
+                statement,
+                (version_check(world.platform_versions, version),),
+                (spec,),
+            )
+        )
     return drafts
+
+
+def version_check(versions: Mapping[str, Version], version_id: str) -> TokenCheck:
+    """The check of an answer that is a version: its id, or its label beside
+    what it belongs to (scorer 2.2.0 and 2.2.1, D-095)."""
+    return TokenCheck(version_id, qualified=version_label_alias(versions, version_id))
+
+
+def version_label_alias(
+    versions: Mapping[str, Version], version_id: str
+) -> tuple[QualifiedAlias, ...]:
+    """Scorer 2.2.0 (D-095): a version's label counts beside a name of what
+    it belongs to (a platform's name or id, a market's name or id) when label
+    and that name identify this one version in the world. Platforms and
+    markets share labels ("2024.3.0", "5.3.1"), so the label alone never
+    counts; a name with which the label still fits two versions is no
+    qualifier, and with no qualifier left there is no alias.
+
+    Every name of another version's owner with the same label is a rival
+    (scorer 2.2.1): an answer that also names one has tied the label to
+    another platform or market, or has not said which, so it does not count.
+    """
+    fits = Counter(
+        (version.label, name.casefold()) for version in versions.values() for name in version.owners
+    )
+    version = versions[version_id]
+    qualifiers = tuple(
+        name for name in version.owners if fits[(version.label, name.casefold())] == 1
+    )
+    if not qualifiers:
+        return ()
+    own = {name.casefold() for name in qualifiers}
+    rivals = dict.fromkeys(
+        name
+        for other_id, other in versions.items()
+        if other.label == version.label and other_id != version_id
+        for name in other.owners
+        if name.casefold() not in own
+    )
+    return (QualifiedAlias(version.label, qualifiers, tuple(rivals)),)
 
 
 def ground_l03(world: World) -> list[Draft]:
@@ -381,7 +458,8 @@ def ground_l07(world: World) -> list[Draft]:
                 ((incident_id,), (version,)),
             ),
         )
-        drafts.append(Draft(case_id, case_id, answer, (TokenCheck(version),), specs))
+        check = version_check(world.platform_versions, version)
+        drafts.append(Draft(case_id, case_id, answer, (check,), specs))
     return drafts
 
 

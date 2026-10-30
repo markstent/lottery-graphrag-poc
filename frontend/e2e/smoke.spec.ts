@@ -32,7 +32,7 @@ const DESTINATIONS = [
     name: 'Help',
     hash: '#/help',
     purpose:
-      'How it works in plain language, every benchmark question with its answer key, glossary, how to run it',
+      'How it works, every benchmark question with its answer key, glossary, how to run it',
   },
 ] as const
 
@@ -98,7 +98,7 @@ test.describe('Results run list', () => {
   const RUN_LIST = [
     ['published', 'All runs'],
     ['official', 'Descriptive: not part of the tested family.'],
-    ['none', 'No benchmark runs yet.'],
+    ['none', 'No runs yet.'],
     ['unavailable', 'The run list is unavailable.'],
   ] as const
   for (const [runs, text] of RUN_LIST) {
@@ -112,7 +112,8 @@ test.describe('Results run list', () => {
 
 test.describe('Overview latest run', () => {
   const LATEST = [
-    ['official', 'Evidence score, all questions'],
+    ['official', 'Method v0.2 (old method)'],
+    ['v03', 'Method v0.3 was made after seeing the v0.2.0 result'],
     ['smoke', 'Latest run: scorer smoke test'],
     ['none', 'No official run yet'],
     ['unavailable', 'The latest run is unavailable.'],
@@ -154,16 +155,17 @@ test.describe('presentation mode on every destination', () => {
   }
 })
 
-test.describe('the flow diagram in presentation mode', () => {
-  for (const hash of ['#/overview', '#/help?section=approaches']) {
-    test(`grows with the type scale on ${hash}`, async ({ page }) => {
+test.describe('the approach diagrams in presentation mode', () => {
+  for (const [hash, name] of [
+    ['#/overview', 'How the three approaches differ'],
+    ['#/help?section=approaches', /^C · Graph \+ Ontology\./],
+  ] as const) {
+    test(`grow with the type scale on ${hash}`, async ({ page }) => {
       await page.setViewportSize({ width: 1920, height: 1080 })
       await mockApi(page)
       const height = async (url: string) => {
         await page.goto(url)
-        const figure = page.getByRole('img', {
-          name: 'How the three approaches differ',
-        })
+        const figure = page.getByRole('img', { name })
         await expect(figure).toBeVisible()
         return (await figure.boundingBox())!.height
       }

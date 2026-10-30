@@ -30,7 +30,7 @@ from app.lab import Lab, graph_pipelines
 from app.retrieval.graph import resolution, stages
 from app.retrieval.graph.neo4j_adapter import build_resolvers
 from app.retrieval.graph.pipeline import GraphRagPipeline
-from app.retrieval.graph.resolution import _SEED_PREFIXES, IdEntityResolver
+from app.retrieval.graph.resolution import _SEED_PREFIXES, IdEntityResolver, TermEntityResolver
 from app.retrieval.graph.source_lookup import (
     RECORD_LABELS,
     SEED_ID_PREFIXES,
@@ -108,9 +108,27 @@ def _provider(
 
 
 def tiny_world_pipelines(dataset_dir: Path) -> dict[str, GraphRagPipeline]:
-    """B and C over the tiny world: its indexed corpus, Parquet source
-    lookup, graph rows and resolvers; hashing embedders, the lexical judge
-    and the fake generator, so every run is deterministic and offline."""
+    """B and C over the tiny world (see :func:`tiny_world_lab`)."""
+    return tiny_world_lab(dataset_dir)[1]
+
+
+def tiny_world_lab(
+    dataset_dir: Path, **settings: object
+) -> tuple[Lab, dict[str, GraphRagPipeline]]:
+    """The lab (pipeline A) and B and C over the tiny world: its indexed
+    corpus, Parquet source lookup, graph rows and resolvers; hashing
+    embedders, the lexical judge and the fake generator, so every run is
+    deterministic and offline. settings overrides the test retrieval
+    settings for all three."""
+    lab, provider, ids, terms = tiny_world_parts(dataset_dir, **settings)
+    return lab, dict(graph_pipelines(lab, provider, ids, terms))
+
+
+def tiny_world_parts(
+    dataset_dir: Path, **settings: object
+) -> tuple[Lab, StaticNeighbourProvider, IdEntityResolver, TermEntityResolver]:
+    """What :func:`tiny_world_lab` wires B and C from: the lab, the graph
+    as a neighbour provider, and the id and term resolvers."""
     tables = load_dataset(dataset_dir)
     base = build_lab_offline()
     nodes = build_node_rows(tables, base.ontology)
@@ -118,15 +136,14 @@ def tiny_world_pipelines(dataset_dir: Path) -> dict[str, GraphRagPipeline]:
     corpus = load_indexed_corpus(dataset_dir)
     lab: Lab = dataclasses.replace(
         base,
-        settings=make_settings(dataset_dir=str(dataset_dir)),
+        settings=make_settings(dataset_dir=str(dataset_dir), **settings),
         corpus=corpus,
         source_lookup=SourceLookup(dataset_dir, record_blocks_of(corpus.values())),
     )
     index_corpus(lab.store, lab.embeddings, lab.sparse, list(corpus.values()))
     reader = _TinyWorldReader(labels, nodes["Market"])
     ids, terms = build_resolvers(reader, lab.ontology, lab.term_matcher)  # type: ignore[arg-type]
-    provider = _provider(build_relationship_rows(tables, lab.ontology))
-    return dict(graph_pipelines(lab, provider, ids, terms))
+    return lab, _provider(build_relationship_rows(tables, lab.ontology)), ids, terms
 
 
 def _plain(value: dict[str, Any]) -> dict[str, Any]:

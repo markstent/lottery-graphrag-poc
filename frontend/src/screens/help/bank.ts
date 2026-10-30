@@ -31,10 +31,13 @@ export async function loadBank(signal: AbortSignal): Promise<Bank> {
 
 /**
  * Whether the questions' scores may be shown: only when the newest run is a
- * whole-bank official run and scored some question. `unreadable` is a newest
- * run that could not be read, which hides scores but not the questions.
+ * whole-bank official run and scored some question. `elsewhere` is such a
+ * run that scored none of these questions, as one on other worlds does.
+ * `unreadable` is a newest run that could not be read, which hides scores
+ * but not the questions.
  */
-export type ScoreState = 'shown' | 'none' | 'unreadable' | 'loading'
+export type ScoreState =
+  'shown' | 'none' | 'elsewhere' | 'unreadable' | 'loading'
 
 export function scoreState(
   latest: Load<Schemas['BenchmarkSummary'] | null>,
@@ -43,11 +46,10 @@ export function scoreState(
   if (latest.status === 'error') return 'unreadable'
   if (latest.status === 'loading') return 'loading'
   if (bank.status !== 'ready') return 'none'
-  return latest.data !== null &&
-    isFullOfficial(latest.data) &&
-    bank.data.questions.some((question) => question.scores !== null)
+  if (latest.data === null || !isFullOfficial(latest.data)) return 'none'
+  return bank.data.questions.some((question) => question.scores !== null)
     ? 'shown'
-    : 'none'
+    : 'elsewhere'
 }
 
 /** The kinds of question, in the words of the statistics page. */

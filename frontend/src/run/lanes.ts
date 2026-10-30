@@ -18,16 +18,27 @@ export const STEP = {
   findStartingPoints: 'Find starting points',
   followRelationships: 'Follow relationships',
   addLinkedRecords: 'Add linked records',
-  reorderAndPick: 'Re-order and pick',
+  reorderPassages: 'Re-order passages',
+  rankByGraph: 'Rank by the graph',
 } as const
 
-/** Question, then these lanes, then the shared steps after them. Each lane's steps are in the order its first events arrive (lanes.test.ts checks this against the recordings). */
+/**
+ * Question, then these lanes, then the shared steps after them, as method
+ * v0.3 works: only passages are re-ordered; B and C put their graph records in
+ * the graph's own order, and the two lists take turns filling one budget. Each
+ * lane's steps before its ranking are in the order its first events arrive
+ * (lanes.test.ts checks this against the recordings).
+ */
 export const LANES: Lane[] = [
-  { label: 'A, B and C', steps: [STEP.searchPassages] },
+  { label: 'A, B and C', steps: [STEP.searchPassages, STEP.reorderPassages] },
   {
     label: 'B · Graph',
     pipeline: 'B',
-    steps: [STEP.findStartingPoints, STEP.followRelationships],
+    steps: [
+      STEP.findStartingPoints,
+      STEP.followRelationships,
+      STEP.rankByGraph,
+    ],
   },
   {
     label: 'C · Graph + Ontology',
@@ -37,20 +48,49 @@ export const LANES: Lane[] = [
       STEP.addOntologyTerms,
       STEP.followRelationships,
       STEP.addLinkedRecords,
+      STEP.rankByGraph,
     ],
   },
 ]
 
-export const STAGE_LABELS: Record<Stage, string> = {
+/** The name of each stage that does the same work in every pipeline. */
+export const STAGE_LABELS: Record<Exclude<Stage, 'rerank'>, string> = {
   embedding: 'Embed the question',
   search: STEP.searchPassages,
   expansion: STEP.addOntologyTerms,
   resolution: STEP.findStartingPoints,
   traversal: STEP.followRelationships,
   linking: STEP.addLinkedRecords,
-  rerank: STEP.reorderAndPick,
   context: 'Build the context',
   generation: 'Write the answer',
+}
+
+/**
+ * The re-rank stage does different work by pipeline under method v0.3. A
+ * re-orders its passages and picks them within the budget. B and C re-order
+ * only their passages (the graph has already ordered its own records), then
+ * the two lists take turns filling the budget.
+ */
+const RERANK_LABELS: Record<PipelineId, string> = {
+  A: 'Re-order and pick passages',
+  B: 'Re-order passages, take turns',
+  C: 'Re-order passages, take turns',
+}
+
+/** The old method (v0.2) re-ranked passages and graph records together and picked from them. */
+const OLD_METHOD_RERANK = 'Re-order and pick'
+
+/**
+ * The name of a stage of a pipeline, as the step list and the timeline give
+ * it; `oldMethod` for a recording of the old method, which still replays.
+ */
+export const stageLabel = (
+  id: PipelineId,
+  stage: Stage,
+  oldMethod = false,
+): string => {
+  if (stage !== 'rerank') return STAGE_LABELS[stage]
+  return oldMethod ? OLD_METHOD_RERANK : RERANK_LABELS[id]
 }
 
 /** Each pipeline's stages in the order the first event of each one arrives. */
@@ -69,7 +109,10 @@ export const STEPS: Record<PipelineId, readonly Stage[]> = {
 }
 
 export const SHARED_BEFORE = 'Question'
-export const SHARED_AFTER = [STEP.reorderAndPick, 'Answer with sources']
+export const SHARED_AFTER = ['Fill one budget', 'Answer with sources']
+
+/** Said under the picture: how B and C fill the budget. */
+export const TURNS_LINE = 'B and C take turns: a passage, then a graph record.'
 
 /** The same diagram in words, built from the lanes so the two cannot differ. */
 export const STEP_LINES = [
@@ -77,4 +120,5 @@ export const STEP_LINES = [
   ...LANES.map(({ label, steps }) => `${label}: ${steps.join(', then ')}.`),
   'B and C also take passages from the same search.',
   `All three then ${SHARED_AFTER.join(', then ').toLowerCase()}.`,
+  TURNS_LINE,
 ]

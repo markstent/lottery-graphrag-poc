@@ -40,7 +40,7 @@ from app.api.scoring import (
 from app.evaluation import official
 from app.evaluation import runner as runner_module
 from app.evaluation.bank import BANK_VERSION
-from app.evaluation.checks import TokenCheck
+from app.evaluation.checks import SCORER_VERSION, TokenCheck
 from app.evaluation.claims import Claim
 from app.evaluation.grounding import DEMO_STRATA, BankInstance, FrozenBank
 from app.evaluation.official import world_paths
@@ -122,6 +122,7 @@ def bank(world_dir: Path) -> FrozenBank:
         world_seed=2026,
         world_manifest_hash=hashlib.sha256((world_dir / "_manifest.json").read_bytes()).hexdigest(),
         record_serialiser_version=RECORD_SERIALISER_VERSION,
+        scorer_version=SCORER_VERSION,
         ledger_hash="ledger-hash",
         instances=instances,
         unavailable=(),
@@ -411,18 +412,27 @@ def test_a_live_score_equals_the_runner_score_for_the_same_results(
             "resolved_ids",
             "seeded",
             "context_tokens",
+            "answer_form",
+            "finish_reason",
+            "token_limit_reached",
+            "cut_off",
+            "surrogates_replaced",
         ):
             assert getattr(stored, field) == getattr(runner_run, field), (tag, field)
-        assert score_pipeline_run(instance, stored) == dataclasses.replace(runner_score, judge=None)
+        # A stored run keeps no block texts, so a live score has no groundedness.
+        assert runner_score.groundedness is not None
+        assert score_pipeline_run(instance, stored) == dataclasses.replace(
+            runner_score, judge=None, groundedness=None
+        )
         assert LivePipelineScore.model_validate(live["per_pipeline"][tag]) == LivePipelineScore(
             answer=runner_score.answer,
-            evidence_f1=runner_score.evidence.f1,
+            evidence_recall=runner_score.evidence.recall,
             anchor_resolution=float(runner_score.evidence.anchor_resolved),
             failure_class=runner_score.failure_class,
         )
     # Not a vacuous comparison: B and C resolve the anchor, A finds a claim.
     assert result.runs["B"][0].resolved_ids == ("INC_S007_GR",)
-    assert live["per_pipeline"]["A"]["evidence_f1"] is not None
+    assert live["per_pipeline"]["A"]["evidence_recall"] is not None
 
 
 # -- the start rules ------------------------------------------------------------
@@ -535,10 +545,13 @@ def test_a_bank_question_over_http_is_scored_against_the_answer_key(
     assert set(results["score"]["per_pipeline"]) == {"A", "B", "C"}
     assert set(results["score"]["per_pipeline"]["A"]) == {
         "answer",
+        "evidence_recall",
         "evidence_f1",
         "anchor_resolution",
         "failure_class",
     }
+    # Method v0.3 compares evidence recall (D-087); F1 is not scored live.
+    assert all(p["evidence_f1"] is None for p in results["score"]["per_pipeline"].values())
 
 
 def test_demo_questions_carry_no_answer_key(
@@ -619,6 +632,30 @@ def test_score_status_follows_the_run_and_its_score_record(
     status: str, instance_id: str | None, record: dict[str, Any] | None, expected: Any
 ) -> None:
     assert score_state(_row(status, instance_id), record) == expected
+
+
+def test_a_score_stored_under_the_old_method_still_reads() -> None:
+    """A live score stored before method v0.3 holds evidence F1 and no
+    recall; it still reads, with its F1 kept and no recall made up."""
+    old = {
+        "status": "scored",
+        "score": {
+            "instance_id": "L05-x",
+            "label": LIVE_SCORE_LABEL,
+            "per_pipeline": {
+                "A": {
+                    "answer": 0.0,
+                    "evidence_f1": 0.5,
+                    "anchor_resolution": 1.0,
+                    "failure_class": None,
+                }
+            },
+        },
+    }
+    state = score_state(_row("completed", "L05-x"), old)
+    assert state.score is not None
+    a = state.score.per_pipeline["A"]
+    assert a.evidence_f1 == 0.5 and a.evidence_recall is None
 
 
 class BlockedScorer:

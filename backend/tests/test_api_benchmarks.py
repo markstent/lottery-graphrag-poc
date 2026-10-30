@@ -9,6 +9,7 @@ temporary data directory, so nothing is generated, ingested or indexed.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import os
 import shlex
@@ -22,22 +23,26 @@ from typing import Any
 import pytest
 from app.api import benchmarks
 from app.api.graph_world import GraphLease
-from app.config import REPO_ROOT
+from app.api.schemas import BenchmarkStart
+from app.config import METHOD_VERSION, REPO_ROOT, from_env
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation import __main__ as cli
+from app.evaluation import judge as judge_module
 from app.evaluation import official
 from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
+from app.evaluation.judge import FakeJudge
 from app.evaluation.official import InstanceHook, WorldPaths, world_paths
-from app.evaluation.report import summarize
-from app.evaluation.runner import WorldRun
+from app.evaluation.report import METHOD_NOTE, summarize
+from app.evaluation.runner import OFFICIAL_MIN_REPEATS, WorldRun, settings_fields
 from app.evaluation.truth_ledger import load_ledger
 from app.events import TERMINAL_EVENT_TYPES
 from app.lab import Lab
 from app.main import create_app
+from app.models import gateway
 from app.scenarios.engine import apply_scenarios
 from app.scenarios.ledger import build_ledger, write_ledger
 from fastapi.testclient import TestClient
@@ -47,6 +52,19 @@ from tests.test_benchmark_report import _benchmark
 from tests.test_official import FakeRunner, Recorder
 
 GRAPH_BUSY = "a benchmark run is using the graph; try again when it finishes"
+# The request the Results screen's start form sends unless the reader changes it
+# (frontend/src/results/start.test.ts checks the form sends exactly this).
+DEFAULT_START = (
+    Path(__file__).parents[2] / "frontend" / "e2e" / "fixtures" / "start-default-request.json"
+)
+GATEWAY_MODELS = {
+    "GENERATION_PROVIDER": "litellm",
+    "GENERATION_MODEL": "ollama/qwen3.6:latest",
+    "GENERATION_MODEL_FAMILY": "qwen",
+    "JUDGE_PROVIDER": "litellm",
+    "JUDGE_MODEL": "ollama/gemma4:31b",
+    "JUDGE_MODEL_FAMILY": "gemma",
+}
 DEADLINE_S = 15.0
 FINISHED = frozenset({"completed", "failed", "cancelled"})
 
@@ -258,6 +276,41 @@ def test_official_start_runs_preflight_before_accepting(client: TestClient) -> N
     )
 
 
+@pytest.mark.parametrize("seeds", [[2029], list(official.OFFICIAL_SEEDS)])
+def test_an_official_start_on_the_unseen_seeds_is_refused(
+    client: TestClient,
+    data_dir: Path,
+    runs_dir: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    seeds: list[int],
+) -> None:
+    """The unseen worlds are run only through make run-benchmark (D-091)."""
+    for name, value in GATEWAY_MODELS.items():
+        monkeypatch.setenv(name, value)
+    response = client.post(
+        "/api/v1/benchmarks", json={"kind": "official", "seeds": seeds, "repeats": 3}
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["error_code"] == "VALIDATION_ERROR"
+    assert "2029" in response.json()["error"]["message"]
+    assert client.get("/api/v1/benchmarks/jobs").json() == []
+    assert not (data_dir / "generated" / "dev-seed2029").exists()
+    assert not list(runs_dir.iterdir())
+
+
+def test_the_start_forms_default_request_is_accepted(
+    client_with_blocking_benchmark: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The form opens on a request the API takes as it stands: a dev run on
+    the presentation world, never the unseen worlds of the official run."""
+    for name, value in GATEWAY_MODELS.items():
+        monkeypatch.setenv(name, value)
+    body = json.loads(DEFAULT_START.read_text(encoding="utf-8"))
+    assert body["kind"] == "dev" and body["seeds"] == list(official.DEV_SEEDS)
+    response = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=body)
+    assert response.status_code == 202, response.json()
+
+
 # -- jobs -----------------------------------------------------------------------
 
 
@@ -379,7 +432,7 @@ def test_a_cancelled_job_with_kept_worlds_names_the_resume_command(tmp_path: Pat
     out_dir = tmp_path / "20261025T000000Z-smoke"
     (out_dir / "worlds").mkdir(parents=True)
     (out_dir / "worlds" / "2026.json").write_text("{}")
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     body = benchmarks._with_kept_worlds(None, request, out_dir)
     assert body is not None and body.error_code == "CANCELLED"
     assert "1 finished world was kept" in body.message and "--resume" in body.message
@@ -394,7 +447,7 @@ def test_the_resume_message_names_a_root_relative_out_that_the_cli_resolves(
     out_dir = tmp_path / "data" / "evaluation" / "runs" / "20261025T000000Z-smoke"
     (out_dir / "worlds").mkdir(parents=True)
     (out_dir / "worlds" / "2026.json").write_text("{}")
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     body = benchmarks._with_kept_worlds(RuntimeError("x"), request, out_dir)
     assert body is not None
     shown = body.message.split(" --out ")[1].removesuffix(" --resume")
@@ -406,7 +459,7 @@ def test_the_resume_command_runs_from_the_repository_root_and_parses(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     out_dir = REPO_ROOT / "data" / "evaluation" / "runs" / "20261025T000000Z-smoke"
-    request = benchmarks.BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
+    request = BenchmarkStart(kind="smoke", seeds=[2026, 2027], repeats=1)
     monkeypatch.setattr(benchmarks, "kept_world_count", lambda _dir: 1)
     body = benchmarks._with_kept_worlds(RuntimeError("x"), request, out_dir)
     assert body is not None
@@ -441,6 +494,8 @@ def test_an_unknown_job_is_not_found(client: TestClient) -> None:
         {"seeds": []},
         {"seeds": [2026, 2026]},
         {"seeds": [1999]},
+        # A smoke run never touches the unseen worlds of the official run.
+        {"seeds": [2029]},
         {"repeats": 0},
         {"strata": ["H9"]},
         {"limit": 0},
@@ -636,6 +691,7 @@ def publish(
     schema: str = "2",
     selection: dict[str, Any] | None = None,
     results: dict[str, Any] | None = None,
+    method_version: str | None = None,
 ) -> None:
     run_dir = root / name
     run_dir.mkdir(parents=True)
@@ -656,6 +712,8 @@ def publish(
         "selection": selection or {"strata": None, "limit": None},
         "reproducibility": {"run": {"started_at": started_at}, "worlds": []},
     }
+    if method_version is not None:
+        summary["reproducibility"]["run"]["method_version"] = method_version
     if selection is not None:
         summary["label"] = "subset run"
     (run_dir / "summary.json").write_text(json.dumps(summary), encoding="utf-8")
@@ -684,6 +742,7 @@ def test_runs_are_listed_newest_first(client: TestClient, runs_dir: Path) -> Non
         "selection": {"strata": None, "limit": None},
         "worlds": [2026],
         "headlines": ["new headline"],
+        "method_version": "0.2.0",
     }
 
 
@@ -786,11 +845,64 @@ def test_latest_benchmark_ignores_summaries_of_another_schema(runs_dir: Path) ->
     assert status == 404
 
 
+def test_a_schema_2_summary_of_method_v02_is_still_published(
+    client: TestClient, runs_dir: Path
+) -> None:
+    """Summary schema 3 came with method v0.3; v0.2 runs (schema 2) stay published."""
+    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00", schema="2")
+    publish(runs_dir, "v03", "official", "2026-10-28T09:00:00+00:00", schema="3")
+    runs = client.get("/api/v1/benchmarks").json()
+    assert [run["run_id"] for run in runs] == ["v03", "v02"]
+    body = client.get("/api/v1/benchmarks/v02").json()
+    assert body["summary"]["schema_version"] == "2"
+    assert client.get("/api/v1/benchmarks/v03").json()["summary"]["schema_version"] == "3"
+
+
+def test_old_run_summary_is_served_with_method_0_2_0(client: TestClient, runs_dir: Path) -> None:
+    """A run recorded before ``method_version`` existed was made under method v0.2.0."""
+    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
+    assert client.get("/api/v1/benchmarks/v02").json()["method_version"] == "0.2.0"
+    assert client.get("/api/v1/benchmarks/latest").json()["method_version"] == "0.2.0"
+    assert client.get("/api/v1/benchmarks").json()[0]["method_version"] == "0.2.0"
+
+
+def test_v03_summary_schema_3_validates(client: TestClient, runs_dir: Path) -> None:
+    """The harness's own output (``summarize``) is served as schema 3 of method v0.3.0."""
+    publish_run(runs_dir, "v03", kind="dev")
+    body = client.get("/api/v1/benchmarks/v03").json()
+    assert (body["method_version"], body["run_kind"]) == ("0.3.0", "dev")
+    summary = body["summary"]
+    assert summary["schema_version"] == "3"
+    assert {cell["metric"] for cell in summary["comparisons"]} == {"evidence_recall", "answer"}
+    assert "abstained" in summary["judge_agreement"]["overall"]
+    assert client.get("/api/v1/benchmarks").json()[0]["method_version"] == "0.3.0"
+
+
+@pytest.mark.parametrize(
+    ("v02_started", "v03_started", "latest"),
+    [
+        ("2026-10-26T09:00:00+00:00", "2026-11-02T09:00:00+00:00", "v03"),
+        ("2026-11-03T09:00:00+00:00", "2026-11-02T09:00:00+00:00", "v02"),
+    ],
+)
+def test_latest_official_is_the_newest_official_run_whatever_its_method(
+    runs_dir: Path, v02_started: str, v03_started: str, latest: str
+) -> None:
+    """v0.2.0 stays the default until a newer official run exists, of whatever method."""
+    publish(runs_dir, "v02", "official", v02_started)
+    publish(runs_dir, "v03", "official", v03_started, schema="3", method_version="0.3.0")
+    publish(runs_dir, "dev", "dev", "2026-11-04T09:00:00+00:00", schema="3", method_version="0.3.0")
+    status, body = _latest(runs_dir)
+    assert (status, body["run_id"]) == (200, latest)
+    assert body["method_version"] == ("0.3.0" if latest == "v03" else "0.2.0")
+
+
 # -- the question catalogue -------------------------------------------------------
 
 
 def _score(answer: float | None, f1: float) -> dict[str, Any]:
-    return {"answer": answer, "evidence": {"f1": f1}}
+    """A repeat's score; recall is set apart from F1 (1 - F1) so each reads as itself."""
+    return {"answer": answer, "evidence": {"f1": f1, "recall": 1.0 - f1}}
 
 
 def _results(bank: FrozenBank, scores: Callable[[str], dict[str, list[Any]]]) -> dict[str, Any]:
@@ -854,9 +966,9 @@ def test_scores_are_means_over_the_scored_repeats_of_the_latest_official_run(
     )
     questions = client_with_bank.get("/api/v1/benchmarks/questions").json()
     assert questions[0]["scores"] == {
-        "A": {"answer": 0.5, "evidence_f1": 0.75},
-        "B": {"answer": 1.0, "evidence_f1": 0.5},
-        "C": {"answer": None, "evidence_f1": None},
+        "A": {"answer": 0.5, "evidence_recall": 0.25, "evidence_f1": 0.75},
+        "B": {"answer": 1.0, "evidence_recall": 0.5, "evidence_f1": 0.5},
+        "C": {"answer": None, "evidence_recall": None, "evidence_f1": None},
     }
     assert questions[1]["scores"] is not None
     assert all(q["scores"] is None for q in questions[2:])
@@ -875,7 +987,11 @@ def test_scores_come_from_the_named_run(
     unnamed = client_with_bank.get("/api/v1/benchmarks/questions").json()
     named = client_with_bank.get("/api/v1/benchmarks/questions?run_id=smoke").json()
     assert unnamed[0]["scores"] is None
-    assert named[0]["scores"]["A"] == {"answer": 0.5, "evidence_f1": 0.75}
+    assert named[0]["scores"]["A"] == {
+        "answer": 0.5,
+        "evidence_recall": 0.25,
+        "evidence_f1": 0.75,
+    }
 
 
 def test_a_run_over_another_bank_gives_no_scores(
@@ -1010,7 +1126,10 @@ def test_the_demo_world_serves_bank_questions(
     monkeypatch.setenv("DATASET_DIR", str(demo))
     monkeypatch.setenv("TRUTH_LEDGER_PATH", str(demo_ledger))
     write_frozen_bank(bank, world_paths(official.PRESENTATION_SEED).bank_path)
-    assert world_paths(official.PRESENTATION_SEED).bank_path.name == "bank-2.0.0-demo-seed2026.json"
+    assert (
+        world_paths(official.PRESENTATION_SEED).bank_path.name
+        == "bank-2.0.0-scorer-2.2.1-demo-seed2026.json"
+    )
     with TestClient(create_app()) as demo_client:
         demos = demo_client.get("/api/v1/demo/questions")
         questions = demo_client.get("/api/v1/benchmarks/questions")
@@ -1134,15 +1253,32 @@ def test_summary_is_typed_for_every_run_shape(client_with_runs: TestClient) -> N
     assert len(runs) == 4
     for run in runs:
         body = client_with_runs.get(f"/api/v1/benchmarks/{run['run_id']}").json()
-        assert body["summary"]["schema_version"] == "2"
+        # The harness writes schema 3; the hand-written fixtures are v0.2 runs (schema 2).
+        written = run["run_id"] in ("official-fixture", "smoke-fixture")
+        assert body["summary"]["schema_version"] == ("3" if written else "2")
     official = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
     assert official["metrics"]["H3"]["answer"]["A"]["n"] == 12
     assert official["comparisons"][0]["comparison"] == "B_vs_A"
     assert official["ontology_split"][0]["in_family"] is False
-    assert official["judge_agreement"]["overall"]["n"] > 0
+    answered = official["judge_agreement"]["overall"]["answered"]
+    assert answered["n"] > 0 and "weighted_kappa" in answered
+    assert official["judge_agreement"]["pipelines"]["A"]["abstained"]["n"] == 0
     assert official["failures"]["classes"]["A"]["retrieval_failure"] > 0
     assert official["unavailable"]["2026"] == [{"question_id": "L99", "reason": "no anchor"}]
     assert official["reproducibility"]["run"]["judge_temperature"] == 0.0
+
+
+def test_a_v0_2_run_keeps_its_threshold_agreement(client: TestClient, runs_dir: Path) -> None:
+    """A run published before method v0.3 recorded one boolean agreement
+    (n, agreement, kappa) per pipeline; it still reads, unchanged."""
+    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
+    path = runs_dir / "v02" / "summary.json"
+    summary = json.loads(path.read_text(encoding="utf-8"))
+    cell = {"n": 1092, "agreement": 0.418, "kappa": 0.104}
+    summary["judge_agreement"] = {"overall": cell, "pipelines": {"A": cell}}
+    path.write_text(json.dumps(summary), encoding="utf-8")
+    body = client.get("/api/v1/benchmarks/v02").json()
+    assert body["summary"]["judge_agreement"] == {"overall": cell, "pipelines": {"A": cell}}
 
 
 def test_older_run_without_split_or_new_reproducibility_fields_reads(
@@ -1160,6 +1296,20 @@ def test_older_run_without_split_or_new_reproducibility_fields_reads(
     assert body["ontology_split"] is None
     assert "judge_temperature" not in body["reproducibility"]["run"]
     assert "a_key_added_later" not in body
+
+
+def test_the_method_note_passes_through_the_api(client: TestClient, runs_dir: Path) -> None:
+    """D-093: a v0.3 summary's method_note reaches the client; a v0.2 summary has none."""
+    run = _benchmark("official", h5_per_world=6)
+    run = dataclasses.replace(
+        run, record=dataclasses.replace(run.record, method_version=METHOD_VERSION)
+    )
+    run_dir = runs_dir / "v03"
+    run_dir.mkdir(parents=True)
+    (run_dir / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
+    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
+    assert client.get("/api/v1/benchmarks/v03").json()["summary"]["method_note"] == METHOD_NOTE
+    assert client.get("/api/v1/benchmarks/v02").json()["summary"]["method_note"] is None
 
 
 def test_a_summary_that_does_not_fit_is_a_server_error_naming_the_run(
@@ -1228,3 +1378,122 @@ def test_jobs_list_newest_first_with_world_progress(
     assert [job["job_id"] for job in jobs] == [second["job_id"], first["job_id"]]
     assert jobs[1]["progress"]["worlds_done"] == 2 and jobs[1]["progress"]["worlds_total"] == 2
     assert jobs[0]["progress"]["worlds_total"] == 1
+
+
+# -- settings -------------------------------------------------------------------
+
+JUDGE_ENV = (
+    "JUDGE_PROVIDER",
+    "JUDGE_MODEL",
+    "JUDGE_MODEL_FAMILY",
+    "JUDGE_API_BASE",
+    "JUDGE_TEMPERATURE",
+    "JUDGE_REASONING",
+)
+NOT_RECORDED = frozenset({"git_sha", "git_dirty"})
+SECRET_ENV = (
+    "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "GENERATION_API_KEY",
+    "JUDGE_API_KEY",
+    "GENERATION_API_BASE",
+    "JUDGE_API_BASE",
+)
+SENTINEL = "sentinel-3f9c1d7a-secret"
+
+
+def _without_judge_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Whatever the shell exports, the judge is not configured."""
+    for name in JUDGE_ENV:
+        monkeypatch.delenv(name, raising=False)
+
+
+def _recorded_keys() -> set[str]:
+    fields = settings_fields(from_env(), FakeJudge(), "official", OFFICIAL_MIN_REPEATS)
+    return set(fields) - NOT_RECORDED
+
+
+def test_settings_returns_the_recorded_fields(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _without_judge_env(monkeypatch)
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 200
+    values = response.json()["values"]
+    assert set(values) == _recorded_keys()
+    assert values["repeats"] == OFFICIAL_MIN_REPEATS
+    assert values["run_kind"] == "official"
+    # frontend/scripts/capture-run.mjs records a recording's method from here.
+    assert values["method_version"] == METHOD_VERSION
+    assert response.json()["judge_configured"] is False
+
+
+def test_settings_makes_no_model_call(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    def refuse(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("the settings route made a model call")
+
+    monkeypatch.setattr(gateway, "complete", refuse)
+    monkeypatch.setattr(judge_module, "complete", refuse)
+    monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
+    monkeypatch.setenv("JUDGE_MODEL", "judge-x")
+    monkeypatch.setenv("JUDGE_MODEL_FAMILY", "family-j")
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 200
+    assert response.json()["judge_configured"] is True
+    assert response.json()["values"]["judge_model"] == "judge-x"
+
+
+def test_settings_without_a_judge(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    _without_judge_env(monkeypatch)
+    body = client.get("/api/v1/settings").json()
+    assert body["judge_configured"] is False
+    assert body["values"]["judge_model"] is None
+    assert body["values"]["judge_temperature"] is None
+
+
+def test_settings_has_no_secret(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    _without_judge_env(monkeypatch)
+    for name in SECRET_ENV:
+        monkeypatch.setenv(name, f"https://user:{SENTINEL}@host" if "BASE" in name else SENTINEL)
+    monkeypatch.setenv("JUDGE_PROVIDER", "litellm")
+    monkeypatch.setenv("JUDGE_MODEL", "judge-x")
+    monkeypatch.setenv("JUDGE_MODEL_FAMILY", "family-j")
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 200
+    assert SENTINEL not in response.text
+    values = response.json()["values"]
+    assert not [key for key in values if key.endswith(("_key", "_token", "_password"))]
+    assert not NOT_RECORDED & set(values)
+
+
+SETTINGS_FIXTURE = REPO_ROOT / "frontend/src/test/settings.fixture.json"
+
+
+def _flatten(values: dict[str, Any], prefix: str = "") -> set[str]:
+    keys: set[str] = set()
+    for name, value in values.items():
+        if isinstance(value, dict):
+            keys |= _flatten(value, f"{prefix}{name}.")
+        else:
+            keys.add(f"{prefix}{name}")
+    return keys
+
+
+def test_the_frontend_settings_fixture_has_the_recorded_fields() -> None:
+    """Help resolves its setting keys against this file, so it names the fields the API serves."""
+    fixture = json.loads(SETTINGS_FIXTURE.read_text())
+    expected = (
+        _flatten(settings_fields(from_env(), FakeJudge(), "official", OFFICIAL_MIN_REPEATS))
+        - NOT_RECORDED
+    )
+    assert _flatten(fixture["values"]) == expected
+
+
+def test_settings_invalid_judge_is_a_configuration_error(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("JUDGE_REASONING", "sideways")
+    response = client.get("/api/v1/settings")
+    assert response.status_code == 503
+    assert response.json()["error"]["error_code"] == "CONFIGURATION_ERROR"

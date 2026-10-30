@@ -36,6 +36,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | `GET /queries/{run_id}/events` | The recorded events, for replay |
 | `GET /queries/{run_id}/events/stream` | The same events as server-sent events |
 | `GET /demo/questions` | The four demo questions |
+| `GET /settings` | The settings an official run records, as the system would record them now |
 | `GET /benchmarks` | Published benchmark runs, newest first |
 | `GET /benchmarks/latest` | The run Overview shows |
 | `GET /benchmarks/questions` | The bank's questions with answer keys, hidden truths and scores |
@@ -138,7 +139,8 @@ A live score equals the deterministic part of the benchmark's score for the same
 | `scored` | `score` is set |
 | `failed` | Scoring raised, and the error is logged. `score_failure` is `interrupted` when the server stopped between the final row and the score. |
 
-The score holds, for each pipeline, `answer`, `evidence_f1`, `anchor_resolution` and `failure_class`.
+The score holds, for each pipeline, `answer`, `evidence_recall`, `evidence_f1`, `anchor_resolution` and `failure_class`.
+A live score of method v0.3 sets `evidence_recall` and leaves `evidence_f1` null; a score stored under v0.2 has F1 and no recall.
 A metric the instance does not define is null.
 
 ### Demo questions
@@ -213,13 +215,16 @@ rag.context.assembled  rag.generation.started  rag.generation.completed
 ```
 
 `rag.candidate.retrieved` carries the chunk id, document id, the fused similarity, the rank, and the dense and sparse ranks.
+`rag.context.assembled` carries `selected`, `discarded`, `context_tokens` and `budget_tokens`, the shared token budget (D-084).
+It has no slot count in method v0.3.
 `rag.generation.completed` carries `model`, `latency_ms`, `context_tokens`, `verdict` and `cited_blocks`, the count of distinct shown blocks the answer cites.
+`rag.evidence.discarded` reasons are `same_record`, `context_budget` and `duplicate`.
 
 ### Pipeline B and C events
 
 ```text
-graph.entity_resolution.started  graph.entity.resolved  graph.query.expanded
-graph.seed.selected  graph.traversal.started  graph.node.discovered
+graph.entity_resolution.started  graph.entity.resolved  graph.target_types.resolved
+graph.query.expanded  graph.seed.selected  graph.traversal.started  graph.node.discovered
 graph.relationship.traversed  graph.ontology.expanded
 graph.rerank.started  graph.candidate.reranked
 graph.candidate.selected  graph.candidate.discarded
@@ -229,15 +234,22 @@ graph.generation.started  graph.generation.completed
 
 - `graph.entity.resolved` carries the entity id, label, origin (`id`, `market_alias`, `term`, `concept_binding` or `vector_fallback`), the matched text, the concept it came through, and a confidence from 0 to 1.
   A fallback seed carries the hit's fused score as `fused_score` and no confidence.
+- `graph.target_types.resolved` carries `labels`, the graph labels the question names as target types (D-083), sorted and comma-joined, and empty when it names none.
+  It follows the entity events and comes before query expansion and seed selection.
 - `graph.seed.selected` is absent when nothing resolves and no record matches the fallback search.
   A seed is never fabricated.
 - `graph.traversal.started` records the caps in force.
 - `graph.node.discovered` and `graph.relationship.traversed` (from id, relationship type, to id, label and hop) draw the graph.
   Nodes added by concept expansion carry the concept they came through.
-- `graph.candidate.reranked` is emitted once per candidate the shared re-ranker judged, for nodes and documents alike, with `candidate_id`, `kind` (`node`, `chunk` or `record`), `rerank_score` and the 1-based `rank`.
-- `graph.candidate.selected` and `graph.candidate.discarded` are node events (`node_id`, the composite `score`, `hops`, `seed`, and the score components on selection) or document events (`chunk_id`).
-  Both carry `rerank_score`, which is null when the candidate never reached the judge.
-  Discard reasons are `excluded_label`, `out_of_scope_market`, `superseded_by_structured_fact`, `context_budget`, `slot_limit` and `duplicate`.
+- `graph.candidate.reranked` is emitted once per document candidate the shared re-ranker scored (`kind` is `chunk` or `record`), with `candidate_id`, `rerank_score` and the 1-based `rank`.
+  Graph nodes are never re-ranked in method v0.3, so there is no node event of this type.
+- `graph.candidate.selected` and `graph.candidate.discarded` are node events (`node_id`, the composite `score`, `hops`, `seed`, `tier` and `graph_rank`, and the score components on selection) or document events (`chunk_id` and `rerank_score`).
+  `tier` is `seed`, `target` or `other`, and `graph_rank` is the 1-based position in the graph relevance order (D-083).
+  A discarded node has both as null only when it was refused before the graph order (`out_of_scope_market`, `excluded_label`).
+  Discard reasons are `excluded_label`, `out_of_scope_market`, `same_record`, `context_budget` and `duplicate`.
+- `graph.context.assembled` carries `structured_nodes`, `document_chunks`, `context_tokens`, `budget_tokens` and `stated_links`, the number of stated-link rows read for the target tier, null when the question names no target type.
+- A run stored under method 0.2.0 still replays: its events validate against separate old-method payload models, which carry `rerank_score` on nodes, `evidence_slots`, and the reasons `slot_limit` and `superseded_by_structured_fact`.
+  The Live Lab labels such a run as the old method.
 - `graph.evidence_path.completed` carries counts only, not the paths.
   The paths are in the stored result.
 
@@ -249,9 +261,13 @@ Concept expansion is the single event `graph.ontology.expanded`, and a bank ques
 Evidence is not a separate resource.
 Each pipeline's result carries it:
 
-- `EvidenceChunk` (A's `evidence`, and the document and record items in B and C's `document_evidence`): ids, text, title, document type, market, language, source system, validity window, `kind` (`chunk`, `record` or `node`), `record_table`, the fused `similarity`, `dense_rank`, `sparse_rank`, `rank`, `discovered_via`, `rerank_score`, `selected` and `discard_reason`.
-- `GraphEvidence` (B and C's `node_evidence`): node id and label, `hops`, `path` (node ids from the seed), the relationship type, the composite score and its `components`, `rerank_score`, `selected`, `discard_reason` and `authoritative`, the facts read from the structured layer.
+- `EvidenceChunk` (A's `evidence`, and the document and record items in B and C's `document_evidence`): ids, text, title, document type, market, language, source system, validity window, `kind` (`chunk`, `record` or `node`), `record_table`, the fused `similarity`, `dense_rank`, `sparse_rank`, `rank`, `discovered_via`, `rerank_score`, `selected` and `discard_reason`, and, for a record, `facts_heading` and `facts` (the compact facts shown to the model, D-085).
+  A graph node the walk reached also carries `graph_path` and `graph_seed`, the "reached from" path line and the seed it starts at; they are set together.
+  For a graph node `rank` is its graph rank.
+- `GraphEvidence` (B and C's `node_evidence`): node id and label, `hops`, `path` (node ids from the seed), the relationship type, the composite score and its `components`, `tier`, `graph_rank`, `selected`, `discard_reason` and `authoritative`, the facts read from the structured layer.
 - `Citation`: one for each block shown to the model, in prompt order, with chunk, document, title, source system, source record, record table, market and language. `cited_blocks[i]` refers to `citations[cited_blocks[i] - 1]`.
+- `RagAnswer` (each pipeline's `answer`): the parsed `text` and `verdict`, `cited_blocks`, `raw_text`, the model, latency, context tokens, citations and `usage`, and how the output was read and ended (D-096): `answer_form` (`json`, `repaired`, `unclosed` or `plain`; answer parser 2.0.0 wrote `cut_off` for `unclosed`), `finish_reason` as the gateway reported it, `token_limit_reached`, `max_tokens` (the output limit of the call), `cut_off` (stopped at the limit, or unclosed with no report either way) and `surrogates_replaced` (lone UTF-16 surrogates replaced with U+FFFD in the raw text, verdict and answer; null before answer parser 2.1.1).
+  Each of the five is null in an answer recorded before answer parser 2.0.0.
 - B and C also carry `ontology_concepts`, the concepts their expansion used.
 
 An edge is a recorded `graph.relationship.traversed` event, and has no id of its own: it is the triple of its two node ids and its type.
@@ -259,26 +275,40 @@ The visual state of a node (seed, candidate, selected, discarded, ontology conce
 
 ## Benchmark routes
 
-A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of schema version 2, which the harness writes last.
+A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of schema version 2 (method 0.2.0) or 3 (method v0.3), which the harness writes last.
 A directory with another schema version is not listed.
+Schema 3 adds evidence recall and its comparisons, C against A cells (`not_in_family`), groundedness means, and a judge agreement with `answered` and `abstained` cells, each with `n`, `agreement` and `weighted_kappa`.
+Schema 3 also carries `method_note`: for a method v0.3 run, the fixed declaration that the method was made after seeing the v0.2.0 result (D-093); null otherwise.
+The weighted kappa is in the data at any n; a client shows it only from n of 10, as the Results screen does (D-086).
 A malformed `summary.json` is a server error and is never silently skipped.
 
-- `GET /benchmarks` lists published runs newest first by start time, each with `run_id`, `run_kind`, `label`, `started_at`, `selection` and `worlds`.
-- `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, summary}`.
+- `GET /benchmarks` lists published runs newest first by start time, each with `run_id`, `run_kind`, `label`, `method_version`, `started_at`, `selection` and `worlds`.
+  `method_version` is the method the run was made under, read from its record: 0.2.0 for a run recorded before the field existed (D-092).
+- `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, method_version, summary}`.
   `latest` is the newest official run of the whole bank, else the newest run of any kind.
   It is a 404 when nothing is published.
   A key the harness adds later is ignored on read, so an older client keeps working.
-- `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, and its failure classes.
+- `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, its failure classes, and `cut_off_repeats` and `token_limit_repeats`, the repeats whose answer was cut off and those among them that stopped at the output limit (null for a run recorded before answer parser 2.0.0, D-096).
   It carries the question text and scores only, never the expected answer, claims, checks, answer text or context blocks.
   A run without `results.json` is a 404.
-- `GET /benchmarks/questions` lists the presentation world's bank for the Help screen, with each question's expected answer, the hidden truth of a planted question, and per-pipeline scores from the run named by the optional `run_id`, else the newest official run.
+- `GET /benchmarks/questions` lists the presentation world's bank for the Help screen, with each question's expected answer, the hidden truth of a planted question, and per-pipeline scores (`answer`, `evidence_recall` and `evidence_f1`, means over the scored repeats) from the run named by the optional `run_id`, else the newest official run.
   A missing or stale bank is a 503 `CONFIGURATION_ERROR`.
+
+### Settings
+
+`GET /settings` returns `{values, judge_configured}`.
+`values` holds the reproducibility fields of an official run of the default repeats, read from the environment and the code at the time of the request, without the git fields `git_sha` and `git_dirty`.
+It holds no secret, and the route makes no model call.
+When no judge model is set, `judge_configured` is false and the four judge model fields (`judge_model`, `judge_model_family`, `judge_reasoning` and `judge_temperature`) are null.
+An invalid setting is a 503 `CONFIGURATION_ERROR`.
 
 ### Jobs
 
 `POST /benchmarks` starts a benchmark job on one background thread of the API process, one at a time.
-The body is `{"kind": "smoke" | "official", "seeds": [...], "repeats": n, "strata": [...] | null, "limit": n | null}`.
+The body is `{"kind": "smoke" | "dev" | "official", "seeds": [...], "repeats": n, "strata": [...] | null, "limit": n | null}`.
 The harness checks the request first: an unknown seed or stratum, a repeated seed, or a kind and repeat count the harness refuses is a 422.
+The API accepts the seen seeds 2026 to 2028 only, and the seed guards of D-091 apply: a dev run is on 2026 only, and a full-bank official run needs the six unseen seeds, which the API never accepts, so it starts from the command line (`make run-benchmark`).
+The Results start panel defaults to `{"kind": "dev", "seeds": [2026], "repeats": 1, "strata": null, "limit": null}`.
 It answers 503 `CONFIGURATION_ERROR` before any thread starts when the presentation world is not the dev world with its own ledger.
 The response is 202 with `{job_id, status, run_id, error, progress}`.
 `status` is `running`, `completed`, `failed` or `cancelled`, and `progress` is `{world_seed, instances_done, instances_total, worlds_done, worlds_total}`.

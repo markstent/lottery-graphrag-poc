@@ -272,6 +272,22 @@ ORDER BY entity_id
 LIMIT $limit
 """
 
+# Stated links among the nodes one walk reached (method v0.3 graph relevance
+# order): every relationship of a schema type whose two ends are both in
+# $ids, in its stored (schema) direction. It reads relationships only, so it
+# never adds a node; $ids is at most the traversal's total node limit and
+# $limit bounds the rows (with_stated_links asks for one row more than it
+# accepts, so a cut is refused, never silent).
+RETRIEVAL_STATED_LINKS = """
+UNWIND $ids AS fid
+MATCH (a {id: fid})-[r]->(b)
+WHERE type(r) IN $rel_types AND b.id IN $ids
+RETURN a.id AS from_id, type(r) AS rel_type, b.id AS to_id
+ORDER BY from_id, rel_type, to_id
+LIMIT $limit
+"""
+STATED_LINKS_LIMIT = 5000
+
 # Readiness: the database answers a trivial query.
 PING = "RETURN 1 AS ok"
 

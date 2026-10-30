@@ -3,6 +3,17 @@
 Number, set and token checks read the verdict and the answer together, so a
 fact stated only in the verdict counts; the verdict check reads the verdict
 only. Every check scores 0..1 from the text alone: no model is involved.
+
+Scorer 2.1.0 adds one rule: a token whose whole text is an ISO date also
+matches when a time follows it ("2025-10-07T09:30"). Scorer 2.2.0 adds one
+more: a token check may hold qualified aliases, an alias that counts only
+beside one of its qualifiers (a version label beside its platform, D-095);
+the grounder decides which checks have them. Scorer 2.2.1 corrects it: the
+alias does not count when the answer also names a rival (another owner of
+that label), and a dotted label never matches inside a longer dotted one. `is_abstention` reads a
+verdict that opens with the word "unknown". `groundedness` (D-088) is a
+descriptive measure of whether the ids, dates and numbers an answer states
+come from the blocks it cites; it reads no answer key.
 """
 
 from __future__ import annotations
@@ -12,9 +23,13 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from app.evaluation.claims import Claim, word_pattern
+
+# The version of the answer checks and their scoring; recorded with every run
+# and every frozen bank, whose checks are grounded for it.
+SCORER_VERSION = "2.2.1"
 
 _CITATION = r"\[\d+(?:\s*,\s*\d+)*\]"
 _CITATION_PATTERN = re.compile(_CITATION)
@@ -24,6 +39,14 @@ _MONTH = (
     r"(?:January|February|March|April|May|June|July|August|September|October|November|December"
     r"|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept|Sep|Oct|Nov|Dec)\.?"
 )
+# Month number by the first three letters of any name `_MONTH` accepts.
+_MONTH_NUMBERS = {
+    name: number
+    for number, name in enumerate(
+        ("jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"), 1
+    )
+}
+_MONTH_WORD = re.compile(r"[a-z]{3,}")
 _DAY = r"\d{1,2}(?:st|nd|rd|th)?"
 _DATE_PATTERNS = (
     re.compile(
@@ -43,6 +66,11 @@ _THOUSANDS_SEPARATOR = re.compile(r",(?=\d{3}(?!\d))")
 _SENTENCE_BREAK = re.compile(r"(?<=[.!?])\s+|\s*\n\s*")
 UNIT_SYMBOLS = {"GBP": "£", "EUR": "€", "CZK": "Kč", "%": "%"}
 _VERDICTS = ("yes", "no")
+_ABSTENTION_PATTERN = re.compile(r"unknown(?!\w)")
+# Scorer 2.1.0: an expected ISO date token also matches when a time follows it
+# ("2025-10-07T00:00:00"), on casefolded text; every 2.0.0 match still matches.
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+_TIME_SUFFIX = r"(?:t\d{2}:\d{2}(?::\d{2})?(?!\d))?"
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,14 +107,45 @@ class SetCheck:
 
 
 @dataclass(frozen=True, slots=True)
+class QualifiedAlias:
+    """An alias that counts only in an answer that also names one of its
+    qualifiers and names none of its rivals, anywhere in the text (D-095:
+    a version label beside its platform or market, and beside no other
+    platform or market that has a version of that label)."""
+
+    alias: str
+    qualifiers: tuple[str, ...]
+    rivals: tuple[str, ...] = ()
+
+    def named_in(self, text: str) -> bool:
+        return (
+            _mentions_label(text, self.alias)
+            and any(_mentions(text, name) for name in self.qualifiers)
+            and not any(_mentions(text, name) for name in self.rivals)
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class TokenCheck:
-    """The answer names `expected` or one of its aliases."""
+    """The answer names `expected` or one of its aliases, or one of its
+    qualified aliases as that alias requires. The grounder sets `qualified`."""
 
     expected: str
     aliases: tuple[str, ...] = ()
+    qualified: tuple[QualifiedAlias, ...] = ()
 
     def to_payload(self) -> dict[str, object]:
-        return {"kind": "token", "expected": self.expected, "aliases": list(self.aliases)}
+        payload: dict[str, object] = {
+            "kind": "token",
+            "expected": self.expected,
+            "aliases": list(self.aliases),
+        }
+        # Left out when empty, so every other token check keeps its payload.
+        if self.qualified:
+            payload["qualified"] = [
+                [q.alias, list(q.qualifiers), list(q.rivals)] for q in self.qualified
+            ]
+        return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +181,20 @@ def check_from_payload(payload: Mapping[str, object]) -> Check:
             cast(dict[str, list[str]], payload["universe"]),
         )
     if kind == "token":
-        return TokenCheck(str(payload["expected"]), tuple(cast(list[str], payload["aliases"])))
+        qualified = cast(list[list[Any]], payload.get("qualified", []))
+        return TokenCheck(
+            str(payload["expected"]),
+            tuple(cast(list[str], payload["aliases"])),
+            # Scorer 2.2.0 wrote [alias, qualifiers]; 2.2.1 adds the rivals.
+            tuple(
+                QualifiedAlias(
+                    str(entry[0]),
+                    tuple(map(str, entry[1])),
+                    tuple(map(str, entry[2])) if len(entry) > 2 else (),
+                )
+                for entry in qualified
+            ),
+        )
     if kind == "verdict":
         expected = payload["expected"]
         if expected not in _VERDICTS:
@@ -141,7 +213,10 @@ def check_score(check: Check, verdict: str, answer: str) -> float:
         return _number_score(check, text)
     if isinstance(check, TokenCheck):
         names = (check.expected, *check.aliases)
-        return 1.0 if any(_mentions(text, name) for name in names) else 0.0
+        named = any(_mentions(text, name) for name in names) or any(
+            alias.named_in(text) for alias in check.qualified
+        )
+        return 1.0 if named else 0.0
     return _set_score(check, text)
 
 
@@ -159,6 +234,79 @@ def scored_numbers(text: str) -> list[str]:
     ]
 
 
+@dataclass(frozen=True, slots=True)
+class GroundednessScore:
+    """Whether an answer's checkable atoms (ids, dates, numbers) come from the
+    blocks it cites; descriptive, model-free, and blind to the answer key.
+
+    An atom counts once per sentence that states it. The shares are None when
+    the answer states no atom outside the question: no atoms is never grounded.
+    """
+
+    atoms: int
+    supported_share: float | None
+    unsupported_share: float | None
+    abstained: bool
+
+
+def groundedness(
+    question: str, verdict: str, answer: str, block_texts: Sequence[str]
+) -> GroundednessScore:
+    """Groundedness of `answer` over the shown blocks (block n is `block_texts[n - 1]`).
+
+    A sentence's atoms are supported when a block that sentence cites holds
+    them, and unsupported when no shown block holds them; a sentence without
+    a citation inherits none. Atoms the question states are not counted.
+    """
+    asked = _atoms(question)
+    held = [_atoms(text) for text in block_texts]
+    shown = frozenset[tuple[str, str]]().union(*held)
+    atoms = supported = unsupported = 0
+    for sentence in _sentences(answer):
+        cited = {
+            int(number)
+            for marker in _CITATION_PATTERN.findall(sentence)
+            for number in re.findall(r"\d+", marker)
+        }
+        in_cited = frozenset[tuple[str, str]]().union(
+            *(held[n - 1] for n in cited if 1 <= n <= len(held))
+        )
+        for atom in _atoms(sentence) - asked:
+            atoms += 1
+            supported += atom in in_cited
+            unsupported += atom not in shown
+    return GroundednessScore(
+        atoms=atoms,
+        supported_share=supported / atoms if atoms else None,
+        unsupported_share=unsupported / atoms if atoms else None,
+        abstained=is_abstention(verdict) and atoms == 0,
+    )
+
+
+def _atoms(text: str) -> frozenset[tuple[str, str]]:
+    """The ids, dates (as YYYY-MM-DD) and numbers in `text`, read as the scorer reads them."""
+    text = _CITATION_PATTERN.sub(" ", text)
+    ids = {("id", match) for match in _IDENTIFIER_PATTERN.findall(text)}
+    dates = {
+        ("date", _iso_date(match.group()))
+        for pattern in _DATE_PATTERNS
+        for match in pattern.finditer(text)
+    }
+    numbers = {("number", number) for number in scored_numbers(text)}
+    return frozenset(ids | dates | numbers)
+
+
+def _iso_date(text: str) -> str:
+    """A date matched by `_DATE_PATTERNS` as YYYY-MM-DD."""
+    if _ISO_DATE.match(text):
+        return text[:10]
+    month = _MONTH_WORD.search(text.casefold())
+    if month is None:
+        raise ValueError(f"not a date: {text!r}")
+    day, year = re.findall(r"\d+", text)
+    return f"{year}-{_MONTH_NUMBERS[month.group()[:3]]:02d}-{int(day):02d}"
+
+
 def citation_metrics(
     answer: str,
     cited_blocks: Sequence[int],
@@ -168,7 +316,9 @@ def citation_metrics(
     """Citation accuracy and numeric citation rate for one answer.
 
     `cited_blocks` are the 1-based context block numbers the answer cites;
-    a citation to a block outside the context counts as inaccurate.
+    a block outside the context counts as inaccurate here, but `parse_answer`
+    (app.retrieval.standard.generation) drops such citations first, so the
+    runner never passes one.
     """
     accuracy = None
     if cited_blocks and claims:
@@ -241,8 +391,24 @@ def _set_score(check: SetCheck, text: str) -> float:
     return 2 * precision * recall / (precision + recall)
 
 
+def is_abstention(verdict: str) -> bool:
+    """True when the verdict opens with the whole word "unknown"."""
+    return _ABSTENTION_PATTERN.match(verdict.strip().casefold()) is not None
+
+
 def _mentions(text: str, name: str) -> bool:
-    return word_pattern(name).search(text.casefold()) is not None
+    if _ISO_DATE.fullmatch(name):
+        pattern = re.compile(rf"(?<!\w){re.escape(name)}{_TIME_SUFFIX}(?!\w)")
+    else:
+        pattern = word_pattern(name)
+    return pattern.search(text.casefold()) is not None
+
+
+def _mentions_label(text: str, label: str) -> bool:
+    """A whole-word label that is also not part of a longer dotted number:
+    "5.3.1" is not in "1.5.3.1" or "5.3.1.2"."""
+    pattern = rf"(?<!\w)(?<!\d\.){re.escape(label.casefold())}(?!\w)(?!\.\d)"
+    return re.search(pattern, text.casefold()) is not None
 
 
 def normalise(number: str | int | float | Decimal) -> str:

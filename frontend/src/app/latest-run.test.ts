@@ -19,6 +19,11 @@ const summary = (selection: unknown) => ({
         B: cell(null, 0, 0),
         C: cell(0.5, 114, 342),
       },
+      evidence_recall: {
+        A: cell(0.4, 120, 360),
+        B: cell(0.6, 120, 360),
+        C: cell(0.7, 120, 360),
+      },
     },
   },
 })
@@ -28,26 +33,59 @@ const run = (
   run_kind: string,
   label: string | null,
   selection: unknown,
+  method_version = '0.2.0',
 ): Schemas['BenchmarkSummary'] =>
   ({
     run_id: 'r',
     run_kind,
     label,
+    method_version,
     summary: summary(selection),
   }) as unknown as Schemas['BenchmarkSummary']
 
 const FULL = { strata: null, limit: null }
 
 describe('verdictFrom', () => {
-  it('reads the overall evidence F1 and counts of a full official run', () => {
+  it('reads the overall evidence F1 and counts of a full official run of method v0.2', () => {
     expect(verdictFrom(run('official', null, FULL))).toEqual({
       kind: 'official',
+      method: '0.2.0',
+      metric: 'evidence_f1',
+      note: null,
       tiles: [
         { pipeline: 'A', mean: 0.25, n: 114, repeats: 342 },
         { pipeline: 'B', mean: null, n: 0, repeats: 0 },
         { pipeline: 'C', mean: 0.5, n: 114, repeats: 342 },
       ],
       headlines: ['Graph beat text search.'],
+      disagreements: 0,
+    })
+  })
+
+  it('reads evidence recall, by its name, from a run of method v0.3', () => {
+    expect(verdictFrom(run('official', null, FULL, '0.3.0'))).toMatchObject({
+      kind: 'official',
+      method: '0.3.0',
+      metric: 'evidence_recall',
+      tiles: [
+        { pipeline: 'A', mean: 0.4, n: 120, repeats: 360 },
+        { pipeline: 'B', mean: 0.6, n: 120, repeats: 360 },
+        { pipeline: 'C', mean: 0.7, n: 120, repeats: 360 },
+      ],
+    })
+  })
+
+  it('carries the declaration of the method change a v0.3 summary makes', () => {
+    const v03 = run('official', null, FULL, '0.3.0')
+    const declared = {
+      ...v03,
+      summary: {
+        ...v03.summary,
+        method_note: 'Method v0.3 was made after v0.2.0.',
+      },
+    }
+    expect(verdictFrom(declared)).toMatchObject({
+      note: 'Method v0.3 was made after v0.2.0.',
     })
   })
 
@@ -61,10 +99,14 @@ describe('verdictFrom', () => {
       run_id: 'r',
       run_kind: 'official',
       label: null,
+      method_version: '0.3.0',
       summary: { selection: FULL },
     } as unknown as Schemas['BenchmarkSummary']
     expect(verdictFrom(bare)).toEqual({
       kind: 'official',
+      method: '0.3.0',
+      metric: 'evidence_recall',
+      note: null,
       tiles: ['A', 'B', 'C'].map((pipeline) => ({
         pipeline,
         mean: null,
@@ -72,6 +114,7 @@ describe('verdictFrom', () => {
         repeats: 0,
       })),
       headlines: [],
+      disagreements: 0,
     })
   })
 
@@ -108,5 +151,14 @@ describe('isFullOfficial', () => {
     expect(isFullOfficial(run('official', null, FULL))).toBe(true)
     expect(isFullOfficial(run('smoke', null, FULL))).toBe(false)
     expect(isFullOfficial(run('official', null, undefined))).toBe(false)
+  })
+
+  it('treats an official run over some questions only as a subset, as the API does', () => {
+    const someQuestions = { strata: null, limit: null, questions: ['L05'] }
+    expect(isFullOfficial(run('official', null, someQuestions))).toBe(false)
+    expect(verdictFrom(run('official', 'dry run', someQuestions))).toEqual({
+      kind: 'none',
+      otherRun: 'dry run',
+    })
   })
 })

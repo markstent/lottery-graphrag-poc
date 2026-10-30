@@ -4,13 +4,17 @@ the check that no run worker or benchmark job thread outlives its test."""
 
 from __future__ import annotations
 
+import _socket
+import json
+import os
 import socket
 import sys
 import threading
 import types
-from collections.abc import Iterator
+from collections.abc import Buffer, Iterator
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 from app.datasets.config import GenerationConfig
@@ -18,6 +22,10 @@ from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.taxonomies import local_name_variants
 from app.datasets.world import build_world
+from app.evaluation import addendum
+from app.evaluation.bank import BANK_VERSION
+from app.evaluation.checks import SCORER_VERSION
+from app.evaluation.grounding import FrozenBank, instance_from_payload
 from app.lab import Lab
 from app.ontology.loader import load_ontology
 from app.ontology.terms import TermMatcher, build_term_table
@@ -27,6 +35,8 @@ from app.retrieval.standard.generation import FakeAnswerGenerator
 from app.retrieval.standard.reranking import build_reranker
 from app.retrieval.standard.sparse import HashingSparseEmbedder
 from app.retrieval.standard.vector_store import InMemoryVectorStore
+from app.scenarios.engine import apply_scenarios
+from app.scenarios.ledger import build_ledger, write_ledger
 
 from tests import live
 from tests.test_graph_rag import make_settings
@@ -114,12 +124,17 @@ class StubLiteLLM(types.ModuleType):
         self.calls: list[dict[str, Any]] = []
         self._content = content
         self._error = error
+        # The choice's stop reason; None leaves it out, as a provider may.
+        self.finish_reason: str | None = None
 
     def completion(self, **kwargs: Any) -> dict[str, Any]:
         self.calls.append(kwargs)
         if self._error is not None:
             raise self._error
-        return _Response(choices=[{"message": {"content": self._content}}])
+        choice: dict[str, Any] = {"message": {"content": self._content}}
+        if self.finish_reason is not None:
+            choice["finish_reason"] = self.finish_reason
+        return _Response(choices=[choice])
 
 
 class _Response(dict[str, Any]):
@@ -153,29 +168,124 @@ def litellm_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LITELLM_LOCAL_MODEL_COST_MAP", "True")
 
 
-OLLAMA_PORT = 11434
+# The services an ungated test must never reach, each with the flag that
+# opts a live test in (tests/live.py) and its ports: the defaults, and any
+# port the environment names for it (read at collection and on each connect).
+SERVICE_DEFAULT_PORTS = {
+    "Neo4j": (live.GRAPH, {7474, 7473, 7687}),
+    "Qdrant": (live.VECTOR, {6333, 6334}),
+    "Ollama or a model server": (live.WORLD, {11434}),
+}
+SERVICE_URL_VARIABLES = {
+    "Neo4j": ("NEO4J_URI",),
+    "Qdrant": ("QDRANT_URL",),
+    "Ollama or a model server": ("OLLAMA_HOST", "GENERATION_API_BASE", "JUDGE_API_BASE"),
+}
+# The port a URL without one uses.
+SCHEME_PORTS = {"http": 80, "https": 443, "bolt": 7687, "neo4j": 7687}
+SERVICE_GUARD_ERROR = "tests must not reach real services"
+
+
+def _url_ports(variables: tuple[str, ...]) -> set[int]:
+    ports = set()
+    for name in variables:
+        value = os.environ.get(name)
+        if not value:
+            continue
+        # A URL that does not parse, or whose port is not a number, guards nothing.
+        try:
+            url = urlsplit(value if "://" in value else f"//{value}")
+            port = url.port
+        except ValueError:
+            continue
+        # "bolt+s" and "neo4j+ssc" use their base scheme's port.
+        port = port or SCHEME_PORTS.get(url.scheme.split("+")[0])
+        if port is not None:
+            ports.add(port)
+    return ports
+
+
+_COLLECTION_PORTS = {name: _url_ports(names) for name, names in SERVICE_URL_VARIABLES.items()}
+
+
+def guarded_ports() -> dict[int, str]:
+    """Port to service, for every service whose live flag is unset now."""
+    ports: dict[int, str] = {}
+    for service, (flag, defaults) in SERVICE_DEFAULT_PORTS.items():
+        if live.enabled(flag):
+            continue
+        named = _COLLECTION_PORTS[service] | _url_ports(SERVICE_URL_VARIABLES[service])
+        for port in defaults | named:
+            ports[port] = service
+    return ports
+
+
+# The connects the guard falls through to for any other address; module
+# attributes, looked up on each call, so the guard's own test can replace
+# them with recorders.
+# The address a socket connects to, as the standard library types it.
+_Address = tuple[Any, ...] | str | Buffer
+_real_connect = socket.socket.connect
+_real_connect_ex = socket.socket.connect_ex
+# Every refused attempt not yet charged to a test; ``no_real_services`` fails
+# the test it happened in, and the session check any left outside a test.
+_attempts: list[str] = []
+
+
+def _refuse(address: Any) -> None:
+    """Refuse a connect to a guarded service, with the flags as they are now."""
+    if not (isinstance(address, tuple) and len(address) >= 2):
+        return
+    service = guarded_ports().get(address[1])
+    if service is not None:
+        attempt = f"{service} at {address[0]}:{address[1]}"
+        _attempts.append(attempt)
+        raise ConnectionRefusedError(f"{SERVICE_GUARD_ERROR}: a test tried to reach {attempt}")
+
+
+def _guarded_connect(self: _socket.socket, address: _Address) -> None:
+    _refuse(address)
+    _real_connect(self, address)
+
+
+def _guarded_connect_ex(self: _socket.socket, address: _Address) -> int:
+    _refuse(address)
+    return int(_real_connect_ex(self, address))
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Install the service guard (fix round T4-R3) once, before any fixture
+    of any scope or any test module's import-time code runs: an ungated
+    test never opens a socket to Neo4j, Qdrant, Ollama or a model server.
+    A live flag lifts the guard for its own service only."""
+    socket.socket.connect = _guarded_connect  # type: ignore[method-assign]
+    socket.socket.connect_ex = _guarded_connect_ex  # type: ignore[method-assign]
+
+
+def pytest_unconfigure(config: pytest.Config) -> None:
+    socket.socket.connect = _real_connect  # type: ignore[method-assign]
+    socket.socket.connect_ex = _real_connect_ex  # type: ignore[method-assign]
+
+
+@pytest.fixture(scope="session", autouse=True)
+def no_service_attempt_outside_a_test() -> Iterator[None]:
+    """Fail the session when a module or session fixture's teardown tried
+    to reach a real service after the last test that could be charged."""
+    yield
+    assert not _attempts, f"a fixture tried to reach real services: {_attempts}"
 
 
 @pytest.fixture(autouse=True)
-def no_ollama_without_the_live_world(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
-    """An ungated test never opens a socket to Ollama: it is refused, and the
-    attempt fails the test even where the code under test swallows the error
-    (a readiness probe reports it as a failed check)."""
-    if live.enabled(live.WORLD):
-        yield
-        return
-    attempts: list[object] = []
-    real_connect = socket.socket.connect
-
-    def guarded(self: socket.socket, address: Any) -> None:
-        if isinstance(address, tuple) and len(address) >= 2 and address[1] == OLLAMA_PORT:
-            attempts.append(address)
-            raise ConnectionRefusedError(f"a test tried to reach Ollama at {address}")
-        real_connect(self, address)
-
-    monkeypatch.setattr(socket.socket, "connect", guarded)
-    yield
-    assert not attempts, f"an ungated test contacted Ollama: {attempts}"
+def no_real_services() -> Iterator[list[str]]:
+    """Fail the test in whose setup, call or teardown a connect to a real
+    service was refused, even where the code under test swallows the error
+    (a benchmark job thread, a readiness probe). Attempts made by a module or
+    session fixture set up for this test are charged to it too. Yields the
+    attempts, so the guard's own test can consume them."""
+    yield _attempts
+    found = list(_attempts)
+    _attempts.clear()
+    assert not found, f"an ungated test tried to reach real services: {found}"
 
 
 @pytest.fixture(autouse=True)
@@ -207,6 +317,47 @@ def tiny_dataset(tmp_path_factory: pytest.TempPathFactory) -> Path:
     dataset_dir = tmp_path_factory.mktemp("tiny-world-api")
     write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
     return dataset_dir
+
+
+@pytest.fixture(scope="session")
+def tiny_planted(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
+    """A planted tiny world (seed 42) with its manifest, and the ledger of the
+    same planting, built once per session."""
+    world = build_world(GenerationConfig(profile="tiny", world_seed=42))
+    outcomes = apply_scenarios(world)
+    root = tmp_path_factory.mktemp("tiny-world-grounding")
+    dataset_dir = root / "tiny-seed42"
+    write_world(dataset_dir, TABLE_SCHEMAS, world.tables)
+    manifest = json.dumps(world.manifest, indent=2, sort_keys=True) + "\n"
+    (dataset_dir / "_manifest.json").write_text(manifest)
+    ledger_path = write_ledger(root / "ledger.json", build_ledger(outcomes, world))
+    return dataset_dir, ledger_path
+
+
+@pytest.fixture
+def banks_as_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Rescoring grounds a run's worlds again (D-095); a test run has no
+    world on disk, so each world's bank is its recorded instances as they are."""
+
+    def recorded(payload: dict[str, Any]) -> dict[int, FrozenBank]:
+        return {
+            int(world["world_seed"]): FrozenBank(
+                bank_version=BANK_VERSION,
+                world_seed=int(world["world_seed"]),
+                world_manifest_hash="",
+                record_serialiser_version="",
+                scorer_version=SCORER_VERSION,
+                ledger_hash="",
+                instances=tuple(
+                    instance_from_payload(entry["instance"]) for entry in world["results"]
+                ),
+                unavailable=(),
+                bank_hash="",
+            )
+            for world in payload["worlds"]
+        }
+
+    monkeypatch.setattr(addendum, "current_banks", recorded)
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, stub: StubLiteLLM) -> StubLiteLLM:

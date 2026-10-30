@@ -1,0 +1,2579 @@
+{
+  "run_id": "fixture-v03",
+  "run_kind": "official",
+  "label": "Fixture run (test values)",
+  "method_version": "0.3.0",
+  "summary": {
+    "schema_version": "3",
+    "method_note": "Method v0.3 was made after seeing the v0.2.0 result, in which the graph did not win; why, and what changed, is in Help, chapter 9 (D-093).",
+    "run_kind": "official",
+    "label": "Fixture run (test values)",
+    "bank_version": "2.0.0",
+    "worlds": [
+      2026,
+      2027
+    ],
+    "instances": {
+      "total": {
+        "H1": 12,
+        "H2": 12,
+        "H2_name": 6,
+        "H3": 12,
+        "H5": 12,
+        "overall": 54
+      },
+      "per_world": {
+        "2026": {
+          "H1": 6,
+          "H2": 6,
+          "H2_name": 3,
+          "H3": 6,
+          "H5": 6,
+          "overall": 27
+        },
+        "2027": {
+          "H1": 6,
+          "H2": 6,
+          "H2_name": 3,
+          "H3": 6,
+          "H5": 6,
+          "overall": 27
+        }
+      }
+    },
+    "unavailable": {
+      "2026": [
+        {
+          "question_id": "L99",
+          "reason": "no anchor"
+        }
+      ],
+      "2027": [
+        {
+          "question_id": "L99",
+          "reason": "no anchor"
+        }
+      ]
+    },
+    "anchor_resolution_basis": {
+      "A": "selection",
+      "B": "resolution",
+      "C": "resolution"
+    },
+    "metrics": {
+      "H1": {
+        "evidence_f1": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "evidence_recall": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "evidence_precision": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "efficiency_per_1k": {
+          "A": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "anchor_resolution": {
+          "A": {
+            "mean": 0.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "answer": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "citation_accuracy": {
+          "A": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "numeric_citation_rate": {
+          "A": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "latency_ms": {
+          "A": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "context_tokens": {
+          "A": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_correctness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_completeness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_faithfulness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_citation_accuracy": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_abstention": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          }
+        }
+      },
+      "H2": {
+        "evidence_f1": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "evidence_recall": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "evidence_precision": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "efficiency_per_1k": {
+          "A": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "anchor_resolution": {
+          "A": {
+            "mean": 0.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "answer": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "citation_accuracy": {
+          "A": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "numeric_citation_rate": {
+          "A": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "latency_ms": {
+          "A": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "context_tokens": {
+          "A": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_correctness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_completeness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_faithfulness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_citation_accuracy": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_abstention": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          }
+        }
+      },
+      "H2_name": {
+        "evidence_f1": {
+          "A": {
+            "mean": 0.2,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 0.42000000000000004,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 0.53,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "evidence_recall": {
+          "A": {
+            "mean": 0.2,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 0.42000000000000004,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 0.53,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "evidence_precision": {
+          "A": {
+            "mean": 0.2,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 0.42000000000000004,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 0.53,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "efficiency_per_1k": {
+          "A": {
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "anchor_resolution": {
+          "A": {
+            "mean": 0.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "answer": {
+          "A": {
+            "mean": 0.2,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 0.42000000000000004,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 0.53,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "citation_accuracy": {
+          "A": {
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "numeric_citation_rate": {
+          "A": {
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "latency_ms": {
+          "A": {
+            "mean": 150.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 150.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 150.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "context_tokens": {
+          "A": {
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "judge_correctness": {
+          "A": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "judge_completeness": {
+          "A": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "judge_faithfulness": {
+          "A": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "judge_citation_accuracy": {
+          "A": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "judge_abstention": {
+          "A": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 12
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 12
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 12
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 12
+          }
+        }
+      },
+      "H3": {
+        "evidence_f1": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "evidence_recall": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "evidence_precision": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "efficiency_per_1k": {
+          "A": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "anchor_resolution": {
+          "A": {
+            "mean": 0.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "answer": {
+          "A": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.625,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.725,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "citation_accuracy": {
+          "A": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "numeric_citation_rate": {
+          "A": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "latency_ms": {
+          "A": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "context_tokens": {
+          "A": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_correctness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_completeness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_faithfulness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_citation_accuracy": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_abstention": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          }
+        }
+      },
+      "H5": {
+        "evidence_f1": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "evidence_recall": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "evidence_precision": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "efficiency_per_1k": {
+          "A": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "anchor_resolution": {
+          "A": {
+            "mean": 0.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "answer": {
+          "A": {
+            "mean": 0.2,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.45,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.575,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "citation_accuracy": {
+          "A": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "numeric_citation_rate": {
+          "A": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.5,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "latency_ms": {
+          "A": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 150.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "context_tokens": {
+          "A": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 1000.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_correctness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_completeness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_faithfulness": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_citation_accuracy": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "judge_abstention": {
+          "A": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 12,
+            "repeats": 24
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 12,
+            "repeats": 24
+          }
+        }
+      },
+      "overall": {
+        "evidence_f1": {
+          "A": {
+            "mean": 0.2,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 0.39111111111111113,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 0.4866666666666667,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "evidence_recall": {
+          "A": {
+            "mean": 0.2,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 0.39111111111111113,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 0.4866666666666667,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "evidence_precision": {
+          "A": {
+            "mean": 0.2,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 0.39111111111111113,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 0.4866666666666667,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "efficiency_per_1k": {
+          "A": {
+            "mean": 1.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "anchor_resolution": {
+          "A": {
+            "mean": 0.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 0.7777777777777778,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 0.7777777777777778,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "answer": {
+          "A": {
+            "mean": 0.32222222222222224,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 0.4855555555555556,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 0.6033333333333334,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "citation_accuracy": {
+          "A": {
+            "mean": 1.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 1.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 1.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "numeric_citation_rate": {
+          "A": {
+            "mean": 0.5,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 0.5,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 0.5,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "latency_ms": {
+          "A": {
+            "mean": 150.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 150.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 150.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "context_tokens": {
+          "A": {
+            "mean": 1000.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 1000.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 1000.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "judge_correctness": {
+          "A": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "judge_completeness": {
+          "A": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "judge_faithfulness": {
+          "A": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "judge_citation_accuracy": {
+          "A": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "judge_abstention": {
+          "A": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 2.0,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 54,
+            "repeats": 108
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 54,
+            "repeats": 108
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 54,
+            "repeats": 108
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 54,
+            "repeats": 108
+          }
+        }
+      }
+    },
+    "comparisons": [
+      {
+        "stratum": "H1",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.25,
+        "low": 0.23,
+        "high": 0.27,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H1",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.12499999999999999,
+        "low": 0.11499999999999999,
+        "high": 0.13499999999999998,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H1",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.375,
+        "low": 0.345,
+        "high": 0.40499999999999997,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H1",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.25,
+        "low": 0.23,
+        "high": 0.27,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H1",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.12499999999999999,
+        "low": 0.11499999999999999,
+        "high": 0.13499999999999998,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H1",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.375,
+        "low": 0.345,
+        "high": 0.40499999999999997,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.25,
+        "low": 0.23,
+        "high": 0.27,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H2",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.12499999999999999,
+        "low": 0.11499999999999999,
+        "high": 0.13499999999999998,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H2",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.375,
+        "low": 0.345,
+        "high": 0.40499999999999997,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.25,
+        "low": 0.23,
+        "high": 0.27,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H2",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.12499999999999999,
+        "low": 0.11499999999999999,
+        "high": 0.13499999999999998,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H2",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.375,
+        "low": 0.345,
+        "high": 0.40499999999999997,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.22,
+        "low": 0.2066666666666667,
+        "high": 0.23333333333333334,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.11,
+        "low": 0.10333333333333332,
+        "high": 0.1166666666666667,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.33,
+        "low": 0.31,
+        "high": 0.35000000000000003,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.22,
+        "low": 0.2066666666666667,
+        "high": 0.23333333333333334,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.11,
+        "low": 0.10333333333333332,
+        "high": 0.1166666666666667,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.33,
+        "low": 0.31,
+        "high": 0.35000000000000003,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": -0.125,
+        "low": -0.175,
+        "high": -0.07500000000000001,
+        "p": 0.001953125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H3",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.09999999999999999,
+        "low": 0.09999999999999998,
+        "high": 0.10000000000000002,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H3",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": -0.025000000000000005,
+        "low": -0.075,
+        "high": 0.024999999999999994,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.25,
+        "low": 0.23,
+        "high": 0.27,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.12499999999999999,
+        "low": 0.11499999999999999,
+        "high": 0.13499999999999998,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.375,
+        "low": 0.345,
+        "high": 0.40499999999999997,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H5",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.25,
+        "low": 0.23,
+        "high": 0.27,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.12499999999999999,
+        "low": 0.11499999999999999,
+        "high": 0.13499999999999998,
+        "p": 0.00048828125,
+        "p_holm": 0.0068359375,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.375,
+        "low": 0.345,
+        "high": 0.40499999999999997,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      }
+    ],
+    "ontology_split": [
+      {
+        "group": "ontology_dependent",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.24000000000000002,
+        "low": 0.22555555555555556,
+        "high": 0.25555555555555554,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "ontology_dependent",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.12,
+        "low": 0.11277777777777777,
+        "high": 0.12777777777777777,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "ontology_dependent",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.24000000000000002,
+        "low": 0.22555555555555556,
+        "high": 0.25555555555555554,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "ontology_dependent",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.12,
+        "low": 0.11277777777777777,
+        "high": 0.12777777777777777,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "other",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 36,
+        "clusters": 36,
+        "mean": 0.16666666666666669,
+        "low": 0.12611111111111112,
+        "high": 0.20444444444444446,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "other",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 36,
+        "clusters": 36,
+        "mean": 0.08333333333333333,
+        "low": 0.06305555555555555,
+        "high": 0.10222222222222221,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "other",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 36,
+        "clusters": 36,
+        "mean": 0.125,
+        "low": 0.061111111111111116,
+        "high": 0.18222222222222223,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "other",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 36,
+        "clusters": 36,
+        "mean": 0.11666666666666665,
+        "low": 0.11083333333333333,
+        "high": 0.12277777777777776,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      }
+    ],
+    "headlines": [
+      "Graph exceeds text search by 25.0 evidence points (95 percent interval 23.0 to 27.0, 12 pairs in 12 groups) on multi-hop questions.",
+      "Graph + Ontology exceeds Graph by 12.5 evidence points (95 percent interval 11.5 to 13.5, 12 pairs in 12 groups) on multi-hop questions.",
+      "Graph exceeds text search by 25.0 evidence points (95 percent interval 23.0 to 27.0, 12 pairs in 12 groups) on ontology-dependent questions anchored by id.",
+      "Graph + Ontology exceeds Graph by 12.5 evidence points (95 percent interval 11.5 to 13.5, 12 pairs in 12 groups) on ontology-dependent questions anchored by id.",
+      "Graph trails text search by 12.5 answer points (95 percent interval -17.5 to -7.5, 12 pairs in 12 groups) on single facts.",
+      "Graph + Ontology exceeds Graph by 10.0 answer points (95 percent interval 10.0 to 10.0, 12 pairs in 12 groups) on single facts.",
+      "Graph exceeds text search by 25.0 evidence points (95 percent interval 23.0 to 27.0, 12 pairs in 12 groups) on planted patterns.",
+      "Graph + Ontology exceeds Graph by 12.5 evidence points (95 percent interval 11.5 to 13.5, 12 pairs in 12 groups) on planted patterns.",
+      "Name-anchored questions: Graph minus text search 22.0 evidence points (95 percent interval 20.7 to 23.3, 6 pairs in 6 groups); no test is run on this sub-group.",
+      "Name-anchored questions: Graph + Ontology minus Graph 11.0 evidence points (95 percent interval 10.3 to 11.7, 6 pairs in 6 groups); no test is run on this sub-group."
+    ],
+    "judge_agreement": {
+      "overall": {
+        "answered": {
+          "n": 324,
+          "agreement": 0.037037037037037035,
+          "weighted_kappa": 0.0
+        },
+        "abstained": {
+          "n": 0,
+          "agreement": null,
+          "weighted_kappa": null
+        }
+      },
+      "pipelines": {
+        "A": {
+          "answered": {
+            "n": 108,
+            "agreement": 0.1111111111111111,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
+        },
+        "B": {
+          "answered": {
+            "n": 108,
+            "agreement": 0.0,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
+        },
+        "C": {
+          "answered": {
+            "n": 108,
+            "agreement": 0.0,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
+        }
+      }
+    },
+    "failures": {
+      "repeats": {
+        "A": 120,
+        "B": 108,
+        "C": 108
+      },
+      "generation": {
+        "A": 12,
+        "B": 0,
+        "C": 0
+      },
+      "judge": {
+        "A": 0,
+        "B": 0,
+        "C": 0
+      },
+      "classes": {
+        "A": {
+          "retrieval_failure": 108
+        },
+        "B": {
+          "retrieval_failure": 96
+        },
+        "C": {
+          "retrieval_failure": 24
+        }
+      }
+    },
+    "selection": {
+      "strata": null,
+      "limit": null,
+      "questions": null
+    },
+    "reproducibility": {
+      "run": {
+        "git_sha": "abc123",
+        "git_dirty": false,
+        "question_bank_version": "2.0.0",
+        "world_dir": "data/generated/dev-seed2026",
+        "generator_version": "1.0.0",
+        "profile": "dev",
+        "world_seed": 2026,
+        "scenario_seed": 7,
+        "embedding_model": "fake-embed",
+        "embedding_dimensions": 8,
+        "sparse_model": "fake-sparse",
+        "rrf_k": 60,
+        "record_serialiser_version": "2.1.0",
+        "generation_model": "fake-gen",
+        "generation_temperature": 0.0,
+        "max_tokens": 512,
+        "prompt_version": "1",
+        "reranker": "fake-rerank",
+        "top_k": 8,
+        "context_budget_tokens": 4000,
+        "context": {
+          "budget_tokens": 4000,
+          "dedupe_threshold": 0.9
+        },
+        "graph_limits": {
+          "depth": 2
+        },
+        "ranking_weights": {
+          "w": 1.0
+        },
+        "reference_date": "2026-01-01",
+        "excluded_labels": [],
+        "ontology_version": "1",
+        "graph_label_version": "v2",
+        "started_at": "2026-10-19T10:00:00+00:00",
+        "bank_version": "2.0.0",
+        "bank_hash": "bankhash",
+        "scorer_version": "2.0.0",
+        "prompt_hash": "prompthash",
+        "relationship_types_b": [
+          "R"
+        ],
+        "relationship_types_c": [
+          "R",
+          "O"
+        ],
+        "dedupe_threshold": 0.9,
+        "generation_quantisation": null,
+        "generation_model_family": "fake",
+        "repeats": 3,
+        "run_kind": "official",
+        "judge_model": "fake-judge-v1",
+        "judge_model_family": "fake",
+        "judge_prompt_version": "1.0.0",
+        "judge_prompt_hash": "judgehash",
+        "judge_temperature": 0.0,
+        "generation_reasoning": "default",
+        "judge_reasoning": "default",
+        "selection_rule": null,
+        "method_version": "0.3.0",
+        "record_facts_version": null,
+        "prompt_extras": null,
+        "answer_parser_version": null
+      },
+      "worlds": [
+        {
+          "git_sha": "abc123",
+          "git_dirty": false,
+          "question_bank_version": "2.0.0",
+          "world_dir": "data/generated/dev-seed2026",
+          "generator_version": "1.0.0",
+          "profile": "dev",
+          "world_seed": 2026,
+          "scenario_seed": 7,
+          "embedding_model": "fake-embed",
+          "embedding_dimensions": 8,
+          "sparse_model": "fake-sparse",
+          "rrf_k": 60,
+          "record_serialiser_version": "2.1.0",
+          "generation_model": "fake-gen",
+          "generation_temperature": 0.0,
+          "max_tokens": 512,
+          "prompt_version": "1",
+          "reranker": "fake-rerank",
+          "top_k": 8,
+          "context_budget_tokens": 4000,
+          "context": {
+            "budget_tokens": 4000,
+            "dedupe_threshold": 0.9
+          },
+          "graph_limits": {
+            "depth": 2
+          },
+          "ranking_weights": {
+            "w": 1.0
+          },
+          "reference_date": "2026-01-01",
+          "excluded_labels": [],
+          "ontology_version": "1",
+          "graph_label_version": "v2",
+          "started_at": "2026-10-19T10:00:00+00:00",
+          "bank_version": "2.0.0",
+          "bank_hash": "bankhash",
+          "scorer_version": "2.0.0",
+          "prompt_hash": "prompthash",
+          "relationship_types_b": [
+            "R"
+          ],
+          "relationship_types_c": [
+            "R",
+            "O"
+          ],
+          "dedupe_threshold": 0.9,
+          "generation_quantisation": null,
+          "generation_model_family": "fake",
+          "repeats": 3,
+          "run_kind": "official",
+          "judge_model": "fake-judge-v1",
+          "judge_model_family": "fake",
+          "judge_prompt_version": "1.0.0",
+          "judge_prompt_hash": "judgehash",
+          "judge_temperature": 0.0,
+          "generation_reasoning": "default",
+          "judge_reasoning": "default",
+          "selection_rule": null,
+          "method_version": "0.3.0",
+          "record_facts_version": null,
+          "prompt_extras": null,
+          "answer_parser_version": null
+        }
+      ]
+    }
+  }
+}

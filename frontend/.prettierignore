@@ -10,3 +10,7 @@ src/dev/fixtures/graph-200.json
 src/run/fixtures/recorded/
 e2e/fixtures/data-model-world.json
 e2e/fixtures/ontology-world.json
+# Written by backend writers and kept byte for byte as written
+src/test/settings.fixture.json
+e2e/fixtures/results-v03-summary.json
+e2e/fixtures/results-v03-instances.json

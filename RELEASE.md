@@ -1,3 +1,45 @@
+# Release: v0.3.0
+
+Date: 2026-10-30.
+Code of the official run: `4c62325` on `method-v03`, clean tree.
+Gate status: CP4 approved by the project owner on 2026-10-30 ("continue and get it finished"), given in reply to the walkthrough package (see `HITL_STATUS.md`).
+Release status: the owner's go-ahead to finish; tagged `v0.3.0` and merged to `overhaul/v2` and `main` by the controller.
+
+## What this is
+
+Method v0.3 of the experiment, made after seeing the v0.2.0 result, in which the graph did not win; why, and what changed, is in Help, chapter 9 (D-093).
+The same synthetic lottery operator and the same three approaches (A text search, B graph, C graph and ontology), run on six unseen worlds with the same models as v0.2.0.
+The graph orders its own records, all three approaches fill one shared 2,000-token budget, and evidence recall is the tested evidence measure.
+
+## Benchmark version record
+
+| Item | Value |
+|---|---|
+| Method | 0.3.0 (D-083 to D-097) |
+| Question bank | 2.0.0, 50 instances per world, 300 in the run |
+| Worlds | unseen, seeds 2029, 2030, 2031, 2032, 2033 and 2034, generator 0.2.0, ontology 2.0.0 |
+| Answer model | `ollama/qwen3.6:latest`, temperature 0, reasoning off, 4,096-token limit, prompt 3.0.0 |
+| Answer parser | 2.1.1 |
+| Judge | `ollama/gemma4:31b`, temperature 0, reasoning off, judge prompt 1.2.0 (reads the whole answer) |
+| Retrieval | `bge-m3` embeddings, `Qdrant/bm25` sparse, `BAAI/bge-reranker-v2-m3` re-ranker, top 40 passages, graph depth 2 and at most 200 nodes |
+| Selection | `graph-rank-interleave-budget`: one 2,000-token budget shared by A, B and C, with turns between the passage list and the graph list in B and C; the graph ranks its own records (D-083, D-084) |
+| Scorer | 2.2.1; Wilcoxon on group means, Holm-adjusted over the tested family of 14, cluster bootstrap intervals |
+| Repeats | 1 (D-097) |
+
+## Official run record
+
+Run `official-2026-10-29`, kept in `data/evaluation/runs/official-2026-10-29/` (not in git), from 2026-10-29 14:41 UTC to about 02:06 UTC on 2026-10-30, when `summary.json` was written (the run record has no end time).
+
+- 900 answers (300 instances by A, B and C), no generation failure and no judge failure.
+- The only Holm-confirmed finding: on multi-hop questions, B against A evidence recall is +22.1 points (95 percent interval 10.4 to 34.1, 72 pairs in 24 groups, Holm-adjusted p 0.030).
+- Five tested cells have an interval that excludes zero but fail the test: H2 C against B on evidence recall and on the answer score, H1 B against A on the answer score, and H5 B against A on evidence recall and on the answer score.
+- The rest of the family shows no detectable difference.
+- Descriptive cells are labelled as descriptive, outside the tested family; they carry no test and no claim.
+- Overall evidence recall A 0.42, B 0.45, C 0.57; answer score A 0.58, B 0.61, C 0.67 (not tested).
+- Judge agreement with the deterministic answer score: 88 percent of 637 answered (weighted kappa 0.77) and 70 percent of 263 abstaining (weighted kappa 0.25).
+
+The full outcome and its limits are in `README.md` and `docs/evaluation.md`.
+
 # Release: v0.2.0
 
 Date: 2026-10-27.

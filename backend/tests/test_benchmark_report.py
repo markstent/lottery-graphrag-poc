@@ -4,22 +4,30 @@ from __future__ import annotations
 
 import dataclasses
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
-from app.evaluation.checks import CitationMetrics, TokenCheck
+from app.api.benchmarks import _instances, _published, _summary_out
+from app.config import METHOD_VERSION
+from app.evaluation.checks import CitationMetrics, GroundednessScore, TokenCheck
 from app.evaluation.claims import Claim
 from app.evaluation.grounding import BankInstance, Unavailable
 from app.evaluation.judge import JudgeScores, JudgeVerdict
 from app.evaluation.report import (
+    HOLM_FAMILY,
+    METHOD_NOTE,
     SMOKE_HEADLINE,
     SUMMARY_SCHEMA_VERSION,
+    _agreement_section,
+    _judge_agreement,
     _observe,
     instance_means,
     render_report,
     summarize,
 )
 from app.evaluation.runner import (
+    DEV_LABEL,
     BenchmarkRun,
     InstanceResult,
     PipelineRun,
@@ -32,9 +40,9 @@ from app.evaluation.scoring import EvidenceScore
 
 SEEDS = (2026, 2027)
 FAMILY = {
-    ("H1", "evidence_f1"),
-    ("H2", "evidence_f1"),
-    ("H5", "evidence_f1"),
+    ("H1", "evidence_recall"),
+    ("H2", "evidence_recall"),
+    ("H5", "evidence_recall"),
     ("H1", "answer"),
     ("H2", "answer"),
     ("H3", "answer"),
@@ -64,7 +72,7 @@ def _record(kind: str) -> ReproducibilityRecord:
         reranker="fake-rerank",
         top_k=8,
         context_budget_tokens=4000,
-        context={"dedupe_threshold": 0.9, "evidence_slots": 8},
+        context={"budget_tokens": 4000, "dedupe_threshold": 0.9},
         graph_limits={"depth": 2},
         ranking_weights={"w": 1.0},
         reference_date="2026-01-01",
@@ -138,7 +146,10 @@ def _score(answer: float, f1: float, judged: int | None = 2) -> RunScore:
     )
     evidence = EvidenceScore(f1, f1, f1, 1, 1, 1.0, f1 > 0.3)
     failure_class = "retrieval_failure" if f1 < 0.5 else None
-    return RunScore(answer, evidence, CitationMetrics(1.0, 0.5), failure_class, verdict)
+    grounded = GroundednessScore(
+        atoms=4, supported_share=0.75, unsupported_share=0.25, abstained=False
+    )
+    return RunScore(answer, evidence, CitationMetrics(1.0, 0.5), failure_class, verdict, grounded)
 
 
 def _result(
@@ -184,7 +195,9 @@ def _world(seed: int, h5_questions: int) -> WorldRun:
 
 
 def _benchmark(kind: str, h5_per_world: int, label: str | None = None) -> BenchmarkRun:
-    return BenchmarkRun(kind, label, _record(kind), [_world(s, h5_per_world) for s in SEEDS])
+    """A run of method v0.3, the only method that writes summary schema 3."""
+    record = dataclasses.replace(_record(kind), method_version=METHOD_VERSION)
+    return BenchmarkRun(kind, label, record, [_world(s, h5_per_world) for s in SEEDS])
 
 
 @pytest.fixture(scope="module")
@@ -208,9 +221,34 @@ def smoke_run() -> BenchmarkRun:
     return _benchmark("smoke", h5_per_world=6)
 
 
+def _of_method(run: BenchmarkRun, method_version: str | None) -> BenchmarkRun:
+    return dataclasses.replace(
+        run, record=dataclasses.replace(run.record, method_version=method_version)
+    )
+
+
+@pytest.mark.parametrize("kind", ["official", "dev", "smoke", "sweep"])
+def test_every_v03_report_declares_the_method_change(kind: str) -> None:
+    """D-093: a method v0.3 run of any kind says, in its report header and its
+    summary, that the method was made after seeing v0.2.0."""
+    run = _of_method(_benchmark(kind, h5_per_world=6), METHOD_VERSION)
+    assert summarize(run)["method_note"] == METHOD_NOTE
+    assert "after seeing the v0.2.0 result" in METHOD_NOTE and "D-093" in METHOD_NOTE
+    header = render_report(run).split("## Headlines")[0]
+    assert header.startswith(f"# Benchmark run\n\n{METHOD_NOTE}\n\nRun kind: {kind}.")
+    assert render_report(run).count(METHOD_NOTE) == 1
+
+
+def test_a_v02_report_carries_no_method_note(synthetic_run: BenchmarkRun) -> None:
+    run = _of_method(synthetic_run, None)
+    assert summarize(run)["method_note"] is None
+    assert METHOD_NOTE not in render_report(run)
+    assert "after seeing" not in render_report(run)
+
+
 def test_observations_average_repeats_and_skip_failures(synthetic_run: BenchmarkRun) -> None:
     summary = summarize(synthetic_run)
-    assert summary["schema_version"] == SUMMARY_SCHEMA_VERSION == "2"
+    assert summary["schema_version"] == SUMMARY_SCHEMA_VERSION == "3"
     assert summary["metrics"]["H3"]["answer"]["A"]["mean"] == pytest.approx(0.75)
     cell = summary["metrics"]["H3"]["answer"]["A"]
     assert (cell["n"], cell["repeats"]) == (12, 24)
@@ -223,10 +261,51 @@ def test_comparisons_use_holm_over_the_declared_family(synthetic_run: BenchmarkR
     assert all(c["p_holm"] >= c["p"] for c in family)
 
 
+def test_tested_family_uses_evidence_recall_and_excludes_c_vs_a(
+    synthetic_summary: dict[str, Any],
+) -> None:
+    comparisons = synthetic_summary["comparisons"]
+    c_vs_a = [c for c in comparisons if c["comparison"] == "C_vs_A"]
+    assert c_vs_a and all(c["reason"] == "not_in_family" for c in c_vs_a)
+    assert all(c["p"] is None and c["p_holm"] is None for c in c_vs_a)
+    # Descriptive: C_vs_A still reports its interval.
+    h1 = next(c for c in c_vs_a if c["stratum"] == "H1" and c["metric"] == "evidence_recall")
+    assert h1["n"] == 12 and h1["low"] <= h1["mean"] <= h1["high"]
+    family = [c for c in comparisons if c["in_family"]]
+    assert {c["metric"] for c in family} == {"evidence_recall", "answer"}
+    assert {c["comparison"] for c in family} == {"B_vs_A", "C_vs_B"}
+    assert {
+        (comparison, stratum, metric)
+        for comparison in ("B_vs_A", "C_vs_B")
+        for stratum, metric in FAMILY
+    } == HOLM_FAMILY
+    assert not any("C_vs_A" in str(cell) for cell in synthetic_summary["ontology_split"])
+    assert not any(line.startswith("Ontology") for line in synthetic_summary["headlines"])
+
+
+def test_summary_reports_groundedness_descriptively(synthetic_run: BenchmarkRun) -> None:
+    summary = summarize(synthetic_run)
+    for stratum in ("H1", "overall"):
+        for tag in ("A", "B", "C"):
+            assert summary["metrics"][stratum]["grounded_supported"][tag]["mean"] == (
+                pytest.approx(0.75)
+            )
+            assert summary["metrics"][stratum]["grounded_unsupported"][tag]["mean"] == (
+                pytest.approx(0.25)
+            )
+    assert not any("grounded" in c["metric"] for c in summary["comparisons"])
+    report = render_report(synthetic_run)
+    assert "## Groundedness (descriptive)" in report
+    section = report.split("## Groundedness (descriptive)")[1].split("\n## ")[0]
+    assert "| H1 | A | 0.750 (n 12) | 0.250 (n 12) |" in section
+
+
 def test_small_strata_make_no_claim(run_with_eight_h5_pairs: BenchmarkRun) -> None:
     summary = summarize(run_with_eight_h5_pairs)
     h5 = next(
-        c for c in summary["comparisons"] if c["stratum"] == "H5" and c["metric"] == "evidence_f1"
+        c
+        for c in summary["comparisons"]
+        if c["stratum"] == "H5" and c["metric"] == "evidence_recall"
     )
     assert not h5["in_family"] and h5["p"] is None and h5["p_holm"] is None
     assert any(
@@ -269,15 +348,73 @@ def test_out_of_family_cells_run_no_test(synthetic_summary: dict[str, Any]) -> N
     assert isinstance(comparisons, list)
     name = [c for c in comparisons if c["stratum"] == "H2_name"]
     assert name and all(not c["in_family"] and c["p"] is None for c in name)
-    assert all(c["n"] == 6 and c["clusters"] == 6 for c in name if c["metric"] == "evidence_f1")
+    assert all(c["n"] == 6 and c["clusters"] == 6 for c in name if c["metric"] == "evidence_recall")
 
 
 def test_pairs_cluster_by_question_and_world(synthetic_summary: dict[str, Any]) -> None:
     comparisons = synthetic_summary["comparisons"]
     assert isinstance(comparisons, list)
-    h1 = next(c for c in comparisons if c["stratum"] == "H1" and c["metric"] == "evidence_f1")
+    h1 = next(c for c in comparisons if c["stratum"] == "H1" and c["metric"] == "evidence_recall")
     assert (h1["comparison"], h1["n"], h1["clusters"]) == ("B_vs_A", 12, 12)
     assert h1["low"] <= h1["mean"] <= h1["high"]
+
+
+def _first_repeat_only(run: BenchmarkRun) -> BenchmarkRun:
+    """The same run as if every question had been asked once (D-097)."""
+
+    def once(result: InstanceResult) -> InstanceResult:
+        return dataclasses.replace(
+            result,
+            runs={tag: runs[:1] for tag, runs in result.runs.items()},
+            scores={tag: scores[:1] for tag, scores in result.scores.items()},
+        )
+
+    worlds = [
+        dataclasses.replace(world, results=[once(r) for r in world.results]) for world in run.worlds
+    ]
+    return dataclasses.replace(
+        run, record=dataclasses.replace(run.record, repeats=1), worlds=worlds
+    )
+
+
+def test_one_repeat_gives_the_same_pairs_groups_and_tests(
+    synthetic_run: BenchmarkRun, synthetic_summary: dict[str, Any]
+) -> None:
+    """D-097: a pair is one instance and a group one question in one world, so
+    asking once instead of twice changes no count, interval or p-value when
+    the repeats agree; only the repeat counts follow the number of answers."""
+    once = _first_repeat_only(synthetic_run)
+    summary = summarize(once)
+
+    def kept(cells: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        # H3 is left out: its A repeats differ by design, so its answer mean moves.
+        return [c for c in cells if c["stratum"] != "H3" or c["metric"] == "evidence_recall"]
+
+    assert kept(summary["comparisons"]) == kept(synthetic_summary["comparisons"])
+    for c, d in zip(summary["ontology_split"], synthetic_summary["ontology_split"], strict=True):
+        assert (c["n"], c["clusters"]) == (d["n"], d["clusters"])
+        if c["metric"] == "evidence_recall":
+            assert c == d
+
+    def not_h3(lines: list[str]) -> list[str]:
+        return [line for line in lines if not line.endswith("on single facts.")]
+
+    assert not_h3(summary["headlines"]) == not_h3(synthetic_summary["headlines"])
+    assert len(not_h3(summary["headlines"])) == len(summary["headlines"]) - 2
+    tested = [c for c in summary["comparisons"] if c["reason"] == "tested"]
+    assert tested and all(c["p_holm"] is not None for c in tested)
+    h1 = summary["metrics"]["H1"]["evidence_recall"]
+    assert all((h1[tag]["n"], h1[tag]["repeats"]) == (12, 12) for tag in ("A", "B", "C"))
+    h3 = summary["metrics"]["H3"]["answer"]["A"]
+    assert (h3["mean"], h3["n"], h3["repeats"]) == (pytest.approx(1.0), 12, 12)
+    # One answer per instance and approach: 54 instances, none failed.
+    assert summary["failures"]["repeats"] == {"A": 54, "B": 54, "C": 54}
+    assert summary["failures"]["generation"] == {"A": 0, "B": 0, "C": 0}
+    assert summary["judge_agreement"]["overall"]["answered"]["n"] == 3 * 54
+    assert summary["reproducibility"]["run"]["repeats"] == 1
+    report = render_report(once)
+    assert "three repeats" not in report and "3 repeats" not in report
+    json.dumps(summary, allow_nan=False)
 
 
 def test_counts_failures_agreement_and_basis(synthetic_summary: dict[str, Any]) -> None:
@@ -298,7 +435,8 @@ def test_counts_failures_agreement_and_basis(synthetic_summary: dict[str, Any]) 
     assert summary["failures"]["generation"] == {"A": 12, "B": 0, "C": 0}
     assert summary["failures"]["judge"] == {"A": 0, "B": 0, "C": 0}
     assert summary["failures"]["classes"]["A"]["retrieval_failure"] > 0
-    assert summary["judge_agreement"]["overall"]["n"] > 0
+    assert summary["judge_agreement"]["overall"]["answered"]["n"] > 0
+    assert summary["judge_agreement"]["overall"]["abstained"]["n"] == 0
     assert set(summary["judge_agreement"]["pipelines"]) == {"A", "B", "C"}
     assert summary["anchor_resolution_basis"] == {
         "A": "selection",
@@ -335,11 +473,61 @@ def test_comparisons_name_why_they_were_or_were_not_tested(
 ) -> None:
     comparisons = synthetic_summary["comparisons"]
     assert isinstance(comparisons, list)
-    reasons = {(c["stratum"], c["metric"]): c["reason"] for c in comparisons}
-    assert reasons[("H1", "evidence_f1")] == "tested"
-    assert reasons[("H3", "evidence_f1")] == "not_in_family"
-    assert reasons[("H2_name", "evidence_f1")] == "not_in_family"
+    reasons = {(c["stratum"], c["metric"], c["comparison"]): c["reason"] for c in comparisons}
+    assert reasons[("H1", "evidence_recall", "B_vs_A")] == "tested"
+    assert reasons[("H1", "evidence_recall", "C_vs_A")] == "not_in_family"
+    assert reasons[("H3", "evidence_recall", "B_vs_A")] == "not_in_family"
+    assert reasons[("H2_name", "evidence_recall", "C_vs_B")] == "not_in_family"
     assert all((c["reason"] == "tested") == c["in_family"] for c in comparisons)
+
+
+def test_agreement_section_reports_answered_and_abstained() -> None:
+    instance = _instance("L10", "H1", 2026)
+    runs = {
+        "A": [
+            dataclasses.replace(_run("A", 0), verdict="answer"),
+            dataclasses.replace(_run("A", 1), verdict="unknown"),
+            _run("A", 2, failed=True),
+        ],
+        "B": [dataclasses.replace(_run("B", i), verdict="answer") for i in range(2)],
+    }
+    scores: dict[str, list[RunScore | None]] = {
+        "A": [_score(1.0, 1.0, judged=2), _score(0.0, 0.0, judged=2), None],
+        "B": [_score(0.5, 1.0, judged=1), _score(0.0, 1.0, judged=0)],
+    }
+    agreements = _judge_agreement([InstanceResult(instance, runs, scores)], ["A", "B"])
+    # Answered pairs (answer level, judge correctness): A (2, 2), B (1, 1) and (0, 0).
+    assert agreements["overall"]["answered"] == {"n": 3, "agreement": 1.0, "weighted_kappa": 1.0}
+    # The one abstention scores 0 where the judge gave 2: no agreement, and
+    # chance agreement is 0, so the weighted kappa is 0.
+    assert agreements["overall"]["abstained"] == {
+        "n": 1,
+        "agreement": 0.0,
+        "weighted_kappa": 0.0,
+    }
+    assert agreements["pipelines"]["A"]["answered"]["n"] == 1
+    assert agreements["pipelines"]["B"]["abstained"] == {
+        "n": 0,
+        "agreement": None,
+        "weighted_kappa": None,
+    }
+    section = "\n".join(_agreement_section(agreements))
+    assert "| Pipeline | Answers | Judged repeats | Agreement | Weighted kappa |" in section
+    assert "| all | answered | 3 | 1.000 | too few to say |" in section
+    assert "| all | abstained | 1 | 0.000 | too few to say |" in section
+    assert "| B | abstained | 0 | - | too few to say |" in section
+    for level in ("Level 0", "Level 1", "Level 2"):
+        assert level in section
+    assert "0.5" not in section
+
+
+def test_agreement_table_shows_kappa_only_from_ten_repeats() -> None:
+    cell = {"agreement": 0.9, "weighted_kappa": 0.75}
+    split = {"answered": {"n": 10, **cell}, "abstained": {"n": 9, **cell}}
+    section = "\n".join(_agreement_section({"overall": split, "pipelines": {}}))
+    assert "| all | answered | 10 | 0.900 | 0.750 |" in section
+    assert "| all | abstained | 9 | 0.900 | too few to say |" in section
+    assert "shown only over at least 10 judged repeats" in section
 
 
 def test_report_reads_counts_and_reasons_from_the_summary(synthetic_run: BenchmarkRun) -> None:
@@ -366,7 +554,7 @@ def test_twelve_pairs_in_four_groups_make_no_claim() -> None:
     cell = next(
         c
         for c in summary["comparisons"]
-        if c["stratum"] == "H1" and c["metric"] == "evidence_f1" and c["comparison"] == "B_vs_A"
+        if c["stratum"] == "H1" and c["metric"] == "evidence_recall" and c["comparison"] == "B_vs_A"
     )
     assert (cell["n"], cell["clusters"]) == (12, 4)
     assert not cell["in_family"] and cell["p_holm"] is None and cell["reason"] == "too_few"
@@ -392,6 +580,24 @@ def test_smoke_comparisons_say_they_are_not_a_result(smoke_run: BenchmarkRun) ->
     assert "| tested (smoke run, not a result) |" in report
     assert "| tested |" not in report
     assert "| tested |" in render_report(_benchmark("official", h5_per_world=6))
+
+
+def test_dev_comparisons_say_they_are_not_a_result() -> None:
+    report = render_report(_benchmark("dev", h5_per_world=6, label=DEV_LABEL))
+    assert "| tested (development run, not a result) |" in report
+    assert "| tested |" not in report
+    assert f"Label: {DEV_LABEL}." in report
+
+
+def test_dev_runs_make_no_headline_claims() -> None:
+    summary = summarize(_benchmark("dev", h5_per_world=6, label=DEV_LABEL))
+    assert summary["headlines"] == [
+        "Development run on seed 2026, not a result: the tables are descriptive and no claim "
+        "is made."
+    ]
+    assert not any("Holm" in line or "p " in line for line in summary["headlines"])
+    # The descriptive tables stay.
+    assert summary["comparisons"] and summary["metrics"]["H1"]["evidence_recall"]["B"]["n"]
 
 
 def _with_flags(run: BenchmarkRun, flagged: set[str]) -> BenchmarkRun:
@@ -432,7 +638,7 @@ def test_ontology_split_cells_cover_both_groups_and_comparisons(
     assert {(c["group"], c["metric"], c["comparison"]) for c in cells} == {
         (g, m, k)
         for g in ("ontology_dependent", "other")
-        for m in ("evidence_f1", "answer")
+        for m in ("evidence_recall", "answer")
         for k in ("B_vs_A", "C_vs_B")
     }
     assert len(cells) == 8
@@ -448,7 +654,9 @@ def test_ontology_split_uses_the_flag_not_the_stratum(
         return next(
             c
             for c in cells
-            if c["group"] == group and c["metric"] == "evidence_f1" and c["comparison"] == "C_vs_B"
+            if c["group"] == group
+            and c["metric"] == "evidence_recall"
+            and c["comparison"] == "C_vs_B"
         )
 
     # L50 (H5) and L20 (H2) in two worlds; the other H2 questions are not flagged.
@@ -476,14 +684,14 @@ def test_instance_means_matches_the_observation(run_with_ontology_flags: Benchma
     for r in results:
         means, observed = instance_means(r), _observe(r).values
         for tag in r.scores:
-            for metric in ("evidence_f1", "answer"):
+            for metric in ("evidence_recall", "answer"):
                 assert means[tag][metric] == observed[metric][tag][0]
 
 
 def test_the_report_renders_the_ontology_split(run_with_ontology_flags: BenchmarkRun) -> None:
     report = render_report(run_with_ontology_flags)
     assert "## Ontology-dependent split" in report
-    assert "| ontology_dependent | evidence_f1 | C_vs_B | 4 | 4 |" in report
+    assert "| ontology_dependent | evidence_recall | C_vs_B | 4 | 4 |" in report
 
 
 def test_a_result_reads_back_from_results_json(synthetic_run: BenchmarkRun) -> None:
@@ -495,3 +703,47 @@ def test_a_result_reads_back_from_results_json(synthetic_run: BenchmarkRun) -> N
         for result in world["results"]
     ]
     assert read == written
+
+
+# The Results screen's fixtures of a method v0.3 run (frontend/e2e/fixtures/
+# results-v03-summary.json and results-v03-instances.json): this module's
+# synthetic run through ``summarize`` and the API's own builders, so they are
+# real output with test values. Rewrite them from backend/ with
+#     uv run python -m tests.test_benchmark_report
+# They are the writer's output byte for byte; frontend/.prettierignore leaves
+# them alone.
+V03_FIXTURES = Path(__file__).parents[2] / "frontend" / "e2e" / "fixtures"
+V03_FIXTURE_RUN = "fixture-v03"
+V03_FIXTURE_LABEL = "Fixture run (test values)"
+
+
+def v03_fixture_texts(directory: Path) -> dict[str, str]:
+    """Each v0.3 Results fixture's file name and text, byte for byte, as
+    the API serves the synthetic run published under ``directory``."""
+    run = _benchmark("official", h5_per_world=6, label=V03_FIXTURE_LABEL)
+    run_dir = directory / V03_FIXTURE_RUN
+    run_dir.mkdir()
+    (run_dir / "results.json").write_text(json.dumps(run.to_payload()), encoding="utf-8")
+    (run_dir / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
+    served = _summary_out(_published(directory, V03_FIXTURE_RUN))
+    instances = _instances(directory, V03_FIXTURE_RUN)
+    return {
+        "results-v03-summary.json": json.dumps(served.model_dump(mode="json"), indent=2) + "\n",
+        "results-v03-instances.json": json.dumps(
+            [row.model_dump(mode="json") for row in instances], indent=2
+        )
+        + "\n",
+    }
+
+
+def test_the_v03_results_fixtures_are_the_writers_output(tmp_path: Path) -> None:
+    for name, text in v03_fixture_texts(tmp_path).items():
+        assert (V03_FIXTURES / name).read_text(encoding="utf-8") == text, name
+
+
+if __name__ == "__main__":
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as directory:
+        for name, text in v03_fixture_texts(Path(directory)).items():
+            (V03_FIXTURES / name).write_text(text, encoding="utf-8")

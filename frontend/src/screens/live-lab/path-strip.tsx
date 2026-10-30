@@ -82,7 +82,7 @@ export function PathStrip({
           <ol
             key={path.ids.join('>')}
             aria-label={`Path ${index + 1}`}
-            className="flex flex-nowrap items-center gap-1 overflow-x-auto pb-1"
+            className="relative flex flex-nowrap items-center gap-1 overflow-x-auto pb-1"
           >
             {path.ids.map((nodeId, hop) => {
               const node = nodes.get(nodeId)
