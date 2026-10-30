@@ -27,14 +27,14 @@ const SELECT =
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
 const NO_RUN = 'No official run yet'
 
-const ELSEWHERE = 'Not scored by the newest official run'
-
+/** What an empty score cell says to a screen reader; with no run to score, there are no score cells. */
 const LABELS = {
-  none: NO_RUN,
-  elsewhere: ELSEWHERE,
   unreadable: 'Scores could not be read',
   loading: 'Scores are loading',
 }
+
+/** The states with score columns, which a cell can be in. */
+type CellState = 'shown' | keyof typeof LABELS
 
 const counted = (questions: number, instances: number) =>
   `${plural(questions, 'question')}, ${plural(instances, 'instance')}`
@@ -46,15 +46,13 @@ function ScoreCell({
 }: {
   question: Question
   id: PipelineId
-  state: ScoreState
+  state: CellState
 }) {
   const { evidence } = useHelpData()
   if (state !== 'shown')
     return (
       <td className={CELL}>
-        <span className="sr-only">
-          {LABELS[state as Exclude<ScoreState, 'shown'>]}
-        </span>
+        <span className="sr-only">{LABELS[state]}</span>
       </td>
     )
   const score = question.scores?.[id]
@@ -179,7 +177,10 @@ function QuestionTable({
     shown.length,
     shown.reduce((sum, group) => sum + group.length, 0),
   )
-  const columns = 2 + PIPELINES.length
+  // With no score to show, the score columns would be empty: leave them out.
+  const cellState: CellState | null =
+    scores === 'none' || scores === 'elsewhere' ? null : scores
+  const columns = 2 + (cellState ? PIPELINES.length : 0)
   return (
     <>
       {scores !== 'shown' && scores !== 'loading' && (
@@ -213,15 +214,16 @@ function QuestionTable({
               <th scope="col" className={CELL}>
                 Answer key
               </th>
-              {PIPELINES.map(({ id, label }) => (
-                <th
-                  key={id}
-                  scope="col"
-                  className={`${CELL} whitespace-nowrap`}
-                >
-                  {label}
-                </th>
-              ))}
+              {cellState &&
+                PIPELINES.map(({ id, label }) => (
+                  <th
+                    key={id}
+                    scope="col"
+                    className={`${CELL} whitespace-nowrap`}
+                  >
+                    {label}
+                  </th>
+                ))}
             </tr>
           </thead>
           {shown.map((group) => {
@@ -268,14 +270,15 @@ function QuestionTable({
                   <tr key={question.instance_id}>
                     <td className={CELL}>{question.text}</td>
                     <td className={CELL}>{question.expected_answer}</td>
-                    {PIPELINES.map(({ id }) => (
-                      <ScoreCell
-                        key={id}
-                        question={question}
-                        id={id}
-                        state={scores}
-                      />
-                    ))}
+                    {cellState &&
+                      PIPELINES.map(({ id }) => (
+                        <ScoreCell
+                          key={id}
+                          question={question}
+                          id={id}
+                          state={cellState}
+                        />
+                      ))}
                   </tr>
                 ))}
               </tbody>

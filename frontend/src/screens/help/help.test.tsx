@@ -338,6 +338,54 @@ describe('the questions table', () => {
     expect(within(questions).queryByText(/No official run yet/)).toBeNull()
   })
 
+  it('hides the score columns when the newest official run scored none of these questions, and keeps the note and its link', async () => {
+    await renderHelp('#/help?section=questions', {
+      questions: UNSCORED,
+      latest: OFFICIAL_V03,
+    })
+    const questions = section('10. The questions')
+    const table = within(questions).getByRole('table', {
+      name: 'Benchmark questions',
+    })
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Instance', 'Answer key'])
+    expect(
+      within(questions).queryByText('Not scored by the newest official run'),
+    ).toBeNull()
+    const note = within(questions).getByText(
+      /^The newest official run scored none of these world 2026 questions/,
+    )
+    expect(
+      within(note).getByRole('link', { name: 'Go to Results' }),
+    ).toHaveAttribute('href', '#/results')
+  })
+
+  it('hides the score columns when there is no official run', async () => {
+    await renderHelp('#/help?section=questions', {
+      questions: UNSCORED,
+      latest: null,
+    })
+    const table = within(section('10. The questions')).getByRole('table', {
+      name: 'Benchmark questions',
+    })
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Instance', 'Answer key'])
+  })
+
+  it('keeps the score columns when the newest official run scored these questions', async () => {
+    await renderHelp()
+    const table = within(section('10. The questions')).getByRole('table', {
+      name: 'Benchmark questions',
+    })
+    expect(within(table).getAllByRole('columnheader')).toHaveLength(5)
+  })
+
   it('says an instance was not part of the run when it has no scores', async () => {
     await renderHelp()
     const unscored = SCORED.findIndex((q) => q.scores === null)
@@ -375,10 +423,13 @@ describe('the questions table', () => {
       ).toHaveAttribute('href', '#/results')
       const table = questionTable()
       expect(table).not.toHaveTextContent(/Answer:|Evidence score/)
-      // The cells are visibly empty and carry the words for a screen reader.
-      const labels = within(table).getAllByText('No official run yet')
-      expect(labels).toHaveLength(SCORED.length * 3)
-      for (const label of labels) expect(label).toHaveClass('sr-only')
+      // With nothing to score, the table has no score columns at all.
+      expect(within(table).queryByText('No official run yet')).toBeNull()
+      expect(
+        within(table)
+          .getAllByRole('columnheader')
+          .map((cell) => cell.textContent),
+      ).toEqual(['Instance', 'Answer key'])
     },
   )
 

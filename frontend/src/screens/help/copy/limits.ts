@@ -168,7 +168,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'question-groups',
     item: 'Few question groups per comparison',
     plain:
-      'In v0.3.0 each tested comparison rested on 24 groups of alike questions (48 for planted stories), so a difference had to be large to be detected: an 18.9-point gain in evidence was not.',
+      'In v0.3.0 each tested comparison rested on 24 groups of alike questions (48 for planted stories), so a difference had to be large to be detected: a mean difference of 18.9 evidence points (C against B, ontology-dependent questions) did not pass.',
     reason:
       'Questions made from one question in one world share a template, so each group counts once (official run of 2026-10-29: 24 groups for H1, H2 and H3, 48 for H5; v0.2.0 had 12 groups, and 24 for H5). The six worlds of v0.3 doubled the groups without new questions written after seeing results.',
     cost: 'A modest effect of the graph or the ontology would read as "no detectable difference".',
@@ -180,8 +180,8 @@ export const REGISTER: readonly RegisterRow[] = [
     plain:
       'In v0.3.0 five tested comparisons have an interval that leaves out zero but do not pass the test; under the rule set before the run they are not findings.',
     reason:
-      'The interval is a bootstrap of one comparison alone; the test (Wilcoxon on group means, Holm-adjusted over the 14 tests) allows for making 14 comparisons at once, and the rule written before the run is the test (official run of 2026-10-29: H2 C against B on evidence and on answers, H1 B against A on answers, H5 B against A on evidence and on answers).',
-    cost: 'Some of the five may be real differences this many questions cannot confirm, and the one finding may still be chance: the test keeps the chance of any false finding among the 14 at 5 percent, not at zero.',
+      'The interval looks at one comparison alone, through its mean; the test ranks group differences (Wilcoxon on group means) and allows for 14 comparisons made at once (Holm), so it asks for more. For one of the five, planted-story answers, the test fails even before that allowance (unadjusted p 0.14). The rule written before the run is the test (official run of 2026-10-29: H2 C against B on evidence and on answers, H1 B against A on answers, H5 B against A on evidence and on answers).',
+    cost: 'Some of the five may be real differences this many questions cannot confirm, and the one finding may still be chance: the test keeps the chance of any false finding among the 14 at or below 5 percent, not at zero.',
     decision: 'D-032, D-087; docs/evaluation.md, "Statistics"',
   },
   {

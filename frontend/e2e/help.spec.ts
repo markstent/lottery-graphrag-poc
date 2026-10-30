@@ -72,41 +72,41 @@ test('the questions table filters by story, and the filter is in the address', a
   await shot(page, 'questions-filtered-by-story')
 })
 
-test('with no official run the score column says so and shows no number', async ({
+test('with no official run the screen says so above the table, which has no score columns', async ({
   page,
 }) => {
   await open(page, '#/help?section=questions', 'none')
   const table = page.getByRole('table', { name: 'Benchmark questions' })
-  await expect(table.getByText('No official run yet').first()).toBeVisible()
+  await expect(page.getByText(/^No official run yet\./)).toBeVisible()
+  await expect(table.getByRole('columnheader')).toHaveText([
+    'Instance',
+    'Answer key',
+  ])
   await expect(table).not.toContainText('Evidence score')
   await expect(page.getByRole('link', { name: 'Go to Results' })).toBeVisible()
   await shot(page, 'questions-no-official-run')
 })
 
-test('the score column headings sit on one line each, with or without scores', async ({
-  page,
-}) => {
-  for (const latest of ['none', 'official'] as const) {
-    await open(page, '#/help?section=questions', latest)
-    for (const name of ['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
-      expect(
-        await page
-          .getByRole('columnheader', { name })
-          .evaluate((el) => el.getBoundingClientRect().height),
-      ).toBeLessThan(40)
-  }
+test('the score column headings sit on one line each', async ({ page }) => {
+  await open(page, '#/help?section=questions', 'official')
+  for (const name of ['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
+    expect(
+      await page
+        .getByRole('columnheader', { name })
+        .evaluate((el) => el.getBoundingClientRect().height),
+    ).toBeLessThan(40)
 })
 
 test('a quick check as the newest run shows no scores either', async ({
   page,
 }) => {
   await open(page, '#/help?section=questions', 'smoke')
+  await expect(page.getByText(/^No official run yet\./)).toBeVisible()
   await expect(
     page
       .getByRole('table', { name: 'Benchmark questions' })
-      .getByText('No official run yet')
-      .first(),
-  ).toBeVisible()
+      .getByRole('columnheader'),
+  ).toHaveText(['Instance', 'Answer key'])
 })
 
 test('presentation mode keeps the table and the sections readable', async ({
