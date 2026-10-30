@@ -7,6 +7,7 @@
 import { getLatestBenchmark, type Schemas } from '../api/client'
 import { ApiError } from '../api/http'
 import type { PipelineId } from '../design/pipelines'
+import { intervalTestDisagreements } from '../results/strata'
 import { evidenceMetric, type EvidenceMetric } from './method'
 import { kindWord } from './run-kinds'
 
@@ -31,6 +32,8 @@ export type Verdict =
       note: string | null
       tiles: TileFigures[]
       headlines: string[]
+      /** Tested cells whose interval leaves out zero but whose test does not pass. */
+      disagreements: number
     }
   | { kind: 'none'; otherRun: string | null }
 
@@ -84,7 +87,7 @@ export function verdictFrom(
       kind: 'none',
       otherRun: latest.label ?? kindWord(latest.run_kind),
     }
-  const { headlines } = latest.summary
+  const { headlines, comparisons } = latest.summary
   const metric = evidenceMetric(latest.method_version)
   return {
     kind: 'official',
@@ -95,6 +98,9 @@ export function verdictFrom(
     headlines: Array.isArray(headlines)
       ? headlines.filter((line): line is string => typeof line === 'string')
       : [],
+    disagreements: Array.isArray(comparisons)
+      ? intervalTestDisagreements(comparisons)
+      : 0,
   }
 }
 

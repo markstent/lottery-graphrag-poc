@@ -347,7 +347,7 @@ test.describe('Results', () => {
       'official',
       'Descriptive: not part of the tested family.',
     ],
-    ['results-empty', 'none', 'No benchmark runs yet.'],
+    ['results-empty', 'none', 'No runs yet.'],
     ['results-error', 'unavailable', 'The run list is unavailable.'],
   ] as const
   for (const [name, runs, text] of STATES)

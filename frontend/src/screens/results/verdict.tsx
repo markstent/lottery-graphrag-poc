@@ -4,6 +4,7 @@ import type { Schemas } from '../../api/client'
 import { EVIDENCE_LABELS, evidenceMetric } from '../../app/method'
 import { percent } from '../../app/score-words'
 import { StatTile } from '../../charts/stat-tile'
+import { DisagreementNote } from '../../components/disagreement-note'
 import { MethodBadge } from '../../components/method-badge'
 import { pipeline, type PipelineId } from '../../design/pipelines'
 import {
@@ -11,7 +12,11 @@ import {
   standingWord,
   type RunStanding,
 } from '../../results/runs'
-import { printsIntervalBelowFloor, tiles } from '../../results/strata'
+import {
+  intervalTestDisagreements,
+  printsIntervalBelowFloor,
+  tiles,
+} from '../../results/strata'
 
 type Run = Schemas['BenchmarkRunOut']
 type Summary = Schemas['SummaryOut']
@@ -22,8 +27,19 @@ export const QUICK_CHECK_WARNING =
 export const BELOW_FLOOR_NOTE =
   'This run predates the six-group rule; charts leave out its intervals over fewer than six groups.'
 
-/** The recorded headlines, never rewritten; a run from before the group floor gets a note under them. */
-const Headlines = ({ summary }: { summary: Summary }) => (
+/**
+ * The recorded headlines, never rewritten. A run from before the group floor
+ * gets a note under them; a run whose charts are shown also gets the count of
+ * tested cells whose interval and test disagree, which those charts draw.
+ */
+const Headlines = ({
+  summary,
+  charted = false,
+}: {
+  summary: Summary
+  /** Whether the paired differences are drawn below, as for every run but a quick check. */
+  charted?: boolean
+}) => (
   <div className="space-y-1">
     <ul className="list-disc space-y-1 pl-5 text-sm text-text-primary">
       {summary.headlines.map((line, index) => (
@@ -32,6 +48,11 @@ const Headlines = ({ summary }: { summary: Summary }) => (
     </ul>
     {printsIntervalBelowFloor(summary) && (
       <p className="text-sm text-text-secondary">{BELOW_FLOOR_NOTE}</p>
+    )}
+    {charted && (
+      <DisagreementNote
+        count={intervalTestDisagreements(summary.comparisons)}
+      />
     )}
   </div>
 )
@@ -94,7 +115,7 @@ export function Verdict({
           ),
         )}
       </div>
-      <Headlines summary={summary} />
+      <Headlines summary={summary} charted />
     </div>
   )
 }

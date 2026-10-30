@@ -112,6 +112,30 @@ const hasBar = (values: BarGroup['values']) =>
 const lacksGroups = (cell: Comparison | Split) =>
   cell.reason === 'not_in_family' && cell.clusters < MIN_GROUPS_FOR_INTERVAL
 
+/** A difference counts when its Holm-adjusted p is below this (docs/evaluation.md, "Statistics"). */
+export const HOLM_ALPHA = 0.05
+
+/**
+ * How many tested cells have a bootstrap interval that leaves out zero while
+ * the Holm-adjusted test does not pass. The pre-registered rule is the test,
+ * so these are not findings; the screens say how many there are so the
+ * intervals on Results are not read as findings. A cell touching zero does
+ * not leave it out. Read from the summary as published, nothing recomputed.
+ */
+export function intervalTestDisagreements(
+  comparisons: readonly Comparison[],
+): number {
+  return comparisons.filter(
+    ({ in_family, p_holm, low, high }) =>
+      in_family &&
+      p_holm !== null &&
+      p_holm >= HOLM_ALPHA &&
+      low !== null &&
+      high !== null &&
+      (low > 0 || high < 0),
+  ).length
+}
+
 /** A recorded line that prints an interval and says it spans K groups: "(95 percent interval a to b, N pairs in K groups)". */
 const PRINTED_INTERVAL_GROUPS = /95 percent interval[^)]*\bin (\d+) groups?\)/
 

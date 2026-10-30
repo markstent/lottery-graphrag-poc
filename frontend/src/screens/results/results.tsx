@@ -151,7 +151,7 @@ export function Results() {
       <Panel
         title="Benchmark runs"
         state={empty ? 'empty' : load.status}
-        message="No benchmark runs yet."
+        message="No runs yet."
         error={load.status === 'error' ? load.error : undefined}
         onRetry={load.retry}
         headerAction={

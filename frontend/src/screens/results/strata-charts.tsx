@@ -85,7 +85,7 @@ export function StrataCharts({
         </h3>
         {split ? (
           <IntervalPlot
-            title={`Differences in ${label.toLowerCase()}, by question group`}
+            title={`Differences in ${label.toLowerCase()}`}
             description="Descriptive: not part of the tested family."
             rows={split}
             unit={points}

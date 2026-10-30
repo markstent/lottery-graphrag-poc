@@ -148,6 +148,54 @@ describe('Overview', () => {
       expect(await screen.findByText(line)).toBeVisible()
   })
 
+  it('says under the headlines how many tested cells the interval and the test disagree on, with a link to Results', async () => {
+    const comparison = (low: number, high: number, pHolm: number) => ({
+      stratum: 'H2',
+      metric: 'evidence_recall',
+      comparison: 'C_vs_B',
+      n: 72,
+      clusters: 24,
+      mean: (low + high) / 2,
+      low,
+      high,
+      p: pHolm / 10,
+      p_holm: pHolm,
+      in_family: true,
+      reason: 'tested',
+    })
+    stubApi(
+      base({
+        ...OFFICIAL,
+        summary: {
+          ...OFFICIAL.summary,
+          comparisons: [
+            comparison(0.104, 0.341, 0.03),
+            comparison(0.062, 0.332, 0.385),
+            comparison(-0.121, -0.025, 0.229),
+            comparison(-0.068, 0.048, 1),
+          ],
+        },
+      }),
+    )
+    render(<Overview />)
+    const note = await screen.findByText(
+      /^2 tested comparisons whose interval excludes zero failed the test; see/,
+    )
+    expect(note).toBeVisible()
+    expect(
+      within(note).getByRole('link', {
+        name: 'Paired differences, on Results',
+      }),
+    ).toHaveAttribute('href', '#/results')
+  })
+
+  it('adds no such line when every interval and test agree', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    await screen.findByTestId('tile-A')
+    expect(screen.queryByText(/failed the test/)).toBeNull()
+  })
+
   it('shows the plain no-run state, with a link to Results, on a 404', async () => {
     stubApi({
       ...base(null),

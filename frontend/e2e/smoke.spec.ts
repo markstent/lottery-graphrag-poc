@@ -98,7 +98,7 @@ test.describe('Results run list', () => {
   const RUN_LIST = [
     ['published', 'All runs'],
     ['official', 'Descriptive: not part of the tested family.'],
-    ['none', 'No benchmark runs yet.'],
+    ['none', 'No runs yet.'],
     ['unavailable', 'The run list is unavailable.'],
   ] as const
   for (const [runs, text] of RUN_LIST) {

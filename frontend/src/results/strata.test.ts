@@ -8,6 +8,7 @@ import {
   comparisonRows,
   efficiencyRows,
   failureTotals,
+  intervalTestDisagreements,
   judgeRows,
   splitRows,
   MIN_GROUPS_FOR_INTERVAL,
@@ -530,5 +531,37 @@ describe('the threshold agreement of a method v0.2 run', () => {
     const rows = agreement(summary)!
     expect(rows[0].cells).toEqual(['1,092', '42%', '0.10'])
     expect(rows[1].cells).toEqual(['4', '42%', 'Too few to say'])
+  })
+})
+
+describe('intervalTestDisagreements', () => {
+  it('counts tested cells whose interval leaves out zero while the Holm test does not pass', () => {
+    const comparisons = [
+      // Passes the test: a finding, not a disagreement.
+      cell({ low: 0.104, high: 0.341, p_holm: 0.03 }),
+      // Interval above zero, test not passed.
+      cell({ low: 0.062, high: 0.332, p_holm: 0.385 }),
+      // Interval below zero, test not passed, even before Holm.
+      cell({ low: -0.148, high: -0.019, p: 0.139, p_holm: 1 }),
+      // Exactly at the 0.05 rule: not passed.
+      cell({ low: 0.01, high: 0.2, p_holm: 0.05 }),
+      // Interval touching zero: it does not leave zero out.
+      cell({ low: -0.083, high: 0, p_holm: 0.749 }),
+      // Interval across zero.
+      cell({ low: -0.068, high: 0.048, p_holm: 1 }),
+      // Outside the family, never tested.
+      cell({
+        low: 0.09,
+        high: 0.34,
+        p: null,
+        p_holm: null,
+        in_family: false,
+        reason: 'not_in_family',
+      }),
+      // Too few pairs: no test.
+      cell({ low: 0.2, high: 0.3, p: null, p_holm: null, reason: 'too_few' }),
+    ]
+    expect(intervalTestDisagreements(comparisons)).toBe(3)
+    expect(intervalTestDisagreements([])).toBe(0)
   })
 })

@@ -13,6 +13,7 @@ import { MODEL_LABELS } from '../../app/settings-labels'
 import { useLoad, type Load } from '../../app/use-load'
 import { StatTile } from '../../charts/stat-tile'
 import { plural } from '../../charts/scale'
+import { DisagreementNote } from '../../components/disagreement-note'
 import { MethodBadge } from '../../components/method-badge'
 import { Panel, type PanelState } from '../../components/panel'
 import { PIPELINES } from '../../design/pipelines'
@@ -106,6 +107,10 @@ function LatestRun() {
               <li key={`${index}-${line}`}>{line}</li>
             ))}
           </ul>
+          <DisagreementNote
+            count={verdict.disagreements}
+            href={hrefFor('results')}
+          />
         </div>
       )}
       {verdict?.kind === 'none' && (

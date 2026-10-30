@@ -58,6 +58,7 @@ describe('verdictFrom', () => {
         { pipeline: 'C', mean: 0.5, n: 114, repeats: 342 },
       ],
       headlines: ['Graph beat text search.'],
+      disagreements: 0,
     })
   })
 
@@ -113,6 +114,7 @@ describe('verdictFrom', () => {
         repeats: 0,
       })),
       headlines: [],
+      disagreements: 0,
     })
   })
 

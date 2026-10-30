@@ -82,6 +82,7 @@ Purpose: the verdict from the latest official run, how the three approaches diff
    The tile reads "Evidence score, questions with claims" for a v0.2 run (its F1) and "Evidence recall, questions with claims" for a v0.3 run (owner, 2026-10-27).
    The number of questions comes from the summary, never from the screen.
    The run's headline sentences follow, verbatim and unedited.
+   When tested comparisons have a 95 percent interval that leaves out zero but a Holm-adjusted p-value of 0.05 or more, one line under the headlines counts them, "5 tested comparisons whose interval excludes zero failed the test; see Paired differences.", with "Paired differences" linking to Results; it is read from the summary's `comparisons` and is absent when there are none.
 2. "How the three approaches differ": a flow diagram of method v0.3, the code as it runs.
    The question fans out to one shared lane, "Search passages" then "Re-order passages": only passages are re-ranked.
    B adds "Find starting points", "Follow relationships" and "Rank by the graph".
@@ -206,6 +207,7 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
 2. **Verdict.** The method badge, "Method v0.3" or "Method v0.2 (old method)", with a v0.3 run's `method_note` beside it as plain text (none for v0.2).
    Three tiles, each with the method's evidence metric ("Evidence score" for v0.2, its F1; "Evidence recall" for v0.3) and the answer score, then the run's headline sentences as the harness wrote them.
    A subset run says what it covered, a development run says it is not a result, and a quick check says its numbers are not results.
+   Under the headlines, every run but a quick check gets the same interval-and-test line as Overview, pointing at the paired differences chart below; a quick check draws no charts and gets none.
 3. **Scores by kind of question.** A switch between the method's evidence metric and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
    A v0.3 run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
@@ -304,8 +306,8 @@ Help is the one screen that shows answer keys and hidden truths, because they ar
 It is also the one screen that names vendors, models and commands at Technical, and every command in it is a Makefile target, which a test checks.
 Scores appear only when the newest run is a whole-bank official run that scored at least one question.
 A score cell gives the answer and the evidence metric of that run's method, "Evidence recall" for v0.3 and "Evidence score" (its F1) for v0.2.
-When that run scored none of these world 2026 questions, as a v0.3 official run on the unseen worlds does, the screen says so above the table and links to Results.
-With no whole-bank official run, a score cell reads "No official run yet".
+When that run scored none of these world 2026 questions, as a v0.3 official run on the unseen worlds does, the screen says so above the table, links to Results and shows no score columns.
+With no whole-bank official run, it says "No official run yet" above the table and shows no score columns either.
 The screen never averages scores.
 
 Copy: each chapter holds its Plain and its Technical text as separate fields.
