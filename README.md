@@ -26,7 +26,7 @@ Fairness rules and the shared context budget are in [docs/retrieval.md](docs/ret
 
 ### Official run v0.3.0, the current result
 
-The official run v0.3.0, under method v0.3, started on 2026-10-29 at 14:41 UTC at commit 4c62325 with a clean tree.
+The official run v0.3.0, under method v0.3, ran from 2026-10-29 14:41 UTC to about 02:06 UTC on 2026-10-30 (when summary.json was written; the run record has no end time) at commit 4c62325 with a clean tree.
 It covered six worlds no one had looked at (seeds 2029 to 2034), the whole bank (300 instances) and the three approaches, with each question asked once: 900 answers, each judged.
 The answer model was qwen3.6 and the judge gemma4 31B, both local through Ollama with reasoning off.
 The settings were scorer 2.2.1, judge prompt 1.2.0, answer parser 2.1.1, an output limit of 4,096 tokens and one evidence budget of 2,000 tokens for every approach.
@@ -64,7 +64,7 @@ Outside the tested family, and so descriptive only:
 - groundedness, the share of the ids, dates and numbers in an answer that the evidence it cites holds, is 0.87 for A, 0.94 for B and 0.92 for C, with no test run.
 
 What this says: under these settings the graph helped get the needed evidence to the answer model on multi-hop questions, and that is the one tested finding.
-The ontology raised C's averages on the questions that need it, but no test of C against B passed, so this run does not show that the ontology helps.
+C's averages were higher than B's on the questions that need the ontology, but no test of C against B passed, so this run does not show that the ontology helps.
 On planted patterns the graph's averages were lower than text search's, and that did not pass the test either.
 
 Limits on reading it:

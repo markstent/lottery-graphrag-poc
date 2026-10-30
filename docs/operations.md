@@ -116,7 +116,8 @@ Set `GENERATION_MODEL` to an `openrouter/...` model and `OPENROUTER_API_KEY` in 
 Never commit a key or write it to a log.
 
 **Official run.**
-The official run of v0.3.0 uses the six unseen worlds, seeds 2029 to 2034, and the models of v0.2.0; it starts from the command line (`make run-benchmark`) only after the owner agrees (D-091).
+An official run of method v0.3 uses the six unseen worlds, seeds 2029 to 2034, and starts from the command line (`make run-benchmark`) only after the owner agrees (D-091).
+The official run v0.3.0 (`official-2026-10-29`) did so with the models of v0.2.0, from 2026-10-29 14:41 UTC to about 02:06 UTC on 2026-10-30 (when summary.json was written; the run record has no end time).
 The API never starts it.
 The Results start panel offers a development run on seed 2026 (the default) and a quick check, and neither is a result.
 Development uses seed 2026 only, through `make dev-run`; no development, diagnostic or labelling step may use seeds 2029 to 2034.

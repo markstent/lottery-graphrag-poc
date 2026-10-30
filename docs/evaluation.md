@@ -18,7 +18,7 @@ The figures below are read from each run's `summary.json` and `report.md`.
 ### Official run v0.3.0
 
 Method v0.3 was made after seeing the v0.2.0 result, in which the graph did not win, and the run's own `summary.json` and `report.md` say so (D-093).
-The run started on 2026-10-29 at 14:41 UTC at commit 4c62325 with a clean tree, and is kept in `data/evaluation/runs/official-2026-10-29/` (not in git).
+The run ran from 2026-10-29 14:41 UTC to about 02:06 UTC on 2026-10-30 (when summary.json was written; the run record has no end time) at commit 4c62325 with a clean tree, and is kept in `data/evaluation/runs/official-2026-10-29/` (not in git).
 Six unseen worlds (2029 to 2034), the whole bank of 300 instances, three approaches and one repeat (D-097) gave 900 answers, each judged.
 The answer model was `ollama/qwen3.6:latest` and the judge `ollama/gemma4:31b`, both with reasoning off; scorer 2.2.1, judge prompt 1.2.0, answer parser 2.1.1, `max_tokens` 4096, a 2,000-token context budget and the selection rule `graph-rank-interleave-budget`.
 
