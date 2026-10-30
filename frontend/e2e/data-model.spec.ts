@@ -207,9 +207,7 @@ test('a row with no node in the graph says so', async ({ page }) => {
     .first()
     .click()
   const drawer = page.getByRole('dialog', { name: 'Evidence' })
-  await expect(
-    drawer.getByText('This row has no node in the graph.'),
-  ).toBeVisible()
+  await expect(drawer.getByText('This row has no graph node.')).toBeVisible()
   await expect(
     drawer.getByRole('link', { name: 'Follow into the graph' }),
   ).toHaveCount(0)

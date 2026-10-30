@@ -425,9 +425,7 @@ describe('GraphCanvas', () => {
 
   it('says so when there is nothing to draw', () => {
     render(canvas(viewAt('B', { sequence: 0 })))
-    expect(
-      screen.getByText('No graph activity has been recorded yet.'),
-    ).toBeVisible()
+    expect(screen.getByText('No graph activity yet.')).toBeVisible()
   })
 
   it('gives the canvas a name and a description that covers the whole view', async () => {

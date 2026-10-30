@@ -439,9 +439,7 @@ describe('CanvasArea', () => {
       mode: 'live',
       results: null,
     })
-    expect(
-      screen.getByText('No graph activity has been recorded yet.'),
-    ).toBeVisible()
+    expect(screen.getByText('No graph activity yet.')).toBeVisible()
   })
 
   it('gives a text alternative that lists the evidence paths', async () => {

@@ -797,7 +797,7 @@ function Canvas(props: GraphCanvasProps) {
   if (view.nodes.length === 0) {
     return (
       <p className="flex h-full items-center justify-center rounded-card border border-dashed border-border p-6 text-center text-sm text-text-muted">
-        No graph activity has been recorded yet.
+        No graph activity yet.
       </p>
     )
   }

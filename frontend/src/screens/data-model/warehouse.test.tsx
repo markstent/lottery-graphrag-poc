@@ -174,7 +174,7 @@ describe('Warehouse table and record', () => {
     )
     const dialog = await screen.findByRole('dialog', { name: 'Evidence' })
     expect(
-      await within(dialog).findByText('This row has no node in the graph.'),
+      await within(dialog).findByText('This row has no graph node.'),
     ).toBeVisible()
     expect(within(dialog).queryByRole('link')).toBeNull()
   })

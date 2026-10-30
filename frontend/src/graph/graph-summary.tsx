@@ -29,7 +29,7 @@ export function GraphSummary({ id, view }: { id: string; view: GraphView }) {
           : ''}
         {view.path.length > 0
           ? ` ${countedLabel(view.path.length, 'node')} lie on an evidence path.`
-          : ' No evidence path has been recorded yet.'}
+          : ' No evidence path yet.'}
         {added > 0
           ? ` ${countedLabel(added, 'node')} were ${ADDED_BY_ONTOLOGY}.`
           : ''}
