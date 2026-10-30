@@ -10,7 +10,41 @@ Two generated pages sit beside this one and are never edited by hand:
 
 ## Status of results
 
-The official run v0.2.0 is the one official result so far, and it stands as published.
+There are two official results.
+The official run v0.3.0, under method v0.3, is the current result, and it awaits the owner's review (CP4).
+The official run v0.2.0, under method 0.2.0, is the earlier result, and it stands as published.
+The figures below are read from each run's `summary.json` and `report.md`.
+
+### Official run v0.3.0
+
+Method v0.3 was made after seeing the v0.2.0 result, in which the graph did not win, and the run's own `summary.json` and `report.md` say so (D-093).
+The run started on 2026-10-29 at 14:41 UTC at commit 4c62325 with a clean tree, and is kept in `data/evaluation/runs/official-2026-10-29/` (not in git).
+Six unseen worlds (2029 to 2034), the whole bank of 300 instances, three approaches and one repeat (D-097) gave 900 answers, each judged.
+The answer model was `ollama/qwen3.6:latest` and the judge `ollama/gemma4:31b`, both with reasoning off; scorer 2.2.1, judge prompt 1.2.0, answer parser 2.1.1, `max_tokens` 4096, a 2,000-token context budget and the selection rule `graph-rank-interleave-budget`.
+
+- Of the 14 tests in the family (Holm-adjusted Wilcoxon on group means), one shows a detectable difference: on H1, B is 22.1 evidence-recall points above A (95 percent interval 10.4 to 34.1, 72 pairs in 24 groups, p 0.0022, Holm-adjusted p 0.030).
+- The other 13 show no detectable difference, including all six tests of C against B.
+- Five of those 13 have a bootstrap interval that excludes zero, while their Holm-adjusted p-value is 0.17 or more: H2 C against B on evidence recall, 18.9 (6.2 to 33.2, Holm-adjusted p 0.38), and on the answer score, 21.0 (7.3 to 36.4, Holm-adjusted p 0.28); H1 B against A on the answer score, 12.4 (3.6 to 22.2, Holm-adjusted p 0.17); H5 B against A on evidence recall, -6.9 (-12.1 to -2.5, Holm-adjusted p 0.23), and on the answer score, -8.0 (-14.8 to -1.9, Holm-adjusted p 1.0).
+  The interval and the test disagree there.
+  The rule fixed before the run is the test, so none of the five is a finding.
+- Over every question, evidence recall is 0.42 for A, 0.45 for B and 0.57 for C (231 instances with claims), and the answer score is 0.58, 0.61 and 0.67 (300 instances); these means are not tested.
+  Evidence F1, descriptive in v0.3, is 0.18, 0.18 and 0.22.
+- Descriptive, outside the family: on the 36 name-anchored instances (12 groups) B is 16.7 evidence points below A (interval 12.0 to 21.1 below) and C is 38.4 above B (30.1 to 46.3), with an answer score 14.3 points higher (9.2 to 18.9).
+  Over every ontology-dependent question (120 pairs in 48 groups) C is 22.9 evidence points (14.0 to 32.0) and 16.9 answer points (8.4 to 26.2) above B, and B is 5.5 evidence points below A (0.6 to 10.2 below).
+  C against A, never tested: 21.3 evidence points above on H1 (9.0 to 34.0), 18.6 on H2 (4.4 to 34.1), and 5.6 answer points below on H3 (1.4 to 11.1 below).
+- H3 is near the ceiling: the answer score is 1.00 for A, 0.99 for B and 0.94 for C (72 instances each).
+- Groundedness, descriptive: over every question the supported share is 0.87 for A, 0.94 for B and 0.92 for C, and the unsupported share 0.04, 0.00 and 0.01 (256, 273 and 278 answers with a checkable atom).
+- Failure causes per 300 answers: "the needed evidence was not retrieved" 124 (A), 119 (B), 100 (C); "the evidence was retrieved but the answer was wrong" 24, 17, 19; no answer was classed "the starting record was not found".
+- Judge agreement on three levels (D-086): 88 percent of 637 answered repeats, weighted kappa 0.77, and 70 percent of 263 abstaining repeats, weighted kappa 0.25; for abstentions the lowest is C, 61 percent of 77, weighted kappa 0.17.
+  Judge prompt 1.2.0 reads the whole answer and is not validated by hand labels (D-096); the hand labels that checked the earlier judge came from one model labeller, with no human label (D-094).
+- No answer failed and no judge call failed.
+
+Read plainly: under these settings the graph got more of the needed evidence to the answer model on multi-hop questions, and that is the one tested finding.
+C's averages are higher than B's on the questions that need the ontology, but no test of C against B passed, so the run does not show that the ontology helps.
+It does not show what a graph or an ontology would do with another company's data, other questions or another answer model.
+
+### Official run v0.2.0
+
 It was made under method 0.2.0 and is labelled so wherever it is shown.
 It ran from 2026-10-26 11:42 to 2026-10-27 03:21 UTC at commit 27a4ce4 with a clean tree, after the owner approved CP3, and is kept in `data/evaluation/runs/official-2026-10-26/` (not in git).
 Three worlds (2026, 2027, 2028), the whole bank of 150 instances, three approaches and three repeats gave 1,350 answers, each judged; the answer model was `ollama/qwen3.6:latest` and the judge `ollama/gemma4:31b`, both with reasoning off, under the selection rule `reranker-graph-share` (D-081).
@@ -26,7 +60,7 @@ Three worlds (2026, 2027, 2028), the whole bank of 150 instances, three approach
 Read with the selection diagnostic below, the result points at evidence selection: the graph reaches many of the facts, and the re-ranker and the 12 prompt slots keep most of them from the model.
 It does not show that a graph or an ontology cannot help; it shows that, with this selection rule, this answer model and this bank, they did not measurably help.
 
-### Method v0.3 (in preparation, not yet run)
+### Method v0.3
 
 Method v0.3 was written after seeing the v0.2.0 result, in which the graph did not win, and every report of v0.3.0 says so.
 The reasons and the data are in [evaluation/v0.3-method-proposal.md](evaluation/v0.3-method-proposal.md), and the rules are the decision records D-083 to D-093.
@@ -120,6 +154,7 @@ Each planted question is grounded to one instance, read from the truth ledger.
 The seed 2026 world's frozen bank has 50 instances: 14 structural questions at three anchors, and 8 planted questions at one.
 The official run v0.2.0 used three worlds, seeds 2026, 2027 and 2028, which gave 150 instances.
 The official run of method v0.3 uses the six unseen worlds, seeds 2029 to 2034 (D-091), so it has at most 300 instances; each of their banks is grounded when that run first prepares the world.
+The official run v0.3.0 had 300, 50 in each world.
 The full text, checks and claims of the seed 2026 instances are in [evaluation/question-bank.md](evaluation/question-bank.md).
 
 Every question carries its plain-English text, what it tests in one sentence, its stratum, its scenario or base fact, an `ontology_dependent` flag, an expected answer and the claims a correct answer makes.
@@ -407,7 +442,7 @@ It is descriptive: outside the Holm family, with no p-value and no headline.
 
 The intervals are on differences.
 The Overview tiles show each approach's mean evidence score with the number of questions and runs behind it, and no interval of their own (D-048, which is an open owner question).
-The tile is worded "Evidence score, questions with claims" for v0.2.0 and "Evidence recall, questions with claims" for v0.3.0, each with its n, the number of questions with claims behind the mean (114 for v0.2.0) (D-087).
+The tile is worded "Evidence score, questions with claims" for v0.2.0 and "Evidence recall, questions with claims" for v0.3.0, each with its n, the number of questions with claims behind the mean (114 for v0.2.0 and 231 for v0.3.0) (D-087).
 
 A smoke run keeps every statistic but its only headline says it is a scorer smoke test and not a result.
 A dev run does the same: its only headline says it is a development run on seed 2026 and not a result, and its comparisons table says "tested (development run, not a result)".
