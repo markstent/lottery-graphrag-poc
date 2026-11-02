@@ -297,7 +297,7 @@ Presentation mode ignores the remembered level, and an explicit `?level=` always
 A link with `?section=`, `?story=` or `?stratum=` opens at Plain, and a bare `#/help` uses the remembered level.
 Switching level keeps the chapter in view.
 
-Twelve chapters, each a link in the Help navigation: 1 Why this exists, 2 The made-up company, 3 The planted stories, 4 The three approaches, 5 How evidence is chosen, 6 The answer and the judge, 7 How scoring works, 8 Reading the results, 9 Assumptions and limits, 10 The questions, 11 Glossary, 12 Running it.
+Thirteen chapters, each a link in the Help navigation: 1 Why this exists, 2 The made-up company, 3 The planted stories, 4 The three approaches, 5 How evidence is chosen, 6 The answer and the judge, 7 How scoring works, 8 Reading the results, 9 Assumptions and limits, 10 The questions, 11 Glossary, 12 Running it, 13 What the results teach (D-102, `?section=lessons`; added at the end so chapters 1 to 12 keep their numbers, and linked from Overview).
 `?section=` scrolls to a chapter by its id.
 The eight ids of the first Help stay as aliases: `what` to chapter 1, `data` to 2, `stories` to 3, `approaches` to 4, `scoring` to 7, `questions` to 10, `glossary` to 11 and `running` to 12.
 `?story=` marks one story and filters the questions.

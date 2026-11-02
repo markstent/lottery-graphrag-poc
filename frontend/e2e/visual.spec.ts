@@ -563,9 +563,14 @@ test.describe('Data Model', () => {
 
   test('data-model-warehouse-map', async ({ page }) => {
     await openScreen(page, '#/data-model')
+    // The drawn map, not its loading panel, whose name starts the same way.
     await expect(
-      page.getByRole('region', { name: 'Incident management' }),
+      page.getByRole('img', {
+        name: 'Incident management tables',
+        exact: true,
+      }),
     ).toBeVisible()
+    await expect(page.locator('[aria-busy="true"]')).toHaveCount(0)
     await screenShot(page, 'data-model-warehouse-map')
   })
 
