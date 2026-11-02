@@ -94,7 +94,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Detectable difference',
     meaning:
-      'A difference between two approaches larger than chance would explain, after allowing for how many comparisons were made at once.',
+      'A difference between two approaches that passes the test: larger than chance would explain, after allowing for how many comparisons were made at once.',
     technical:
       'A Holm-adjusted p-value below 0.05 from a two-sided Wilcoxon signed-rank test on the per-group mean differences, with the 95 percent interval wholly above or below 0, in a cell of at least 10 pairs and 6 groups (backend/app/evaluation/statistics.py).',
   },
@@ -120,7 +120,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Evidence recall',
     meaning:
-      'The share of the needed facts that the evidence an approach chose covers, from 0 to 1. Method v0.3 tests it.',
+      'The share of the needed facts found: how many of the facts a correct answer needs are covered by the evidence an approach chose, from 0 to 1. Method v0.3 tests it.',
     technical:
       'The share of claims with at least one carrier selected, after the starting record is removed; undefined when no claim is left. The evidence metric of the tested family since method v0.3 (D-087).',
   },
@@ -162,7 +162,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Hidden truth',
     meaning:
-      'The fact planted behind a story. Help shows it, and no approach can see it.',
+      'The fact planted behind a story. Help shows it on the story cards at the Technical level, and no approach can see it.',
   },
   {
     term: 'Hybrid search',
@@ -179,9 +179,16 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'H1 to H7, from the overhaul design (docs/superpowers/specs/2026-10-18-overhaul-design.md, section 5.5) and docs/evaluation.md.',
   },
   {
+    term: 'Instance',
+    meaning:
+      'One filled-in version of a question, about one record in one world. One question gives up to three instances in each world.',
+    technical:
+      'A grounded bank instance: one logical question with one anchor in one world, frozen with the bank (backend/app/evaluation/bank.py, D-030).',
+  },
+  {
     term: 'Interval',
     meaning:
-      'The range a difference between two approaches most likely lies in, with 95 percent confidence.',
+      'The margin of error of a difference between two approaches: the range the difference most likely lies in, with 95 percent confidence.',
     technical:
       'A 95 percent paired bootstrap interval of the mean difference over question groups, from 10,000 resamples with a fixed seed of 2026 (backend/app/evaluation/statistics.py).',
   },
@@ -216,6 +223,13 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'One country the made-up company operates in: the United Kingdom, Greece, Austria or the Czech Republic.',
   },
   {
+    term: 'Method',
+    meaning:
+      'The rules a run follows to choose the evidence and score the answers. Every run is labelled with its method: v0.3 now, or v0.2, the old method.',
+    technical:
+      'Recorded as method_version in every run; a record without one is 0.2.0 (D-092). Method v0.3 is the selection rule of D-083 and D-084 with evidence recall as the tested metric (D-087).',
+  },
+  {
     term: 'Model family',
     meaning:
       'A line of language models built by one group. The judge comes from a different family than the answer model.',
@@ -225,7 +239,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Official run',
     meaning:
-      'Every question run on several worlds, once each, scored identically for all approaches. Only an official run is a result.',
+      'The run whose scores count as the result: every question asked of several worlds, once each, and scored the same way for every approach.',
     technical:
       'Run kind official over the whole bank, with one repeat unless --repeats N asks more (D-097), and a gateway answer model and judge (make run-benchmark): for method v0.3 on the six unseen world seeds 2029 to 2034 (D-091); v0.2.0 used seeds 2026, 2027 and 2028.',
   },
@@ -246,7 +260,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Planted story',
     meaning:
-      'A pattern added to the synthetic data on purpose, so its true answer is known.',
+      'A pattern added to the made-up data on purpose, so its true answer is known.',
     technical:
       'A scenario (SCN-001 and so on) in backend/app/scenarios/; eight are enabled.',
   },
@@ -334,6 +348,13 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'A setting for how much a model varies its wording from one try to the next; 0 is the least.',
   },
   {
+    term: 'Test',
+    meaning:
+      'A statistical check of whether a difference between two approaches is larger than chance would explain.',
+    technical:
+      "A two-sided Wilcoxon signed-rank test with Pratt's treatment of zeros on the per-group mean differences, Holm-corrected over the 14 tests of the family (D-032).",
+  },
+  {
     term: 'Text search',
     meaning:
       'Approach A: finding the passages and record texts whose words and meaning best match the question.',
@@ -364,7 +385,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'World',
     meaning:
-      'One generated version of the made-up company. The same settings build the same world again.',
+      'One copy of the made-up company, built by the system. Every world has the same markets and kinds of records, but the details differ. The same settings build the same world again.',
     technical:
       'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2029 to 2034 for method v0.3, and were 2026, 2027 and 2028 for v0.2.0.',
   },

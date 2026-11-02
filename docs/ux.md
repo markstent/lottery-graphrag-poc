@@ -307,6 +307,12 @@ No setting is typed into Help by hand.
 A past measurement, such as the pilot or the dry run, is typed with its date and source record.
 
 Help is the one screen that shows answer keys and hidden truths, because they are the scoring reference and not an input to any approach.
+Plain is written for a newcomer who knows nothing of the study, its dataset, statistics or retrieval (D-099).
+It names no dataset code or internal id outside data shown as data, and explains each term where a chapter first uses it.
+A story card at Plain tells its story in plain words: what was planted, in which countries, and what a correct answer must find.
+At Technical the card adds its scenario id and the hidden truth verbatim, with its record codes.
+The worked example shows its question and answer key at both levels, with market codes written as countries at Plain.
+The questions table at Plain names no question id, writes market codes as countries, and chapter 10 explains once what the reference codes in the questions are; Technical shows the bank as it is.
 It is also the one screen that names vendors, models and commands at Technical, and every command in it is a Makefile target, which a test checks.
 Scores appear only when the newest run is a whole-bank official run that scored at least one question.
 A score cell gives the answer and the evidence metric of that run's method, "Evidence recall" for v0.3 and "Evidence score" (its F1) for v0.2.

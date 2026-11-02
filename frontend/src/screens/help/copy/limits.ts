@@ -37,7 +37,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'one-company-shape',
     item: 'One company shape',
     plain:
-      'Every world is the same kind of company in the same four markets; only the random draws differ.',
+      'Every world, or copy of the made-up company, is the same kind of company in the same four markets. Only the random draws differ.',
     reason:
       'The official worlds are the dev profile with one generator: seeds 2029 to 2034 for method v0.3, and 2026, 2027 and 2028 in v0.2.0, so a difference between worlds is noise, not design.',
     cost: 'A result may not hold for a company with other markets, other languages, more systems or other links between them.',
@@ -48,7 +48,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'evidence-limits',
     item: 'The evidence budget',
     plain:
-      'The answer model sees what fits in {context_budget_tokens} tokens, the same for all three approaches, with no limit on the number of pieces.',
+      'The answer model sees what fits in {context_budget_tokens} tokens, a token being about four characters. The budget is the same for all three approaches, with no limit on the number of pieces.',
     reason:
       'An equal budget means a difference comes from what each approach found, not from how much it could show; a model reads only so much at once. In v0.2.0 a limit of 12 pieces decided what the model saw, and the budget never did.',
     cost: 'Too small a budget cuts facts an approach found; too large a one lets A show almost all it found, so its order stops mattering, and can bury the fact that matters. No other budget was tried.',
@@ -58,7 +58,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'graph-order',
     item: "The graph's own order",
     plain:
-      "In B and C the graph's records are ordered by the graph, records of a kind the question asks about first, and they take turns with the passages; A gets no such help.",
+      'In B and C, the graph puts its records in its own order, with records of a kind the question asks about first. They take turns with the passages. A gets no such help.',
     reason:
       'Each approach ranks with what it has: text relevance for passages, connection to the question for graph records. Taking turns one for one leaves no proportion to tune, and the kinds a question asks about are matched by fixed word lists, with no model.',
     cost: 'Common words such as "market" or "game" name broad kinds, so the first group may hold many records and add little; this cue is a declared difference that A does not have.',
@@ -68,7 +68,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'method-after-result',
     item: 'The method was changed after a result',
     plain:
-      'Method v0.3 was made after the v0.2.0 result was seen, in which the graph did not help; every v0.3 result says so.',
+      'The rules of method v0.3 were made after the result of v0.2.0 was seen, in which the graph did not help. Every v0.3 result says so.',
     reason:
       "In v0.2.0 the re-ordering model scored graph records low, and the limit on pieces kept about half of the graph's facts from the answer model (diagnostic of 2026-10-25: 23 of 55 for B, 51 of 88 for C). Every rule of v0.3 was written down before it was measured, development uses world 2026 only, and the official run uses six worlds no one has looked at.",
     cost: 'The guards limit what the change could have been fitted to but do not remove the doubt. The official run v0.3.0 (2026-10-29) is published as it came out, and v0.2.0 stays as published.',
@@ -108,7 +108,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'answer-model',
     item: 'One local answer model',
     plain:
-      'Every answer comes from one language model run on one local machine, smaller than the largest hosted models.',
+      'Every answer comes from one language model run on one local machine. It is smaller than the largest models that providers run online.',
     reason:
       'The owner chose the local models at CP3 on 2026-10-26: they run with no network or account, and the pilot kept the answer format in 324 of 324 answers. The hosted option, a larger Qwen3 235B model on OpenRouter, was not run.',
     cost: 'A larger model might use the same evidence better and change the gap between approaches. H7, which compares two answer models, has no result yet.',
@@ -138,7 +138,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'judge-agreement',
     item: 'The judge and the rules disagree on "unknown"',
     plain:
-      'In the official run v0.3.0, the judge and the answer score agreed on 88 percent of the answers that answered, but on only 70 percent of those that said "unknown", which is weak agreement once chance is allowed for.',
+      'In the official run v0.3.0, the judge and the answer score agreed on 88 percent of the answers that answered. They agreed on only 70 percent of those that said "unknown". Once chance is allowed for, that is weak agreement.',
     reason:
       'Measured in the official run of 2026-10-29 on three levels: answered, 88 percent of 637, weighted kappa 0.77; said "unknown", 70 percent of 263, weighted kappa 0.25 (A 0.38, B 0.21, C 0.17). Judge prompt 1.2.0 reads the whole answer and was not checked against hand labels; the labels that checked the earlier judge came from one model labeller, and no human labelled them (D-094, D-096). In v0.2.0, by the old yes-or-no rule, agreement was 53 percent on 1,348 judged answers, Cohen\'s kappa 0.07.',
     cost: 'Neither measure of a right answer can be read alone, least of all for answers that said "unknown": a check may be too strict, or the judge too lenient.',
@@ -158,7 +158,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'bank-size',
     item: 'A small question bank',
     plain:
-      'There are 22 questions, each asked of each world in up to three forms: 300 in all over the six worlds of v0.3.0, and 150 over the three worlds of v0.2.0.',
+      'There are 22 questions. Each is asked of each world in up to three forms: 300 in all over the six worlds of v0.3.0, and 150 over the three worlds of v0.2.0.',
     reason:
       'Each question is written by hand with its checks and claims, and is grounded in each world from the data or the truth ledger.',
     cost: 'A small difference between approaches cannot be detected with this many questions.',
@@ -168,7 +168,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'question-groups',
     item: 'Few question groups per comparison',
     plain:
-      'In v0.3.0 each tested comparison rested on 24 groups of alike questions (48 for planted stories), so a difference had to be large to be detected: a mean difference of 18.9 evidence points (C against B, ontology-dependent questions) did not pass.',
+      'In v0.3.0 each tested comparison rested on 24 groups of alike questions, and 48 for planted stories. So a difference had to be large to be detected. An average difference of 18.9 points in evidence recall, C against B on questions that need the ontology, did not pass.',
     reason:
       'Questions made from one question in one world share a template, so each group counts once (official run of 2026-10-29: 24 groups for H1, H2 and H3, 48 for H5; v0.2.0 had 12 groups, and 24 for H5). The six worlds of v0.3 doubled the groups without new questions written after seeing results.',
     cost: 'A modest effect of the graph or the ontology would read as "no detectable difference".',
@@ -178,7 +178,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'interval-and-test',
     item: 'An interval and the test can disagree',
     plain:
-      'In v0.3.0 five tested comparisons have an interval that leaves out zero but do not pass the test; under the rule set before the run they are not findings.',
+      'In v0.3.0 five tested comparisons have an interval, or margin of error, that leaves out zero, but do not pass the test. Under the rule set before the run, they are not findings.',
     reason:
       'The interval looks at one comparison alone, through its mean; the test ranks group differences (Wilcoxon on group means) and allows for 14 comparisons made at once (Holm), so it asks for more. For one of the five, planted-story answers, the test fails even before that allowance (unadjusted p 0.14). The rule written before the run is the test (official run of 2026-10-29: H2 C against B on evidence and on answers, H1 B against A on answers, H5 B against A on evidence and on answers).',
     cost: 'Some of the five may be real differences this many questions cannot confirm, and the one finding may still be chance: the test keeps the chance of any false finding among the 14 at or below 5 percent, not at zero.',
@@ -198,7 +198,7 @@ export const REGISTER: readonly RegisterRow[] = [
     id: 'open-scoring-rules',
     item: 'Three questions with open scoring rules',
     plain:
-      'The owner has not yet settled how three questions are scored: two expect extra linked players, and one gives half marks for also quoting an old price.',
+      'The owner has not yet settled how three questions are scored. Two expect extra linked players. One gives half marks for also quoting an old price.',
     reason:
       'L16 and L17 expect every player linked to the shared devices or payment instruments, baseline players included; L22 scores 0.5 when an answer also quotes the stale price.',
     cost: 'Answer scores on those three questions could move if the owner rules otherwise.',
