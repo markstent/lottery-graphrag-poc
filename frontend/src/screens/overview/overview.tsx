@@ -101,13 +101,18 @@ const PAIRS: Record<Finding['comparison'], [PipelineId, PipelineId]> = {
   C_vs_B: ['C', 'B'],
 }
 
-/** "Graph found about 22 more of every 100 needed facts than Text search." */
-function difference({ comparison, metric, mean }: Finding) {
+/**
+ * "Graph found about 22 more of every 100 needed facts than Text search."
+ * `again` is for a difference that follows another of the same kind in one
+ * sentence, which has already said what is counted: "Graph about 38 more than Text search."
+ */
+function difference({ comparison, metric, mean }: Finding, again = false) {
   const [first, second] = PAIRS[comparison]
   const [higher, lower] = mean < 0 ? [second, first] : [first, second]
   const points = Math.round(Math.abs(mean) * 100)
-  const what =
-    metric === EVIDENCE_METRIC
+  const what = again
+    ? `about ${points} ${metric === EVIDENCE_METRIC ? 'more' : 'points higher'} than`
+    : metric === EVIDENCE_METRIC
       ? `found about ${points} more of every 100 needed facts than`
       : `scored about ${points} points higher on ${metric === 'answer' ? 'answers' : "the two judges' mark"} than`
   return {
@@ -365,7 +370,12 @@ function LatestRun() {
                   <strong>A pointer, not a result.</strong>{' '}
                   {`On ${KIND_WORDS[stratum] ?? stratum}, ${hints
                     .filter((f) => f.stratum === stratum)
-                    .map((f) => difference(f).text.replace(/\.$/, ''))
+                    .map((f, i, all) =>
+                      difference(
+                        f,
+                        i > 0 && all[i - 1]!.metric === f.metric,
+                      ).text.replace(/\.$/, ''),
+                    )
                     .join(', and ')}.`}{' '}
                   {KIND_EXAMPLES[stratum]} We did not test this group, so treat
                   it as a lead to follow up.
@@ -484,7 +494,7 @@ export function Overview() {
         <p className="mb-3 max-w-prose text-base text-text-primary">
           Text search finds matching passages. Graph also follows links between
           records. Graph + Ontology adds a shared list of business terms across
-          markets.
+          countries.
         </p>
         <FlowDiagram />
       </Panel>

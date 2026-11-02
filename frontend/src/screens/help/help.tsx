@@ -1,11 +1,14 @@
 /**
- * Help: written for a business reader at two reading levels, in the order of
- * the twelve chapters of the Help v2 design. It is the one screen that shows
- * answer keys and hidden truths. The route's `section` scrolls to a chapter
- * (the ids of the first Help still work), `story` marks a story and filters
- * the questions, `stratum` filters the questions and `level` picks the
- * reading level. Only the two chapters that need the question bank wait for
- * it; no chapter waits for the settings.
+ * Help: written for a business reader at two reading levels. It has two
+ * pages (D-110): the guide, one chapter at a time with the chapter list
+ * beside it and links to the chapter before and after, and the questions and
+ * answers, every benchmark question with its answer key. It is the one screen
+ * that shows answer keys and hidden truths. The route's `section` picks the
+ * chapter or the questions page (the ids of the first Help still work, and
+ * none opens the first chapter), `story` marks a story and filters the
+ * questions, `stratum` filters the questions and `level` picks the reading
+ * level. Only the pages that need the question bank wait for it; none waits
+ * for the settings.
  */
 
 import { useEffect, useLayoutEffect, useRef } from 'react'
@@ -16,7 +19,13 @@ import { loadLatest } from '../../app/latest-run'
 import { Screen } from '../screen'
 import { loadBank, scoreState } from './bank'
 import { Chapter } from './chapter'
-import { CHAPTERS, SECTION_ALIASES } from './chapters'
+import {
+  CHAPTERS,
+  PAGES,
+  QUESTIONS_PAGE,
+  SECTION_ALIASES,
+  type ChapterId,
+} from './chapters'
 import { CHAPTER_COPY } from './copy'
 import { HelpDataContext } from './help-data'
 import { helpHref, useLevel, type Level } from './level'
@@ -72,8 +81,11 @@ export function Help() {
   const recordedRun = useLoad(loadRecorded, 'help-recorded')
   const requested = params.get('section')
   const section = requested ? (SECTION_ALIASES[requested] ?? requested) : null
+  // The page shown: the questions and answers, the chapter the route names, or the first chapter.
+  const page: ChapterId =
+    PAGES.find((candidate) => candidate.id === section)?.id ?? CHAPTERS[0].id
   const story = params.get('story')
-  const target = section === 'stories' && story ? `story-${story}` : section
+  const target = page === 'stories' && story ? `story-${story}` : section
   const ready = bank.status !== 'loading' && latest.status !== 'loading'
 
   // Scroll once per target, after the bank and the newest run have drawn the stories and rows.
@@ -92,7 +104,7 @@ export function Help() {
   // top (its scroll margin, below the sticky bar), not the end of the one before it.
   const kept = useRef<{ id: string; top: number } | null>(null)
   const choose = (next: Level) => {
-    const inView = CHAPTERS.map(({ id }) => document.getElementById(id)).find(
+    const inView = PAGES.map(({ id }) => document.getElementById(id)).find(
       (element) =>
         element &&
         element.getBoundingClientRect().bottom >
@@ -114,21 +126,38 @@ export function Help() {
       })
   }, [level])
 
+  const href = (id: ChapterId) => helpHref(params, { section: id }, level)
+  const onQuestions = page === QUESTIONS_PAGE.id
+  const index = CHAPTERS.findIndex((chapter) => chapter.id === page)
+  const before = index > 0 ? CHAPTERS[index - 1] : null
+  const after =
+    index >= 0 && index < CHAPTERS.length - 1 ? CHAPTERS[index + 1] : null
+  const chapter = (
+    <Chapter
+      key={page}
+      id={page}
+      copy={CHAPTER_COPY[page]}
+      load={NEEDS_BANK.includes(page) ? bank : undefined}
+    />
+  )
+
   return (
     <Screen destination="help">
-      <div className="z-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-hairline bg-background py-2 md:sticky md:top-0">
-        <nav
-          aria-label="Help sections"
-          className="flex flex-wrap gap-x-4 gap-y-1"
-        >
-          {CHAPTERS.map(({ id, nav }) => (
+      <div className="z-10 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-hairline bg-background md:sticky md:top-0">
+        <nav aria-label="Help pages" className="flex gap-1">
+          {(
+            [
+              ['Guide', onQuestions ? CHAPTERS[0].id : page, !onQuestions],
+              [QUESTIONS_PAGE.nav, QUESTIONS_PAGE.id, onQuestions],
+            ] as const
+          ).map(([label, id, current]) => (
             <a
-              key={id}
-              href={helpHref(params, { section: id }, level)}
-              aria-current={section === id ? 'location' : undefined}
-              className="text-sm text-text-secondary underline aria-[current=location]:font-semibold aria-[current=location]:text-text-primary"
+              key={label}
+              href={href(id)}
+              aria-current={current ? 'page' : undefined}
+              className="-mb-px border-b border-transparent px-3 py-2 text-sm text-text-secondary hover:text-text-primary aria-[current=page]:border-text-primary aria-[current=page]:font-semibold aria-[current=page]:text-text-primary"
             >
-              {nav}
+              {label}
             </a>
           ))}
         </nav>
@@ -139,19 +168,61 @@ export function Help() {
           level,
           bank,
           scores: scoreState(latest, bank),
-          story: section === 'stories' ? story : null,
+          story: page === 'stories' ? story : null,
           settings,
           recorded: recordedRun,
         }}
       >
-        {CHAPTERS.map(({ id }) => (
-          <Chapter
-            key={id}
-            id={id}
-            copy={CHAPTER_COPY[id]}
-            load={NEEDS_BANK.includes(id) ? bank : undefined}
-          />
-        ))}
+        {onQuestions ? (
+          chapter
+        ) : (
+          <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)]">
+            <nav
+              aria-label="Help chapters"
+              className="lg:sticky lg:top-16 lg:self-start"
+            >
+              <ol className="space-y-1">
+                {CHAPTERS.map(({ id, title }) => (
+                  <li key={id}>
+                    <a
+                      href={href(id)}
+                      aria-current={page === id ? 'page' : undefined}
+                      className="block rounded-chip px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-raised hover:text-text-primary aria-[current=page]:bg-surface-raised aria-[current=page]:font-semibold aria-[current=page]:text-text-primary"
+                    >
+                      {title}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+            <div className="min-w-0 space-y-4">
+              {chapter}
+              <nav
+                aria-label="Chapter before and after"
+                className="flex flex-wrap justify-between gap-3 text-sm"
+              >
+                {before ? (
+                  <a
+                    href={href(before.id)}
+                    className="text-text-primary underline"
+                  >
+                    {`Previous: ${before.title}`}
+                  </a>
+                ) : (
+                  <span />
+                )}
+                {after && (
+                  <a
+                    href={href(after.id)}
+                    className="text-text-primary underline"
+                  >
+                    {`Next: ${after.title}`}
+                  </a>
+                )}
+              </nav>
+            </div>
+          </div>
+        )}
       </HelpDataContext.Provider>
     </Screen>
   )

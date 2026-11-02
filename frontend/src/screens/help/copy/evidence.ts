@@ -13,7 +13,8 @@ export const evidence: ChapterCopy = {
     "B and C also have a second list: the records the graph reached, in the graph's own order. The starting points come first. Next come the records of a kind the question asks about, such as incidents when it asks about incidents. Then come the rest. Within each group, a record comes earlier when it is closer to the starting point, more strongly linked and more like the question. A record's place in this order is its graph rank. The re-ordering model does not score graph records.",
     'The two lists take turns: one passage or record text, then one graph record, then a passage again, until the budget is full. A record already in the evidence is not taken again. When one list runs out, the other carries on alone.',
     { kind: 'diagram', name: 'evidence' },
-    'Why one budget. A model can read only so much at once, and more text is slower and can bury the fact that matters. The budget is the same for all three approaches. So a difference in their answers comes from what each found, not from how much each could show. Taking turns one for one gives the graph room, with no split between the two lists that anyone had to tune.',
+    { kind: 'heading', text: 'Why one budget' },
+    'A model can read only so much at once, and more text is slower and can bury the fact that matters. The budget is the same for all three approaches. So a difference in their answers comes from what each found, not from how much each could show. Taking turns one for one gives the graph room, with no split between the two lists that anyone had to tune.',
     'A method is the set of rules for choosing the evidence and scoring the answers. The official run used the rules of this chapter (chapter 1).',
   ],
   technical: [
@@ -32,7 +33,8 @@ export const evidence: ChapterCopy = {
         'prompt_extras.ontology_target_terms',
       ],
     },
-    'The document channel. The re-ranker is one cross-encoder, BAAI/bge-reranker-v2-m3, run in process by fastembed (D-021; RERANK_MODEL, default in backend/app/config/__init__.py; every run records it as reranker). It reads the question as asked beside each candidate and returns a relevance score; ties break on id. It orders the top {top_k} hits of the hybrid search (chapter 4), in A exactly as in B and C. It never sees a graph node (D-083).',
+    { kind: 'heading', text: 'The document channel' },
+    'The re-ranker is one cross-encoder, BAAI/bge-reranker-v2-m3, run in process by fastembed (D-021; RERANK_MODEL, default in backend/app/config/__init__.py; every run records it as reranker). It reads the question as asked beside each candidate and returns a relevance score; ties break on id. It orders the top {top_k} hits of the hybrid search (chapter 4), in A exactly as in B and C. It never sees a graph node (D-083).',
     "The graph channel (rank_and_scope and select_and_attach in backend/app/retrieval/graph/stages.py; graph_relevance_order in ranking.py, D-083). Every node the walk reached, less excluded labels ({excluded_labels}) and nodes outside the market scope, is ordered in three tiers: seeds (every node at hops 0, the D-027 fallback seed included), then nodes that hold a target type, then all other nodes. Within a tier the order is the composite score of chapter 4, weights {ranking_weights}, then node id. A node's graph rank is its 1-based position in that order; an excluded or out-of-scope node has no tier and no rank.",
     [
       'target types are the graph labels the question names, matched with no model: the schema\'s own vocabulary (each label split into words, such as "platform version", its last word alone when no other label ends in it, and the table names), 50 phrases in all; in C also every ontology concept label and synonym in any language, which names the labels of the concept\'s bindings and their descendants (411 phrases in the ontology of 2026-10-27);',

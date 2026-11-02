@@ -83,13 +83,13 @@ Overview is written for a newcomer and reads at first glance (D-098); the full f
    Then a short list, read from the summary's `comparisons`, in plain sentences:
    each tested comparison whose Holm-adjusted p is below 0.05, as "{Approach} did better on {kind of question}." with one example question of that kind, the difference as "about N more of every 100 needed facts" (or "about N points higher on answers"), and "This passed our statistical test, so it is unlikely to be luck.";
    one line (D-107), "Nothing else is proven yet." (or "No difference is proven yet."), then "We made N other checks, each comparing two approaches on one kind of question and one score."; the tested comparisons whose 95 percent interval leaves out zero but whose test does not pass as "In N, one approach came out ahead, but not by enough to rule out luck." and one sentence naming which approach did better on which kind, "{Approach} did better on {kind}, {Approach} on answers to {kind}, and ...", with "on answers to" or "on evidence for" when it led on one of the two scores only; and the rest as "In the other N the approaches were too close to call." (or "In all of them the approaches were too close to call.");
-   and, once per kind, the untested sub-group cells of a tested pair, on evidence recall, over at least six groups, whose interval leaves out zero, as "A pointer, not a result." with their differences joined in one sentence, an example, and "We did not test this group, so treat it as a lead to follow up."
-   A last line says every figure and margin of error is on Results, and links there, and another links to "what the results teach" (Help, chapter 13).
+   and, once per kind, the untested sub-group cells of a tested pair, on evidence recall, over at least six groups, whose interval leaves out zero, as "A pointer, not a result." with their differences joined in one sentence (the second and later of the same score as "{Approach} about N more than {Approach}", D-110), an example, and "We did not test this group, so treat it as a lead to follow up."
+   A last line says every figure and margin of error is on Results, and links there, and another links to "what the results teach" (Help, chapter 12).
    When the run's two judges' mark is worked out (D-105), the sentence says each approach gets three scores and the key gains a third line, "Judges' mark: how two AI judges rated the answer, averaged."; each tile gains "Judges' mark N%" under its answer score; the chart switch gains a third button, "Judges' mark", with the per-kind means of the mark; and the list goes on, after the run's own count line, with each tested judges' comparison that passes, in the same sentence as above with the difference as "about N points higher on the two judges' mark", then a separate count line for the judges' tests in the same form, "Judges' mark: Nothing else is proven yet." (or "Judges' mark: No difference is proven yet."), its checks "each comparing two approaches on one kind of question".
    Without it, the panel says nothing of the judges' mark.
    The panel names no method and says nothing of how the method came about (D-104).
    The run's headline sentences are not shown here; Results shows them verbatim.
-2. "How the three approaches differ": one plain sentence, "Text search finds matching passages. Graph also follows links between records. Graph + Ontology adds a shared list of business terms across markets.", then a flow diagram of the method, the code as it runs.
+2. "How the three approaches differ": one plain sentence, "Text search finds matching passages. Graph also follows links between records. Graph + Ontology adds a shared list of business terms across countries.", then a flow diagram of the method, the code as it runs.
    The question fans out to one shared lane, "Search passages" then "Re-order passages": only passages are re-ranked.
    B adds "Find starting points", "Follow relationships" and "Rank by the graph".
    C adds "Find starting points", "Add ontology terms", "Follow relationships", "Add linked records" and "Rank by the graph".
@@ -307,13 +307,18 @@ Presentation mode ignores the remembered level, and an explicit `?level=` always
 A link with `?section=`, `?story=` or `?stratum=` opens at Plain, and a bare `#/help` uses the remembered level.
 Switching level keeps the chapter in view.
 
-Thirteen chapters, each a link in the Help navigation: 1 Why this exists, 2 The made-up company, 3 The planted stories, 4 The three approaches, 5 How evidence is chosen, 6 The answer and the judge, 7 How scoring works, 8 Reading the results, 9 Assumptions and limits, 10 The questions, 11 Glossary, 12 Running it, 13 What the results teach (D-102, `?section=lessons`; added at the end so chapters 1 to 12 keep their numbers, and linked from Overview).
-`?section=` scrolls to a chapter by its id.
-The eight ids of the first Help stay as aliases: `what` to chapter 1, `data` to 2, `stories` to 3, `approaches` to 4, `scoring` to 7, `questions` to 10, `glossary` to 11 and `running` to 12.
+Help has two pages (D-110), chosen by a tab row at the top, "Guide" and "Questions and answers", with the reading-level control on the same row.
+The guide shows one chapter at a time.
+A numbered chapter list sits on the left (sticky on a wide screen, with the current chapter marked), the chapter on the right, and links to the previous and next chapter under it.
+Twelve chapters: 1 Why this exists, 2 The made-up company, 3 The planted stories, 4 The three approaches, 5 How evidence is chosen, 6 The answer and the judge, 7 How scoring works, 8 Reading the results, 9 Assumptions and limits, 10 Glossary, 11 Running it, 12 What the results teach (`?section=lessons`, linked from Overview).
+Questions and answers (`?section=questions`) is the question bank with its answer keys, its filters and its scores, full width, with no chapter list.
+`?section=` picks the chapter or the questions page by its id, and no section opens chapter 1.
+The eight ids of the first Help stay as aliases: `what` to chapter 1, `data` to 2, `stories` to 3, `approaches` to 4, `scoring` to 7, `questions` to Questions and answers, `glossary` to 10 and `running` to 11.
+A paragraph that opened with a short label, such as "Why they might help.", carries it as a subheading instead, so a chapter can be scanned.
 `?story=` marks one story and filters the questions.
 Chapters 4 and 5 draw a diagram of each approach and of how evidence is chosen, and chapter 9 holds the assumptions and limits register, with its reasons, costs if wrong and sources at Technical.
-The judges' mark (D-105) is explained in chapter 6 at both levels (the second judge, how the two marks are combined, what "judges disagree" means, that it is tested as its own group, and its limits), in chapter 7 (compared the same way, its own eight tests), in chapter 8 (the Judges' verdict on Results and the lines on Overview), in the glossary ("Judges' mark", "Judges disagree") and in chapter 12 (`make judges-combined`).
-Chapter 13 says where its figures are and that the chapter's figures do not use it; it gives no figure of its own until the second judge's pass over the official run is finished and the paragraph is rewritten with figures typed from `combined.json`.
+The judges' mark (D-105) is explained in chapter 6 at both levels (the second judge, how the two marks are combined, what "judges disagree" means, that it is tested as its own group, and its limits), in chapter 7 (compared the same way, its own eight tests), in chapter 8 (the Judges' verdict on Results and the lines on Overview), in the glossary ("Judges' mark", "Judges disagree") and in chapter 11 (`make judges-combined`).
+Chapter 12 says where its figures are and that the chapter's figures do not use it; it gives no figure of its own until the second judge's pass over the official run is finished and the paragraph is rewritten with figures typed from `combined.json`.
 
 Settings panel: a chapter's settings table lists each setting with its value now and its value in the newest official run.
 Now comes from `GET /api/v1/settings`, which returns the same fields a run records, so the two are the same schema.
@@ -331,7 +336,7 @@ It names no dataset code or internal id outside data shown as data, and explains
 A story card at Plain tells its story in plain words: what was planted, in which countries, and what a correct answer must find.
 At Technical the card adds its scenario id and the hidden truth verbatim, with its record codes.
 The worked example shows its question and answer key at both levels, with market codes written as countries at Plain.
-The questions table at Plain names no question id, writes market codes as countries, and chapter 10 explains once what the reference codes in the questions are; Technical shows the bank as it is.
+The questions table at Plain names no question id, writes market codes as countries, and the questions page explains once what the reference codes in the questions are; Technical shows the bank as it is.
 It is also the one screen that names vendors, models and commands at Technical, and every command in it is a Makefile target, which a test checks.
 Scores appear only when the newest run is a whole-bank official run that scored at least one question.
 A score cell gives the answer and the evidence recall.

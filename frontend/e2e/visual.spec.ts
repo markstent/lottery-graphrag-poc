@@ -473,6 +473,15 @@ test.describe('Results', () => {
   })
 })
 
+/** A Help page has drawn: its pages nav and its chapter, with nothing still loading. */
+async function expectHelpPage(page: Page) {
+  await expect(
+    page.getByRole('navigation', { name: 'Help pages' }),
+  ).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2 }).first()).toBeVisible()
+  await expect(page.locator('#main [aria-busy="true"]')).toHaveCount(0)
+}
+
 test.describe('Help', () => {
   const SECTIONS = [
     ['help-top', '#/help', 'official'],
@@ -494,9 +503,7 @@ test.describe('Help', () => {
   for (const [name, hash, latest] of SECTIONS)
     test(name, async ({ page }) => {
       await openScreen(page, hash, { latest })
-      await expect(
-        page.getByRole('table', { name: 'Benchmark questions' }),
-      ).toBeVisible()
+      await expectHelpPage(page)
       await screenShot(page, name, 'keep')
     })
 
@@ -505,9 +512,7 @@ test.describe('Help', () => {
     await openScreen(page, '#/help?section=evidence&level=technical', {
       latest: 'official',
     })
-    await expect(
-      page.getByRole('table', { name: 'Benchmark questions' }),
-    ).toBeVisible()
+    await expectHelpPage(page)
     await page
       .locator('#evidence')
       .getByRole('heading', { name: 'Technical detail' })
@@ -527,7 +532,7 @@ test.describe('Help', () => {
       latest: 'official',
     })
     const table = page
-      .getByRole('region', { name: '12. Running it' })
+      .getByRole('region', { name: '11. Running it' })
       .getByRole('table', {
         name: 'Settings now and in the newest official run',
       })
@@ -544,7 +549,7 @@ test.describe('Help', () => {
 test.describe('Help, bank not loaded', () => {
   for (const state of ['loading', 'error'] as const)
     test(`help-${state}`, async ({ page }) => {
-      await openScreen(page, '#/help')
+      await openScreen(page, '#/help?section=stories')
       // Registered after the mock, so it answers first.
       await page.route('**/api/v1/benchmarks/questions*', (route) =>
         state === 'loading'
@@ -563,7 +568,7 @@ test.describe('Help, bank not loaded', () => {
       )
       await page.reload()
       if (state === 'loading')
-        await expect(page.getByRole('status')).toHaveCount(2)
+        await expect(page.getByRole('status')).toHaveCount(1)
       else
         await expect(page.getByRole('alert').first()).toContainText(
           'The question bank is unavailable.',
@@ -949,11 +954,7 @@ test.describe('presentation mode', () => {
     test(`${name} in presentation mode`, async ({ page }) => {
       await openScreen(page, `?present=1${hash}`)
       await expect(page.getByText(text).first()).toBeVisible()
-      // Help draws its question table once the bank has loaded.
-      if (hash === '#/help')
-        await expect(
-          page.getByRole('table', { name: 'Benchmark questions' }),
-        ).toBeVisible()
+      if (hash === '#/help') await expectHelpPage(page)
       await expect(
         page.getByRole('navigation', { name: 'Primary' }),
       ).toHaveCount(0)

@@ -366,7 +366,7 @@ describe('Overview', () => {
         (_, el) =>
           el?.tagName === 'LI' &&
           el.textContent ===
-            'A pointer, not a result. On questions that use a country\'s own name for something, Text search found about 17 more of every 100 needed facts than Graph, and Graph + Ontology found about 38 more of every 100 needed facts than Graph. For example, Austria calls its national draw "Zahlenziehung". We did not test this group, so treat it as a lead to follow up.',
+            'A pointer, not a result. On questions that use a country\'s own name for something, Text search found about 17 more of every 100 needed facts than Graph, and Graph + Ontology about 38 more than Graph. For example, Austria calls its national draw "Zahlenziehung". We did not test this group, so treat it as a lead to follow up.',
       ),
     ).toBeVisible()
   })
@@ -429,7 +429,7 @@ describe('Overview', () => {
     expect(
       within(panel).getByRole('link', { name: 'Results' }),
     ).toHaveAttribute('href', '#/results')
-    // Help, chapter 13, explains where each approach did best and why.
+    // Help, chapter 12, explains where each approach did best and why.
     expect(
       within(panel).getByRole('link', { name: 'what the results teach' }),
     ).toHaveAttribute('href', '#/help?section=lessons')

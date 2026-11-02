@@ -10,7 +10,7 @@
 import type { Load } from '../../app/use-load'
 import { Panel } from '../../components/panel'
 import { Blocks } from './blocks'
-import { CHAPTERS, type ChapterCopy, type ChapterId } from './chapters'
+import { PAGES, type ChapterCopy, type ChapterId } from './chapters'
 import { useHelpData } from './help-data'
 
 const BODY =
@@ -26,7 +26,7 @@ export function Chapter({
   load?: Load<unknown>
 }) {
   const { level } = useHelpData()
-  const { title } = CHAPTERS.find((chapter) => chapter.id === id)!
+  const { title } = PAGES.find((chapter) => chapter.id === id)!
   return (
     <div id={id} className="scroll-mt-24">
       <Panel

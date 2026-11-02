@@ -1,8 +1,9 @@
 /**
- * The chapters of Help: the twelve of the spec (docs/superpowers/specs/2026-10-26-help-v2-design.md),
- * in its order, then chapter 13, what the official run v0.3.0 teaches, added at the end so the
- * numbers of the first twelve hold. Also the old section ids that still link to them, and the
- * shape of a chapter's copy.
+ * The chapters of Help's guide, in the order of the spec
+ * (docs/superpowers/specs/2026-10-26-help-v2-design.md) with what the official
+ * run teaches at the end, and the questions and answers, which are a page of
+ * their own beside the guide (D-110). Also the old section ids that still
+ * link to them, and the shape of a chapter's copy.
  */
 
 export const CHAPTERS = [
@@ -43,17 +44,27 @@ export const CHAPTERS = [
     nav: 'Assumptions and limits',
     title: '9. Assumptions and limits',
   },
-  { id: 'questions', nav: 'The questions', title: '10. The questions' },
-  { id: 'glossary', nav: 'Glossary', title: '11. Glossary' },
-  { id: 'running', nav: 'Running it', title: '12. Running it' },
+  { id: 'glossary', nav: 'Glossary', title: '10. Glossary' },
+  { id: 'running', nav: 'Running it', title: '11. Running it' },
   {
     id: 'lessons',
     nav: 'What the results teach',
-    title: '13. What the results teach',
+    title: '12. What the results teach',
   },
 ] as const
 
-export type ChapterId = (typeof CHAPTERS)[number]['id']
+/** The questions and answers: every benchmark question with its answer key, a page beside the guide. */
+export const QUESTIONS_PAGE = {
+  id: 'questions',
+  nav: 'Questions and answers',
+  title: 'Questions and answers',
+} as const
+
+export type GuideChapterId = (typeof CHAPTERS)[number]['id']
+export type ChapterId = GuideChapterId | typeof QUESTIONS_PAGE.id
+
+/** Every page of Help, the guide's chapters and the questions and answers. */
+export const PAGES = [...CHAPTERS, QUESTIONS_PAGE] as const
 
 /** The eight ids of the first Help, which other screens and shared links still use. */
 export const SECTION_ALIASES: Record<string, ChapterId> = {

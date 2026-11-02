@@ -1,4 +1,4 @@
-/** Chapter 11, the glossary: every term used in Help (src/copy/glossary.ts). */
+/** Chapter 10, the glossary: every term used in Help (src/copy/glossary.ts). */
 
 import type { ChapterCopy } from '../chapters'
 

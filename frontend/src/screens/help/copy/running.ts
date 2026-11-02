@@ -1,5 +1,5 @@
 /**
- * Chapter 12, running it: a note at Plain, and at Technical the commands,
+ * Chapter 11, running it: a note at Plain, and at Technical the commands,
  * the model configuration, the settings, and how to reproduce and resume an
  * official run (docs/operations.md, docs/evaluation.md, the Makefile).
  */

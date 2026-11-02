@@ -124,7 +124,7 @@ function show(level: HelpData['level'], blocks: readonly Block[]) {
   )
 }
 
-describe('chapter 13, what the results teach', () => {
+describe('chapter 12, what the results teach', () => {
   it('holds the means summary.json publishes for the official run v0.3.0', () => {
     for (const kind of KINDS) {
       const figures = KIND_FIGURES[kind]
@@ -312,12 +312,14 @@ describe('chapter 13, what the results teach', () => {
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
     ).toEqual([
+      'A caution about the answer score',
       'Where text search did best',
       'Where the graph did best',
       'Where the graph with the ontology did best',
       'Where none did well',
       'What to take home',
       'When you would want text, a graph, an ontology, or all three',
+      'Limits',
     ])
     expect(
       screen.queryByRole('table', { name: 'Means for each question' }),

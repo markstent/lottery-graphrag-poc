@@ -21,10 +21,28 @@ async function shot(page: Page, name: string) {
 async function open(page: Page, hash: string, latest: LatestRun = 'official') {
   await mockApi(page, 'published', latest)
   await page.goto(`/${hash}`)
+  // The page the address names has drawn: its pages nav and its chapter, with nothing still loading.
   await expect(
-    page.getByRole('table', { name: 'Benchmark questions' }),
+    page.getByRole('navigation', { name: 'Help pages' }),
   ).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2 }).first()).toBeVisible()
+  await expect(page.locator('#main [aria-busy="true"]')).toHaveCount(0)
 }
+
+const CHAPTER_IDS = [
+  'why',
+  'company',
+  'stories',
+  'approaches',
+  'evidence',
+  'answer',
+  'scoring',
+  'results',
+  'limits',
+  'glossary',
+  'running',
+  'lessons',
+] as const
 
 const SECTIONS = [
   ['what', '1. Why this exists'],
@@ -32,10 +50,10 @@ const SECTIONS = [
   ['stories', '3. The planted stories'],
   ['approaches', '4. The three approaches'],
   ['scoring', '7. How scoring works'],
-  ['questions', '10. The questions'],
-  ['glossary', '11. Glossary'],
-  ['running', '12. Running it'],
-  ['lessons', '13. What the results teach'],
+  ['questions', 'Questions and answers'],
+  ['glossary', '10. Glossary'],
+  ['running', '11. Running it'],
+  ['lessons', '12. What the results teach'],
 ] as const
 
 for (const [id, title] of SECTIONS) {
@@ -47,7 +65,7 @@ for (const [id, title] of SECTIONS) {
   })
 }
 
-test('Overview links to chapter 13, which shows the kinds of question and, at Technical, every question', async ({
+test('Overview links to chapter 12, which shows the kinds of question and, at Technical, every question', async ({
   page,
 }) => {
   await mockApi(page, 'published', 'official')
@@ -58,7 +76,7 @@ test('Overview links to chapter 13, which shows the kinds of question and, at Te
   await expect(
     chapter.getByRole('heading', {
       level: 2,
-      name: '13. What the results teach',
+      name: '12. What the results teach',
     }),
   ).toBeInViewport()
   const kinds = chapter.getByRole('table', {
@@ -246,8 +264,13 @@ for (const width of [960, 768])
     page,
   }) => {
     await page.setViewportSize({ width, height: 1080 })
-    await open(page, '#/help?section=approaches')
-    for (const name of [/^A · /, /^B · /, /^C · /, /^How evidence is chosen/]) {
+    for (const [section, name] of [
+      ['approaches', /^A · /],
+      ['approaches', /^B · /],
+      ['approaches', /^C · /],
+      ['evidence', /^How evidence is chosen/],
+    ] as const) {
+      await open(page, `#/help?section=${section}`)
       const picture = page.getByRole('img', { name })
       await expect(picture).toBeVisible()
       const fit = await picture.evaluate((element) => {
@@ -271,9 +294,11 @@ for (const width of [960, 768])
 
 test('Help names vendors at the Technical level only', async ({ page }) => {
   const vendors = /Neo4j|Qdrant|Ollama/
-  await open(page, '#/help')
-  expect(await page.locator('#main').innerText()).not.toMatch(vendors)
-  await open(page, '#/help?level=technical')
+  for (const id of [...CHAPTER_IDS, 'questions']) {
+    await open(page, `#/help?section=${id}`)
+    expect(await page.locator('#main').innerText(), id).not.toMatch(vendors)
+  }
+  await open(page, '#/help?section=running&level=technical')
   expect(await page.locator('#running').innerText()).toMatch(vendors)
 })
 
@@ -309,4 +334,42 @@ test.describe('at phone width', () => {
           .evaluate((nav) => nav.getBoundingClientRect().width),
       ).toBeLessThan(100)
     })
+})
+
+test('Help is two pages, the guide one chapter at a time and the questions and answers', async ({
+  page,
+}) => {
+  await open(page, '#/help')
+  const pages = page.getByRole('navigation', { name: 'Help pages' })
+  await expect(pages.getByRole('link', { name: 'Guide' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  const chapters = page.getByRole('navigation', { name: 'Help chapters' })
+  await expect(chapters.getByRole('link')).toHaveCount(12)
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText([
+    '1. Why this exists',
+  ])
+  const around = page.getByRole('navigation', {
+    name: 'Chapter before and after',
+  })
+  await expect(around.getByRole('link')).toHaveText([
+    'Next: 2. The made-up company',
+  ])
+  await around.getByRole('link', { name: /^Next:/ }).click()
+  await expect(page).toHaveURL(/#\/help\?section=company$/)
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText([
+    '2. The made-up company',
+  ])
+  await expect(
+    chapters.getByRole('link', { name: '2. The made-up company' }),
+  ).toHaveAttribute('aria-current', 'page')
+
+  await pages.getByRole('link', { name: 'Questions and answers' }).click()
+  await expect(
+    page.getByRole('table', { name: 'Benchmark questions' }),
+  ).toBeVisible()
+  await expect(chapters).toHaveCount(0)
+  await pages.getByRole('link', { name: 'Guide' }).click()
+  await expect(page).toHaveURL(/#\/help\?section=why$/)
 })

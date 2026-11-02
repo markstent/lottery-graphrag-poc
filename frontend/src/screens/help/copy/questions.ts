@@ -1,5 +1,5 @@
 /**
- * Chapter 10, the questions: the question bank with its answer keys and the
+ * The questions and answers, a page beside the guide (D-110): the question bank with its answer keys and the
  * newest official run's scores (questions.tsx), and how the bank is built.
  */
 

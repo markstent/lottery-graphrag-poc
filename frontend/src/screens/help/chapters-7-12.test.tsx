@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { GLOSSARY_TERMS } from '../../copy/glossary'
 import { Blocks } from './blocks'
-import { CHAPTERS, type Block, type ChapterId } from './chapters'
+import { PAGES, type Block, type ChapterId } from './chapters'
 import { CHAPTER_COPY } from './copy'
 import { REGISTER } from './copy/limits'
 import { HelpDataContext, type HelpData } from './help-data'
@@ -97,7 +97,7 @@ function chapterText(id: ChapterId): string {
   return own.join('\n')
 }
 
-const allHelpText = () => CHAPTERS.map(({ id }) => chapterText(id)).join('\n')
+const allHelpText = () => PAGES.map(({ id }) => chapterText(id)).join('\n')
 
 describe('chapters 7 to 12', () => {
   it('chapters 7, 8, 9, 10 and 12 have plain and technical prose, and 11 a plain framing', () => {
@@ -252,7 +252,7 @@ describe('chapters 7 to 12', () => {
     const glossary = new Set(
       GLOSSARY_TERMS.map(({ term }) => term.toLowerCase()),
     )
-    for (const { id } of CHAPTERS) {
+    for (const { id } of PAGES) {
       const terms = CHAPTER_COPY[id].terms ?? []
       if (id !== 'glossary') expect(terms.length, id).toBeGreaterThan(0)
       const text = chapterText(id).toLowerCase()
@@ -265,7 +265,7 @@ describe('chapters 7 to 12', () => {
 
   it('every glossary term is used by some chapter', () => {
     const used = new Set(
-      CHAPTERS.flatMap(({ id }) =>
+      PAGES.flatMap(({ id }) =>
         (CHAPTER_COPY[id].terms ?? []).map((term) => term.toLowerCase()),
       ),
     )

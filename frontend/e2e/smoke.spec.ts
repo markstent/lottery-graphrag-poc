@@ -163,7 +163,8 @@ test.describe('presentation mode on every destination', () => {
 test.describe('the approach diagrams in presentation mode', () => {
   for (const [hash, name] of [
     ['#/overview', 'How the three approaches differ'],
-    ['#/help?section=approaches', /^C · Graph \+ Ontology\./],
+    // A, not C: beside Help's chapter list C is stacked at normal size, and a row only when presenting.
+    ['#/help?section=approaches', /^A · Text search\./],
   ] as const) {
     test(`grow with the type scale on ${hash}`, async ({ page }) => {
       await page.setViewportSize({ width: 1920, height: 1080 })
