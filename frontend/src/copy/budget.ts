@@ -24,9 +24,11 @@
  * graph and the ontology are built as they are, and the Graph tab's table
  * of kinds of link, which the owner asked to be made understandable; and
  * to 1,900 the same day (D-106) for the Overview's score key, plain
- * findings and chart of evidence found by kind of question.
+ * findings and chart of evidence found by kind of question; and to 1,950
+ * the same day (D-107, D-108) for the Overview's plainer count line and the
+ * Live Lab's easy-to-read questions.
  */
-export const OUTSIDE_HELP_WORD_CAP = 1900
+export const OUTSIDE_HELP_WORD_CAP = 1950
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

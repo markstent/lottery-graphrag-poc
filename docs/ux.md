@@ -115,7 +115,8 @@ The layout puts the graph canvas on the left, about three fifths of the width an
 At 1920 by 1080, the first screen of a running run holds the question bar, the graph, the panels and the timeline.
 
 1. **Question bar.**
-   Before a run it is open: the four saved questions, a box for your own question, the market scope and the source (Recorded run or Live).
+   Before a run it is open: the four saved questions under "Tested questions"; their easy-to-read wordings under "Easy-to-read questions, asked as written and not scored" (D-108), each of which puts its wording in the box for your own question, with all markets, so it runs live; a box for your own question; the market scope and the source (Recorded run or Live).
+   A run of a question that is not in the tested set says "Not scored: this wording is not in the tested set." where the scorecard would be.
    Once a run is chosen it collapses to one line with "Change question", "Cancel run" while a live run is going, and Run.
 2. **Scorecard**, when a run has completed: a row for each approach with Answer, Evidence recall, Starting record, Markets reached, Answer writing time, Context size and Reason.
    B and C show signed changes against A.

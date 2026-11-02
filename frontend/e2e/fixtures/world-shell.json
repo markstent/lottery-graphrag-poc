@@ -5,28 +5,32 @@
       "question_id": "L05",
       "text": "Which other markets had incidents on the same platform version as incident INC_037?",
       "stratum": "H1",
-      "market_scope": []
+      "market_scope": [],
+      "easy_text": "Which other countries had incidents on the same platform version as the UK sign-in incident of 7 February 2025 (INC_037)?"
     },
     {
       "instance_id": "L09-2026-GAME_AT_05",
       "question_id": "L09",
       "text": "Which games in other markets belong to the same kind of game family as game GAME_AT_05?",
       "stratum": "H2",
-      "market_scope": []
+      "market_scope": [],
+      "easy_text": "Which games in other countries are the same kind of game as Edelweiss Instant, a game in Austria (GAME_AT_05)?"
     },
     {
       "instance_id": "L01-2026-GAME_AT_04",
       "question_id": "L01",
       "text": "What is the ticket price of game GAME_AT_04?",
       "stratum": "H3",
-      "market_scope": []
+      "market_scope": [],
+      "easy_text": "How much does a ticket for Alpen Star, a game in Austria (GAME_AT_04), cost?"
     },
     {
       "instance_id": "L15-2026-INC_041",
       "question_id": "L15",
       "text": "What caused incident INC_041?",
       "stratum": "H5",
-      "market_scope": []
+      "market_scope": [],
+      "easy_text": "What caused the app incident in Greece that began on 25 June 2025 (INC_041)?"
     }
   ],
   "models": {

@@ -134,7 +134,7 @@ describe('Live Lab', () => {
     const user = userEvent.setup()
     open()
     const question = await screen.findByRole('button', { name: h1.question })
-    const saved = screen.getByRole('group', { name: 'Saved questions' })
+    const saved = screen.getByRole('group', { name: 'Tested questions' })
     for (const button of within(saved).getAllByRole('button'))
       expect(button).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
@@ -239,7 +239,7 @@ describe('Live Lab', () => {
       within(bar).getByRole('button', { name: 'Change question' }),
     ).toBeVisible()
     expect(
-      within(bar).queryByRole('group', { name: 'Saved questions' }),
+      within(bar).queryByRole('group', { name: 'Tested questions' }),
     ).toBeNull()
     await waitFor(() =>
       expect(
@@ -256,13 +256,13 @@ describe('Live Lab', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Change question' }),
     )
-    const saved = screen.getByRole('group', { name: 'Saved questions' })
+    const saved = screen.getByRole('group', { name: 'Tested questions' })
     expect(within(saved).getAllByRole('button')[0]).toHaveFocus()
     expect(
       within(saved).getByRole('button', { name: h1.question }),
     ).toHaveAttribute('aria-pressed', 'true')
     await user.click(screen.getByRole('button', { name: 'Run' }))
-    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Tested questions' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Run' })).toHaveFocus()
   })
 
@@ -280,7 +280,7 @@ describe('Live Lab', () => {
     expect(opened).toBeVisible()
     expect(opened).toHaveAttribute('aria-expanded', 'true')
     await user.click(opened)
-    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Tested questions' })).toBeNull()
     const closed = screen.getByRole('button', { name: 'Change question' })
     expect(closed).toHaveAttribute('aria-expanded', 'false')
     expect(closed).toHaveFocus()
@@ -296,11 +296,11 @@ describe('Live Lab', () => {
     )
     expect(
       within(
-        screen.getByRole('group', { name: 'Saved questions' }),
+        screen.getByRole('group', { name: 'Tested questions' }),
       ).getAllByRole('button')[0],
     ).toHaveFocus()
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Tested questions' })).toBeNull()
     expect(
       screen.getByRole('button', { name: 'Change question' }),
     ).toHaveFocus()
@@ -371,6 +371,53 @@ describe('Live Lab', () => {
     expect(
       screen.getByText('Your own question needs the live source.'),
     ).toBeVisible()
+  })
+
+  it('asks an easy-to-read wording as written, live, over every market', async () => {
+    const easy =
+      'How much does a ticket for Alpen Star, a game in Austria (GAME_AT_04), cost?'
+    const fetchMock = api({
+      '/api/v1/demo/questions': [
+        ...QUESTIONS.slice(0, 1).map((q) => ({ ...q, easy_text: easy })),
+        ...QUESTIONS.slice(1),
+      ],
+    })
+    const user = userEvent.setup()
+    open()
+    const group = await screen.findByRole('group', {
+      name: 'Easy-to-read questions, asked as written and not scored',
+    })
+    const wording = within(group).getByRole('button', { name: easy })
+    expect(within(group).getAllByRole('button')).toHaveLength(1)
+    await user.click(wording)
+    expect(wording).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByRole('textbox', { name: 'Or ask your own question' }),
+    ).toHaveValue(easy)
+    expect(screen.getByRole('button', { name: 'Recorded run' })).toBeDisabled()
+    const run = screen.getByRole('button', { name: 'Run' })
+    await waitFor(() => expect(run).toBeEnabled())
+    await user.click(run)
+    await waitFor(() => expect(stream.subscribeRun).toHaveBeenCalled())
+    const [, init] = fetchMock.mock.calls.find(
+      ([url]) => String(url) === '/api/v1/queries',
+    ) as [string, RequestInit]
+    expect(JSON.parse(String(init.body))).toEqual({
+      question: easy,
+      configurations: ['A', 'B', 'C'],
+      market_scope: [],
+    })
+  })
+
+  it('shows no easy-to-read row when no saved question has a wording', async () => {
+    api()
+    open()
+    await screen.findByRole('group', { name: 'Tested questions' })
+    expect(
+      screen.queryByRole('group', {
+        name: 'Easy-to-read questions, asked as written and not scored',
+      }),
+    ).toBeNull()
   })
 
   it('has no recording to run for a saved question that lacks one', async () => {
@@ -1121,7 +1168,9 @@ describe('Live Lab, results', () => {
     })
     const card = await screen.findByRole('region', { name: 'Scorecard' })
     expect(
-      within(card).getByText('No answer key exists for this question.'),
+      within(card).getByText(
+        'Not scored: this wording is not in the tested set.',
+      ),
     ).toBeVisible()
     expect(within(card).queryByText('scored against the answer key')).toBeNull()
     expect(within(card).queryByText('Answer')).toBeNull()

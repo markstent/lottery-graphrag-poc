@@ -518,7 +518,7 @@ test('shows only what can be measured for a question with no answer key', async 
   await serveLiveRun(page, live.events, adHoc)
   await runTyped(page, live.question)
   await expect(
-    page.getByText('No answer key exists for this question.'),
+    page.getByText('Not scored: this wording is not in the tested set.'),
   ).toBeVisible()
   await expect(page.getByText('scored against the answer key')).toHaveCount(0)
   await expectPathNodesInViewOrCounted(page, 'Graph for B · Graph')

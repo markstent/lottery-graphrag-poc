@@ -75,7 +75,7 @@ describe('Scorecard', () => {
   it('says the score is against the answer key, once, for a scored bank question', () => {
     render(<Scorecard results={h1} />)
     expect(screen.getAllByText('scored against the answer key')).toHaveLength(1)
-    expect(screen.queryByText(/No answer key exists/)).toBeNull()
+    expect(screen.queryByText(/Not scored: this wording/)).toBeNull()
   })
 
   it('shows each pipeline answer, evidence found and starting record from the run score', () => {
@@ -194,7 +194,7 @@ describe('Scorecard', () => {
   it('for an ad hoc question shows the measurable items only and says there is no key', () => {
     render(<Scorecard results={adHoc} />)
     expect(
-      screen.getByText('No answer key exists for this question.'),
+      screen.getByText('Not scored: this wording is not in the tested set.'),
     ).toBeVisible()
     expect(screen.queryByText('scored against the answer key')).toBeNull()
     for (const name of [

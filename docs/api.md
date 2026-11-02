@@ -147,7 +147,11 @@ A metric the instance does not define is null.
 ### Demo questions
 
 `GET /demo/questions` returns the first instance in bank order of each of the strata H1, H2, H3 and H5, from the presentation world's frozen bank (D-036).
-Each has `instance_id`, `question_id`, `text`, `stratum` and `market_scope`.
+Each has `instance_id`, `question_id`, `text`, `stratum`, `market_scope` and `easy_text`.
+`easy_text` is an easy-to-read wording of the same question (D-108), written by hand from the presentation world's records and kept in `backend/app/api/easy_questions.py`, or null.
+It names the record by its name or kind, country and date and keeps the record's id in brackets.
+It is served only when the bank's `world_manifest_hash` is the world the wordings were written from (`dev-seed2026`), because another world may give the id to another record.
+A client asks it as its own question (`question`, no `benchmark_instance_id`), so it runs live and is not scored.
 Before the bank is grounded the route is a 503 `CONFIGURATION_ERROR`, never an empty list.
 
 ## Events

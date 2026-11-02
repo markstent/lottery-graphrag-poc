@@ -200,6 +200,9 @@ class DemoQuestion(BaseModel):
     text: str
     stratum: str
     market_scope: list[str]
+    # An easy-to-read wording of the same question (D-108), asked as written
+    # and not scored; None when the question has none in this world.
+    easy_text: str | None = None
 
 
 class UnavailableOut(BaseModel):

@@ -120,6 +120,10 @@ export function QuestionBar({
   }
 
   const list = questions.status === 'ready' ? questions.data : []
+  // Each saved question's easy-to-read wording, which runs as your own question would (D-108).
+  const easy = list.flatMap((question) =>
+    question.easy_text ? [question.easy_text] : [],
+  )
   const adHoc = text.trim() !== ''
   // Nothing looks chosen until the link or the reader chooses a question.
   const selected = adHoc
@@ -277,9 +281,14 @@ export function QuestionBar({
           </p>
         )}
         {list.length > 0 && (
+          <p id="saved-questions" className="text-sm text-text-secondary">
+            Tested questions
+          </p>
+        )}
+        {list.length > 0 && (
           <div
             role="group"
-            aria-label="Saved questions"
+            aria-labelledby="saved-questions"
             ref={saved}
             className="flex flex-wrap gap-2"
           >
@@ -296,6 +305,31 @@ export function QuestionBar({
               </Choice>
             ))}
           </div>
+        )}
+        {easy.length > 0 && (
+          <>
+            <p id="easy-questions" className="pt-2 text-sm text-text-secondary">
+              Easy-to-read questions, asked as written and not scored
+            </p>
+            <div
+              role="group"
+              aria-labelledby="easy-questions"
+              className="flex flex-wrap gap-2"
+            >
+              {easy.map((wording) => (
+                <Choice
+                  key={wording}
+                  pressed={text.trim() === wording}
+                  onClick={() => {
+                    setText(wording)
+                    setScope([])
+                  }}
+                >
+                  {wording}
+                </Choice>
+              ))}
+            </div>
+          </>
         )}
         <label className="block text-sm text-text-secondary">
           <input

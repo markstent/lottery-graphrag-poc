@@ -861,6 +861,8 @@ export interface components {
          *     markets): the bank defines no scope of its own.
          */
         DemoQuestion: {
+            /** Easy Text */
+            easy_text?: string | null;
             /** Instance Id */
             instance_id: string;
             /** Market Scope */

@@ -580,6 +580,10 @@ def _fix(path: Path) -> None:
 def _fix_combined(path: Path) -> None:
     combined = json.loads(path.read_text(encoding="utf-8"))
     combined.update(computed_at=FIXED["finished_at"], git_sha="fixture", git_dirty=False)
+    # The synthetic run asks "question?" everywhere; the Results screenshot
+    # lists these rows, so each says which question it stands for.
+    for row in combined["disagreements"]:
+        row["question"] = f"Test question {row['question_id']} (fixture only)"
     path.write_text(json.dumps(combined), encoding="utf-8")
 
 

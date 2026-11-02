@@ -561,10 +561,12 @@ def test_demo_questions_carry_no_answer_key(
     demos = client_with_bank.get("/api/v1/demo/questions").json()
     assert demos == [d.model_dump() for d in demo_questions(presentation_bank)]
     assert all(
-        set(d) == {"instance_id", "question_id", "text", "stratum", "market_scope"} for d in demos
+        set(d) == {"instance_id", "question_id", "text", "stratum", "market_scope", "easy_text"}
+        for d in demos
     )
     expected = {i.expected_answer for i in presentation_bank.instances}
     assert not expected & {d["text"] for d in demos}
+    assert not expected & {d["easy_text"] for d in demos if d["easy_text"] is not None}
 
 
 def test_demo_questions_take_the_first_instance_of_each_stratum(bank: FrozenBank) -> None:

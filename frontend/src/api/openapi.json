@@ -740,6 +740,17 @@
       "DemoQuestion": {
         "description": "A demo question: one instance of the presentation world's frozen bank.\n\nPipeline-visible fields only: the text every pipeline receives, never\nthe expected answer, checks or claims. ``market_scope`` is empty (all\nmarkets): the bank defines no scope of its own.",
         "properties": {
+          "easy_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Easy Text"
+          },
           "instance_id": {
             "title": "Instance Id",
             "type": "string"

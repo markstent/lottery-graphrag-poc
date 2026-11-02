@@ -880,7 +880,7 @@ test.describe('Live Lab', () => {
       .fill(adhoc.question)
     await page.getByRole('button', { name: 'Run', exact: true }).click()
     await expect(
-      page.getByText('No answer key exists for this question.'),
+      page.getByText('Not scored: this wording is not in the tested set.'),
     ).toBeVisible()
     await expect(page.getByText(adhoc.question).first()).toBeVisible()
     await canvasReady(page)

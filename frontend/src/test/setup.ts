@@ -1,4 +1,10 @@
 import '@testing-library/jest-dom/vitest'
+import { configure } from '@testing-library/react'
+
+// The map layouts run elk in this process, which can take more than the
+// default second of a findBy or waitFor on a loaded machine; a wait ends as
+// soon as its element appears, so only a failing test waits the whole time.
+configure({ asyncUtilTimeout: 5000 })
 
 // jsdom does not implement matchMedia; the settings provider listens to it
 // for prefers-reduced-motion.

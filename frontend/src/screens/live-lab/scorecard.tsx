@@ -192,7 +192,8 @@ function unscoredNote({
   answer_key,
   score_status,
 }: Schemas['QueryResults']): string {
-  if (answer_key === 'none') return 'No answer key exists for this question.'
+  if (answer_key === 'none')
+    return 'Not scored: this wording is not in the tested set.'
   return score_status === 'failed'
     ? 'Scoring failed for this run.'
     : 'Scoring has not finished.'
