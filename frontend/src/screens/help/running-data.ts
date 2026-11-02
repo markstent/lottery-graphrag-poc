@@ -178,6 +178,10 @@ export const COMMAND_GROUPS: readonly {
         'make label-agreement',
         'How far the measures agree with the hand labels on that sample; no model.',
       ],
+      [
+        'make second-judge',
+        'A second judge model marks the answers of a stored run (RUN=<run id>) or the hand-labelled sample (LABELS=v0.2.0-sample), as a second opinion; the run itself is unchanged.',
+      ],
     ],
   },
 ]

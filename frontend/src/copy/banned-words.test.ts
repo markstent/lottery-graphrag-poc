@@ -415,11 +415,19 @@ describe('copy in expressions', () => {
   })
 })
 
-/** The sentences of the Plain blocks of a chapter: paragraphs and list items. Technical blocks are not read. */
+/** The text a Plain block shows: a paragraph, list items, a heading, or a table's caption, column names and cells. */
+const blockTexts = (block: Block): string[] => {
+  if (typeof block === 'string') return [block]
+  if (!('kind' in block)) return [...block]
+  if (block.kind === 'heading') return [block.text]
+  if (block.kind === 'table')
+    return [block.caption, ...block.columns, ...block.rows.flat()]
+  return []
+}
+
+/** The text of the Plain blocks of a chapter. Technical blocks are not read. */
 const plainTexts = ({ plain, plainHint }: ChapterCopy): string[] => [
-  ...plain.flatMap((block: Block) =>
-    typeof block === 'string' ? [block] : 'kind' in block ? [] : [...block],
-  ),
+  ...plain.flatMap(blockTexts),
   ...(plainHint ? [plainHint] : []),
 ]
 
@@ -430,12 +438,22 @@ describe('Help chapters', () => {
         'A seed node',
         ['a fake one', 'fine'],
         { kind: 'diagram', name: 'evidence' },
+        { kind: 'heading', text: 'Where the telemetry went' },
+        {
+          kind: 'table',
+          caption: 'Kinds',
+          columns: ['Kind', 'Real score'],
+          rows: [['Multi-hop', 'a rerank']],
+        },
       ],
       technical: ['The seed is chosen', ['a chunk']],
     }
     expect(plainTexts(sample).filter((text) => violation(text))).toEqual([
       'A seed node',
       'a fake one',
+      'Where the telemetry went',
+      'Real score',
+      'a rerank',
     ])
   })
 

@@ -221,7 +221,7 @@ test('the Graph tab narrows to what each approach follows and shows a sample nod
   expect(labels).toBe(29)
   await open(page, '#/data-model?tab=graph')
   await expect(
-    page.getByRole('button', { name: `game, ${ROW_COUNTS.games} nodes` }),
+    page.getByRole('button', { name: `game, ${ROW_COUNTS.games} records` }),
   ).toBeVisible()
   await shot(page, 'graph-full')
   // The whole map, as drawn: no type below 12 px on screen.
@@ -229,14 +229,14 @@ test('the Graph tab narrows to what each approach follows and shows a sample nod
   await page.getByRole('radio', { name: 'B · Graph' }).click()
   await expect(
     page.getByText(
-      `B · Graph follows ${typeCount(GRAPH_SCHEMA.allow_list.B)} of the ${allTypes.size} relationship types.`,
+      `B · Graph follows ${typeCount(GRAPH_SCHEMA.allow_list.B)} of the ${allTypes.size} kinds of link.`,
     ),
   ).toBeVisible()
   await shot(page, 'graph-b')
   await page.getByRole('radio', { name: 'C · Graph + Ontology' }).click()
   await expect(
     page.getByText(
-      `C · Graph + Ontology follows ${typeCount(GRAPH_SCHEMA.allow_list.C)} of the ${allTypes.size} relationship types.`,
+      `C · Graph + Ontology follows ${typeCount(GRAPH_SCHEMA.allow_list.C)} of the ${allTypes.size} kinds of link.`,
     ),
   ).toBeVisible()
   await shot(page, 'graph-c')
