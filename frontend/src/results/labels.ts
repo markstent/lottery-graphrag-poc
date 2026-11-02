@@ -19,6 +19,7 @@ export const MEASURES = {
 export const QUESTION_HEADS = {
   question: 'Question',
   kind: 'Kind',
+  approach: 'Approach',
   world: 'World',
   answer: 'Answer',
   liveLab: 'Live Lab',

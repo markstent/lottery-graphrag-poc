@@ -2,6 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { V03_SECOND_JUDGE } from '../../results/results.fixtures'
 import { DATASETS, failure, json, MODELS, stubApi } from '../../test/api-stub'
 import { Overview } from './overview'
 
@@ -162,7 +163,7 @@ describe('Overview', () => {
       summary: { ...OFFICIAL.summary, comparisons },
     })
 
-  it('draws evidence found by kind of question, marks the clear result and the untested kind, and switches to the answer score', async () => {
+  it('draws the answer score by kind of question, switches to evidence found, and marks the clear result and the untested kind', async () => {
     const kind = (a: number, b: number, c: number) => ({
       evidence_recall: {
         A: cell(a, 72, 72),
@@ -197,6 +198,20 @@ describe('Overview', () => {
       }),
     )
     render(<Overview />)
+    // The answer score is shown first (owner, 2026-11-02).
+    const answers = await screen.findByRole('img', {
+      name: 'Answer score by kind of question',
+    })
+    expect(
+      screen.getByRole('button', { name: 'Answer score' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(within(answers).getByText('Single facts')).toBeInTheDocument()
+    expect(
+      within(answers).getByText('Several linked records'),
+    ).toBeInTheDocument()
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Evidence found' }),
+    )
     const chart = await screen.findByRole('img', {
       name: 'Evidence found by kind of question',
     })
@@ -208,14 +223,109 @@ describe('Overview', () => {
     ).toBeInTheDocument()
     expect(within(chart).queryByText('Single facts')).toBeNull()
     expect(within(chart).getByText('65')).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Answer score' }))
-    const answers = await screen.findByRole('img', {
-      name: 'Answer score by kind of question',
-    })
-    expect(within(answers).getByText('Single facts')).toBeInTheDocument()
+  })
+
+  const markOf = (a: number, b: number, c: number) => ({
+    A: cell(a, 72, 72),
+    B: cell(b, 72, 72),
+    C: cell(c, 72, 72),
+  })
+
+  /** The second-judge answer of the official run, with its judges' mark (D-105). */
+  const withJudges = (combined: Record<string, unknown>) => ({
+    ...base({
+      ...OFFICIAL,
+      summary: {
+        ...OFFICIAL.summary,
+        metrics: {
+          ...OFFICIAL.summary.metrics,
+          H1: {
+            evidence_recall: markOf(0.43, 0.65, 0.64),
+            answer: markOf(0.5, 0.6, 0.6),
+          },
+        },
+        comparisons: [comparison({})],
+      },
+    }),
+    '/api/v1/benchmarks/official-1/second-judge': {
+      ...V03_SECOND_JUDGE,
+      combined: { ...V03_SECOND_JUDGE.combined, ...combined },
+    },
+  })
+  const judgeCell = (over: Record<string, unknown>) =>
+    comparison({ metric: 'judge_mark', ...over })
+
+  it("adds the judges' mark to the key, each tile and the chart when the run has it", async () => {
+    stubApi(
+      withJudges({
+        metrics: {
+          overall: markOf(0.61, 0.66, 0.7),
+          H1: markOf(0.5, 0.6, 0.7),
+        },
+        comparisons: [],
+      }),
+    )
+    render(<Overview />)
+    const panel = await screen.findByRole('region', { name: 'What we found' })
+    await within(panel).findByText("Judges' mark:")
     expect(
-      within(answers).getByText('Several linked records'),
-    ).toBeInTheDocument()
+      within(panel).getByText('how two AI judges rated the answer, averaged.'),
+    ).toBeVisible()
+    expect(within(panel).getByText(/Each gets three scores:/)).toBeVisible()
+    expect(
+      within(screen.getByTestId('tile-B')).getByText("Judges' mark 66%"),
+    ).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: "Judges' mark" }))
+    const chart = await screen.findByRole('img', {
+      name: "Judges' mark by kind of question",
+    })
+    expect(within(chart).getByText('70')).toBeInTheDocument()
+  })
+
+  it("states a clear result of the judges' own tests apart from the run's count line", async () => {
+    stubApi(
+      withJudges({
+        comparisons: [
+          judgeCell({
+            stratum: 'H1',
+            comparison: 'B_vs_A',
+            mean: 0.081,
+            low: 0.02,
+            high: 0.14,
+            p_holm: 0.02,
+          }),
+          judgeCell({ mean: 0, low: -0.05, high: 0.05, p_holm: 1 }),
+          judgeCell({ mean: 0.05, low: 0.01, high: 0.09, p_holm: 0.4 }),
+        ],
+      }),
+    )
+    render(<Overview />)
+    const panel = await screen.findByRole('region', { name: 'What we found' })
+    await within(panel).findByText("Judges' mark:")
+    // The findings are the last list; the chart's legend is a list too.
+    const findings = within(panel).getAllByRole('list').at(-1)!
+    const items = within(findings)
+      .getAllByRole('listitem')
+      .map((li) => li.textContent)
+    expect(items).toEqual([
+      'No difference is proven yet. We made 1 check, comparing two approaches on one kind of question and one score. In 1, one approach came out ahead, but not by enough to rule out luck. Graph + Ontology did better on questions that match terms across countries.',
+      'Graph did better on questions that need several linked records. For example: "which other countries had incidents on the same platform version as this one?" Graph scored about 8 points higher on the two judges\' mark than Text search. This passed our statistical test, so it is unlikely to be luck.',
+      "Judges' mark: Nothing else is proven yet. We made 2 other checks, each comparing two approaches on one kind of question. In 1, one approach came out ahead, but not by enough to rule out luck. Graph + Ontology did better on questions that match terms across countries. In the other one the approaches were too close to call.",
+    ])
+  })
+
+  it("says nothing of the judges' mark when the run has none worked out", async () => {
+    stubApi({
+      ...withComparisons([comparison({})]),
+      '/api/v1/benchmarks/official-1/second-judge': {
+        ...V03_SECOND_JUDGE,
+        combined: null,
+      },
+    })
+    render(<Overview />)
+    await screen.findByTestId('tile-A')
+    expect(screen.queryByText(/Judges' mark/)).toBeNull()
+    expect(screen.getByText(/Each gets two scores:/)).toBeVisible()
   })
 
   it('leaves the chart out for a run with no figures by kind of question', async () => {
@@ -273,7 +383,24 @@ describe('Overview', () => {
           p_holm: 0.03,
         }),
         comparison({}),
-        comparison({ mean: -0.069, low: -0.121, high: -0.025, p_holm: 0.229 }),
+        comparison({ metric: 'answer', mean: 0.21, low: 0.07, high: 0.36 }),
+        comparison({
+          stratum: 'H5',
+          comparison: 'B_vs_A',
+          mean: -0.069,
+          low: -0.121,
+          high: -0.025,
+          p_holm: 0.229,
+        }),
+        comparison({
+          stratum: 'H1',
+          comparison: 'B_vs_A',
+          metric: 'answer',
+          mean: 0.124,
+          low: 0.036,
+          high: 0.222,
+          p_holm: 0.174,
+        }),
         comparison({ mean: 0, low: -0.068, high: 0.048, p_holm: 1 }),
         comparison({
           stratum: 'H2_name',
@@ -296,7 +423,7 @@ describe('Overview', () => {
     )
     expect(items).toEqual([
       'Graph did better on questions that need several linked records. For example: "which other countries had incidents on the same platform version as this one?" Graph found about 22 more of every 100 needed facts than Text search. This passed our statistical test, so it is unlikely to be luck.',
-      'Nothing else passed the test. We tested 3 other comparisons. 2 pointed one way, but the difference could be luck; 1 showed no difference at all.',
+      'Nothing else is proven yet. We made 5 other checks, each comparing two approaches on one kind of question and one score. In 4, one approach came out ahead, but not by enough to rule out luck. Graph + Ontology did better on questions that match terms across countries, Text search on evidence for questions about hidden patterns, and Graph on answers to questions that need several linked records. In the other one the approaches were too close to call.',
       'A pointer, not a result. On questions that use a country\'s own name for something, Text search found about 17 more of every 100 needed facts than Graph. For example, Austria calls its national draw "Zahlenziehung". We did not test this group, so treat it as a lead to follow up.',
     ])
     expect(
@@ -321,7 +448,25 @@ describe('Overview', () => {
         (_, el) =>
           el?.tagName === 'LI' &&
           el.textContent ===
-            'No difference passed the test. We tested 2 comparisons. 1 pointed one way, but the difference could be luck; 1 showed no difference at all.',
+            'No difference is proven yet. We made 2 checks, each comparing two approaches on one kind of question and one score. In 1, one approach came out ahead, but not by enough to rule out luck. Graph + Ontology did better on questions that match terms across countries. In the other one the approaches were too close to call.',
+      ),
+    ).toBeVisible()
+  })
+
+  it('says every check was too close to call when none came out ahead', async () => {
+    stubApi(
+      withComparisons([
+        comparison({ mean: 0, low: -0.1, high: 0.1, p_holm: 1 }),
+        comparison({ mean: 0.01, low: -0.05, high: 0.07, p_holm: 1 }),
+      ]),
+    )
+    render(<Overview />)
+    expect(
+      await screen.findByText(
+        (_, el) =>
+          el?.tagName === 'LI' &&
+          el.textContent ===
+            'No difference is proven yet. We made 2 checks, each comparing two approaches on one kind of question and one score. In all of them the approaches were too close to call.',
       ),
     ).toBeVisible()
   })

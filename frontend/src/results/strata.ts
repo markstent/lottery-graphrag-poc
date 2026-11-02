@@ -124,16 +124,22 @@ export const HOLM_ALPHA = 0.05
 export function intervalTestDisagreements(
   comparisons: readonly Comparison[],
 ): number {
-  return comparisons.filter(
-    ({ in_family, p_holm, low, high }) =>
-      in_family &&
-      p_holm !== null &&
-      p_holm >= HOLM_ALPHA &&
-      low !== null &&
-      high !== null &&
-      (low > 0 || high < 0),
-  ).length
+  return comparisons.filter(leansWithoutPassing).length
 }
+
+/** One tested cell whose interval leaves out zero while its test does not pass. */
+export const leansWithoutPassing = ({
+  in_family,
+  p_holm,
+  low,
+  high,
+}: Comparison): boolean =>
+  in_family &&
+  p_holm !== null &&
+  p_holm >= HOLM_ALPHA &&
+  low !== null &&
+  high !== null &&
+  (low > 0 || high < 0)
 
 /** Grouped bars of a metric per stratum, with B minus A as the delta; a cell with too few pairs or groups has none. */
 export function strataBars(
@@ -222,16 +228,19 @@ const intervalRow = (
   pipeline: COMPARISON_PIPELINES[cell.comparison],
 })
 
+/** One row per cell, in points: the paired differences of any family. */
+export function cellRows(cells: readonly Comparison[]): IntervalRow[] {
+  return cells.map((c) =>
+    intervalRow(c, c.stratum, STRATUM_LABELS[c.stratum] ?? c.stratum),
+  )
+}
+
 /** One row per stratum and comparison for the metric, in points. */
 export function comparisonRows(
   summary: Summary,
   metric: ShownMetric,
 ): IntervalRow[] {
-  return summary.comparisons
-    .filter((c) => c.metric === metric)
-    .map((c) =>
-      intervalRow(c, c.stratum, STRATUM_LABELS[c.stratum] ?? c.stratum),
-    )
+  return cellRows(summary.comparisons.filter((c) => c.metric === metric))
 }
 
 /** The ontology-dependent split of the metric, in points. */

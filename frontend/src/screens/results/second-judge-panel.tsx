@@ -1,10 +1,14 @@
-/** A second model's judgement of the run's stored answers, when the run has one (D-100). */
+/**
+ * A second model's judgement of the run's stored answers, when the run has one
+ * (D-100), and the two judges' combined mark beside it (D-105).
+ */
 
 import { getSecondJudge, type Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
 import { useLoad } from '../../app/use-load'
 import { DataTable, type DataTableRow } from '../../charts/data-table'
 import { Panel } from '../../components/panel'
+import { JUDGES } from '../../results/judges'
 import { TABLE_HEADS } from '../../results/labels'
 import {
   answerScoreRows,
@@ -13,6 +17,7 @@ import {
   labelRows,
   SECOND_JUDGE,
 } from '../../results/second-judge'
+import { JudgesVerdict } from './judges-panel'
 import { RunBadge } from './run-badge'
 
 const COLUMNS = [
@@ -67,7 +72,11 @@ export function SecondJudgeTables({
   )
 }
 
-/** Shown while it loads, on an error and with data; a run without a second judge (404) shows nothing. */
+/**
+ * The Judges' verdict and Second judge panels, shown while they load, on an
+ * error and with data; a run without a second judge (404) shows neither, and
+ * one whose combined mark is not worked out shows the verdict panel empty.
+ */
 export function SecondJudgePanel({
   runId,
   badge,
@@ -85,17 +94,31 @@ export function SecondJudgePanel({
     load.error.status === 404
   )
     return null
+  const error = load.status === 'error' ? load.error : undefined
+  const combined = load.status === 'ready' ? load.data.combined : undefined
   return (
-    <Panel
-      title={SECOND_JUDGE.title}
-      purpose={SECOND_JUDGE.note}
-      state={load.status}
-      error={load.status === 'error' ? load.error : undefined}
-      onRetry={load.retry}
-    >
-      {load.status === 'ready' && (
-        <SecondJudgeTables data={load.data} badge={badge} />
-      )}
-    </Panel>
+    <>
+      <Panel
+        title={JUDGES.title}
+        purpose={JUDGES.note}
+        state={load.status === 'ready' && !combined ? 'empty' : load.status}
+        message={JUDGES.none}
+        error={error}
+        onRetry={load.retry}
+      >
+        {combined && <JudgesVerdict combined={combined} badge={badge} />}
+      </Panel>
+      <Panel
+        title={SECOND_JUDGE.title}
+        purpose={SECOND_JUDGE.note}
+        state={load.status}
+        error={error}
+        onRetry={load.retry}
+      >
+        {load.status === 'ready' && (
+          <SecondJudgeTables data={load.data} badge={badge} />
+        )}
+      </Panel>
+    </>
   )
 }

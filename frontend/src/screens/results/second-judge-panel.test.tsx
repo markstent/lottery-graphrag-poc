@@ -36,6 +36,58 @@ describe('SecondJudgePanel', () => {
     ).toBeVisible()
   })
 
+  it("shows the judges' verdict: each approach's mark, its own tests, how often the judges agree and where they disagree", async () => {
+    stubApi({ [PATH]: V03_SECOND_JUDGE })
+    render(<SecondJudgePanel runId="fixture-v03" />)
+    const panel = await screen.findByRole('region', {
+      name: "Judges' verdict",
+    })
+    const combined = V03_SECOND_JUDGE.combined!
+    expect(
+      within(panel).getByText(
+        'Tested apart from the evidence and answer score tests.',
+      ),
+    ).toBeVisible()
+    expect(within(panel).getByText("Judges' mark: B · Graph")).toBeVisible()
+    expect(
+      within(panel).getByText(
+        `${Math.round(combined.metrics.overall!.B!.mean! * 100)}%`,
+      ),
+    ).toBeVisible()
+    for (const line of new Set(combined.headlines))
+      expect(within(panel).getAllByText(line)[0]).toBeVisible()
+    expect(
+      within(panel).getByRole('img', {
+        name: "Paired differences in judges' mark",
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(panel).getByText(
+        `Same verdict on ${combined.counts.agreed} of ${combined.counts.both_judged} answers; opposite verdicts on ${combined.counts.disagreements}.`,
+      ),
+    ).toBeVisible()
+    const table = within(panel).getByRole('table', { name: 'Judges disagree' })
+    expect(within(table).getAllByRole('row')).toHaveLength(
+      combined.counts.disagreements + 1,
+    )
+    const first = combined.disagreements[0]!
+    const row = within(table).getAllByRole('row')[1]!
+    expect(within(row).getByRole('rowheader')).toHaveTextContent(first.question)
+    expect(row).toHaveTextContent(first.first === 2 ? 'correct' : 'wrong')
+  })
+
+  it("shows the judges' verdict empty when the mark is not worked out", async () => {
+    stubApi({ [PATH]: { ...V03_SECOND_JUDGE, combined: null } })
+    render(<SecondJudgePanel runId="fixture-v03" />)
+    const panel = await screen.findByRole('region', {
+      name: "Judges' verdict",
+    })
+    expect(within(panel).getByText('Not worked out yet.')).toBeVisible()
+    expect(
+      await screen.findByRole('table', { name: 'With each other' }),
+    ).toBeVisible()
+  })
+
   it('leaves out the label table when there is no label check', async () => {
     stubApi({ [PATH]: { ...V03_SECOND_JUDGE, labels: null } })
     render(<SecondJudgePanel runId="fixture-v03" />)
@@ -73,9 +125,14 @@ describe('SecondJudgePanel', () => {
             }),
     })
     render(<SecondJudgePanel runId="fixture-v03" />)
-    const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('The second judge is unavailable.')
-    await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }))
+    // One load feeds both panels, so both show its error.
+    const alerts = await screen.findAllByRole('alert')
+    expect(alerts).toHaveLength(2)
+    for (const alert of alerts)
+      expect(alert).toHaveTextContent('The second judge is unavailable.')
+    await userEvent.click(
+      within(alerts[1]).getByRole('button', { name: 'Retry' }),
+    )
     expect(
       await screen.findByRole('table', { name: 'With each other' }),
     ).toBeVisible()

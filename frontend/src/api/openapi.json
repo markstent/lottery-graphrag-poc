@@ -3534,6 +3534,240 @@
         "title": "JudgeMeansOut",
         "type": "object"
       },
+      "JudgesCountsOut": {
+        "description": "Answers of the run, those both judges scored, those on which they gave\nthe same correctness, those with no mark by reason, and the answers the\njudges disagree on.",
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "integer"
+          },
+          "answers": {
+            "title": "Answers",
+            "type": "integer"
+          },
+          "both_judged": {
+            "title": "Both Judged",
+            "type": "integer"
+          },
+          "disagreements": {
+            "title": "Disagreements",
+            "type": "integer"
+          },
+          "missing": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Missing",
+            "type": "object"
+          }
+        },
+        "required": [
+          "answers",
+          "both_judged",
+          "agreed",
+          "missing",
+          "disagreements"
+        ],
+        "title": "JudgesCountsOut",
+        "type": "object"
+      },
+      "JudgesDisagreeOut": {
+        "description": "One answer the judges disagree on: one gave correctness 2, the other 0.",
+        "properties": {
+          "first": {
+            "title": "First",
+            "type": "integer"
+          },
+          "instance_id": {
+            "title": "Instance Id",
+            "type": "string"
+          },
+          "pipeline": {
+            "title": "Pipeline",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "repeat": {
+            "title": "Repeat",
+            "type": "integer"
+          },
+          "second": {
+            "title": "Second",
+            "type": "integer"
+          },
+          "stratum": {
+            "title": "Stratum",
+            "type": "string"
+          },
+          "world_seed": {
+            "title": "World Seed",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "instance_id",
+          "question_id",
+          "world_seed",
+          "stratum",
+          "pipeline",
+          "repeat",
+          "question",
+          "first",
+          "second"
+        ],
+        "title": "JudgesDisagreeOut",
+        "type": "object"
+      },
+      "JudgesMarkOut": {
+        "description": "The two judges' combined mark (``combined.json``, schema 1, D-105):\nper answer (c1 + c2) / 4, tested as its own family. ``metrics`` is per\nstratum and pipeline, ``comparisons`` and ``headlines`` have the run's\nshapes, ``agreement`` is between the judges.",
+        "properties": {
+          "agreement": {
+            "$ref": "#/components/schemas/BetweenJudgesOut"
+          },
+          "comparisons": {
+            "items": {
+              "$ref": "#/components/schemas/ComparisonCell"
+            },
+            "title": "Comparisons",
+            "type": "array"
+          },
+          "computed_at": {
+            "title": "Computed At",
+            "type": "string"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/JudgesCountsOut"
+          },
+          "definition": {
+            "title": "Definition",
+            "type": "string"
+          },
+          "disagreements": {
+            "items": {
+              "$ref": "#/components/schemas/JudgesDisagreeOut"
+            },
+            "title": "Disagreements",
+            "type": "array"
+          },
+          "disagreements_by_stratum": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "title": "Disagreements By Stratum",
+            "type": "object"
+          },
+          "family": {
+            "const": "judges",
+            "title": "Family",
+            "type": "string"
+          },
+          "first_judge": {
+            "$ref": "#/components/schemas/FirstJudgeOut"
+          },
+          "git_dirty": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Git Dirty"
+          },
+          "git_sha": {
+            "title": "Git Sha",
+            "type": "string"
+          },
+          "headlines": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Headlines",
+            "type": "array"
+          },
+          "judge_prompt_hash": {
+            "title": "Judge Prompt Hash",
+            "type": "string"
+          },
+          "judge_prompt_version": {
+            "title": "Judge Prompt Version",
+            "type": "string"
+          },
+          "kind": {
+            "const": "combined",
+            "title": "Kind",
+            "type": "string"
+          },
+          "measure": {
+            "title": "Measure",
+            "type": "string"
+          },
+          "metrics": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "$ref": "#/components/schemas/MetricCell"
+              },
+              "type": "object"
+            },
+            "title": "Metrics",
+            "type": "object"
+          },
+          "min_kappa_items": {
+            "title": "Min Kappa Items",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "second_judge": {
+            "$ref": "#/components/schemas/SecondJudgeModelOut"
+          },
+          "second_judge_finished_at": {
+            "title": "Second Judge Finished At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "schema_version",
+          "kind",
+          "family",
+          "run_id",
+          "measure",
+          "definition",
+          "first_judge",
+          "second_judge",
+          "judge_prompt_version",
+          "judge_prompt_hash",
+          "second_judge_finished_at",
+          "computed_at",
+          "git_sha",
+          "git_dirty",
+          "min_kappa_items",
+          "counts",
+          "metrics",
+          "comparisons",
+          "headlines",
+          "agreement",
+          "disagreements_by_stratum",
+          "disagreements"
+        ],
+        "title": "JudgesMarkOut",
+        "type": "object"
+      },
       "LabelAgreementOut": {
         "description": "The labelling analysis with the second judge added as ``second_judge``.",
         "properties": {
@@ -6958,8 +7192,18 @@
         "type": "object"
       },
       "SecondJudgeOut": {
-        "description": "Response for GET /api/v1/benchmarks/{run_id}/second-judge: the newest\nsecond-judge summary of the run and, when there is one, the newest label\ncheck of the same model. Descriptive; added after the result (D-100).",
+        "description": "Response for GET /api/v1/benchmarks/{run_id}/second-judge: the newest\nsecond-judge summary of the run and, when there is one, the newest label\ncheck of the same model (D-100), and the two judges' combined mark when it\nhas been computed from that summary's pass (D-105), else null.",
         "properties": {
+          "combined": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JudgesMarkOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "labels": {
             "anyOf": [
               {

@@ -6,6 +6,7 @@
 
 import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
 import { datasetName } from '../../app/plain-words'
+import { EVIDENCE_METRIC } from '../../app/method'
 import { hrefFor } from '../../app/router'
 import { percent } from '../../app/score-words'
 import { MODEL_LABELS } from '../../app/settings-labels'
@@ -18,7 +19,7 @@ import { pipeline, PIPELINES, type PipelineId } from '../../design/pipelines'
 import { Screen } from '../screen'
 import { FLOW_TITLE, FlowDiagram } from '../../components/flow-diagram'
 import {
-  loadLatest,
+  loadOverview,
   verdictFrom,
   type Finding,
   type KindMetric,
@@ -46,14 +47,25 @@ async function loadConfiguration(signal: AbortSignal) {
 /** What the big number on a tile is called. */
 const TILE_LABEL = 'Evidence found'
 
-/** The two scores, said once above the tiles. */
+/** What the judges' mark is called on this screen. */
+const MARK_LABEL = "Judges' mark"
+
+/** The scores, said once above the tiles; the judges' mark only when the run has it. */
 const SCORE_KEY: readonly [string, string][] = [
   [
     'Evidence found:',
-    'of the facts needed to answer a question, the share this approach handed to the AI.',
+    'before the AI answers, each approach looks up records for it to read. This is the share of the records the question needed that it found.',
   ],
   ['Answer score:', "how close the AI's answer came to the correct answer."],
+  [`${MARK_LABEL}:`, 'how two AI judges rated the answer, averaged.'],
 ]
+
+/** Each measure the chart can show, by its name on this screen. */
+const KIND_LABELS: Record<KindMetric, string> = {
+  answer: 'Answer score',
+  evidence_recall: TILE_LABEL,
+  judge_mark: MARK_LABEL,
+}
 
 /** The kinds of question in everyday words, for the sentences on this screen. */
 const KIND_WORDS: Record<string, string> = {
@@ -95,23 +107,103 @@ function difference({ comparison, metric, mean }: Finding) {
   const [higher, lower] = mean < 0 ? [second, first] : [first, second]
   const points = Math.round(Math.abs(mean) * 100)
   const what =
-    metric === 'answer'
-      ? `scored about ${points} points higher on answers than`
-      : `found about ${points} more of every 100 needed facts than`
+    metric === EVIDENCE_METRIC
+      ? `found about ${points} more of every 100 needed facts than`
+      : `scored about ${points} points higher on ${metric === 'answer' ? 'answers' : "the two judges' mark"} than`
   return {
     higher: pipeline(higher).name,
     text: `${pipeline(higher).name} ${what} ${pipeline(lower).name}.`,
   }
 }
 
+/** The kinds of question one approach led on, as a phrase: "on answers to X" when it led on one score of several. */
+function ledOn(group: Finding[], scores: number) {
+  const kind = KIND_WORDS[group[0]!.stratum] ?? group[0]!.stratum
+  if (scores < 2 || new Set(group.map((f) => f.metric)).size === scores)
+    return `on ${kind}`
+  return group[0]!.metric === EVIDENCE_METRIC
+    ? `on evidence for ${kind}`
+    : `on answers to ${kind}`
+}
+
+/** "Graph + Ontology did better on X, Graph on answers to Y, and Text search on Z." */
+function leaningSentence(leaning: Finding[]) {
+  const scores = new Set(leaning.map((f) => f.metric)).size
+  const groups = new Map<string, Finding[]>()
+  for (const finding of leaning) {
+    const key = `${difference(finding).higher}|${finding.stratum}`
+    groups.set(key, [...(groups.get(key) ?? []), finding])
+  }
+  const parts = [...groups.entries()].map(([key, group], index) => {
+    const higher = key.split('|')[0]!
+    return `${index === 0 ? `${higher} did better` : higher} ${ledOn(group, scores)}`
+  })
+  const list =
+    parts.length > 1
+      ? `${parts.slice(0, -1).join(', ')}, and ${parts.at(-1)!}`
+      : parts[0]!
+  return `${list}.`
+}
+
 /** What the tested comparisons not stated as clear showed. */
-function restSentence(count: number, leaning: number, afterClear: boolean) {
-  const tested = `We tested ${plural(count, `${afterClear ? 'other ' : ''}comparison`)}.`
-  if (leaning === 0) return `${tested} None showed a difference.`
-  return `${tested} ${leaning} pointed one way, but the difference could be luck; ${count - leaning} showed no difference at all.`
+function restSentence(
+  count: number,
+  leaning: Finding[],
+  afterClear: boolean,
+  oneScore: boolean,
+) {
+  const each = `${count === 1 ? 'comparing' : 'each comparing'} two approaches on one kind of question${oneScore ? '' : ' and one score'}`
+  const made = `We made ${plural(count, `${afterClear ? 'other ' : ''}check`)}, ${each}.`
+  if (leaning.length === 0)
+    return `${made} In all of them the approaches were too close to call.`
+  const close = count - leaning.length
+  return [
+    made,
+    `In ${leaning.length}, one approach came out ahead, but not by enough to rule out luck.`,
+    leaningSentence(leaning),
+    close > 0
+      ? `In the other ${close === 1 ? 'one' : close} the approaches were too close to call.`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
 }
 
 const findingKey = (f: Finding) => `${f.stratum}-${f.comparison}-${f.metric}`
+
+/** One difference that passed its family's test, in words. */
+function ClearItem({ finding }: { finding: Finding }) {
+  const { higher, text } = difference(finding)
+  return (
+    <li>
+      <strong>{`${higher} did better on ${KIND_WORDS[finding.stratum] ?? finding.stratum}.`}</strong>{' '}
+      {KIND_EXAMPLES[finding.stratum]} {text} This passed our statistical test,
+      so it is unlikely to be luck.
+    </li>
+  )
+}
+
+/** What one family's other tested comparisons showed; `measure` names a family other than the run's own. */
+function CountItem({
+  measure,
+  tested,
+  clear,
+  leaning,
+}: {
+  measure?: string
+  tested: number
+  clear: number
+  leaning: Finding[]
+}) {
+  return (
+    <li>
+      <strong>
+        {`${measure ? `${measure}: ` : ''}${clear === 0 ? 'No difference is proven yet.' : 'Nothing else is proven yet.'}`}
+      </strong>{' '}
+      {restSentence(tested - clear, leaning, clear > 0, measure !== undefined)}
+    </li>
+  )
+}
 
 function KindChart({
   kinds,
@@ -120,13 +212,16 @@ function KindChart({
   kinds: Verdict & { kind: 'official' }
   clear: Finding[]
 }) {
-  const [metric, setMetric] = useState<KindMetric>('evidence_recall')
+  const [metric, setMetric] = useState<KindMetric>('answer')
   const marks = (stratum: string) =>
     clear.some((f) => f.stratum === stratum && f.metric === metric)
       ? ' (clear result)'
       : stratum === 'H2_name'
         ? ' (not tested)'
         : ''
+  const shown = (Object.keys(KIND_LABELS) as KindMetric[]).filter(
+    (id) => kinds.kinds[id].length > 0,
+  )
   const groups = kinds.kinds[metric].map(({ stratum, values }) => ({
     key: stratum,
     label: `${KIND_NAMES[stratum] ?? stratum}${marks(stratum)}`,
@@ -137,7 +232,7 @@ function KindChart({
       ]),
     ),
   }))
-  const name = metric === 'answer' ? 'Answer score' : TILE_LABEL
+  const name = KIND_LABELS[metric]
   return (
     <div className="space-y-3">
       <div
@@ -145,7 +240,7 @@ function KindChart({
         aria-label="Score shown"
         className="inline-flex overflow-hidden rounded-chip border border-border"
       >
-        {(['evidence_recall', 'answer'] as const).map((id) => (
+        {shown.map((id) => (
           <button
             key={id}
             type="button"
@@ -153,7 +248,7 @@ function KindChart({
             onClick={() => setMetric(id)}
             className={`px-4 py-1 text-sm ${metric === id ? 'bg-surface-raised font-semibold text-text-primary' : 'text-text-secondary hover:bg-surface-raised'}`}
           >
-            {id === 'answer' ? 'Answer score' : TILE_LABEL}
+            {KIND_LABELS[id]}
           </button>
         ))}
       </div>
@@ -187,16 +282,26 @@ function Tile({ figures }: { figures: TileFigures }) {
       <div className="tabular mt-1 text-sm text-text-secondary">
         {`Answer score ${percent(figures.answer)}`}
       </div>
+      {figures.judgeMark !== undefined && (
+        <div className="tabular text-sm text-text-secondary">
+          {`${MARK_LABEL} ${percent(figures.judgeMark)}`}
+        </div>
+      )}
     </div>
   )
 }
 
 function LatestRun() {
-  const load = useLoad(loadLatest, 'overview-latest')
-  const verdict = load.status === 'ready' ? verdictFrom(load.data) : null
+  const load = useLoad(loadOverview, 'overview-latest')
+  const verdict =
+    load.status === 'ready'
+      ? verdictFrom(load.data.latest, load.data.combined)
+      : null
   const findings = verdict?.kind === 'official' ? verdict.findings : []
   const clear = findings.filter((f) => f.kind === 'clear')
   const hints = findings.filter((f) => f.kind === 'hint')
+  const judges = verdict?.kind === 'official' ? verdict.judges : null
+  const judgesClear = judges?.findings ?? []
   return (
     <Panel
       title="What we found"
@@ -214,10 +319,10 @@ function LatestRun() {
       {verdict?.kind === 'official' && (
         <div className="space-y-4">
           <p className="max-w-prose text-base text-text-primary">
-            {`All three answered the same ${verdict.questions > 0 ? `${plural(verdict.questions, 'question')}` : 'questions'} about a made-up lottery company. Each gets two scores:`}
+            {`All three answered the same ${verdict.questions > 0 ? `${plural(verdict.questions, 'question')}` : 'questions'} about a made-up lottery company. Each gets ${judges ? 'three' : 'two'} scores:`}
           </p>
           <dl className="max-w-prose space-y-1 text-base text-text-primary">
-            {SCORE_KEY.map(([term, meaning]) => (
+            {SCORE_KEY.slice(0, judges ? 3 : 2).map(([term, meaning]) => (
               <div key={term}>
                 <dt className="inline font-semibold">{term}</dt>{' '}
                 <dd className="inline">{meaning}</dd>
@@ -230,33 +335,30 @@ function LatestRun() {
             ))}
           </div>
           {verdict.kinds.evidence_recall.length > 0 && (
-            <KindChart kinds={verdict} clear={clear} />
+            <KindChart kinds={verdict} clear={[...clear, ...judgesClear]} />
           )}
-          {(findings.length > 0 || verdict.tested > 0) && (
+          {(findings.length > 0 || verdict.tested > 0 || judges) && (
             <ul className="max-w-prose list-disc space-y-3 pl-5 text-base text-text-primary">
-              {clear.map((finding) => {
-                const { higher, text } = difference(finding)
-                return (
-                  <li key={findingKey(finding)}>
-                    <strong>{`${higher} did better on ${KIND_WORDS[finding.stratum] ?? finding.stratum}.`}</strong>{' '}
-                    {KIND_EXAMPLES[finding.stratum]} {text} This passed our
-                    statistical test, so it is unlikely to be luck.
-                  </li>
-                )
-              })}
+              {clear.map((finding) => (
+                <ClearItem key={findingKey(finding)} finding={finding} />
+              ))}
               {verdict.tested > 0 && (
-                <li>
-                  <strong>
-                    {clear.length === 0
-                      ? 'No difference passed the test.'
-                      : 'Nothing else passed the test.'}
-                  </strong>{' '}
-                  {restSentence(
-                    verdict.tested - clear.length,
-                    verdict.disagreements,
-                    clear.length > 0,
-                  )}
-                </li>
+                <CountItem
+                  tested={verdict.tested}
+                  clear={clear.length}
+                  leaning={verdict.leaning}
+                />
+              )}
+              {judgesClear.map((finding) => (
+                <ClearItem key={findingKey(finding)} finding={finding} />
+              ))}
+              {judges && judges.tested > 0 && (
+                <CountItem
+                  measure={MARK_LABEL}
+                  tested={judges.tested}
+                  clear={judgesClear.length}
+                  leaning={judges.leaning}
+                />
               )}
               {[...new Set(hints.map((f) => f.stratum))].map((stratum) => (
                 <li key={`hint-${stratum}`}>

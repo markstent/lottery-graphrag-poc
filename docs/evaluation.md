@@ -456,6 +456,56 @@ What it cannot show:
 - The labelled answers are of v0.2.0, judged by the first judge with prompt 1.0.0, while the second judge reads them with prompt 1.2.0; the first judge with the 1.1.0 abstention rule applied is the nearer comparison.
 - A judge that fails on a repeat drops out of every comparison of that repeat, so the n of each cell says how much each figure rests on.
 
+### Judges' mark
+
+The two judges' correctness, combined per answer, is a second tested measure beside the deterministic answer score and evidence recall (D-105, owner decisions of 2026-11-02).
+The answer score and evidence recall stay as they are and as published; the judges' mark is added with its own comparisons, intervals and tests.
+
+Definition (`backend/app/evaluation/judges_mark.py`):
+
+- Per answer, one repeat of one approach on one instance, `judge_mark = (c1 + c2) / 4`, where c1 and c2 are the first and the second judge's correctness on the 0, 1, 2 rubric.
+  It takes the values 0, 0.25, 0.5, 0.75 and 1.
+- It is defined only when both judges gave scores.
+  An answer without both is counted by reason and left out of every mean and pair; it is not read as 0.
+  The reasons, checked in this order, are `generation_failed`, `first_judge_failed`, `second_judge_pending` and `second_judge_failed`.
+- The judges disagree on an answer when `abs(c1 - c2) == 2`: one says correct (2), the other wrong (0).
+  Each such answer is listed for a person to check.
+- The two judges must have used the same judge prompt version; marks of two prompts are refused, not combined.
+
+The family:
+
+- The judges' mark is tested where the answer score is: H1, H2 (anchored by id), H3 and H5, each for B against A and C against B, eight cells (`JUDGE_FAMILY`, derived from the answer score's cells of `HOLM_FAMILY`).
+  H2_name and C against A are computed and reported untested, as for the answer score.
+- The statistics are the run's, through the same functions (`report.observe`, `paired_comparisons`, `metric_table` and `family_headlines`): an instance's value is the mean over its repeats where the mark is defined, pairs cluster by logical question and world, the 95 percent cluster bootstrap interval, the two-sided Wilcoxon signed-rank test on group means, the pairs and groups gates, and the rule that a difference counts only when its Holm-adjusted p is below 0.05 and its interval leaves out zero.
+- Holm runs over the judges' eight cells only (controller ruling given to the owner, 2026-11-02).
+  The judges' tests are a family of their own, so the published 14 tests, their p-values and their Holm-adjusted p-values do not change.
+- Headlines are written in the run's headline style, in "judges' mark points", for each tested kind of question and comparison, then the name-anchored sub-group's descriptive line on the mark.
+
+Descriptive extras:
+
+- Each approach's mean mark per kind of question and overall, with n and repeats, in the summary's metric cell shape.
+- Agreement between the judges: exact agreement, linear weighted kappa and the 3 by 3 counts, answered and abstaining apart, as in the second judge's summary.
+- The counts: answers, answers both judges scored, those on which they gave the same level, those with no mark by reason, and disagreements.
+- The disagreement list (instance id, question id, world, kind of question, approach, repeat, question text, both levels) and the disagreements per kind of question.
+
+Outputs:
+
+- `combined.json` (schema 1) beside the second judge's `summary.json` in `data/evaluation/second-judge/<run id>/<model slug>/`.
+  It records both judge models and settings, the judge prompt version and hash, the second judge's `finished_at` it was computed from, the computation time and the git commit and dirty flag.
+- `make judges-combined RUN=<run id>` writes it from the stored run and the newest finished second judge of that run, with no model call and no write into the run.
+  It refuses a second judge without `summary.json`, verdict lines of another judge setting, and a location inside the runs directory.
+  It reads `verdicts.jsonl` without changing it, leaving out a last line still being written.
+- `make second-judge RUN=<run id>` writes it at the end of its pass too.
+- A newer second-judge pass makes it stale: the API serves no judges' mark until it is written again.
+- `GET /benchmarks/{run_id}/second-judge` serves it as `combined`; Results shows it under "Judges' verdict", and Overview adds it to each tile, to the chart switch and to its findings, kept apart from the run's own tests.
+
+What it cannot show:
+
+- Two judges agreeing does not make them right.
+- The second judge's label check (99 of the 100 sample answers judged, 90 percent exact agreement with the labels, weighted kappa 0.89) used labels from one model labeller and no person (D-094).
+- Both judges read words, so a confident wrong answer can mislead both.
+- Both judges see the same declared tells of the approach (the path line, bare graph records, concept text), so the blinding is incomplete for both.
+
 ### Statistics
 
 The code is `backend/app/evaluation/statistics.py`, and `report.py` is the only place a benchmark number is computed.

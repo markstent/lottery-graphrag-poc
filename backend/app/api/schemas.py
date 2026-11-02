@@ -478,14 +478,74 @@ class SecondJudgeLabelsOut(SecondJudgeHeaderOut):
     agreement_with_labels: LabelAgreementOut
 
 
+class JudgesCountsOut(BaseModel):
+    """Answers of the run, those both judges scored, those on which they gave
+    the same correctness, those with no mark by reason, and the answers the
+    judges disagree on."""
+
+    answers: int
+    both_judged: int
+    agreed: int
+    missing: dict[str, int]
+    disagreements: int
+
+
+class JudgesDisagreeOut(BaseModel):
+    """One answer the judges disagree on: one gave correctness 2, the other 0."""
+
+    instance_id: str
+    question_id: str
+    world_seed: int
+    stratum: str
+    pipeline: str
+    repeat: int
+    question: str
+    first: int
+    second: int
+
+
+class JudgesMarkOut(BaseModel):
+    """The two judges' combined mark (``combined.json``, schema 1, D-105):
+    per answer (c1 + c2) / 4, tested as its own family. ``metrics`` is per
+    stratum and pipeline, ``comparisons`` and ``headlines`` have the run's
+    shapes, ``agreement`` is between the judges."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    schema_version: Literal[1]
+    kind: Literal["combined"]
+    family: Literal["judges"]
+    run_id: str
+    measure: str
+    definition: str
+    first_judge: FirstJudgeOut
+    second_judge: SecondJudgeModelOut
+    judge_prompt_version: str
+    judge_prompt_hash: str
+    second_judge_finished_at: str
+    computed_at: str
+    git_sha: str
+    git_dirty: bool | None
+    min_kappa_items: int
+    counts: JudgesCountsOut
+    metrics: dict[str, dict[str, MetricCell]]
+    comparisons: list[ComparisonCell]
+    headlines: list[str]
+    agreement: BetweenJudgesOut
+    disagreements_by_stratum: dict[str, int]
+    disagreements: list[JudgesDisagreeOut]
+
+
 class SecondJudgeOut(BaseModel):
     """Response for GET /api/v1/benchmarks/{run_id}/second-judge: the newest
     second-judge summary of the run and, when there is one, the newest label
-    check of the same model. Descriptive; added after the result (D-100)."""
+    check of the same model (D-100), and the two judges' combined mark when it
+    has been computed from that summary's pass (D-105), else null."""
 
     run_id: str
     run: SecondJudgeRunOut
     labels: SecondJudgeLabelsOut | None
+    combined: JudgesMarkOut | None = None
 
 
 class BenchmarkRunOut(BaseModel):

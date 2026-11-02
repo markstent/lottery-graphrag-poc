@@ -2021,6 +2021,114 @@ export interface components {
             };
         };
         /**
+         * JudgesCountsOut
+         * @description Answers of the run, those both judges scored, those on which they gave
+         *     the same correctness, those with no mark by reason, and the answers the
+         *     judges disagree on.
+         */
+        JudgesCountsOut: {
+            /** Agreed */
+            agreed: number;
+            /** Answers */
+            answers: number;
+            /** Both Judged */
+            both_judged: number;
+            /** Disagreements */
+            disagreements: number;
+            /** Missing */
+            missing: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * JudgesDisagreeOut
+         * @description One answer the judges disagree on: one gave correctness 2, the other 0.
+         */
+        JudgesDisagreeOut: {
+            /** First */
+            first: number;
+            /** Instance Id */
+            instance_id: string;
+            /** Pipeline */
+            pipeline: string;
+            /** Question */
+            question: string;
+            /** Question Id */
+            question_id: string;
+            /** Repeat */
+            repeat: number;
+            /** Second */
+            second: number;
+            /** Stratum */
+            stratum: string;
+            /** World Seed */
+            world_seed: number;
+        };
+        /**
+         * JudgesMarkOut
+         * @description The two judges' combined mark (``combined.json``, schema 1, D-105):
+         *     per answer (c1 + c2) / 4, tested as its own family. ``metrics`` is per
+         *     stratum and pipeline, ``comparisons`` and ``headlines`` have the run's
+         *     shapes, ``agreement`` is between the judges.
+         */
+        JudgesMarkOut: {
+            agreement: components["schemas"]["BetweenJudgesOut"];
+            /** Comparisons */
+            comparisons: components["schemas"]["ComparisonCell"][];
+            /** Computed At */
+            computed_at: string;
+            counts: components["schemas"]["JudgesCountsOut"];
+            /** Definition */
+            definition: string;
+            /** Disagreements */
+            disagreements: components["schemas"]["JudgesDisagreeOut"][];
+            /** Disagreements By Stratum */
+            disagreements_by_stratum: {
+                [key: string]: number;
+            };
+            /**
+             * Family
+             * @constant
+             */
+            family: "judges";
+            first_judge: components["schemas"]["FirstJudgeOut"];
+            /** Git Dirty */
+            git_dirty: boolean | null;
+            /** Git Sha */
+            git_sha: string;
+            /** Headlines */
+            headlines: string[];
+            /** Judge Prompt Hash */
+            judge_prompt_hash: string;
+            /** Judge Prompt Version */
+            judge_prompt_version: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "combined";
+            /** Measure */
+            measure: string;
+            /** Metrics */
+            metrics: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["MetricCell"];
+                };
+            };
+            /** Min Kappa Items */
+            min_kappa_items: number;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            second_judge: components["schemas"]["SecondJudgeModelOut"];
+            /** Second Judge Finished At */
+            second_judge_finished_at: string;
+        };
+        /**
          * LabelAgreementOut
          * @description The labelling analysis with the second judge added as ``second_judge``.
          */
@@ -3380,9 +3488,11 @@ export interface components {
          * SecondJudgeOut
          * @description Response for GET /api/v1/benchmarks/{run_id}/second-judge: the newest
          *     second-judge summary of the run and, when there is one, the newest label
-         *     check of the same model. Descriptive; added after the result (D-100).
+         *     check of the same model (D-100), and the two judges' combined mark when it
+         *     has been computed from that summary's pass (D-105), else null.
          */
         SecondJudgeOut: {
+            combined?: components["schemas"]["JudgesMarkOut"] | null;
             labels: components["schemas"]["SecondJudgeLabelsOut"] | null;
             run: components["schemas"]["SecondJudgeRunOut"];
             /** Run Id */

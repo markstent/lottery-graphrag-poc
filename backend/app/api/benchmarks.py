@@ -53,6 +53,7 @@ from app.api.schemas import (
     InstanceResultOut,
     JobProgress,
     JobStatus,
+    JudgesMarkOut,
     PipelineScore,
     QuestionOut,
     SecondJudgeLabelsOut,
@@ -63,7 +64,7 @@ from app.api.schemas import (
 )
 from app.api.scoring import require_bank
 from app.config import METHOD_VERSION, REPO_ROOT, from_env, judge_settings_from_env
-from app.evaluation import second_judge
+from app.evaluation import judges_mark, second_judge
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
@@ -216,11 +217,13 @@ def _second_judge(runs_dir: Path, name: str) -> SecondJudgeOut:
     if found is None:
         raise ApiError(404, ErrorCode.NOT_FOUND, f"benchmark run {name!r} has no second judge")
     run, labels = found
+    combined = judges_mark.published(second_judge_dir(runs_dir), name, run)
     try:
         return SecondJudgeOut(
             run_id=name,
             run=SecondJudgeRunOut.model_validate(run),
             labels=None if labels is None else SecondJudgeLabelsOut.model_validate(labels),
+            combined=None if combined is None else JudgesMarkOut.model_validate(combined),
         )
     except ValidationError as error:
         raise RuntimeError(

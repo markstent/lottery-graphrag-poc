@@ -10,6 +10,11 @@
  * decimals. QUESTION_FIGURES were computed from the run's results.json, read
  * only, by a script outside the repository (the technical text says how); a
  * test checks that the two agree and that the tables show these numbers.
+ *
+ * The judges' mark paragraph names no figure: the second judge had not
+ * finished marking this run when it was written (D-105). Its figures belong
+ * here, typed with their source like the rest, once `make judges-combined
+ * RUN=official-2026-10-29` has written combined.json.
  */
 
 import { percent } from '../../../app/score-words'
@@ -637,6 +642,7 @@ export const lessons: ChapterCopy = {
       'An ontology on top of the graph: questions that compare markets by meaning, use local names, or ask for things "of the same kind". In this run it helped where its links led from the starting record to the shared kind, as with segments and local names, and not on the family and mechanic questions named by code.',
       'All three: a mix of these questions. In this run, as a pattern rather than a tested result, no single approach was best on every kind of question: text search on single facts and planted patterns, the graph on multi-hop questions, and the graph with the ontology on questions across markets. B and C also search documents, so by design the choice is how to share the space between documents and graph records, not which one to keep.',
     ],
+    "A second view of the answers is the judges' mark (chapter 6): how right two AI judges found each answer, tested as a group of its own. Its figures for this run, its tests and the answers the judges disagree on are on Results, under Judges' verdict. The figures in this chapter do not use it.",
     'Limits. The company is made up, and its 22 questions were written by the people who built the system. One answer model answered each question once. Each figure for a single question rests on 6 or 18 cases, and none of those is tested.',
   ],
   plainHint:
@@ -673,6 +679,7 @@ export const lessons: ChapterCopy = {
     'Detectable difference',
     'Graph walk',
     'Judge',
+    "Judges' mark",
     'Kind of question',
     'Official run',
     'Passage',

@@ -20,6 +20,7 @@ export const scoring: ChapterCopy = {
     'Two comparisons are tested: B against A, which measures what the graph adds, and C against B, which measures what the ontology adds. C against A is also shown, but not tested. Both approaches answer the same questions, so each question gives a pair of scores.',
     'One question is asked in up to three versions in each world, each about a different record. The versions of one question in one world are alike, so together they form a question group, and each group counts once. A world is one copy of the made-up company.',
     'A comparison reports the difference in points. One point is 0.01 on the 0 to 1 scale. It also reports an interval, a margin of error: the range the difference most likely lies in. Then each comparison gets a test, a statistical check against chance. A detectable difference needs two things. It passes the test: it is larger than chance would explain, after allowing for the number of comparisons made at once. And its margin of error leaves out zero, so the difference points one way only. With too few pairs, Results says there are too few to say.',
+    "The judges' mark (chapter 6) is compared the same way: the same pairs, the same kinds of question and the same test. Its eight tests are a group of their own. The allowance for comparisons made at once covers those eight only, so the other tests and their results stay exactly as they were.",
   ],
   technical: [
     'The settings in this chapter, now and in the newest official run:',
@@ -50,6 +51,7 @@ export const scoring: ChapterCopy = {
       "test: a two-sided Wilcoxon signed-rank test, with Pratt's treatment of zero differences, on the per-group mean differences;",
       "correction: Holm's step-down correction over the declared family, evidence recall on H1, H2 (anchored by id) and H5 and the answer score on H1, H2, H3 and H5, each for both tested comparisons, 14 tests in all;",
       'a difference is detectable when its Holm-adjusted p-value is below 0.05 and its 95 percent interval lies wholly above or below 0; a cell is tested only with at least 10 pairs and 6 groups, the fewest at which a two-sided signed-rank test can reach p below 0.05;',
+      "the judges' family (D-105): judge_mark on H1, H2 (anchored by id), H3 and H5, each for both tested comparisons, 8 tests, through the same functions (report.paired_comparisons and family_headlines with the judges' family), so the same pairing, groups, interval, test, gates and detectability rule; Holm runs over those 8 only, and the 14 tests above and their adjusted p-values are unchanged; H2_name and C against A are reported and untested as for the answer score;",
       'outside the family and untested: the name-anchored sub-group H2_name, shown with an interval, and the ontology-dependent split (D-060), which is descriptive only. H3 is untested on evidence: in the seed 2026 bank no H3 instance keeps a claim once the anchor is removed, and in the official run only 3 of 72 did (L02-2031-INC_012, L02-2032-INC_012 and L02-2033-INC_025, each with one claim, the platform version, carried by a document passage).',
     ],
     'Headlines (_headlines in report.py). Each kind of question gets one headline per tested comparison on its main metric, evidence recall for H1, H2 and H5 and the answer score for H3, whether or not the cell was tested, in one of four forms: "Graph exceeds text search by n points" or "trails" by n points, each with its 95 percent interval and its pairs and groups; "No detectable difference"; or "Too few pairs to say" (including a cell with no pairs). Then the H2_name sub-group gets one descriptive line per tested comparison on the same evidence metric (subgroup_line in statistics.py): the difference with its interval, or the mean alone below 6 groups, or "no pairs", each ending "no test is run on this sub-group". The harness writes the headlines and the screens show them unedited (D-067).',
@@ -64,6 +66,7 @@ export const scoring: ChapterCopy = {
     'Failure cause',
     'Interval',
     'Judge',
+    "Judges' mark",
     'Kind of question',
     'Pair',
     'Point',

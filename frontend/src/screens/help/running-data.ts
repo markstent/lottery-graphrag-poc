@@ -176,7 +176,11 @@ export const COMMAND_GROUPS: readonly {
       ],
       [
         'make second-judge',
-        'A second judge model marks the answers of a stored run (RUN=<run id>) or the hand-labelled sample (LABELS=<sample name>), as a second opinion; the run itself is unchanged.',
+        "A second judge model marks the answers of a stored run (RUN=<run id>) or the hand-labelled sample (LABELS=<sample name>), as a second opinion; the run itself is unchanged. Over a run it then works out the judges' mark.",
+      ],
+      [
+        'make judges-combined',
+        "Works out the judges' mark of a run again (RUN=<run id>) once its second judge has finished, and tests it as its own group; no model.",
       ],
     ],
   },

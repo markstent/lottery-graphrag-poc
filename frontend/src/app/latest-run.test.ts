@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Schemas } from '../api/client'
-import { findingsFrom, isFullOfficial, verdictFrom } from './latest-run'
+import type { JudgesMark } from '../results/judges'
+import { V03_SECOND_JUDGE } from '../results/results.fixtures'
+import { stubApi } from '../test/api-stub'
+import {
+  findingsFrom,
+  isFullOfficial,
+  loadOverview,
+  verdictFrom,
+} from './latest-run'
 
 const cell = (mean: number | null, n: number, repeats: number) => ({
   mean,
@@ -64,8 +72,9 @@ describe('verdictFrom', () => {
       questions: 150,
       findings: [],
       tested: 0,
-      disagreements: 0,
-      kinds: { evidence_recall: [], answer: [] },
+      leaning: [],
+      kinds: { evidence_recall: [], answer: [], judge_mark: [] },
+      judges: null,
     })
   })
 
@@ -95,8 +104,9 @@ describe('verdictFrom', () => {
       questions: 0,
       findings: [],
       tested: 0,
-      disagreements: 0,
-      kinds: { evidence_recall: [], answer: [] },
+      leaning: [],
+      kinds: { evidence_recall: [], answer: [], judge_mark: [] },
+      judges: null,
     })
   })
 
@@ -267,5 +277,115 @@ describe('the kinds of question for the Overview chart', () => {
       'H3',
       'H5',
     ])
+  })
+})
+
+describe("the judges' mark on Overview", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const combined = (comparisons: unknown[]): JudgesMark => ({
+    ...(V03_SECOND_JUDGE.combined as JudgesMark),
+    comparisons: comparisons as JudgesMark['comparisons'],
+  })
+  const judgeCell = (over: Record<string, unknown>) => ({
+    stratum: 'H1',
+    metric: 'judge_mark',
+    comparison: 'B_vs_A',
+    n: 72,
+    clusters: 24,
+    mean: 0.08,
+    low: 0.02,
+    high: 0.14,
+    p: 0.001,
+    p_holm: 0.01,
+    in_family: true,
+    reason: 'tested',
+    ...over,
+  })
+
+  it('keeps its own family: its clear results, its tested count and its leaning cells', () => {
+    const marks = combined([
+      judgeCell({}),
+      judgeCell({ stratum: 'H2', p_holm: 0.3 }),
+      judgeCell({ stratum: 'H3', low: -0.1, p_holm: 1 }),
+      judgeCell({
+        stratum: 'H2_name',
+        in_family: false,
+        reason: 'not_in_family',
+        p: null,
+        p_holm: null,
+      }),
+    ])
+    const verdict = verdictFrom(run('official', null, FULL), marks)
+    if (verdict.kind !== 'official')
+      throw new Error('expected an official verdict')
+    expect(verdict.judges).toEqual({
+      findings: [
+        {
+          kind: 'clear',
+          stratum: 'H1',
+          comparison: 'B_vs_A',
+          metric: 'judge_mark',
+          mean: 0.08,
+        },
+      ],
+      tested: 3,
+      leaning: [
+        {
+          kind: 'leaning',
+          stratum: 'H2',
+          comparison: 'B_vs_A',
+          metric: 'judge_mark',
+          mean: 0.08,
+        },
+      ],
+    })
+    // The run's own family is untouched by the judges' cells.
+    expect(verdict.findings).toEqual([])
+    expect(verdict.tested).toBe(0)
+    const overall = marks.metrics.overall!
+    expect(verdict.tiles.map((t) => t.judgeMark)).toEqual([
+      overall.A!.mean,
+      overall.B!.mean,
+      overall.C!.mean,
+    ])
+    expect(verdict.kinds.judge_mark.map((k) => k.stratum)).toEqual([
+      'H1',
+      'H2',
+      'H2_name',
+      'H3',
+      'H5',
+    ])
+  })
+
+  it('has no judges and no tile line without the mark', () => {
+    const verdict = verdictFrom(run('official', null, FULL))
+    if (verdict.kind !== 'official')
+      throw new Error('expected an official verdict')
+    expect(verdict.judges).toBeNull()
+    expect(verdict.tiles.every((t) => !('judgeMark' in t))).toBe(true)
+  })
+
+  it('loads the second judge of a full official run only, and reads a 404 as no mark', async () => {
+    const latest = run('official', null, FULL)
+    const fetchMock = stubApi({
+      '/api/v1/benchmarks/latest': latest,
+      '/api/v1/benchmarks/r/second-judge': V03_SECOND_JUDGE,
+    })
+    const signal = new AbortController().signal
+    expect(await loadOverview(signal)).toEqual({
+      latest,
+      combined: V03_SECOND_JUDGE.combined,
+    })
+    vi.unstubAllGlobals()
+    stubApi({ '/api/v1/benchmarks/latest': latest })
+    expect(await loadOverview(signal)).toEqual({ latest, combined: null })
+    vi.unstubAllGlobals()
+    const smoke = stubApi({
+      '/api/v1/benchmarks/latest': run('smoke', null, FULL),
+    })
+    expect((await loadOverview(signal)).combined).toBeNull()
+    expect(smoke).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

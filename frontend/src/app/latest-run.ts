@@ -4,12 +4,13 @@
  * run at all, is named in words and carries no number.
  */
 
-import { getLatestBenchmark, type Schemas } from '../api/client'
+import { getLatestBenchmark, getSecondJudge, type Schemas } from '../api/client'
 import { ApiError } from '../api/http'
 import type { PipelineId } from '../design/pipelines'
+import type { JudgesMark } from '../results/judges'
 import {
   HOLM_ALPHA,
-  intervalTestDisagreements,
+  leansWithoutPassing,
   MIN_GROUPS_FOR_INTERVAL,
 } from '../results/strata'
 import { EVIDENCE_METRIC } from './method'
@@ -25,6 +26,8 @@ export interface TileFigures {
   repeats: number
   /** The run's answer score overall, or null when it has none for this pipeline. */
   answer: number | null
+  /** The two judges' mark overall (D-105); absent when the run has none worked out. */
+  judgeMark?: number | null
 }
 
 /** The two comparisons the pre-registered test covers. */
@@ -32,10 +35,12 @@ export type TestedPair = 'B_vs_A' | 'C_vs_B'
 
 /**
  * One difference Overview states in words. "clear" passed the pre-registered
- * test; "hint" is an untested sub-group whose interval leaves out zero.
+ * test; "hint" is an untested sub-group whose interval leaves out zero;
+ * "leaning" is a tested cell whose interval leaves out zero but whose test
+ * does not pass.
  */
 export interface Finding {
-  kind: 'clear' | 'hint'
+  kind: 'clear' | 'hint' | 'leaning'
   stratum: string
   comparison: TestedPair
   metric: string
@@ -54,16 +59,28 @@ export type Verdict =
       /** Cells in the pre-registered test, of either metric. */
       tested: number
       /** Tested cells whose interval leaves out zero but whose test does not pass. */
-      disagreements: number
-      /** Each kind of question's mean per pipeline, for the chart, by metric. */
+      leaning: Finding[]
+      /** Each kind of question's mean per pipeline, for the chart, by metric; none for a measure the run lacks. */
       kinds: Record<KindMetric, KindFigures[]>
+      /** The two judges' mark, tested as its own family (D-105); null when the run has none worked out. */
+      judges: JudgesFamily | null
     }
   | { kind: 'none'; otherRun: string | null }
 
 const PIPELINE_IDS: readonly PipelineId[] = ['A', 'B', 'C']
 
 /** The measures the Overview chart can show. */
-export type KindMetric = 'evidence_recall' | 'answer'
+export type KindMetric = 'evidence_recall' | 'answer' | 'judge_mark'
+
+/** What Overview says about the judges' family, kept apart from the run's own tests. */
+export interface JudgesFamily {
+  /** Its differences that passed its test. */
+  findings: Finding[]
+  /** Its cells in its test. */
+  tested: number
+  /** Its tested cells whose interval leaves out zero but whose test does not pass. */
+  leaning: Finding[]
+}
 
 /** One kind of question's mean per pipeline on one measure, as the summary records it. */
 export interface KindFigures {
@@ -79,6 +96,30 @@ export interface KindFigures {
 const KIND_ORDER: Record<KindMetric, readonly string[]> = {
   evidence_recall: ['H1', 'H2', 'H2_name', 'H5'],
   answer: ['H1', 'H2', 'H2_name', 'H3', 'H5'],
+  judge_mark: ['H1', 'H2', 'H2_name', 'H3', 'H5'],
+}
+
+/** The judges' mark per kind of question, from `combined.json`'s metrics. */
+function judgeKinds(combined: JudgesMark | null): KindFigures[] {
+  if (!combined) return []
+  return KIND_ORDER.judge_mark.flatMap((stratum) => {
+    const cells = combined.metrics[stratum]
+    if (!cells) return []
+    const values = Object.fromEntries(
+      PIPELINE_IDS.map((id) => [id, cells[id]?.mean ?? null]),
+    )
+    return [{ stratum, values }]
+  })
+}
+
+function judgesFamily(combined: JudgesMark | null): JudgesFamily | null {
+  if (!combined) return null
+  const cells = combined.comparisons
+  return {
+    findings: findingsFrom(cells).filter((f) => f.kind === 'clear'),
+    tested: cells.filter((cell) => cell.in_family).length,
+    leaning: leaningFrom(cells),
+  }
 }
 
 function kindFigures(
@@ -148,24 +189,36 @@ const hints = (cell: Comparison) =>
   cell.high !== null &&
   (cell.low > 0 || cell.high < 0)
 
+const pick = (
+  comparisons: readonly Comparison[],
+  kind: Finding['kind'],
+  keep: (cell: Comparison) => boolean,
+) =>
+  comparisons.flatMap((cell): Finding[] =>
+    isTestedPair(cell.comparison) && cell.mean !== null && keep(cell)
+      ? [
+          {
+            kind,
+            stratum: cell.stratum,
+            comparison: cell.comparison,
+            metric: cell.metric,
+            mean: cell.mean,
+          },
+        ]
+      : [],
+  )
+
 /** The differences to state in words: those that passed the test, then the hints. */
 export function findingsFrom(comparisons: readonly Comparison[]): Finding[] {
-  const pick = (kind: Finding['kind'], keep: (cell: Comparison) => boolean) =>
-    comparisons.flatMap((cell): Finding[] =>
-      isTestedPair(cell.comparison) && cell.mean !== null && keep(cell)
-        ? [
-            {
-              kind,
-              stratum: cell.stratum,
-              comparison: cell.comparison,
-              metric: cell.metric,
-              mean: cell.mean,
-            },
-          ]
-        : [],
-    )
-  return [...pick('clear', passes), ...pick('hint', hints)]
+  return [
+    ...pick(comparisons, 'clear', passes),
+    ...pick(comparisons, 'hint', hints),
+  ]
 }
+
+/** The tested differences whose interval leaves out zero but whose test does not pass. */
+export const leaningFrom = (comparisons: readonly Comparison[]): Finding[] =>
+  pick(comparisons, 'leaning', leansWithoutPassing)
 
 /**
  * Whether the summary is an official run of the whole bank: no strata, no
@@ -183,9 +236,13 @@ export function isFullOfficial(latest: Schemas['BenchmarkSummary']): boolean {
   )
 }
 
-/** The verdict for the run `GET /benchmarks/latest` returned, or null for a 404. */
+/**
+ * The verdict for the run `GET /benchmarks/latest` returned, or null for a
+ * 404, with the two judges' mark of that run when it is worked out.
+ */
 export function verdictFrom(
   latest: Schemas['BenchmarkSummary'] | null,
+  combined: JudgesMark | null = null,
 ): Verdict {
   if (latest === null) return { kind: 'none', otherRun: null }
   if (!isFullOfficial(latest))
@@ -197,18 +254,25 @@ export function verdictFrom(
   const cells = Array.isArray(comparisons) ? comparisons : []
   return {
     kind: 'official',
-    tiles: PIPELINE_IDS.map((id) => figures(latest.summary, id)),
+    tiles: PIPELINE_IDS.map((id) => ({
+      ...figures(latest.summary, id),
+      ...(combined
+        ? { judgeMark: combined.metrics.overall?.[id]?.mean ?? null }
+        : {}),
+    })),
     headlines: Array.isArray(headlines)
       ? headlines.filter((line): line is string => typeof line === 'string')
       : [],
     questions: isRecord(instances?.total) ? (instances.total.overall ?? 0) : 0,
     findings: findingsFrom(cells),
     tested: cells.filter((cell) => cell.in_family).length,
-    disagreements: intervalTestDisagreements(cells),
+    leaning: leaningFrom(cells),
     kinds: {
       evidence_recall: kindFigures(latest.summary, 'evidence_recall'),
       answer: kindFigures(latest.summary, 'answer'),
+      judge_mark: judgeKinds(combined),
     },
+    judges: judgesFamily(combined),
   }
 }
 
@@ -218,6 +282,25 @@ export async function loadLatest(signal: AbortSignal) {
     return await getLatestBenchmark(signal)
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) return null
+    throw error
+  }
+}
+
+/**
+ * What Overview shows: the newest run and, for a full official run, its two
+ * judges' mark, or null where the run has no second judge (a 404) or the mark
+ * is not worked out.
+ */
+export async function loadOverview(signal: AbortSignal) {
+  const latest = await loadLatest(signal)
+  if (latest === null || !isFullOfficial(latest))
+    return { latest, combined: null }
+  try {
+    const judges = await getSecondJudge(latest.run_id, signal)
+    return { latest, combined: judges.combined ?? null }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404)
+      return { latest, combined: null }
     throw error
   }
 }

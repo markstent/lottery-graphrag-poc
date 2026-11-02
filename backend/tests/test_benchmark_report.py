@@ -20,9 +20,9 @@ from app.evaluation.report import (
     SMOKE_HEADLINE,
     SUMMARY_SCHEMA_VERSION,
     _agreement_section,
-    _observe,
     instance_means,
     judge_agreement,
+    observe,
     render_report,
     summarize,
 )
@@ -682,7 +682,7 @@ def test_instance_means_matches_the_observation(run_with_ontology_flags: Benchma
     # A's failed repeat is excluded: (1.0 + 0.5) / 2.
     assert instance_means(h3)["A"]["answer"] == pytest.approx(0.75)
     for r in results:
-        means, observed = instance_means(r), _observe(r).values
+        means, observed = instance_means(r), observe(r).values
         for tag in r.scores:
             for metric in ("evidence_recall", "answer"):
                 assert means[tag][metric] == observed[metric][tag][0]

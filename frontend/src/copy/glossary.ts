@@ -186,6 +186,20 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'JUDGE_MODEL, judge prompt 1.2.0 (D-096). It sees block text only, shuffled and renumbered, and no word of its prompt names an approach (D-031).',
   },
   {
+    term: 'Judges disagree',
+    meaning:
+      'One judge says an answer is right and the other says it is wrong. Results lists each such answer for a person to check.',
+    technical:
+      'judges_disagree: the two correctness levels differ by 2. Listed in combined.json with the question, the approach and both levels, and counted per kind of question.',
+  },
+  {
+    term: "Judges' mark",
+    meaning:
+      'How right two AI judges found an answer, averaged, from 0 to 1. It is tested on its own, apart from the other scores.',
+    technical:
+      "Per answer, (c1 + c2) / 4 over the first and the second judge's correctness (0, 1, 2), defined only when both gave scores. Tested in its own Holm family over the answer score's eight cells (backend/app/evaluation/judges_mark.py, D-105).",
+  },
+  {
     term: 'Kind of question',
     meaning:
       'A group of questions that tests one idea, such as single facts, or links followed across several records.',

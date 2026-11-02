@@ -161,11 +161,43 @@ test('a run with a second judge shows it after the judge, labelled descriptive',
       name: 'With the hand labels, on a sample of answers',
     }),
   ).toBeVisible()
-  // It follows the judge's own panel.
+  // It follows the judge's own panel and the judges' verdict, among the
+  // screen's panels (a panel's own labelled parts are left out).
   const order = await page
     .getByRole('region')
-    .evaluateAll((regions) => regions.map((r) => r.getAttribute('aria-label')))
-  expect(order.indexOf('Second judge')).toBe(order.indexOf('Judge') + 1)
+    .evaluateAll((regions) =>
+      regions
+        .filter((r) => !r.parentElement?.closest('section'))
+        .map((r) => r.getAttribute('aria-label')),
+    )
+  expect(order.indexOf("Judges' verdict")).toBe(order.indexOf('Judge') + 1)
+  expect(order.indexOf('Second judge')).toBe(order.indexOf('Judge') + 2)
+})
+
+test("a run with a second judge shows the judges' verdict, tested as its own group, with the answers the judges disagree on", async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await mockSecondJudge(page, 'ready')
+  await page.goto('/#/results?run=fixture-v03')
+  const panel = page.getByRole('region', { name: "Judges' verdict" })
+  await expect(
+    panel.getByText('Tested apart from the evidence and answer score tests.'),
+  ).toBeVisible()
+  await expect(panel.getByText("Judges' mark: A · Text search")).toBeVisible()
+  await expect(
+    panel.getByRole('img', { name: "Paired differences in judges' mark" }),
+  ).toBeVisible()
+  await expect(
+    panel.getByText(/^Same verdict on \d+ of \d+ answers/),
+  ).toBeVisible()
+  const table = panel.getByRole('table', { name: 'Judges disagree' })
+  await expect(
+    table.getByRole('columnheader', { name: 'Second judge' }),
+  ).toBeVisible()
+  await expect(table.getByRole('row').nth(1)).toContainText(
+    /correct|partly|wrong/,
+  )
 })
 
 test('a run without a second judge shows no second judge panel', async ({
@@ -180,6 +212,9 @@ test('a run without a second judge shows no second judge panel', async ({
   await expect(page.getByRole('region', { name: 'Second judge' })).toHaveCount(
     0,
   )
+  await expect(
+    page.getByRole('region', { name: "Judges' verdict" }),
+  ).toHaveCount(0)
 })
 
 test('the second judge panel shows its loading and error states', async ({

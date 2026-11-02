@@ -161,6 +161,7 @@ A job started from the API never resumes; its failure message names the command 
 | `make addendum-v020` | Rescores official run v0.2.0 with the current scorer (2.2.1); no Neo4j, no model |
 | `make label-sample`, `label-agreement` | Builds the hand-labelling sample from run v0.2.0, and reports the agreement of the measures with the labels; no Neo4j, no model |
 | `make second-judge RUN=<run id>` or `LABELS=v0.2.0-sample` | Re-judges a stored run's answers, or the hand-labelled sample's, with the `SECOND_JUDGE_*` model, into `data/evaluation/second-judge/` (D-100); no Neo4j; calls the second judge model for hours on a whole run; a rerun keeps the scored repeats and retries the failed ones |
+| `make judges-combined RUN=<run id>` | Writes the two judges' combined mark of a run whose second judge has finished, `combined.json` beside the second judge's summary (D-105); no Neo4j, no model; reads the run and the verdicts without changing them; run it again after a newer second-judge pass |
 | `make run-smoke` | Scorer smoke test on three worlds; it wipes and restores Neo4j and indexes new worlds in Qdrant, with the fake generator and judge (no answer or judge model) |
 | `make run-benchmark`, `run-sweep` | The official run (six unseen worlds, seeds 2029 to 2034, each question asked once as D-097 sets and `REPEATS=N` for more, only after the owner agrees) and the depth sweep (see [evaluation.md](evaluation.md)); each wipes and restores Neo4j, indexes new worlds in Qdrant and calls the judge model, and the answer model unless `GENERATION_PROVIDER=fake` |
 

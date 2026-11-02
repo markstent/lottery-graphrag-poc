@@ -393,6 +393,20 @@ test.describe('Results', () => {
     await expectBaseline(panel, 'results-v03-second-judge.png')
   })
 
+  test('results-v03-judges-verdict', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-v03', { runs: 'v03' })
+    await mockSecondJudge(page, 'ready')
+    await page.reload()
+    const panel = page.getByRole('region', { name: "Judges' verdict" })
+    await expect(
+      panel.getByRole('table', { name: 'Judges disagree' }),
+    ).toBeVisible()
+    await panel.scrollIntoViewIfNeeded()
+    await page.mouse.move(0, 0)
+    await settle(page)
+    await expectBaseline(panel, 'results-v03-judges-verdict.png')
+  })
+
   test('results-quick-check', async ({ page }) => {
     await openScreen(page, '#/results?run=fixture-smoke')
     await expect(

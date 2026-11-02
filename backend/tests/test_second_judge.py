@@ -8,6 +8,7 @@ with the answer level, between the judges and with the hand labels.
 
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import json
 from pathlib import Path
@@ -16,7 +17,7 @@ from typing import Any
 import pytest
 from app.api.benchmarks import _second_judge, second_judge_dir
 from app.config import JudgeSettings
-from app.evaluation import addendum, labelling, official
+from app.evaluation import addendum, judges_mark, labelling, official
 from app.evaluation import second_judge as sj
 from app.evaluation.__main__ import main
 from app.evaluation.judge import (
@@ -98,6 +99,8 @@ def _with_families(payload: dict[str, Any]) -> dict[str, Any]:
             "generation_model_family": "qwen",
             "judge_model": "ollama/gemma4:31b",
             "judge_model_family": "gemma",
+            # Judged with the prompt the second judge uses, so the two marks combine (D-105).
+            "judge_prompt_version": JUDGE_PROMPT_VERSION,
         }
     )
     return payload
@@ -543,10 +546,10 @@ def test_cli_runs_the_second_judge(
 
 # The Results screen's second-judge fixture (frontend/e2e/fixtures/
 # results-v03-second-judge.json): the report tests' synthetic v0.3 run and the
-# labelling tests' small sample, judged again with a hashed fake reply and
-# served by the API's own builder, so it is real output with test values. The
-# clock and checkout fields are fixed so it reproduces. Rewrite it from
-# backend/ with
+# labelling tests' small sample, judged again with a hashed fake reply, with
+# the two judges' combined mark (D-105), and served by the API's own builder,
+# so it is real output with test values. The clock and checkout fields are
+# fixed so it reproduces. Rewrite it from backend/ with
 #     uv run python -m tests.test_second_judge
 SECOND_JUDGE_FIXTURE = V03_FIXTURES / "results-v03-second-judge.json"
 # The reply limit the official second judge runs with, so the panel shows it.
@@ -574,17 +577,30 @@ def _fix(path: Path) -> None:
     path.write_text(json.dumps(summary), encoding="utf-8")
 
 
+def _fix_combined(path: Path) -> None:
+    combined = json.loads(path.read_text(encoding="utf-8"))
+    combined.update(computed_at=FIXED["finished_at"], git_sha="fixture", git_dirty=False)
+    path.write_text(json.dumps(combined), encoding="utf-8")
+
+
 def second_judge_fixture_text(directory: Path) -> str:
     """The fixture's text, as the API serves the fixture run's second judge."""
     runs = directory / "runs"
     runs.mkdir()
     run = _benchmark("official", h5_per_world=6, label=V03_FIXTURE_LABEL)
+    # Judged with the prompt the second judge uses, so the two marks combine.
+    run = dataclasses.replace(
+        run, record=dataclasses.replace(run.record, judge_prompt_version=JUDGE_PROMPT_VERSION)
+    )
     published = runs / V03_FIXTURE_RUN
     published.mkdir()
     (published / "results.json").write_text(json.dumps(run.to_payload()), encoding="utf-8")
     (published / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
     root = second_judge_dir(runs)
-    _fix(sj.judge_run(published, FIXTURE_SETTINGS, root, HashedGateway()))
+    judged = sj.judge_run(published, FIXTURE_SETTINGS, root, HashedGateway())
+    _fix(judged)
+    combined = judges_mark.write_combined(published, judged.parent)
+    _fix_combined(combined)
     labelled = _write(runs / RUN_NAME, _with_families(_payload(_small_entries())))
     sample = write_sample(labelled, directory / "labels" / "v0.2.0-sample")
     _write_labels(sample / "labels-controller.csv", _all(sample, "0"))

@@ -279,9 +279,28 @@ def read_verdicts(path: Path, record: dict[str, Any]) -> dict[str, dict[str, Any
     if not path.exists():
         return {}
     text = path.read_text(encoding="utf-8")
-    if text and not text.endswith("\n"):
-        text = text[: text.rfind("\n") + 1]
-        path.write_text(text, encoding="utf-8")
+    kept = _complete(text)
+    if kept != text:
+        path.write_text(kept, encoding="utf-8")
+    return _by_key(path, kept, record)
+
+
+def stored_verdicts(path: Path, record: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Read only, for a pass that may still be writing: each repeat's latest
+    line by key, with a last line not yet complete left out and the file
+    untouched; a line of another judge setting than ``record`` is refused."""
+    if not path.exists():
+        raise ValueError(f"{path} does not exist: the second judge has judged nothing here")
+    return _by_key(path, _complete(path.read_text(encoding="utf-8")), record)
+
+
+def _complete(text: str) -> str:
+    """The text up to its last full line: a line cut short, by an
+    interruption or because it is still being written, is left out."""
+    return text if not text or text.endswith("\n") else text[: text.rfind("\n") + 1]
+
+
+def _by_key(path: Path, text: str, record: dict[str, Any]) -> dict[str, dict[str, Any]]:
     lines = [json.loads(line) for line in text.splitlines() if line.strip()]
     for line in lines:
         mixed = [f for f in IDENTITY_FIELDS if line.get(f) != record[f]]
@@ -534,7 +553,7 @@ def labels_out_dir(root: Path, sample_dir: Path, model: str) -> Path:
     return root / f"{LABELS_PREFIX}{sample_dir.name}" / model_slug(model)
 
 
-def _refuse_runs(out_dir: Path, source: Path) -> None:
+def refuse_runs(out_dir: Path, source: Path) -> None:
     """Refuse a location inside the run or anywhere under the runs root."""
     where = out_dir.resolve()
     for runs in (source, labelling.RUNS_ROOT):
@@ -565,7 +584,7 @@ def judge_run(
         record.get("judge_model_family"),
     )
     out_dir = run_out_dir(out_root or SECOND_JUDGE_ROOT, source.name, settings.model)
-    _refuse_runs(out_dir, source)
+    refuse_runs(out_dir, source)
     targets = list(judged_repeats(payload))
     verdicts = judge_targets(targets, settings, out_dir, source.name, gateway, on_progress)
     return _write_summary(out_dir, run_summary(source.name, payload, settings, verdicts))
@@ -595,7 +614,7 @@ def judge_labels(
         record.get("judge_model_family"),
     )
     out_dir = labels_out_dir(out_root or SECOND_JUDGE_ROOT, sample_dir, settings.model)
-    _refuse_runs(out_dir, source)
+    refuse_runs(out_dir, source)
     # Refuse missing or unsettled labels before any model call, not hours later.
     labelling.label_agreement(sample_dir, source)
     targets = label_targets(payload, key)

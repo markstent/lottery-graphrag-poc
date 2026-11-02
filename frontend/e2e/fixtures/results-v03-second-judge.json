@@ -14,7 +14,7 @@
     "first_judge": {
       "model": "fake-judge-v1",
       "model_family": "fake",
-      "prompt_version": "1.0.0",
+      "prompt_version": "1.2.0",
       "max_tokens": 300
     },
     "generation_model": "fake-gen",
@@ -254,7 +254,7 @@
     "first_judge": {
       "model": "ollama/gemma4:31b",
       "model_family": "gemma",
-      "prompt_version": "1.0.0",
+      "prompt_version": "1.2.0",
       "max_tokens": 300
     },
     "generation_model": "ollama/qwen3.6:latest",
@@ -280,8 +280,8 @@
       "measures": {
         "scorer_recorded": "scorer 2.0.0 as recorded",
         "scorer_rescored": "scorer 2.2.1 rescored",
-        "judge_recorded": "judge 1.0.0 as recorded",
-        "judge_abstention_rule": "judge 1.0.0 with the 1.1.0 abstention rule applied mechanically",
+        "judge_recorded": "judge 1.2.0 as recorded",
+        "judge_abstention_rule": "judge 1.2.0 with the 1.1.0 abstention rule applied mechanically",
         "second_judge": "second judge ollama/muse-glimmer:latest with judge prompt 1.2.0"
       },
       "overall": {
@@ -524,5 +524,1672 @@
         }
       }
     }
+  },
+  "combined": {
+    "schema_version": 1,
+    "kind": "combined",
+    "family": "judges",
+    "run_id": "fixture-v03",
+    "measure": "judge_mark",
+    "definition": "Per answer, (first judge's correctness + second judge's correctness) / 4 on the 0, 1, 2 rubric; defined only when both judges gave scores.",
+    "first_judge": {
+      "model": "fake-judge-v1",
+      "model_family": "fake",
+      "prompt_version": "1.2.0",
+      "max_tokens": 300
+    },
+    "second_judge": {
+      "model": "ollama/muse-glimmer:latest",
+      "model_family": "muse",
+      "reasoning": "off",
+      "temperature": 0.0,
+      "max_tokens": 2048
+    },
+    "judge_prompt_version": "1.2.0",
+    "judge_prompt_hash": "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643",
+    "second_judge_finished_at": "2026-11-02T10:00:00+00:00",
+    "computed_at": "2026-11-02T10:00:00+00:00",
+    "git_sha": "fixture",
+    "git_dirty": false,
+    "min_kappa_items": 10,
+    "counts": {
+      "answers": 336,
+      "both_judged": 324,
+      "agreed": 108,
+      "missing": {
+        "generation_failed": 12,
+        "first_judge_failed": 0,
+        "second_judge_pending": 0,
+        "second_judge_failed": 0
+      },
+      "disagreements": 113
+    },
+    "metrics": {
+      "H1": {
+        "A": {
+          "mean": 0.8229166666666666,
+          "n": 12,
+          "repeats": 24
+        },
+        "B": {
+          "mean": 0.7604166666666666,
+          "n": 12,
+          "repeats": 24
+        },
+        "C": {
+          "mean": 0.7395833333333334,
+          "n": 12,
+          "repeats": 24
+        }
+      },
+      "H2": {
+        "A": {
+          "mean": 0.78125,
+          "n": 12,
+          "repeats": 24
+        },
+        "B": {
+          "mean": 0.7916666666666666,
+          "n": 12,
+          "repeats": 24
+        },
+        "C": {
+          "mean": 0.75,
+          "n": 12,
+          "repeats": 24
+        }
+      },
+      "H2_name": {
+        "A": {
+          "mean": 0.625,
+          "n": 6,
+          "repeats": 12
+        },
+        "B": {
+          "mean": 0.7916666666666666,
+          "n": 6,
+          "repeats": 12
+        },
+        "C": {
+          "mean": 0.75,
+          "n": 6,
+          "repeats": 12
+        }
+      },
+      "H3": {
+        "A": {
+          "mean": 0.6979166666666666,
+          "n": 12,
+          "repeats": 24
+        },
+        "B": {
+          "mean": 0.7395833333333334,
+          "n": 12,
+          "repeats": 24
+        },
+        "C": {
+          "mean": 0.78125,
+          "n": 12,
+          "repeats": 24
+        }
+      },
+      "H5": {
+        "A": {
+          "mean": 0.65625,
+          "n": 12,
+          "repeats": 24
+        },
+        "B": {
+          "mean": 0.7395833333333334,
+          "n": 12,
+          "repeats": 24
+        },
+        "C": {
+          "mean": 0.7291666666666666,
+          "n": 12,
+          "repeats": 24
+        }
+      },
+      "overall": {
+        "A": {
+          "mean": 0.7268518518518519,
+          "n": 54,
+          "repeats": 108
+        },
+        "B": {
+          "mean": 0.7615740740740741,
+          "n": 54,
+          "repeats": 108
+        },
+        "C": {
+          "mean": 0.75,
+          "n": 54,
+          "repeats": 108
+        }
+      }
+    },
+    "comparisons": [
+      {
+        "stratum": "H1",
+        "metric": "judge_mark",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": -0.0625,
+        "low": -0.16666666666666666,
+        "high": 0.052083333333333336,
+        "p": 0.29296875,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H1",
+        "metric": "judge_mark",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": -0.020833333333333332,
+        "low": -0.14583333333333334,
+        "high": 0.10416666666666667,
+        "p": 0.640625,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H1",
+        "metric": "judge_mark",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": -0.08333333333333333,
+        "low": -0.21875,
+        "high": 0.041666666666666664,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2",
+        "metric": "judge_mark",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.010416666666666666,
+        "low": -0.08333333333333333,
+        "high": 0.11458333333333333,
+        "p": 1.0,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H2",
+        "metric": "judge_mark",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": -0.041666666666666664,
+        "low": -0.15625,
+        "high": 0.0625,
+        "p": 0.796875,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H2",
+        "metric": "judge_mark",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": -0.03125,
+        "low": -0.10416666666666667,
+        "high": 0.041666666666666664,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "judge_mark",
+        "comparison": "B_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.16666666666666666,
+        "low": 0.041666666666666664,
+        "high": 0.3333333333333333,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "judge_mark",
+        "comparison": "C_vs_B",
+        "n": 6,
+        "clusters": 6,
+        "mean": -0.041666666666666664,
+        "low": -0.20833333333333334,
+        "high": 0.125,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "judge_mark",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.125,
+        "low": 0.020833333333333332,
+        "high": 0.25,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "judge_mark",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.041666666666666664,
+        "low": -0.10416666666666667,
+        "high": 0.16666666666666666,
+        "p": 0.45703125,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H3",
+        "metric": "judge_mark",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.041666666666666664,
+        "low": -0.09375,
+        "high": 0.16666666666666666,
+        "p": 0.44921875,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H3",
+        "metric": "judge_mark",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.08333333333333333,
+        "low": -0.020833333333333332,
+        "high": 0.1875,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H5",
+        "metric": "judge_mark",
+        "comparison": "B_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.08333333333333333,
+        "low": -0.052083333333333336,
+        "high": 0.21875,
+        "p": 0.24609375,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
+        "metric": "judge_mark",
+        "comparison": "C_vs_B",
+        "n": 12,
+        "clusters": 12,
+        "mean": -0.010416666666666666,
+        "low": -0.15625,
+        "high": 0.13541666666666666,
+        "p": 0.9423828125,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
+        "metric": "judge_mark",
+        "comparison": "C_vs_A",
+        "n": 12,
+        "clusters": 12,
+        "mean": 0.07291666666666667,
+        "low": -0.052083333333333336,
+        "high": 0.19791666666666666,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      }
+    ],
+    "headlines": [
+      "No detectable difference between Graph and text search on multi-hop questions (12 pairs in 12 groups).",
+      "No detectable difference between Graph + Ontology and Graph on multi-hop questions (12 pairs in 12 groups).",
+      "No detectable difference between Graph and text search on ontology-dependent questions anchored by id (12 pairs in 12 groups).",
+      "No detectable difference between Graph + Ontology and Graph on ontology-dependent questions anchored by id (12 pairs in 12 groups).",
+      "No detectable difference between Graph and text search on single facts (12 pairs in 12 groups).",
+      "No detectable difference between Graph + Ontology and Graph on single facts (12 pairs in 12 groups).",
+      "No detectable difference between Graph and text search on planted patterns (12 pairs in 12 groups).",
+      "No detectable difference between Graph + Ontology and Graph on planted patterns (12 pairs in 12 groups).",
+      "Name-anchored questions: Graph minus text search 16.7 judges' mark points (95 percent interval 4.2 to 33.3, 6 pairs in 6 groups); no test is run on this sub-group.",
+      "Name-anchored questions: Graph + Ontology minus Graph -4.2 judges' mark points (95 percent interval -20.8 to 12.5, 6 pairs in 6 groups); no test is run on this sub-group."
+    ],
+    "agreement": {
+      "answered": {
+        "n": 324,
+        "agreement": 0.3333333333333333,
+        "weighted_kappa": 0.0,
+        "confusion": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            113,
+            103,
+            108
+          ]
+        ]
+      },
+      "abstained": {
+        "n": 0,
+        "agreement": null,
+        "weighted_kappa": null,
+        "confusion": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "disagreements_by_stratum": {
+      "H1": 21,
+      "H2": 21,
+      "H2_name": 16,
+      "H3": 25,
+      "H5": 30,
+      "overall": 113
+    },
+    "disagreements": [
+      {
+        "instance_id": "L10-2026-X",
+        "question_id": "L10",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Which incidents in other markets are the same kind of incident as incident INC_042?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L10-2026-X",
+        "question_id": "L10",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Which incidents in other markets are the same kind of incident as incident INC_042?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L20-2026-X",
+        "question_id": "L20",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Which games in other markets show the same mechanic affinity as game GAME_AT_03?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L20-2026-X",
+        "question_id": "L20",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Which games in other markets show the same mechanic affinity as game GAME_AT_03?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L20-2026-X",
+        "question_id": "L20",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Which games in other markets show the same mechanic affinity as game GAME_AT_03?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L30-2026-X",
+        "question_id": "L30",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L30 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L11-2026-X",
+        "question_id": "L11",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Which player segments in other markets correspond to segment SEG_CZ_OBCASNI?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L11-2026-X",
+        "question_id": "L11",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Which player segments in other markets correspond to segment SEG_CZ_OBCASNI?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L21-2026-X",
+        "question_id": "L21",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Which game in another market is the best transfer target for campaign CMP_017?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L21-2026-X",
+        "question_id": "L21",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Which game in another market is the best transfer target for campaign CMP_017?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L21-2026-X",
+        "question_id": "L21",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Which game in another market is the best transfer target for campaign CMP_017?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L31-2026-X",
+        "question_id": "L31",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L31 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L31-2026-X",
+        "question_id": "L31",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L31 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L12-2026-X",
+        "question_id": "L12",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Which games in other markets use the same kind of mechanic as the main mechanic of game GAME_CZ_02?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L12-2026-X",
+        "question_id": "L12",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Which games in other markets use the same kind of mechanic as the main mechanic of game GAME_CZ_02?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L22-2026-X",
+        "question_id": "L22",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "What is the current ticket price of game GAME_AT_02, and is the rules document that states a different price still valid?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L22-2026-X",
+        "question_id": "L22",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "What is the current ticket price of game GAME_AT_02, and is the rules document that states a different price still valid?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L32-2026-X",
+        "question_id": "L32",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L32 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L32-2026-X",
+        "question_id": "L32",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L32 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L13-2026-X",
+        "question_id": "L13",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Which games, in any market, belong to the kind of game family called \"Stírací los\"?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L23-2026-X",
+        "question_id": "L23",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L23 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L23-2026-X",
+        "question_id": "L23",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L23 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L23-2026-X",
+        "question_id": "L23",
+        "world_seed": 2026,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L23 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L33-2026-X",
+        "question_id": "L33",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L33 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L33-2026-X",
+        "question_id": "L33",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L33 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L14-2026-X",
+        "question_id": "L14",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Which games, in any market, use the kind of mechanic called \"Instant win rounds on every ticket\"?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L14-2026-X",
+        "question_id": "L14",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Which games, in any market, use the kind of mechanic called \"Instant win rounds on every ticket\"?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L14-2026-X",
+        "question_id": "L14",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Which games, in any market, use the kind of mechanic called \"Instant win rounds on every ticket\"?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L34-2026-X",
+        "question_id": "L34",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L34 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L15-2026-X",
+        "question_id": "L15",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "What caused incident INC_041?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L15-2026-X",
+        "question_id": "L15",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "What caused incident INC_041?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L15-2026-X",
+        "question_id": "L15",
+        "world_seed": 2026,
+        "stratum": "H1",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "What caused incident INC_041?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L35-2026-X",
+        "question_id": "L35",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L35 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L35-2026-X",
+        "question_id": "L35",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L35 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L35-2026-X",
+        "question_id": "L35",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L35 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L35-2026-X",
+        "question_id": "L35",
+        "world_seed": 2026,
+        "stratum": "H3",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L35 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L40-2026-X",
+        "question_id": "L40",
+        "world_seed": 2026,
+        "stratum": "H2_name",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L40 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L40-2026-X",
+        "question_id": "L40",
+        "world_seed": 2026,
+        "stratum": "H2_name",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L40 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L41-2026-X",
+        "question_id": "L41",
+        "world_seed": 2026,
+        "stratum": "H2_name",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L41 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L41-2026-X",
+        "question_id": "L41",
+        "world_seed": 2026,
+        "stratum": "H2_name",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L41 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L42-2026-X",
+        "question_id": "L42",
+        "world_seed": 2026,
+        "stratum": "H2_name",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L42 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L42-2026-X",
+        "question_id": "L42",
+        "world_seed": 2026,
+        "stratum": "H2_name",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L42 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L42-2026-X",
+        "question_id": "L42",
+        "world_seed": 2026,
+        "stratum": "H2_name",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L42 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L50-2026-X",
+        "question_id": "L50",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L50 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L50-2026-X",
+        "question_id": "L50",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L50 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L50-2026-X",
+        "question_id": "L50",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L50 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L50-2026-X",
+        "question_id": "L50",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L50 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L51-2026-X",
+        "question_id": "L51",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L51 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L51-2026-X",
+        "question_id": "L51",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L51 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L51-2026-X",
+        "question_id": "L51",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L51 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L52-2026-X",
+        "question_id": "L52",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L52 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L52-2026-X",
+        "question_id": "L52",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L52 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L53-2026-X",
+        "question_id": "L53",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L53 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L53-2026-X",
+        "question_id": "L53",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L53 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L53-2026-X",
+        "question_id": "L53",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L53 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L54-2026-X",
+        "question_id": "L54",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L54 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L54-2026-X",
+        "question_id": "L54",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L54 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L54-2026-X",
+        "question_id": "L54",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L54 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L54-2026-X",
+        "question_id": "L54",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L54 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L55-2026-X",
+        "question_id": "L55",
+        "world_seed": 2026,
+        "stratum": "H5",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L55 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L10-2027-X",
+        "question_id": "L10",
+        "world_seed": 2027,
+        "stratum": "H1",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Which incidents in other markets are the same kind of incident as incident INC_042?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L20-2027-X",
+        "question_id": "L20",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Which games in other markets show the same mechanic affinity as game GAME_AT_03?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L30-2027-X",
+        "question_id": "L30",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L30 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L30-2027-X",
+        "question_id": "L30",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L30 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L30-2027-X",
+        "question_id": "L30",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L30 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L21-2027-X",
+        "question_id": "L21",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Which game in another market is the best transfer target for campaign CMP_017?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L21-2027-X",
+        "question_id": "L21",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Which game in another market is the best transfer target for campaign CMP_017?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L12-2027-X",
+        "question_id": "L12",
+        "world_seed": 2027,
+        "stratum": "H1",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Which games in other markets use the same kind of mechanic as the main mechanic of game GAME_CZ_02?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L12-2027-X",
+        "question_id": "L12",
+        "world_seed": 2027,
+        "stratum": "H1",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Which games in other markets use the same kind of mechanic as the main mechanic of game GAME_CZ_02?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L32-2027-X",
+        "question_id": "L32",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L32 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L32-2027-X",
+        "question_id": "L32",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L32 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L13-2027-X",
+        "question_id": "L13",
+        "world_seed": 2027,
+        "stratum": "H1",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Which games, in any market, belong to the kind of game family called \"Stírací los\"?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L13-2027-X",
+        "question_id": "L13",
+        "world_seed": 2027,
+        "stratum": "H1",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Which games, in any market, belong to the kind of game family called \"Stírací los\"?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L23-2027-X",
+        "question_id": "L23",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L23 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L33-2027-X",
+        "question_id": "L33",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L33 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L33-2027-X",
+        "question_id": "L33",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L33 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L33-2027-X",
+        "question_id": "L33",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L33 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L14-2027-X",
+        "question_id": "L14",
+        "world_seed": 2027,
+        "stratum": "H1",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Which games, in any market, use the kind of mechanic called \"Instant win rounds on every ticket\"?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L14-2027-X",
+        "question_id": "L14",
+        "world_seed": 2027,
+        "stratum": "H1",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Which games, in any market, use the kind of mechanic called \"Instant win rounds on every ticket\"?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L24-2027-X",
+        "question_id": "L24",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L24 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L24-2027-X",
+        "question_id": "L24",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L24 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L24-2027-X",
+        "question_id": "L24",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L24 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L24-2027-X",
+        "question_id": "L24",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L24 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L24-2027-X",
+        "question_id": "L24",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L24 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L34-2027-X",
+        "question_id": "L34",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L34 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L34-2027-X",
+        "question_id": "L34",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L34 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L34-2027-X",
+        "question_id": "L34",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L34 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L15-2027-X",
+        "question_id": "L15",
+        "world_seed": 2027,
+        "stratum": "H1",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "What caused incident INC_041?",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L25-2027-X",
+        "question_id": "L25",
+        "world_seed": 2027,
+        "stratum": "H2",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L25 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L35-2027-X",
+        "question_id": "L35",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L35 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L35-2027-X",
+        "question_id": "L35",
+        "world_seed": 2027,
+        "stratum": "H3",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L35 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L40-2027-X",
+        "question_id": "L40",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L40 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L40-2027-X",
+        "question_id": "L40",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L40 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L40-2027-X",
+        "question_id": "L40",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L40 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L40-2027-X",
+        "question_id": "L40",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L40 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L40-2027-X",
+        "question_id": "L40",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L40 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L41-2027-X",
+        "question_id": "L41",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L41 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L41-2027-X",
+        "question_id": "L41",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L41 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L41-2027-X",
+        "question_id": "L41",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L41 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L42-2027-X",
+        "question_id": "L42",
+        "world_seed": 2027,
+        "stratum": "H2_name",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L42 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L50-2027-X",
+        "question_id": "L50",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L50 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L51-2027-X",
+        "question_id": "L51",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L51 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L51-2027-X",
+        "question_id": "L51",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L51 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L51-2027-X",
+        "question_id": "L51",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L51 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L52-2027-X",
+        "question_id": "L52",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L52 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L52-2027-X",
+        "question_id": "L52",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L52 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L53-2027-X",
+        "question_id": "L53",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 0,
+        "question": "Test question L53 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L53-2027-X",
+        "question_id": "L53",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "A",
+        "repeat": 1,
+        "question": "Test question L53 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L53-2027-X",
+        "question_id": "L53",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L53 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L54-2027-X",
+        "question_id": "L54",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "B",
+        "repeat": 0,
+        "question": "Test question L54 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L55-2027-X",
+        "question_id": "L55",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "B",
+        "repeat": 1,
+        "question": "Test question L55 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L55-2027-X",
+        "question_id": "L55",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 0,
+        "question": "Test question L55 (fixture only)",
+        "first": 2,
+        "second": 0
+      },
+      {
+        "instance_id": "L55-2027-X",
+        "question_id": "L55",
+        "world_seed": 2027,
+        "stratum": "H5",
+        "pipeline": "C",
+        "repeat": 1,
+        "question": "Test question L55 (fixture only)",
+        "first": 2,
+        "second": 0
+      }
+    ]
   }
 }
