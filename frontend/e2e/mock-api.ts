@@ -87,8 +87,14 @@ const FIXTURE_OFFICIAL = {
           B: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
           C: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
         },
+        answer: {
+          A: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
+          B: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
+          C: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
+        },
       },
     },
+    instances: { total: { overall: BANK_INSTANCES }, per_world: {} },
   },
 }
 
@@ -103,8 +109,26 @@ const FIXTURE_OFFICIAL_V03 = {
     metrics: {
       overall: {
         evidence_recall: FIXTURE_OFFICIAL.summary.metrics.overall.evidence_f1,
+        answer: FIXTURE_OFFICIAL.summary.metrics.overall.answer,
       },
     },
+    // One tested comparison with no difference, so the plain summary line draws.
+    comparisons: [
+      {
+        stratum: 'H1',
+        metric: 'evidence_recall',
+        comparison: 'B_vs_A',
+        n: BANK_INSTANCES,
+        clusters: 24,
+        mean: 0,
+        low: -0.1,
+        high: 0.1,
+        p: 1,
+        p_holm: 1,
+        in_family: true,
+        reason: 'tested',
+      },
+    ],
   },
 }
 

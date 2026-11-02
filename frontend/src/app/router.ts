@@ -22,7 +22,7 @@ export const DESTINATIONS: readonly Destination[] = [
     name: 'overview',
     label: 'Overview',
     purpose:
-      'The verdict from the latest official run, how the three approaches differ, and a button to run a question',
+      'What we found, how the three approaches work, and questions to try',
   },
   {
     name: 'live-lab',

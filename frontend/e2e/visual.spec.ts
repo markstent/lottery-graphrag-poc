@@ -316,13 +316,9 @@ async function screenShot(
 
 test.describe('Overview', () => {
   const STATES = [
-    [
-      'overview-fixture-official',
-      'official',
-      'Evidence score, questions with claims',
-    ],
+    ['overview-fixture-official', 'official', 'Evidence score'],
     ['overview-no-official-run', 'none', 'No official run yet'],
-    ['overview-fixture-v03', 'v03', 'Evidence recall, questions with claims'],
+    ['overview-fixture-v03', 'v03', 'Evidence found'],
     ['overview-smoke-only', 'smoke', 'Latest run: scorer smoke test'],
     ['overview-error', 'unavailable', 'The latest run is unavailable.'],
   ] as const
@@ -335,7 +331,7 @@ test.describe('Overview', () => {
 
   test('overview-loading', async ({ page }) => {
     await openScreen(page, '#/overview', { latest: 'pending' })
-    await expect(page.getByText('Loading Latest official run')).toBeAttached()
+    await expect(page.getByText('Loading What we found')).toBeAttached()
     await screenShot(page, 'overview-loading')
   })
 })
@@ -895,11 +891,7 @@ test.describe('Live Lab', () => {
 
 test.describe('presentation mode', () => {
   const OTHERS = [
-    [
-      'overview-fixture-official',
-      '#/overview',
-      'Evidence score, questions with claims',
-    ],
+    ['overview-fixture-official', '#/overview', 'Evidence score'],
     ['results', '#/results', 'This run predates the split.'],
     ['data-model', '#/data-model', 'Incident management'],
     ['help-fixture-official', '#/help', 'Why this exists'],

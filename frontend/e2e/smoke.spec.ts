@@ -9,7 +9,7 @@ const DESTINATIONS = [
     name: 'Overview',
     hash: '#/overview',
     purpose:
-      'The verdict from the latest official run, how the three approaches differ, and a button to run a question',
+      'What we found, how the three approaches work, and questions to try',
   },
   {
     name: 'Live Lab',
@@ -113,7 +113,7 @@ test.describe('Results run list', () => {
 test.describe('Overview latest run', () => {
   const LATEST = [
     ['official', 'Method v0.2 (old method)'],
-    ['v03', 'Method v0.3 was made after seeing the v0.2.0 result'],
+    ['v03', 'Our second method: the first, v0.2, found no clear difference'],
     ['smoke', 'Latest run: scorer smoke test'],
     ['none', 'No official run yet'],
     ['unavailable', 'The latest run is unavailable.'],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { Schemas } from '../api/client'
-import { isFullOfficial, verdictFrom } from './latest-run'
+import { findingsFrom, isFullOfficial, verdictFrom } from './latest-run'
 
 const cell = (mean: number | null, n: number, repeats: number) => ({
   mean,
@@ -24,8 +24,14 @@ const summary = (selection: unknown) => ({
         B: cell(0.6, 120, 360),
         C: cell(0.7, 120, 360),
       },
+      answer: {
+        A: cell(0.5, 150, 450),
+        B: cell(0.55, 150, 450),
+        C: cell(0.6, 150, 450),
+      },
     },
   },
+  instances: { total: { overall: 150 }, per_world: {} },
 })
 
 // Only the keys the Overview tiles read are built; the cast stands in for the rest of the summary.
@@ -53,11 +59,14 @@ describe('verdictFrom', () => {
       metric: 'evidence_f1',
       note: null,
       tiles: [
-        { pipeline: 'A', mean: 0.25, n: 114, repeats: 342 },
-        { pipeline: 'B', mean: null, n: 0, repeats: 0 },
-        { pipeline: 'C', mean: 0.5, n: 114, repeats: 342 },
+        { pipeline: 'A', mean: 0.25, n: 114, repeats: 342, answer: 0.5 },
+        { pipeline: 'B', mean: null, n: 0, repeats: 0, answer: 0.55 },
+        { pipeline: 'C', mean: 0.5, n: 114, repeats: 342, answer: 0.6 },
       ],
       headlines: ['Graph beat text search.'],
+      questions: 150,
+      findings: [],
+      tested: 0,
       disagreements: 0,
     })
   })
@@ -68,9 +77,9 @@ describe('verdictFrom', () => {
       method: '0.3.0',
       metric: 'evidence_recall',
       tiles: [
-        { pipeline: 'A', mean: 0.4, n: 120, repeats: 360 },
-        { pipeline: 'B', mean: 0.6, n: 120, repeats: 360 },
-        { pipeline: 'C', mean: 0.7, n: 120, repeats: 360 },
+        { pipeline: 'A', mean: 0.4, n: 120, repeats: 360, answer: 0.5 },
+        { pipeline: 'B', mean: 0.6, n: 120, repeats: 360, answer: 0.55 },
+        { pipeline: 'C', mean: 0.7, n: 120, repeats: 360, answer: 0.6 },
       ],
     })
   })
@@ -112,8 +121,12 @@ describe('verdictFrom', () => {
         mean: null,
         n: 0,
         repeats: 0,
+        answer: null,
       })),
       headlines: [],
+      questions: 0,
+      findings: [],
+      tested: 0,
       disagreements: 0,
     })
   })
@@ -160,5 +173,94 @@ describe('isFullOfficial', () => {
       kind: 'none',
       otherRun: 'dry run',
     })
+  })
+})
+
+type Cell = Schemas['ComparisonCell']
+
+const comparison = (over: Partial<Cell>): Cell => ({
+  stratum: 'H1',
+  metric: 'evidence_recall',
+  comparison: 'B_vs_A',
+  n: 72,
+  clusters: 24,
+  mean: 0.2,
+  low: 0.1,
+  high: 0.3,
+  p: 0.002,
+  p_holm: 0.03,
+  in_family: true,
+  reason: 'tested',
+  ...over,
+})
+
+const untested = (over: Partial<Cell>) =>
+  comparison({
+    p: null,
+    p_holm: null,
+    in_family: false,
+    reason: 'not_in_family',
+    ...over,
+  })
+
+describe('findingsFrom', () => {
+  it('states a tested comparison that passed, on either metric, as clear', () => {
+    expect(
+      findingsFrom(
+        [
+          comparison({}),
+          comparison({ metric: 'answer', mean: -0.1, low: -0.2, high: -0.05 }),
+        ],
+        'evidence_recall',
+      ),
+    ).toEqual([
+      {
+        kind: 'clear',
+        stratum: 'H1',
+        comparison: 'B_vs_A',
+        metric: 'evidence_recall',
+        mean: 0.2,
+      },
+      {
+        kind: 'clear',
+        stratum: 'H1',
+        comparison: 'B_vs_A',
+        metric: 'answer',
+        mean: -0.1,
+      },
+    ])
+  })
+
+  it('leaves out a tested comparison at or above the Holm threshold, whatever its interval', () => {
+    expect(
+      findingsFrom([comparison({ p_holm: 0.05 })], 'evidence_recall'),
+    ).toEqual([])
+  })
+
+  it('states an untested sub-group whose interval leaves out zero as a hint, after the clear ones', () => {
+    const hint = untested({
+      stratum: 'H2_name',
+      comparison: 'C_vs_B',
+      clusters: 12,
+      mean: 0.38,
+      low: 0.3,
+      high: 0.46,
+    })
+    expect(
+      findingsFrom([hint, comparison({})], 'evidence_recall').map(
+        (f) => f.kind,
+      ),
+    ).toEqual(['clear', 'hint'])
+  })
+
+  it('gives no hint for an interval through zero, too few groups, another metric, the overall row or C against A', () => {
+    const cells = [
+      untested({ stratum: 'H2_name', low: -0.1, high: 0.3 }),
+      untested({ stratum: 'H3', clusters: 3 }),
+      untested({ stratum: 'H2_name', metric: 'answer' }),
+      untested({ stratum: 'overall' }),
+      untested({ comparison: 'C_vs_A' }),
+    ]
+    expect(findingsFrom(cells, 'evidence_recall')).toEqual([])
   })
 })

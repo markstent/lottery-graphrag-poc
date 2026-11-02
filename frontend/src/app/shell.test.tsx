@@ -22,7 +22,7 @@ import {
 const DESTINATIONS = [
   [
     'Overview',
-    'The verdict from the latest official run, how the three approaches differ, and a button to run a question',
+    'What we found, how the three approaches work, and questions to try',
   ],
   [
     'Live Lab',

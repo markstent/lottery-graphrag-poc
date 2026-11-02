@@ -74,32 +74,36 @@ Baselines: `shell-overview`, `shell-live-lab`, `shell-results`, `shell-data-mode
 
 ### Overview
 
-Purpose: the verdict from the latest official run, how the three approaches differ, and a button to run a question.
+Purpose: what we found, how the three approaches work, and questions to try.
+Overview is written for a newcomer and reads at first glance (D-098); the full figures are on Results.
 
-1. "Latest official run": the run's method badge first, "Method v0.3" or "Method v0.2 (old method)", read from the API's `method_version`.
-   A v0.3 run's `method_note`, its declaration of the method change, stands beside the badge as plain text; a v0.2 run has none.
-   Then one tile for each approach in its own tint, each showing the mean of the method's evidence metric over the questions with claims, with the number of those questions and the runs behind it.
-   The tile reads "Evidence score, questions with claims" for a v0.2 run (its F1) and "Evidence recall, questions with claims" for a v0.3 run (owner, 2026-10-27).
-   The number of questions comes from the summary, never from the screen.
-   The run's headline sentences follow, verbatim and unedited.
-   When tested comparisons have a 95 percent interval that leaves out zero but a Holm-adjusted p-value of 0.05 or more, one line under the headlines counts them, "5 tested comparisons whose interval excludes zero failed the test; see Paired differences.", with "Paired differences" linking to Results; it is read from the summary's `comparisons` and is absent when there are none.
-2. "How the three approaches differ": a flow diagram of method v0.3, the code as it runs.
+1. "What we found": the run's method badge first, "Method v0.3" or "Method v0.2 (old method)", read from the API's `method_version`.
+   Beside it, for method 0.3.0, a plain line: "Our second method: the first, v0.2, found no clear difference, so we changed it and retested on new data. Help, chapter 9, explains."
+   A method with no plain line shows the run's `method_note` as written; a v0.2 run has none.
+   One sentence says how many questions all three answered, from the summary's instance count, and that "Evidence found" is the share of needed records found.
+   Then one tile for each approach in its own tint, headed by its letter and name, with the method's evidence metric over the questions with claims as a whole percentage ("Evidence found" for v0.3, "Evidence score" for v0.2) and its answer score as a percentage under it.
+   Then a short list, read from the summary's `comparisons`:
+   each tested comparison whose Holm-adjusted p is below 0.05, as "Clear result." and a sentence naming the kind of question in everyday words, which approach scored higher and by how many whole points;
+   one line on the other tested comparisons, counting those whose 95 percent interval leaves out zero as "leaned one way but not enough to count" and the rest as "no clear difference" (with no clear result, the line starts "No clear result.");
+   and each untested sub-group of a tested pair, on the evidence metric, over at least six groups, whose interval leaves out zero, as "Not tested, so only a hint." and the same kind of sentence.
+   A last line says every figure and margin of error is on Results, and links there.
+   The run's headline sentences are not shown here; Results shows them verbatim.
+2. "How the three approaches differ": one plain sentence, "Text search finds matching passages. Graph also follows links between records. Graph + Ontology adds a shared list of business terms across markets.", then a flow diagram of method v0.3, the code as it runs.
    The question fans out to one shared lane, "Search passages" then "Re-order passages": only passages are re-ranked.
    B adds "Find starting points", "Follow relationships" and "Rank by the graph".
    C adds "Find starting points", "Add ontology terms", "Follow relationships", "Add linked records" and "Rank by the graph".
    All lanes join at "Fill one budget", then "Answer with sources", and a caption says "B and C take turns: a passage, then a graph record."
    The diagram always describes the current method; a v0.2 run above it carries its own old-method badge.
    The lane order comes from one module (`run/lanes.ts`), and a test pins it to the order of events in the recordings and the run fixture.
-3. "Run a question" and "Configuration" side by side.
+3. "Run a question" and "Models used" side by side.
    The first has a button to Live Lab and the four demo questions as links.
    The second lists the active dataset and the four model roles with their configured names.
 
 Data: `GET /benchmarks/latest`, `/demo/questions`, `/datasets` and `/models`.
-Nothing is computed on this screen.
+Nothing is computed on this screen beyond choosing which recorded comparisons to state and rounding them.
 The tiles fill only for a whole-bank run of kind "official".
 With none, the screen says "No official run yet" and links to Results, and a newer smoke or subset run is named in words with no numbers.
 The tiles carry no interval of their own, because the statistics define intervals for differences (D-048).
-Intervals reach the screen through the headline sentences, and one line says so.
 
 Baselines: `overview-fixture-official`, `overview-fixture-v03`, `overview-no-official-run`, `overview-smoke-only`, `overview-error`, `overview-loading`, `presentation-overview-fixture-official`.
 
@@ -207,7 +211,7 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
 2. **Verdict.** The method badge, "Method v0.3" or "Method v0.2 (old method)", with a v0.3 run's `method_note` beside it as plain text (none for v0.2).
    Three tiles, each with the method's evidence metric ("Evidence score" for v0.2, its F1; "Evidence recall" for v0.3) and the answer score, then the run's headline sentences as the harness wrote them.
    A subset run says what it covered, a development run says it is not a result, and a quick check says its numbers are not results.
-   Under the headlines, every run but a quick check gets the same interval-and-test line as Overview, pointing at the paired differences chart below; a quick check draws no charts and gets none.
+   Under the headlines, every run but a quick check gets an interval-and-test line, pointing at the paired differences chart below; a quick check draws no charts and gets none.
 3. **Scores by kind of question.** A switch between the method's evidence metric and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
    A v0.3 run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
@@ -364,7 +368,7 @@ The graph is 2D and led by evidence.
   A node fades in over 200 ms, and the whole product collapses to near-instant under `prefers-reduced-motion` or the Settings switch.
   Evidence is never delayed for effect.
 - Copy is plain and short.
-  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 1,360 words outside Help (D-055, D-066; raised from 1,300 by the owner on 2026-10-27 because method v0.3 labels two methods).
+  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 1,450 words outside Help (D-055, D-066, D-098; raised from 1,300 to 1,360 by the owner on 2026-10-27 because method v0.3 labels two methods, and to 1,450 on 2026-11-02 for a plain Overview).
   Help has no word cap since D-082, and the scan covers Help's Plain text and not its Technical text, where real terms, vendor and model names and dated historical figures (such as the single cut at 12 places of D-025, typed in chapter 5) are allowed.
   Text from the API, such as headline sentences, is shown verbatim and is outside both.
 

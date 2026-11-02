@@ -7,7 +7,11 @@
 import { getLatestBenchmark, type Schemas } from '../api/client'
 import { ApiError } from '../api/http'
 import type { PipelineId } from '../design/pipelines'
-import { intervalTestDisagreements } from '../results/strata'
+import {
+  HOLM_ALPHA,
+  intervalTestDisagreements,
+  MIN_GROUPS_FOR_INTERVAL,
+} from '../results/strata'
 import { evidenceMetric, type EvidenceMetric } from './method'
 import { kindWord } from './run-kinds'
 
@@ -19,6 +23,24 @@ export interface TileFigures {
   n: number
   /** Scored runs behind the mean. */
   repeats: number
+  /** The run's answer score overall, or null when it has none for this pipeline. */
+  answer: number | null
+}
+
+/** The two comparisons the pre-registered test covers. */
+export type TestedPair = 'B_vs_A' | 'C_vs_B'
+
+/**
+ * One difference Overview states in words. "clear" passed the pre-registered
+ * test; "hint" is an untested sub-group whose interval leaves out zero.
+ */
+export interface Finding {
+  kind: 'clear' | 'hint'
+  stratum: string
+  comparison: TestedPair
+  metric: string
+  /** The first pipeline of the pair minus the second, on the 0 to 1 scale. */
+  mean: number
 }
 
 export type Verdict =
@@ -32,6 +54,11 @@ export type Verdict =
       note: string | null
       tiles: TileFigures[]
       headlines: string[]
+      /** Questions each pipeline answered. */
+      questions: number
+      findings: Finding[]
+      /** Cells in the pre-registered test, of either metric. */
+      tested: number
       /** Tested cells whose interval leaves out zero but whose test does not pass. */
       disagreements: number
     }
@@ -46,19 +73,68 @@ function figures(
   summary: Record<string, unknown>,
   metric: EvidenceMetric,
   id: PipelineId,
-) {
+): TileFigures {
   const metrics = summary.metrics
   const overall = isRecord(metrics) ? metrics.overall : undefined
-  const evidence = isRecord(overall) ? overall[metric] : undefined
-  const cell = isRecord(evidence) ? evidence[id] : undefined
-  const read = (key: string) =>
-    isRecord(cell) && typeof cell[key] === 'number' ? cell[key] : null
+  const read = (name: string, key: string) => {
+    const scores = isRecord(overall) ? overall[name] : undefined
+    const cell = isRecord(scores) ? scores[id] : undefined
+    return isRecord(cell) && typeof cell[key] === 'number' ? cell[key] : null
+  }
   return {
     pipeline: id,
-    mean: read('mean'),
-    n: read('n') ?? 0,
-    repeats: read('repeats') ?? 0,
+    mean: read(metric, 'mean'),
+    n: read(metric, 'n') ?? 0,
+    repeats: read(metric, 'repeats') ?? 0,
+    answer: read('answer', 'mean'),
   }
+}
+
+type Comparison = Schemas['ComparisonCell']
+
+const isTestedPair = (comparison: string): comparison is TestedPair =>
+  comparison === 'B_vs_A' || comparison === 'C_vs_B'
+
+const passes = (cell: Comparison) =>
+  cell.in_family && cell.p_holm !== null && cell.p_holm < HOLM_ALPHA
+
+/**
+ * An untested sub-group of a tested pair, on the run's evidence metric, over
+ * enough groups for an interval, whose interval leaves out zero: what the
+ * harness's headlines report for the name-anchored sub-group.
+ */
+const hints = (cell: Comparison, metric: EvidenceMetric) =>
+  cell.reason === 'not_in_family' &&
+  cell.stratum !== 'overall' &&
+  cell.metric === metric &&
+  cell.clusters >= MIN_GROUPS_FOR_INTERVAL &&
+  cell.low !== null &&
+  cell.high !== null &&
+  (cell.low > 0 || cell.high < 0)
+
+/** The differences to state in words: those that passed the test, then the hints. */
+export function findingsFrom(
+  comparisons: readonly Comparison[],
+  metric: EvidenceMetric,
+): Finding[] {
+  const pick = (kind: Finding['kind'], keep: (cell: Comparison) => boolean) =>
+    comparisons.flatMap((cell): Finding[] =>
+      isTestedPair(cell.comparison) && cell.mean !== null && keep(cell)
+        ? [
+            {
+              kind,
+              stratum: cell.stratum,
+              comparison: cell.comparison,
+              metric: cell.metric,
+              mean: cell.mean,
+            },
+          ]
+        : [],
+    )
+  return [
+    ...pick('clear', passes),
+    ...pick('hint', (cell) => hints(cell, metric)),
+  ]
 }
 
 /**
@@ -87,8 +163,9 @@ export function verdictFrom(
       kind: 'none',
       otherRun: latest.label ?? kindWord(latest.run_kind),
     }
-  const { headlines, comparisons } = latest.summary
+  const { headlines, comparisons, instances } = latest.summary
   const metric = evidenceMetric(latest.method_version)
+  const cells = Array.isArray(comparisons) ? comparisons : []
   return {
     kind: 'official',
     method: latest.method_version,
@@ -98,9 +175,10 @@ export function verdictFrom(
     headlines: Array.isArray(headlines)
       ? headlines.filter((line): line is string => typeof line === 'string')
       : [],
-    disagreements: Array.isArray(comparisons)
-      ? intervalTestDisagreements(comparisons)
-      : 0,
+    questions: isRecord(instances?.total) ? (instances.total.overall ?? 0) : 0,
+    findings: findingsFrom(cells, metric),
+    tested: cells.filter((cell) => cell.in_family).length,
+    disagreements: intervalTestDisagreements(cells),
   }
 }
 

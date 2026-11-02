@@ -18,9 +18,10 @@
  * owner raised it to 1,360 on 2026-10-27 (D-055), because method v0.3 labels
  * two methods: the method badge, evidence recall, the split judge agreement,
  * the groundedness table, the graph order in Live Lab and the start form's
- * reason for not starting the official run.
+ * reason for not starting the official run. The owner raised it to 1,450 on
+ * 2026-11-02 (D-098) for an Overview a newcomer can read at first glance.
  */
-export const OUTSIDE_HELP_WORD_CAP = 1360
+export const OUTSIDE_HELP_WORD_CAP = 1450
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

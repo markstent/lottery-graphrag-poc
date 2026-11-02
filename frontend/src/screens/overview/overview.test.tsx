@@ -28,8 +28,14 @@ const OFFICIAL = {
           B: cell(null, 0, 0),
           C: cell(0.5, 114, 342),
         },
+        answer: {
+          A: cell(0.5, 150, 450),
+          B: cell(0.55, 150, 450),
+          C: cell(0.6, 150, 450),
+        },
       },
     },
+    instances: { total: { overall: 150 }, per_world: {} },
   },
 }
 
@@ -84,16 +90,18 @@ describe('Overview', () => {
     render(<Overview />)
     const a = await screen.findByTestId('tile-A')
     expect(within(a).getByText('A · Text search')).toBeVisible()
-    // F1 is defined only for questions with claims: the tile says so and gives their count.
-    expect(
-      within(a).getByText('Evidence score, questions with claims'),
-    ).toBeVisible()
-    expect(within(a).getByText('0.25')).toBeVisible()
-    expect(within(a).getByText('114 questions, 342 runs')).toBeVisible()
+    expect(within(a).getByText('Evidence score')).toBeVisible()
+    expect(within(a).getByText('25%')).toBeVisible()
+    expect(within(a).getByText('Answer score 50%')).toBeVisible()
     const b = screen.getByTestId('tile-B')
     expect(within(b).getByText('B · Graph')).toBeVisible()
     expect(within(b).getByText('Missing')).toBeVisible()
-    expect(within(b).queryByText('0.00')).toBeNull()
+    expect(within(b).queryByText('0%')).toBeNull()
+    expect(
+      screen.getByText(
+        /^All three answered the same 150 questions about a made-up lottery company\. Evidence score weighs/,
+      ),
+    ).toBeVisible()
     expect(
       within(screen.getByTestId('tile-C')).getByText('C · Graph + Ontology'),
     ).toBeVisible()
@@ -103,7 +111,7 @@ describe('Overview', () => {
     stubApi(base(OFFICIAL))
     render(<Overview />)
     await screen.findByTestId('tile-A')
-    const panel = screen.getByRole('region', { name: 'Latest official run' })
+    const panel = screen.getByRole('region', { name: 'What we found' })
     expect(within(panel).getByText('Method v0.2 (old method)')).toBeVisible()
     expect(within(panel).queryByText(/was made after/)).toBeNull()
   })
@@ -130,70 +138,130 @@ describe('Overview', () => {
     )
     render(<Overview />)
     const a = await screen.findByTestId('tile-A')
-    expect(
-      within(a).getByText('Evidence recall, questions with claims'),
-    ).toBeVisible()
-    expect(within(a).getByText('0.40')).toBeVisible()
-    expect(within(a).getByText('120 questions, 360 runs')).toBeVisible()
+    expect(within(a).getByText('Evidence found')).toBeVisible()
+    expect(within(a).getByText('40%')).toBeVisible()
     expect(screen.getByText('Method v0.3')).toBeVisible()
+    // The run's own note is said plainly here; Results shows it as written.
     expect(
-      screen.getByText('Method v0.3 was made after seeing the v0.2.0 result.'),
+      screen.getByText(
+        /^Our second method: the first, v0\.2, found no clear difference/,
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(/was made after seeing/)).toBeNull()
+    expect(
+      screen.getByText(
+        /Evidence found is the share of needed records found\.$/,
+      ),
     ).toBeVisible()
   })
 
-  it('renders the headline sentences verbatim', async () => {
-    stubApi(base(OFFICIAL))
+  it('leaves out a question count the summary does not give, never printing 0', async () => {
+    const { instances: _, ...noCounts } = OFFICIAL.summary
+    stubApi(base({ ...OFFICIAL, summary: noCounts }))
     render(<Overview />)
-    for (const line of OFFICIAL.summary.headlines)
-      expect(await screen.findByText(line)).toBeVisible()
-  })
-
-  it('says under the headlines how many tested cells the interval and the test disagree on, with a link to Results', async () => {
-    const comparison = (low: number, high: number, pHolm: number) => ({
-      stratum: 'H2',
-      metric: 'evidence_recall',
-      comparison: 'C_vs_B',
-      n: 72,
-      clusters: 24,
-      mean: (low + high) / 2,
-      low,
-      high,
-      p: pHolm / 10,
-      p_holm: pHolm,
-      in_family: true,
-      reason: 'tested',
-    })
-    stubApi(
-      base({
-        ...OFFICIAL,
-        summary: {
-          ...OFFICIAL.summary,
-          comparisons: [
-            comparison(0.104, 0.341, 0.03),
-            comparison(0.062, 0.332, 0.385),
-            comparison(-0.121, -0.025, 0.229),
-            comparison(-0.068, 0.048, 1),
-          ],
-        },
-      }),
-    )
-    render(<Overview />)
-    const note = await screen.findByText(
-      /^2 tested comparisons whose interval excludes zero failed the test; see/,
-    )
-    expect(note).toBeVisible()
     expect(
-      within(note).getByRole('link', {
-        name: 'Paired differences, on Results',
-      }),
-    ).toHaveAttribute('href', '#/results')
+      await screen.findByText(/^All three answered the same questions about/),
+    ).toBeVisible()
   })
 
-  it('adds no such line when every interval and test agree', async () => {
+  it('leaves the headline sentences to Results', async () => {
     stubApi(base(OFFICIAL))
     render(<Overview />)
     await screen.findByTestId('tile-A')
-    expect(screen.queryByText(/failed the test/)).toBeNull()
+    for (const line of OFFICIAL.summary.headlines)
+      expect(screen.queryByText(line)).toBeNull()
+  })
+
+  const comparison = (over: Record<string, unknown>) => ({
+    stratum: 'H2',
+    metric: 'evidence_recall',
+    comparison: 'C_vs_B',
+    n: 72,
+    clusters: 24,
+    mean: 0.2,
+    low: 0.06,
+    high: 0.33,
+    p: 0.04,
+    p_holm: 0.385,
+    in_family: true,
+    reason: 'tested',
+    ...over,
+  })
+
+  const withComparisons = (comparisons: unknown[]) =>
+    base({
+      ...OFFICIAL,
+      method_version: '0.3.0',
+      summary: { ...OFFICIAL.summary, comparisons },
+    })
+
+  it('states each clear result, the rest of the tests and each hint in plain words, with a link to Results', async () => {
+    stubApi(
+      withComparisons([
+        comparison({
+          stratum: 'H1',
+          comparison: 'B_vs_A',
+          mean: 0.2206,
+          low: 0.104,
+          high: 0.341,
+          p_holm: 0.03,
+        }),
+        comparison({}),
+        comparison({ mean: -0.069, low: -0.121, high: -0.025, p_holm: 0.229 }),
+        comparison({ mean: 0, low: -0.068, high: 0.048, p_holm: 1 }),
+        comparison({
+          stratum: 'H2_name',
+          comparison: 'B_vs_A',
+          clusters: 12,
+          mean: -0.167,
+          low: -0.21,
+          high: -0.12,
+          p: null,
+          p_holm: null,
+          in_family: false,
+          reason: 'not_in_family',
+        }),
+      ]),
+    )
+    render(<Overview />)
+    const panel = await screen.findByRole('region', { name: 'What we found' })
+    const items = (await within(panel).findAllByRole('listitem')).map(
+      (li) => li.textContent,
+    )
+    expect(items).toEqual([
+      'Clear result. On questions that need several linked records, Graph scored 22 points higher than Text search at finding needed evidence.',
+      'Of the other 3 comparisons we tested, 2 leaned one way but not enough to count, and 1 showed no clear difference.',
+      'Not tested, so only a hint. On questions that name something in a local language, Text search scored 17 points higher than Graph at finding needed evidence.',
+    ])
+    expect(
+      within(panel).getByRole('link', { name: 'Results' }),
+    ).toHaveAttribute('href', '#/results')
+  })
+
+  it('says there is no clear result when no test passes', async () => {
+    stubApi(
+      withComparisons([
+        comparison({}),
+        comparison({ mean: 0, low: -0.1, high: 0.1, p_holm: 1 }),
+      ]),
+    )
+    render(<Overview />)
+    expect(
+      await screen.findByText(
+        (_, el) =>
+          el?.tagName === 'LI' &&
+          el.textContent ===
+            'No clear result. Of the 2 comparisons we tested, 1 leaned one way but not enough to count, and 1 showed no clear difference.',
+      ),
+    ).toBeVisible()
+  })
+
+  it('states no findings for a run with no comparisons', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    await screen.findByTestId('tile-A')
+    expect(screen.queryByText(/comparisons? we tested/)).toBeNull()
+    expect(screen.queryByText(/Clear result/)).toBeNull()
   })
 
   it('shows the plain no-run state, with a link to Results, on a 404', async () => {
@@ -213,7 +281,7 @@ describe('Overview', () => {
     expect(screen.queryByTestId('tile-A')).toBeNull()
     expect(screen.queryByTestId('tile-B')).toBeNull()
     expect(screen.queryByTestId('tile-C')).toBeNull()
-    const panel = screen.getByRole('region', { name: 'Latest official run' })
+    const panel = screen.getByRole('region', { name: 'What we found' })
     expect(panel.textContent).not.toMatch(/\d/)
   })
 
