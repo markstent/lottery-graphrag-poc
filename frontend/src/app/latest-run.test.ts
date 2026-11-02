@@ -14,14 +14,15 @@ const summary = (selection: unknown) => ({
   headlines: ['Graph beat text search.'],
   metrics: {
     overall: {
+      // F1 is descriptive; the tiles read evidence recall, the compared metric.
       evidence_f1: {
         A: cell(0.25, 114, 342),
-        B: cell(null, 0, 0),
+        B: cell(0.3, 114, 342),
         C: cell(0.5, 114, 342),
       },
       evidence_recall: {
         A: cell(0.4, 120, 360),
-        B: cell(0.6, 120, 360),
+        B: cell(null, 0, 0),
         C: cell(0.7, 120, 360),
       },
       answer: {
@@ -39,62 +40,31 @@ const run = (
   run_kind: string,
   label: string | null,
   selection: unknown,
-  method_version = '0.2.0',
 ): Schemas['BenchmarkSummary'] =>
   ({
     run_id: 'r',
     run_kind,
     label,
-    method_version,
+    method_version: '0.3.0',
     summary: summary(selection),
   }) as unknown as Schemas['BenchmarkSummary']
 
 const FULL = { strata: null, limit: null }
 
 describe('verdictFrom', () => {
-  it('reads the overall evidence F1 and counts of a full official run of method v0.2', () => {
+  it('reads the overall evidence recall and counts of a full official run', () => {
     expect(verdictFrom(run('official', null, FULL))).toEqual({
       kind: 'official',
-      method: '0.2.0',
-      metric: 'evidence_f1',
-      note: null,
       tiles: [
-        { pipeline: 'A', mean: 0.25, n: 114, repeats: 342, answer: 0.5 },
+        { pipeline: 'A', mean: 0.4, n: 120, repeats: 360, answer: 0.5 },
         { pipeline: 'B', mean: null, n: 0, repeats: 0, answer: 0.55 },
-        { pipeline: 'C', mean: 0.5, n: 114, repeats: 342, answer: 0.6 },
+        { pipeline: 'C', mean: 0.7, n: 120, repeats: 360, answer: 0.6 },
       ],
       headlines: ['Graph beat text search.'],
       questions: 150,
       findings: [],
       tested: 0,
       disagreements: 0,
-    })
-  })
-
-  it('reads evidence recall, by its name, from a run of method v0.3', () => {
-    expect(verdictFrom(run('official', null, FULL, '0.3.0'))).toMatchObject({
-      kind: 'official',
-      method: '0.3.0',
-      metric: 'evidence_recall',
-      tiles: [
-        { pipeline: 'A', mean: 0.4, n: 120, repeats: 360, answer: 0.5 },
-        { pipeline: 'B', mean: 0.6, n: 120, repeats: 360, answer: 0.55 },
-        { pipeline: 'C', mean: 0.7, n: 120, repeats: 360, answer: 0.6 },
-      ],
-    })
-  })
-
-  it('carries the declaration of the method change a v0.3 summary makes', () => {
-    const v03 = run('official', null, FULL, '0.3.0')
-    const declared = {
-      ...v03,
-      summary: {
-        ...v03.summary,
-        method_note: 'Method v0.3 was made after v0.2.0.',
-      },
-    }
-    expect(verdictFrom(declared)).toMatchObject({
-      note: 'Method v0.3 was made after v0.2.0.',
     })
   })
 
@@ -113,9 +83,6 @@ describe('verdictFrom', () => {
     } as unknown as Schemas['BenchmarkSummary']
     expect(verdictFrom(bare)).toEqual({
       kind: 'official',
-      method: '0.3.0',
-      metric: 'evidence_recall',
-      note: null,
       tiles: ['A', 'B', 'C'].map((pipeline) => ({
         pipeline,
         mean: null,
@@ -206,13 +173,10 @@ const untested = (over: Partial<Cell>) =>
 describe('findingsFrom', () => {
   it('states a tested comparison that passed, on either metric, as clear', () => {
     expect(
-      findingsFrom(
-        [
-          comparison({}),
-          comparison({ metric: 'answer', mean: -0.1, low: -0.2, high: -0.05 }),
-        ],
-        'evidence_recall',
-      ),
+      findingsFrom([
+        comparison({}),
+        comparison({ metric: 'answer', mean: -0.1, low: -0.2, high: -0.05 }),
+      ]),
     ).toEqual([
       {
         kind: 'clear',
@@ -232,9 +196,7 @@ describe('findingsFrom', () => {
   })
 
   it('leaves out a tested comparison at or above the Holm threshold, whatever its interval', () => {
-    expect(
-      findingsFrom([comparison({ p_holm: 0.05 })], 'evidence_recall'),
-    ).toEqual([])
+    expect(findingsFrom([comparison({ p_holm: 0.05 })])).toEqual([])
   })
 
   it('states an untested sub-group whose interval leaves out zero as a hint, after the clear ones', () => {
@@ -246,11 +208,10 @@ describe('findingsFrom', () => {
       low: 0.3,
       high: 0.46,
     })
-    expect(
-      findingsFrom([hint, comparison({})], 'evidence_recall').map(
-        (f) => f.kind,
-      ),
-    ).toEqual(['clear', 'hint'])
+    expect(findingsFrom([hint, comparison({})]).map((f) => f.kind)).toEqual([
+      'clear',
+      'hint',
+    ])
   })
 
   it('gives no hint for an interval through zero, too few groups, another metric, the overall row or C against A', () => {
@@ -261,6 +222,6 @@ describe('findingsFrom', () => {
       untested({ stratum: 'overall' }),
       untested({ comparison: 'C_vs_A' }),
     ]
-    expect(findingsFrom(cells, 'evidence_recall')).toEqual([])
+    expect(findingsFrom(cells)).toEqual([])
   })
 })

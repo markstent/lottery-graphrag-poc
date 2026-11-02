@@ -62,7 +62,7 @@ from app.api.schemas import (
     error_responses,
 )
 from app.api.scoring import require_bank
-from app.config import REPO_ROOT, from_env, judge_settings_from_env
+from app.config import METHOD_VERSION, REPO_ROOT, from_env, judge_settings_from_env
 from app.evaluation import second_judge
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
@@ -96,9 +96,6 @@ from app.observability.logging import run_context
 
 logger = logging.getLogger(__name__)
 
-# The summary schemas the API publishes: 2 for runs of method v0.2 (such as
-# the official run v0.2.0), the current one for method v0.3.
-PUBLISHED_SCHEMA_VERSIONS = frozenset({"2", SUMMARY_SCHEMA_VERSION})
 # The worlds a benchmark job may name: the seen ones only. The official run on
 # the unseen seeds goes through ``make run-benchmark`` after the owner's
 # go-ahead, never through the API (D-091); ``check_seeds`` still refuses a
@@ -121,13 +118,24 @@ def stale_bank_message() -> str:
 def published_runs(runs_dir: Path) -> list[Published]:
     """Every published run under ``runs_dir``, newest first: the latest
     ``reproducibility.run.started_at`` as a point in time, then the directory
-    name. A malformed summary raises rather than being skipped."""
+    name. A malformed summary raises rather than being skipped.
+
+    Only runs of the current method are published (D-104): a summary of
+    another schema or of another method stays on disk and is never served."""
     runs: list[Published] = []
     for path in runs_dir.glob("*/summary.json"):
         summary = json.loads(path.read_text(encoding="utf-8"))
-        if summary.get("schema_version") in PUBLISHED_SCHEMA_VERSIONS:
+        if _current(summary):
             runs.append((path.parent.name, summary))
     return sorted(runs, key=_started, reverse=True)
+
+
+def _current(summary: dict[str, Any]) -> bool:
+    """Whether a summary is of the current schema and the current method."""
+    return (
+        summary.get("schema_version") == SUMMARY_SCHEMA_VERSION
+        and method_of(summary["reproducibility"]["run"]) == METHOD_VERSION
+    )
 
 
 def _started(run: Published) -> tuple[datetime, str]:
@@ -159,6 +167,21 @@ def _published(runs_dir: Path, name: str) -> Published:
     if run is None:
         raise ApiError(404, ErrorCode.NOT_FOUND, f"no published benchmark run {name!r}")
     return run
+
+
+def listed(run: Published) -> BenchmarkRunOut:
+    """A published run as GET /benchmarks lists it."""
+    name, summary = run
+    return BenchmarkRunOut(
+        run_id=name,
+        run_kind=summary["run_kind"],
+        label=summary["label"],
+        method_version=method_of(summary["reproducibility"]["run"]),
+        started_at=summary["reproducibility"]["run"]["started_at"],
+        selection=summary["selection"],
+        worlds=summary["worlds"],
+        headlines=summary.get("headlines", []),
+    )
 
 
 def _summary_out(run: Published) -> BenchmarkSummary:
@@ -597,19 +620,7 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
 
     @router.get("/benchmarks", response_model=list[BenchmarkRunOut], responses=error_responses())
     def list_benchmarks() -> list[BenchmarkRunOut]:
-        return [
-            BenchmarkRunOut(
-                run_id=name,
-                run_kind=summary["run_kind"],
-                label=summary["label"],
-                method_version=method_of(summary["reproducibility"]["run"]),
-                started_at=summary["reproducibility"]["run"]["started_at"],
-                selection=summary["selection"],
-                worlds=summary["worlds"],
-                headlines=summary.get("headlines", []),
-            )
-            for name, summary in published_runs(runs_dir)
-        ]
+        return [listed(run) for run in published_runs(runs_dir)]
 
     @router.get(
         "/benchmarks/latest", response_model=BenchmarkSummary, responses=error_responses(404)

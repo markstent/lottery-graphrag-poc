@@ -7,7 +7,7 @@
 
 import type { Schemas } from '../api/client'
 import { PIPELINES, type PipelineId } from '../design/pipelines'
-import type { EvidenceMetric } from '../app/method'
+import { EVIDENCE_METRIC } from '../app/method'
 import { evidenceScore, percent } from '../app/score-words'
 import type { BarGroup, GroupedBarsProps } from '../charts/grouped-bars'
 import type { DataTableRow } from '../charts/data-table'
@@ -55,8 +55,8 @@ const COMPARISON_PIPELINES: Record<string, PipelineId> = {
   C_vs_A: 'C',
 }
 
-/** A metric a chart or table of this folder shows: the run's evidence metric, or the answer score. */
-export type ShownMetric = EvidenceMetric | 'answer'
+/** A metric a chart or table of this folder shows: evidence recall or the answer score. */
+export type ShownMetric = typeof EVIDENCE_METRIC | 'answer'
 
 export const GROUP_LABELS: Record<string, string> = {
   ontology_dependent: 'Questions that need the ontology',
@@ -67,7 +67,6 @@ export const GROUP_LABELS: Record<string, string> = {
  * An untested sub-group with fewer groups than this has no interval and no
  * delta: docs/reference/evaluation/statistics.md (name-anchored sub-group) prints the
  * mean alone below six groups, because a bootstrap over so few says little.
- * Runs made before the harness applied the rule still carry the interval.
  */
 export const MIN_GROUPS_FOR_INTERVAL = 6
 
@@ -134,23 +133,6 @@ export function intervalTestDisagreements(
       high !== null &&
       (low > 0 || high < 0),
   ).length
-}
-
-/** A recorded line that prints an interval and says it spans K groups: "(95 percent interval a to b, N pairs in K groups)". */
-const PRINTED_INTERVAL_GROUPS = /95 percent interval[^)]*\bin (\d+) groups?\)/
-
-/**
- * Whether a run made before the group floor prints an interval over fewer
- * groups than the floor in its recorded headlines. The harness still records
- * low and high for such cells (the table view shows them), so the cells cannot
- * tell an old run from a new one; the printed lines can, because a run made
- * under the rule prints the mean alone there.
- */
-export function printsIntervalBelowFloor(summary: Summary): boolean {
-  return summary.headlines.some((line) => {
-    const groups = PRINTED_INTERVAL_GROUPS.exec(line)?.[1]
-    return groups !== undefined && Number(groups) < MIN_GROUPS_FOR_INTERVAL
-  })
 }
 
 /** Grouped bars of a metric per stratum, with B minus A as the delta; a cell with too few pairs or groups has none. */
@@ -252,12 +234,11 @@ export function comparisonRows(
     )
 }
 
-/** The ontology-dependent split of the metric, in points; null for a run that has none. */
+/** The ontology-dependent split of the metric, in points. */
 export function splitRows(
   summary: Summary,
   metric: ShownMetric,
-): IntervalRow[] | null {
-  if (!summary.ontology_split) return null
+): IntervalRow[] {
   return summary.ontology_split
     .filter((c) => c.metric === metric)
     .map((c) => intervalRow(c, c.group, GROUP_LABELS[c.group] ?? c.group))
@@ -265,14 +246,13 @@ export function splitRows(
 
 const EMPTY: MetricCell = { mean: null, n: 0, repeats: 0 }
 
-/** The overall cells of the run's evidence metric and of the answer score, per pipeline. */
+/** The overall cells of evidence recall and of the answer score, per pipeline. */
 export function tiles(
   summary: Summary,
-  evidence: EvidenceMetric,
 ): { pipeline: string; evidence: MetricCell; answer: MetricCell }[] {
   return PIPELINES.map(({ id }) => ({
     pipeline: id,
-    evidence: cellOf(summary, 'overall', evidence, id) ?? EMPTY,
+    evidence: cellOf(summary, 'overall', EVIDENCE_METRIC, id) ?? EMPTY,
     answer: cellOf(summary, 'overall', 'answer', id) ?? EMPTY,
   }))
 }
@@ -321,17 +301,10 @@ const TOO_FEW_TO_SAY = 'Too few to say'
  */
 export const MIN_PAIRS_FOR_KAPPA = 10
 
-type Judged = NonNullable<Summary['judge_agreement']>
 type AgreementCell = {
   n: number
   agreement: number | null
   kappa: number | null
-}
-
-export function isThresholdAgreement(
-  judged: Judged,
-): judged is Schemas['ThresholdJudgeAgreementOut'] {
-  return 'n' in judged.overall
 }
 
 /** One agreement row's cells: pairs, agreement and the kappa, with the n rule. */
@@ -359,19 +332,12 @@ function groups<T>(judged: { overall: T; pipelines: Record<string, T> }) {
 
 /**
  * How often the judge and the answer score agree, overall and per pipeline;
- * null without a judge. A run of method v0.3 splits each group into answers
- * that answered and answers that abstained, with a weighted kappa; a v0.2 run
- * has one row per group, with Cohen's kappa.
+ * null without a judge. Each group is split into answers that answered and
+ * answers that abstained, with a weighted kappa.
  */
 export function agreement(summary: Summary): DataTableRow[] | null {
   const judged = summary.judge_agreement
   if (!judged) return null
-  if (isThresholdAgreement(judged))
-    return groups(judged).map(({ key, label, cell }) => ({
-      key,
-      label,
-      cells: agreementCells(cell),
-    }))
   return groups(judged).flatMap(({ key, label, cell }) =>
     (['answered', 'abstained'] as const).map((answers) => ({
       key: `${key}-${answers}`,
@@ -388,7 +354,7 @@ export function agreement(summary: Summary): DataTableRow[] | null {
  * The groundedness of the answers per stratum and pipeline: the mean share of
  * checkable details the cited blocks hold, the share no shown block holds, and
  * the questions behind them. Descriptive, never tested; null for a run that
- * did not measure it (every run before method v0.3).
+ * did not measure it.
  */
 export function groundednessRows(summary: Summary): DataTableRow[] | null {
   const rows = strataIn(summary).flatMap((stratum) =>

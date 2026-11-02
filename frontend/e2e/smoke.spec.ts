@@ -112,8 +112,7 @@ test.describe('Results run list', () => {
 
 test.describe('Overview latest run', () => {
   const LATEST = [
-    ['official', 'Method v0.2 (old method)'],
-    ['v03', 'Our second method: the first, v0.2, found no clear difference'],
+    ['official', 'Evidence found is the share of needed records found.'],
     ['smoke', 'Latest run: scorer smoke test'],
     ['none', 'No official run yet'],
     ['unavailable', 'The latest run is unavailable.'],
@@ -183,9 +182,14 @@ test('a recorded run plays to completion in Live Lab', async ({ page }) => {
   await page.getByRole('button', { name: h1.question }).click()
   await page.getByRole('button', { name: 'Recorded run', exact: true }).click()
   await page.getByRole('button', { name: 'Run', exact: true }).click()
-  // Play it from the start at 4x, so the recording of about 36 s takes about 9 s.
-  await page.getByRole('button', { name: '4x', exact: true }).click()
+  // Play it from the start at 4x, so the recording of about 71 s takes about 18 s.
+  // The speed is set once the recording plays, so the click is not lost while it loads.
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  const fast = page.getByRole('button', { name: '4x', exact: true })
+  await fast.click()
+  await expect(fast).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Replay', exact: true }).click()
+  await expect(fast).toHaveAttribute('aria-pressed', 'true')
 
   await expect(page.getByText('The run is complete.')).toBeVisible({
     timeout: 30_000,

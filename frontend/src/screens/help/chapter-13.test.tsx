@@ -113,7 +113,6 @@ function show(level: HelpData['level'], blocks: readonly Block[]) {
     level,
     bank: { status: 'loading', retry: () => undefined },
     scores: 'none',
-    evidence: 'evidence_recall',
     story: null,
     settings: { status: 'loading', retry: () => undefined },
     recorded: { status: 'loading', retry: () => undefined },
@@ -294,9 +293,7 @@ describe('chapter 13, what the results teach', () => {
   })
 
   it('names its run, says which difference passed the test, and calls the rest patterns', () => {
-    expect(plainText).toContain(
-      'official run v0.3.0, which started on 2026-10-29',
-    )
+    expect(plainText).toContain('official run, which started on 2026-10-29')
     expect(plainText).toContain('Only one passed')
     expect(plainText).toMatch(/a pattern seen in this run/)
     expect(plainText).toContain('These questions were not tested.')

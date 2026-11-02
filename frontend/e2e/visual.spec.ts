@@ -317,9 +317,8 @@ async function screenShot(
 
 test.describe('Overview', () => {
   const STATES = [
-    ['overview-fixture-official', 'official', 'Evidence score'],
+    ['overview-fixture-official', 'official', 'Evidence found'],
     ['overview-no-official-run', 'none', 'No official run yet'],
-    ['overview-fixture-v03', 'v03', 'Evidence found'],
     ['overview-smoke-only', 'smoke', 'Latest run: scorer smoke test'],
     ['overview-error', 'unavailable', 'The latest run is unavailable.'],
   ] as const
@@ -355,14 +354,18 @@ test.describe('Results', () => {
     })
 
   test('results-subset', async ({ page }) => {
-    await openScreen(page, '#/results?run=pilot-2026-nothink')
-    await expect(page.getByText('This run predates the split.')).toBeVisible()
+    await openScreen(page, '#/results?run=fixture-subset')
+    await expect(
+      page.getByRole('region', { name: 'Verdict' }).getByText('Subset run'),
+    ).toBeVisible()
     await screenShot(page, 'results-subset')
   })
 
   test('results-v03', async ({ page }) => {
     await openScreen(page, '#/results?run=fixture-v03', { runs: 'v03' })
-    await expect(page.getByText('Method v0.3', { exact: true })).toBeVisible()
+    await expect(
+      page.getByText('Evidence recall: A · Text search'),
+    ).toBeVisible()
     await screenShot(page, 'results-v03')
   })
 
@@ -380,7 +383,9 @@ test.describe('Results', () => {
     await page.reload()
     const panel = page.getByRole('region', { name: 'Second judge' })
     await expect(
-      panel.getByRole('table', { name: 'With the hand labels' }),
+      panel.getByRole('table', {
+        name: 'With the hand labels, on a sample of answers',
+      }),
     ).toBeVisible()
     await panel.scrollIntoViewIfNeeded()
     await page.mouse.move(0, 0)
@@ -389,7 +394,7 @@ test.describe('Results', () => {
   })
 
   test('results-quick-check', async ({ page }) => {
-    await openScreen(page, '#/results?run=20261019T164733Z-smoke')
+    await openScreen(page, '#/results?run=fixture-smoke')
     await expect(
       page.getByText('A quick check tests the scoring code'),
     ).toBeVisible()
@@ -432,8 +437,9 @@ test.describe('Results', () => {
   test('results-start-form', async ({ page }) => {
     await page.goto('/#/results')
     await page.getByRole('button', { name: 'Start a run' }).click()
-    await expect(page.getByText('Generation model')).toBeVisible()
-    await expect(page.getByText('fake-judge-v1')).toBeVisible()
+    const form = page.getByRole('region', { name: 'Benchmark runs' })
+    await expect(form.getByText('Generation model')).toBeVisible()
+    await expect(form.getByText('fake-judge-v1')).toBeVisible()
     await screenShot(page, 'results-start-form')
   })
 
@@ -911,8 +917,8 @@ test.describe('Live Lab', () => {
 
 test.describe('presentation mode', () => {
   const OTHERS = [
-    ['overview-fixture-official', '#/overview', 'Evidence score'],
-    ['results', '#/results', 'This run predates the split.'],
+    ['overview-fixture-official', '#/overview', 'Evidence found'],
+    ['results', '#/results', 'Descriptive: not part of the tested family.'],
     ['data-model', '#/data-model', 'Incident management'],
     ['help-fixture-official', '#/help', 'Why this exists'],
   ] as const

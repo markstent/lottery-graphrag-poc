@@ -1,55 +1,41 @@
 {
-  "run_id": "20261019T164733Z-smoke",
+  "run_id": "fixture-smoke",
   "run_kind": "smoke",
   "label": "scorer smoke test",
-  "method_version": "0.2.0",
+  "method_version": "0.3.0",
   "summary": {
-    "schema_version": "2",
-    "method_note": null,
+    "schema_version": "3",
     "run_kind": "smoke",
     "label": "scorer smoke test",
     "bank_version": "2.0.0",
-    "worlds": [2026, 2027, 2028],
+    "worlds": [2026],
     "instances": {
       "total": {
-        "H1": 36,
-        "H2": 36,
-        "H2_name": 18,
-        "H3": 36,
-        "H5": 24,
-        "overall": 150
+        "H1": 6,
+        "H2": 6,
+        "H2_name": 3,
+        "H3": 6,
+        "H5": 6,
+        "overall": 27
       },
       "per_world": {
         "2026": {
-          "H1": 12,
-          "H2": 12,
-          "H2_name": 6,
-          "H3": 12,
-          "H5": 8,
-          "overall": 50
-        },
-        "2027": {
-          "H1": 12,
-          "H2": 12,
-          "H2_name": 6,
-          "H3": 12,
-          "H5": 8,
-          "overall": 50
-        },
-        "2028": {
-          "H1": 12,
-          "H2": 12,
-          "H2_name": 6,
-          "H3": 12,
-          "H5": 8,
-          "overall": 50
+          "H1": 6,
+          "H2": 6,
+          "H2_name": 3,
+          "H3": 6,
+          "H5": 6,
+          "overall": 27
         }
       }
     },
     "unavailable": {
-      "2026": [],
-      "2027": [],
-      "2028": []
+      "2026": [
+        {
+          "question_id": "L99",
+          "reason": "no anchor"
+        }
+      ]
     },
     "anchor_resolution_basis": {
       "A": "selection",
@@ -60,1542 +46,1746 @@
       "H1": {
         "evidence_f1": {
           "A": {
-            "mean": 0.10829249941092046,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.1006205417389628,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.10728581603581604,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "evidence_recall": {
           "A": {
-            "mean": 0.3597222222222222,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.3435185185185185,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.3875,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "evidence_precision": {
           "A": {
-            "mean": 0.06734006734006734,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.06228956228956229,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.06481481481481481,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "efficiency_per_1k": {
           "A": {
-            "mean": 0.8654271185079042,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.8312390327394737,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.8883511853200118,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "anchor_resolution": {
           "A": {
-            "mean": 0.75,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
             "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "n": 6,
+            "repeats": 18
           },
           "C": {
             "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "n": 6,
+            "repeats": 18
           }
         },
         "answer": {
           "A": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "citation_accuracy": {
           "A": {
-            "mean": 0.2777777777777778,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.2777777777777778,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.3333333333333333,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "numeric_citation_rate": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           }
         },
         "latency_ms": {
           "A": {
-            "mean": 2405.262123889012,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 5059.2801748056845,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 5868.88611336139,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "context_tokens": {
           "A": {
-            "mean": 1316.9166666666667,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1295.0277777777778,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1317.4166666666667,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_correctness": {
           "A": {
-            "mean": 0.7222222222222222,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.7222222222222222,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.7222222222222222,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_completeness": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_faithfulness": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_citation_accuracy": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_abstention": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
           }
         }
       },
       "H2": {
         "evidence_f1": {
           "A": {
-            "mean": 0.08814878701387653,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.03676081543728603,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.04793222844693433,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "evidence_recall": {
           "A": {
-            "mean": 0.11666666666666667,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.07129629629629629,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.09351851851851851,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "evidence_precision": {
           "A": {
-            "mean": 0.0808080808080808,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.025252525252525252,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.03282828282828283,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "efficiency_per_1k": {
           "A": {
-            "mean": 0.31407340162658015,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.20212460150947686,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.2598179850987844,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "anchor_resolution": {
           "A": {
-            "mean": 0.75,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.75,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.75,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "answer": {
           "A": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.013888888888888888,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "citation_accuracy": {
           "A": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "numeric_citation_rate": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           }
         },
         "latency_ms": {
           "A": {
-            "mean": 2269.6415266667223,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 6136.121746527553,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 8047.57184147219,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "context_tokens": {
           "A": {
-            "mean": 1069.888888888889,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1066.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1079.4444444444443,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_correctness": {
           "A": {
-            "mean": 0.6944444444444444,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.6944444444444444,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.6666666666666666,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_completeness": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_faithfulness": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_citation_accuracy": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_abstention": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
           }
         }
       },
       "H2_name": {
         "evidence_f1": {
           "A": {
-            "mean": 0.6072258250971732,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 0.5898667521480382,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 0.6452186288117684,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           }
         },
         "evidence_recall": {
           "A": {
-            "mean": 0.6018518518518519,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 0.5833333333333334,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 0.7083333333333334,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           }
         },
         "evidence_precision": {
           "A": {
-            "mean": 0.6578282828282829,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 0.6376262626262627,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 0.6565656565656566,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           }
         },
         "efficiency_per_1k": {
           "A": {
-            "mean": 1.5862066032360673,
-            "n": 18,
-            "repeats": 18
+            "mean": 1.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 1.5359409781339979,
-            "n": 18,
-            "repeats": 18
+            "mean": 1.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 1.7851841646351672,
-            "n": 18,
-            "repeats": 18
+            "mean": 1.0,
+            "n": 3,
+            "repeats": 9
           }
         },
         "anchor_resolution": {
           "A": {
-            "mean": 0.9444444444444444,
-            "n": 18,
-            "repeats": 18
+            "mean": 1.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
             "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "n": 3,
+            "repeats": 9
           },
           "C": {
             "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "n": 3,
+            "repeats": 9
           }
         },
         "answer": {
           "A": {
-            "mean": 0.5055555555555555,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 0.5055555555555555,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 0.5055555555555555,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.4,
+            "n": 3,
+            "repeats": 9
           }
         },
         "citation_accuracy": {
           "A": {
-            "mean": 0.7777777777777778,
-            "n": 18,
-            "repeats": 18
+            "mean": 1.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 0.7777777777777778,
-            "n": 18,
-            "repeats": 18
+            "mean": 1.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 0.7777777777777778,
-            "n": 18,
-            "repeats": 18
+            "mean": 1.0,
+            "n": 3,
+            "repeats": 9
           }
         },
         "numeric_citation_rate": {
           "A": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.5,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.5,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 0.5,
+            "n": 3,
+            "repeats": 9
           }
         },
         "latency_ms": {
           "A": {
-            "mean": 2230.094407389111,
-            "n": 18,
-            "repeats": 18
+            "mean": 200.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 3710.3362383334875,
-            "n": 18,
-            "repeats": 18
+            "mean": 200.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 4861.012236055406,
-            "n": 18,
-            "repeats": 18
+            "mean": 200.0,
+            "n": 3,
+            "repeats": 9
           }
         },
         "context_tokens": {
           "A": {
-            "mean": 1160.5,
-            "n": 18,
-            "repeats": 18
+            "mean": 1000.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 1164.7777777777778,
-            "n": 18,
-            "repeats": 18
+            "mean": 1000.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 1157.388888888889,
-            "n": 18,
-            "repeats": 18
+            "mean": 1000.0,
+            "n": 3,
+            "repeats": 9
           }
         },
         "judge_correctness": {
           "A": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           }
         },
         "judge_completeness": {
           "A": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           }
         },
         "judge_faithfulness": {
           "A": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           }
         },
         "judge_citation_accuracy": {
           "A": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           }
         },
         "judge_abstention": {
           "A": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "B": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
           },
           "C": {
-            "mean": 1.0,
-            "n": 18,
-            "repeats": 18
+            "mean": 2.0,
+            "n": 3,
+            "repeats": 9
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 3,
+            "repeats": 9
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 3,
+            "repeats": 9
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 3,
+            "repeats": 9
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 3,
+            "repeats": 9
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 3,
+            "repeats": 9
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 3,
+            "repeats": 9
           }
         }
       },
       "H3": {
         "evidence_f1": {
           "A": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "evidence_recall": {
           "A": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "evidence_precision": {
           "A": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "efficiency_per_1k": {
           "A": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "anchor_resolution": {
           "A": {
             "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "n": 6,
+            "repeats": 18
           },
           "B": {
             "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "n": 6,
+            "repeats": 18
           },
           "C": {
             "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "n": 6,
+            "repeats": 18
           }
         },
         "answer": {
           "A": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "citation_accuracy": {
           "A": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": null,
-            "n": 0,
-            "repeats": 0
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "numeric_citation_rate": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           }
         },
         "latency_ms": {
           "A": {
-            "mean": 2140.9283437779372,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 5696.478484999868,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 7514.215613389044,
-            "n": 36,
-            "repeats": 36
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "context_tokens": {
           "A": {
-            "mean": 1132.0555555555557,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1120.1944444444443,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1102.9444444444443,
-            "n": 36,
-            "repeats": 36
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_correctness": {
           "A": {
-            "mean": 1.75,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.75,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.75,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_completeness": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_faithfulness": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_citation_accuracy": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_abstention": {
           "A": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 36,
-            "repeats": 36
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
           }
         }
       },
       "H5": {
         "evidence_f1": {
           "A": {
-            "mean": 0.14391763732724278,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.13546637946560755,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.14078762503123624,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "evidence_recall": {
           "A": {
-            "mean": 0.37083333333333335,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.3625,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.37083333333333335,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "evidence_precision": {
           "A": {
-            "mean": 0.0928030303030303,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.08522727272727272,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.08901515151515152,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "efficiency_per_1k": {
           "A": {
-            "mean": 1.7155907064975793,
-            "n": 24,
-            "repeats": 24
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.7020331588856168,
-            "n": 24,
-            "repeats": 24
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.732225683619716,
-            "n": 24,
-            "repeats": 24
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "anchor_resolution": {
           "A": {
-            "mean": 0.875,
-            "n": 24,
-            "repeats": 24
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
             "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "n": 6,
+            "repeats": 18
           },
           "C": {
             "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "n": 6,
+            "repeats": 18
           }
         },
         "answer": {
           "A": {
-            "mean": 0.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.4,
+            "n": 6,
+            "repeats": 18
           }
         },
         "citation_accuracy": {
           "A": {
-            "mean": 0.16666666666666666,
-            "n": 24,
-            "repeats": 24
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.16666666666666666,
-            "n": 24,
-            "repeats": 24
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.16666666666666666,
-            "n": 24,
-            "repeats": 24
+            "mean": 1.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "numeric_citation_rate": {
           "A": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 0.5,
+            "n": 6,
+            "repeats": 18
           }
         },
         "latency_ms": {
           "A": {
-            "mean": 2233.1953905835085,
-            "n": 24,
-            "repeats": 24
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 5026.859374999958,
-            "n": 24,
-            "repeats": 24
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 6404.150315958304,
-            "n": 24,
-            "repeats": 24
+            "mean": 200.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "context_tokens": {
           "A": {
-            "mean": 1038.2916666666667,
-            "n": 24,
-            "repeats": 24
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1032.2916666666667,
-            "n": 24,
-            "repeats": 24
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1038.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 1000.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_correctness": {
           "A": {
-            "mean": 0.75,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 0.75,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 0.75,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_completeness": {
           "A": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_faithfulness": {
           "A": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_citation_accuracy": {
           "A": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           }
         },
         "judge_abstention": {
           "A": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "B": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
           },
           "C": {
-            "mean": 1.0,
-            "n": 24,
-            "repeats": 24
+            "mean": 2.0,
+            "n": 6,
+            "repeats": 18
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 6,
+            "repeats": 18
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 6,
+            "repeats": 18
           }
         }
       },
       "overall": {
         "evidence_f1": {
           "A": {
-            "mean": 0.18821030227101435,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 0.16503967986126514,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 0.18053235018193434,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           }
         },
         "evidence_recall": {
           "A": {
-            "mean": 0.32353801169590646,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 0.2994152046783626,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 0.341812865497076,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           }
         },
         "evidence_precision": {
           "A": {
-            "mean": 0.17018872939925572,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 0.14626528442317915,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 0.15324295587453482,
-            "n": 114,
-            "repeats": 114
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           }
         },
         "efficiency_per_1k": {
           "A": {
-            "mean": 0.9841045135002856,
-            "n": 114,
-            "repeats": 114
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 0.9271651250230613,
-            "n": 114,
-            "repeats": 114
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 1.0091300132051129,
-            "n": 114,
-            "repeats": 114
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "anchor_resolution": {
           "A": {
-            "mean": 0.8533333333333334,
-            "n": 150,
-            "repeats": 150
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 0.94,
-            "n": 150,
-            "repeats": 150
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 0.94,
-            "n": 150,
-            "repeats": 150
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "answer": {
           "A": {
-            "mean": 0.06066666666666667,
-            "n": 150,
-            "repeats": 150
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 0.06066666666666667,
-            "n": 150,
-            "repeats": 150
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 0.064,
-            "n": 150,
-            "repeats": 150
+            "mean": 0.4,
+            "n": 27,
+            "repeats": 81
           }
         },
         "citation_accuracy": {
           "A": {
-            "mean": 0.24561403508771928,
-            "n": 114,
-            "repeats": 114
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 0.24561403508771928,
-            "n": 114,
-            "repeats": 114
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 0.2631578947368421,
-            "n": 114,
-            "repeats": 114
+            "mean": 1.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "numeric_citation_rate": {
           "A": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 0.5,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 0.5,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 0.5,
+            "n": 27,
+            "repeats": 81
           }
         },
         "latency_ms": {
           "A": {
-            "mean": 2260.722270020136,
-            "n": 150,
-            "repeats": 150
+            "mean": 200.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 5303.589146119957,
-            "n": 150,
-            "repeats": 150
+            "mean": 200.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 6751.347175253407,
-            "n": 150,
-            "repeats": 150
+            "mean": 200.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "context_tokens": {
           "A": {
-            "mean": 1149.9133333333334,
-            "n": 150,
-            "repeats": 150
+            "mean": 1000.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 1140.4333333333334,
-            "n": 150,
-            "repeats": 150
+            "mean": 1000.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 1144.92,
-            "n": 150,
-            "repeats": 150
+            "mean": 1000.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "judge_correctness": {
           "A": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 0.9933333333333333,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "judge_completeness": {
           "A": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "judge_faithfulness": {
           "A": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "judge_citation_accuracy": {
           "A": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           }
         },
         "judge_abstention": {
           "A": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "B": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
           },
           "C": {
-            "mean": 1.0,
-            "n": 150,
-            "repeats": 150
+            "mean": 2.0,
+            "n": 27,
+            "repeats": 81
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 27,
+            "repeats": 81
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 27,
+            "repeats": 81
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 27,
+            "repeats": 81
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 27,
+            "repeats": 81
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 27,
+            "repeats": 81
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 27,
+            "repeats": 81
           }
         }
       }
@@ -1603,149 +1793,79 @@
     "comparisons": [
       {
         "stratum": "H1",
-        "metric": "evidence_f1",
+        "metric": "evidence_recall",
         "comparison": "B_vs_A",
-        "n": 36,
-        "clusters": 12,
-        "mean": -0.007671957671957673,
-        "low": -0.01904761904761905,
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
         "high": 0.0,
-        "p": 0.5,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
       },
       {
         "stratum": "H1",
-        "metric": "evidence_f1",
+        "metric": "evidence_recall",
         "comparison": "C_vs_B",
-        "n": 36,
-        "clusters": 12,
-        "mean": 0.006665274296853244,
-        "low": -0.013707880813143974,
-        "high": 0.02537037037037037,
-        "p": 0.625,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "stratum": "H1",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
       },
       {
         "stratum": "H1",
         "metric": "answer",
         "comparison": "B_vs_A",
-        "n": 36,
-        "clusters": 12,
+        "n": 6,
+        "clusters": 6,
         "mean": 0.0,
         "low": 0.0,
         "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
       },
       {
         "stratum": "H1",
         "metric": "answer",
         "comparison": "C_vs_B",
-        "n": 36,
-        "clusters": 12,
+        "n": 6,
+        "clusters": 6,
         "mean": 0.0,
         "low": 0.0,
         "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H2",
-        "metric": "evidence_f1",
-        "comparison": "B_vs_A",
-        "n": 36,
-        "clusters": 12,
-        "mean": -0.0513879715765905,
-        "low": -0.09348513095316165,
-        "high": -0.012521312872975277,
-        "p": 0.0625,
-        "p_holm": 0.875,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H2",
-        "metric": "evidence_f1",
-        "comparison": "C_vs_B",
-        "n": 36,
-        "clusters": 12,
-        "mean": 0.011171413009648305,
-        "low": 0.0,
-        "high": 0.028758169934640525,
-        "p": 0.25,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H2",
-        "metric": "answer",
-        "comparison": "B_vs_A",
-        "n": 36,
-        "clusters": 12,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H2",
-        "metric": "answer",
-        "comparison": "C_vs_B",
-        "n": 36,
-        "clusters": 12,
-        "mean": 0.013888888888888888,
-        "low": 0.0,
-        "high": 0.041666666666666664,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H2_name",
-        "metric": "evidence_f1",
-        "comparison": "B_vs_A",
-        "n": 18,
-        "clusters": 6,
-        "mean": -0.017359072949135062,
-        "low": -0.03814567075436641,
-        "high": -0.0019187162044304903,
         "p": null,
         "p_holm": null,
         "in_family": false,
-        "reason": "not_in_family"
+        "reason": "too_few"
       },
       {
-        "stratum": "H2_name",
-        "metric": "evidence_f1",
-        "comparison": "C_vs_B",
-        "n": 18,
-        "clusters": 6,
-        "mean": 0.05535187666373029,
-        "low": 0.007487599373060168,
-        "high": 0.10955692964532199,
-        "p": null,
-        "p_holm": null,
-        "in_family": false,
-        "reason": "not_in_family"
-      },
-      {
-        "stratum": "H2_name",
+        "stratum": "H1",
         "metric": "answer",
-        "comparison": "B_vs_A",
-        "n": 18,
+        "comparison": "C_vs_A",
+        "n": 6,
         "clusters": 6,
         "mean": 0.0,
         "low": 0.0,
@@ -1756,10 +1876,178 @@
         "reason": "not_in_family"
       },
       {
+        "stratum": "H2",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "stratum": "H2",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "stratum": "H2",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "stratum": "H2",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "stratum": "H2",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 3,
+        "clusters": 3,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 3,
+        "clusters": 3,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 3,
+        "clusters": 3,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 3,
+        "clusters": 3,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
         "stratum": "H2_name",
         "metric": "answer",
         "comparison": "C_vs_B",
-        "n": 18,
+        "n": 3,
+        "clusters": 3,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 3,
+        "clusters": 3,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 6,
         "clusters": 6,
         "mean": 0.0,
         "low": 0.0,
@@ -1771,13 +2059,13 @@
       },
       {
         "stratum": "H3",
-        "metric": "evidence_f1",
-        "comparison": "B_vs_A",
-        "n": 0,
-        "clusters": 0,
-        "mean": null,
-        "low": null,
-        "high": null,
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
         "p": null,
         "p_holm": null,
         "in_family": false,
@@ -1785,13 +2073,13 @@
       },
       {
         "stratum": "H3",
-        "metric": "evidence_f1",
-        "comparison": "C_vs_B",
-        "n": 0,
-        "clusters": 0,
-        "mean": null,
-        "low": null,
-        "high": null,
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
         "p": null,
         "p_holm": null,
         "in_family": false,
@@ -1801,120 +2089,303 @@
         "stratum": "H3",
         "metric": "answer",
         "comparison": "B_vs_A",
-        "n": 36,
-        "clusters": 12,
+        "n": 6,
+        "clusters": 6,
         "mean": 0.0,
         "low": 0.0,
         "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
       },
       {
         "stratum": "H3",
         "metric": "answer",
         "comparison": "C_vs_B",
-        "n": 36,
-        "clusters": 12,
+        "n": 6,
+        "clusters": 6,
         "mean": 0.0,
         "low": 0.0,
         "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
       },
       {
-        "stratum": "H5",
-        "metric": "evidence_f1",
-        "comparison": "B_vs_A",
-        "n": 24,
-        "clusters": 24,
-        "mean": -0.008451257861635223,
-        "low": -0.022110849056603783,
-        "high": 0.0,
-        "p": 0.1573931546543509,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H5",
-        "metric": "evidence_f1",
-        "comparison": "C_vs_B",
-        "n": 24,
-        "clusters": 24,
-        "mean": 0.0053212455656286945,
+        "stratum": "H3",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
         "low": 0.0,
-        "high": 0.015963736696886083,
-        "p": 0.31731050786291415,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
       },
       {
         "stratum": "H5",
         "metric": "answer",
         "comparison": "B_vs_A",
-        "n": 24,
-        "clusters": 24,
+        "n": 6,
+        "clusters": 6,
         "mean": 0.0,
         "low": 0.0,
         "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
       },
       {
         "stratum": "H5",
         "metric": "answer",
         "comparison": "C_vs_B",
-        "n": 24,
-        "clusters": 24,
+        "n": 6,
+        "clusters": 6,
         "mean": 0.0,
         "low": 0.0,
         "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "stratum": "H5",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 6,
+        "clusters": 6,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
       }
     ],
-    "ontology_split": null,
+    "ontology_split": [
+      {
+        "group": "ontology_dependent",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "group": "ontology_dependent",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "group": "ontology_dependent",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "group": "ontology_dependent",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "too_few"
+      },
+      {
+        "group": "other",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "other",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "other",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "group": "other",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      }
+    ],
     "headlines": [
       "Scorer smoke test: the fake generator answers from titles only; these numbers are not a result."
     ],
     "judge_agreement": {
       "overall": {
-        "n": 450,
-        "agreement": 0.7577777777777778,
-        "kappa": -0.10190052567731543
+        "answered": {
+          "n": 243,
+          "agreement": 0.0,
+          "weighted_kappa": 0.0
+        },
+        "abstained": {
+          "n": 0,
+          "agreement": null,
+          "weighted_kappa": null
+        }
       },
       "pipelines": {
         "A": {
-          "n": 150,
-          "agreement": 0.76,
-          "kappa": -0.09890109890109923
+          "answered": {
+            "n": 81,
+            "agreement": 0.0,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
         },
         "B": {
-          "n": 150,
-          "agreement": 0.76,
-          "kappa": -0.09890109890109923
+          "answered": {
+            "n": 81,
+            "agreement": 0.0,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
         },
         "C": {
-          "n": 150,
-          "agreement": 0.7533333333333333,
-          "kappa": -0.10778443113772519
+          "answered": {
+            "n": 81,
+            "agreement": 0.0,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
         }
       }
     },
     "failures": {
       "repeats": {
-        "A": 150,
-        "B": 150,
-        "C": 150
+        "A": 81,
+        "B": 81,
+        "C": 81
       },
       "generation": {
         "A": 0,
@@ -1928,18 +2399,13 @@
       },
       "classes": {
         "A": {
-          "generation_failure": 69,
-          "retrieval_failure": 72
+          "retrieval_failure": 81
         },
         "B": {
-          "entity_resolution_failure": 9,
-          "generation_failure": 68,
-          "retrieval_failure": 64
+          "retrieval_failure": 81
         },
         "C": {
-          "entity_resolution_failure": 9,
-          "generation_failure": 71,
-          "retrieval_failure": 61
+          "retrieval_failure": 81
         }
       }
     },
@@ -1950,401 +2416,125 @@
     },
     "reproducibility": {
       "run": {
-        "git_sha": "9578037d4bbb4e264ab549c19606b905306c5c7a",
+        "git_sha": "abc123",
+        "git_dirty": false,
         "question_bank_version": "2.0.0",
-        "generator_version": "0.2.0",
+        "world_dir": "data/generated/dev-seed2026",
+        "generator_version": "1.0.0",
         "profile": "dev",
-        "embedding_model": "bge-m3",
-        "embedding_dimensions": 1024,
-        "sparse_model": "Qdrant/bm25",
+        "world_seed": 2026,
+        "scenario_seed": 7,
+        "embedding_model": "fake-embed",
+        "embedding_dimensions": 8,
+        "sparse_model": "fake-sparse",
         "rrf_k": 60,
         "record_serialiser_version": "2.1.0",
-        "generation_model": "fake-answer-v1",
+        "generation_model": "fake-gen",
         "generation_temperature": 0.0,
-        "max_tokens": 1200,
-        "prompt_version": "2.0.0",
-        "reranker": "BAAI/bge-reranker-v2-m3",
-        "top_k": 40,
-        "context_budget_tokens": 2000,
+        "max_tokens": 512,
+        "prompt_version": "1",
+        "reranker": "fake-rerank",
+        "top_k": 8,
+        "context_budget_tokens": 4000,
         "context": {
-          "dedupe_threshold": 0.85,
-          "evidence_slots": 12
+          "budget_tokens": 4000,
+          "dedupe_threshold": 0.9
         },
         "graph_limits": {
-          "depth": 2,
-          "nodes_per_hop": 100,
-          "edges_per_node_type": 4,
-          "total_nodes": 200,
-          "relationship_types": 22
+          "depth": 2
         },
         "ranking_weights": {
-          "graph_distance": 0.25,
-          "relationship_type": 0.25,
-          "semantic_relevance": 0.35,
-          "temporal_validity": 0.15
+          "w": 1.0
         },
         "reference_date": "2026-01-01",
-        "excluded_labels": ["Document"],
-        "ontology_version": "2.0.0",
+        "excluded_labels": [],
+        "ontology_version": "1",
+        "graph_label_version": "v2",
+        "started_at": "2026-10-19T16:47:50+00:00",
         "bank_version": "2.0.0",
+        "bank_hash": "bankhash",
         "scorer_version": "2.0.0",
-        "prompt_hash": "57c938fbde7ad73cc26b80d9d14c3aa117460d4aa1f6bd727cf66cf205bcd701",
-        "relationship_types_b": [
-          "AFFECTS",
-          "AFFECTS_MARKET",
-          "AVAILABLE_IN",
-          "BELONGS_TO",
-          "CATEGORISED_AS",
-          "CONCERNS",
-          "FROM_MARKET",
-          "HAS_MECHANIC",
-          "INSTANCE_OF",
-          "OF_TYPE",
-          "PROVIDED_BY",
-          "RELATED_TO",
-          "RELATED_TO_APP_VERSION",
-          "RELATED_TO_VERSION",
-          "RUNS_ON",
-          "TARGETS",
-          "USES",
-          "USES_PAYMENT",
-          "VERSION_OF"
-        ],
-        "relationship_types_c": [
-          "AFFECTS",
-          "AFFECTS_MARKET",
-          "AVAILABLE_IN",
-          "BELONGS_TO",
-          "CATEGORISED_AS",
-          "CONCERNS",
-          "FROM_MARKET",
-          "HAS_MECHANIC",
-          "INSTANCE_OF",
-          "IS_A",
-          "MAPS_TO",
-          "OF_TYPE",
-          "PROVIDED_BY",
-          "RELATED_TO",
-          "RELATED_TO_APP_VERSION",
-          "RELATED_TO_VERSION",
-          "RUNS_ON",
-          "SIMILAR_TO",
-          "TARGETS",
-          "USES",
-          "USES_PAYMENT",
-          "VERSION_OF"
-        ],
-        "dedupe_threshold": 0.85,
+        "prompt_hash": "prompthash",
+        "relationship_types_b": ["R"],
+        "relationship_types_c": ["R", "O"],
+        "dedupe_threshold": 0.9,
         "generation_quantisation": null,
-        "generation_model_family": null,
-        "repeats": 1,
+        "generation_model_family": "fake",
+        "repeats": 3,
         "run_kind": "smoke",
         "judge_model": "fake-judge-v1",
-        "judge_model_family": null,
+        "judge_model_family": "fake",
         "judge_prompt_version": "1.0.0",
-        "judge_prompt_hash": "55dfbe5b11c93da9fabf9f9e53951a6dd7b1b9eb65bc7f0c4e581a0529c7e08b",
-        "started_at": "2026-10-19T16:47:50+00:00"
+        "judge_prompt_hash": "judgehash",
+        "judge_temperature": 0.0,
+        "generation_reasoning": "default",
+        "judge_reasoning": "default",
+        "selection_rule": null,
+        "method_version": "0.3.0",
+        "record_facts_version": null,
+        "prompt_extras": null,
+        "answer_parser_version": null
       },
       "worlds": [
         {
-          "git_sha": "9578037d4bbb4e264ab549c19606b905306c5c7a",
+          "git_sha": "abc123",
+          "git_dirty": false,
           "question_bank_version": "2.0.0",
-          "world_dir": "/Users/mark.stent/Dev/python/2026/lottery-graphrag-poc/data/generated/dev-seed2026",
-          "generator_version": "0.2.0",
+          "world_dir": "data/generated/dev-seed2026",
+          "generator_version": "1.0.0",
           "profile": "dev",
           "world_seed": 2026,
-          "scenario_seed": 2026,
-          "embedding_model": "bge-m3",
-          "embedding_dimensions": 1024,
-          "sparse_model": "Qdrant/bm25",
+          "scenario_seed": 7,
+          "embedding_model": "fake-embed",
+          "embedding_dimensions": 8,
+          "sparse_model": "fake-sparse",
           "rrf_k": 60,
           "record_serialiser_version": "2.1.0",
-          "generation_model": "fake-answer-v1",
+          "generation_model": "fake-gen",
           "generation_temperature": 0.0,
-          "max_tokens": 1200,
-          "prompt_version": "2.0.0",
-          "reranker": "BAAI/bge-reranker-v2-m3",
-          "top_k": 40,
-          "context_budget_tokens": 2000,
+          "max_tokens": 512,
+          "prompt_version": "1",
+          "reranker": "fake-rerank",
+          "top_k": 8,
+          "context_budget_tokens": 4000,
           "context": {
-            "dedupe_threshold": 0.85,
-            "evidence_slots": 12
+            "budget_tokens": 4000,
+            "dedupe_threshold": 0.9
           },
           "graph_limits": {
-            "depth": 2,
-            "nodes_per_hop": 100,
-            "edges_per_node_type": 4,
-            "total_nodes": 200,
-            "relationship_types": 22
+            "depth": 2
           },
           "ranking_weights": {
-            "graph_distance": 0.25,
-            "relationship_type": 0.25,
-            "semantic_relevance": 0.35,
-            "temporal_validity": 0.15
+            "w": 1.0
           },
           "reference_date": "2026-01-01",
-          "excluded_labels": ["Document"],
-          "ontology_version": "2.0.0",
+          "excluded_labels": [],
+          "ontology_version": "1",
+          "graph_label_version": "v2",
           "started_at": "2026-10-19T16:47:50+00:00",
           "bank_version": "2.0.0",
-          "bank_hash": "8f70b6186b7aa90eb8658b965e556b881eef1f357cc0c8e486f94fe8769d8864",
+          "bank_hash": "bankhash",
           "scorer_version": "2.0.0",
-          "prompt_hash": "57c938fbde7ad73cc26b80d9d14c3aa117460d4aa1f6bd727cf66cf205bcd701",
-          "relationship_types_b": [
-            "AFFECTS",
-            "AFFECTS_MARKET",
-            "AVAILABLE_IN",
-            "BELONGS_TO",
-            "CATEGORISED_AS",
-            "CONCERNS",
-            "FROM_MARKET",
-            "HAS_MECHANIC",
-            "INSTANCE_OF",
-            "OF_TYPE",
-            "PROVIDED_BY",
-            "RELATED_TO",
-            "RELATED_TO_APP_VERSION",
-            "RELATED_TO_VERSION",
-            "RUNS_ON",
-            "TARGETS",
-            "USES",
-            "USES_PAYMENT",
-            "VERSION_OF"
-          ],
-          "relationship_types_c": [
-            "AFFECTS",
-            "AFFECTS_MARKET",
-            "AVAILABLE_IN",
-            "BELONGS_TO",
-            "CATEGORISED_AS",
-            "CONCERNS",
-            "FROM_MARKET",
-            "HAS_MECHANIC",
-            "INSTANCE_OF",
-            "IS_A",
-            "MAPS_TO",
-            "OF_TYPE",
-            "PROVIDED_BY",
-            "RELATED_TO",
-            "RELATED_TO_APP_VERSION",
-            "RELATED_TO_VERSION",
-            "RUNS_ON",
-            "SIMILAR_TO",
-            "TARGETS",
-            "USES",
-            "USES_PAYMENT",
-            "VERSION_OF"
-          ],
-          "dedupe_threshold": 0.85,
+          "prompt_hash": "prompthash",
+          "relationship_types_b": ["R"],
+          "relationship_types_c": ["R", "O"],
+          "dedupe_threshold": 0.9,
           "generation_quantisation": null,
-          "generation_model_family": null,
-          "repeats": 1,
+          "generation_model_family": "fake",
+          "repeats": 3,
           "run_kind": "smoke",
           "judge_model": "fake-judge-v1",
-          "judge_model_family": null,
+          "judge_model_family": "fake",
           "judge_prompt_version": "1.0.0",
-          "judge_prompt_hash": "55dfbe5b11c93da9fabf9f9e53951a6dd7b1b9eb65bc7f0c4e581a0529c7e08b"
-        },
-        {
-          "git_sha": "9578037d4bbb4e264ab549c19606b905306c5c7a",
-          "question_bank_version": "2.0.0",
-          "world_dir": "/Users/mark.stent/Dev/python/2026/lottery-graphrag-poc/data/generated/dev-seed2027",
-          "generator_version": "0.2.0",
-          "profile": "dev",
-          "world_seed": 2027,
-          "scenario_seed": 2027,
-          "embedding_model": "bge-m3",
-          "embedding_dimensions": 1024,
-          "sparse_model": "Qdrant/bm25",
-          "rrf_k": 60,
-          "record_serialiser_version": "2.1.0",
-          "generation_model": "fake-answer-v1",
-          "generation_temperature": 0.0,
-          "max_tokens": 1200,
-          "prompt_version": "2.0.0",
-          "reranker": "BAAI/bge-reranker-v2-m3",
-          "top_k": 40,
-          "context_budget_tokens": 2000,
-          "context": {
-            "dedupe_threshold": 0.85,
-            "evidence_slots": 12
-          },
-          "graph_limits": {
-            "depth": 2,
-            "nodes_per_hop": 100,
-            "edges_per_node_type": 4,
-            "total_nodes": 200,
-            "relationship_types": 22
-          },
-          "ranking_weights": {
-            "graph_distance": 0.25,
-            "relationship_type": 0.25,
-            "semantic_relevance": 0.35,
-            "temporal_validity": 0.15
-          },
-          "reference_date": "2026-01-01",
-          "excluded_labels": ["Document"],
-          "ontology_version": "2.0.0",
-          "started_at": "2026-10-19T17:04:15+00:00",
-          "bank_version": "2.0.0",
-          "bank_hash": "12a77b4d219c0116673b6124d74c23b736ce447b7c721309c1f02a9a1e6adc3d",
-          "scorer_version": "2.0.0",
-          "prompt_hash": "57c938fbde7ad73cc26b80d9d14c3aa117460d4aa1f6bd727cf66cf205bcd701",
-          "relationship_types_b": [
-            "AFFECTS",
-            "AFFECTS_MARKET",
-            "AVAILABLE_IN",
-            "BELONGS_TO",
-            "CATEGORISED_AS",
-            "CONCERNS",
-            "FROM_MARKET",
-            "HAS_MECHANIC",
-            "INSTANCE_OF",
-            "OF_TYPE",
-            "PROVIDED_BY",
-            "RELATED_TO",
-            "RELATED_TO_APP_VERSION",
-            "RELATED_TO_VERSION",
-            "RUNS_ON",
-            "TARGETS",
-            "USES",
-            "USES_PAYMENT",
-            "VERSION_OF"
-          ],
-          "relationship_types_c": [
-            "AFFECTS",
-            "AFFECTS_MARKET",
-            "AVAILABLE_IN",
-            "BELONGS_TO",
-            "CATEGORISED_AS",
-            "CONCERNS",
-            "FROM_MARKET",
-            "HAS_MECHANIC",
-            "INSTANCE_OF",
-            "IS_A",
-            "MAPS_TO",
-            "OF_TYPE",
-            "PROVIDED_BY",
-            "RELATED_TO",
-            "RELATED_TO_APP_VERSION",
-            "RELATED_TO_VERSION",
-            "RUNS_ON",
-            "SIMILAR_TO",
-            "TARGETS",
-            "USES",
-            "USES_PAYMENT",
-            "VERSION_OF"
-          ],
-          "dedupe_threshold": 0.85,
-          "generation_quantisation": null,
-          "generation_model_family": null,
-          "repeats": 1,
-          "run_kind": "smoke",
-          "judge_model": "fake-judge-v1",
-          "judge_model_family": null,
-          "judge_prompt_version": "1.0.0",
-          "judge_prompt_hash": "55dfbe5b11c93da9fabf9f9e53951a6dd7b1b9eb65bc7f0c4e581a0529c7e08b"
-        },
-        {
-          "git_sha": "9578037d4bbb4e264ab549c19606b905306c5c7a",
-          "question_bank_version": "2.0.0",
-          "world_dir": "/Users/mark.stent/Dev/python/2026/lottery-graphrag-poc/data/generated/dev-seed2028",
-          "generator_version": "0.2.0",
-          "profile": "dev",
-          "world_seed": 2028,
-          "scenario_seed": 2028,
-          "embedding_model": "bge-m3",
-          "embedding_dimensions": 1024,
-          "sparse_model": "Qdrant/bm25",
-          "rrf_k": 60,
-          "record_serialiser_version": "2.1.0",
-          "generation_model": "fake-answer-v1",
-          "generation_temperature": 0.0,
-          "max_tokens": 1200,
-          "prompt_version": "2.0.0",
-          "reranker": "BAAI/bge-reranker-v2-m3",
-          "top_k": 40,
-          "context_budget_tokens": 2000,
-          "context": {
-            "dedupe_threshold": 0.85,
-            "evidence_slots": 12
-          },
-          "graph_limits": {
-            "depth": 2,
-            "nodes_per_hop": 100,
-            "edges_per_node_type": 4,
-            "total_nodes": 200,
-            "relationship_types": 22
-          },
-          "ranking_weights": {
-            "graph_distance": 0.25,
-            "relationship_type": 0.25,
-            "semantic_relevance": 0.35,
-            "temporal_validity": 0.15
-          },
-          "reference_date": "2026-01-01",
-          "excluded_labels": ["Document"],
-          "ontology_version": "2.0.0",
-          "started_at": "2026-10-19T17:20:41+00:00",
-          "bank_version": "2.0.0",
-          "bank_hash": "e04a9b0eff8893d78849204dcee76723e4388238f653674830861ed3761b828d",
-          "scorer_version": "2.0.0",
-          "prompt_hash": "57c938fbde7ad73cc26b80d9d14c3aa117460d4aa1f6bd727cf66cf205bcd701",
-          "relationship_types_b": [
-            "AFFECTS",
-            "AFFECTS_MARKET",
-            "AVAILABLE_IN",
-            "BELONGS_TO",
-            "CATEGORISED_AS",
-            "CONCERNS",
-            "FROM_MARKET",
-            "HAS_MECHANIC",
-            "INSTANCE_OF",
-            "OF_TYPE",
-            "PROVIDED_BY",
-            "RELATED_TO",
-            "RELATED_TO_APP_VERSION",
-            "RELATED_TO_VERSION",
-            "RUNS_ON",
-            "TARGETS",
-            "USES",
-            "USES_PAYMENT",
-            "VERSION_OF"
-          ],
-          "relationship_types_c": [
-            "AFFECTS",
-            "AFFECTS_MARKET",
-            "AVAILABLE_IN",
-            "BELONGS_TO",
-            "CATEGORISED_AS",
-            "CONCERNS",
-            "FROM_MARKET",
-            "HAS_MECHANIC",
-            "INSTANCE_OF",
-            "IS_A",
-            "MAPS_TO",
-            "OF_TYPE",
-            "PROVIDED_BY",
-            "RELATED_TO",
-            "RELATED_TO_APP_VERSION",
-            "RELATED_TO_VERSION",
-            "RUNS_ON",
-            "SIMILAR_TO",
-            "TARGETS",
-            "USES",
-            "USES_PAYMENT",
-            "VERSION_OF"
-          ],
-          "dedupe_threshold": 0.85,
-          "generation_quantisation": null,
-          "generation_model_family": null,
-          "repeats": 1,
-          "run_kind": "smoke",
-          "judge_model": "fake-judge-v1",
-          "judge_model_family": null,
-          "judge_prompt_version": "1.0.0",
-          "judge_prompt_hash": "55dfbe5b11c93da9fabf9f9e53951a6dd7b1b9eb65bc7f0c4e581a0529c7e08b"
+          "judge_prompt_hash": "judgehash",
+          "judge_temperature": 0.0,
+          "generation_reasoning": "default",
+          "judge_reasoning": "default",
+          "selection_rule": null,
+          "method_version": "0.3.0",
+          "record_facts_version": null,
+          "prompt_extras": null,
+          "answer_parser_version": null
         }
       ]
     }

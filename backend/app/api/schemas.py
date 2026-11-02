@@ -283,20 +283,6 @@ class JudgeAgreementOut(BaseModel):
     pipelines: dict[str, AgreementSplitOut]
 
 
-class ThresholdAgreementOut(BaseModel):
-    """Agreement as runs before method v0.3 recorded it: judge correctness 2
-    against an answer score of at least 0.5, with Cohen's kappa."""
-
-    n: int
-    agreement: float | None
-    kappa: float | None
-
-
-class ThresholdJudgeAgreementOut(BaseModel):
-    overall: ThresholdAgreementOut
-    pipelines: dict[str, ThresholdAgreementOut]
-
-
 class FailuresOut(BaseModel):
     """Per pipeline: scored repeats, generation and judge failures, and the
     repeats per failure class."""
@@ -325,19 +311,14 @@ class ReproducibilityOut(BaseModel):
 
 
 class SummaryOut(BaseModel):
-    """A run's ``summary.json``, every key the harness writes: schema 2 for a
-    run of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose
-    comparisons add C_vs_A cells and test evidence recall.
+    """A run's ``summary.json``, schema 3, the keys the clients read.
 
     A key added later is ignored, so an older client keeps reading.
     """
 
     model_config = ConfigDict(extra="ignore")
 
-    schema_version: Literal["2", "3"]
-    # Method v0.3's declaration that it was made after seeing v0.2.0 (D-093);
-    # None for a run of method v0.2.
-    method_note: str | None = None
+    schema_version: Literal["3"]
     run_kind: str
     label: str | None
     bank_version: str
@@ -347,10 +328,9 @@ class SummaryOut(BaseModel):
     anchor_resolution_basis: dict[str, str]
     metrics: dict[str, dict[str, dict[str, MetricCell]]]
     comparisons: list[ComparisonCell]
-    ontology_split: list[SplitCell] | None = None
+    ontology_split: list[SplitCell]
     headlines: list[str]
-    # A run published before method v0.3 (such as v0.2.0) keeps its threshold agreement.
-    judge_agreement: JudgeAgreementOut | ThresholdJudgeAgreementOut | None
+    judge_agreement: JudgeAgreementOut | None
     failures: FailuresOut
     selection: SelectionOut
     reproducibility: ReproducibilityOut
@@ -359,12 +339,12 @@ class SummaryOut(BaseModel):
 class BenchmarkSummary(BaseModel):
     """Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
 
-    ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
-    benchmark source the API publishes. ``run_kind`` and ``label`` are
-    copied out of it so a client can tell a smoke or sweep run from an
-    official result without reading the summary. ``method_version`` is the
-    method the run was made under, from its record: 0.2.0 for a run recorded
-    before the field existed (such as v0.2.0).
+    ``summary`` is the run's ``summary.json``, typed: the only benchmark
+    source the API publishes. ``run_kind`` and ``label`` are copied out of
+    it so a client can tell a smoke or sweep run from an official result
+    without reading the summary. ``method_version`` is the method the run was
+    made under, from its record; only runs of the current method are
+    published (D-104).
     """
 
     run_id: str

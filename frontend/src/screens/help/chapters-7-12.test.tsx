@@ -28,7 +28,6 @@ function helpData(level: HelpData['level']): HelpData {
     level,
     bank: { status: 'loading', retry: () => undefined },
     scores: 'none',
-    evidence: 'evidence_f1',
     story: null,
     settings: {
       status: 'ready',
@@ -131,7 +130,6 @@ describe('chapters 7 to 12', () => {
         'bank-size',
         'question-groups',
         'interval-and-test',
-        'method-after-result',
         'bank-authors',
       ]),
     )
@@ -143,7 +141,7 @@ describe('chapters 7 to 12', () => {
   it("the register states the official run's own limits with their source", () => {
     const row = (id: string) => REGISTER.find((r) => r.id === id)!
     const agreement = row('judge-agreement')
-    // The official run v0.3.0 (official-2026-10-29) is the current result.
+    // The official run (official-2026-10-29) is the result.
     expect(agreement.plain).toContain('88 percent')
     expect(agreement.plain).toContain('70 percent')
     expect(agreement.reason).toMatch(/weighted kappa 0\.77/)
@@ -152,20 +150,28 @@ describe('chapters 7 to 12', () => {
     expect(agreement.reason).toContain('D-096')
     expect(row('question-groups').plain).toContain('24 groups')
     expect(row('interval-and-test').plain).toContain('five tested comparisons')
-    expect(row('method-after-result').plain).toContain('v0.2.0')
   })
 
-  it('names the official run v0.3.0 as the current result, and v0.2.0 as the earlier one', () => {
+  it('describes one method and one official run, with no word of an earlier method or run (D-104)', () => {
+    const help = [
+      allHelpText(),
+      ...GLOSSARY_TERMS.flatMap(({ meaning, technical }) => [
+        meaning,
+        technical ?? '',
+      ]),
+      ...COMMAND_GROUPS.flatMap(({ rows }) => rows.flat()),
+    ].join('\n')
+    expect(help).not.toMatch(
+      /\bv0\.[0-9]|method 0\.[0-9]|official-2026-10-26|old method|earlier (?:official )?run|first method|second method|method was changed|after seeing/i,
+    )
     for (const id of ['why', 'results'] as const) {
       const text = chapterText(id)
-      expect(text, id).toContain('official run v0.3.0')
+      expect(text, id).toContain('official run')
+      expect(text, id).toContain('2026-10-29')
       expect(text, id).not.toMatch(
         /result so far|will use six worlds|will be published whatever/,
       )
     }
-    expect(chapterText('results')).toContain(
-      'The earlier official run, v0.2.0, under the old method',
-    )
     expect(chapterText('why')).toContain('22.1 percentage points')
   })
 
@@ -220,7 +226,10 @@ describe('chapters 7 to 12', () => {
     )
   })
 
-  it('every command in Help is a Makefile target, and every target is listed in Running it', () => {
+  /** Targets that act only on a run the site does not show, so Running it leaves them out (D-104). */
+  const EARLIER_RUN_TARGETS = new Set(['addendum-v020'])
+
+  it('every command in Help is a Makefile target, and every target but those of a run the site does not show is listed in Running it', () => {
     const makefile = readFileSync(resolve(process.cwd(), '../Makefile'), 'utf8')
     const defined = [...makefile.matchAll(/^([a-z0-9-]+):.*##/gm)].map(
       (match) => match[1]!,
@@ -233,8 +242,10 @@ describe('chapters 7 to 12', () => {
     const listed = COMMAND_GROUPS.flatMap(({ rows }) =>
       rows.map(([command]) => command),
     )
-    for (const target of defined)
+    for (const target of defined.filter((t) => !EARLIER_RUN_TARGETS.has(t)))
       expect(listed, target).toContain(`make ${target}`)
+    for (const target of EARLIER_RUN_TARGETS)
+      expect(listed, target).not.toContain(`make ${target}`)
   })
 
   it('terms used in chapters are in the glossary', () => {
@@ -303,7 +314,7 @@ describe('chapters 7 to 12', () => {
     }
   })
 
-  it('states method v0.3 where Help v2 stated v0.2 facts', () => {
+  it('states the facts of the official run', () => {
     // Running it: the official run is the six unseen worlds, each question once (D-097).
     show('technical', [{ kind: 'component', name: 'running' }])
     expect(
@@ -313,11 +324,9 @@ describe('chapters 7 to 12', () => {
     )
     expect(document.body).not.toHaveTextContent(/on three worlds/)
     cleanup()
-    // The questions: 150 instances belong to v0.2.0, not to the official run now.
+    // The questions: the official run grounded 300 instances over six worlds.
     const questions = chapterText('questions')
-    expect(questions).toContain(
-      'the three worlds of the official run v0.2.0 gave 150',
-    )
+    expect(questions).toContain('its six worlds gave 300, 50 in each')
     expect(questions).not.toMatch(/the three official worlds/)
     // A token is charged for the whole block, not the bare text.
     const token = GLOSSARY_TERMS.find(({ term }) => term === 'Token')!
@@ -340,7 +349,7 @@ describe('chapters 7 to 12', () => {
     expect(why).toContain("C's concept text")
   })
 
-  it('states the scoring rules as the official run v0.3.0 applied them', () => {
+  it('states the scoring rules as the official run applied them', () => {
     const scoring = strings(CHAPTER_COPY.scoring.plain).join(' ')
     // 3 of 72 single-fact instances kept a claim in that run (results.json); not every one reads Missing.
     expect(scoring).toContain('almost every single-fact question')
@@ -354,7 +363,7 @@ describe('chapters 7 to 12', () => {
     expect(term('Detectable difference').meaning).toContain(
       'margin of error leaves out zero',
     )
-    expect(term('Judge').technical).toContain('judge prompt 1.2.0 now')
+    expect(term('Judge').technical).toContain('judge prompt 1.2.0 (D-096)')
     expect(chapterText('glossary')).not.toContain('2026-10-27.')
   })
 

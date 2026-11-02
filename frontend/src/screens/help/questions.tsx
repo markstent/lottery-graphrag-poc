@@ -8,7 +8,7 @@
  * answer key write market codes as countries; Technical shows the bank as is.
  */
 
-import { EVIDENCE_LABELS } from '../../app/method'
+import { EVIDENCE_LABEL, EVIDENCE_METRIC } from '../../app/method'
 import { marketsInWords } from '../../app/plain-words'
 import { answerWords, evidenceScore } from '../../app/score-words'
 import { hrefFor, useRoute } from '../../app/router'
@@ -51,7 +51,6 @@ function ScoreCell({
   id: PipelineId
   state: CellState
 }) {
-  const { evidence } = useHelpData()
   if (state !== 'shown')
     return (
       <td className={CELL}>
@@ -64,7 +63,7 @@ function ScoreCell({
     <td className={`${CELL} whitespace-nowrap tabular-nums`}>
       <div>Answer: {answerWords(score.answer)}</div>
       <div>
-        {EVIDENCE_LABELS[evidence]}: {evidenceScore(score[evidence])}
+        {EVIDENCE_LABEL}: {evidenceScore(score[EVIDENCE_METRIC])}
       </div>
     </td>
   )

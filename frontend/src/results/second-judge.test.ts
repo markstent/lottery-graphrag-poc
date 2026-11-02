@@ -30,18 +30,14 @@ describe('second judge rows', () => {
     expect(rows[0].cells).toEqual(['324', '33%', '0.00'])
   })
 
-  it('names each label measure as the label check does, with the n rule', () => {
+  it("names the second judge's label measure as the label check does, with the n rule, and no other judge's", () => {
     const rows = labelRows(V03_SECOND_JUDGE)!
-    expect(rows.map((row) => row.key)).toEqual([
-      'judge_recorded',
-      'judge_abstention_rule',
-      'second_judge',
-    ])
-    expect(rows[2].label).toBe(
+    expect(rows.map((row) => row.key)).toEqual(['second_judge'])
+    expect(rows[0].label).toBe(
       'Second judge ollama/muse-glimmer:latest with judge prompt 1.2.0',
     )
     // Five labelled items: below 10, so no kappa.
-    expect(rows[2].cells).toEqual(['5', '20%', 'Too few to say'])
+    expect(rows[0].cells).toEqual(['5', '20%', 'Too few to say'])
   })
 
   it('has no label rows without a label check', () =>

@@ -11,15 +11,18 @@
     "hidden_truth": null,
     "scores": {
       "A": {
-        "answer": 1.0,
+        "answer": 1,
+        "evidence_recall": null,
         "evidence_f1": null
       },
       "B": {
-        "answer": 1.0,
+        "answer": 1,
+        "evidence_recall": null,
         "evidence_f1": null
       },
       "C": {
-        "answer": 1.0,
+        "answer": 1,
+        "evidence_recall": null,
         "evidence_f1": null
       }
     }
@@ -34,20 +37,7 @@
     "ontology_dependent": false,
     "expected_answer": "The ticket price of GAME_UK_01 is 2.50 GBP.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "B": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "C": {
-        "answer": 1.0,
-        "evidence_f1": null
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L01",
@@ -71,20 +61,7 @@
     "ontology_dependent": false,
     "expected_answer": "Incident INC_022 was seen on platform version PLV_PAYMENTS_3.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "B": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "C": {
-        "answer": 1.0,
-        "evidence_f1": null
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L02",
@@ -96,20 +73,7 @@
     "ontology_dependent": false,
     "expected_answer": "Incident INC_012 was seen on platform version PLV_WEB_2.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "B": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "C": {
-        "answer": 1.0,
-        "evidence_f1": null
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L02",
@@ -133,20 +97,7 @@
     "ontology_dependent": false,
     "expected_answer": "Campaign CMP_002 ends on 2025-10-07.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": null
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": null
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": null
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L03",
@@ -158,20 +109,7 @@
     "ontology_dependent": false,
     "expected_answer": "Campaign CMP_012 ends on 2025-11-05.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": null
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": null
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": null
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L03",
@@ -195,20 +133,7 @@
     "ontology_dependent": false,
     "expected_answer": "Yes, game GAME_UK_01 is available on digital channels.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "B": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "C": {
-        "answer": 1.0,
-        "evidence_f1": null
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L04",
@@ -220,20 +145,7 @@
     "ontology_dependent": false,
     "expected_answer": "No, game GAME_AT_05 is not available on digital channels.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "B": {
-        "answer": 1.0,
-        "evidence_f1": null
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": null
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L04",
@@ -259,16 +171,19 @@
     "hidden_truth": null,
     "scores": {
       "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
+        "answer": 0.5,
+        "evidence_recall": 0,
+        "evidence_f1": 0
       },
       "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
+        "answer": 0.4000000000000001,
+        "evidence_recall": 1,
+        "evidence_f1": 0.13333333333333333
       },
       "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
+        "answer": 0.4000000000000001,
+        "evidence_recall": 1,
+        "evidence_f1": 0.1176470588235294
       }
     }
   },
@@ -282,20 +197,7 @@
     "ontology_dependent": false,
     "expected_answer": "Incidents on platform version PLV_PAYMENTS_3, the version of incident INC_017, were also seen in MKT_AT, MKT_CZ and MKT_GR.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": 0.12500000000000003
-      },
-      "B": {
-        "answer": 0.5,
-        "evidence_f1": 0.12500000000000003
-      },
-      "C": {
-        "answer": 0.5,
-        "evidence_f1": 0.12500000000000003
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L05",
@@ -319,20 +221,7 @@
     "ontology_dependent": false,
     "expected_answer": "The games affected by incident INC_013 (GAME_UK_04 and GAME_UK_06) use the mechanics MECH_UK_INSTANT_ROUNDS and MECH_UK_SECOND_CHANCE.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.6666666666666666,
-        "evidence_f1": 0.28571428571428575
-      },
-      "B": {
-        "answer": 0.6666666666666666,
-        "evidence_f1": 0.28571428571428575
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.14285714285714288
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L06",
@@ -344,20 +233,7 @@
     "ontology_dependent": false,
     "expected_answer": "The games affected by incident INC_011 (GAME_AT_01 and GAME_AT_05) use the mechanics MECH_AT_RUBBELN and MECH_AT_ZAHLENWAHL.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.14285714285714288
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.14285714285714288
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.14285714285714288
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L06",
@@ -381,20 +257,7 @@
     "ontology_dependent": false,
     "expected_answer": "Support case SUP_02015 is linked to incident INC_043, which was seen on platform version PLV_PAYMENTS_3.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L07",
@@ -406,20 +269,7 @@
     "ontology_dependent": false,
     "expected_answer": "Support case SUP_01417 is linked to incident INC_031, which was seen on platform version PLV_RETAIL_2.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L07",
@@ -443,20 +293,7 @@
     "ontology_dependent": false,
     "expected_answer": "Incidents on platform version PLV_DRAW_1 affected GAME_AT_01 and GAME_AT_03.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": 0.15384615384615385
-      },
-      "B": {
-        "answer": 1.0,
-        "evidence_f1": 0.15384615384615385
-      },
-      "C": {
-        "answer": 1.0,
-        "evidence_f1": 0.15384615384615385
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L08",
@@ -468,20 +305,7 @@
     "ontology_dependent": false,
     "expected_answer": "Incidents on platform version PLV_RETAIL_2 affected GAME_AT_02, GAME_AT_04 and GAME_AT_05.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.15384615384615385
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.15384615384615385
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.15384615384615385
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L08",
@@ -507,16 +331,19 @@
     "hidden_truth": null,
     "scores": {
       "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.34782608695652173
+        "answer": 0.4000000000000001,
+        "evidence_recall": 0.6666666666666666,
+        "evidence_f1": 0.509090909090909
       },
       "B": {
         "answer": 0.5,
-        "evidence_f1": 0.14285714285714288
+        "evidence_recall": 0.3333333333333333,
+        "evidence_f1": 0.28571428571428575
       },
       "C": {
         "answer": 0.5,
-        "evidence_f1": 0.14285714285714288
+        "evidence_recall": 0.3333333333333333,
+        "evidence_f1": 0.28571428571428575
       }
     }
   },
@@ -530,20 +357,7 @@
     "ontology_dependent": true,
     "expected_answer": "The games in other markets whose family is the same kind as that of GAME_GR_01 (National Draw) are GAME_AT_01, GAME_CZ_01 and GAME_UK_01.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.14285714285714288
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L09",
@@ -567,20 +381,7 @@
     "ontology_dependent": true,
     "expected_answer": "The incidents in other markets of the same kind as INC_008 (Draw incident) are INC_007 and INC_013.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L10",
@@ -592,20 +393,7 @@
     "ontology_dependent": true,
     "expected_answer": "The incidents in other markets of the same kind as INC_013 (Draw incident) are INC_004, INC_007 and INC_008.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.5,
-        "evidence_f1": 0.14285714285714288
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L10",
@@ -629,20 +417,7 @@
     "ontology_dependent": true,
     "expected_answer": "The segments in other markets that correspond to SEG_CZ_USPORNI (Low value) are SEG_AT_SPARSAM, SEG_GR_OIKONOMIKOI and SEG_UK_BUDGET.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L11",
@@ -654,20 +429,7 @@
     "ontology_dependent": true,
     "expected_answer": "The segments in other markets that correspond to SEG_GR_KORYFAIOI (High value) are SEG_AT_TOPKUNDEN, SEG_CZ_VIP and SEG_UK_VIP.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L11",
@@ -691,20 +453,7 @@
     "ontology_dependent": true,
     "expected_answer": "The games in other markets that use the same kind of mechanic as GAME_GR_05's main mechanic MECH_GR_XYSIMO (Symbol reveal) are GAME_AT_05, GAME_CZ_04 and GAME_UK_05.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.5,
-        "evidence_f1": 0.23529411764705885
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L12",
@@ -716,20 +465,7 @@
     "ontology_dependent": true,
     "expected_answer": "The games in other markets that use the same kind of mechanic as GAME_UK_02's main mechanic MECH_UK_NUMBER_MATCH (Number selection) are GAME_AT_01, GAME_AT_02, GAME_CZ_01, GAME_CZ_02, GAME_GR_01 and GAME_GR_02.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L12",
@@ -753,20 +489,7 @@
     "ontology_dependent": true,
     "expected_answer": "The games in the kind of game family called \"Länderübergreifender Jackpot\" (Multinational jackpot) are GAME_AT_02, GAME_CZ_02 and GAME_GR_02.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.5,
-        "evidence_f1": 0.7692307692307692
-      },
-      "B": {
-        "answer": 0.5,
-        "evidence_f1": 0.6956521739130435
-      },
-      "C": {
-        "answer": 0.8000000000000002,
-        "evidence_f1": 0.6956521739130435
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L13",
@@ -778,20 +501,7 @@
     "ontology_dependent": true,
     "expected_answer": "The games in the kind of game family called \"Αριθμολαχείο\" (National Draw) are GAME_AT_01, GAME_CZ_01, GAME_GR_01 and GAME_UK_01.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.4444444444444445,
-        "evidence_f1": 0.5217391304347826
-      },
-      "B": {
-        "answer": 0.4444444444444445,
-        "evidence_f1": 0.5217391304347826
-      },
-      "C": {
-        "answer": 0.4000000000000001,
-        "evidence_f1": 0.56
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L13",
@@ -815,20 +525,7 @@
     "ontology_dependent": true,
     "expected_answer": "The games that use the kind of mechanic called \"Ξύστε για να αποκαλύψετε σύμβολα\" (Symbol reveal) are GAME_AT_05, GAME_CZ_04, GAME_GR_05 and GAME_UK_05.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.6666666666666666,
-        "evidence_f1": 0.6666666666666666
-      },
-      "B": {
-        "answer": 0.6666666666666666,
-        "evidence_f1": 0.6666666666666666
-      },
-      "C": {
-        "answer": 0.6666666666666666,
-        "evidence_f1": 0.6666666666666666
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L14",
@@ -840,20 +537,7 @@
     "ontology_dependent": true,
     "expected_answer": "The games that use the kind of mechanic called \"Nieten nehmen an einer zweiten Ziehung teil\" (Second chance) are GAME_AT_04 and GAME_UK_04.",
     "hidden_truth": null,
-    "scores": {
-      "A": {
-        "answer": 0.6666666666666666,
-        "evidence_f1": 0.35294117647058815
-      },
-      "B": {
-        "answer": 0.6666666666666666,
-        "evidence_f1": 0.35294117647058815
-      },
-      "C": {
-        "answer": 0.8000000000000002,
-        "evidence_f1": 0.625
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L14",
@@ -879,16 +563,19 @@
     "hidden_truth": "Incident INC_041 in MKT_GR traces to app release APPV_GR_531 on IOS devices (release note DOC_0251, incident report DOC_0252); app release APPV_GR_531 broke checkout for the iOS cohort: abandoned and failed sessions and technical support contacts rose after the release.",
     "scores": {
       "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.15384615384615385
+        "answer": 1,
+        "evidence_recall": 0.5,
+        "evidence_f1": 0.1111111111111111
       },
       "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.15384615384615385
+        "answer": 1,
+        "evidence_recall": 0.5,
+        "evidence_f1": 0.1111111111111111
       },
       "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.15384615384615385
+        "answer": 1,
+        "evidence_recall": 0.5,
+        "evidence_f1": 0.1176470588235294
       }
     }
   },
@@ -902,20 +589,7 @@
     "ontology_dependent": false,
     "expected_answer": "Player PLAYER_GR_000165 shares a device with PLAYER_GR_000296, PLAYER_GR_000647, PLAYER_GR_000870, PLAYER_GR_000905, PLAYER_GR_001405, PLAYER_GR_001540 and PLAYER_GR_002136.",
     "hidden_truth": "Players PLAYER_GR_000165, PLAYER_GR_000296, PLAYER_GR_000647, PLAYER_GR_000870, PLAYER_GR_000905, PLAYER_GR_001405, PLAYER_GR_001540 and PLAYER_GR_002136 in MKT_GR share devices DEV_GR_003246, DEV_GR_003247 and DEV_GR_003248 and bought 24 tickets for GAME_GR_03 within 120 minutes from 2025-05-31T20:00:00; an unusual cluster worth investigation; the pattern alone does not establish fraud.",
-    "scores": {
-      "A": {
-        "answer": 0.7368421052631579,
-        "evidence_f1": 0.2962962962962963
-      },
-      "B": {
-        "answer": 0.7368421052631579,
-        "evidence_f1": 0.2962962962962963
-      },
-      "C": {
-        "answer": 0.7368421052631579,
-        "evidence_f1": 0.2962962962962963
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L17",
@@ -927,20 +601,7 @@
     "ontology_dependent": false,
     "expected_answer": "Player PLAYER_CZ_000836 shares a payment instrument with PLAYER_CZ_000894, PLAYER_CZ_001266, PLAYER_CZ_001302, PLAYER_CZ_001515, PLAYER_CZ_001519, PLAYER_UK_000605 and PLAYER_UK_002023.",
     "hidden_truth": "Players PLAYER_CZ_000836, PLAYER_CZ_000894, PLAYER_CZ_001266, PLAYER_CZ_001302, PLAYER_CZ_001515 and PLAYER_CZ_001519 in MKT_CZ share payment instruments PAY_SHARED_027 and PAY_SHARED_043; a connected component of accounts over shared instruments; normal spend per account, abnormal topology.",
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": 0.2857142857142857
-      },
-      "B": {
-        "answer": 1.0,
-        "evidence_f1": 0.2857142857142857
-      },
-      "C": {
-        "answer": 1.0,
-        "evidence_f1": 0.2857142857142857
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L18",
@@ -952,20 +613,7 @@
     "ontology_dependent": false,
     "expected_answer": "Incidents on the same platform version as INC_042 were seen in MKT_AT and MKT_CZ, and MKT_UK was unaffected.",
     "hidden_truth": "Platform version PLV_PAYMENTS_3 links incidents in primary market MKT_GR and in MKT_AT and MKT_CZ, while MKT_UK was unaffected; MKT_UK deferred the PLV_PAYMENTS_3 update; see DOC_0256.",
-    "scores": {
-      "A": {
-        "answer": 0.3333333333333333,
-        "evidence_f1": 0.45283018867924535
-      },
-      "B": {
-        "answer": 0.3333333333333333,
-        "evidence_f1": 0.37499999999999994
-      },
-      "C": {
-        "answer": 0.3333333333333333,
-        "evidence_f1": 0.37499999999999994
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L19",
@@ -977,20 +625,7 @@
     "ontology_dependent": false,
     "expected_answer": "Support case SUP_02027 traces to payment provider PP_BLUEHARBOR, which affects MKT_AT, MKT_GR and MKT_UK.",
     "hidden_truth": "Payment provider PP_BLUEHARBOR degraded on 7 days from 2025-08-19 to 2025-08-31 in MKT_UK, MKT_GR and MKT_AT; payment provider PP_BLUEHARBOR degraded intermittently across MKT_UK, MKT_GR, MKT_AT; the failures share the provider, not a market, channel or product.",
-    "scores": {
-      "A": {
-        "answer": 0.25,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.25,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.25,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L20",
@@ -1002,20 +637,7 @@
     "ontology_dependent": true,
     "expected_answer": "The games in other markets with the same mechanic affinity as GAME_AT_03 are GAME_GR_01 and GAME_UK_03.",
     "hidden_truth": "The CONCEPT_ENGAGED segment over-indexes on the CONCEPT_QUICK_PICK mechanic in GAME_AT_03 in MKT_AT, GAME_GR_01 in MKT_GR and GAME_UK_03 in MKT_UK, with MKT_CZ as the control market; the engaged segment over-indexes on the quick pick product in MKT_AT, MKT_UK, MKT_GR; each market names the mechanic and segment with its own local code, so the pattern is one concept only through the ontology.",
-    "scores": {
-      "A": {
-        "answer": 0.5,
-        "evidence_f1": 0.12500000000000003
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L21",
@@ -1027,20 +649,7 @@
     "ontology_dependent": true,
     "expected_answer": "The best transfer target for campaign CMP_017 is game GAME_AT_05.",
     "hidden_truth": "Campaign CMP_017 ran on game GAME_GR_05 for segment SEG_GR_ENERGOI in MKT_GR, and its transfer target is game GAME_AT_05 for segment SEG_AT_AKTIV in MKT_AT; campaign CMP_017 worked for the engaged segment on the retail instant game GAME_GR_05 in MKT_GR; MKT_AT has the same structure (GAME_AT_05 and SEG_AT_AKTIV), so transferring it is a reasonable recommendation with moderate confidence, not a certainty.",
-    "scores": {
-      "A": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 0.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   },
   {
     "question_id": "L22",
@@ -1052,19 +661,6 @@
     "ontology_dependent": false,
     "expected_answer": "The current ticket price of GAME_AT_02 is 2.50 EUR; rules document DOC_0262, which states a different price, is superseded.",
     "hidden_truth": "The authoritative ticket price is 2.5 (warehouse:games:GAME_AT_02), while document DOC_0262 states 1.5; document valid_to marks it superseded within the generation window.",
-    "scores": {
-      "A": {
-        "answer": 1.0,
-        "evidence_f1": 0.0
-      },
-      "B": {
-        "answer": 1.0,
-        "evidence_f1": 0.0
-      },
-      "C": {
-        "answer": 1.0,
-        "evidence_f1": 0.0
-      }
-    }
+    "scores": null
   }
 ]

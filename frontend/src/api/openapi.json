@@ -278,7 +278,7 @@
         "type": "object"
       },
       "BenchmarkSummary": {
-        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only\nbenchmark source the API publishes. ``run_kind`` and ``label`` are\ncopied out of it so a client can tell a smoke or sweep run from an\nofficial result without reading the summary. ``method_version`` is the\nmethod the run was made under, from its record: 0.2.0 for a run recorded\nbefore the field existed (such as v0.2.0).",
+        "description": "Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.\n\n``summary`` is the run's ``summary.json``, typed: the only benchmark\nsource the API publishes. ``run_kind`` and ``label`` are copied out of\nit so a client can tell a smoke or sweep run from an official result\nwithout reading the summary. ``method_version`` is the method the run was\nmade under, from its record; only runs of the current method are\npublished (D-104).",
         "properties": {
           "label": {
             "anyOf": [
@@ -7256,7 +7256,7 @@
         "type": "object"
       },
       "SummaryOut": {
-        "description": "A run's ``summary.json``, every key the harness writes: schema 2 for a\nrun of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose\ncomparisons add C_vs_A cells and test evidence recall.\n\nA key added later is ignored, so an older client keeps reading.",
+        "description": "A run's ``summary.json``, schema 3, the keys the clients read.\n\nA key added later is ignored, so an older client keeps reading.",
         "properties": {
           "anchor_resolution_basis": {
             "additionalProperties": {
@@ -7295,13 +7295,9 @@
                 "$ref": "#/components/schemas/JudgeAgreementOut"
               },
               {
-                "$ref": "#/components/schemas/ThresholdJudgeAgreementOut"
-              },
-              {
                 "type": "null"
               }
-            ],
-            "title": "Judge Agreement"
+            ]
           },
           "label": {
             "anyOf": [
@@ -7313,17 +7309,6 @@
               }
             ],
             "title": "Label"
-          },
-          "method_note": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Method Note"
           },
           "metrics": {
             "additionalProperties": {
@@ -7339,18 +7324,11 @@
             "type": "object"
           },
           "ontology_split": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/components/schemas/SplitCell"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Ontology Split"
+            "items": {
+              "$ref": "#/components/schemas/SplitCell"
+            },
+            "title": "Ontology Split",
+            "type": "array"
           },
           "reproducibility": {
             "$ref": "#/components/schemas/ReproducibilityOut"
@@ -7360,10 +7338,7 @@
             "type": "string"
           },
           "schema_version": {
-            "enum": [
-              "2",
-              "3"
-            ],
+            "const": "3",
             "title": "Schema Version",
             "type": "string"
           },
@@ -7399,6 +7374,7 @@
           "anchor_resolution_basis",
           "metrics",
           "comparisons",
+          "ontology_split",
           "headlines",
           "judge_agreement",
           "failures",
@@ -7485,64 +7461,6 @@
           "dictionary_source"
         ],
         "title": "TableSchemaOut",
-        "type": "object"
-      },
-      "ThresholdAgreementOut": {
-        "description": "Agreement as runs before method v0.3 recorded it: judge correctness 2\nagainst an answer score of at least 0.5, with Cohen's kappa.",
-        "properties": {
-          "agreement": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agreement"
-          },
-          "kappa": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Kappa"
-          },
-          "n": {
-            "title": "N",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "n",
-          "agreement",
-          "kappa"
-        ],
-        "title": "ThresholdAgreementOut",
-        "type": "object"
-      },
-      "ThresholdJudgeAgreementOut": {
-        "properties": {
-          "overall": {
-            "$ref": "#/components/schemas/ThresholdAgreementOut"
-          },
-          "pipelines": {
-            "additionalProperties": {
-              "$ref": "#/components/schemas/ThresholdAgreementOut"
-            },
-            "title": "Pipelines",
-            "type": "object"
-          }
-        },
-        "required": [
-          "overall",
-          "pipelines"
-        ],
-        "title": "ThresholdJudgeAgreementOut",
         "type": "object"
       },
       "UnavailableOut": {

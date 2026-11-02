@@ -39,11 +39,11 @@ const BANK_INSTANCES = scoredQuestions.length
 const REPEATS = 3
 
 /*
- * Everything the shell, Overview and Results show comes from a capture of the
- * real API (scripts/capture-shell.mjs): the demo questions, models, readiness,
- * datasets and the published runs. The one invented thing is FIXTURE_OFFICIAL,
- * an "official run" of the whole bank: no such run exists yet, so the screens
- * that show one are baselined with test values, named `fixture-official`.
+ * The shell's demo questions, models, readiness and datasets are a capture of
+ * the API (scripts/capture-shell.mjs). The runs are generated with test
+ * values (backend/scripts/fixture_official.py and the report tests), and
+ * FIXTURE_OFFICIAL below is the whole-bank run Overview's tiles read, so no
+ * screenshot shows a result.
  */
 const SUMMARY = world.datasets[0]
 const READY = world.ready
@@ -73,7 +73,7 @@ const FIXTURE_OFFICIAL = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: null,
-  method_version: '0.2.0',
+  method_version: '0.3.0',
   summary: {
     bank_version: 'fixture-bank (test value)',
     selection: { strata: null, limit: null },
@@ -83,7 +83,7 @@ const FIXTURE_OFFICIAL = {
     ],
     metrics: {
       overall: {
-        evidence_f1: {
+        evidence_recall: {
           A: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
           B: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
           C: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
@@ -93,24 +93,6 @@ const FIXTURE_OFFICIAL = {
           B: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
           C: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
         },
-      },
-    },
-    instances: { total: { overall: BANK_INSTANCES }, per_world: {} },
-  },
-}
-
-/** The same test values as a whole-bank run of method v0.3, which compares evidence recall. */
-const FIXTURE_OFFICIAL_V03 = {
-  ...FIXTURE_OFFICIAL,
-  run_id: 'fixture-official-v03',
-  method_version: '0.3.0',
-  summary: {
-    ...FIXTURE_OFFICIAL.summary,
-    method_note: v03Summary.summary.method_note,
-    metrics: {
-      overall: {
-        evidence_recall: FIXTURE_OFFICIAL.summary.metrics.overall.evidence_f1,
-        answer: FIXTURE_OFFICIAL.summary.metrics.overall.answer,
       },
     },
     // One tested comparison with no difference, so the plain summary line draws.
@@ -130,25 +112,24 @@ const FIXTURE_OFFICIAL_V03 = {
         reason: 'tested',
       },
     ],
+    instances: { total: { overall: BANK_INSTANCES }, per_world: {} },
   },
 }
 
 /**
- * What GET /benchmarks/latest answers: the invented official run of either
- * method, the newest smoke run, or the newest published run as captured (a
- * subset run, so Overview says there is no official run yet).
+ * What GET /benchmarks/latest answers: the whole-bank official run, the
+ * quick check, or the subset run (so Overview says there is no official run yet).
  */
 const LATEST = {
   official: FIXTURE_OFFICIAL,
-  v03: FIXTURE_OFFICIAL_V03,
-  smoke: world.latest_smoke,
-  none: world.latest,
+  smoke: smokeSummary,
+  none: pilotSummary,
 } as const
 
 /**
  * The run list Results sees: as published, with the generated whole-bank run
- * too, with the generated method v0.3 run as well, with a newer development
- * run on top of those, none, or failing.
+ * too, with the report tests' whole-bank run as well, with a newer
+ * development run on top of those, none, or failing.
  */
 export type RunsMode =
   'published' | 'official' | 'v03' | 'dev' | 'none' | 'unavailable' | 'pending'
@@ -156,7 +137,7 @@ export type RunsMode =
 export type LatestRun = keyof typeof LATEST | 'unavailable' | 'pending'
 
 /**
- * A development run: the generated v0.3 run's numbers under
+ * A development run: the report tests' run's numbers under
  * kind "dev" with the label and fixed headline the harness gives that kind
  * (backend/app/evaluation/runner.py, report.py).
  */
@@ -177,20 +158,19 @@ const DEV_SUMMARY = {
 }
 
 /**
- * The runs Results can open, by id: the captured pilot and quick check, and
- * the generated "Fixture run (test values)" whole-bank run, which has no
- * counterpart in the published list. Overview's own official run stays
- * FIXTURE_OFFICIAL above, so its baselines keep their look.
+ * The runs Results can open, by id: the subset run, the quick check and the
+ * whole-bank "Fixture run (test values)" runs. Overview's own official run
+ * stays FIXTURE_OFFICIAL above.
  */
 const RUN_SUMMARIES: Record<string, unknown> = {
-  'pilot-2026-nothink': pilotSummary,
-  '20261019T164733Z-smoke': smokeSummary,
+  [pilotSummary.run_id]: pilotSummary,
+  [smokeSummary.run_id]: smokeSummary,
   [officialSummary.run_id]: officialSummary,
   [v03Summary.run_id]: v03Summary,
   [DEV_SUMMARY.run_id]: DEV_SUMMARY,
 }
 const RUN_INSTANCES: Record<string, unknown> = {
-  'pilot-2026-nothink': pilotInstances,
+  [pilotSummary.run_id]: pilotInstances,
   [officialSummary.run_id]: officialInstances,
   [v03Summary.run_id]: v03Instances,
   [DEV_SUMMARY.run_id]: v03Instances,
@@ -208,7 +188,7 @@ const OFFICIAL_RUN = {
   headlines: officialSummary.summary.headlines,
 }
 
-/** The generated method v0.3 run as the run list shows it, newest of all. */
+/** The report tests' whole-bank run as the run list shows it, newest of all. */
 const V03_RUN = {
   run_id: v03Summary.run_id,
   run_kind: v03Summary.run_kind,
@@ -457,7 +437,7 @@ export const RUNNING_JOB: JobState = {
 export const COMPLETED_JOB: JobState = {
   ...RUNNING_JOB,
   status: 'completed',
-  run_id: 'pilot-2026-nothink',
+  run_id: pilotSummary.run_id,
   progress: null,
 }
 
@@ -471,7 +451,7 @@ export const COMPLETED_JOB: JobState = {
 /** What the second-judge route answers for every run: the fixture's second judge, a failing server, or never an answer. */
 export type SecondJudgeState = 'ready' | 'error' | 'pending'
 
-/** Answers GET /benchmarks/{run_id}/second-judge, after mockApi, with the v0.3 fixture's second judge (test values). */
+/** Answers GET /benchmarks/{run_id}/second-judge, after mockApi, with the fixture's second judge (test values). */
 export async function mockSecondJudge(page: Page, state: SecondJudgeState) {
   await page.route('**/api/v1/benchmarks/*/second-judge', async (route) => {
     if (state === 'pending') return new Promise<void>(() => undefined)

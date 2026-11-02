@@ -17,17 +17,17 @@ export const SECOND_JUDGE = {
   note: 'Descriptive, not tested. Added after the result (owner, 2026-11-02).',
   answerScore: 'With the answer score',
   eachOther: 'With each other',
-  labels: 'With the hand labels',
+  labels: 'With the hand labels, on a sample of answers',
 } as const
 
 const SPLITS = ['answered', 'abstained'] as const
 
-/** The label measures shown, in order: the first judge as recorded and with its rule, then the second. */
-const LABEL_MEASURES = [
-  'judge_recorded',
-  'judge_abstention_rule',
-  'second_judge',
-] as const
+/**
+ * The label measure shown: the second judge's. The label check also scores
+ * the judge that first marked the sample, which is not the first judge of a
+ * run the site shows, so it is left out (D-104).
+ */
+const LABEL_MEASURES = ['second_judge'] as const
 
 const capitalised = (text: string) =>
   text.charAt(0).toUpperCase() + text.slice(1)
@@ -62,8 +62,8 @@ export function eachOtherRows(data: SecondJudge): DataTableRow[] {
 }
 
 /**
- * Each judge's agreement with the hand labels, named as the label check names
- * its measures; null when the second judge has no label check.
+ * The second judge's agreement with the hand labels, named as the label check
+ * names it; null when the second judge has no label check.
  */
 export function labelRows(data: SecondJudge): DataTableRow[] | null {
   if (!data.labels) return null

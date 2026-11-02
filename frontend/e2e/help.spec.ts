@@ -125,7 +125,7 @@ test('the questions table filters by story, and the filter is in the address', a
   const table = page.getByRole('table', { name: 'Benchmark questions' })
   await expect(table.getByRole('row')).toHaveCount(3)
   await expect(table).toContainText('SUP_02027')
-  await expect(table).toContainText('Evidence score')
+  await expect(table).toContainText('Not scored in this run')
   await page
     .getByRole('combobox', { name: 'Kind of question' })
     .selectOption('H5')
@@ -143,7 +143,7 @@ test('with no official run the screen says so above the table, which has no scor
     'Question',
     'Answer key',
   ])
-  await expect(table).not.toContainText('Evidence score')
+  await expect(table).not.toContainText('Evidence recall')
   await expect(page.getByRole('link', { name: 'Go to Results' })).toBeVisible()
   await shot(page, 'questions-no-official-run')
 })
@@ -209,13 +209,14 @@ test('the level switch shows the technical detail and keeps the chapter in view'
   await expect(page.getByRole('radio', { name: 'Technical' })).toBeChecked()
 })
 
-test('the settings table shows the settings now and Not recorded for a run without them', async ({
+test("the settings table shows the settings now beside the newest official run's, and says where they differ", async ({
   page,
 }) => {
   await open(page, '#/help?section=running&level=technical')
   const row = page.locator('#running').getByRole('row', { name: /^top_k/ })
   await expect(row).toContainText('40')
-  await expect(row).toContainText('Not recorded')
+  await expect(row).toContainText('8')
+  await expect(row).toContainText('Differs')
   await shot(page, 'running-settings')
 })
 

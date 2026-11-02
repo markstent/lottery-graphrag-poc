@@ -77,21 +77,9 @@ const RERANK_LABELS: Record<PipelineId, string> = {
   C: 'Re-order passages, take turns',
 }
 
-/** The old method (v0.2) re-ranked passages and graph records together and picked from them. */
-const OLD_METHOD_RERANK = 'Re-order and pick'
-
-/**
- * The name of a stage of a pipeline, as the step list and the timeline give
- * it; `oldMethod` for a recording of the old method, which still replays.
- */
-export const stageLabel = (
-  id: PipelineId,
-  stage: Stage,
-  oldMethod = false,
-): string => {
-  if (stage !== 'rerank') return STAGE_LABELS[stage]
-  return oldMethod ? OLD_METHOD_RERANK : RERANK_LABELS[id]
-}
+/** The name of a stage of a pipeline, as the step list and the timeline give it. */
+export const stageLabel = (id: PipelineId, stage: Stage): string =>
+  stage === 'rerank' ? RERANK_LABELS[id] : STAGE_LABELS[stage]
 
 /** Each pipeline's stages in the order the first event of each one arrives. */
 export const STEPS: Record<PipelineId, readonly Stage[]> = {

@@ -5,14 +5,12 @@
  */
 
 import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
-import type { EvidenceMetric } from '../../app/method'
 import { datasetName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { percent } from '../../app/score-words'
 import { MODEL_LABELS } from '../../app/settings-labels'
 import { useLoad, type Load } from '../../app/use-load'
 import { plural } from '../../charts/scale'
-import { MethodBadge } from '../../components/method-badge'
 import { Panel, type PanelState } from '../../components/panel'
 import { pipeline, PIPELINES, type PipelineId } from '../../design/pipelines'
 import { Screen } from '../screen'
@@ -41,17 +39,11 @@ async function loadConfiguration(signal: AbortSignal) {
   return { dataset: datasets.find((d) => d.active) ?? null, models }
 }
 
-/** What the big number on a tile is called, by the run's evidence metric. */
-const TILE_LABELS: Record<EvidenceMetric, string> = {
-  evidence_recall: 'Evidence found',
-  evidence_f1: 'Evidence score',
-}
+/** What the big number on a tile is called. */
+const TILE_LABEL = 'Evidence found'
 
 /** What the big number means, said once above the tiles. */
-const TILE_MEANINGS: Record<EvidenceMetric, string> = {
-  evidence_recall: 'Evidence found is the share of needed records found.',
-  evidence_f1: 'Evidence score weighs needed records found against extra ones.',
-}
+const TILE_MEANING = 'Evidence found is the share of needed records found.'
 
 /** The kinds of question in everyday words, for the sentences on this screen. */
 const KIND_WORDS: Record<string, string> = {
@@ -66,7 +58,6 @@ const KIND_WORDS: Record<string, string> = {
 /** How a difference on each metric reads, after "scored N points higher than X". */
 const METRIC_WORDS: Record<string, string> = {
   evidence_recall: 'at finding needed evidence',
-  evidence_f1: 'on evidence',
   answer: 'on answers',
 }
 
@@ -74,12 +65,6 @@ const METRIC_WORDS: Record<string, string> = {
 const PAIRS: Record<Finding['comparison'], [PipelineId, PipelineId]> = {
   B_vs_A: ['B', 'A'],
   C_vs_B: ['C', 'B'],
-}
-
-/** The run's own declaration of a method change, said plainly for a known method. */
-const METHOD_WORDS: Record<string, string> = {
-  '0.3.0':
-    'Our second method: the first, v0.2, found no clear difference, so we changed it and retested on new data. Help, chapter 9, explains.',
 }
 
 /** "On X, Graph scored 22 points higher than Text search at finding needed evidence." */
@@ -99,14 +84,7 @@ function restSentence(count: number, leaning: number, afterClear: boolean) {
 
 const findingKey = (f: Finding) => `${f.stratum}-${f.comparison}-${f.metric}`
 
-function Tile({
-  figures,
-  label,
-}: {
-  figures: TileFigures
-  /** What the big number measures. */
-  label: string
-}) {
+function Tile({ figures }: { figures: TileFigures }) {
   const { label: name, tint, strong } = pipeline(figures.pipeline)
   return (
     <div
@@ -117,7 +95,7 @@ function Tile({
       <h3 className="mb-2 text-base font-semibold" style={{ color: strong }}>
         {name}
       </h3>
-      <div className="text-sm text-text-secondary">{label}</div>
+      <div className="text-sm text-text-secondary">{TILE_LABEL}</div>
       <div className="tabular text-2xl font-semibold text-text-primary">
         {percent(figures.mean)}
       </div>
@@ -150,20 +128,12 @@ function LatestRun() {
     >
       {verdict?.kind === 'official' && (
         <div className="space-y-4">
-          <MethodBadge
-            method={verdict.method}
-            note={METHOD_WORDS[verdict.method] ?? verdict.note}
-          />
           <p className="max-w-prose text-base text-text-primary">
-            {`All three answered the same ${verdict.questions > 0 ? `${plural(verdict.questions, 'question')}` : 'questions'} about a made-up lottery company. ${TILE_MEANINGS[verdict.metric]}`}
+            {`All three answered the same ${verdict.questions > 0 ? `${plural(verdict.questions, 'question')}` : 'questions'} about a made-up lottery company. ${TILE_MEANING}`}
           </p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {verdict.tiles.map((figures) => (
-              <Tile
-                key={figures.pipeline}
-                figures={figures}
-                label={TILE_LABELS[verdict.metric]}
-              />
+              <Tile key={figures.pipeline} figures={figures} />
             ))}
           </div>
           {(findings.length > 0 || verdict.tested > 0) && (

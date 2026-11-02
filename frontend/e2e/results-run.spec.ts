@@ -58,11 +58,11 @@ test('starts a quick check, follows it and opens the run it made', async ({
     },
   ])
 
-  await expect(page).toHaveURL(/#\/results\?run=pilot-2026-nothink$/, {
+  await expect(page).toHaveURL(/#\/results\?run=fixture-subset$/, {
     timeout: 10_000,
   })
   await expect(page.getByRole('combobox', { name: 'Run' })).toHaveValue(
-    'pilot-2026-nothink',
+    'fixture-subset',
   )
   await expect(page.getByRole('button', { name: 'Start a run' })).toBeVisible()
 })

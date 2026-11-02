@@ -23,7 +23,7 @@ import {
 import type { Schemas } from '../../api/client'
 import { useReadiness } from '../../app/use-readiness'
 import type { Load } from '../../app/use-load'
-import { RECORDED_INDEX, recordingNote } from '../../run/recorded'
+import { RECORDED_INDEX } from '../../run/recorded'
 import { liveUnavailableReason, type Source } from './source'
 import type { RunRequest } from './use-live-run'
 
@@ -138,11 +138,6 @@ export function QuestionBar({
         ? 'live'
         : 'recorded'))
   const shownScope = selected ? selected.market_scope : scope
-  // A recording of the old method says so wherever it is the source.
-  const methodNote =
-    source === 'recorded'
-      ? recordingNote(selected?.instance_id ?? chosenId ?? linkedId)
-      : null
 
   const blocker =
     adHoc && liveOff !== null
@@ -246,9 +241,6 @@ export function QuestionBar({
         <p className="text-sm text-text-secondary">
           {source === 'live' ? 'Live' : 'Recorded run'}
         </p>
-        {methodNote !== null && (
-          <p className="text-sm text-text-muted">{methodNote}</p>
-        )}
         {toggle}
         {controls}
       </section>
@@ -373,9 +365,6 @@ export function QuestionBar({
           >
             Live
           </Choice>
-          {methodNote !== null && (
-            <span className="ml-1 text-sm text-text-muted">{methodNote}</span>
-          )}
           {liveOff !== null && (
             <span className="ml-1 text-sm text-text-muted">{liveOff}</span>
           )}

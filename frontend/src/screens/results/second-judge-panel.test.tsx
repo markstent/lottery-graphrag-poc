@@ -28,7 +28,7 @@ describe('SecondJudgePanel', () => {
     for (const name of [
       'With the answer score',
       'With each other',
-      'With the hand labels',
+      'With the hand labels, on a sample of answers',
     ])
       expect(within(panel).getByRole('table', { name })).toBeVisible()
     expect(
@@ -42,7 +42,9 @@ describe('SecondJudgePanel', () => {
     const panel = await screen.findByRole('region', { name: 'Second judge' })
     await within(panel).findByRole('table', { name: 'With each other' })
     expect(
-      within(panel).queryByRole('table', { name: 'With the hand labels' }),
+      within(panel).queryByRole('table', {
+        name: 'With the hand labels, on a sample of answers',
+      }),
     ).toBeNull()
   })
 

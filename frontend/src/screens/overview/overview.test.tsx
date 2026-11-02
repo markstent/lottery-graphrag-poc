@@ -14,7 +14,7 @@ const OFFICIAL = {
   run_id: 'official-1',
   run_kind: 'official',
   label: null,
-  method_version: '0.2.0',
+  method_version: '0.3.0',
   summary: {
     selection: { strata: null, limit: null },
     headlines: [
@@ -23,7 +23,7 @@ const OFFICIAL = {
     ],
     metrics: {
       overall: {
-        evidence_f1: {
+        evidence_recall: {
           A: cell(0.25, 114, 342),
           B: cell(null, 0, 0),
           C: cell(0.5, 114, 342),
@@ -90,7 +90,7 @@ describe('Overview', () => {
     render(<Overview />)
     const a = await screen.findByTestId('tile-A')
     expect(within(a).getByText('A · Text search')).toBeVisible()
-    expect(within(a).getByText('Evidence score')).toBeVisible()
+    expect(within(a).getByText('Evidence found')).toBeVisible()
     expect(within(a).getByText('25%')).toBeVisible()
     expect(within(a).getByText('Answer score 50%')).toBeVisible()
     const b = screen.getByTestId('tile-B')
@@ -99,7 +99,7 @@ describe('Overview', () => {
     expect(within(b).queryByText('0%')).toBeNull()
     expect(
       screen.getByText(
-        /^All three answered the same 150 questions about a made-up lottery company\. Evidence score weighs/,
+        /^All three answered the same 150 questions about a made-up lottery company\. Evidence found is the share of needed records found\.$/,
       ),
     ).toBeVisible()
     expect(
@@ -107,52 +107,18 @@ describe('Overview', () => {
     ).toBeVisible()
   })
 
-  it('names the method of the run, the old one as old', async () => {
-    stubApi(base(OFFICIAL))
-    render(<Overview />)
-    await screen.findByTestId('tile-A')
-    const panel = screen.getByRole('region', { name: 'What we found' })
-    expect(within(panel).getByText('Method v0.2 (old method)')).toBeVisible()
-    expect(within(panel).queryByText(/was made after/)).toBeNull()
-  })
-
-  it('reads evidence recall, by name, from a run of method v0.3', async () => {
+  it('names no method and says nothing of how the method came about', async () => {
     stubApi(
       base({
         ...OFFICIAL,
-        method_version: '0.3.0',
-        summary: {
-          ...OFFICIAL.summary,
-          method_note: 'Method v0.3 was made after seeing the v0.2.0 result.',
-          metrics: {
-            overall: {
-              evidence_recall: {
-                A: cell(0.4, 120, 360),
-                B: cell(0.6, 120, 360),
-                C: cell(0.7, 120, 360),
-              },
-            },
-          },
-        },
+        summary: { ...OFFICIAL.summary, method_note: 'A note on the method.' },
       }),
     )
     render(<Overview />)
-    const a = await screen.findByTestId('tile-A')
-    expect(within(a).getByText('Evidence found')).toBeVisible()
-    expect(within(a).getByText('40%')).toBeVisible()
-    expect(screen.getByText('Method v0.3')).toBeVisible()
-    // The run's own note is said plainly here; Results shows it as written.
-    expect(
-      screen.getByText(
-        /^Our second method: the first, v0\.2, found no clear difference/,
-      ),
-    ).toBeVisible()
-    expect(screen.queryByText(/was made after seeing/)).toBeNull()
-    expect(
-      screen.getByText(
-        /Evidence found is the share of needed records found\.$/,
-      ),
-    ).toBeVisible()
+    await screen.findByTestId('tile-A')
+    const panel = screen.getByRole('region', { name: 'What we found' })
+    expect(within(panel).queryByText(/Method v0/)).toBeNull()
+    expect(within(panel).queryByText('A note on the method.')).toBeNull()
   })
 
   it('leaves out a question count the summary does not give, never printing 0', async () => {

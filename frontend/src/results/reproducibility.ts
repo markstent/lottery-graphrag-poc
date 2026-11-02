@@ -1,4 +1,4 @@
-/** A run's reproducibility record by record name, for runs old and new. */
+/** A run's reproducibility record by record name. */
 
 import type { Schemas } from '../api/client'
 import { plainValue } from '../app/plain-words'
@@ -16,6 +16,7 @@ export const REPRO_KEYS = [
   'bank_version',
   'bank_hash',
   'scorer_version',
+  'method_version',
   'run_kind',
   'repeats',
   'started_at',
@@ -32,8 +33,10 @@ export const REPRO_KEYS = [
   'sparse_model',
   'rrf_k',
   'record_serialiser_version',
+  'record_facts_version',
   'reranker',
   'top_k',
+  'selection_rule',
   'context_budget_tokens',
   'context',
   'dedupe_threshold',
@@ -50,6 +53,7 @@ export const REPRO_KEYS = [
   'generation_reasoning',
   'prompt_version',
   'prompt_hash',
+  'prompt_extras',
   'answer_parser_version',
   'judge_model',
   'judge_model_family',

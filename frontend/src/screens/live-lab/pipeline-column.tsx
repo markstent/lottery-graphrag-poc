@@ -35,12 +35,9 @@ export function PipelineColumn({
   results,
   canOpen,
   onOpen,
-  oldMethod = false,
 }: {
   id: PipelineId
   run: RunState
-  /** A recording of the old method, which keeps its own step names. */
-  oldMethod?: boolean
   /** The run's stored results, once there are any; they name the records. */
   results: Schemas['QueryResults'] | null
   /** Whether a row's record can be shown in the evidence drawer yet. */
@@ -77,7 +74,7 @@ export function PipelineColumn({
         tabIndex={0}
         className="relative min-h-0 flex-1 space-y-4 overflow-y-auto p-4"
       >
-        <StageTracker rows={stageRows(id, state, oldMethod)} />
+        <StageTracker rows={stageRows(id, state)} />
         {notice !== null && (
           <p
             role={state.status === 'failed' ? 'alert' : undefined}

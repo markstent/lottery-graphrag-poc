@@ -3,7 +3,7 @@
 import { useState } from 'react'
 
 import type { Schemas } from '../../api/client'
-import { EVIDENCE_LABELS, type EvidenceMetric } from '../../app/method'
+import { EVIDENCE_LABEL, EVIDENCE_METRIC } from '../../app/method'
 import { GroupedBars } from '../../charts/grouped-bars'
 import { IntervalPlot } from '../../charts/interval-plot'
 import {
@@ -15,27 +15,21 @@ import {
 
 type Summary = Schemas['SummaryOut']
 
-/** The run's evidence metric and the answer score, each with its words. */
-const metricsOf = (
-  evidence: EvidenceMetric,
-): { id: ShownMetric; label: string; points: string }[] => [
-  { id: evidence, label: EVIDENCE_LABELS[evidence], points: 'evidence points' },
+/** Evidence recall and the answer score, each with its words. */
+const METRICS: { id: ShownMetric; label: string; points: string }[] = [
+  { id: EVIDENCE_METRIC, label: EVIDENCE_LABEL, points: 'evidence points' },
   { id: 'answer', label: 'Answer score', points: 'answer points' },
 ]
 
 export function StrataCharts({
   summary,
-  evidence,
   badge,
 }: {
   summary: Summary
-  /** The evidence metric the run's method compares. */
-  evidence: EvidenceMetric
   /** Beside every chart: what kind of run these numbers come from, when it is not a result. */
   badge?: string
 }) {
-  const METRICS = metricsOf(evidence)
-  const [metric, setMetric] = useState<ShownMetric>(evidence)
+  const [metric, setMetric] = useState<ShownMetric>(EVIDENCE_METRIC)
   const { label, points } =
     METRICS.find(({ id }) => id === metric) ?? METRICS[0]
   const bars = strataBars(summary, metric)
@@ -83,20 +77,14 @@ export function StrataCharts({
         >
           Ontology-dependent split
         </h3>
-        {split ? (
-          <IntervalPlot
-            title={`Differences in ${label.toLowerCase()}`}
-            description="Descriptive: not part of the tested family."
-            rows={split}
-            unit={points}
-            zero
-            badge={badge}
-          />
-        ) : (
-          <p className="text-sm text-text-secondary">
-            This run predates the split.
-          </p>
-        )}
+        <IntervalPlot
+          title={`Differences in ${label.toLowerCase()}`}
+          description="Descriptive: not part of the tested family."
+          rows={split}
+          unit={points}
+          zero
+          badge={badge}
+        />
       </section>
     </div>
   )

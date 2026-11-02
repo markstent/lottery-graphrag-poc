@@ -226,11 +226,7 @@ export function LiveLab() {
         </p>
       )}
       {stored !== null && state.status === 'completed' && (
-        <Scorecard
-          results={stored}
-          // A live run is of the current method, which compares recall (D-087).
-          metric={run.oldMethod ? 'evidence_f1' : 'evidence_recall'}
-        />
+        <Scorecard results={stored} />
       )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr]">
         {/* Canvas first, as it is on screen; the three panels follow it. */}
@@ -263,7 +259,6 @@ export function LiveLab() {
                 results={results}
                 canOpen={(recordId) => sourceOf(id, recordId) !== null}
                 onOpen={(recordId) => open(id, recordId)}
-                oldMethod={run.oldMethod}
               />
             ))}
           </div>
@@ -271,7 +266,6 @@ export function LiveLab() {
       </div>
       <Timeline
         state={state}
-        oldMethod={run.oldMethod}
         originMs={run.originMs}
         timeline={run.timeline}
         controls={run.controls}

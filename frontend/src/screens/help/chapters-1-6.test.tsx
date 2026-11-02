@@ -32,7 +32,6 @@ function helpData(
     level,
     bank: { status: 'loading', retry: () => undefined },
     scores: 'none',
-    evidence: 'evidence_f1',
     story: null,
     settings: {
       status: 'ready',
@@ -84,14 +83,11 @@ describe('chapters 1 to 6', () => {
       .join(' ')
     expect(plain).toContain('a budget of 1,500 tokens')
     expect(plain).toContain('There is no other limit on the number of pieces')
-    // The current settings win over the run's, and no budget is typed in; 12 pieces is dated history.
+    // The current settings win over the run's, and no budget is typed in.
     expect(plain).not.toMatch(/\b(?:2000|2,000)\b/)
-    expect(plain).toMatch(
-      /v0\.2\.0 used the old method: the answer model saw at most 12 pieces/,
-    )
     cleanup()
 
-    // The technical detail states the same settings from the settings, beside dated history.
+    // The technical detail states the same settings from the settings.
     const technical = showEvidence('technical', null)
     const detail = within(technical)
       .getByRole('heading', { name: 'Technical detail' })
@@ -102,7 +98,6 @@ describe('chapters 1 to 6', () => {
       .join(' ')
     expect(sentences).toContain('until the 1,500-token budget is full')
     expect(sentences).toContain('a Jaccard index of 0.9 or more')
-    expect(sentences).toContain('the 12 places bound in all 1,350 prompts')
   })
 
   it('every diagram has a text alternative', () => {

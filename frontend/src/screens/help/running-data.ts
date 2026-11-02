@@ -163,16 +163,12 @@ export const COMMAND_GROUPS: readonly {
         'Depth sweep: the H1 questions for B and C at depths 0 to 3, on the three seen worlds.',
       ],
       [
-        'make addendum-v020',
-        'Rescore the official run v0.2.0 with the current scorer and groundedness, beside the run; no model.',
-      ],
-      [
         'make diagnose-selection',
         'Read-only: which claims each approach finds and which reach the prompt, on world 2026 with no answer model.',
       ],
       [
         'make label-sample',
-        'Build the hand-labelling sample from the official run v0.2.0; no model.',
+        'Build the hand-labelling sample from a stored run; no model.',
       ],
       [
         'make label-agreement',
@@ -180,7 +176,7 @@ export const COMMAND_GROUPS: readonly {
       ],
       [
         'make second-judge',
-        'A second judge model marks the answers of a stored run (RUN=<run id>) or the hand-labelled sample (LABELS=v0.2.0-sample), as a second opinion; the run itself is unchanged.',
+        'A second judge model marks the answers of a stored run (RUN=<run id>) or the hand-labelled sample (LABELS=<sample name>), as a second opinion; the run itself is unchanged.',
       ],
     ],
   },

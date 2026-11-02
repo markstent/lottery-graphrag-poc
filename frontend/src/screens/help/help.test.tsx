@@ -21,7 +21,7 @@ import {
   RECORDED_RUNS,
   OFFICIAL_STRATA,
   OFFICIAL_SUBSET,
-  OFFICIAL_V03,
+  OFFICIAL,
   SCENARIOS,
   SCORED,
   SMOKE,
@@ -118,10 +118,7 @@ describe('Help', () => {
   it('states the official result in chapter 1 as it is, with its dates', async () => {
     await renderHelp()
     const why = section('1. Why this exists')
-    // The current result is the official run v0.3.0; v0.2.0 is the earlier one.
-    expect(why).toHaveTextContent(
-      /official run v0\.3\.0, started on 2026-10-29/,
-    )
+    expect(why).toHaveTextContent(/official run started on 2026-10-29/)
     expect(why).toHaveTextContent(
       /We fixed 14 comparisons before the run\. One showed a clear difference/,
     )
@@ -132,9 +129,7 @@ describe('Help', () => {
     expect(why).toHaveTextContent(
       /copies of the made-up company, which we call worlds/,
     )
-    expect(why).toHaveTextContent(
-      /v0\.2\.0 \(2026-10-26 to 2026-10-27\), had found no detectable difference/,
-    )
+    expect(why).not.toHaveTextContent(/v0\.2|old method/)
   })
 
   it('draws each approach as a picture named by its letter and plain name', async () => {
@@ -376,21 +371,31 @@ describe('the questions table', () => {
     expect(rows()).toHaveLength(SCORED.length)
   })
 
-  it('shows each instance its own answer and evidence scores, worded as in Live Lab', async () => {
-    await renderHelp('#/help?section=questions&story=SCN-007')
-    const row = rows()[0]
-    // A: answer 0.33, evidence 0.45; B and C: answer 0.33, evidence 0.37.
+  /** The one multi-market instance the captured run scored, and its row among the H2 questions. */
+  const L09 = 'L09-2026-GAME_AT_05'
+  const l09Row = () =>
+    rows()[
+      SCORED.filter((q) => q.stratum === 'H2').findIndex(
+        (q) => q.instance_id === L09,
+      )
+    ]
+
+  it('shows each instance its own answer and evidence recall, worded as in Live Lab', async () => {
+    await renderHelp('#/help?section=questions&stratum=H2')
+    const row = l09Row()
+    // A: answer 0.4, recall 0.67; B and C: answer 0.5, recall 0.33.
+    expect(within(row).getByText('Answer: Partly correct (40%)')).toBeVisible()
+    expect(within(row).getByText('Evidence recall: 0.67')).toBeVisible()
     expect(
-      within(row).getAllByText('Answer: Partly correct (33%)'),
-    ).toHaveLength(3)
-    expect(within(row).getByText('Evidence score: 0.45')).toBeVisible()
-    expect(within(row).getAllByText('Evidence score: 0.37')).toHaveLength(2)
+      within(row).getAllByText('Answer: Partly correct (50%)'),
+    ).toHaveLength(2)
+    expect(within(row).getAllByText('Evidence recall: 0.33')).toHaveLength(2)
   })
 
-  it('shows Missing where the instance has no evidence score, and says why', async () => {
+  it('shows Missing where the instance has no evidence recall, and says why', async () => {
     await renderHelp('#/help?section=questions&stratum=H3')
     expect(
-      within(rows()[0]).getAllByText('Evidence score: Missing'),
+      within(rows()[0]).getAllByText('Evidence recall: Missing'),
     ).toHaveLength(3)
     expect(within(rows()[0]).getAllByText('Answer: Correct')).toHaveLength(3)
     expect(
@@ -398,24 +403,19 @@ describe('the questions table', () => {
     ).toBeVisible()
   })
 
-  it('shows evidence recall, never F1, when the newest official run is of method v0.3', async () => {
+  it('shows evidence recall, never F1', async () => {
     const questions = structuredClone(SCORED)
     for (const question of questions)
       for (const score of Object.values(question.scores ?? {}))
-        if (score) score.evidence_recall = 0.9
-    await renderHelp('#/help?section=questions&story=SCN-007', {
-      questions,
-      latest: OFFICIAL_V03,
-    })
-    const row = rows()[0]
-    expect(within(row).getAllByText('Evidence recall: 0.90')).toHaveLength(3)
-    expect(row).not.toHaveTextContent('Evidence score')
+        if (score) score.evidence_f1 = 0.99
+    await renderHelp('#/help?section=questions&stratum=H2', { questions })
+    expect(l09Row()).not.toHaveTextContent('0.99')
   })
 
   it('says the newest official run scored none of these questions, never that there is none', async () => {
     await renderHelp('#/help?section=questions', {
       questions: UNSCORED,
-      latest: OFFICIAL_V03,
+      latest: OFFICIAL,
     })
     const questions = section('10. The questions')
     expect(
@@ -429,7 +429,7 @@ describe('the questions table', () => {
   it('hides the score columns when the newest official run scored none of these questions, and keeps the note and its link', async () => {
     await renderHelp('#/help?section=questions', {
       questions: UNSCORED,
-      latest: OFFICIAL_V03,
+      latest: OFFICIAL,
     })
     const questions = section('10. The questions')
     const table = within(questions).getByRole('table', {

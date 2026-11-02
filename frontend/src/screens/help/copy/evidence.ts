@@ -1,9 +1,7 @@
 /**
  * Chapter 5, how evidence is chosen. It describes the selection rule the
- * code runs now, method v0.3 (D-083, D-084), and it is the only chapter that
- * does, so a change of rule rewrites this file and nothing else. The rule of
- * the old method, which the official run v0.2.0 used, is history here, with
- * its dates.
+ * code runs now (D-083, D-084), and it is the only chapter that does, so a
+ * change of rule rewrites this file and nothing else.
  */
 
 import type { ChapterCopy } from '../chapters'
@@ -16,7 +14,7 @@ export const evidence: ChapterCopy = {
     'The two lists take turns: one passage or record text, then one graph record, then a passage again, until the budget is full. A record already in the evidence is not taken again. When one list runs out, the other carries on alone.',
     { kind: 'diagram', name: 'evidence' },
     'Why one budget. A model can read only so much at once, and more text is slower and can bury the fact that matters. The budget is the same for all three approaches. So a difference in their answers comes from what each found, not from how much each could show. Taking turns one for one gives the graph room, with no split between the two lists that anyone had to tune.',
-    'This is method v0.3, in use since 2026-10-27. A method is the set of rules for choosing the evidence and scoring the answers. The official run v0.2.0 used the old method: the answer model saw at most 12 pieces, and one re-ordering model put the passages and the graph records in one list. A check on 2026-10-25 found that this model scored graph records low. So about half of the facts the graph found did not reach the answer model. The method was changed after that result was seen (chapter 9). The official run v0.3.0 used the method of this chapter (chapter 1).',
+    'A method is the set of rules for choosing the evidence and scoring the answers. The official run used the rules of this chapter (chapter 1).',
   ],
   technical: [
     'The settings in this chapter, now and in the newest official run:',
@@ -48,17 +46,9 @@ export const evidence: ChapterCopy = {
       'context_budget: its tokens do not fit what is left of the budget; a later, smaller item may still fit;',
       "duplicate: a document passage whose set of words overlaps a selected passage's by a Jaccard index of {context.dedupe_threshold} or more.",
     ],
-    'A refused item keeps the turn with its list, an admitted one passes it, and when one list is used up the other continues alone. The walk is one pass and loses nothing by it, because every refusal is final: the budget only shrinks and a selected row stays selected. Every approach is charged the tokens of the block the prompt shows for an item (chapter 6), four characters to a token, so the "reached from" line of a graph record is paid for from the same budget. Nodes of an excluded label and, in a Live Lab run limited to some markets, nodes outside them are set aside before the order as excluded_label and out_of_scope_market. RAG_EVIDENCE_SLOTS and RAG_GRAPH_SLOTS are removed: a value left in the environment is refused at start-up with a message naming D-084.',
+    'A refused item keeps the turn with its list, an admitted one passes it, and when one list is used up the other continues alone. The walk is one pass and loses nothing by it, because every refusal is final: the budget only shrinks and a selected row stays selected. Every approach is charged the tokens of the block the prompt shows for an item (chapter 6), four characters to a token, so the "reached from" line of a graph record is paid for from the same budget. Nodes of an excluded label and, in a Live Lab run limited to some markets, nodes outside them are set aside before the order as excluded_label and out_of_scope_market.',
     "The selected items stay in prompt order, the order they were taken, and that one list is what the prompt numbers (chapter 6). Live Lab shows each graph record's tier and graph rank and why each item was set aside. backend/tests/test_context_selection.py tests the walk; backend/tests/test_lab_fairness.py pins that A's selection is its cross-encoder order cut at the budget and that A, B and C share every other part.",
-    'How the rule came about. Each figure below has its date and its source.',
-    [
-      'Until 2026-10-25 the rule was D-025: one cross-encoder ordered every candidate, graph nodes included, and one cut at 12 places, recorded as shared-reranker-12-slots. The pilot runs of 2026-10-19 and the four recorded Live Lab runs used it.',
-      "The selection diagnostic of 2026-10-25 (make diagnose-selection, D-080; summarised in docs/evaluation/official-run-proposal.md) ran retrieval with no answer model over the 38 seed 2026 bank instances that have claims, 122 claims in all. The graph's candidates held 55 claims for B and 88 for C; the prompt received 43 for A, 38 for B and 39 for C. Every claim the graph found that the prompt left out was cut by the 12 places, 26 for B and 53 for C.",
-      "D-081 (2026-10-25) kept 6 of the 12 places for graph nodes, still in the cross-encoder's order, recorded as reranker-graph-share; run once after the change, the diagnostic still left 23 (B) and 51 (C) of the graph's claims out.",
-      'The official run v0.2.0 (2026-10-26 to 2026-10-27) used D-081 and found no detectable difference between the approaches (chapter 1). In it the 12 places bound in all 1,350 prompts and the 2,000-token budget never did: the largest prompt held 1,489 tokens (D-084).',
-      'Method v0.3 (D-083, D-084, approved on 2026-10-27 with docs/evaluation/v0.3-method-proposal.md) was made after seeing that result. Each rule was written down before it was measured, and development uses seed 2026 only (D-093).',
-      'The official run v0.3.0 (started 2026-10-29) used this rule, recorded as graph-rank-interleave-budget. Its prompts held on average 1,972 (A), 1,985 (B) and 1,986 (C) context tokens of the 2,000, and on multi-hop questions B got 22.1 evidence-recall points more to the answer model than A, its one detectable difference (chapter 8).',
-    ],
+    'The official run (started 2026-10-29) used this rule, recorded as graph-rank-interleave-budget. Its prompts held on average 1,972 (A), 1,985 (B) and 1,986 (C) context tokens of the 2,000, and on multi-hop questions B got 22.1 evidence-recall points more to the answer model than A, its one detectable difference (chapter 8).',
   ],
   terms: [
     'Answer model',

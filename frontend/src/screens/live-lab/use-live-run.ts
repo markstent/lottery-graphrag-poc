@@ -22,7 +22,6 @@ import {
 } from '../../run/reduce'
 import type { Speed } from '../../run/replay'
 import { useReplay } from '../../run/use-replay'
-import { OLD_METHOD } from '../../app/method'
 import type { Source } from './source'
 
 export type RunRequest =
@@ -72,8 +71,6 @@ export interface LiveRun {
   runId: string | null
   /** The world a recording was captured on; null for a live run. */
   recordedDataset: string | null
-  /** A recording made under the old method (v0.2); a live run is always of the current one. */
-  oldMethod: boolean
   timeline: Timeline
   controls: TimelineControls
   /** The same controls as the presentation keys use. */
@@ -436,8 +433,6 @@ export function useLiveRun({
     originMs,
     runId: recording?.run_id ?? live.runId,
     recordedDataset: recording?.dataset_id ?? null,
-    oldMethod:
-      recording !== null && (recording.method ?? OLD_METHOD) === OLD_METHOD,
     timeline: showReplay
       ? {
           replaying: true,

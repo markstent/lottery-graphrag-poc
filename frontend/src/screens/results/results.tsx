@@ -6,7 +6,6 @@
 import { useRef, useState } from 'react'
 
 import { getBenchmark, listBenchmarks, type Schemas } from '../../api/client'
-import { evidenceMetric } from '../../app/method'
 import { hrefFor, useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
@@ -61,27 +60,15 @@ function RunView({ run }: { run: Run }) {
         error={load.status === 'error' ? load.error : undefined}
         onRetry={load.retry}
       >
-        {ready && (
-          <Verdict
-            run={run}
-            summary={load.data.summary}
-            method={load.data.method_version}
-            kind={kind}
-          />
-        )}
+        {ready && <Verdict run={run} summary={load.data.summary} kind={kind} />}
       </Panel>
       {ready && kind !== 'quick-check' && (
         <>
           <Panel title="Scores by kind of question" state="ready">
-            <StrataCharts
-              summary={load.data.summary}
-              evidence={evidenceMetric(load.data.method_version)}
-              badge={badge}
-            />
+            <StrataCharts summary={load.data.summary} badge={badge} />
           </Panel>
           <QuestionsPanel
             runId={run.run_id}
-            evidence={evidenceMetric(load.data.method_version)}
             maxTokens={recordedNumber(
               load.data.summary.reproducibility.run.max_tokens,
             )}

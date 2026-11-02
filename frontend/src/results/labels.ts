@@ -31,7 +31,6 @@ export const TABLE_HEADS = {
   group: 'Group',
   pairs: 'Pairs judged',
   agreement: 'Agreement',
-  kappa: 'Kappa',
   weightedKappa: 'Weighted kappa',
   supported: 'Held by cited blocks',
   unsupported: 'In no shown block',

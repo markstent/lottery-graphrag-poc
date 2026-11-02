@@ -45,15 +45,10 @@ function unseen(status: PipelineState['status']): StageRowStatus {
   return status === 'completed' ? 'not-run' : 'not-reached'
 }
 
-export function stageRows(
-  id: PipelineId,
-  pipeline: PipelineState,
-  /** A recording of the old method, which keeps its own step names. */
-  oldMethod = false,
-): StageRow[] {
+export function stageRows(id: PipelineId, pipeline: PipelineState): StageRow[] {
   return STEPS[id].map((stage) => {
     const recorded = pipeline.stages[stage]
-    const label = stageLabel(id, stage, oldMethod)
+    const label = stageLabel(id, stage)
     if (recorded === undefined)
       return {
         stage,
@@ -85,15 +80,15 @@ export interface EvidenceRow {
   /** Why it was set aside; null for the other states. */
   detail: string | null
   /**
-   * Where a graph record stood in the graph's own order (method v0.3), such
-   * as "question's target · graph rank 2"; null for a passage, a record
-   * refused before the order, and every record of an old-method run.
+   * Where a graph record stood in the graph's own order, such as
+   * "question's target · graph rank 2"; null for a passage and a record
+   * refused before the order.
    */
   place: string | null
 }
 
-/** The reasons method v0.3 gives. A recording made under the old method
- * (v0.2) may carry others, which it read under rules no longer in use. */
+/** The reasons the method gives. The event contract also names reasons
+ * no current run gives; such a record reads "Set aside" alone. */
 const DISCARD_WORDS: Partial<Record<DiscardReason, string>> = {
   excluded_label: 'a kind of record this question does not use',
   out_of_scope_market: 'outside the markets asked about',
@@ -102,11 +97,9 @@ const DISCARD_WORDS: Partial<Record<DiscardReason, string>> = {
   duplicate: 'a duplicate',
 }
 
-const OLD_METHOD_DISCARD = 'Set aside under the old method'
-
 function discardText(reason: DiscardReason): string {
   const words = DISCARD_WORDS[reason]
-  return words === undefined ? OLD_METHOD_DISCARD : `Set aside: ${words}`
+  return words === undefined ? 'Set aside' : `Set aside: ${words}`
 }
 
 const TIER_WORDS: Record<GraphTier, string> = {

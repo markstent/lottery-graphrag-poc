@@ -71,13 +71,6 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'A claim statement and its carriers: the record ids and passage ids whose text states the fact. Carriers are computed at grounding time and frozen with the bank (backend/app/evaluation/claims.py).',
   },
   {
-    term: "Cohen's kappa",
-    meaning:
-      'How far two ways of marking agree beyond what chance alone would give: 0 is chance, 1 is full agreement.',
-    technical:
-      'The agreement measure of the old method: "judge correctness is 2" against "answer score is at least 0.5", overall and for each approach, as in the official run v0.2.0. Shown only from 10 judged answers (D-086).',
-  },
-  {
     term: 'Concept',
     meaning:
       'One shared meaning in the ontology, such as a game family that each market names differently.',
@@ -120,16 +113,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Evidence recall',
     meaning:
-      'The share of the needed facts found: how many of the facts a correct answer needs are covered by the evidence an approach chose, from 0 to 1. Method v0.3 tests it.',
+      'The share of the needed facts found: how many of the facts a correct answer needs are covered by the evidence an approach chose, from 0 to 1. The method tests it.',
     technical:
-      'The share of claims with at least one carrier selected, after the starting record is removed; undefined when no claim is left. The evidence metric of the tested family since method v0.3 (D-087).',
-  },
-  {
-    term: 'Evidence score',
-    meaning:
-      'How much of the needed evidence an approach found without padding, from 0 to 1. The official run v0.2.0 tested it; method v0.3 shows it without a test.',
-    technical:
-      'F1: the harmonic mean of recall (the share of claims with at least one carrier selected) and precision (the share of selected items that carry a claim), after the starting record is removed. Undefined when no claim is left. Descriptive since method v0.3, because precision depends on how many items fit the budget (D-087).',
+      'The share of claims with at least one carrier selected, after the starting record is removed; undefined when no claim is left. The evidence metric of the tested family (D-087).',
   },
   {
     term: 'Failure cause',
@@ -157,7 +143,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'How far the codes, dates and numbers an answer states are backed by the pieces it cites, and how many appear in no piece shown to the model. Shown, not tested.',
     technical:
-      'Supported and unsupported shares of checkable atoms per sentence, with no model (backend/app/evaluation/checks.py, D-088); descriptive and outside the Holm family. A v0.2.0 figure and a v0.3 one are not comparable.',
+      'Supported and unsupported shares of checkable atoms per sentence, with no model (backend/app/evaluation/checks.py, D-088); descriptive and outside the Holm family.',
   },
   {
     term: 'Hidden truth',
@@ -197,7 +183,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A second language model, from another model family, that marks each answer from 0 to 2 on five counts. Its marks are a second opinion.',
     technical:
-      'JUDGE_MODEL, judge prompt 1.2.0 now (D-096); 1.0.0 at D-031 and in the official run v0.2.0. It sees block text only, shuffled and renumbered, and no word of its prompt names an approach (D-031).',
+      'JUDGE_MODEL, judge prompt 1.2.0 (D-096). It sees block text only, shuffled and renumbered, and no word of its prompt names an approach (D-031).',
   },
   {
     term: 'Kind of question',
@@ -225,9 +211,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Method',
     meaning:
-      'The rules a run follows to choose the evidence and score the answers. Every run is labelled with its method: v0.3 now, or v0.2, the old method.',
+      'The rules a run follows to choose the evidence and score the answers.',
     technical:
-      'Recorded as method_version in every run; a record without one is 0.2.0 (D-092). Method v0.3 is the selection rule of D-083 and D-084 with evidence recall as the tested metric (D-087).',
+      'Recorded as method_version in every run (D-092): the selection rule of D-083 and D-084, with evidence recall as the tested metric (D-087).',
   },
   {
     term: 'Model family',
@@ -241,7 +227,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A run over the whole question bank whose scores count as a result: every question asked of several worlds, and scored the same way for every approach.',
     technical:
-      'Run kind official over the whole bank, with one repeat unless --repeats N asks more (D-097), and a gateway answer model and judge (make run-benchmark): for method v0.3 on the six unseen world seeds 2029 to 2034 (D-091); v0.2.0 used seeds 2026, 2027 and 2028.',
+      'Run kind official over the whole bank, with one repeat unless --repeats N asks more (D-097), and a gateway answer model and judge (make run-benchmark), on the six unseen world seeds 2029 to 2034 (D-091).',
   },
   {
     term: 'Pair',
@@ -295,7 +281,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'The model that scores each passage and record text for how well it answers the question, so the best come first. It does not score graph records.',
     technical:
-      'The re-ranker: one cross-encoder, BAAI/bge-reranker-v2-m3, run in process by fastembed (D-021). One instance serves A, B and C, on the document channel only since method v0.3 (D-083).',
+      'The re-ranker: one cross-encoder, BAAI/bge-reranker-v2-m3, run in process by fastembed (D-021). One instance serves A, B and C, on the document channel only (D-083).',
   },
   {
     term: 'Reasoning',
@@ -321,7 +307,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'One of the times a question is asked. An official run now asks each question once unless told to ask more; a run can ask more than once, to see whether a model’s answer varies.',
     technical:
-      'An official run takes one repeat unless --repeats N asks more (D-097; v0.2.0 took 3); a failed repeat has no score and is left out of every metric.',
+      'An official run takes one repeat unless --repeats N asks more (D-097); a failed repeat has no score and is left out of every metric.',
   },
   {
     term: 'Starting point',
@@ -387,6 +373,6 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'One copy of the made-up company, built by the system. Every world has the same markets and kinds of records, but the details differ. The same settings build the same world again.',
     technical:
-      'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2029 to 2034 for method v0.3, and were 2026, 2027 and 2028 for v0.2.0.',
+      'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2029 to 2034.',
   },
 ]

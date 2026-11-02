@@ -669,12 +669,12 @@ export interface components {
          * BenchmarkSummary
          * @description Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
          *
-         *     ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
-         *     benchmark source the API publishes. ``run_kind`` and ``label`` are
-         *     copied out of it so a client can tell a smoke or sweep run from an
-         *     official result without reading the summary. ``method_version`` is the
-         *     method the run was made under, from its record: 0.2.0 for a run recorded
-         *     before the field existed (such as v0.2.0).
+         *     ``summary`` is the run's ``summary.json``, typed: the only benchmark
+         *     source the API publishes. ``run_kind`` and ``label`` are copied out of
+         *     it so a client can tell a smoke or sweep run from an official result
+         *     without reading the summary. ``method_version`` is the method the run was
+         *     made under, from its record; only runs of the current method are
+         *     published (D-104).
          */
         BenchmarkSummary: {
             /** Label */
@@ -3476,9 +3476,7 @@ export interface components {
         };
         /**
          * SummaryOut
-         * @description A run's ``summary.json``, every key the harness writes: schema 2 for a
-         *     run of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose
-         *     comparisons add C_vs_A cells and test evidence recall.
+         * @description A run's ``summary.json``, schema 3, the keys the clients read.
          *
          *     A key added later is ignored, so an older client keeps reading.
          */
@@ -3495,12 +3493,9 @@ export interface components {
             /** Headlines */
             headlines: string[];
             instances: components["schemas"]["InstanceCounts"];
-            /** Judge Agreement */
-            judge_agreement: components["schemas"]["JudgeAgreementOut"] | components["schemas"]["ThresholdJudgeAgreementOut"] | null;
+            judge_agreement: components["schemas"]["JudgeAgreementOut"] | null;
             /** Label */
             label: string | null;
-            /** Method Note */
-            method_note?: string | null;
             /** Metrics */
             metrics: {
                 [key: string]: {
@@ -3510,15 +3505,15 @@ export interface components {
                 };
             };
             /** Ontology Split */
-            ontology_split?: components["schemas"]["SplitCell"][] | null;
+            ontology_split: components["schemas"]["SplitCell"][];
             reproducibility: components["schemas"]["ReproducibilityOut"];
             /** Run Kind */
             run_kind: string;
             /**
              * Schema Version
-             * @enum {string}
+             * @constant
              */
-            schema_version: "2" | "3";
+            schema_version: "3";
             selection: components["schemas"]["SelectionOut"];
             /** Unavailable */
             unavailable: {
@@ -3558,27 +3553,6 @@ export interface components {
             source_system: string;
             /** Table */
             table: string;
-        };
-        /**
-         * ThresholdAgreementOut
-         * @description Agreement as runs before method v0.3 recorded it: judge correctness 2
-         *     against an answer score of at least 0.5, with Cohen's kappa.
-         */
-        ThresholdAgreementOut: {
-            /** Agreement */
-            agreement: number | null;
-            /** Kappa */
-            kappa: number | null;
-            /** N */
-            n: number;
-        };
-        /** ThresholdJudgeAgreementOut */
-        ThresholdJudgeAgreementOut: {
-            overall: components["schemas"]["ThresholdAgreementOut"];
-            /** Pipelines */
-            pipelines: {
-                [key: string]: components["schemas"]["ThresholdAgreementOut"];
-            };
         };
         /**
          * UnavailableOut
