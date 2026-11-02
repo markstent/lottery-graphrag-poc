@@ -115,12 +115,18 @@ describe('Help', () => {
     const why = section('1. Why this exists')
     // The current result is the official run v0.3.0; v0.2.0 is the earlier one.
     expect(why).toHaveTextContent(
-      /official run v0\.3\.0, which started on 2026-10-29/,
+      /official run v0\.3\.0, started on 2026-10-29/,
     )
     expect(why).toHaveTextContent(
-      /Of the 14 comparisons tested, one showed a difference/,
+      /We fixed 14 comparisons before the run\. One showed a clear difference/,
     )
-    expect(why).toHaveTextContent(/0\.42 for A, 0\.45 for B and 0\.57 for C/)
+    expect(why).toHaveTextContent(
+      /text search \(A\) got 42 of every 100 needed facts to the answer model, the graph \(B\) 45 and the graph with the ontology \(C\) 57/,
+    )
+    // A newcomer is told what a world is where the result first uses the word.
+    expect(why).toHaveTextContent(
+      /copies of the made-up company, which we call worlds/,
+    )
     expect(why).toHaveTextContent(
       /v0\.2\.0 \(2026-10-26 to 2026-10-27\), had found no detectable difference/,
     )
