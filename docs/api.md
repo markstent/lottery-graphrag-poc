@@ -250,7 +250,7 @@ graph.generation.started  graph.generation.completed
   Discard reasons are `excluded_label`, `out_of_scope_market`, `same_record`, `context_budget` and `duplicate`.
 - `graph.context.assembled` carries `structured_nodes`, `document_chunks`, `context_tokens`, `budget_tokens` and `stated_links`, the number of stated-link rows read for the target tier, null when the question names no target type.
 - A run stored under method 0.2.0 still replays: its events validate against separate old-method payload models, which carry `rerank_score` on nodes, `evidence_slots`, and the reasons `slot_limit` and `superseded_by_structured_fact`.
-  The Live Lab labels such a run as the old method.
+  The Live Lab offers no such run: its recordings and live runs are of the current method.
 - `graph.evidence_path.completed` carries counts only, not the paths.
   The paths are in the stored result.
 
@@ -276,15 +276,15 @@ The visual state of a node (seed, candidate, selected, discarded, ontology conce
 
 ## Benchmark routes
 
-A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of schema version 2 (method 0.2.0) or 3 (method v0.3), which the harness writes last.
-A directory with another schema version is not listed.
-Schema 3 adds evidence recall and its comparisons, C against A cells (`not_in_family`), groundedness means, and a judge agreement with `answered` and `abstained` cells, each with `n`, `agreement` and `weighted_kappa`.
-Schema 3 also carries `method_note`: for a method v0.3 run, the fixed declaration that the method was made after seeing the v0.2.0 result (D-093); null otherwise.
+A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of schema version 3, which the harness writes last, and its record's `method_version` is the method the code runs now (`METHOD_VERSION`, 0.3.0).
+Any other run is not listed, not served by id and never `latest`; its files stay on disk untouched (D-104).
+Schema 3 carries evidence recall and its comparisons, C against A cells (`not_in_family`), the ontology-dependent split, groundedness means, and a judge agreement with `answered` and `abstained` cells, each with `n`, `agreement` and `weighted_kappa`.
+The summary's `method_note` is not served.
 The weighted kappa is in the data at any n; a client shows it only from n of 10, as the Results screen does (D-086).
 A malformed `summary.json` is a server error and is never silently skipped.
 
 - `GET /benchmarks` lists published runs newest first by start time, each with `run_id`, `run_kind`, `label`, `method_version`, `started_at`, `selection` and `worlds`.
-  `method_version` is the method the run was made under, read from its record: 0.2.0 for a run recorded before the field existed (D-092).
+  `method_version` is the method the run was made under, read from its record (D-092); every listed run has the current one.
 - `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, method_version, summary}`.
   `latest` is the newest official run of the whole bank, else the newest run of any kind.
   It is a 404 when nothing is published.

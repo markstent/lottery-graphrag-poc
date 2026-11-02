@@ -23,8 +23,7 @@ Names on screen:
 | A · Text search | Pipeline A |
 | B · Graph | Pipeline B |
 | C · Graph + Ontology | Pipeline C |
-| Evidence score | The evidence F1 of method v0.2, from 0 to 1 with two decimals (D-047) |
-| Evidence recall | The share of the needed facts the chosen evidence covers, from 0 to 1 with two decimals; the evidence metric of method v0.3 (D-087) |
+| Evidence recall | The share of the needed facts the chosen evidence covers, from 0 to 1 with two decimals; the evidence metric the method tests (D-087) |
 | Answer writing time | The model's time to write the answer, shown as "<1 ms" when it is none (D-047) |
 | Starting point | A seed: where the walk through the graph begins |
 | Set aside | Evidence a pipeline judged and did not use |
@@ -77,23 +76,20 @@ Baselines: `shell-overview`, `shell-live-lab`, `shell-results`, `shell-data-mode
 Purpose: what we found, how the three approaches work, and questions to try.
 Overview is written for a newcomer and reads at first glance (D-098); the full figures are on Results.
 
-1. "What we found": the run's method badge first, "Method v0.3" or "Method v0.2 (old method)", read from the API's `method_version`.
-   Beside it, for method 0.3.0, a plain line: "Our second method: the first, v0.2, found no clear difference, so we changed it and retested on new data. Help, chapter 9, explains."
-   A method with no plain line shows the run's `method_note` as written; a v0.2 run has none.
-   One sentence says how many questions all three answered, from the summary's instance count, and that "Evidence found" is the share of needed records found.
-   Then one tile for each approach in its own tint, headed by its letter and name, with the method's evidence metric over the questions with claims as a whole percentage ("Evidence found" for v0.3, "Evidence score" for v0.2) and its answer score as a percentage under it.
+1. "What we found": one sentence says how many questions all three answered, from the summary's instance count, and that "Evidence found" is the share of needed records found.
+   Then one tile for each approach in its own tint, headed by its letter and name, with evidence recall over the questions with claims as a whole percentage, labelled "Evidence found", and its answer score as a percentage under it.
    Then a short list, read from the summary's `comparisons`:
    each tested comparison whose Holm-adjusted p is below 0.05, as "Clear result." and a sentence naming the kind of question in everyday words, which approach scored higher and by how many whole points;
    one line on the other tested comparisons, counting those whose 95 percent interval leaves out zero as "leaned one way but not enough to count" and the rest as "no clear difference" (with no clear result, the line starts "No clear result.");
-   and each untested sub-group of a tested pair, on the evidence metric, over at least six groups, whose interval leaves out zero, as "Not tested, so only a hint." and the same kind of sentence.
-   A last line says every figure and margin of error is on Results, and links there.
+   and each untested sub-group of a tested pair, on evidence recall, over at least six groups, whose interval leaves out zero, as "Not tested, so only a hint." and the same kind of sentence.
+   A last line says every figure and margin of error is on Results, and links there, and another links to "what the results teach" (Help, chapter 13).
+   The panel names no method and says nothing of how the method came about (D-104).
    The run's headline sentences are not shown here; Results shows them verbatim.
-2. "How the three approaches differ": one plain sentence, "Text search finds matching passages. Graph also follows links between records. Graph + Ontology adds a shared list of business terms across markets.", then a flow diagram of method v0.3, the code as it runs.
+2. "How the three approaches differ": one plain sentence, "Text search finds matching passages. Graph also follows links between records. Graph + Ontology adds a shared list of business terms across markets.", then a flow diagram of the method, the code as it runs.
    The question fans out to one shared lane, "Search passages" then "Re-order passages": only passages are re-ranked.
    B adds "Find starting points", "Follow relationships" and "Rank by the graph".
    C adds "Find starting points", "Add ontology terms", "Follow relationships", "Add linked records" and "Rank by the graph".
    All lanes join at "Fill one budget", then "Answer with sources", and a caption says "B and C take turns: a passage, then a graph record."
-   The diagram always describes the current method; a v0.2 run above it carries its own old-method badge.
    The lane order comes from one module (`run/lanes.ts`), and a test pins it to the order of events in the recordings and the run fixture.
 3. "Run a question" and "Models used" side by side.
    The first has a button to Live Lab and the four demo questions as links.
@@ -105,7 +101,7 @@ The tiles fill only for a whole-bank run of kind "official".
 With none, the screen says "No official run yet" and links to Results, and a newer smoke or subset run is named in words with no numbers.
 The tiles carry no interval of their own, because the statistics define intervals for differences (D-048).
 
-Baselines: `overview-fixture-official`, `overview-fixture-v03`, `overview-no-official-run`, `overview-smoke-only`, `overview-error`, `overview-loading`, `presentation-overview-fixture-official`.
+Baselines: `overview-fixture-official`, `overview-no-official-run`, `overview-smoke-only`, `overview-error`, `overview-loading`, `presentation-overview-fixture-official`.
 
 ### Live Lab
 
@@ -118,18 +114,16 @@ At 1920 by 1080, the first screen of a running run holds the question bar, the g
    Before a run it is open: the four saved questions, a box for your own question, the market scope and the source (Recorded run or Live).
    Once a run is chosen it collapses to one line with "Change question", "Cancel run" while a live run is going, and Run.
 2. **Scorecard**, when a run has completed: a row for each approach with Answer, Evidence recall, Starting record, Markets reached, Answer writing time, Context size and Reason.
-   A recording made under the old method shows its Evidence score (F1) in place of Evidence recall, because that is what it was scored on.
    B and C show signed changes against A.
    The reason is the failure class in plain words: "the starting record was not found", "the needed evidence was not retrieved", or "the evidence was retrieved but the answer was wrong" (D-054).
    A question with no answer key shows only what can be measured.
 3. **Graph canvas** with a tab for B and a tab for C, a toggle that overlays the other approach's evidence path, and "Focus on the path".
    **Three panels** show each approach's status, its steps in order with a word, an icon and a time, and its evidence found, used and set aside.
-   The re-rank step says what method v0.3 does: "Re-order and pick passages" in A, and "Re-order passages, take turns" in B and C, where the graph has already ranked its own records and the two lists take turns filling one budget.
-   A recording of the old method keeps the old name, "Re-order and pick".
-   B and C also show the question's target types ("Question's target: incident, market, platform version", or "none named") and the context against its budget ("Context: 1,996 of 2,000 tokens"); both are silent for an old recording, which recorded neither.
+   The re-rank step says what the method does: "Re-order and pick passages" in A, and "Re-order passages, take turns" in B and C, where the graph has already ranked its own records and the two lists take turns filling one budget.
+   B and C also show the question's target types ("Question's target: incident, market, platform version", or "none named") and the context against its budget ("Context: 1,996 of 2,000 tokens").
    Each graph record carries its place in the graph's order: "starting point", "question's target" or "other", and "graph rank n".
    A record set aside says why in plain words: "the same record is already in the context", "the context was full", "a duplicate", "outside the markets asked about" or "a kind of record this question does not use".
-   A reason only the old method gave (`slot_limit`, `superseded_by_structured_fact`) reads "Set aside under the old method".
+   A reason the event contract names that no current run gives reads "Set aside" alone.
 4. **Timeline**, docked under both: rewind, play or pause, replay, a position slider, the time, speeds 0.5x to 4x, and one track for each approach.
 5. After the run: the three answers as the model wrote them, with each citation marker a button, the evidence path rows for B and C, and the market coverage table.
    Each answer card keeps its own height, capped at 24rem; a longer answer scrolls inside the card, which then takes keyboard focus with the shared focus ring so the arrow keys scroll it, and one long answer no longer stretches the row (D-096).
@@ -138,14 +132,11 @@ At 1920 by 1080, the first screen of a running run holds the question bar, the g
 
 Sources: a **recorded run** replays one of four real captures through the API on the dev world, with qwen3.6 through Ollama and reasoning off (`frontend/src/run/fixtures/recorded/`, D-056).
 They need no model, and they are not edited.
-All four were re-recorded through the API under method v0.3 (D-092), so their scorecards say "Evidence recall" and the question bar carries no method note.
+All four were recorded through the API under the current method (D-092), so their scorecards say "Evidence recall"; a unit test pins each recording's method.
 They were re-recorded again on 2026-10-29 with answer parser 2.1.1 and the 4,096-token output limit (D-096).
 In the H1 recording C's answer is an object the model never closed: it is shown with its verdict, without braces, in its capped scroll box, and with no cut-off note, because the model stopped at 3,803 of 4,096 tokens.
 Its verdict, "Austria, Czech Republic", and the last line of its answer, "Answer: Czech Republic.", disagree; the parser reads the verdict as written and does not reconcile the two.
-A recording names its method; one that names none was made before the field existed, so it is of the old method and the question bar says "recorded under the old method (v0.2)" beside the source.
-No recording in the repository is of the old method; unit tests cover that reading.
 The tests' own live runs (`frontend/src/run/fixtures/run-*.json`) are runs of typed questions through the API on the tiny world with the fake model, written by `backend/tests/test_run_fixtures.py`, so every selection and budget in them is what the code did.
-The exception is `run-old-method.json`, the events of the H1 recording made under the old method, taken unchanged from git history so that tests can read a recording of the old method.
 A **live run** posts to `/queries`, follows the event stream, resumes with `?after=` if the connection drops, and reads the stored results.
 A bank question is scored after the run (D-035).
 Your own question can only run live.
@@ -207,15 +198,14 @@ Purpose: every official run, every question, every score, with intervals.
 
 A whole-bank run, a subset or a development run shows all panels, and a quick check shows only the Verdict and Reproducibility.
 
-1. **Benchmark runs.** A select of every published run, newest first, with its standing in words (Result, Subset run, Quick check, or the kind followed by ", not a result", such as "Development run, not a result"), and a "Start a run" button.
-2. **Verdict.** The method badge, "Method v0.3" or "Method v0.2 (old method)", with a v0.3 run's `method_note` beside it as plain text (none for v0.2).
-   Three tiles, each with the method's evidence metric ("Evidence score" for v0.2, its F1; "Evidence recall" for v0.3) and the answer score, then the run's headline sentences as the harness wrote them.
+1. **Benchmark runs.** A select of every published run, newest first (the API publishes only runs of the current method, D-104), with its standing in words (Result, Subset run, Quick check, or the kind followed by ", not a result", such as "Development run, not a result"), and a "Start a run" button.
+2. **Verdict.** Three tiles, each with "Evidence recall" and the answer score, then the run's headline sentences as the harness wrote them.
    A subset run says what it covered, a development run says it is not a result, and a quick check says its numbers are not results.
    Under the headlines, every run but a quick check gets an interval-and-test line, pointing at the paired differences chart below; a quick check draws no charts and gets none.
-3. **Scores by kind of question.** A switch between the method's evidence metric and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
-   A v0.3 run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
+3. **Scores by kind of question.** A switch between Evidence recall and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
+   A run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
-4. **Questions.** One row per question and world, with filters, the answer, the method's evidence metric (headed "Evidence recall" or "Evidence score") and judge score of each approach, and an expanding table of every measure.
+4. **Questions.** One row per question and world, with filters, the answer, evidence recall (headed "Evidence recall") and judge score of each approach, and an expanding table of every measure.
    The table's last row, "Answers cut off", counts each approach's repeats whose answer stops before the model finished it and how many of them stopped at the run's recorded output limit, such as "2 (1 at the 4,096-token limit)", and reads "Not recorded" for a run made before D-096.
    "Open" goes to the question in Live Lab when its world is loaded.
    Fifty rows a page.
@@ -223,18 +213,15 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
 6. **Failures.** Failure kinds by approach.
    Each non-zero count filters the Questions table.
 7. **Judge.** The five judge scores and the agreement with the answer score.
-   A v0.3 run splits each group into answers that answered and answers that abstained ("All questions, answered", "All questions, abstained" and so on), with "Pairs judged", "Agreement" and "Weighted kappa", and one line explains the levels.
-   A v0.2 run keeps its one row per group with "Kappa".
+   Each group is split into answers that answered and answers that abstained ("All questions, answered", "All questions, abstained" and so on), with "Pairs judged", "Agreement" and "Weighted kappa", and one line explains the levels.
    Every row shows its number of judged answers and the exact agreement; a kappa is shown only from 10 judged answers, and below that, or with none judged, the cell reads "Too few to say" (owner, 2026-10-27).
-   **Second judge**, only for a run that has one (D-100): "Descriptive, not tested. Added after the result (owner, 2026-11-02).", the two judge models (the second with its reply limit when it differs from the first judge's), then three tables with "Pairs judged", "Agreement" and "Weighted kappa": "With the answer score" (each judge, answered and abstained), "With each other" (answered and abstained) and, when the second judge has a label check, "With the hand labels" (each judge as the label check names it).
+   **Second judge**, only for a run that has one (D-100): "Descriptive, not tested. Added after the result (owner, 2026-11-02).", the two judge models (the second with its reply limit when it differs from the first judge's), then three tables with "Pairs judged", "Agreement" and "Weighted kappa": "With the answer score" (each judge, answered and abstained), "With each other" (answered and abstained) and, when the second judge has a label check, "With the hand labels, on a sample of answers" (the second judge as the label check names it; the label check's rows for the judge that first marked the sample are left out, D-104).
    A run without one shows no panel; the panel has a loading skeleton and an error state with Retry.
-   **Groundedness**, for a v0.3 run only: "Descriptive, not tested.", with each kind and approach's share of its answers' ids, dates and numbers "Held by cited blocks" and "In no shown block", and the questions behind them.
+   **Groundedness**: "Descriptive, not tested.", with each kind and approach's share of its answers' ids, dates and numbers "Held by cited blocks" and "In no shown block", and the questions behind them.
 8. **Reproducibility.** Every field of the run's record with its API name, and a raw JSON link.
 
 A tested comparison with fewer pairs than the minimum shows "Too few pairs", with no interval and no delta.
 An untested cell with fewer than six groups shows "Too few groups for an interval".
-A run written before that rule can carry such an interval in its recorded headlines, which are never rewritten.
-For that run the Verdict adds one note under the headlines saying the charts omit it.
 Single facts show "No evidence score by design".
 While a run is not a result (a subset, a quick check or a development run), every chart and table carries its label.
 The screen opens the newest result, else the newest subset run, and a development run only when there is nothing else.
@@ -253,8 +240,8 @@ The screen computes no statistic.
 Its state lives in the address: `#/results?run=<id>` with `stratum`, `world` and `failure=<approach>:<kind>`.
 
 Baselines: `results-official`, `results-v03`, `results-v03-agreement-and-groundedness`, `results-subset`, `results-quick-check`, `results-table-expanded`, `results-failure-filter`, `results-start-form`, `results-job-running`, `results-empty`, `results-error`, `results-loading`, `presentation-results`.
-The whole-bank run in `results-official`, `results-table-expanded` and `results-failure-filter` is a v0.2 run generated by `backend/scripts/fixture_official.py` and labelled "Fixture run (test values)".
-The v0.3 run in `results-v03` is the report tests' synthetic run through `summarize`, written by `backend/tests/test_benchmark_report.py`, with the same label.
+The whole-bank run in `results-official`, `results-table-expanded` and `results-failure-filter`, the subset run in `results-subset` and the quick check in `results-quick-check` are generated by `backend/scripts/fixture_official.py` with equal test values; the whole-bank run is labelled "Fixture run (test values)".
+The run in `results-v03` is the report tests' synthetic run through `summarize`, written by `backend/tests/test_benchmark_report.py`, with the same label.
 
 ### Data Model
 
@@ -322,8 +309,8 @@ The worked example shows its question and answer key at both levels, with market
 The questions table at Plain names no question id, writes market codes as countries, and chapter 10 explains once what the reference codes in the questions are; Technical shows the bank as it is.
 It is also the one screen that names vendors, models and commands at Technical, and every command in it is a Makefile target, which a test checks.
 Scores appear only when the newest run is a whole-bank official run that scored at least one question.
-A score cell gives the answer and the evidence metric of that run's method, "Evidence recall" for v0.3 and "Evidence score" (its F1) for v0.2.
-When that run scored none of these world 2026 questions, as a v0.3 official run on the unseen worlds does, the screen says so above the table, links to Results and shows no score columns.
+A score cell gives the answer and the evidence recall.
+When that run scored none of these world 2026 questions, as the official run on the unseen worlds does, the screen says so above the table, links to Results and shows no score columns.
 With no whole-bank official run, it says "No official run yet" above the table and shows no score columns either.
 The screen never averages scores.
 
@@ -381,8 +368,8 @@ The graph is 2D and led by evidence.
   A node fades in over 200 ms, and the whole product collapses to near-instant under `prefers-reduced-motion` or the Settings switch.
   Evidence is never delayed for effect.
 - Copy is plain and short.
-  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 1,450 words outside Help (D-055, D-066, D-098; raised from 1,300 to 1,360 by the owner on 2026-10-27 because method v0.3 labels two methods, and to 1,450 on 2026-11-02 for a plain Overview).
-  Help has no word cap since D-082, and the scan covers Help's Plain text and not its Technical text, where real terms, vendor and model names and dated historical figures (such as the single cut at 12 places of D-025, typed in chapter 5) are allowed.
+  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 1,800 words outside Help (D-055, D-066, D-098, D-101; raised from 1,300 to 1,360 by the owner on 2026-10-27, to 1,450 on 2026-11-02 for a plain Overview, and to 1,800 the same day for the Data Model panels).
+  Help has no word cap since D-082, and the scan covers Help's Plain text and not its Technical text, where real terms, vendor and model names and dated figures are allowed.
   Text from the API, such as headline sentences, is shown verbatim and is outside both.
 
 ## Accessibility

@@ -11,8 +11,8 @@ Two generated pages sit beside this one and are never edited by hand:
 ## Status of results
 
 There are two official results.
-The official run v0.3.0, under method v0.3, is the current result, and it awaits the owner's review (CP4).
-The official run v0.2.0, under method 0.2.0, is the earlier result, and it stands as published.
+The official run v0.3.0, under method v0.3, is the current result, approved by the owner on 2026-10-30 (CP4), and the only official run the screens show (D-104).
+The official run v0.2.0, under method 0.2.0, is the earlier result; it is recorded here for reproducibility, and its files stay on disk.
 The figures below are read from each run's `summary.json` and `report.md`.
 
 ### Official run v0.3.0
@@ -207,7 +207,7 @@ Under method 0.2.0 every pipeline also had the same 12 slots.
 |---|---|
 | Recall | The share of claims with at least one carrier selected. In method v0.3 this is the evidence metric of the tested family (D-087). |
 | Precision | The share of selected items that carry at least one claim. An empty selection has precision 0. Descriptive in v0.3, because it depends on how many items fit. |
-| F1 | The harmonic mean of recall and precision. The screens call it the evidence score for a v0.2.0 run, where it was the tested metric; descriptive in v0.3. |
+| F1 | The harmonic mean of recall and precision. The tested evidence metric of method 0.2.0, called the evidence score then; descriptive in v0.3 and not shown on the screens (D-104). |
 | Efficiency | Claims found per 1,000 context tokens |
 
 Retrieval must select the same carriers in every repeat of an instance, and only generation may vary.
@@ -497,8 +497,8 @@ The `ontology_split` in `summary.json` compares B with A and C with B on the ont
 It is descriptive: outside the Holm family, with no p-value and no headline.
 
 The intervals are on differences.
-The Overview tiles show each approach's mean evidence score with the number of questions and runs behind it, and no interval of their own (D-048, which is an open owner question).
-The tile is worded "Evidence score, questions with claims" for v0.2.0 and "Evidence recall, questions with claims" for v0.3.0, each with its n, the number of questions with claims behind the mean (114 for v0.2.0 and 231 for v0.3.0) (D-087).
+The Overview tiles show each approach's mean evidence recall over the questions with claims (231 in v0.3.0), labelled "Evidence found", and no interval of their own (D-048, which is an open owner question; D-087, D-098).
+The screens show only runs of method 0.3.0 (D-104).
 
 A smoke run keeps every statistic but its only headline says it is a scorer smoke test and not a result.
 A dev run does the same: its only headline says it is a development run on seed 2026 and not a result, and its comparisons table says "tested (development run, not a result)".
@@ -638,12 +638,12 @@ Files are written to a temporary name and moved into place, and `summary.json` i
 | File | Contents |
 |---|---|
 | `results.json` | The selection, the record, and for each world every instance, every repeat of every pipeline (answer, shown blocks, selected carriers, resolved ids, tokens, latency) and every score |
-| `summary.json` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record. Schema version 3 for method v0.3 (evidence recall, groundedness, answered and abstaining agreement with weighted kappa, C against A), schema version 2 for v0.2.0. A v0.3 summary carries `method_note`, the fixed declaration that the method was made after seeing v0.2.0 (D-093), which also heads every v0.3 `report.md`. |
+| `summary.json` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record. Schema version 3 for method v0.3 (evidence recall, groundedness, answered and abstaining agreement with weighted kappa, C against A), schema version 2 for v0.2.0. A v0.3 summary carries `method_note`, the fixed declaration that the method was made after seeing v0.2.0 (D-093), which also heads every v0.3 `report.md`; the API does not serve it (D-104). |
 | `report.md` | The summary as tables |
 | `sweep.json` | Per depth, the H1 metrics for B and C |
 | `comparison.json` | H7, written to `data/evaluation/comparisons/` |
 
-The API publishes `summary.json` only, of schema 2 or 3, so v0.2.0 stays listed beside v0.3 runs.
+The API publishes `summary.json` only, of schema 3 and of the current `method_version` (D-104); the runs of method 0.2.0, v0.2.0 among them, stay on disk and are not listed.
 `GET /api/v1/benchmarks/latest` serves the newest official run of the whole bank, and when there is none it serves the newest run of any kind with its label.
 While only a smoke run or a subset run exists, the Overview shows "No official run yet" and names the newest run's kind without numbers.
 

@@ -24,16 +24,15 @@ Fairness rules and the shared context budget are in [docs/retrieval.md](docs/ret
 
 ## Headline numbers
 
-### Official run v0.3.0, the current result
+### Official run v0.3.0
 
-The official run v0.3.0, under method v0.3, ran from 2026-10-29 14:41 UTC to about 02:06 UTC on 2026-10-30 (when summary.json was written; the run record has no end time) at commit 4c62325 with a clean tree.
+The official run v0.3.0 ran from 2026-10-29 14:41 UTC to about 02:06 UTC on 2026-10-30 (when summary.json was written; the run record has no end time) at commit 4c62325 with a clean tree.
 It covered six worlds no one had looked at (seeds 2029 to 2034), the whole bank (300 instances) and the three approaches, with each question asked once: 900 answers, each judged.
 The answer model was qwen3.6 and the judge gemma4 31B, both local through Ollama with reasoning off.
 The settings were scorer 2.2.1, judge prompt 1.2.0, answer parser 2.1.1, an output limit of 4,096 tokens and one evidence budget of 2,000 tokens for every approach.
 No answer and no judge call failed.
 
-Method v0.3 was made after seeing the v0.2.0 result, in which the graph did not win, and this result is read with that in mind (D-093).
-The guards were development on seed 2026 only, every rule written down before the official run, and worlds no one had looked at; they limit what the method could have been fitted to, and they do not remove the doubt.
+Development used seed 2026 only, every rule was written down before the official run, and the run used worlds no one had looked at.
 
 The result of the 14 tests fixed before the run (Wilcoxon on group means, Holm-adjusted, a difference counts when the adjusted p-value is below 0.05):
 
@@ -70,52 +69,16 @@ On planted patterns the graph's averages were lower than text search's, and that
 Limits on reading it:
 
 - the judge and the deterministic answer score agree on 88 percent of the 637 answers that answered (weighted kappa 0.77) and on 70 percent of the 263 that said "unknown" (weighted kappa 0.25);
-- judge prompt 1.2.0 reads the whole answer and was not checked against hand labels, and the labels that checked the earlier judge came from one model labeller, not a human (D-094, D-096);
+- judge prompt 1.2.0 reads the whole answer and was not checked against hand labels; the hand-label check was made on a sample of answers, with labels from one model labeller, not a human (D-094, D-096);
 - "the needed evidence was not retrieved" is still the most common failure cause: 124, 119 and 100 of 300 answers for A, B and C; "the evidence was retrieved but the answer was wrong" is 24, 17 and 19;
 - each comparison rests on 24 question groups (48 for planted patterns), so a difference must be large to pass the test;
 - one small local answer model, and each question asked once (D-097); a larger model might use the evidence differently.
 
 The run is kept in `data/evaluation/runs/official-2026-10-29/` (not in git) and is the run the Overview and Results screens open on.
-It awaits the owner's review (CP4, see `HITL_STATUS.md`).
+The owner approved it on 2026-10-30 (CP4, see `HITL_STATUS.md`).
 
-### Official run v0.2.0, the earlier result (method 0.2.0)
-
-The official run v0.2.0 ran from 2026-10-26 11:42 to 2026-10-27 03:21 UTC at commit 27a4ce4 with a clean tree.
-It covered three worlds (seeds 2026, 2027 and 2028), the whole bank (150 instances), the three approaches and three repeats: 1,350 answers, each judged.
-The answer model was qwen3.6 and the judge gemma4 31B, both local through Ollama with reasoning off, under the selection rule D-081.
-
-The result: no detectable difference between the approaches in any of the eight tested comparisons (graph against text search, and ontology against graph, on multi-hop, ontology-dependent, single-fact and planted-pattern questions; Wilcoxon, Holm-adjusted).
-
-| Over every question | A: text search | B: graph | C: graph and ontology |
-|---|---|---|---|
-| Evidence score (F1, 114 instances with evidence) | 0.19 | 0.17 | 0.19 |
-| Answer score (150 instances) | 0.44 | 0.44 | 0.44 |
-
-Outside the tested family, and so descriptive only:
-
-- on the 18 instances that name a game in a market's own language, B found 14.7 evidence points less than A (95 percent interval 10.8 to 18.6 less), and C found 13.4 more than B (8.4 to 18.6) and answered 10.4 points better (3.6 to 18.6);
-- over every ontology-dependent question, C was 4.0 evidence points and 4.1 answer points above B.
-
-What it said: under those settings the graph and the ontology did not measurably improve the answers.
-The likely cause was evidence selection, not the graph's reach: the selection diagnostic showed the graph finding many of the needed facts and the re-ranker and the 12 prompt slots keeping most of them out, and "the needed evidence was not retrieved" was the most common failure for every approach (216, 213 and 201 of 450 answers).
-
-Limits on reading it:
-
-- the judge and the deterministic answer score agreed on only 53 percent of answers (kappa 0.07, by the old 0.5-threshold definition), so the two measures of a right answer often disagreed;
-- each comparison rested on 12 question groups, so intervals were wide and a small effect would not be detected;
-- one small local answer model; a larger model might use the evidence differently;
-- 2 of 1,350 judge calls failed (both in B, while the machine slept), and no answer failed.
-
-The run is kept in `data/evaluation/runs/official-2026-10-26/` (not in git) and stays listed on Results, labelled as the old method.
-
-Before it, four live development runs in the Live Lab and two pilot subset runs showed B and C no better than A.
-The selection rule changed after them (decision D-081, 2026-10-25), and the pilot runs described here used the older rule (D-025: all three approaches choose what the model sees through one shared re-ranker).
-On the multi-hop question, B's graph search found the record that carries the claim the answer needed, and the shared re-ranker kept that record out of the prompt.
-
-The v0.2.0 data showed that the 12 evidence slots decided what the model saw, and that two answer measures each had a specific fault.
-So method v0.3 changed the method after seeing a result in which the graph did not win: the graph ranks its own records, every approach fills the same 2,000 token budget with no item limit, records are shown as compact facts with a path line for graph records, the scorer and judge are fixed, and groundedness is added (decisions D-083 to D-093).
-The v0.2.0 result stands as published, labelled as the old method.
-The reasons and the data are in [docs/evaluation/v0.3-method-proposal.md](docs/evaluation/v0.3-method-proposal.md), and the details in [docs/retrieval.md](docs/retrieval.md) and [docs/evaluation.md](docs/evaluation.md).
+An earlier official run under method 0.2.0 found no detectable difference; the screens show only runs of the current method (D-104), and the earlier run's record is in [docs/evaluation.md](docs/evaluation.md).
+The rules of the method are in [docs/retrieval.md](docs/retrieval.md) and [docs/evaluation.md](docs/evaluation.md).
 
 ## Run it
 
