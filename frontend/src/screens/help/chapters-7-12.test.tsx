@@ -340,6 +340,24 @@ describe('chapters 7 to 12', () => {
     expect(why).toContain("C's concept text")
   })
 
+  it('states the scoring rules as the official run v0.3.0 applied them', () => {
+    const scoring = strings(CHAPTER_COPY.scoring.plain).join(' ')
+    // 3 of 72 single-fact instances kept a claim in that run (results.json); not every one reads Missing.
+    expect(scoring).toContain('almost every single-fact question')
+    expect(scoring).toContain('3 of the 72 single-fact questions')
+    expect(scoring).not.toMatch(/case for every single-fact question/)
+    // Detectable needs the Holm test and an interval that leaves out zero (statistics.py).
+    expect(scoring).toContain('its margin of error leaves out zero')
+    expect(scoring).toContain('once by default')
+    const term = (name: string) =>
+      GLOSSARY_TERMS.find(({ term }) => term === name)!
+    expect(term('Detectable difference').meaning).toContain(
+      'margin of error leaves out zero',
+    )
+    expect(term('Judge').technical).toContain('judge prompt 1.2.0 now')
+    expect(chapterText('glossary')).not.toContain('2026-10-27.')
+  })
+
   it("says only B shares A's first block, and that turns are one for one", () => {
     const evidence = chapterText('evidence')
     expect(evidence).not.toMatch(/so their first block is A's first block/)

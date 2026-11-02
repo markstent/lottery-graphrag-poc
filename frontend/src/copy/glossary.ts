@@ -89,12 +89,12 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A kind of run that asks the questions needing several links again, with the graph followed 0, 1, 2 and 3 steps.',
     technical:
-      'Run kind sweep (make run-sweep): B and C on the H1 questions at graph depths 0 to 3. It reports intervals and runs no test. None had been run by 2026-10-27.',
+      'Run kind sweep (make run-sweep): B and C on the H1 questions at graph depths 0 to 3. It reports intervals and runs no test. None had been run by 2026-10-28.',
   },
   {
     term: 'Detectable difference',
     meaning:
-      'A difference between two approaches that passes the test: larger than chance would explain, after allowing for how many comparisons were made at once.',
+      'A difference between two approaches that passes the test, larger than chance would explain after allowing for how many comparisons were made at once, and whose margin of error leaves out zero.',
     technical:
       'A Holm-adjusted p-value below 0.05 from a two-sided Wilcoxon signed-rank test on the per-group mean differences, with the 95 percent interval wholly above or below 0, in a cell of at least 10 pairs and 6 groups (backend/app/evaluation/statistics.py).',
   },
@@ -155,7 +155,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Groundedness',
     meaning:
-      'How far the ids, dates and numbers an answer states are held by the pieces it cites, and how many no piece shown to the model holds. Shown, not tested.',
+      'How far the codes, dates and numbers an answer states are backed by the pieces it cites, and how many appear in no piece shown to the model. Shown, not tested.',
     technical:
       'Supported and unsupported shares of checkable atoms per sentence, with no model (backend/app/evaluation/checks.py, D-088); descriptive and outside the Holm family. A v0.2.0 figure and a v0.3 one are not comparable.',
   },
@@ -197,7 +197,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A second language model, from another model family, that marks each answer from 0 to 2 on five counts. Its marks are a second opinion.',
     technical:
-      'JUDGE_MODEL, prompt version 1.0.0. It sees block text only, shuffled and renumbered, and no word of its prompt names an approach (D-031).',
+      'JUDGE_MODEL, judge prompt 1.2.0 now (D-096); 1.0.0 at D-031 and in the official run v0.2.0. It sees block text only, shuffled and renumbered, and no word of its prompt names an approach (D-031).',
   },
   {
     term: 'Kind of question',
@@ -239,7 +239,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Official run',
     meaning:
-      'The run whose scores count as the result: every question asked of several worlds, once each, and scored the same way for every approach.',
+      'A run over the whole question bank whose scores count as a result: every question asked of several worlds, and scored the same way for every approach.',
     technical:
       'Run kind official over the whole bank, with one repeat unless --repeats N asks more (D-097), and a gateway answer model and judge (make run-benchmark): for method v0.3 on the six unseen world seeds 2029 to 2034 (D-091); v0.2.0 used seeds 2026, 2027 and 2028.',
   },
@@ -279,7 +279,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Question group',
     meaning:
-      'The questions made from one question in one world. They are alike, so the statistics count each group once.',
+      'The versions of one question in one world, up to three. They are alike, so the statistics count each group once.',
     technical:
       'A cluster, keyed question id and world seed. The cluster is the unit of the interval and of the test (D-032).',
   },
@@ -319,7 +319,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Repeat',
     meaning:
-      'One of the times a question is asked. An official run asks each question once; a run can ask more than once, to see whether a model’s answer varies.',
+      'One of the times a question is asked. An official run now asks each question once unless told to ask more; a run can ask more than once, to see whether a model’s answer varies.',
     technical:
       'An official run takes one repeat unless --repeats N asks more (D-097; v0.2.0 took 3); a failed repeat has no score and is left out of every metric.',
   },

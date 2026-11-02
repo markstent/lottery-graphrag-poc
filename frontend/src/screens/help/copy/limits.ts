@@ -91,7 +91,7 @@ export const REGISTER: readonly RegisterRow[] = [
       'The graph is followed at most {graph_limits.depth} links from where it starts, and other depths have not been tried.',
     reason:
       'Every run but the depth sweep uses depth {graph_limits.depth}, inside fixed node and edge caps, so the walk stays bounded and comparable.',
-    cost: 'H1 asks how evidence changes with depth; the depth sweep that tests it had not been run by 2026-10-27.',
+    cost: 'H1 asks how evidence changes with depth; the depth sweep that tests it had not been run by 2026-10-28.',
     decision: 'docs/evaluation.md, "Run kinds"',
   },
   {
