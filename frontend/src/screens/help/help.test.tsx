@@ -47,6 +47,7 @@ const CHAPTER_TITLES = [
   '10. The questions',
   '11. Glossary',
   '12. Running it',
+  '13. What the results teach',
 ]
 
 /** Names only Running it may use: its own commands and settings, and the vendors and models it names. */
@@ -97,7 +98,7 @@ afterEach(() => {
 })
 
 describe('Help', () => {
-  it('has its twelve chapters in the order of the specification', async () => {
+  it('has the twelve chapters of the specification in order, then chapter 13', async () => {
     await renderHelp()
     const headings = screen
       .getAllByRole('heading', { level: 2 })
@@ -108,7 +109,7 @@ describe('Help', () => {
   it('opens with the purpose sentence and links to each section', async () => {
     await renderHelp()
     const nav = screen.getByRole('navigation', { name: 'Help sections' })
-    expect(within(nav).getAllByRole('link')).toHaveLength(12)
+    expect(within(nav).getAllByRole('link')).toHaveLength(13)
     expect(
       within(nav).getByRole('link', { name: 'The questions' }),
     ).toHaveAttribute('href', '#/help?section=questions')

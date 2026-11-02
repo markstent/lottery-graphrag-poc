@@ -1,6 +1,8 @@
 /**
- * The twelve chapters of Help, in the order of the spec (docs/superpowers/specs/2026-10-26-help-v2-design.md),
- * the old section ids that still link to them, and the shape of a chapter's copy.
+ * The chapters of Help: the twelve of the spec (docs/superpowers/specs/2026-10-26-help-v2-design.md),
+ * in its order, then chapter 13, what the official run v0.3.0 teaches, added at the end so the
+ * numbers of the first twelve hold. Also the old section ids that still link to them, and the
+ * shape of a chapter's copy.
  */
 
 export const CHAPTERS = [
@@ -44,6 +46,11 @@ export const CHAPTERS = [
   { id: 'questions', nav: 'The questions', title: '10. The questions' },
   { id: 'glossary', nav: 'Glossary', title: '11. Glossary' },
   { id: 'running', nav: 'Running it', title: '12. Running it' },
+  {
+    id: 'lessons',
+    nav: 'What the results teach',
+    title: '13. What the results teach',
+  },
 ] as const
 
 export type ChapterId = (typeof CHAPTERS)[number]['id']
@@ -77,13 +84,24 @@ export type DiagramName = (typeof DIAGRAM_NAMES)[number]
 export type ComponentName =
   'dataTour' | 'stories' | 'register' | 'questions' | 'glossary' | 'running'
 
+/** A table of text a chapter states: a caption read by a screen reader, its column names and its rows, the first cell of each row naming it. */
+export interface TableBlock {
+  kind: 'table'
+  caption: string
+  columns: readonly string[]
+  rows: readonly (readonly string[])[]
+}
+
 /**
  * One block of a chapter. A string is a paragraph and a list of strings is a
  * bulleted list; either may hold `{setting_key}`, filled from the settings.
+ * A heading names the part of the chapter that follows it.
  */
 export type Block =
   | string
   | readonly string[]
+  | { kind: 'heading'; text: string }
+  | TableBlock
   | { kind: 'settings'; keys: readonly SettingKey[] }
   | { kind: 'diagram'; name: DiagramName }
   | { kind: 'component'; name: ComponentName }

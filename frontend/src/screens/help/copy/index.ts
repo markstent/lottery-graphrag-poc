@@ -6,6 +6,7 @@ import { approaches } from './approaches'
 import { company } from './company'
 import { evidence } from './evidence'
 import { glossary } from './glossary'
+import { lessons } from './lessons'
 import { limits } from './limits'
 import { questions } from './questions'
 import { results } from './results'
@@ -27,4 +28,5 @@ export const CHAPTER_COPY: Record<ChapterId, ChapterCopy> = {
   questions,
   glossary,
   running,
+  lessons,
 }

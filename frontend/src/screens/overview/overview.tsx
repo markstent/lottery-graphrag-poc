@@ -198,6 +198,13 @@ function LatestRun() {
             </a>
             .
           </p>
+          <p className="text-sm text-text-secondary">
+            Read{' '}
+            <a href={hrefFor('help', { section: 'lessons' })} className={LINK}>
+              what the results teach
+            </a>
+            .
+          </p>
         </div>
       )}
       {verdict?.kind === 'none' && (

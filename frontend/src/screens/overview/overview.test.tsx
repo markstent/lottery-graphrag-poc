@@ -236,6 +236,10 @@ describe('Overview', () => {
     expect(
       within(panel).getByRole('link', { name: 'Results' }),
     ).toHaveAttribute('href', '#/results')
+    // Help, chapter 13, explains where each approach did best and why.
+    expect(
+      within(panel).getByRole('link', { name: 'what the results teach' }),
+    ).toHaveAttribute('href', '#/help?section=lessons')
   })
 
   it('says there is no clear result when no test passes', async () => {

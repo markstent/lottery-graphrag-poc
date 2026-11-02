@@ -35,6 +35,7 @@ const SECTIONS = [
   ['questions', '10. The questions'],
   ['glossary', '11. Glossary'],
   ['running', '12. Running it'],
+  ['lessons', '13. What the results teach'],
 ] as const
 
 for (const [id, title] of SECTIONS) {
@@ -45,6 +46,39 @@ for (const [id, title] of SECTIONS) {
     await shot(page, `section-${id}`)
   })
 }
+
+test('Overview links to chapter 13, which shows the kinds of question and, at Technical, every question', async ({
+  page,
+}) => {
+  await mockApi(page, 'published', 'official')
+  await page.goto('/#/')
+  await page.getByRole('link', { name: 'what the results teach' }).click()
+  await expect(page).toHaveURL(/#\/help\?section=lessons$/)
+  const chapter = page.locator('#lessons')
+  await expect(
+    chapter.getByRole('heading', {
+      level: 2,
+      name: '13. What the results teach',
+    }),
+  ).toBeInViewport()
+  const kinds = chapter.getByRole('table', {
+    name: 'Which approach did best, by kind of question',
+  })
+  await expect(
+    kinds.getByRole('row', { name: /^Multi-hop questions/ }),
+  ).toContainText('43%, 65%, 64%')
+  await expect(
+    chapter.getByRole('table', { name: 'Means for each question' }),
+  ).toHaveCount(0)
+  await shot(page, 'lessons')
+
+  await page.getByRole('radio', { name: 'Technical' }).click()
+  await expect(
+    chapter
+      .getByRole('table', { name: 'Means for each question' })
+      .getByRole('row'),
+  ).toHaveCount(23)
+})
 
 test('the story link scrolls to the story and marks it', async ({ page }) => {
   await open(page, '#/help?section=stories&story=SCN-007')
@@ -250,6 +284,7 @@ test.describe('at phone width', () => {
     ['limits-technical', '#/help?section=limits&level=technical'],
     ['register', '#/help?section=limits'],
     ['running-technical', '#/help?section=running&level=technical'],
+    ['lessons-technical', '#/help?section=lessons&level=technical'],
   ] as const)
     test(`${name} fits the page, and wide tables scroll inside their own box`, async ({
       page,
