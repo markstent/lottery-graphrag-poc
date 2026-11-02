@@ -144,10 +144,12 @@ test('a run with a second judge shows it after the judge, labelled descriptive',
   await page.goto('/#/results?run=fixture-v03')
   const panel = page.getByRole('region', { name: 'Second judge' })
   await expect(
-    panel.getByText(/Descriptive, not part of the test/),
+    panel.getByText(/Descriptive, not tested. Added after the result/),
   ).toBeVisible()
   await expect(
-    panel.getByText('ollama/muse-glimmer:latest', { exact: true }),
+    panel.getByText('ollama/muse-glimmer:latest, reply limit 2,048 tokens', {
+      exact: true,
+    }),
   ).toBeVisible()
   await expect(
     panel.getByRole('rowheader', { name: 'Second judge, answered' }),

@@ -14,7 +14,7 @@ type Split = Schemas['AgreementSplitOut']
 export const SECOND_JUDGE = {
   title: 'Second judge',
   first: 'First judge',
-  note: 'Descriptive, not part of the test. Added after the result (owner, 2026-11-02).',
+  note: 'Descriptive, not tested. Added after the result (owner, 2026-11-02).',
   answerScore: 'With the answer score',
   eachOther: 'With each other',
   labels: 'With the hand labels',
@@ -81,10 +81,18 @@ export function labelRows(data: SecondJudge): DataTableRow[] | null {
   })
 }
 
-/** The two judge models, first then second. */
+/**
+ * The two judge models, first then second; the second names its reply limit
+ * when it differs from the first judge's, the one setting that may (D-100).
+ */
 export function judgeModels(data: SecondJudge): [string, string][] {
+  const { first_judge: first, second_judge: second } = data.run
+  const limit =
+    second.max_tokens === first.max_tokens
+      ? ''
+      : `, reply limit ${second.max_tokens.toLocaleString('en-GB')} tokens`
   return [
-    [SECOND_JUDGE.first, data.run.first_judge.model ?? '-'],
-    [SECOND_JUDGE.title, data.run.second_judge.model],
+    [SECOND_JUDGE.first, first.model ?? '-'],
+    [SECOND_JUDGE.title, second.model + limit],
   ]
 }

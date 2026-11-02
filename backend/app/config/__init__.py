@@ -282,6 +282,9 @@ class JudgeSettings:
     temperature: float
     # "default" or "off" (app.models.gateway.REASONING_MODES).
     reasoning: str = "default"
+    # The reply limit; None is the judge's own JUDGE_MAX_TOKENS. Only the
+    # second judge sets it (SECOND_JUDGE_MAX_TOKENS, D-100).
+    max_tokens: int | None = None
 
 
 def judge_settings_from_env(prefix: str = "JUDGE") -> JudgeSettings:

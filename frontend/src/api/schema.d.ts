@@ -1075,9 +1075,12 @@ export interface components {
         };
         /**
          * FirstJudgeOut
-         * @description The first judge as the run recorded it.
+         * @description The first judge as the run recorded it, and its reply limit (the
+         *     code's; absent in a summary written before it was recorded).
          */
         FirstJudgeOut: {
+            /** Max Tokens */
+            max_tokens?: number | null;
             /** Model */
             model: string | null;
             /** Model Family */

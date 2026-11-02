@@ -7,14 +7,15 @@
       "model_family": "muse",
       "reasoning": "off",
       "temperature": 0.0,
-      "max_tokens": 300
+      "max_tokens": 2048
     },
     "judge_prompt_version": "1.2.0",
     "judge_prompt_hash": "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643",
     "first_judge": {
       "model": "fake-judge-v1",
       "model_family": "fake",
-      "prompt_version": "1.0.0"
+      "prompt_version": "1.0.0",
+      "max_tokens": 300
     },
     "generation_model": "fake-gen",
     "started_at": "2026-11-02T09:00:00+00:00",
@@ -246,14 +247,15 @@
       "model_family": "muse",
       "reasoning": "off",
       "temperature": 0.0,
-      "max_tokens": 300
+      "max_tokens": 2048
     },
     "judge_prompt_version": "1.2.0",
     "judge_prompt_hash": "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643",
     "first_judge": {
       "model": "ollama/gemma4:31b",
       "model_family": "gemma",
-      "prompt_version": "1.0.0"
+      "prompt_version": "1.0.0",
+      "max_tokens": 300
     },
     "generation_model": "ollama/qwen3.6:latest",
     "started_at": "2026-11-02T09:00:00+00:00",

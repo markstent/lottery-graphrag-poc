@@ -16,9 +16,15 @@ describe('SecondJudgePanel', () => {
     render(<SecondJudgePanel runId="fixture-v03" />)
     const panel = await screen.findByRole('region', { name: 'Second judge' })
     expect(
-      within(panel).getByText(/Descriptive, not part of the test/),
+      within(panel).getByText(
+        /Descriptive, not tested. Added after the result/,
+      ),
     ).toBeVisible()
-    expect(within(panel).getByText('ollama/muse-glimmer:latest')).toBeVisible()
+    expect(
+      within(panel).getByText(
+        'ollama/muse-glimmer:latest, reply limit 2,048 tokens',
+      ),
+    ).toBeVisible()
     for (const name of [
       'With the answer score',
       'With each other',

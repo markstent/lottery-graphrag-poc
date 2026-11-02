@@ -407,8 +407,13 @@ It was added after the result of v0.3.0, at the owner's request of 2026-11-02, a
 
 What it does:
 
-- For every repeat the first judge was asked about, it rebuilds the exact item the first judge saw (`runner.judge_item`, the same blinding seed) and calls the second model with the same judge prompt (1.2.0), the same reply cap (300 tokens) and the same parser.
+- For every repeat the first judge was asked about, it rebuilds the exact item the first judge saw (`runner.judge_item`, the same blinding seed) and calls the second model with the same judge prompt (1.2.0), the same parser, temperature and reasoning setting.
   The prompt text is identical, so the two judges read the same thing.
+- The reply limit is the one setting that may differ (controller ruling of 2026-11-02, D-100 amendment): `SECOND_JUDGE_MAX_TOKENS`, which defaults to the first judge's 300 tokens.
+  Muse Glimmer spends hidden tokens even with reasoning off: in the live check it returned nothing at 300 on a prompt of 4,957 tokens, and clean JSON after about 780 hidden tokens at 2,000.
+  A 300-token limit would then measure the limit, not the judge.
+  The limit bounds the reply only, not what the judge sees.
+  The official second judge runs with `SECOND_JUDGE_MAX_TOKENS=2048`; the value is recorded in every verdict line and in the summary, and Results names it next to the model when it differs from the first judge's.
 - It refuses a second judge with no family, or of the answer model's family or the first judge's family as the run records them, compared without case.
 - It reads the run and never writes into it, nor anywhere under `data/evaluation/runs/`.
   The item holds the expected answer and the claim statements, which are evaluator data; nothing reaches a pipeline.
@@ -421,16 +426,17 @@ make second-judge LABELS=v0.2.0-sample  # the hand-labelled sample first (100 ca
 make second-judge RUN=official-2026-10-29
 ```
 
-Both read `SECOND_JUDGE_PROVIDER`, `SECOND_JUDGE_MODEL`, `SECOND_JUDGE_MODEL_FAMILY`, `SECOND_JUDGE_REASONING`, `SECOND_JUDGE_TEMPERATURE` (unset means 0) and `SECOND_JUDGE_API_BASE`, read as the `JUDGE_*` keys are (see [operations.md](operations.md)).
+Both read `SECOND_JUDGE_PROVIDER`, `SECOND_JUDGE_MODEL`, `SECOND_JUDGE_MODEL_FAMILY`, `SECOND_JUDGE_REASONING`, `SECOND_JUDGE_TEMPERATURE` (unset means 0), `SECOND_JUDGE_API_BASE` and `SECOND_JUDGE_MAX_TOKENS` (unset means 300), read as the `JUDGE_*` keys are (see [operations.md](operations.md)).
 
 Where it is stored:
 
 - A run's second judge goes to `data/evaluation/second-judge/<run id>/<model slug>/`, the slug being the model name in lower case with every other character run as `-`.
 - The label check goes to `data/evaluation/second-judge/labels-v0.2.0-sample/<model slug>/`.
 - `verdicts.jsonl` gains one line per call as it goes: the key, instance, approach and repeat, the scores or the failure and its kind, the raw reply, the stop reason, whether the reply stopped at the cap, the latency, and the first judge's scores for the same repeat.
-  An interrupted pass resumes: the same command skips every repeat already in the file, failures included, and drops a last line cut short.
-  A directory holds one model, one prompt (version and hash) and one set of model settings; a line of another is refused, so a change means another directory.
-- `summary.json` (schema 1) is written at the end: the second judge's model, family, reasoning, temperature and reply cap, the judge prompt version and hash, the first judge, the start and end times, the git commit and dirty flag, and counts of repeats, judged, failures by kind and by message, and replies that stopped at the cap.
+  An interrupted pass resumes: the same command skips every repeat that already has scores, calls again for every repeat recorded as a failure (`gateway_error`, `empty_reply` or `unusable_reply`), and drops a last line cut short.
+  A retried repeat gets a new line after its failed one, and a repeat's latest line is the one that counts, so the summary counts the final state; the failed lines stay in the file as the record of the attempt.
+  A directory holds one model, one prompt (version and hash) and one set of model settings, reply limit included; a line of another is refused, so a change means another directory.
+- `summary.json` (schema 1) is written at the end: the second judge's model, family, reasoning, temperature and reply limit, the judge prompt version and hash, the first judge with its reply limit, the start and end times, the git commit and dirty flag, and counts of repeats, judged, failures by kind and by message, and replies that stopped at the cap.
 
 What the run summary reports:
 

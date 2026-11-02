@@ -47,9 +47,21 @@ describe('second judge rows', () => {
   it('has no label rows without a label check', () =>
     expect(labelRows({ ...V03_SECOND_JUDGE, labels: null })).toBeNull())
 
-  it('names the two judge models', () =>
+  it('names the two judge models and the larger reply limit of the second', () =>
     expect(judgeModels(V03_SECOND_JUDGE)).toEqual([
       ['First judge', 'fake-judge-v1'],
-      ['Second judge', 'ollama/muse-glimmer:latest'],
+      ['Second judge', 'ollama/muse-glimmer:latest, reply limit 2,048 tokens'],
     ]))
+
+  it('names no reply limit when it equals the first judge limit', () => {
+    const run = V03_SECOND_JUDGE.run
+    const same = {
+      ...V03_SECOND_JUDGE,
+      run: { ...run, second_judge: { ...run.second_judge, max_tokens: 300 } },
+    }
+    expect(judgeModels(same)[1]).toEqual([
+      'Second judge',
+      'ollama/muse-glimmer:latest',
+    ])
+  })
 })

@@ -27,6 +27,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import os
 import re
 from collections import Counter
 from collections.abc import Callable, Iterable, Iterator, Sequence
@@ -126,7 +127,27 @@ def second_judge_settings() -> JudgeSettings:
             f"the second judge calls a model: set {ENV_PREFIX}_PROVIDER=litellm and "
             f"{ENV_PREFIX}_MODEL (see .env.example), got provider {settings.provider!r}"
         )
-    return settings
+    return dataclasses.replace(settings, max_tokens=_reply_limit())
+
+
+def _reply_limit() -> int:
+    """SECOND_JUDGE_MAX_TOKENS, the one setting that may differ from the first
+    judge (D-100 amendment): a model that spends hidden tokens with reasoning
+    off needs room to reply. Unset or empty is the first judge's limit."""
+    name = f"{ENV_PREFIX}_MAX_TOKENS"
+    raw = os.environ.get(name) or str(JUDGE_MAX_TOKENS)
+    try:
+        value = int(raw)
+    except ValueError:
+        value = 0
+    if value < 1:
+        raise ValueError(f"{name} must be a whole number of at least 1, got {raw!r}")
+    return value
+
+
+def reply_limit(settings: JudgeSettings) -> int:
+    """The reply limit the judge is called with."""
+    return settings.max_tokens or JUDGE_MAX_TOKENS
 
 
 def check_second_family(
@@ -155,7 +176,7 @@ def identity(settings: JudgeSettings) -> dict[str, Any]:
         "model": settings.model,
         "reasoning": settings.reasoning,
         "temperature": settings.temperature,
-        "max_tokens": JUDGE_MAX_TOKENS,
+        "max_tokens": reply_limit(settings),
         "prompt_version": JUDGE_PROMPT_VERSION,
         "prompt_hash": judge_prompt_hash(),
     }
@@ -251,9 +272,10 @@ def _line(
 
 
 def read_verdicts(path: Path, record: dict[str, Any]) -> dict[str, dict[str, Any]]:
-    """The verdict lines by key. A last line cut short by an interruption is
-    dropped from the file; a line of another model, prompt or model setting
-    than ``record`` is refused."""
+    """Each repeat's latest verdict line by key (a retried failure is
+    followed by its new line). A last line cut short by an interruption is
+    dropped from the file; a line of another model, prompt or model setting,
+    reply limit included, than ``record`` is refused."""
     if not path.exists():
         return {}
     text = path.read_text(encoding="utf-8")
@@ -280,15 +302,19 @@ def judge_targets(
     gateway: Callable[[CompletionRequest], Completion] | None = None,
     on_progress: Callable[[int, int], None] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Judge every target not yet in ``out_dir``'s verdicts, appending one
-    line per call as it goes. Returns every line by key."""
+    """Judge every target that has no scores yet in ``out_dir``'s verdicts,
+    appending one line per call as it goes: a resumed pass skips the scored
+    repeats and retries the failed ones, and a repeat's latest line is the
+    one that counts. Returns each repeat's latest line by key."""
     record = identity(settings)
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / VERDICTS_FILE
     done = read_verdicts(path, record)
     recorder = _Recorder(gateway or complete)
     judge = GatewayJudge(settings, gateway=recorder)
-    todo = [target for target in targets if target.key not in done]
+    todo = [
+        target for target in targets if target.key not in done or done[target.key]["scores"] is None
+    ]
     with path.open("a", encoding="utf-8") as handle:
         for count, target in enumerate(todo, start=1):
             called_at = datetime.now(UTC).isoformat()
@@ -453,7 +479,7 @@ def _header(
             "model_family": settings.model_family,
             "reasoning": settings.reasoning,
             "temperature": settings.temperature,
-            "max_tokens": JUDGE_MAX_TOKENS,
+            "max_tokens": reply_limit(settings),
         },
         "judge_prompt_version": JUDGE_PROMPT_VERSION,
         "judge_prompt_hash": judge_prompt_hash(),
@@ -461,6 +487,8 @@ def _header(
             "model": record.get("judge_model"),
             "model_family": record.get("judge_model_family"),
             "prompt_version": record.get("judge_prompt_version"),
+            # Runs do not record it: the judge's reply limit is the code's.
+            "max_tokens": JUDGE_MAX_TOKENS,
         },
         "generation_model": record.get("generation_model"),
         "started_at": min(called, default=None),

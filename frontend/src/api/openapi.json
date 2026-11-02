@@ -1183,8 +1183,19 @@
         "type": "object"
       },
       "FirstJudgeOut": {
-        "description": "The first judge as the run recorded it.",
+        "description": "The first judge as the run recorded it, and its reply limit (the\ncode's; absent in a summary written before it was recorded).",
         "properties": {
+          "max_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
           "model": {
             "anyOf": [
               {

@@ -281,7 +281,7 @@ class GatewayJudge:
             system=system,
             user=user,
             temperature=self.settings.temperature,
-            max_tokens=JUDGE_MAX_TOKENS,
+            max_tokens=self.settings.max_tokens or JUDGE_MAX_TOKENS,
             api_base=self.settings.api_base,
             timeout_s=JUDGE_TIMEOUT_S,
             reasoning=self.settings.reasoning,

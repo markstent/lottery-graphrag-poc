@@ -174,10 +174,41 @@ def test_settings_come_from_the_second_judge_environment(
     monkeypatch.setenv("SECOND_JUDGE_REASONING", "off")
     monkeypatch.setenv("SECOND_JUDGE_API_BASE", "http://localhost:11434")
     monkeypatch.delenv("SECOND_JUDGE_TEMPERATURE", raising=False)
+    monkeypatch.delenv("SECOND_JUDGE_MAX_TOKENS", raising=False)
     monkeypatch.setenv("JUDGE_MODEL", "ollama/gemma4:31b")
+    # The reply limit defaults to the first judge's.
     assert sj.second_judge_settings() == JudgeSettings(
-        "litellm", MODEL, "muse", "http://localhost:11434", 0.0, "off"
+        "litellm", MODEL, "muse", "http://localhost:11434", 0.0, "off", JUDGE_MAX_TOKENS
     )
+    monkeypatch.setenv("SECOND_JUDGE_MAX_TOKENS", "2048")
+    assert sj.second_judge_settings().max_tokens == 2048
+
+
+@pytest.mark.parametrize("raw", ["0", "-5", "many"])
+def test_a_reply_limit_below_one_is_refused(monkeypatch: pytest.MonkeyPatch, raw: str) -> None:
+    monkeypatch.setenv("SECOND_JUDGE_PROVIDER", "litellm")
+    monkeypatch.setenv("SECOND_JUDGE_MAX_TOKENS", raw)
+    with pytest.raises(ValueError, match="SECOND_JUDGE_MAX_TOKENS"):
+        sj.second_judge_settings()
+
+
+def test_the_reply_limit_is_the_only_call_setting_that_changes(
+    run_dir: Path, out_root: Path
+) -> None:
+    """With a larger reply limit the judge sees the same prompt; the limit is
+    recorded in every line and in the summary beside the first judge's."""
+    plain, larger = FakeGateway(), FakeGateway()
+    sj.judge_run(run_dir, _settings(), out_root, plain)
+    tmp = out_root.with_name("second-judge-2048")
+    summary = json.loads(sj.judge_run(run_dir, _settings(max_tokens=2048), tmp, larger).read_text())
+    assert [(r.system, r.user) for r in plain.requests] == [
+        (r.system, r.user) for r in larger.requests
+    ]
+    assert {r.max_tokens for r in larger.requests} == {2048}
+    assert summary["second_judge"]["max_tokens"] == 2048
+    assert summary["first_judge"]["max_tokens"] == JUDGE_MAX_TOKENS
+    lines = (tmp / RUN_NAME / SLUG / sj.VERDICTS_FILE).read_text(encoding="utf-8").splitlines()
+    assert {json.loads(line)["max_tokens"] for line in lines} == {2048}
 
 
 def test_settings_refuse_a_judge_that_calls_no_model(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -266,6 +297,39 @@ def test_failures_are_recorded_by_kind(run_dir: Path, out_root: Path) -> None:
     assert (cut["scores"], cut["token_limit_reached"]) == (None, True)
 
 
+def test_a_rerun_retries_the_failures_and_keeps_the_scores(run_dir: Path, out_root: Path) -> None:
+    """A resumed pass skips the scored repeats and calls again for each
+    failure; the latest line of a repeat counts, so the summary is the final state."""
+    failing = {"n": 0}
+
+    def flaky(request: CompletionRequest) -> Completion:
+        failing["n"] += 1
+        if failing["n"] == 1:
+            raise GatewayError("connection refused")
+        if failing["n"] == 2:
+            raise EmptyCompletionError("Model gateway returned an empty answer")
+        if failing["n"] == 3:
+            return Completion("not json", 1.0, None, "stop", False)
+        return FakeGateway()(request)
+
+    first = json.loads(sj.judge_run(run_dir, _settings(), out_root, flaky).read_text())
+    assert first["counts"]["failures"] == 3
+    failed = {line["key"] for line in _lines(out_root) if line["scores"] is None}
+    retry = FakeGateway()
+    summary = json.loads(sj.judge_run(run_dir, _settings(), out_root, retry).read_text())
+    assert len(retry.requests) == 3
+    lines = _lines(out_root)
+    assert len(lines) == JUDGED + 3
+    latest = {line["key"]: line for line in lines}
+    assert all(latest[key]["scores"] is not None for key in failed)
+    counts = summary["counts"]
+    assert (counts["judged"], counts["failures"], counts["failure_kinds"]) == (JUDGED, 0, {})
+    # Every repeat now has scores: a third pass calls nothing.
+    again = FakeGateway()
+    sj.judge_run(run_dir, _settings(), out_root, again)
+    assert again.requests == []
+
+
 # -- resume and refusal to mix ----------------------------------------------------
 
 
@@ -289,7 +353,9 @@ def test_an_interrupted_pass_resumes_where_it_stopped(run_dir: Path, out_root: P
 
 
 @pytest.mark.parametrize(
-    "changes", [{"temperature": 0.2}, {"reasoning": "default"}], ids=["temperature", "reasoning"]
+    "changes",
+    [{"temperature": 0.2}, {"reasoning": "default"}, {"max_tokens": 2048}],
+    ids=["temperature", "reasoning", "reply limit"],
 )
 def test_one_directory_never_mixes_judge_settings(
     run_dir: Path, out_root: Path, changes: dict[str, Any]
@@ -483,6 +549,8 @@ def test_cli_runs_the_second_judge(
 # backend/ with
 #     uv run python -m tests.test_second_judge
 SECOND_JUDGE_FIXTURE = V03_FIXTURES / "results-v03-second-judge.json"
+# The reply limit the official second judge runs with, so the panel shows it.
+FIXTURE_SETTINGS = _settings(max_tokens=2048)
 FIXED = {"started_at": "2026-11-02T09:00:00+00:00", "finished_at": "2026-11-02T10:00:00+00:00"}
 
 
@@ -516,13 +584,13 @@ def second_judge_fixture_text(directory: Path) -> str:
     (published / "results.json").write_text(json.dumps(run.to_payload()), encoding="utf-8")
     (published / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
     root = second_judge_dir(runs)
-    _fix(sj.judge_run(published, _settings(), root, HashedGateway()))
+    _fix(sj.judge_run(published, FIXTURE_SETTINGS, root, HashedGateway()))
     labelled = _write(runs / RUN_NAME, _with_families(_payload(_small_entries())))
     sample = write_sample(labelled, directory / "labels" / "v0.2.0-sample")
     _write_labels(sample / "labels-controller.csv", _all(sample, "0"))
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(addendum, "current_banks", recorded_banks)
-        _fix(sj.judge_labels(sample, _settings(), root, labelled, HashedGateway()))
+        _fix(sj.judge_labels(sample, FIXTURE_SETTINGS, root, labelled, HashedGateway()))
     served = _second_judge(runs, V03_FIXTURE_RUN)
     return json.dumps(served.model_dump(mode="json"), indent=2) + "\n"
 

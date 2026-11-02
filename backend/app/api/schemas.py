@@ -385,11 +385,13 @@ class SecondJudgeModelOut(BaseModel):
 
 
 class FirstJudgeOut(BaseModel):
-    """The first judge as the run recorded it."""
+    """The first judge as the run recorded it, and its reply limit (the
+    code's; absent in a summary written before it was recorded)."""
 
     model: str | None
     model_family: str | None
     prompt_version: str | None
+    max_tokens: int | None = None
 
 
 class SecondJudgeCountsOut(BaseModel):
