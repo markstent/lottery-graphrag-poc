@@ -334,7 +334,8 @@ export function isThresholdAgreement(
   return 'n' in judged.overall
 }
 
-const agreementCells = ({ n, agreement, kappa }: AgreementCell) => [
+/** One agreement row's cells: pairs, agreement and the kappa, with the n rule. */
+export const agreementCells = ({ n, agreement, kappa }: AgreementCell) => [
   n.toLocaleString('en-GB'),
   n === 0 ? TOO_FEW_TO_SAY : percent(agreement),
   n < MIN_PAIRS_FOR_KAPPA

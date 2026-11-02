@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test'
 
-import { expectNoUnmockedRequests, mockApi } from './mock-api'
+import { expectNoUnmockedRequests, mockApi, mockSecondJudge } from './mock-api'
 
 /*
  * Reading a run on Results, against the mock API. Starting, following and
@@ -134,6 +134,60 @@ test('a run of method v0.3 names its method and shows recall, C against A, split
       .getByRole('region', { name: 'Groundedness' })
       .getByText(/Descriptive, not tested/),
   ).toBeVisible()
+})
+
+test('a run with a second judge shows it after the judge, labelled descriptive', async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await mockSecondJudge(page, 'ready')
+  await page.goto('/#/results?run=fixture-v03')
+  const panel = page.getByRole('region', { name: 'Second judge' })
+  await expect(
+    panel.getByText(/Descriptive, not part of the test/),
+  ).toBeVisible()
+  await expect(
+    panel.getByText('ollama/muse-glimmer:latest', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    panel.getByRole('rowheader', { name: 'Second judge, answered' }),
+  ).toBeVisible()
+  await expect(
+    panel.getByRole('table', { name: 'With the hand labels' }),
+  ).toBeVisible()
+  // It follows the judge's own panel.
+  const order = await page
+    .getByRole('region')
+    .evaluateAll((regions) => regions.map((r) => r.getAttribute('aria-label')))
+  expect(order.indexOf('Second judge')).toBe(order.indexOf('Judge') + 1)
+})
+
+test('a run without a second judge shows no second judge panel', async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await page.goto('/#/results?run=fixture-v03')
+  await expect(page.getByRole('region', { name: 'Judge' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Groundedness' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Second judge' })).toHaveCount(
+    0,
+  )
+})
+
+test('the second judge panel shows its loading and error states', async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await mockSecondJudge(page, 'pending')
+  await page.goto('/#/results?run=fixture-v03')
+  const panel = page.getByRole('region', { name: 'Second judge' })
+  await expect(panel.getByText('Loading Second judge')).toBeAttached()
+  await mockSecondJudge(page, 'error')
+  await page.reload()
+  await expect(
+    panel.getByRole('alert').getByText('The second judge is unavailable.'),
+  ).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Retry' })).toBeVisible()
 })
 
 test('a run of method v0.2 says it is of the old method, and has no groundedness', async ({

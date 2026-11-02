@@ -22,6 +22,7 @@ import { JudgePanel } from './judge-panel'
 import { QuestionsPanel } from './question-table'
 import { ReproPanel } from './repro-panel'
 import { RunPicker } from './run-picker'
+import { SecondJudgePanel } from './second-judge-panel'
 import { StartArea, StartButton } from './start-panel'
 import { StrataCharts } from './strata-charts'
 import { useBenchmarkJob } from './use-benchmark-job'
@@ -104,6 +105,7 @@ function RunView({ run }: { run: Run }) {
           >
             <JudgePanel summary={load.data.summary} badge={badge} />
           </Panel>
+          <SecondJudgePanel runId={run.run_id} badge={badge} />
           {grounded && (
             <Panel title="Groundedness" state="ready">
               <GroundednessPanel rows={grounded} badge={badge} />

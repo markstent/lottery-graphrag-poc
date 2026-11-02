@@ -29,6 +29,7 @@ import pilotSummary from './fixtures/results-pilot-summary.json' with { type: 'j
 import runsFixture from './fixtures/results-runs.json' with { type: 'json' }
 import smokeSummary from './fixtures/results-smoke-summary.json' with { type: 'json' }
 import v03Instances from './fixtures/results-v03-instances.json' with { type: 'json' }
+import secondJudge from './fixtures/results-v03-second-judge.json' with { type: 'json' }
 import v03Summary from './fixtures/results-v03-summary.json' with { type: 'json' }
 import world from './fixtures/world-shell.json' with { type: 'json' }
 import settingsFixture from '../src/test/settings.fixture.json' with { type: 'json' }
@@ -356,6 +357,20 @@ export async function mockApi(
       )
     if (path.startsWith(RUN_PREFIX) && path !== '/api/v1/benchmarks/jobs') {
       const [id, part] = path.slice(RUN_PREFIX.length).split('/')
+      // No run has a second judge unless a test calls mockSecondJudge.
+      if (part === 'second-judge')
+        return route.fulfill(
+          json(
+            {
+              error: {
+                error_code: 'NOT_FOUND',
+                message: 'This run has no second judge.',
+                retryable: false,
+              },
+            },
+            404,
+          ),
+        )
       const table = part === 'instances' ? RUN_INSTANCES : RUN_SUMMARIES
       if (part === undefined || part === 'instances') {
         const answer = table[decodeURIComponent(id)]
@@ -453,6 +468,19 @@ export const COMPLETED_JOB: JobState = {
  * after a reload; otherwise POST /benchmarks starts it. The request bodies
  * and the cancel calls are kept for the test to read.
  */
+/** What the second-judge route answers for every run: the fixture's second judge, a failing server, or never an answer. */
+export type SecondJudgeState = 'ready' | 'error' | 'pending'
+
+/** Answers GET /benchmarks/{run_id}/second-judge, after mockApi, with the v0.3 fixture's second judge (test values). */
+export async function mockSecondJudge(page: Page, state: SecondJudgeState) {
+  await page.route('**/api/v1/benchmarks/*/second-judge', async (route) => {
+    if (state === 'pending') return new Promise<void>(() => undefined)
+    if (state === 'error')
+      return route.fulfill(envelope('The second judge is unavailable.', 503))
+    return route.fulfill(json(secondJudge))
+  })
+}
+
 export async function mockJobs(
   page: Page,
   { script, attached = false }: { script: JobState[]; attached?: boolean },

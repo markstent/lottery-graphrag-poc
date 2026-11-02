@@ -15,6 +15,7 @@ import {
   expectNoUnmockedRequests,
   mockApi,
   mockJobs,
+  mockSecondJudge,
   RUNNING_JOB,
   type DataModelState,
   type LatestRun,
@@ -371,6 +372,20 @@ test.describe('Results', () => {
     await expect(grounded.getByText(/Descriptive, not tested/)).toBeVisible()
     await grounded.evaluate((el) => el.scrollIntoView({ block: 'end' }))
     await screenShot(page, 'results-v03-agreement-and-groundedness', 'keep')
+  })
+
+  test('results-v03-second-judge', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-v03', { runs: 'v03' })
+    await mockSecondJudge(page, 'ready')
+    await page.reload()
+    const panel = page.getByRole('region', { name: 'Second judge' })
+    await expect(
+      panel.getByRole('table', { name: 'With the hand labels' }),
+    ).toBeVisible()
+    await panel.scrollIntoViewIfNeeded()
+    await page.mouse.move(0, 0)
+    await settle(page)
+    await expectBaseline(panel, 'results-v03-second-judge.png')
   })
 
   test('results-quick-check', async ({ page }) => {
