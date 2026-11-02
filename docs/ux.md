@@ -1,6 +1,6 @@
 # UX
 
-This page describes the five screens as built, the shared visual language, interaction and accessibility rules, and presentation mode.
+This page describes the six screens as built, the shared visual language, interaction and accessibility rules, and presentation mode.
 The data behind each screen comes from the routes in [api.md](api.md).
 The design intent is section 7 of the [overhaul design](superpowers/specs/2026-10-18-overhaul-design.md).
 
@@ -40,7 +40,7 @@ Routes are hash routes, so every screen and tab is a link and a refresh reopens 
 The routes of the first version of the product (`#/lab`, `#/experiment`, `#/dictionary`, `#/semantic`, `#/scenarios`, `#/benchmark`, `#/evidence`) redirect to the screen that took their place, and query parameters survive the redirect.
 Overview is the default.
 
-- A left sidebar lists the five destinations, and collapses to icons.
+- A left sidebar lists the six destinations, and collapses to icons.
   Below 768 px wide it stays collapsed and the toggle is hidden, so the page keeps its width.
 - The screens are designed for a 16:9 desktop, and a phone 390 px wide still reads them without sideways page scroll.
   Below 768 px Live Lab stacks the canvas, the three approach panels (each capped in height and scrolling inside itself) and the answers in one column; Results stacks its paired panels.
@@ -278,6 +278,22 @@ All data is live from the API, and no truth ledger value is shown.
 The ontology tree is an ARIA tree, and label text on the maps keeps at least 12 px.
 
 Baselines: `data-model-warehouse-map`, `data-model-rows-filtered`, `data-model-record-drawer`, `data-model-loading`, `data-model-error`, `data-model-empty`, `data-model-graph-full`, `data-model-graph-label-tagged`, `data-model-graph-focused-node`, `data-model-graph-loading`, `data-model-graph-error`, `data-model-graph-empty`, `data-model-ontology-national-draw`, `data-model-ontology-filtered-by-market`, `data-model-ontology-loading`, `data-model-ontology-error`, `data-model-ontology-empty`, `data-model-scenarios`, `presentation-data-model`.
+
+### Architecture
+
+The tech stack as one diagram (D-109), in one panel, "How it fits together".
+It is a wide screen, as Live Lab and Data Model are.
+
+- Five bands, from the bottom: the data platform, marked as left unchanged (the warehouse of Parquet tables queried with DuckDB, and the Qdrant text index with its meaning and keyword search); the graph layer, added for B and C (the Python load job that reads the tables and writes nothing to them, and the Neo4j records and links); the ontology layer, added for C (the hand-written YAML file of business terms and the concepts it loads into the same Neo4j database); the backend and AI (FastAPI running A, B and C, the shared re-ordering model and the LiteLLM gateway to Ollama); and the web app.
+- A column on the right, "Scoring, kept apart": the answer key, the two AI judges and the run store, which no approach can see.
+- Grey solid arrows are built ahead of time; blue dashed arrows happen when a question is asked, and a legend says so.
+- The counts are the live ones of the active world: tables and documents from `GET /datasets`, passages from the dataset's index status, records, kinds and links from `GET /graph/stats` (concepts left out of the records), concepts and the ontology version from `GET /ontology`, and the answer model from `GET /models`.
+  The versions (Neo4j 5.26, Qdrant 1.14, React 19, Python 3.13) are those the repository pins.
+- The drawing is hidden from a screen reader; "The diagram in words", a disclosure under it, gives each band as a term and its content as a sentence with the same counts.
+- Loading draws a skeleton, an error names what could not be read with a retry where it is retryable, and with no active world the panel says there are no counts to show.
+- Text in the drawing is sized in its own units, as the charts' is, so presentation mode scales the whole picture.
+
+Baselines: `architecture`, `presentation-architecture`.
 
 ### Help
 

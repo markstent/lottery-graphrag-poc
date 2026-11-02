@@ -37,6 +37,10 @@ const DESTINATIONS = [
     'What the warehouse, the graph and the ontology look like, with live counts and sample rows',
   ],
   [
+    'Architecture',
+    'The tech stack: the data platform, the graph and ontology layers on top, and what each part runs on',
+  ],
+  [
     'Help',
     'How it works, every benchmark question with its answer key, glossary, how to run it',
   ],
@@ -59,7 +63,7 @@ afterEach(() => {
 })
 
 describe('shell navigation', () => {
-  it('has five links in order, each described by its purpose sentence', () => {
+  it('has six links in order, each described by its purpose sentence', () => {
     render(<App />)
     const links = within(sidebar()).getAllByRole('link')
     expect(links.map((link) => link.textContent?.trim())).toEqual(

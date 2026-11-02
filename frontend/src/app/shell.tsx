@@ -13,6 +13,7 @@ import {
   CircleX,
   Database,
   FlaskConical,
+  Layers,
   LayoutDashboard,
   type LucideIcon,
   PanelLeftClose,
@@ -42,6 +43,7 @@ const ICONS: Record<RouteName, LucideIcon> = {
   'live-lab': FlaskConical,
   results: ChartColumn,
   'data-model': Database,
+  architecture: Layers,
   help: BookOpen,
 }
 
@@ -289,7 +291,11 @@ function Header() {
   )
 }
 
-const WIDE_DESTINATIONS: readonly RouteName[] = ['live-lab', 'data-model']
+const WIDE_DESTINATIONS: readonly RouteName[] = [
+  'live-lab',
+  'data-model',
+  'architecture',
+]
 
 export function Shell({ children }: { children: ReactNode }) {
   const { presentation } = useSettings()

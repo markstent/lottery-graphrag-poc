@@ -100,7 +100,7 @@ Open `http://localhost:5173`.
 A fresh clone has no `data/` directory, so generate the world first.
 The demonstration targets, recovery steps and every setting are in [docs/operations.md](docs/operations.md).
 
-The product has five screens, and each is a link:
+The product has six screens, and each is a link:
 
 | Screen | Link | What it is for |
 |---|---|---|
@@ -108,6 +108,7 @@ The product has five screens, and each is a link:
 | Live Lab | `http://localhost:5173/#/live-lab` | Run one question through A, B and C and watch them work |
 | Results | `http://localhost:5173/#/results` | Published benchmark runs with their scores, questions and reproducibility record, and a form to start a run |
 | Data Model | `http://localhost:5173/#/data-model` | The warehouse, graph, ontology and scenarios, with live counts |
+| Architecture | `http://localhost:5173/#/architecture` | The tech stack as one diagram: the data platform, the graph and ontology layers on top, and what each part runs on |
 | Help | `http://localhost:5173/#/help` | How it works, every benchmark question with its answer key, the glossary and how to run it |
 
 Live Lab can replay a recorded run, which needs no model, or run a question live, which needs the services, the vector index, the graph and the answer model.

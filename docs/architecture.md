@@ -12,7 +12,7 @@ This page names those pages and does not repeat them.
 | Pipelines A, B and C | [retrieval.md](retrieval.md) |
 | The question bank, scoring and statistics | [evaluation.md](evaluation.md) |
 | Routes, events and errors | [api.md](api.md) |
-| The five screens | [ux.md](ux.md) |
+| The six screens | [ux.md](ux.md) |
 | Running, recovering and testing | [operations.md](operations.md) |
 
 ## Purpose
@@ -209,7 +209,7 @@ Its layers are kept apart:
 | Folder | Holds |
 |---|---|
 | `src/api/` | The typed client, the error type and the event-stream subscription. Types are generated from the committed OpenAPI file (D-042). |
-| `src/app/` | The shell, the hash router (five destinations), settings, presentation mode and the readiness poll |
+| `src/app/` | The shell, the hash router (six destinations), settings, presentation mode and the readiness poll |
 | `src/run/` | The run reducer, the replay clock, the recorded runs, the step lanes and the market coverage rule |
 | `src/graph/` | The graph view model, layout, canvas and the textual path list |
 | `src/results/` | Run, question and start-form logic for Results |

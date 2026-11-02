@@ -724,6 +724,14 @@ test.describe('Data Model', () => {
       })
 })
 
+test.describe('Architecture', () => {
+  test('architecture', async ({ page }) => {
+    await openScreen(page, '#/architecture')
+    await expect(page.getByText('The diagram in words')).toBeVisible()
+    await screenShot(page, 'architecture')
+  })
+})
+
 test.describe('Live Lab', () => {
   test.beforeEach(async ({ page }) => {
     await mockApi(page)
@@ -934,6 +942,7 @@ test.describe('presentation mode', () => {
     ['overview-fixture-official', '#/overview', 'Evidence found'],
     ['results', '#/results', 'Descriptive: not part of the tested family.'],
     ['data-model', '#/data-model', 'Incident management'],
+    ['architecture', '#/architecture', 'The diagram in words'],
     ['help-fixture-official', '#/help', 'Why this exists'],
   ] as const
   for (const [name, hash, text] of OTHERS)

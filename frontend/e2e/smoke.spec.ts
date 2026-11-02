@@ -29,6 +29,12 @@ const DESTINATIONS = [
       'What the warehouse, the graph and the ontology look like, with live counts and sample rows',
   },
   {
+    name: 'Architecture',
+    hash: '#/architecture',
+    purpose:
+      'The tech stack: the data platform, the graph and ontology layers on top, and what each part runs on',
+  },
+  {
     name: 'Help',
     hash: '#/help',
     purpose:
@@ -39,7 +45,7 @@ const DESTINATIONS = [
 // A call the mock does not answer is refused; it must not go unnoticed.
 test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
-test('the sidebar lists the five destinations in order', async ({ page }) => {
+test('the sidebar lists the six destinations in order', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('Semantic Context Lab')).toBeVisible()
   const links = page
