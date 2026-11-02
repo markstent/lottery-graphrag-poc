@@ -29,11 +29,16 @@ import { pipeline } from '../../design/pipelines'
 import { relationshipPhrase } from '../../design/relationships'
 import { Diagram } from './meta-graph'
 import {
+  count,
   metaGraphModel,
+  relationshipRows,
   type AllowList,
   type DiagramEdge,
   type DiagramNode,
+  type RelationshipRow,
 } from './model'
+import { MISSING } from '../../app/score-words'
+import { ScrollBox } from '../../components/scroll-box'
 
 type Node = Schemas['NodeOut']
 
@@ -43,8 +48,113 @@ export const NEIGHBOUR_LIMIT = 20
 const MODES: { id: AllowList; label: string }[] = [
   { id: 'B', label: pipeline('B').label },
   { id: 'C', label: pipeline('C').label },
-  { id: 'full', label: 'Full schema' },
+  { id: 'full', label: 'All links' },
 ]
+
+/** Links to documents, which every approach reaches by text search instead. */
+const DOCUMENT_LINKS = new Set(['HAS_CHUNK', 'REFERENCES'])
+
+/** The groups of the table: who may walk a kind of link, and why when not both. */
+const LINK_GROUPS: readonly {
+  id: string
+  title: string
+  why?: string
+  holds: (row: RelationshipRow) => boolean
+}[] = [
+  {
+    id: 'both',
+    title: 'Followed by Graph and Graph + Ontology',
+    holds: (row) => row.follower === 'both',
+  },
+  {
+    id: 'b',
+    title: 'Followed by Graph only',
+    holds: (row) => row.follower === 'B',
+  },
+  {
+    id: 'c',
+    title: 'Followed by Graph + Ontology only',
+    why: 'Ontology links.',
+    holds: (row) => row.follower === 'C',
+  },
+  {
+    id: 'documents',
+    title: 'Followed by neither',
+    why: 'Documents are found by text search, in all three approaches.',
+    holds: (row) => row.follower === 'neither' && DOCUMENT_LINKS.has(row.type),
+  },
+  {
+    id: 'focus',
+    title: 'Followed by neither',
+    why: 'Left out to keep the search focused: these are many, or lead to many records.',
+    holds: (row) => row.follower === 'neither' && !DOCUMENT_LINKS.has(row.type),
+  },
+]
+
+function RelationshipTable({ rows }: { rows: RelationshipRow[] }) {
+  return (
+    <section aria-labelledby="links-title" className="space-y-2">
+      <h2
+        id="links-title"
+        className="text-base font-semibold text-text-primary"
+      >
+        Kinds of link
+      </h2>
+      <p className="max-w-prose text-sm text-text-secondary">
+        A link joins two records, such as an incident and the game it affects.
+        Graph and Graph + Ontology search by moving along links. Some kinds are
+        left out on purpose.
+      </p>
+      <ScrollBox label="Kinds of link">
+        <table className="w-full max-w-4xl border-collapse text-sm text-text-primary">
+          <thead>
+            <tr className="border-b border-hairline text-left text-text-secondary">
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                What it links
+              </th>
+              <th scope="col" className="py-2 pl-3 text-right font-semibold">
+                How many
+              </th>
+            </tr>
+          </thead>
+          {LINK_GROUPS.map((group) => {
+            const members = rows.filter(group.holds)
+            if (members.length === 0) return null
+            return (
+              <tbody key={group.id}>
+                <tr>
+                  <th
+                    scope="colgroup"
+                    colSpan={2}
+                    className="pb-1 pt-4 text-left font-normal"
+                  >
+                    <span className="font-semibold">{group.title}</span>
+                    {group.why && (
+                      <span className="text-text-secondary">{` - ${group.why}`}</span>
+                    )}
+                  </th>
+                </tr>
+                {members.map((row) => (
+                  <tr key={row.type} className="border-b border-hairline">
+                    <th
+                      scope="row"
+                      className="py-1.5 pr-4 text-left font-normal"
+                    >
+                      {row.sentences.join('; ')}
+                    </th>
+                    <td className="tabular py-1.5 pl-3 text-right">
+                      {row.total === null ? MISSING : count(row.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            )
+          })}
+        </table>
+      </ScrollBox>
+    </section>
+  )
+}
 
 const backToKinds = (
   <a
@@ -163,7 +273,8 @@ function KindsMap({
     setDetailsOpen(true)
   }
   const model = metaGraphModel(schema, stats, mode, scale)
-  const { nodes, isolated, types, hasOutside } = model
+  const { nodes, isolated, hasOutside } = model
+  const rows = relationshipRows(schema, stats)
   const edges = model.edges.map((edge) => {
     const touches = edge.source === label || edge.target === label
     return {
@@ -179,9 +290,12 @@ function KindsMap({
     <div className="space-y-3">
       <div
         role="radiogroup"
-        aria-label="Relationships shown"
-        className="flex flex-wrap gap-2"
+        aria-labelledby="links-shown"
+        className="flex flex-wrap items-center gap-2"
       >
+        <span id="links-shown" className="text-sm text-text-secondary">
+          Show the links followed by
+        </span>
         {MODES.map((option) => (
           <label
             key={option.id}
@@ -199,11 +313,12 @@ function KindsMap({
       </div>
       <p className="text-sm text-text-secondary">
         {followed === null
-          ? `Every relationship in the schema, ${typeCount.size} types.${hasOutside ? ' Dashed grey: in neither approach.' : ''}`
-          : `${MODES.find((m) => m.id === mode)?.label} follows ${followed} of the ${typeCount.size} relationship types.`}
+          ? `All ${typeCount.size} kinds of link.${hasOutside ? ' Dashed grey lines: followed by neither approach.' : ''}`
+          : `${MODES.find((m) => m.id === mode)?.label} follows ${followed} of the ${typeCount.size} kinds of link.`}
       </p>
       <p className="text-sm text-text-secondary">
-        Choose a kind of record.
+        Each box is a kind of record, with how many there are; each line is a
+        kind of link. Choose a box for its details.
         {label !== null && (
           <button
             type="button"
@@ -224,11 +339,11 @@ function KindsMap({
       />
       {isolated.length > 0 && (
         <section
-          aria-label="Kinds with no relationships"
+          aria-label="Kinds with no links"
           className="flex flex-wrap items-center gap-2 text-sm text-text-secondary"
         >
           <h2 className="text-base font-semibold text-text-primary">
-            No relationships in the schema
+            Reference lists with no links
           </h2>
           {isolated.map((node) => (
             <button
@@ -244,21 +359,7 @@ function KindsMap({
           ))}
         </section>
       )}
-      <section aria-label="Relationships">
-        <h2 className="text-base font-semibold text-text-primary">
-          Relationships
-        </h2>
-        <ul className="mt-2 columns-3 gap-6 text-sm text-text-primary">
-          {types.map((line) => (
-            <li key={line.type} className="break-inside-avoid py-0.5">
-              {line.text}
-              {line.note && (
-                <span className="text-text-muted">{` (${line.note})`}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <RelationshipTable rows={rows} />
       <Details
         label={detailsOpen ? label : null}
         schema={schema}

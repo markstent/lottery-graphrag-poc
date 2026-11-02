@@ -267,7 +267,10 @@ Four tabs, each a link: Warehouse, Graph, Ontology and Scenarios (`#/data-model?
   A filter takes one column and one value, read as that column's own type.
   A row opens as a record in the evidence drawer, with "Follow into the graph" when it has a node.
 - **Graph.** Above the map, "Why the graph is built this way" (D-101): five plain points on why the graph sits on top of the tables, what it holds, why bulk detail stays in the tables, the search limits (depth and record cap, read from `GET /graph/schema`), and why B and C share one graph.
-  "Kinds of record": the labels as boxes sized by count, in three views (B's relationships, C's relationships, the full schema).
+  "Kinds of record": the labels as boxes sized by count ("N records"), in three views picked by "Show the links followed by": B · Graph, C · Graph + Ontology, All links.
+  One line says how many kinds of link the view shows and, for all links, that dashed grey lines are followed by neither approach; another says what a box and a line are.
+  Kinds with no links are listed apart as "Reference lists with no links".
+  Under the map, "Kinds of link" (D-101): one sentence on what a link is, then a table of every kind of link once, with what it joins in words ("incident affects game"; kinds that share a link and a target are merged, "game and market: each is an instance of business concept") and how many there are, grouped by who follows it: Graph and Graph + Ontology; Graph + Ontology only (ontology links); and neither, split into document links (found by text search in all three approaches) and links left out to keep the search focused.
   Choosing a kind shows its properties, its source table and a sample node.
   A node address (`?node=`) shows its properties and up to 20 neighbours.
   Labels that come from the ontology say "Built from the ontology: no sample row."

@@ -63,7 +63,7 @@ describe('DataModel', () => {
     stubApi(ROUTES)
     renderAt('#/data-model?tab=graph')
     expect(
-      await screen.findByRole('button', { name: 'game, 120 nodes' }),
+      await screen.findByRole('button', { name: 'game, 120 records' }),
     ).toBeVisible()
     expect(screen.getByRole('link', { name: 'Graph' })).toHaveAttribute(
       'aria-current',

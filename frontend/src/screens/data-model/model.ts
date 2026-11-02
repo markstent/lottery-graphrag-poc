@@ -74,13 +74,17 @@ export const count = (n: number) => n.toLocaleString('en-GB')
 const MIN_WIDTH = 150
 const MAX_WIDTH = 210
 
-/** One relationship type, once, with its count, for the list beside the map. */
-export interface RelationshipLine {
+/** Which approaches' search may walk a kind of link. */
+export type Follower = 'both' | 'B' | 'C' | 'neither'
+
+/** One kind of link, once, for the table under the map. */
+export interface RelationshipRow {
   type: string
-  /** "is an instance of concept: 124" */
-  text: string
-  /** What else a reader needs: a link between two records of one kind, or one neither approach follows. */
-  note?: string
+  /** Each pair of kinds it joins, as a sentence: "incident affects game". */
+  sentences: string[]
+  /** How many links of this kind the graph holds; null when not counted. */
+  total: number | null
+  follower: Follower
 }
 
 export interface MetaGraphModel {
@@ -89,8 +93,6 @@ export interface MetaGraphModel {
   /** The kinds with no relationship at all, which the drawing would only clutter. */
   isolated: DiagramNode[]
   edges: DiagramEdge[]
-  /** Each relationship type shown, once, with its count. */
-  types: RelationshipLine[]
   /** True when the map draws a line neither approach follows (dashed grey). */
   hasOutside: boolean
 }
@@ -128,7 +130,6 @@ export function metaGraphModel(
   }
 
   const edges: DiagramEdge[] = []
-  const types = new Map<string, RelationshipLine>()
   const connected = new Set<string>()
   for (const rel of schema.relationship_types) {
     const { hidden, look } = looks(rel.type)
@@ -146,21 +147,6 @@ export function metaGraphModel(
     }
     connected.add(rel.from_label)
     connected.add(rel.to_label)
-    const total = stats.relationships_by_type[rel.type]
-    const note =
-      look === 'outside'
-        ? 'followed by neither approach'
-        : rel.from_label === rel.to_label
-          ? `between two ${nodeLabel(rel.from_label)} records`
-          : undefined
-    types.set(rel.type, {
-      type: rel.type,
-      text:
-        total === undefined
-          ? relationshipPhrase(rel.type)
-          : `${relationshipPhrase(rel.type)}: ${count(total)}`,
-      note: types.get(rel.type)?.note ?? note,
-    })
     if (rel.from_label !== rel.to_label)
       edges.push({
         id: `${rel.type}:${rel.from_label}>${rel.to_label}`,
@@ -182,7 +168,7 @@ export function metaGraphModel(
     return {
       id: label,
       title: nodeLabel(label),
-      detail: plural(n, 'node'),
+      detail: plural(n, 'record'),
       width: Math.round((MIN_WIDTH + (MAX_WIDTH - MIN_WIDTH) * share) * scale),
       dimmed: !connected.has(label),
     }
@@ -191,7 +177,6 @@ export function metaGraphModel(
     nodes: sized.filter((n) => joined.has(n.id)),
     isolated: sized.filter((n) => !joined.has(n.id)),
     edges,
-    types: [...types.values()],
     hasOutside: edges.some((e) => !e.hidden && e.look === 'outside'),
   }
 }
@@ -201,3 +186,82 @@ export const labelOf = (
   concept: Schemas['ConceptOut'],
   language = 'en',
 ): string => concept.labels[language] ?? concept.labels.en ?? concept.concept_id
+
+/**
+ * "incident affects game". A phrase that already names the target is not
+ * followed by it again: "affects market" stays, and "has mechanic" before
+ * "game mechanic" reads "has game mechanic".
+ */
+export function linkSentence(type: string, from: string, to: string): string {
+  return `${nodeLabel(from)} ${linkTail(type, to)}`
+}
+
+/** What a link says of its source: "affects game", "has game mechanic". */
+function linkTail(type: string, to: string): string {
+  const phrase = relationshipPhrase(type)
+  const target = nodeLabel(to)
+  if (phrase.endsWith(` ${target}`)) return phrase
+  const words = phrase.split(' ')
+  const last = target.split(' ').at(-1)
+  const verb =
+    words.length > 1 && words.at(-1) === last
+      ? words.slice(0, -1).join(' ')
+      : phrase
+  return `${verb} ${target}`
+}
+
+/** "a, b and c". */
+const listed = (items: readonly string[]): string =>
+  items.length < 2
+    ? items.join('')
+    : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
+
+const FOLLOWER_ORDER: readonly Follower[] = ['both', 'B', 'C', 'neither']
+
+/**
+ * Every kind of link in the schema, once, with the pairs it joins, its count
+ * and which approaches follow it: those both follow first, then the
+ * ontology's, then those neither follows, each in schema order.
+ */
+export function relationshipRows(
+  schema: Schemas['GraphSchema'],
+  stats: Schemas['GraphStats'],
+): RelationshipRow[] {
+  const b = new Set(schema.allow_list.B ?? [])
+  const c = new Set(schema.allow_list.C ?? [])
+  const rows = new Map<string, RelationshipRow>()
+  // The kinds a link starts from, by link type and the kind it ends at.
+  const sources = new Map<string, Map<string, string[]>>()
+  for (const rel of schema.relationship_types) {
+    const byTarget = sources.get(rel.type) ?? new Map<string, string[]>()
+    const from = byTarget.get(rel.to_label) ?? []
+    if (!from.includes(rel.from_label)) from.push(rel.from_label)
+    byTarget.set(rel.to_label, from)
+    sources.set(rel.type, byTarget)
+    if (rows.has(rel.type)) continue
+    rows.set(rel.type, {
+      type: rel.type,
+      sentences: [],
+      total: stats.relationships_by_type[rel.type] ?? null,
+      follower: b.has(rel.type)
+        ? c.has(rel.type)
+          ? 'both'
+          : 'B'
+        : c.has(rel.type)
+          ? 'C'
+          : 'neither',
+    })
+  }
+  for (const [type, byTarget] of sources) {
+    const row = rows.get(type)!
+    for (const [to, from] of byTarget)
+      row.sentences.push(
+        from.length === 1
+          ? linkSentence(type, from[0], to)
+          : `${listed(from.map(nodeLabel))}: each ${linkTail(type, to)}`,
+      )
+  }
+  return FOLLOWER_ORDER.flatMap((follower) =>
+    [...rows.values()].filter((row) => row.follower === follower),
+  )
+}

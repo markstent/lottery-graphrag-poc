@@ -39,34 +39,74 @@ describe('Graph tab map', () => {
       'Loading Kinds of record',
     )
     expect(
-      await screen.findByRole('button', { name: 'game, 120 nodes' }),
+      await screen.findByRole('button', { name: 'game, 120 records' }),
     ).toBeVisible()
     expect(
-      screen.getByRole('button', { name: 'market, 4 nodes' }),
+      screen.getByRole('button', { name: 'market, 4 records' }),
     ).toBeVisible()
   })
 
-  it('shows the whole schema first, each relationship once in a list with its count', async () => {
+  it('shows every link first, and a table of each kind of link: what it joins, how many, who follows it and why', async () => {
     stubApi(ROUTES)
     renderTab()
-    await screen.findByRole('button', { name: 'game, 120 nodes' })
-    expect(screen.getByRole('radio', { name: 'Full schema' })).toBeChecked()
-    const list = within(
-      screen.getByRole('region', { name: 'Relationships' }),
-    ).getAllByRole('listitem')
-    expect(list.map((item) => item.textContent)).toEqual([
-      'affects: 34',
-      'is available in: 310',
-      'is an instance of concept: 124',
-      'is similar to: 60 (between two game records)',
+    await screen.findByRole('button', { name: 'game, 120 records' })
+    expect(screen.getByRole('radio', { name: 'All links' })).toBeChecked()
+    const table = within(screen.getByRole('region', { name: 'Kinds of link' }))
+    expect(
+      table.getByText(
+        /A link joins two records, such as an incident and the game it affects\./,
+      ),
+    ).toBeVisible()
+    expect(
+      table.getAllByRole('columnheader').map((cell) => cell.textContent),
+    ).toEqual([
+      'What it links',
+      'How many',
+      'Followed by Graph and Graph + Ontology',
+      'Followed by Graph + Ontology only - Ontology links.',
     ])
-    expect(screen.getByText('incident affects game')).toBeInTheDocument()
+    expect(
+      table
+        .getAllByRole('rowheader')
+        .map((cell) => [cell.textContent, cell.nextSibling?.textContent]),
+    ).toEqual([
+      ['incident affects game', '34'],
+      ['game is available in market', '310'],
+      ['game and market: each is an instance of business concept', '124'],
+      ['game is similar to game', '60'],
+    ])
+    expect(
+      table.getByRole('rowheader', { name: 'game is similar to game' }),
+    ).toBeVisible()
+  })
+
+  it('says why a kind of link is followed by neither approach', async () => {
+    stubApi({
+      ...ROUTES,
+      '/api/v1/graph/schema': {
+        ...SCHEMA,
+        allow_list: { B: ['AFFECTS'], C: ['AFFECTS'] },
+      },
+    })
+    renderTab()
+    const table = within(
+      await screen.findByRole('region', { name: 'Kinds of link' }),
+    )
+    expect(
+      table
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent)
+        .slice(2),
+    ).toEqual([
+      'Followed by Graph and Graph + Ontology',
+      'Followed by neither - Left out to keep the search focused: these are many, or lead to many records.',
+    ])
   })
 
   it('says dashed lines are followed by neither approach only when the map draws any', async () => {
     stubApi(ROUTES)
     renderTab()
-    await screen.findByRole('button', { name: 'game, 120 nodes' })
+    await screen.findByRole('button', { name: 'game, 120 records' })
     expect(screen.queryByText(/Dashed grey/)).toBeNull()
     await userEvent.click(screen.getByRole('radio', { name: 'B · Graph' }))
     expect(screen.queryByText(/Dashed grey/)).toBeNull()
@@ -82,43 +122,40 @@ describe('Graph tab map', () => {
     })
     renderTab()
     expect(
-      await screen.findByText(/Dashed grey: in neither approach\./),
+      await screen.findByText(
+        /Dashed grey lines: followed by neither approach\./,
+      ),
     ).toBeVisible()
   })
 
   it('narrows to what Graph follows, and to what Graph + Ontology follows', async () => {
     stubApi(ROUTES)
     renderTab()
-    await screen.findByRole('button', { name: 'game, 120 nodes' })
-    const types = () =>
-      within(screen.getByRole('region', { name: 'Relationships' }))
-        .getAllByRole('listitem')
-        .map((item) => item.textContent)
-
+    await screen.findByRole('button', { name: 'game, 120 records' })
     await userEvent.click(screen.getByRole('radio', { name: 'B · Graph' }))
     expect(
-      screen.getByText('B · Graph follows 2 of the 4 relationship types.'),
+      screen.getByText('B · Graph follows 2 of the 4 kinds of link.'),
     ).toBeVisible()
-    expect(types()).toEqual(['affects: 34', 'is available in: 310'])
 
     await userEvent.click(
       screen.getByRole('radio', { name: 'C · Graph + Ontology' }),
     )
     expect(
       screen.getByText(
-        'C · Graph + Ontology follows 4 of the 4 relationship types.',
+        'C · Graph + Ontology follows 4 of the 4 kinds of link.',
       ),
     ).toBeVisible()
-    expect(types()).toHaveLength(4)
   })
 
   it('shows the properties and a sample node of a kind of record when it is chosen', async () => {
     stubApi(ROUTES)
     renderTab()
-    expect(await screen.findByText('Choose a kind of record.')).toBeVisible()
+    expect(
+      await screen.findByText(/Choose a box for its details\./),
+    ).toBeVisible()
     expect(screen.queryByRole('dialog')).toBeNull()
     await userEvent.click(
-      await screen.findByRole('button', { name: 'game, 120 nodes' }),
+      await screen.findByRole('button', { name: 'game, 120 records' }),
     )
     const details = await screen.findByRole('region', { name: 'Details' })
     expect(await within(details).findByText('Albion Millions 1')).toBeVisible()
@@ -147,10 +184,10 @@ describe('Graph tab map', () => {
     })
     renderTab()
     const apart = await screen.findByRole('region', {
-      name: 'Kinds with no relationships',
+      name: 'Kinds with no links',
     })
     await userEvent.click(
-      within(apart).getByRole('button', { name: 'currency, 3 nodes' }),
+      within(apart).getByRole('button', { name: 'currency, 3 records' }),
     )
     expect(
       await screen.findByRole('dialog', { name: 'currency' }),
@@ -160,7 +197,7 @@ describe('Graph tab map', () => {
   it('tags only the relationships of the chosen kind, and keeps it chosen when the details close', async () => {
     stubApi(ROUTES)
     const { container } = renderTab()
-    await screen.findByRole('button', { name: 'game, 120 nodes' })
+    await screen.findByRole('button', { name: 'game, 120 records' })
     const tagged = () =>
       [...container.querySelectorAll('g[data-edge-id]')]
         .filter((g) => g.querySelector('text'))
@@ -168,12 +205,12 @@ describe('Graph tab map', () => {
     expect(tagged()).toEqual([])
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'game, 120 nodes' }),
+      screen.getByRole('button', { name: 'game, 120 records' }),
     )
     await userEvent.click(await screen.findByRole('button', { name: 'Close' }))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(
-      screen.getByRole('button', { name: 'game, 120 nodes' }),
+      screen.getByRole('button', { name: 'game, 120 records' }),
     ).toHaveAttribute('aria-pressed', 'true')
     expect(tagged()).toEqual([
       'AFFECTS:Incident>Game',
@@ -191,7 +228,9 @@ describe('Graph tab map', () => {
     stubApi(ROUTES)
     renderTab()
     await userEvent.click(
-      await screen.findByRole('button', { name: 'business concept, 30 nodes' }),
+      await screen.findByRole('button', {
+        name: 'business concept, 30 records',
+      }),
     )
     expect(
       await screen.findByText('Built from the ontology: no sample row.'),
@@ -206,7 +245,7 @@ describe('Graph tab map', () => {
     })
     renderTab()
     await userEvent.click(
-      await screen.findByRole('button', { name: 'game, 120 nodes' }),
+      await screen.findByRole('button', { name: 'game, 120 records' }),
     )
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'The graph is not answering.',
@@ -235,7 +274,7 @@ describe('Graph tab map', () => {
     fail = false
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(
-      await screen.findByRole('button', { name: 'game, 120 nodes' }),
+      await screen.findByRole('button', { name: 'game, 120 records' }),
     ).toBeVisible()
   })
 })
