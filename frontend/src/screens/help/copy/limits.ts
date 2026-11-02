@@ -185,6 +185,16 @@ export const REGISTER: readonly RegisterRow[] = [
     decision: 'D-032, D-087; docs/evaluation.md, "Statistics"',
   },
   {
+    id: 'scorer-reads-text',
+    item: 'The answer score reads words, not meaning',
+    plain:
+      'The answer score checks which names an answer contains. It accepts "United Kingdom" but not "UK", and it gives credit for naming the right thing even in an answer that says it does not know. In the official run v0.3.0 this moved some scores up and some down, and most of text search\'s lead on planted-pattern answers comes from it (chapter 13).',
+    reason:
+      'Fixed checks keep the answer score deterministic and the same for A, B and C (D-030, scorer 2.2.1). A review of 2026-11-02 found that the L18 check for the unaffected market has "United Kingdom" as the only alias of MKT_UK, so B in three worlds and C in one answered correctly with "UK" and scored 0.5; and that token and set checks read the whole answer, so "unknown" answers that name expected items score (A on L19; B and C on L20 and L09). With "UK" accepted, a check made after the run, L18 moves from 0.75 to 1.00 for B and to 0.92 for C, and the planted-pattern answer gap of A over B from 8.0 to 4.9 points.',
+    cost: "Answer scores on some questions are off in either direction, so a small answer difference between approaches can be the scorer's; the judge's marks sit beside them as a check.",
+    decision: 'Not changed after the result; disclosed (2026-11-02)',
+  },
+  {
     id: 'bank-authors',
     item: 'Questions written by the builders',
     plain:

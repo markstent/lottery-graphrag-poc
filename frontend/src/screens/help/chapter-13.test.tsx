@@ -11,9 +11,11 @@ import {
   OUTCOME_TABLE,
   QUESTION_FIGURES,
   QUESTION_TABLE,
+  twoDecimals,
   type KindId,
   type PerApproach,
 } from './copy/lessons'
+import { REGISTER } from './copy/limits'
 import { HelpDataContext, type HelpData } from './help-data'
 
 afterEach(cleanup)
@@ -279,11 +281,11 @@ describe('chapter 13, what the results teach', () => {
     ] as const)
       expect(Math.round(KIND_FIGURES.H3.answer[id] * 72)).toBe(right)
     expect(plainText).toContain(
-      'Text search answered all 72 correctly, the graph 71 and the graph with the ontology 68.',
+      'Text search answered all 72 correctly, the graph 71 and the graph with the ontology 68,',
     )
     // The one tested result, as summary.json states it.
     expect(plainText).toContain('22.1 points more')
-    expect(plainText).toContain('from 10.4 to 34.1 points')
+    expect(plainText).toContain('is 10.4 to 34.1 points')
     // Evidence retrieved, answer wrong.
     expect(plainText).toContain(
       `In ${FAILURE_CLASSES.A[1]} answers from text search, ${FAILURE_CLASSES.B[1]} from the graph and ${FAILURE_CLASSES.C[1]} from the graph with the ontology`,
@@ -304,7 +306,7 @@ describe('chapter 13, what the results teach', () => {
   it('writes Plain for a newcomer: no codes, no banned word, and no em dash at either level', () => {
     expect(plainText).not.toMatch(CODE)
     expect(plainText).not.toMatch(BANNED)
-    expect(allText).not.toContain('—')
+    expect(allText).not.toContain(String.fromCharCode(0x2014))
     expect(allText).not.toMatch(/Atlas/)
   })
 
@@ -334,5 +336,40 @@ describe('chapter 13, what the results teach', () => {
       screen.getByRole('table', { name: 'Means for each question' }),
     ).getByRole('row', { name: /^L11/ })
     expect(l11).toHaveTextContent('0.00 / 0.00 / 0.76')
+  })
+
+  it('rounds the Technical cells as Plain rounds its percentages', () => {
+    // toFixed rounds the binary float, so 0.745 would read 0.74 against 75% at Plain.
+    expect(twoDecimals(0.745)).toBe('0.75')
+    expect(twoDecimals(0.185)).toBe('0.19')
+    for (const q of QUESTION_FIGURES)
+      for (const values of [q.evidence, q.answer])
+        if (values)
+          for (const id of APPROACHES)
+            expect(
+              Number(twoDecimals(values[id])) * 100,
+              `${q.id} ${id}`,
+            ).toBeCloseTo(Number(whole(values[id]).slice(0, -1)), 6)
+    show('technical', [QUESTION_TABLE])
+    const row = (id: string) =>
+      within(
+        screen.getByRole('table', { name: 'Means for each question' }),
+      ).getByRole('row', { name: new RegExp(`^${id}`) })
+    // The two cells the review found mis-rounded, and the Plain figures they match.
+    expect(row('L13')).toHaveTextContent('0.75 / 0.54 / 1.00')
+    expect(row('L09')).toHaveTextContent('0.28 / 0.19 / 0.19')
+    expect(plainText).toContain('28 percent against 19 percent')
+  })
+
+  it('discloses the scorer issue at both levels and lists it in the register', () => {
+    expect(plainText).toContain('known limit in chapter 9')
+    expect(plainText).toContain('accepts "United Kingdom" but not "UK"')
+    expect(plainText).toContain('falls from 8.0 to 4.9 points')
+    expect(allText).toContain('L18 answers read 0.92 / 1.00 / 0.92')
+    const row = REGISTER.find(({ id }) => id === 'scorer-reads-text')!
+    expect(row.decision).toBe(
+      'Not changed after the result; disclosed (2026-11-02)',
+    )
+    expect(row.plain).not.toMatch(BANNED)
   })
 })
