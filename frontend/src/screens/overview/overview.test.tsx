@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { DATASETS, failure, json, MODELS, stubApi } from '../../test/api-stub'
@@ -99,7 +100,7 @@ describe('Overview', () => {
     expect(within(b).queryByText('0%')).toBeNull()
     expect(
       screen.getByText(
-        /^All three answered the same 150 questions about a made-up lottery company\. Evidence found is the share of needed records found\.$/,
+        /^All three answered the same 150 questions about a made-up lottery company\. Each gets two scores:$/,
       ),
     ).toBeVisible()
     expect(
@@ -161,6 +162,105 @@ describe('Overview', () => {
       summary: { ...OFFICIAL.summary, comparisons },
     })
 
+  it('draws evidence found by kind of question, marks the clear result and the untested kind, and switches to the answer score', async () => {
+    const kind = (a: number, b: number, c: number) => ({
+      evidence_recall: {
+        A: cell(a, 72, 72),
+        B: cell(b, 72, 72),
+        C: cell(c, 72, 72),
+      },
+      answer: { A: cell(a, 72, 72), B: cell(b, 72, 72), C: cell(c, 72, 72) },
+    })
+    stubApi(
+      base({
+        ...OFFICIAL,
+        method_version: '0.3.0',
+        summary: {
+          ...OFFICIAL.summary,
+          metrics: {
+            ...OFFICIAL.summary.metrics,
+            H1: kind(0.43, 0.65, 0.64),
+            H2_name: kind(0.78, 0.62, 1),
+            H3: kind(0.9, 0.9, 0.9),
+          },
+          comparisons: [
+            comparison({
+              stratum: 'H1',
+              comparison: 'B_vs_A',
+              mean: 0.22,
+              low: 0.1,
+              high: 0.34,
+              p_holm: 0.03,
+            }),
+          ],
+        },
+      }),
+    )
+    render(<Overview />)
+    const chart = await screen.findByRole('img', {
+      name: 'Evidence found by kind of question',
+    })
+    expect(
+      within(chart).getByText('Several linked records (clear result)'),
+    ).toBeInTheDocument()
+    expect(
+      within(chart).getByText('Local-language names (not tested)'),
+    ).toBeInTheDocument()
+    expect(within(chart).queryByText('Single facts')).toBeNull()
+    expect(within(chart).getByText('65')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Answer score' }))
+    const answers = await screen.findByRole('img', {
+      name: 'Answer score by kind of question',
+    })
+    expect(within(answers).getByText('Single facts')).toBeInTheDocument()
+    expect(
+      within(answers).getByText('Several linked records'),
+    ).toBeInTheDocument()
+  })
+
+  it('leaves the chart out for a run with no figures by kind of question', async () => {
+    stubApi(base(OFFICIAL))
+    render(<Overview />)
+    await screen.findByTestId('tile-A')
+    expect(
+      screen.queryByRole('img', { name: /by kind of question/ }),
+    ).toBeNull()
+    expect(screen.queryByText('No results to show.')).toBeNull()
+  })
+
+  it('says two pointers about the same kind of question in one sentence', async () => {
+    const untested = (over: Record<string, unknown>) =>
+      comparison({
+        stratum: 'H2_name',
+        clusters: 12,
+        p: null,
+        p_holm: null,
+        in_family: false,
+        reason: 'not_in_family',
+        ...over,
+      })
+    stubApi(
+      withComparisons([
+        untested({
+          comparison: 'B_vs_A',
+          mean: -0.167,
+          low: -0.21,
+          high: -0.12,
+        }),
+        untested({ comparison: 'C_vs_B', mean: 0.384, low: 0.3, high: 0.46 }),
+      ]),
+    )
+    render(<Overview />)
+    expect(
+      await screen.findByText(
+        (_, el) =>
+          el?.tagName === 'LI' &&
+          el.textContent ===
+            'A pointer, not a result. On questions that use a country\'s own name for something, Text search found about 17 more of every 100 needed facts than Graph, and Graph + Ontology found about 38 more of every 100 needed facts than Graph. For example, Austria calls its national draw "Zahlenziehung". We did not test this group, so treat it as a lead to follow up.',
+      ),
+    ).toBeVisible()
+  })
+
   it('states each clear result, the rest of the tests and each hint in plain words, with a link to Results', async () => {
     stubApi(
       withComparisons([
@@ -195,9 +295,9 @@ describe('Overview', () => {
       (li) => li.textContent,
     )
     expect(items).toEqual([
-      'Clear result. On questions that need several linked records, Graph scored 22 points higher than Text search at finding needed evidence.',
-      'Of the other 3 comparisons we tested, 2 leaned one way but not enough to count, and 1 showed no clear difference.',
-      'Not tested, so only a hint. On questions that name something in a local language, Text search scored 17 points higher than Graph at finding needed evidence.',
+      'Graph did better on questions that need several linked records. For example: "which other countries had incidents on the same platform version as this one?" Graph found about 22 more of every 100 needed facts than Text search. This passed our statistical test, so it is unlikely to be luck.',
+      'Nothing else passed the test. We tested 3 other comparisons. 2 pointed one way, but the difference could be luck; 1 showed no difference at all.',
+      'A pointer, not a result. On questions that use a country\'s own name for something, Text search found about 17 more of every 100 needed facts than Graph. For example, Austria calls its national draw "Zahlenziehung". We did not test this group, so treat it as a lead to follow up.',
     ])
     expect(
       within(panel).getByRole('link', { name: 'Results' }),
@@ -221,7 +321,7 @@ describe('Overview', () => {
         (_, el) =>
           el?.tagName === 'LI' &&
           el.textContent ===
-            'No clear result. Of the 2 comparisons we tested, 1 leaned one way but not enough to count, and 1 showed no clear difference.',
+            'No difference passed the test. We tested 2 comparisons. 1 pointed one way, but the difference could be luck; 1 showed no difference at all.',
       ),
     ).toBeVisible()
   })
@@ -231,7 +331,7 @@ describe('Overview', () => {
     render(<Overview />)
     await screen.findByTestId('tile-A')
     expect(screen.queryByText(/comparisons? we tested/)).toBeNull()
-    expect(screen.queryByText(/Clear result/)).toBeNull()
+    expect(screen.queryByText(/passed our statistical test/)).toBeNull()
   })
 
   it('shows the plain no-run state, with a link to Results, on a 404', async () => {

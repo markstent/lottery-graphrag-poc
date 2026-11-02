@@ -11,6 +11,8 @@ import { percent } from '../../app/score-words'
 import { MODEL_LABELS } from '../../app/settings-labels'
 import { useLoad, type Load } from '../../app/use-load'
 import { plural } from '../../charts/scale'
+import { GroupedBars } from '../../charts/grouped-bars'
+import { useState } from 'react'
 import { Panel, type PanelState } from '../../components/panel'
 import { pipeline, PIPELINES, type PipelineId } from '../../design/pipelines'
 import { Screen } from '../screen'
@@ -19,6 +21,8 @@ import {
   loadLatest,
   verdictFrom,
   type Finding,
+  type KindMetric,
+  type Verdict,
   type TileFigures,
 } from '../../app/latest-run'
 
@@ -42,23 +46,41 @@ async function loadConfiguration(signal: AbortSignal) {
 /** What the big number on a tile is called. */
 const TILE_LABEL = 'Evidence found'
 
-/** What the big number means, said once above the tiles. */
-const TILE_MEANING = 'Evidence found is the share of needed records found.'
+/** The two scores, said once above the tiles. */
+const SCORE_KEY: readonly [string, string][] = [
+  [
+    'Evidence found:',
+    'of the facts needed to answer a question, the share this approach handed to the AI.',
+  ],
+  ['Answer score:', "how close the AI's answer came to the correct answer."],
+]
 
 /** The kinds of question in everyday words, for the sentences on this screen. */
 const KIND_WORDS: Record<string, string> = {
   H1: 'questions that need several linked records',
-  H2: 'questions that match terms across markets',
-  H2_name: 'questions that name something in a local language',
+  H2: 'questions that match terms across countries',
+  H2_name: "questions that use a country's own name for something",
   H3: 'single-fact questions',
   H5: 'questions about hidden patterns',
   overall: 'all questions',
 }
 
-/** How a difference on each metric reads, after "scored N points higher than X". */
-const METRIC_WORDS: Record<string, string> = {
-  evidence_recall: 'at finding needed evidence',
-  answer: 'on answers',
+/** The same kinds as a short name, for the chart. */
+const KIND_NAMES: Record<string, string> = {
+  H1: 'Several linked records',
+  H2: 'Matching terms across countries',
+  H2_name: 'Local-language names',
+  H3: 'Single facts',
+  H5: 'Hidden patterns',
+}
+
+/** One example of each kind, so a reader can picture it. */
+const KIND_EXAMPLES: Record<string, string> = {
+  H1: 'For example: "which other countries had incidents on the same platform version as this one?"',
+  H2: 'For example: "which games in other countries are the same kind of game as this one?"',
+  H2_name: 'For example, Austria calls its national draw "Zahlenziehung".',
+  H3: 'For example: "what is the ticket price of this game?"',
+  H5: 'For example: "which countries were hit by the same platform fault?"',
 }
 
 /** The pipelines a tested pair compares, first minus second. */
@@ -67,22 +89,85 @@ const PAIRS: Record<Finding['comparison'], [PipelineId, PipelineId]> = {
   C_vs_B: ['C', 'B'],
 }
 
-/** "On X, Graph scored 22 points higher than Text search at finding needed evidence." */
-function findingSentence({ stratum, comparison, metric, mean }: Finding) {
+/** "Graph found about 22 more of every 100 needed facts than Text search." */
+function difference({ comparison, metric, mean }: Finding) {
   const [first, second] = PAIRS[comparison]
   const [higher, lower] = mean < 0 ? [second, first] : [first, second]
   const points = Math.round(Math.abs(mean) * 100)
-  return `On ${KIND_WORDS[stratum] ?? stratum}, ${pipeline(higher).name} scored ${points} points higher than ${pipeline(lower).name} ${METRIC_WORDS[metric] ?? ''}.`
+  const what =
+    metric === 'answer'
+      ? `scored about ${points} points higher on answers than`
+      : `found about ${points} more of every 100 needed facts than`
+  return {
+    higher: pipeline(higher).name,
+    text: `${pipeline(higher).name} ${what} ${pipeline(lower).name}.`,
+  }
 }
 
 /** What the tested comparisons not stated as clear showed. */
 function restSentence(count: number, leaning: number, afterClear: boolean) {
-  const those = `${afterClear ? 'other ' : ''}${plural(count, 'comparison')}`
-  if (leaning === 0) return `The ${those} we tested showed no clear difference.`
-  return `Of the ${those} we tested, ${leaning} leaned one way but not enough to count, and ${count - leaning} showed no clear difference.`
+  const tested = `We tested ${plural(count, `${afterClear ? 'other ' : ''}comparison`)}.`
+  if (leaning === 0) return `${tested} None showed a difference.`
+  return `${tested} ${leaning} pointed one way, but the difference could be luck; ${count - leaning} showed no difference at all.`
 }
 
 const findingKey = (f: Finding) => `${f.stratum}-${f.comparison}-${f.metric}`
+
+function KindChart({
+  kinds,
+  clear,
+}: {
+  kinds: Verdict & { kind: 'official' }
+  clear: Finding[]
+}) {
+  const [metric, setMetric] = useState<KindMetric>('evidence_recall')
+  const marks = (stratum: string) =>
+    clear.some((f) => f.stratum === stratum && f.metric === metric)
+      ? ' (clear result)'
+      : stratum === 'H2_name'
+        ? ' (not tested)'
+        : ''
+  const groups = kinds.kinds[metric].map(({ stratum, values }) => ({
+    key: stratum,
+    label: `${KIND_NAMES[stratum] ?? stratum}${marks(stratum)}`,
+    values: Object.fromEntries(
+      Object.entries(values).map(([id, v]) => [
+        id,
+        v === null ? null : v * 100,
+      ]),
+    ),
+  }))
+  const name = metric === 'answer' ? 'Answer score' : TILE_LABEL
+  return (
+    <div className="space-y-3">
+      <div
+        role="group"
+        aria-label="Score shown"
+        className="inline-flex overflow-hidden rounded-chip border border-border"
+      >
+        {(['evidence_recall', 'answer'] as const).map((id) => (
+          <button
+            key={id}
+            type="button"
+            aria-pressed={metric === id}
+            onClick={() => setMetric(id)}
+            className={`px-4 py-1 text-sm ${metric === id ? 'bg-surface-raised font-semibold text-text-primary' : 'text-text-secondary hover:bg-surface-raised'}`}
+          >
+            {id === 'answer' ? 'Answer score' : TILE_LABEL}
+          </button>
+        ))}
+      </div>
+      <GroupedBars
+        title={`${name} by kind of question`}
+        groups={groups}
+        unit="%"
+        domain={[0, 100]}
+        decimals={0}
+        valueLabels
+      />
+    </div>
+  )
+}
 
 function Tile({ figures }: { figures: TileFigures }) {
   const { label: name, tint, strong } = pipeline(figures.pipeline)
@@ -129,23 +214,43 @@ function LatestRun() {
       {verdict?.kind === 'official' && (
         <div className="space-y-4">
           <p className="max-w-prose text-base text-text-primary">
-            {`All three answered the same ${verdict.questions > 0 ? `${plural(verdict.questions, 'question')}` : 'questions'} about a made-up lottery company. ${TILE_MEANING}`}
+            {`All three answered the same ${verdict.questions > 0 ? `${plural(verdict.questions, 'question')}` : 'questions'} about a made-up lottery company. Each gets two scores:`}
           </p>
+          <dl className="max-w-prose space-y-1 text-base text-text-primary">
+            {SCORE_KEY.map(([term, meaning]) => (
+              <div key={term}>
+                <dt className="inline font-semibold">{term}</dt>{' '}
+                <dd className="inline">{meaning}</dd>
+              </div>
+            ))}
+          </dl>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {verdict.tiles.map((figures) => (
               <Tile key={figures.pipeline} figures={figures} />
             ))}
           </div>
+          {verdict.kinds.evidence_recall.length > 0 && (
+            <KindChart kinds={verdict} clear={clear} />
+          )}
           {(findings.length > 0 || verdict.tested > 0) && (
-            <ul className="max-w-prose list-disc space-y-2 pl-5 text-base text-text-primary">
-              {clear.map((finding) => (
-                <li key={findingKey(finding)}>
-                  <strong>Clear result.</strong> {findingSentence(finding)}
-                </li>
-              ))}
+            <ul className="max-w-prose list-disc space-y-3 pl-5 text-base text-text-primary">
+              {clear.map((finding) => {
+                const { higher, text } = difference(finding)
+                return (
+                  <li key={findingKey(finding)}>
+                    <strong>{`${higher} did better on ${KIND_WORDS[finding.stratum] ?? finding.stratum}.`}</strong>{' '}
+                    {KIND_EXAMPLES[finding.stratum]} {text} This passed our
+                    statistical test, so it is unlikely to be luck.
+                  </li>
+                )
+              })}
               {verdict.tested > 0 && (
                 <li>
-                  {clear.length === 0 && <strong>No clear result. </strong>}
+                  <strong>
+                    {clear.length === 0
+                      ? 'No difference passed the test.'
+                      : 'Nothing else passed the test.'}
+                  </strong>{' '}
                   {restSentence(
                     verdict.tested - clear.length,
                     verdict.disagreements,
@@ -153,10 +258,15 @@ function LatestRun() {
                   )}
                 </li>
               )}
-              {hints.map((finding) => (
-                <li key={findingKey(finding)}>
-                  <strong>Not tested, so only a hint.</strong>{' '}
-                  {findingSentence(finding)}
+              {[...new Set(hints.map((f) => f.stratum))].map((stratum) => (
+                <li key={`hint-${stratum}`}>
+                  <strong>A pointer, not a result.</strong>{' '}
+                  {`On ${KIND_WORDS[stratum] ?? stratum}, ${hints
+                    .filter((f) => f.stratum === stratum)
+                    .map((f) => difference(f).text.replace(/\.$/, ''))
+                    .join(', and ')}.`}{' '}
+                  {KIND_EXAMPLES[stratum]} We did not test this group, so treat
+                  it as a lead to follow up.
                 </li>
               ))}
             </ul>

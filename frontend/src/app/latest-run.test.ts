@@ -65,6 +65,7 @@ describe('verdictFrom', () => {
       findings: [],
       tested: 0,
       disagreements: 0,
+      kinds: { evidence_recall: [], answer: [] },
     })
   })
 
@@ -95,6 +96,7 @@ describe('verdictFrom', () => {
       findings: [],
       tested: 0,
       disagreements: 0,
+      kinds: { evidence_recall: [], answer: [] },
     })
   })
 
@@ -223,5 +225,47 @@ describe('findingsFrom', () => {
       untested({ comparison: 'C_vs_A' }),
     ]
     expect(findingsFrom(cells)).toEqual([])
+  })
+})
+
+describe('the kinds of question for the Overview chart', () => {
+  it('reads each kind in order, single facts on the answer score only, and skips a kind the run has not got', () => {
+    const v03 = run('official', null, FULL)
+    const kind = (recall: number, answer: number) => ({
+      evidence_recall: {
+        A: cell(recall, 10, 10),
+        B: cell(null, 0, 0),
+        C: cell(recall, 10, 10),
+      },
+      answer: {
+        A: cell(answer, 10, 10),
+        B: cell(answer, 10, 10),
+        C: cell(answer, 10, 10),
+      },
+    })
+    const withKinds = {
+      ...v03,
+      summary: {
+        ...v03.summary,
+        metrics: {
+          ...(v03.summary.metrics as object),
+          H1: kind(0.4, 0.5),
+          H3: kind(0.9, 1),
+          H5: kind(0.3, 0.2),
+        },
+      },
+    } as unknown as Schemas['BenchmarkSummary']
+    const verdict = verdictFrom(withKinds)
+    if (verdict.kind !== 'official')
+      throw new Error('expected an official verdict')
+    expect(verdict.kinds.evidence_recall).toEqual([
+      { stratum: 'H1', values: { A: 0.4, B: null, C: 0.4 } },
+      { stratum: 'H5', values: { A: 0.3, B: null, C: 0.3 } },
+    ])
+    expect(verdict.kinds.answer.map((k) => k.stratum)).toEqual([
+      'H1',
+      'H3',
+      'H5',
+    ])
   })
 })

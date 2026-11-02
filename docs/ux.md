@@ -76,12 +76,14 @@ Baselines: `shell-overview`, `shell-live-lab`, `shell-results`, `shell-data-mode
 Purpose: what we found, how the three approaches work, and questions to try.
 Overview is written for a newcomer and reads at first glance (D-098); the full figures are on Results.
 
-1. "What we found": one sentence says how many questions all three answered, from the summary's instance count, and that "Evidence found" is the share of needed records found.
+1. "What we found": one sentence says how many questions all three answered, from the summary's instance count, and that each gets two scores; a two-line key follows (D-106): "Evidence found: of the facts needed to answer a question, the share this approach handed to the AI." and "Answer score: how close the AI's answer came to the correct answer."
    Then one tile for each approach in its own tint, headed by its letter and name, with evidence recall over the questions with claims as a whole percentage, labelled "Evidence found", and its answer score as a percentage under it.
-   Then a short list, read from the summary's `comparisons`:
-   each tested comparison whose Holm-adjusted p is below 0.05, as "Clear result." and a sentence naming the kind of question in everyday words, which approach scored higher and by how many whole points;
-   one line on the other tested comparisons, counting those whose 95 percent interval leaves out zero as "leaned one way but not enough to count" and the rest as "no clear difference" (with no clear result, the line starts "No clear result.");
-   and each untested sub-group of a tested pair, on evidence recall, over at least six groups, whose interval leaves out zero, as "Not tested, so only a hint." and the same kind of sentence.
+   Then a grouped bar chart, "Evidence found by kind of question" (D-106), with a two-button switch to "Answer score by kind of question": one group per kind of question in plain names (Several linked records, Matching terms across countries, Local-language names, Single facts on the answer score only, Hidden patterns), three bars in the approaches' colours, each bar's whole-percentage value printed above it, a legend, hover details and a table view; a group whose kind has a tested comparison that passes on the metric shown is labelled "(clear result)" and the untested local-language kind "(not tested)".
+   The values are the summary's per-kind means; nothing is computed.
+   Then a short list, read from the summary's `comparisons`, in plain sentences:
+   each tested comparison whose Holm-adjusted p is below 0.05, as "{Approach} did better on {kind of question}." with one example question of that kind, the difference as "about N more of every 100 needed facts" (or "about N points higher on answers"), and "This passed our statistical test, so it is unlikely to be luck.";
+   one line, "Nothing else passed the test." (or "No difference passed the test."), counting the other tested comparisons, those whose 95 percent interval leaves out zero as "pointed one way, but the difference could be luck" and the rest as "showed no difference at all";
+   and, once per kind, the untested sub-group cells of a tested pair, on evidence recall, over at least six groups, whose interval leaves out zero, as "A pointer, not a result." with their differences joined in one sentence, an example, and "We did not test this group, so treat it as a lead to follow up."
    A last line says every figure and margin of error is on Results, and links there, and another links to "what the results teach" (Help, chapter 13).
    The panel names no method and says nothing of how the method came about (D-104).
    The run's headline sentences are not shown here; Results shows them verbatim.

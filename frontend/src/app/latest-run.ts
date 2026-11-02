@@ -55,10 +55,53 @@ export type Verdict =
       tested: number
       /** Tested cells whose interval leaves out zero but whose test does not pass. */
       disagreements: number
+      /** Each kind of question's mean per pipeline, for the chart, by metric. */
+      kinds: Record<KindMetric, KindFigures[]>
     }
   | { kind: 'none'; otherRun: string | null }
 
 const PIPELINE_IDS: readonly PipelineId[] = ['A', 'B', 'C']
+
+/** The measures the Overview chart can show. */
+export type KindMetric = 'evidence_recall' | 'answer'
+
+/** One kind of question's mean per pipeline on one measure, as the summary records it. */
+export interface KindFigures {
+  stratum: string
+  values: Partial<Record<PipelineId, number | null>>
+}
+
+/**
+ * The kinds of question the chart shows, in order. Single facts have the
+ * answer score only: three of their 72 instances kept a claim, too few for
+ * an evidence bar beside the others.
+ */
+const KIND_ORDER: Record<KindMetric, readonly string[]> = {
+  evidence_recall: ['H1', 'H2', 'H2_name', 'H5'],
+  answer: ['H1', 'H2', 'H2_name', 'H3', 'H5'],
+}
+
+function kindFigures(
+  summary: Record<string, unknown>,
+  metric: KindMetric,
+): KindFigures[] {
+  const metrics = isRecord(summary.metrics) ? summary.metrics : {}
+  return KIND_ORDER[metric].flatMap((stratum) => {
+    const stratumMetrics = metrics[stratum]
+    const scores = isRecord(stratumMetrics) ? stratumMetrics[metric] : undefined
+    if (!isRecord(scores)) return []
+    const values = Object.fromEntries(
+      PIPELINE_IDS.map((id) => {
+        const cell = scores[id]
+        return [
+          id,
+          isRecord(cell) && typeof cell.mean === 'number' ? cell.mean : null,
+        ]
+      }),
+    )
+    return [{ stratum, values }]
+  })
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -162,6 +205,10 @@ export function verdictFrom(
     findings: findingsFrom(cells),
     tested: cells.filter((cell) => cell.in_family).length,
     disagreements: intervalTestDisagreements(cells),
+    kinds: {
+      evidence_recall: kindFigures(latest.summary, 'evidence_recall'),
+      answer: kindFigures(latest.summary, 'answer'),
+    },
   }
 }
 

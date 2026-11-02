@@ -22,9 +22,11 @@
  * 2026-11-02 (D-098) for an Overview a newcomer can read at first glance,
  * then to 1,800 the same day (D-101) for the Data Model panels on why the
  * graph and the ontology are built as they are, and the Graph tab's table
- * of kinds of link, which the owner asked to be made understandable.
+ * of kinds of link, which the owner asked to be made understandable; and
+ * to 1,900 the same day (D-106) for the Overview's score key, plain
+ * findings and chart of evidence found by kind of question.
  */
-export const OUTSIDE_HELP_WORD_CAP = 1800
+export const OUTSIDE_HELP_WORD_CAP = 1900
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

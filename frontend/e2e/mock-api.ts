@@ -69,6 +69,20 @@ const FIXTURE_SCORE = 0.4
  * Test values, not results: a whole-bank official run, so Overview draws its
  * tiles. The three scores are equal so no screenshot can suggest a result.
  */
+/** The same test values for each kind of question, so the Overview chart draws its groups. */
+const FIXTURE_KIND = {
+  evidence_recall: {
+    A: cell(FIXTURE_SCORE, BANK_INSTANCES),
+    B: cell(FIXTURE_SCORE, BANK_INSTANCES),
+    C: cell(FIXTURE_SCORE, BANK_INSTANCES),
+  },
+  answer: {
+    A: cell(FIXTURE_SCORE, BANK_INSTANCES),
+    B: cell(FIXTURE_SCORE, BANK_INSTANCES),
+    C: cell(FIXTURE_SCORE, BANK_INSTANCES),
+  },
+}
+
 const FIXTURE_OFFICIAL = {
   run_id: 'fixture-official',
   run_kind: 'official',
@@ -94,6 +108,9 @@ const FIXTURE_OFFICIAL = {
           C: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
         },
       },
+      H1: FIXTURE_KIND,
+      H2: FIXTURE_KIND,
+      H5: FIXTURE_KIND,
     },
     // One tested comparison with no difference, so the plain summary line draws.
     comparisons: [
