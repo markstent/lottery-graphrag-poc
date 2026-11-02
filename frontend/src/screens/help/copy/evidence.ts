@@ -10,13 +10,13 @@ import type { ChapterCopy } from '../chapters'
 
 export const evidence: ChapterCopy = {
   plain: [
-    'The answer model does not read everything the searches find. What it is given must fit a budget of {context_budget_tokens} tokens, the same for all three approaches. A token is a small piece of text, counted here as four characters. There is no other limit on the number of pieces.',
-    'The passages and record texts are put in order by the re-ordering model, which reads the question beside each one and scores how well it answers it. A takes them in that order until the budget is full. When two passages say nearly the same thing, only the first is taken.',
-    "In B and C there is a second list: the records the graph reached, in the graph's own order. The starting points come first, then the records of a kind the question asks about, such as incidents when it asks about incidents, then the rest. Within each group, a record that is closer to the starting point, linked more strongly and more like the question comes first. Each record's place in this order is its graph rank. The re-ordering model does not score graph records.",
-    'The two lists take turns: one passage or record text, then one graph record, then a passage again, until the budget is full. A record already in the evidence is not taken again, and when one list runs out the other carries on alone.',
+    'The answer model does not read everything the searches find. What it is given must fit a budget of {context_budget_tokens} tokens, the same for all three approaches. A token is a small piece of text; here four characters count as one token. There is no other limit on the number of pieces.',
+    'A re-ordering model puts the passages and record texts in order. It reads the question beside each one and scores how well that one answers it. A takes them in that order until the budget is full. When two passages say nearly the same thing, only the first is taken.',
+    "B and C also have a second list: the records the graph reached, in the graph's own order. The starting points come first. Next come the records of a kind the question asks about, such as incidents when it asks about incidents. Then come the rest. Within each group, a record comes earlier when it is closer to the starting point, more strongly linked and more like the question. A record's place in this order is its graph rank. The re-ordering model does not score graph records.",
+    'The two lists take turns: one passage or record text, then one graph record, then a passage again, until the budget is full. A record already in the evidence is not taken again. When one list runs out, the other carries on alone.',
     { kind: 'diagram', name: 'evidence' },
-    'Why one budget: a model can read only so much at once, and more text is slower and can bury the fact that matters. The budget is the same for all three approaches, so a difference in their answers comes from what each found, not from how much each could show. Taking turns, one for one, gives the graph room with no proportion that had to be tuned.',
-    'This is method v0.3, in use since 2026-10-27. The official run v0.2.0 used the old method: the answer model saw at most 12 pieces, and one re-ordering model put the passages and the graph records in one list. A check on 2026-10-25 found that it scored graph records low, so about half of the facts the graph found did not reach the answer model. The method was changed after that result was seen (chapter 9), and the official run v0.3.0 used the method of this chapter (chapter 1).',
+    'Why one budget. A model can read only so much at once, and more text is slower and can bury the fact that matters. The budget is the same for all three approaches. So a difference in their answers comes from what each found, not from how much each could show. Taking turns one for one gives the graph room, with no split between the two lists that anyone had to tune.',
+    'This is method v0.3, in use since 2026-10-27. A method is the set of rules for choosing the evidence and scoring the answers. The official run v0.2.0 used the old method: the answer model saw at most 12 pieces, and one re-ordering model put the passages and the graph records in one list. A check on 2026-10-25 found that this model scored graph records low. So about half of the facts the graph found did not reach the answer model. The method was changed after that result was seen (chapter 9). The official run v0.3.0 used the method of this chapter (chapter 1).',
   ],
   technical: [
     'The settings in this chapter, now and in the newest official run:',
@@ -63,6 +63,7 @@ export const evidence: ChapterCopy = {
   terms: [
     'Answer model',
     'Graph rank',
+    'Method',
     'Passage',
     'Re-ordering model',
     'Record text',

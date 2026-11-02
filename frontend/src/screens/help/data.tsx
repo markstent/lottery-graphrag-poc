@@ -4,12 +4,12 @@ const TOUR = [
   {
     tab: 'warehouse',
     name: 'Warehouse',
-    line: 'The tables of players, tickets, games, incidents and documents, with their row counts.',
+    line: 'The tables of players, tickets, games, incidents and documents, with how many records each holds.',
   },
   {
     tab: 'graph',
     name: 'Graph',
-    line: 'The same records as nodes joined by relationships, each pointing back to its source row.',
+    line: 'The same records as points joined by links, each pointing back to the row it came from.',
   },
   {
     tab: 'ontology',

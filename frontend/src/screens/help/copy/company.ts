@@ -2,10 +2,12 @@ import type { ChapterCopy } from '../chapters'
 
 export const company: ChapterCopy = {
   plain: [
-    'The company is made up: a lottery operator in four markets, the United Kingdom, Greece, Austria and the Czech Republic. No player, customer, employee or document in it exists.',
-    'It holds what such an operator would hold: players and their tickets, games and draws, retailers, campaigns, incidents and support cases, the release history of its apps and platforms, and documents such as release notes, incident reports and game rules. Documents are in English, Greek, German and Czech.',
-    'Each market works like a separate company on its own systems. It has its own codes and its own names for the same kinds of thing, and nothing in the data says that two markets mean the same thing. That is the gap the ontology fills.',
-    'Why made up: the questions need answers that are known in advance, and a story can be planted on purpose only in data we generate (chapter 3). Made-up data also holds nothing private, and it can be built again, identically, from the same settings.',
+    'The company is made up: a lottery operator in four markets, the United Kingdom, Greece, Austria and the Czech Republic. A market is one country the company works in. No player, customer, employee or document in it exists.',
+    'It holds what such an operator would hold: players and their tickets, games and draws, shops that sell tickets, campaigns, incidents and support cases. It also holds the release history of its apps and platforms, and documents such as release notes, incident reports and game rules. Documents are in English, Greek, German and Czech.',
+    'Each market works like a separate company on its own systems. It has its own codes and its own names for the same kinds of thing. Nothing in the data says that two markets mean the same thing. That is the gap the ontology, the shared dictionary, fills.',
+    'Each row in a table, such as one game or one incident, is a record. A record has a reference code, such as INC_022 for an incident.',
+    'Why made up. The questions need answers that are known in advance. A story can be planted on purpose only in data we generate (chapter 3). Made-up data also holds nothing private. And it can be built again, identically, from the same settings.',
+    'The system can build the company more than once, with different random draws. Each copy is called a world. Every world has the same markets and the same kinds of records, but the details differ. The same settings build the same world again.',
     'Data Model shows the data in four tabs:',
     { kind: 'component', name: 'dataTour' },
   ],

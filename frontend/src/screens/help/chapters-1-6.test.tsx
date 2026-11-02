@@ -183,9 +183,11 @@ describe('chapters 1 to 6', () => {
   })
 
   it('names the path line as the one way a piece is shown differently', () => {
-    const [first] = CHAPTER_COPY.approaches.plain
-    expect(first).toContain(
-      'how a piece is shown are the same for all three, apart from the line that says how the graph reached a record (chapter 6)',
+    const plain = CHAPTER_COPY.approaches.plain
+      .filter((block) => typeof block === 'string')
+      .join(' ')
+    expect(plain).toContain(
+      'and so is how a piece of evidence is shown. The one exception is a line that says how the graph reached a record (chapter 6)',
     )
   })
 })
