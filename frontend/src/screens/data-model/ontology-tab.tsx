@@ -11,6 +11,7 @@ import { plainName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
+import { OntologyWhy } from './why'
 import { MARKETS } from '../../run/coverage'
 import { ConceptCard } from './concept-card'
 import { ConceptTree } from './concept-tree'
@@ -162,21 +163,29 @@ export function OntologyTab({ params }: { params: URLSearchParams }) {
   const concept =
     concepts.find((c) => c.concept_id === params.get('concept')) ?? concepts[0]
   const kinds = concepts.filter((c) => c.parent_id === concept.concept_id)
+  const bindings = concepts.reduce(
+    (sum, c) =>
+      sum + Object.values(c.binding_counts).reduce((a, b) => a + b, 0),
+    0,
+  )
   return (
-    <div className="grid grid-cols-[18rem_minmax(0,1fr)_minmax(0,22rem)] items-start gap-4">
-      <Panel title="Concepts" state="ready">
-        <ConceptTree
-          concepts={concepts}
-          selected={concept.concept_id}
-          onSelect={(id) => goTo(id)}
+    <div className="space-y-4">
+      <OntologyWhy concepts={concepts.length} bindings={bindings} />
+      <div className="grid grid-cols-[18rem_minmax(0,1fr)_minmax(0,22rem)] items-start gap-4">
+        <Panel title="Concepts" state="ready">
+          <ConceptTree
+            concepts={concepts}
+            selected={concept.concept_id}
+            onSelect={(id) => goTo(id)}
+          />
+        </Panel>
+        <ConceptCard
+          concept={concept}
+          parent={concepts.find((c) => c.concept_id === concept.parent_id)}
+          kinds={kinds}
         />
-      </Panel>
-      <ConceptCard
-        concept={concept}
-        parent={concepts.find((c) => c.concept_id === concept.parent_id)}
-        kinds={kinds}
-      />
-      <BoundTerms concept={concept} market={params.get('market')} />
+        <BoundTerms concept={concept} market={params.get('market')} />
+      </div>
     </div>
   )
 }

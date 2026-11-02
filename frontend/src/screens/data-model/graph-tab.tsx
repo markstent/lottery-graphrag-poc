@@ -23,6 +23,7 @@ import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Drawer } from '../../components/drawer'
 import { Panel } from '../../components/panel'
+import { GraphWhy } from './why'
 import { nodeLabel } from '../../design/node-labels'
 import { pipeline } from '../../design/pipelines'
 import { relationshipPhrase } from '../../design/relationships'
@@ -374,7 +375,14 @@ function Kinds({ scale }: { scale: number }) {
       />
     )
   return (
-    <KindsMap schema={load.data.schema} stats={load.data.stats} scale={scale} />
+    <div className="space-y-4">
+      <GraphWhy caps={load.data.schema.caps} />
+      <KindsMap
+        schema={load.data.schema}
+        stats={load.data.stats}
+        scale={scale}
+      />
+    </div>
   )
 }
 

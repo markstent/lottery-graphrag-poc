@@ -226,6 +226,8 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
    A v0.3 run splits each group into answers that answered and answers that abstained ("All questions, answered", "All questions, abstained" and so on), with "Pairs judged", "Agreement" and "Weighted kappa", and one line explains the levels.
    A v0.2 run keeps its one row per group with "Kappa".
    Every row shows its number of judged answers and the exact agreement; a kappa is shown only from 10 judged answers, and below that, or with none judged, the cell reads "Too few to say" (owner, 2026-10-27).
+   **Second judge**, only for a run that has one (D-100): "Descriptive, not part of the test. Added after the result (owner, 2026-11-02).", the two judge models, then three tables with "Pairs judged", "Agreement" and "Weighted kappa": "With the answer score" (each judge, answered and abstained), "With each other" (answered and abstained) and, when the second judge has a label check, "With the hand labels" (each judge as the label check names it).
+   A run without one shows no panel; the panel has a loading skeleton and an error state with Retry.
    **Groundedness**, for a v0.3 run only: "Descriptive, not tested.", with each kind and approach's share of its answers' ids, dates and numbers "Held by cited blocks" and "In no shown block", and the questions behind them.
 8. **Reproducibility.** Every field of the run's record with its API name, and a raw JSON link.
 
@@ -264,11 +266,13 @@ Four tabs, each a link: Warehouse, Graph, Ontology and Scenarios (`#/data-model?
   Choosing a table (`?table=`) shows its source system, rows and columns, the tables it links to, and its sample rows, 50 to a page.
   A filter takes one column and one value, read as that column's own type.
   A row opens as a record in the evidence drawer, with "Follow into the graph" when it has a node.
-- **Graph.** "Kinds of record": the labels as boxes sized by count, in three views (B's relationships, C's relationships, the full schema).
+- **Graph.** Above the map, "Why the graph is built this way" (D-101): five plain points on why the graph sits on top of the tables, what it holds, why bulk detail stays in the tables, the search limits (depth and record cap, read from `GET /graph/schema`), and why B and C share one graph.
+  "Kinds of record": the labels as boxes sized by count, in three views (B's relationships, C's relationships, the full schema).
   Choosing a kind shows its properties, its source table and a sample node.
   A node address (`?node=`) shows its properties and up to 20 neighbours.
   Labels that come from the ontology say "Built from the ontology: no sample row."
-- **Ontology.** A tree of concepts, a concept card (`?concept=`) with its definition, its relationships and its local terms by market, and a market filter.
+- **Ontology.** Above the tree, "Why the ontology is built this way" (D-101): five plain points on why local names need a shared dictionary, what it holds (the concept count and the count of local codes bound to concepts, read from `GET /ontology`), how it is kept apart from the questions and planted stories, and why only C uses it.
+  A tree of concepts, a concept card (`?concept=`) with its definition, its relationships and its local terms by market, and a market filter.
   The count of shared codes is always shown.
 - **Scenarios.** A card for each planted scenario with strength, noise level, rows planted and a link to its story in Help.
   A scenario not in the active world says "Not planted in this world".

@@ -19,9 +19,11 @@
  * two methods: the method badge, evidence recall, the split judge agreement,
  * the groundedness table, the graph order in Live Lab and the start form's
  * reason for not starting the official run. The owner raised it to 1,450 on
- * 2026-11-02 (D-098) for an Overview a newcomer can read at first glance.
+ * 2026-11-02 (D-098) for an Overview a newcomer can read at first glance,
+ * and to 1,700 the same day (D-101) for the Data Model panels on why the
+ * graph and the ontology are built as they are.
  */
-export const OUTSIDE_HELP_WORD_CAP = 1450
+export const OUTSIDE_HELP_WORD_CAP = 1700
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length
