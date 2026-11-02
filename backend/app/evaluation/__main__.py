@@ -11,8 +11,9 @@ bank page. ``dry-run-questions`` prints the four-question dry run's questions;
 ``diagnose-selection`` counts, with no answer model, what the selection keeps;
 ``run`` runs a smoke, dev or official benchmark over one or more
 world seeds, ``sweep`` runs the multi-hop depth sweep and ``compare`` pairs
-two official runs of different generation models (H7). All are
-evaluator-only (ADR-008).
+two official runs of different generation models (H7). ``second-judge``
+re-judges a stored run's answers, or the labelled sample's, with a second
+judge model, beside the run (D-100). All are evaluator-only (ADR-008).
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from collections import Counter
 from pathlib import Path
 
 from app.config import REPO_ROOT
-from app.evaluation import addendum, diagnostics, labelling, official
+from app.evaluation import addendum, diagnostics, labelling, official, second_judge
 from app.evaluation.bank import BANK, NAME_ANCHORED, STRATA, LogicalQuestion
 from app.evaluation.checks import TokenCheck
 from app.evaluation.grounding import (
@@ -145,6 +146,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Sample directory (default data/evaluation/labels/v0.2.0-sample).",
     )
+    second = commands.add_parser(
+        "second-judge",
+        help=(
+            "Re-judge a stored run's answers, or the hand-labelled sample's, with the "
+            "SECOND_JUDGE_* model into data/evaluation/second-judge (D-100); resumes."
+        ),
+    )
+    which = second.add_mutually_exclusive_group(required=True)
+    which.add_argument("--run", help="Run id under data/evaluation/runs.")
+    which.add_argument(
+        "--labels", help="Labelled sample under data/evaluation/labels, e.g. v0.2.0-sample."
+    )
     return parser
 
 
@@ -216,6 +229,8 @@ def _dispatch(args: argparse.Namespace) -> int:
         except ValueError as error:
             raise SystemExit(str(error)) from None
         return 0
+    if args.command == "second-judge":
+        return _second_judge(args.run, args.labels)
     if args.command == "compare":
         comparison = official.compare_runs(args.small, args.large)
         out = args.out or official.comparison_dir(official.run_id("compare"))
@@ -242,6 +257,28 @@ def _dispatch(args: argparse.Namespace) -> int:
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(render_bank_doc(bank), encoding="utf-8")
     print(f"wrote {args.out}")
+    return 0
+
+
+def _second_judge(run: str | None, labels: str | None) -> int:
+    """Run the second judge over a run or the labelled sample; a refusal is a plain exit."""
+
+    def progress(done: int, total: int) -> None:
+        if done % 25 == 0 or done == total:
+            print(f"judged {done} of {total}", flush=True)
+
+    try:
+        settings = second_judge.second_judge_settings()
+        if run is not None:
+            path = second_judge.judge_run(official.run_dir(run), settings, on_progress=progress)
+        else:
+            assert labels is not None
+            path = second_judge.judge_labels(
+                labelling.LABELS_ROOT / labels, settings, on_progress=progress
+            )
+    except ValueError as error:
+        raise SystemExit(str(error)) from None
+    print(f"wrote {path}")
     return 0
 
 

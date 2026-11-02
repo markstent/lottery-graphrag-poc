@@ -242,7 +242,7 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
         "headlines": (
             [FIXED_HEADLINES[run.kind]] if run.kind in FIXED_HEADLINES else _headlines(comparisons)
         ),
-        "judge_agreement": _judge_agreement(results, pipelines),
+        "judge_agreement": judge_agreement(results, pipelines),
         "failures": _failures(results, pipelines),
         "selection": run.selection.to_payload(),
         "reproducibility": reproducibility,
@@ -462,7 +462,7 @@ def _headlines(comparisons: Sequence[_Comparison]) -> list[str]:
     return lines
 
 
-def _judge_agreement(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> dict[str, Any]:
+def judge_agreement(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> dict[str, Any]:
     """Three-level agreement of the judge with the answer score, split by
     whether the answer abstained, overall and per pipeline."""
 

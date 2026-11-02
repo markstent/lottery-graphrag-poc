@@ -1,0 +1,526 @@
+{
+  "run_id": "fixture-v03",
+  "run": {
+    "schema_version": 1,
+    "second_judge": {
+      "model": "ollama/muse-glimmer:latest",
+      "model_family": "muse",
+      "reasoning": "off",
+      "temperature": 0.0,
+      "max_tokens": 300
+    },
+    "judge_prompt_version": "1.2.0",
+    "judge_prompt_hash": "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643",
+    "first_judge": {
+      "model": "fake-judge-v1",
+      "model_family": "fake",
+      "prompt_version": "1.0.0"
+    },
+    "generation_model": "fake-gen",
+    "started_at": "2026-11-02T09:00:00+00:00",
+    "finished_at": "2026-11-02T10:00:00+00:00",
+    "git_sha": "fixture",
+    "git_dirty": false,
+    "min_kappa_items": 10,
+    "counts": {
+      "repeats": 324,
+      "judged": 324,
+      "failures": 0,
+      "pending": 0,
+      "failure_kinds": {},
+      "failure_messages": {},
+      "cut_off_replies": 0
+    },
+    "run_id": "fixture-v03",
+    "kind": "run",
+    "agreement_with_answer_level": {
+      "first": {
+        "overall": {
+          "answered": {
+            "n": 324,
+            "agreement": 0.037037037037037035,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
+        },
+        "pipelines": {
+          "A": {
+            "answered": {
+              "n": 108,
+              "agreement": 0.1111111111111111,
+              "weighted_kappa": 0.0
+            },
+            "abstained": {
+              "n": 0,
+              "agreement": null,
+              "weighted_kappa": null
+            }
+          },
+          "B": {
+            "answered": {
+              "n": 108,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0
+            },
+            "abstained": {
+              "n": 0,
+              "agreement": null,
+              "weighted_kappa": null
+            }
+          },
+          "C": {
+            "answered": {
+              "n": 108,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0
+            },
+            "abstained": {
+              "n": 0,
+              "agreement": null,
+              "weighted_kappa": null
+            }
+          }
+        }
+      },
+      "second": {
+        "overall": {
+          "answered": {
+            "n": 324,
+            "agreement": 0.32098765432098764,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
+        },
+        "pipelines": {
+          "A": {
+            "answered": {
+              "n": 108,
+              "agreement": 0.28703703703703703,
+              "weighted_kappa": 0.005390835579514808
+            },
+            "abstained": {
+              "n": 0,
+              "agreement": null,
+              "weighted_kappa": null
+            }
+          },
+          "B": {
+            "answered": {
+              "n": 108,
+              "agreement": 0.3425925925925926,
+              "weighted_kappa": 0.0
+            },
+            "abstained": {
+              "n": 0,
+              "agreement": null,
+              "weighted_kappa": null
+            }
+          },
+          "C": {
+            "answered": {
+              "n": 108,
+              "agreement": 0.3333333333333333,
+              "weighted_kappa": 0.0
+            },
+            "abstained": {
+              "n": 0,
+              "agreement": null,
+              "weighted_kappa": null
+            }
+          }
+        }
+      }
+    },
+    "agreement_between_judges": {
+      "answered": {
+        "n": 324,
+        "agreement": 0.3333333333333333,
+        "weighted_kappa": 0.0,
+        "confusion": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            113,
+            103,
+            108
+          ]
+        ]
+      },
+      "abstained": {
+        "n": 0,
+        "agreement": null,
+        "weighted_kappa": null,
+        "confusion": [
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0
+          ]
+        ]
+      }
+    },
+    "means": {
+      "A": {
+        "n": 108,
+        "first": {
+          "correctness": 2.0,
+          "completeness": 2.0,
+          "faithfulness": 2.0,
+          "citation_accuracy": 2.0,
+          "abstention": 2.0
+        },
+        "second": {
+          "correctness": 0.9074074074074074,
+          "completeness": 0.9444444444444444,
+          "faithfulness": 1.0092592592592593,
+          "citation_accuracy": 0.9629629629629629,
+          "abstention": 0.9259259259259259
+        }
+      },
+      "B": {
+        "n": 108,
+        "first": {
+          "correctness": 2.0,
+          "completeness": 2.0,
+          "faithfulness": 2.0,
+          "citation_accuracy": 2.0,
+          "abstention": 2.0
+        },
+        "second": {
+          "correctness": 1.0462962962962963,
+          "completeness": 0.9444444444444444,
+          "faithfulness": 1.037037037037037,
+          "citation_accuracy": 0.9722222222222222,
+          "abstention": 1.0
+        }
+      },
+      "C": {
+        "n": 108,
+        "first": {
+          "correctness": 2.0,
+          "completeness": 2.0,
+          "faithfulness": 2.0,
+          "citation_accuracy": 2.0,
+          "abstention": 2.0
+        },
+        "second": {
+          "correctness": 1.0,
+          "completeness": 0.8981481481481481,
+          "faithfulness": 0.9629629629629629,
+          "citation_accuracy": 1.0092592592592593,
+          "abstention": 1.0
+        }
+      }
+    }
+  },
+  "labels": {
+    "schema_version": 1,
+    "second_judge": {
+      "model": "ollama/muse-glimmer:latest",
+      "model_family": "muse",
+      "reasoning": "off",
+      "temperature": 0.0,
+      "max_tokens": 300
+    },
+    "judge_prompt_version": "1.2.0",
+    "judge_prompt_hash": "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643",
+    "first_judge": {
+      "model": "ollama/gemma4:31b",
+      "model_family": "gemma",
+      "prompt_version": "1.0.0"
+    },
+    "generation_model": "ollama/qwen3.6:latest",
+    "started_at": "2026-11-02T09:00:00+00:00",
+    "finished_at": "2026-11-02T10:00:00+00:00",
+    "git_sha": "fixture",
+    "git_dirty": false,
+    "min_kappa_items": 10,
+    "counts": {
+      "repeats": 5,
+      "judged": 5,
+      "failures": 0,
+      "pending": 0,
+      "failure_kinds": {},
+      "failure_messages": {},
+      "cut_off_replies": 0
+    },
+    "run_id": "official-2026-10-26",
+    "kind": "labels",
+    "sample": "v0.2.0-sample",
+    "agreement_with_labels": {
+      "run": "official-2026-10-26",
+      "measures": {
+        "scorer_recorded": "scorer 2.0.0 as recorded",
+        "scorer_rescored": "scorer 2.2.1 rescored",
+        "judge_recorded": "judge 1.0.0 as recorded",
+        "judge_abstention_rule": "judge 1.0.0 with the 1.1.0 abstention rule applied mechanically",
+        "second_judge": "second judge ollama/muse-glimmer:latest with judge prompt 1.2.0"
+      },
+      "overall": {
+        "scorer_recorded": {
+          "n": 5,
+          "agreement": 0.6,
+          "weighted_kappa": 0.0,
+          "kappa_shown": false,
+          "wrong_share": 0.4
+        },
+        "scorer_rescored": {
+          "n": 5,
+          "agreement": 0.6,
+          "weighted_kappa": 0.0,
+          "kappa_shown": false,
+          "wrong_share": 0.4
+        },
+        "judge_recorded": {
+          "n": 5,
+          "agreement": 0.2,
+          "weighted_kappa": 0.0,
+          "kappa_shown": false,
+          "wrong_share": 0.8
+        },
+        "judge_abstention_rule": {
+          "n": 5,
+          "agreement": 0.4,
+          "weighted_kappa": 0.0,
+          "kappa_shown": false,
+          "wrong_share": 0.6
+        },
+        "second_judge": {
+          "n": 5,
+          "agreement": 0.2,
+          "weighted_kappa": 0.0,
+          "kappa_shown": false,
+          "wrong_share": 0.8
+        }
+      },
+      "cells": {
+        "abstention_judged_correct": {
+          "n": 1,
+          "measures": {
+            "scorer_recorded": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "scorer_rescored": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "judge_recorded": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "judge_abstention_rule": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "second_judge": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            }
+          }
+        },
+        "l03_date": {
+          "n": 1,
+          "measures": {
+            "scorer_recorded": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "scorer_rescored": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "judge_recorded": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "judge_abstention_rule": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "second_judge": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            }
+          }
+        },
+        "version_label": {
+          "n": 1,
+          "measures": {
+            "scorer_recorded": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "scorer_rescored": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "judge_recorded": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "judge_abstention_rule": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "second_judge": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            }
+          }
+        },
+        "partial_set": {
+          "n": 1,
+          "measures": {
+            "scorer_recorded": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "scorer_rescored": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "judge_recorded": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "judge_abstention_rule": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            },
+            "second_judge": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            }
+          }
+        },
+        "agree": {
+          "n": 1,
+          "measures": {
+            "scorer_recorded": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "scorer_rescored": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "judge_recorded": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "judge_abstention_rule": {
+              "n": 1,
+              "agreement": 1.0,
+              "weighted_kappa": null,
+              "kappa_shown": false,
+              "wrong_share": 0.0
+            },
+            "second_judge": {
+              "n": 1,
+              "agreement": 0.0,
+              "weighted_kappa": 0.0,
+              "kappa_shown": false,
+              "wrong_share": 1.0
+            }
+          }
+        }
+      }
+    }
+  }
+}

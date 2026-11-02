@@ -23,15 +23,15 @@ from typing import Any
 import pytest
 from app.api import benchmarks
 from app.api.graph_world import GraphLease
-from app.api.schemas import BenchmarkStart
-from app.config import METHOD_VERSION, REPO_ROOT, from_env
+from app.api.schemas import BenchmarkStart, SecondJudgeOut
+from app.config import METHOD_VERSION, REPO_ROOT, JudgeSettings, from_env
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation import __main__ as cli
 from app.evaluation import judge as judge_module
-from app.evaluation import official
+from app.evaluation import official, second_judge
 from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
 from app.evaluation.judge import FakeJudge
@@ -50,6 +50,7 @@ from fastapi.testclient import TestClient
 from tests.conftest import build_lab_offline
 from tests.test_benchmark_report import _benchmark
 from tests.test_official import FakeRunner, Recorder
+from tests.test_second_judge import FakeGateway
 
 GRAPH_BUSY = "a benchmark run is using the graph; try again when it finishes"
 # The request the Results screen's start form sends unless the reader changes it
@@ -1497,3 +1498,70 @@ def test_settings_invalid_judge_is_a_configuration_error(
     response = client.get("/api/v1/settings")
     assert response.status_code == 503
     assert response.json()["error"]["error_code"] == "CONFIGURATION_ERROR"
+
+
+# -- the second judge (D-100) -----------------------------------------------------
+
+
+def _second_judge_of(runs_dir: Path, name: str) -> Path:
+    """Run the second judge, with a fake gateway, over a published run."""
+    settings = JudgeSettings("litellm", "ollama/muse-glimmer:latest", "muse", None, 0.0, "off")
+    root = benchmarks.second_judge_dir(runs_dir)
+    return second_judge.judge_run(runs_dir / name, settings, root, FakeGateway())
+
+
+def test_second_judge_is_served_typed(client_with_runs: TestClient, runs_dir: Path) -> None:
+    summary_path = _second_judge_of(runs_dir, "official-fixture")
+    assert summary_path.is_relative_to(runs_dir.parent / "second-judge")
+    response = client_with_runs.get("/api/v1/benchmarks/official-fixture/second-judge")
+    assert response.status_code == 200
+    body = SecondJudgeOut.model_validate(response.json())
+    assert body.run_id == "official-fixture"
+    assert body.labels is None
+    assert body.run.second_judge.model == "ollama/muse-glimmer:latest"
+    published = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
+    first = body.run.agreement_with_answer_level.first.model_dump()
+    assert first == published["judge_agreement"]
+    assert body.run.counts.repeats == body.run.counts.judged > 0
+    assert set(body.run.means) == {"A", "B", "C"}
+
+
+def test_second_judge_carries_the_label_check_of_the_same_model(
+    client_with_runs: TestClient, runs_dir: Path
+) -> None:
+    run = json.loads(_second_judge_of(runs_dir, "official-fixture").read_text(encoding="utf-8"))
+    measure = {"n": 4, "agreement": 0.5, "weighted_kappa": None, "kappa_shown": False}
+    found = {**measure, "wrong_share": 0.5}
+    labels = {
+        **{key: run[key] for key in ("schema_version", "second_judge", "judge_prompt_version")},
+        **{key: run[key] for key in ("judge_prompt_hash", "first_judge", "generation_model")},
+        **{key: run[key] for key in ("started_at", "finished_at", "git_sha", "git_dirty")},
+        **{key: run[key] for key in ("min_kappa_items", "counts")},
+        "run_id": "official-2026-10-26",
+        "kind": "labels",
+        "sample": "v0.2.0-sample",
+        "agreement_with_labels": {
+            "run": "official-2026-10-26",
+            "measures": {"judge_abstention_rule": "judge", "second_judge": "second"},
+            "overall": {"judge_abstention_rule": found, "second_judge": found},
+            "cells": {"agree": {"n": 4, "measures": {"second_judge": {**found, "flagged": False}}}},
+        },
+    }
+    path = runs_dir.parent / "second-judge" / "labels-v0.2.0-sample" / "ollama-muse-glimmer-latest"
+    path.mkdir(parents=True)
+    (path / "summary.json").write_text(json.dumps(labels), encoding="utf-8")
+    body = client_with_runs.get("/api/v1/benchmarks/official-fixture/second-judge").json()
+    assert body["labels"]["sample"] == "v0.2.0-sample"
+    assert body["labels"]["agreement_with_labels"]["overall"]["second_judge"]["n"] == 4
+
+
+def test_second_judge_is_404_for_a_run_without_one_or_an_unknown_run(
+    client_with_runs: TestClient, runs_dir: Path
+) -> None:
+    response = client_with_runs.get("/api/v1/benchmarks/official-fixture/second-judge")
+    assert response.status_code == 404
+    assert response.json()["error"]["error_code"] == "NOT_FOUND"
+    assert "no second judge" in response.json()["error"]["message"]
+    missing = client_with_runs.get("/api/v1/benchmarks/no-such-run/second-judge")
+    assert missing.status_code == 404
+    assert "no published benchmark run" in missing.json()["error"]["message"]

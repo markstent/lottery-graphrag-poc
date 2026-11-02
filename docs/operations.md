@@ -160,6 +160,7 @@ A job started from the API never resumes; its failure message names the command 
 | `make diagnose-selection` | Read-only: which claim records each approach finds and the selection keeps (reads Neo4j, runs the embedding and re-ranking models, no answer model) |
 | `make addendum-v020` | Rescores official run v0.2.0 with the current scorer (2.2.1); no Neo4j, no model |
 | `make label-sample`, `label-agreement` | Builds the hand-labelling sample from run v0.2.0, and reports the agreement of the measures with the labels; no Neo4j, no model |
+| `make second-judge RUN=<run id>` or `LABELS=v0.2.0-sample` | Re-judges a stored run's answers, or the hand-labelled sample's, with the `SECOND_JUDGE_*` model, into `data/evaluation/second-judge/` (D-100); no Neo4j; calls the second judge model for hours on a whole run, and resumes where it stopped |
 | `make run-smoke` | Scorer smoke test on three worlds; it wipes and restores Neo4j and indexes new worlds in Qdrant, with the fake generator and judge (no answer or judge model) |
 | `make run-benchmark`, `run-sweep` | The official run (six unseen worlds, seeds 2029 to 2034, each question asked once as D-097 sets and `REPEATS=N` for more, only after the owner agrees) and the depth sweep (see [evaluation.md](evaluation.md)); each wipes and restores Neo4j, indexes new worlds in Qdrant and calls the judge model, and the answer model unless `GENERATION_PROVIDER=fake` |
 
@@ -286,6 +287,7 @@ A key shown commented in that file must stay unset, not empty, to get its defaul
 | Re-ranker | `RERANK_PROVIDER`, `RERANK_MODEL` | `cross_encoder`, `BAAI/bge-reranker-v2-m3` |
 | Generation | `GENERATION_PROVIDER`, `GENERATION_MODEL`, `GENERATION_TEMPERATURE`, `GENERATION_API_BASE`, `GENERATION_MAX_TOKENS`, `GENERATION_TIMEOUT_S`, `GENERATION_MODEL_FAMILY`, `GENERATION_MODEL_QUANTISATION`, `GENERATION_REASONING` | `fake`, `fake-answer-v1`, 0, unset, 4096, 120, unset, unset, `default` |
 | Judge | `JUDGE_PROVIDER`, `JUDGE_MODEL`, `JUDGE_MODEL_FAMILY`, `JUDGE_API_BASE`, `JUDGE_TEMPERATURE`, `JUDGE_REASONING` | `fake`, `fake-judge-v1`, unset, unset, 0, `default` |
+| Second judge | `SECOND_JUDGE_PROVIDER`, `SECOND_JUDGE_MODEL`, `SECOND_JUDGE_MODEL_FAMILY`, `SECOND_JUDGE_API_BASE`, `SECOND_JUDGE_TEMPERATURE`, `SECOND_JUDGE_REASONING` | `fake` (refused: set `litellm`), `fake-judge-v1`, unset (required), unset, 0, `default` |
 | Graph | `GRAPH_DEPTH`, `GRAPH_MAX_NODES_PER_HOP`, `GRAPH_MAX_EDGES_PER_NODE_TYPE`, `GRAPH_MAX_TOTAL_NODES`, `GRAPH_REFERENCE_DATE` | 2, 100, 4, 200, end of the dataset window |
 | API | `CORS_ORIGINS`, `BENCHMARK_DIR`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `LOG_LEVEL` | the two `localhost:5173` and `127.0.0.1:5173` origins, `data/evaluation/runs`, `data/app.db`, 500, 15, `INFO` |
 | Test flags | `GRAPH_E2E`, `VECTOR_E2E`, `LIVE_WORLD_E2E` | unset. `make test` runs pytest with `GRAPH_E2E` unset even when `.env` sets it, so the live graph tests, which wipe Neo4j, run only through `make test-graph`. |

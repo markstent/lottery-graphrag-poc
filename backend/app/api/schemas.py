@@ -374,6 +374,138 @@ class BenchmarkSummary(BaseModel):
     summary: SummaryOut
 
 
+class SecondJudgeModelOut(BaseModel):
+    """The second judge model and the settings it was called with."""
+
+    model: str
+    model_family: str
+    reasoning: str
+    temperature: float
+    max_tokens: int
+
+
+class FirstJudgeOut(BaseModel):
+    """The first judge as the run recorded it."""
+
+    model: str | None
+    model_family: str | None
+    prompt_version: str | None
+
+
+class SecondJudgeCountsOut(BaseModel):
+    """Repeats to judge, those judged, failures by kind and by message,
+    repeats not yet judged, and replies that stopped at the reply cap."""
+
+    repeats: int
+    judged: int
+    failures: int
+    pending: int
+    failure_kinds: dict[str, int]
+    failure_messages: dict[str, int]
+    cut_off_replies: int
+
+
+class SecondJudgeHeaderOut(BaseModel):
+    """What every second-judge summary records (schema 1, D-100)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    schema_version: Literal[1]
+    second_judge: SecondJudgeModelOut
+    judge_prompt_version: str
+    judge_prompt_hash: str
+    first_judge: FirstJudgeOut
+    generation_model: str | None
+    started_at: str | None
+    finished_at: str
+    git_sha: str
+    git_dirty: bool | None
+    min_kappa_items: int
+    counts: SecondJudgeCountsOut
+    run_id: str
+
+
+class AnswerLevelAgreementOut(BaseModel):
+    """Each judge's agreement with the answer level, as the run reports the first judge's."""
+
+    first: JudgeAgreementOut
+    second: JudgeAgreementOut
+
+
+class BetweenJudgesCellOut(AgreementOut):
+    """Correctness of the first judge against the second; ``confusion[i][j]``
+    counts repeats the first judge put on level i and the second on level j."""
+
+    confusion: list[list[int]]
+
+
+class BetweenJudgesOut(BaseModel):
+    answered: BetweenJudgesCellOut
+    abstained: BetweenJudgesCellOut
+
+
+class JudgeMeansOut(BaseModel):
+    """Each judge's mean of the five dimensions over ``n`` repeats both judged."""
+
+    n: int
+    first: dict[str, float]
+    second: dict[str, float]
+
+
+class SecondJudgeRunOut(SecondJudgeHeaderOut):
+    """The second judge over one run."""
+
+    kind: Literal["run"]
+    agreement_with_answer_level: AnswerLevelAgreementOut
+    agreement_between_judges: BetweenJudgesOut
+    means: dict[str, JudgeMeansOut]
+
+
+class LabelMeasureOut(BaseModel):
+    """One measure's agreement with the consensus labels; ``kappa_shown`` is
+    False below the item count a kappa is shown from."""
+
+    n: int
+    agreement: float | None
+    weighted_kappa: float | None
+    kappa_shown: bool
+    wrong_share: float | None
+
+
+class LabelCellOut(BaseModel):
+    n: int
+    measures: dict[str, LabelMeasureOut]
+
+
+class LabelAgreementOut(BaseModel):
+    """The labelling analysis with the second judge added as ``second_judge``."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    run: str
+    measures: dict[str, str]
+    overall: dict[str, LabelMeasureOut]
+    cells: dict[str, LabelCellOut]
+
+
+class SecondJudgeLabelsOut(SecondJudgeHeaderOut):
+    """The second judge over the hand-labelled sample, beside the first judge."""
+
+    kind: Literal["labels"]
+    sample: str
+    agreement_with_labels: LabelAgreementOut
+
+
+class SecondJudgeOut(BaseModel):
+    """Response for GET /api/v1/benchmarks/{run_id}/second-judge: the newest
+    second-judge summary of the run and, when there is one, the newest label
+    check of the same model. Descriptive; added after the result (D-100)."""
+
+    run_id: str
+    run: SecondJudgeRunOut
+    labels: SecondJudgeLabelsOut | None
+
+
 class BenchmarkRunOut(BaseModel):
     """One published run in GET /api/v1/benchmarks, from its ``summary.json``:
     ``selection`` is the part of the bank it scored, ``worlds`` its seeds,

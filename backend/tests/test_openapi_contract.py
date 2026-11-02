@@ -55,7 +55,7 @@ def _operations() -> list[tuple[str, str, dict[str, Any]]]:
 # 405 and the 404 of an unknown path come from the framework and are not documented.
 def test_documented_failures_use_the_error_envelope() -> None:
     operations = _operations()
-    assert len(operations) == 32
+    assert len(operations) == 33
     for path, method, operation in operations:
         failures = {
             status: response

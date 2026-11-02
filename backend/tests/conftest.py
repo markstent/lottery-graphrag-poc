@@ -334,30 +334,29 @@ def tiny_planted(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
     return dataset_dir, ledger_path
 
 
+def recorded_banks(payload: dict[str, Any]) -> dict[int, FrozenBank]:
+    """Each world's bank as its recorded instances, for a test run with no world on disk."""
+    return {
+        int(world["world_seed"]): FrozenBank(
+            bank_version=BANK_VERSION,
+            world_seed=int(world["world_seed"]),
+            world_manifest_hash="",
+            record_serialiser_version="",
+            scorer_version=SCORER_VERSION,
+            ledger_hash="",
+            instances=tuple(instance_from_payload(entry["instance"]) for entry in world["results"]),
+            unavailable=(),
+            bank_hash="",
+        )
+        for world in payload["worlds"]
+    }
+
+
 @pytest.fixture
 def banks_as_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
     """Rescoring grounds a run's worlds again (D-095); a test run has no
     world on disk, so each world's bank is its recorded instances as they are."""
-
-    def recorded(payload: dict[str, Any]) -> dict[int, FrozenBank]:
-        return {
-            int(world["world_seed"]): FrozenBank(
-                bank_version=BANK_VERSION,
-                world_seed=int(world["world_seed"]),
-                world_manifest_hash="",
-                record_serialiser_version="",
-                scorer_version=SCORER_VERSION,
-                ledger_hash="",
-                instances=tuple(
-                    instance_from_payload(entry["instance"]) for entry in world["results"]
-                ),
-                unavailable=(),
-                bank_hash="",
-            )
-            for world in payload["worlds"]
-        }
-
-    monkeypatch.setattr(addendum, "current_banks", recorded)
+    monkeypatch.setattr(addendum, "current_banks", recorded_banks)
 
 
 def _install(monkeypatch: pytest.MonkeyPatch, stub: StubLiteLLM) -> StubLiteLLM:

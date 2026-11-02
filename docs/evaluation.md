@@ -400,6 +400,56 @@ It runs no test and states no p-value.
 The first addendum, written with scorer 2.1.0 on 2026-10-27 into `official-2026-10-26-scorer-2.1.0/`, changed only the H3 answer scores: A 0.722 to 0.944, B 0.667 to 0.917 and C 0.611 to 0.861.
 The second, written with scorer 2.2.0 on 2026-10-28 into `official-2026-10-26-scorer-2.2.0/`, moved only C's H3 answer score, to 0.889; A stayed at 0.944 and B at 0.917.
 
+### The second judge
+
+A second judge model re-judges the stored answers of a run, as a recorded second opinion beside the first judge (D-100).
+It was added after the result of v0.3.0, at the owner's request of 2026-11-02, and it is descriptive: the tested results use the deterministic scorer, and nothing the second judge says changes a score, a comparison or a published run.
+
+What it does:
+
+- For every repeat the first judge was asked about, it rebuilds the exact item the first judge saw (`runner.judge_item`, the same blinding seed) and calls the second model with the same judge prompt (1.2.0), the same reply cap (300 tokens) and the same parser.
+  The prompt text is identical, so the two judges read the same thing.
+- It refuses a second judge with no family, or of the answer model's family or the first judge's family as the run records them, compared without case.
+- It reads the run and never writes into it, nor anywhere under `data/evaluation/runs/`.
+  The item holds the expected answer and the claim statements, which are evaluator data; nothing reaches a pipeline.
+- A failed call is recorded with its message and one of three kinds, and it has no scores: `gateway_error` (the call failed), `empty_reply` (the model answered with no text, as a model does that spends the reply cap on hidden reasoning) and `unusable_reply` (the reply was not the five-score JSON).
+
+Run it:
+
+```bash
+make second-judge LABELS=v0.2.0-sample  # the hand-labelled sample first (100 calls)
+make second-judge RUN=official-2026-10-29
+```
+
+Both read `SECOND_JUDGE_PROVIDER`, `SECOND_JUDGE_MODEL`, `SECOND_JUDGE_MODEL_FAMILY`, `SECOND_JUDGE_REASONING`, `SECOND_JUDGE_TEMPERATURE` (unset means 0) and `SECOND_JUDGE_API_BASE`, read as the `JUDGE_*` keys are (see [operations.md](operations.md)).
+
+Where it is stored:
+
+- A run's second judge goes to `data/evaluation/second-judge/<run id>/<model slug>/`, the slug being the model name in lower case with every other character run as `-`.
+- The label check goes to `data/evaluation/second-judge/labels-v0.2.0-sample/<model slug>/`.
+- `verdicts.jsonl` gains one line per call as it goes: the key, instance, approach and repeat, the scores or the failure and its kind, the raw reply, the stop reason, whether the reply stopped at the cap, the latency, and the first judge's scores for the same repeat.
+  An interrupted pass resumes: the same command skips every repeat already in the file, failures included, and drops a last line cut short.
+  A directory holds one model, one prompt (version and hash) and one set of model settings; a line of another is refused, so a change means another directory.
+- `summary.json` (schema 1) is written at the end: the second judge's model, family, reasoning, temperature and reply cap, the judge prompt version and hash, the first judge, the start and end times, the git commit and dirty flag, and counts of repeats, judged, failures by kind and by message, and replies that stopped at the cap.
+
+What the run summary reports:
+
+- `agreement_with_answer_level`: each judge's correctness against the deterministic answer level, split into answered and abstained, overall and per approach, computed as the run's own judge agreement is.
+  The first judge's numbers are recomputed from the stored run and equal the run's published `judge_agreement`.
+- `agreement_between_judges`: the first judge's correctness against the second's over the repeats both judged, split into answered and abstained, with exact agreement, the linear weighted kappa and a 3 by 3 count (rows the first judge's level).
+- `means`: per approach, each judge's mean of the five dimensions over the repeats both judged.
+- The weighted kappa follows the n rule above; the summary records `min_kappa_items`.
+
+The label check judges the 100 labelled items of the v0.2.0 sample (D-089) and adds the second judge as a measure, `second_judge`, to the label agreement analysis, overall, per cell and per approach, beside the first judge as recorded and with the 1.1.0 abstention rule.
+It refuses an unlabelled sample before any model call.
+
+What it cannot show:
+
+- Two judges agreeing does not make them right; only labels can say that.
+- The labels came from one labeller, the controller, a model (D-094), so the label check measures each judge against one model's reading, not a human's.
+- The labelled answers are of v0.2.0, judged by the first judge with prompt 1.0.0, while the second judge reads them with prompt 1.2.0; the first judge with the 1.1.0 abstention rule applied is the nearer comparison.
+- A judge that fails on a repeat drops out of every comparison of that repeat, so the n of each cell says how much each figure rests on.
+
 ### Statistics
 
 The code is `backend/app/evaluation/statistics.py`, and `report.py` is the only place a benchmark number is computed.

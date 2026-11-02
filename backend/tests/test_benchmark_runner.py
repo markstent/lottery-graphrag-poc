@@ -1061,9 +1061,9 @@ def _completed(stdout: str) -> subprocess.CompletedProcess[str]:
 
 def test_git_dirty_reads_the_porcelain_status(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _completed(" M x.py\n"))
-    assert runner_module._git_dirty() is True
+    assert runner_module.git_dirty() is True
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: _completed(""))
-    assert runner_module._git_dirty() is False
+    assert runner_module.git_dirty() is False
 
 
 def test_git_dirty_is_none_without_git(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1071,8 +1071,8 @@ def test_git_dirty_is_none_without_git(monkeypatch: pytest.MonkeyPatch) -> None:
         raise FileNotFoundError("git")
 
     monkeypatch.setattr(subprocess, "run", missing)
-    assert runner_module._git_dirty() is None
-    assert runner_module._git_sha() == "unknown"
+    assert runner_module.git_dirty() is None
+    assert runner_module.git_sha() == "unknown"
 
 
 def test_a_linked_data_directory_leaves_the_checkout_clean() -> None:

@@ -55,11 +55,15 @@ from app.api.schemas import (
     JobStatus,
     PipelineScore,
     QuestionOut,
+    SecondJudgeLabelsOut,
+    SecondJudgeOut,
+    SecondJudgeRunOut,
     SummaryOut,
     error_responses,
 )
 from app.api.scoring import require_bank
 from app.config import REPO_ROOT, from_env, judge_settings_from_env
+from app.evaluation import second_judge
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
@@ -173,6 +177,32 @@ def _summary_out(run: Published) -> BenchmarkSummary:
         method_version=method_of(summary["reproducibility"]["run"]),
         summary=typed,
     )
+
+
+def second_judge_dir(runs_dir: Path) -> Path:
+    """Where the second judge writes (D-100): beside the runs directory, as
+    ``data/evaluation/second-judge`` is beside ``data/evaluation/runs``."""
+    return runs_dir.parent / second_judge.SECOND_JUDGE_DIR_NAME
+
+
+def _second_judge(runs_dir: Path, name: str) -> SecondJudgeOut:
+    """The second judge of a published run; a 404 for an unknown run or a run
+    with none, and a 500 naming the run for a summary that does not fit."""
+    _published(runs_dir, name)
+    found = second_judge.published(second_judge_dir(runs_dir), name)
+    if found is None:
+        raise ApiError(404, ErrorCode.NOT_FOUND, f"benchmark run {name!r} has no second judge")
+    run, labels = found
+    try:
+        return SecondJudgeOut(
+            run_id=name,
+            run=SecondJudgeRunOut.model_validate(run),
+            labels=None if labels is None else SecondJudgeLabelsOut.model_validate(labels),
+        )
+    except ValidationError as error:
+        raise RuntimeError(
+            f"the second-judge summary of benchmark run {name!r} is malformed: {error}"
+        ) from error
 
 
 def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
@@ -637,6 +667,14 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
     )
     def read_instances(run_id: str) -> list[InstanceResultOut]:
         return _instances(runs_dir, run_id)
+
+    @router.get(
+        "/benchmarks/{run_id}/second-judge",
+        response_model=SecondJudgeOut,
+        responses=error_responses(404, 422),
+    )
+    def read_second_judge(run_id: str) -> SecondJudgeOut:
+        return _second_judge(runs_dir, run_id)
 
     # Last: the run id is a free path segment.
     @router.get(

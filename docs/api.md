@@ -42,6 +42,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | `GET /benchmarks/questions` | The bank's questions with answer keys, hidden truths and scores |
 | `GET /benchmarks/{run_id}` | One run's summary |
 | `GET /benchmarks/{run_id}/instances` | One run's per-question scores |
+| `GET /benchmarks/{run_id}/second-judge` | The run's second judge, a recorded second opinion (D-100) |
 | `POST /benchmarks` | Start a benchmark job. Returns 202. |
 | `GET /benchmarks/jobs`, `GET /benchmarks/jobs/{job_id}` | List or read jobs |
 | `POST /benchmarks/jobs/{job_id}/cancel` | Ask a job to stop |
@@ -291,6 +292,11 @@ A malformed `summary.json` is a server error and is never silently skipped.
 - `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, its failure classes, and `cut_off_repeats` and `token_limit_repeats`, the repeats whose answer was cut off and those among them that stopped at the output limit (null for a run recorded before answer parser 2.0.0, D-096).
   It carries the question text and scores only, never the expected answer, claims, checks, answer text or context blocks.
   A run without `results.json` is a 404.
+- `GET /benchmarks/{run_id}/second-judge` returns `{run_id, run, labels}` (D-100): `run` is the newest second-judge summary of the run (schema 1), and `labels` the newest label check of the same model, or null.
+  The summaries are read from `second-judge/` beside the runs directory (`data/evaluation/second-judge/` by default), never from the run.
+  It is a 404 for a run that is not published and for a published run with no second judge.
+  A summary that does not fit the schema is a server error naming the run.
+  It is descriptive and was added after the result; see [evaluation.md](evaluation.md#the-second-judge).
 - `GET /benchmarks/questions` lists the presentation world's bank for the Help screen, with each question's expected answer, the hidden truth of a planted question, and per-pipeline scores (`answer`, `evidence_recall` and `evidence_f1`, means over the scored repeats) from the run named by the optional `run_id`, else the newest official run.
   A missing or stale bank is a 503 `CONFIGURATION_ERROR`.
 

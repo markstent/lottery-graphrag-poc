@@ -524,10 +524,19 @@ def _measure_levels(
     return levels
 
 
-def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
+def label_agreement(
+    sample_dir: Path,
+    run_dir: Path,
+    extra: dict[str, tuple[str, dict[str, int]]] | None = None,
+) -> dict[str, Any]:
     """Agreement of every measure with the consensus label, overall, per
     cell and per approach; refuses incomplete labels or unsettled disagreements.
-    One labeller file (owner or controller) is enough, or both with consensus."""
+    One labeller file (owner or controller) is enough, or both with consensus.
+
+    ``extra`` adds measures read elsewhere, such as the second judge (D-100):
+    a name to its description and the level of each item it gave one; an
+    item without a level is left out of that measure's pairs."""
+    extra = extra or {}
     key = _read_key(sample_dir)
     if key["run"] != run_dir.name:
         raise ValueError(f"the sample was drawn from the run {key['run']}, not {run_dir.name}")
@@ -547,14 +556,21 @@ def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
     record = payload["reproducibility"]["run"]
     levels = _measure_levels(payload, items, rescoring_checks(payload))
 
+    def level(measure: str, item_id: str) -> int | None:
+        if measure in extra:
+            return extra[measure][1].get(item_id)
+        return levels[item_id][0][measure]
+
     def pairs(measure: str, field: str | None = None, value: str = "") -> list[tuple[int, int]]:
         return [
-            (levels[item_id][0][measure], consensus[item_id].correctness)
+            (found, consensus[item_id].correctness)
             for item_id in item_ids
-            if field is None or items[item_id][field] == value
+            if (field is None or items[item_id][field] == value)
+            and (found := level(measure, item_id)) is not None
         ]
 
     pipelines = sorted({item["pipeline"] for item in items.values()})
+    measures = (*MEASURES, *extra)
 
     return {
         "run": run_dir.name,
@@ -578,14 +594,15 @@ def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
                 f"judge {record['judge_prompt_version']} with the {ABSTENTION_RULE_VERSION}"
                 " abstention rule applied mechanically"
             ),
+            **{name: described for name, (described, _) in extra.items()},
         },
         "wrong_share_rule": WRONG_SHARE_RULE,
-        "overall": {measure: _measure(pairs(measure)) for measure in MEASURES},
+        "overall": {measure: _measure(pairs(measure)) for measure in measures},
         "cells": {
             cell: {
                 "n": sum(item["cell"] == cell for item in items.values()),
                 "measures": {
-                    measure: measure_cell(pairs(measure, "cell", cell)) for measure in MEASURES
+                    measure: measure_cell(pairs(measure, "cell", cell)) for measure in measures
                 },
             }
             for cell, _ in CELLS
@@ -594,7 +611,7 @@ def label_agreement(sample_dir: Path, run_dir: Path) -> dict[str, Any]:
             pipeline: {
                 "n": sum(item["pipeline"] == pipeline for item in items.values()),
                 "measures": {
-                    measure: _measure(pairs(measure, "pipeline", pipeline)) for measure in MEASURES
+                    measure: _measure(pairs(measure, "pipeline", pipeline)) for measure in measures
                 },
             }
             for pipeline in pipelines

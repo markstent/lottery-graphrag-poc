@@ -145,6 +145,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/benchmarks/{run_id}/second-judge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Second Judge */
+        get: operations["read_second_judge_api_v1_benchmarks__run_id__second_judge_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets": {
         parameters: {
             query?: never;
@@ -560,6 +577,14 @@ export interface components {
             answered: components["schemas"]["AgreementOut"];
         };
         /**
+         * AnswerLevelAgreementOut
+         * @description Each judge's agreement with the answer level, as the run reports the first judge's.
+         */
+        AnswerLevelAgreementOut: {
+            first: components["schemas"]["JudgeAgreementOut"];
+            second: components["schemas"]["JudgeAgreementOut"];
+        };
+        /**
          * ApiErrorBody
          * @description The error object every failure carries (docs/reference/07 section 11).
          */
@@ -661,6 +686,26 @@ export interface components {
             /** Run Kind */
             run_kind: string;
             summary: components["schemas"]["SummaryOut"];
+        };
+        /**
+         * BetweenJudgesCellOut
+         * @description Correctness of the first judge against the second; ``confusion[i][j]``
+         *     counts repeats the first judge put on level i and the second on level j.
+         */
+        BetweenJudgesCellOut: {
+            /** Agreement */
+            agreement: number | null;
+            /** Confusion */
+            confusion: number[][];
+            /** N */
+            n: number;
+            /** Weighted Kappa */
+            weighted_kappa: number | null;
+        };
+        /** BetweenJudgesOut */
+        BetweenJudgesOut: {
+            abstained: components["schemas"]["BetweenJudgesCellOut"];
+            answered: components["schemas"]["BetweenJudgesCellOut"];
         };
         /**
          * Check
@@ -1027,6 +1072,18 @@ export interface components {
             repeats: {
                 [key: string]: number;
             };
+        };
+        /**
+         * FirstJudgeOut
+         * @description The first judge as the run recorded it.
+         */
+        FirstJudgeOut: {
+            /** Model */
+            model: string | null;
+            /** Model Family */
+            model_family: string | null;
+            /** Prompt Version */
+            prompt_version: string | null;
         };
         /**
          * ForeignKeyOut
@@ -1943,6 +2000,68 @@ export interface components {
             pipelines: {
                 [key: string]: components["schemas"]["AgreementSplitOut"];
             };
+        };
+        /**
+         * JudgeMeansOut
+         * @description Each judge's mean of the five dimensions over ``n`` repeats both judged.
+         */
+        JudgeMeansOut: {
+            /** First */
+            first: {
+                [key: string]: number;
+            };
+            /** N */
+            n: number;
+            /** Second */
+            second: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * LabelAgreementOut
+         * @description The labelling analysis with the second judge added as ``second_judge``.
+         */
+        LabelAgreementOut: {
+            /** Cells */
+            cells: {
+                [key: string]: components["schemas"]["LabelCellOut"];
+            };
+            /** Measures */
+            measures: {
+                [key: string]: string;
+            };
+            /** Overall */
+            overall: {
+                [key: string]: components["schemas"]["LabelMeasureOut"];
+            };
+            /** Run */
+            run: string;
+        };
+        /** LabelCellOut */
+        LabelCellOut: {
+            /** Measures */
+            measures: {
+                [key: string]: components["schemas"]["LabelMeasureOut"];
+            };
+            /** N */
+            n: number;
+        };
+        /**
+         * LabelMeasureOut
+         * @description One measure's agreement with the consensus labels; ``kappa_shown`` is
+         *     False below the item count a kappa is shown from.
+         */
+        LabelMeasureOut: {
+            /** Agreement */
+            agreement: number | null;
+            /** Kappa Shown */
+            kappa_shown: boolean;
+            /** N */
+            n: number;
+            /** Weighted Kappa */
+            weighted_kappa: number | null;
+            /** Wrong Share */
+            wrong_share: number | null;
         };
         /**
          * LivePipelineScore
@@ -3174,6 +3293,142 @@ export interface components {
             title: string;
         };
         /**
+         * SecondJudgeCountsOut
+         * @description Repeats to judge, those judged, failures by kind and by message,
+         *     repeats not yet judged, and replies that stopped at the reply cap.
+         */
+        SecondJudgeCountsOut: {
+            /** Cut Off Replies */
+            cut_off_replies: number;
+            /** Failure Kinds */
+            failure_kinds: {
+                [key: string]: number;
+            };
+            /** Failure Messages */
+            failure_messages: {
+                [key: string]: number;
+            };
+            /** Failures */
+            failures: number;
+            /** Judged */
+            judged: number;
+            /** Pending */
+            pending: number;
+            /** Repeats */
+            repeats: number;
+        };
+        /**
+         * SecondJudgeLabelsOut
+         * @description The second judge over the hand-labelled sample, beside the first judge.
+         */
+        SecondJudgeLabelsOut: {
+            agreement_with_labels: components["schemas"]["LabelAgreementOut"];
+            counts: components["schemas"]["SecondJudgeCountsOut"];
+            /** Finished At */
+            finished_at: string;
+            first_judge: components["schemas"]["FirstJudgeOut"];
+            /** Generation Model */
+            generation_model: string | null;
+            /** Git Dirty */
+            git_dirty: boolean | null;
+            /** Git Sha */
+            git_sha: string;
+            /** Judge Prompt Hash */
+            judge_prompt_hash: string;
+            /** Judge Prompt Version */
+            judge_prompt_version: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "labels";
+            /** Min Kappa Items */
+            min_kappa_items: number;
+            /** Run Id */
+            run_id: string;
+            /** Sample */
+            sample: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            second_judge: components["schemas"]["SecondJudgeModelOut"];
+            /** Started At */
+            started_at: string | null;
+        };
+        /**
+         * SecondJudgeModelOut
+         * @description The second judge model and the settings it was called with.
+         */
+        SecondJudgeModelOut: {
+            /** Max Tokens */
+            max_tokens: number;
+            /** Model */
+            model: string;
+            /** Model Family */
+            model_family: string;
+            /** Reasoning */
+            reasoning: string;
+            /** Temperature */
+            temperature: number;
+        };
+        /**
+         * SecondJudgeOut
+         * @description Response for GET /api/v1/benchmarks/{run_id}/second-judge: the newest
+         *     second-judge summary of the run and, when there is one, the newest label
+         *     check of the same model. Descriptive; added after the result (D-100).
+         */
+        SecondJudgeOut: {
+            labels: components["schemas"]["SecondJudgeLabelsOut"] | null;
+            run: components["schemas"]["SecondJudgeRunOut"];
+            /** Run Id */
+            run_id: string;
+        };
+        /**
+         * SecondJudgeRunOut
+         * @description The second judge over one run.
+         */
+        SecondJudgeRunOut: {
+            agreement_between_judges: components["schemas"]["BetweenJudgesOut"];
+            agreement_with_answer_level: components["schemas"]["AnswerLevelAgreementOut"];
+            counts: components["schemas"]["SecondJudgeCountsOut"];
+            /** Finished At */
+            finished_at: string;
+            first_judge: components["schemas"]["FirstJudgeOut"];
+            /** Generation Model */
+            generation_model: string | null;
+            /** Git Dirty */
+            git_dirty: boolean | null;
+            /** Git Sha */
+            git_sha: string;
+            /** Judge Prompt Hash */
+            judge_prompt_hash: string;
+            /** Judge Prompt Version */
+            judge_prompt_version: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "run";
+            /** Means */
+            means: {
+                [key: string]: components["schemas"]["JudgeMeansOut"];
+            };
+            /** Min Kappa Items */
+            min_kappa_items: number;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            second_judge: components["schemas"]["SecondJudgeModelOut"];
+            /** Started At */
+            started_at: string | null;
+        };
+        /**
          * SelectionOut
          * @description The part of the bank a run scored.
          */
@@ -3729,6 +3984,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstanceResultOut"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_second_judge_api_v1_benchmarks__run_id__second_judge_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecondJudgeOut"];
                 };
             };
             /** @description Not Found */

@@ -14,3 +14,4 @@ e2e/fixtures/ontology-world.json
 src/test/settings.fixture.json
 e2e/fixtures/results-v03-summary.json
 e2e/fixtures/results-v03-instances.json
+e2e/fixtures/results-v03-second-judge.json
