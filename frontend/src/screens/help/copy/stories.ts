@@ -1,13 +1,43 @@
 import type { ChapterCopy } from '../chapters'
 
+/**
+ * Each planted story in plain words, by scenario id, as the Plain level of a
+ * story card tells it: what was planted, in which countries, and what a
+ * correct answer must find. Each is written from the hidden truth and the
+ * answer key of world 2026, the world Help's question bank is grounded in,
+ * and from docs/scenarios.md; a test checks that each names exactly the
+ * countries whose codes that hidden truth and answer key hold. The hidden
+ * truth itself, with its record codes, shows at Technical.
+ */
+export const PLAIN_STORIES: Readonly<Record<string, string>> = {
+  'SCN-001':
+    'In Greece, a new release of the mobile app broke checkout for players on iOS devices. After the release, more of their app sessions were abandoned or failed, and more players contacted support. An incident was logged, with a release note and an incident report. A correct answer must trace the incident back to that app release.',
+  'SCN-002':
+    'Eight player accounts in Greece used the same three devices. Together they bought 24 tickets for one game within 120 minutes, from 20:00 on 31 May 2025. This is an unusual cluster worth a closer look. On its own it does not prove fraud. A correct answer must find the other seven players who share a device with one of them.',
+  'SCN-003':
+    'Six player accounts in the Czech Republic share two payment methods that few other accounts use. Each account spends a normal amount. What is unusual is how the accounts are linked. A correct answer must find the accounts that share a payment method with one of them. The answer key also counts two accounts in the United Kingdom that share a payment method with that player. How such extra accounts should be scored is still open (chapter 9).',
+  'SCN-007':
+    'One version of the payments platform caused checkout incidents in three countries: Greece, the main market affected, and Austria and the Czech Republic. The United Kingdom was not affected, because it had put off that update. No incident report mentions the other countries. A correct answer must follow the links from one incident to the platform version, and on to the incidents in the other countries. It names those countries, and the one that was not affected.',
+  'SCN-009':
+    'One payment provider, used in several countries, kept failing on and off. It failed on 7 days between 19 and 31 August 2025, in the United Kingdom, Greece and Austria. No incident was raised. No record for a country names the provider. The link shows only through the payment methods players used, and a later company review names it. A correct answer must find the provider behind a support case, and the countries it affected.',
+  'SCN-010':
+    'Engaged players, who play often and recently, favour quick pick games more than other players do. In a quick pick game the system picks the player’s numbers at random. The pattern was planted in one game in each of Austria, Greece and the United Kingdom. The Czech Republic was left as it was, for comparison. Each country has its own name for the game mechanic and for the engaged players. So the three are one pattern only through the shared dictionary, the ontology. A correct answer must find the matching games in the other countries.',
+  'SCN-011':
+    'In Greece, a campaign aimed at engaged players worked well. It promoted an instant game sold in shops. Austria has the same kind of game and the same kind of players, under its own local names. Nothing was planted in Austria. So running the campaign there is a reasonable suggestion, with moderate confidence, not a certainty. A correct answer must name the Austrian game as the best place to run the campaign next.',
+  'SCN-015':
+    'An old rules leaflet for one game in Austria states a ticket price of 1.50. The game’s own record, the trusted source, says 2.50. The leaflet’s end date shows it is out of date. A correct answer must give the current price from the record, and say that the leaflet is no longer valid.',
+}
+
 export const stories: ChapterCopy = {
   plain: [
-    'A planted story is a pattern put into the data on purpose, such as one platform version that breaks checkout in three markets. Because it was planted, the correct answer is known before any approach runs.',
-    'There are eight. Each tests a different kind of question: some need links followed across several records, two need the shared dictionary to match things across markets, and one sets an out-of-date document against the current record. Each story has one question in the question bank (chapter 10).',
-    'What was planted, the hidden truth, is kept where no approach can see it. Only the scoring reads it, to write the answer keys and to mark the answers. Help is the one screen that shows it.',
-    'Each card gives a story and its hidden truth. The cross-market platform incident is the worked example.',
+    'A planted story is a pattern put into the data on purpose. For example, one version of a platform breaks checkout in three countries. Because it was planted, the correct answer is known before any approach runs.',
+    'There are eight. Each tests a different kind of question. Some need links followed across several records. Two need the shared dictionary, the ontology, to match things across countries. One sets an out-of-date document against the current record. Each story has one question in the question bank, the fixed list of test questions (chapter 10).',
+    'What was planted is called the hidden truth. It is kept where no approach can see it. Only the scoring reads it, to write the answer keys and to mark the answers. Help is the one screen that shows it.',
+    'Each card tells one story as it was planted in world 2026. A world is one copy of the made-up company, and world 2026 is the copy the questions in chapter 10 use. Each card says what was planted, where, and what a correct answer must find. The cross-market platform incident is the worked example.',
     { kind: 'component', name: 'stories' },
   ],
+  plainHint:
+    'Choose Technical at the top of Help to see each hidden truth exactly as the scoring holds it, with the reference codes of its records.',
   technical: [
     'The engine is backend/app/scenarios/. Eight scenarios are enabled in catalogue.py, each with an injector that plant.py maps to it. engine.py runs them in catalogue order, each from its own random stream keyed by the scenario seed and the scenario id, so one plant does not shift another. Seven more (SCN-004, 005, 006, 008, 012, 013 and 014) are registered with enabled=False and have no injector, and no bank question depends on them.',
     'The signals each scenario leaves in the data (docs/scenarios.md and the injectors):',
@@ -33,7 +63,7 @@ export const stories: ChapterCopy = {
       'the scenario package writes the ledger but does not import its loader;',
       "the manifest of a generated world names none of the ledger's fields.",
     ],
-    "The hidden truths on the story cards come from GET /api/v1/benchmarks/questions, which reads the evaluator's output after the fact.",
+    "The hidden truths on the story cards come from GET /api/v1/benchmarks/questions, which reads the evaluator's output after the fact. At this level each card shows its scenario id and that hidden truth verbatim, after the plain story, and the worked example shows its question and answer key as the bank holds them; at Plain the answer key writes its market codes as countries.",
   ],
   terms: [
     'Answer key',
@@ -43,5 +73,6 @@ export const stories: ChapterCopy = {
     'Planted story',
     'Question bank',
     'Truth ledger',
+    'World',
   ],
 }

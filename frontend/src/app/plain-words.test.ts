@@ -5,11 +5,27 @@ import {
   distinctFields,
   FAILURE_WORDS,
   failureWords,
+  marketsInWords,
   plainName,
   plainValue,
 } from './plain-words'
 
 describe('plain words', () => {
+  it('writes market codes as countries, with "the" where a country takes it', () => {
+    expect(
+      marketsInWords(
+        'Incidents on the same platform version as INC_042 were seen in MKT_AT and MKT_CZ, and MKT_UK was unaffected.',
+      ),
+    ).toBe(
+      'Incidents on the same platform version as INC_042 were seen in Austria and the Czech Republic, and the United Kingdom was unaffected.',
+    )
+    expect(marketsInWords('MKT_UK deferred it; MKT_GR did not.')).toBe(
+      'The United Kingdom deferred it; Greece did not.',
+    )
+    // Other ids, and a market code the app does not know, stay as written.
+    expect(marketsInWords('GAME_AT_02 in MKT_XX')).toBe('GAME_AT_02 in MKT_XX')
+  })
+
   it('turns a dataset id into a name', () => {
     expect(datasetName('dev-seed2026')).toBe('dev world, 2026')
     expect(datasetName('official-seed7')).toBe('official world, 7')

@@ -57,6 +57,33 @@ test('the story link scrolls to the story and marks it', async ({ page }) => {
   await shot(page, 'story-worked-example')
 })
 
+test('the story cards tell each story in plain words, and the hidden truth with its codes at Technical', async ({
+  page,
+}) => {
+  await open(page, '#/help?section=stories')
+  const cards = page.locator('#stories article')
+  await expect(cards).toHaveCount(8)
+  for (const card of await cards.all()) {
+    // At Plain a card names no dataset code outside the worked example's question and answer key.
+    const own = await card.evaluate((element) => {
+      const copy = element.cloneNode(true) as HTMLElement
+      copy.querySelectorAll('dd').forEach((node) => node.remove())
+      return copy.textContent ?? ''
+    })
+    expect(own).not.toMatch(/\b[A-Z]{2,}_[A-Z0-9_]+\b|SCN-\d/)
+  }
+  const worked = page.getByRole('article', {
+    name: 'Cross market platform incident',
+  })
+  await expect(worked).toContainText('Greece, the main market affected')
+  await expect(worked).not.toContainText('Hidden truth')
+  await shot(page, 'stories-plain')
+  await page.getByRole('radio', { name: 'Technical' }).click()
+  await expect(worked).toContainText('SCN-007')
+  await expect(worked).toContainText('Hidden truth: Platform version')
+  await shot(page, 'stories-technical')
+})
+
 test('the questions table filters by story, and the filter is in the address', async ({
   page,
 }) => {
@@ -79,7 +106,7 @@ test('with no official run the screen says so above the table, which has no scor
   const table = page.getByRole('table', { name: 'Benchmark questions' })
   await expect(page.getByText(/^No official run yet\./)).toBeVisible()
   await expect(table.getByRole('columnheader')).toHaveText([
-    'Instance',
+    'Question',
     'Answer key',
   ])
   await expect(table).not.toContainText('Evidence score')
@@ -106,7 +133,7 @@ test('a quick check as the newest run shows no scores either', async ({
     page
       .getByRole('table', { name: 'Benchmark questions' })
       .getByRole('columnheader'),
-  ).toHaveText(['Instance', 'Answer key'])
+  ).toHaveText(['Question', 'Answer key'])
 })
 
 test('presentation mode keeps the table and the sections readable', async ({

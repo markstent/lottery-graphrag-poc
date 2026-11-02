@@ -29,6 +29,10 @@ import {
   UNSCORED,
   type BankStub,
 } from './help.fixtures'
+import { PLAIN_STORIES } from './copy/stories'
+
+/** A dataset code, such as INC_041, MKT_GR or PLAYER_GR_000165, or a scenario id. */
+const DATASET_CODE = /\b[A-Z]{2,}_[A-Z0-9_]+\b|SCN-\d/
 
 const CHAPTER_TITLES = [
   '1. Why this exists',
@@ -157,19 +161,59 @@ describe('Help', () => {
 })
 
 describe('the planted stories', () => {
-  it('shows each hidden truth verbatim under its scenario title', async () => {
-    await renderHelp()
+  const withTruth = SCORED.filter((q) => q.hidden_truth !== null)
+  const cardOf = (stories: HTMLElement, scenarioId: string) =>
+    within(stories)
+      .getByRole('heading', {
+        name: SCENARIOS.find((s) => s.scenario_id === scenarioId)!.title,
+      })
+      .closest('article')!
+
+  it('shows each hidden truth verbatim under its scenario title at Technical', async () => {
+    await renderHelp('#/help?level=technical')
     const stories = section('3. The planted stories')
-    const withTruth = SCORED.filter((q) => q.hidden_truth !== null)
     expect(withTruth).toHaveLength(8)
     for (const question of withTruth) {
-      const title = SCENARIOS.find(
-        (s) => s.scenario_id === question.scenario_id,
-      )!.title
-      const card = within(stories)
-        .getByRole('heading', { name: title })
-        .closest('article')!
+      const card = cardOf(stories, question.scenario_id!)
       expect(within(card).getByText(question.hidden_truth!)).toBeVisible()
+      expect(card).toHaveTextContent(question.scenario_id!)
+      expect(card).toHaveTextContent(PLAIN_STORIES[question.scenario_id!]!)
+    }
+  })
+
+  it('tells each story in plain words at Plain, with no dataset code and no hidden truth', async () => {
+    await renderHelp()
+    const stories = section('3. The planted stories')
+    for (const question of withTruth) {
+      const card = cardOf(stories, question.scenario_id!)
+      expect(card).toHaveTextContent(PLAIN_STORIES[question.scenario_id!]!)
+      expect(card).not.toHaveTextContent(question.hidden_truth!)
+      // The worked example's question names its incident by code, as data; the rest of every card names none.
+      const own = card.cloneNode(true) as HTMLElement
+      own.querySelectorAll('dd[data-api]').forEach((node) => node.remove())
+      expect(own.textContent, question.scenario_id!).not.toMatch(DATASET_CODE)
+    }
+  })
+
+  it('names in each plain story exactly the countries its hidden truth and answer key hold', () => {
+    const COUNTRIES: Record<string, string> = {
+      UK: 'United Kingdom',
+      GR: 'Greece',
+      AT: 'Austria',
+      CZ: 'Czech Republic',
+    }
+    for (const question of withTruth) {
+      const data = `${question.hidden_truth} ${question.expected_answer}`
+      const codes = new Set(
+        [...data.matchAll(/(?:^|[^A-Z])[A-Z]+_(UK|GR|AT|CZ)(?=_|\b)/g)].map(
+          (match) => match[1]!,
+        ),
+      )
+      const story = PLAIN_STORIES[question.scenario_id!]!
+      const named = Object.keys(COUNTRIES).filter((code) =>
+        story.includes(COUNTRIES[code]!),
+      )
+      expect(new Set(named), question.scenario_id!).toEqual(codes)
     }
   })
 
@@ -188,12 +232,27 @@ describe('the planted stories', () => {
   it('tells SCN-007 once, as the worked example, with its question and answer key', async () => {
     await renderHelp()
     const l18 = SCORED.find((q) => q.scenario_id === 'SCN-007')!
-    const stories = section('3. The planted stories')
-    expect(within(stories).getAllByText('Worked example')).toHaveLength(1)
-    const card = within(stories).getByText('Worked example').closest('article')!
-    expect(card).toHaveTextContent('Cross market platform incident')
-    expect(within(card).getByText(l18.text)).toBeVisible()
-    expect(within(card).getByText(l18.expected_answer)).toBeVisible()
+    const worked = () => {
+      const stories = section('3. The planted stories')
+      expect(within(stories).getAllByText('Worked example')).toHaveLength(1)
+      const card = within(stories)
+        .getByText('Worked example')
+        .closest('article')!
+      expect(card).toHaveTextContent('Cross market platform incident')
+      expect(within(card).getByText(l18.text)).toBeVisible()
+      return card
+    }
+    // At Plain the answer key names the countries; the codes it holds are the bank's.
+    expect(
+      within(worked()).getByText(
+        'Incidents on the same platform version as INC_042 were seen in Austria and the Czech Republic, and the United Kingdom was unaffected.',
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(l18.hidden_truth!)).toBeNull()
+    cleanup()
+
+    await renderHelp('#/help?level=technical')
+    expect(within(worked()).getByText(l18.expected_answer)).toBeVisible()
     expect(screen.getAllByText(l18.hidden_truth!)).toHaveLength(1)
   })
 
@@ -230,12 +289,34 @@ describe('the questions table', () => {
     expect(groups()).toHaveLength(22)
     expect(rows()).toHaveLength(SCORED.length)
     const first = SCORED[0]
-    expect(groups()[0]).toHaveTextContent(first.question_id)
-    expect(groups()[0]).toHaveTextContent(first.tests)
+    // Plain names no question id; Technical does.
+    const head = () => groups()[0].querySelector('th')!
+    expect(head()).toHaveTextContent(first.tests)
+    expect(head()).not.toHaveTextContent(first.question_id)
     expect(rows()[0]).toHaveTextContent(first.text)
     expect(rows()[0]).toHaveTextContent(first.expected_answer)
     expect(questionTable().querySelectorAll('thead th')).toHaveLength(5)
     expect(screen.getByText('22 questions, 50 instances')).toBeVisible()
+    cleanup()
+    await renderHelp('#/help?level=technical')
+    expect(head()).toHaveTextContent(`${first.question_id} · Single fact`)
+  })
+
+  it('writes market codes as countries at Plain and keeps the bank text at Technical', async () => {
+    const l05 = SCORED.find((q) => /\bMKT_/.test(q.expected_answer))!
+    await renderHelp(`#/help?section=questions&stratum=${l05.stratum}`)
+    const row = rows().find((r) => r.textContent!.includes(l05.text))!
+    expect(row).not.toHaveTextContent(/\bMKT_/)
+    expect(row).toHaveTextContent(
+      /Czech Republic|Austria|Greece|United Kingdom/,
+    )
+    cleanup()
+    await renderHelp(
+      `#/help?section=questions&stratum=${l05.stratum}&level=technical`,
+    )
+    expect(
+      rows().find((r) => r.textContent!.includes(l05.text)),
+    ).toHaveTextContent(l05.expected_answer)
   })
 
   it('names the ontology-dependent kind in full', async () => {
@@ -357,7 +438,7 @@ describe('the questions table', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
-    ).toEqual(['Instance', 'Answer key'])
+    ).toEqual(['Question', 'Answer key'])
     expect(
       within(questions).queryByText('Not scored by the newest official run'),
     ).toBeNull()
@@ -381,7 +462,7 @@ describe('the questions table', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
-    ).toEqual(['Instance', 'Answer key'])
+    ).toEqual(['Question', 'Answer key'])
   })
 
   it('keeps the score columns when the newest official run scored these questions', async () => {
@@ -435,7 +516,7 @@ describe('the questions table', () => {
         within(table)
           .getAllByRole('columnheader')
           .map((cell) => cell.textContent),
-      ).toEqual(['Instance', 'Answer key'])
+      ).toEqual(['Question', 'Answer key'])
     },
   )
 

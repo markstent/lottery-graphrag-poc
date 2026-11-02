@@ -4,8 +4,28 @@
  */
 
 import type { Schemas } from '../api/client'
+import { MARKETS } from '../run/coverage'
 
 type JsonValue = Schemas['JsonValue']
+
+const MARKET_NAMES = new Map<string, string>(
+  MARKETS.map(({ id, name }) => [id, name]),
+)
+
+/**
+ * Text with each market code written as its country: "seen in MKT_AT and
+ * MKT_UK" reads "seen in Austria and the United Kingdom". A code that opens a
+ * sentence takes a capital "The"; any other id is left as written.
+ */
+export function marketsInWords(text: string): string {
+  return text.replace(/\bMKT_[A-Z]{2}\b/g, (code, offset: number) => {
+    const name = MARKET_NAMES.get(code)
+    if (name === undefined) return code
+    if (!/ (?:Kingdom|Republic)$/.test(name)) return name
+    const opens = offset === 0 || /[.;!?]\s*$/.test(text.slice(0, offset))
+    return `${opens ? 'The' : 'the'} ${name}`
+  })
+}
 
 /** "dev-seed2026" reads "dev world, 2026"; an id of another shape reads as its words. */
 export function datasetName(id: string): string {

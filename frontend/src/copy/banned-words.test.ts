@@ -15,6 +15,7 @@ import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
 import { CHAPTER_COPY } from '../screens/help/copy'
 import { REGISTER } from '../screens/help/copy/limits'
+import { PLAIN_STORIES } from '../screens/help/copy/stories'
 import type { Block, ChapterCopy } from '../screens/help/chapters'
 import { STRATUM_NAMES } from '../screens/help/bank'
 import { KIND_WORDS } from '../app/run-kinds'
@@ -448,6 +449,12 @@ describe('Help chapters', () => {
     // The Technical columns (reason, cost, decision) are not read, as with Technical blocks.
     const texts = REGISTER.flatMap(({ item, plain }) => [item, plain])
     expect(texts.length).toBeGreaterThan(20)
+    expect(texts.filter((text) => violation(text))).toEqual([])
+  })
+
+  it('has no banned word in the plain stories the story cards show', () => {
+    const texts = Object.values(PLAIN_STORIES)
+    expect(texts.length).toBe(8)
     expect(texts.filter((text) => violation(text))).toEqual([])
   })
 })

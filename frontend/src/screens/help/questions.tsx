@@ -4,9 +4,12 @@
  * row, with one row below it for each instance (its anchor): scores are
  * those of the instance and are never averaged here. The two filters live in
  * the route, so a filtered table is a link. Scores read as on Live Lab.
+ * At Plain a question's header names no question id, and the question and
+ * answer key write market codes as countries; Technical shows the bank as is.
  */
 
 import { EVIDENCE_LABELS } from '../../app/method'
+import { marketsInWords } from '../../app/plain-words'
 import { answerWords, evidenceScore } from '../../app/score-words'
 import { hrefFor, useRoute } from '../../app/router'
 import { plural } from '../../charts/scale'
@@ -151,6 +154,9 @@ function QuestionTable({
 }) {
   const { params: route } = useRoute()
   const { level } = useHelpData()
+  // Plain names no question id and writes market codes as countries; Technical shows the bank as it is.
+  const technical = level === 'technical'
+  const words = technical ? (text: string) => text : marketsInWords
   // A kind or story the bank does not have is ignored, not an empty table.
   const stratum = bank.questions.some((q) => q.stratum === wantedStratum)
     ? wantedStratum
@@ -209,7 +215,7 @@ function QuestionTable({
           <thead className="text-text-muted">
             <tr>
               <th scope="col" className={CELL}>
-                Instance
+                Question
               </th>
               <th scope="col" className={CELL}>
                 Answer key
@@ -240,9 +246,17 @@ function QuestionTable({
                     colSpan={columns}
                     className={`${CELL} font-normal`}
                   >
-                    <span className="font-semibold">{head.question_id}</span>
-                    {' · '}
-                    {STRATUM_NAMES[head.stratum] ?? head.stratum}
+                    {technical && (
+                      <>
+                        <span className="font-semibold">
+                          {head.question_id}
+                        </span>
+                        {' · '}
+                      </>
+                    )}
+                    <span className={technical ? undefined : 'font-semibold'}>
+                      {STRATUM_NAMES[head.stratum] ?? head.stratum}
+                    </span>
                     {' · '}
                     {head.tests}
                     {head.scenario_id && (
@@ -268,8 +282,8 @@ function QuestionTable({
                 </tr>
                 {group.map((question) => (
                   <tr key={question.instance_id}>
-                    <td className={CELL}>{question.text}</td>
-                    <td className={CELL}>{question.expected_answer}</td>
+                    <td className={CELL}>{words(question.text)}</td>
+                    <td className={CELL}>{words(question.expected_answer)}</td>
                     {cellState &&
                       PIPELINES.map(({ id }) => (
                         <ScoreCell
