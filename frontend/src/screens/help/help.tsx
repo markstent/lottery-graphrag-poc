@@ -89,15 +89,16 @@ export function Help() {
   const ready = bank.status !== 'loading' && latest.status !== 'loading'
 
   // Scroll once per target, after the bank and the newest run have drawn the stories and rows.
+  // A chapter is a page of its own, so it opens at the top of the screen; only a story
+  // within one is scrolled to, below the sticky bar by its scroll margin.
   const scrolled = useRef<string | null>(null)
   useEffect(() => {
     if (target === null || !ready || scrolled.current === target) return
     scrolled.current = target
-    const element =
-      document.getElementById(target) ??
-      (section ? document.getElementById(section) : null)
-    element?.scrollIntoView({ block: 'start' })
-  }, [target, section, ready])
+    const element = target === page ? null : document.getElementById(target)
+    if (element) element.scrollIntoView({ block: 'start' })
+    else window.scrollTo({ top: 0, behavior: 'instant' })
+  }, [target, page, ready])
 
   // A level changes how long the chapters are, so the chapter in view is put back where it was.
   // The chapter in view is the one at the reading line, where a chapter link puts a chapter's

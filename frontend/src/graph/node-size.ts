@@ -20,9 +20,10 @@ export interface TypeSize {
   font: number
   minWidth: number
   /**
-   * The smallest type size on screen, in px, that fit view may zoom to: 14,
-   * or 20 in presentation mode. The type is set a little larger than this so
-   * fit has a range of zoom to work in.
+   * The smallest type size on screen, in px, that fit view may zoom to: 14 in
+   * both modes. Presentation mode sets the type larger (22 px), so a small
+   * graph shows larger, and an evidence path as wide as a three-step one still
+   * fits a 1920 by 1080 screen whole rather than at the edge (D-112).
    */
   minPx: number
 }
@@ -37,7 +38,7 @@ export const PRESENTATION_TYPE_SIZE: TypeSize = {
   height: 100,
   font: 22,
   minWidth: 300,
-  minPx: 20,
+  minPx: 14,
 }
 
 /** The share of the width a shape leaves for text. */

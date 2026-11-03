@@ -96,7 +96,7 @@ interface Opened {
 }
 
 export function LiveLab() {
-  const { reducedMotion } = useSettings()
+  const { reducedMotion, presentation } = useSettings()
   const linkedId = useRoute().params.get('question')
   const { questions, missing, bankError } = useLinkedQuestions(linkedId)
   const run = useLiveRun({ reducedMotion })
@@ -228,7 +228,10 @@ export function LiveLab() {
       {stored !== null && state.status === 'completed' && (
         <Scorecard results={stored} />
       )}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-[3fr_2fr]">
+      {/* In presentation mode the graph takes the full width and the panels sit in a row under it (D-112). */}
+      <div
+        className={`grid grid-cols-1 gap-4 ${presentation ? '' : 'md:grid-cols-[3fr_2fr]'}`}
+      >
         {/* Canvas first, as it is on screen; the three panels follow it. */}
         {run.phase !== 'idle' ? (
           <CanvasArea
@@ -250,7 +253,13 @@ export function LiveLab() {
           <CanvasPlaceholder />
         )}
         <div className="relative min-w-0">
-          <div className="flex flex-col gap-2 md:absolute md:inset-0">
+          <div
+            className={
+              presentation
+                ? 'grid grid-cols-1 gap-2 md:h-[32rem] md:grid-cols-3 md:grid-rows-[minmax(0,1fr)]'
+                : 'flex flex-col gap-2 md:absolute md:inset-0'
+            }
+          >
             {PIPELINES.map(({ id }) => (
               <PipelineColumn
                 key={id}

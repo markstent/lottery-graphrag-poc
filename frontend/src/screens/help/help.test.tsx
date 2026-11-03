@@ -395,12 +395,23 @@ describe('the planted stories', () => {
     expect(scroll.mock.contexts.at(-1)).toBe(card)
   })
 
-  it('scrolls to the section named in the link', async () => {
+  it('opens a chapter at the top of the screen, and scrolls to a story named in the link', async () => {
     const scroll = vi.fn()
+    const toTop = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
     Element.prototype.scrollIntoView = scroll
     await renderHelp('#/help?section=glossary')
+    await waitFor(() =>
+      expect(toTop).toHaveBeenCalledWith({ top: 0, behavior: 'instant' }),
+    )
+    expect(scroll).not.toHaveBeenCalled()
+    cleanup()
+
+    await renderHelp('#/help?section=stories&story=SCN-007')
     await waitFor(() => expect(scroll).toHaveBeenCalled())
-    expect((scroll.mock.contexts.at(-1) as HTMLElement).id).toBe('glossary')
+    expect((scroll.mock.contexts.at(-1) as HTMLElement).id).toBe(
+      'story-SCN-007',
+    )
+    toTop.mockRestore()
   })
 })
 
@@ -1025,19 +1036,19 @@ describe('reading levels', () => {
 
 describe('section links', () => {
   it('every old section id lands on its chapter', async () => {
-    const scroll = vi.fn()
-    Element.prototype.scrollIntoView = scroll
+    const toTop = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
     for (const [old, chapter] of Object.entries(SECTION_ALIASES)) {
-      scroll.mockClear()
+      toTop.mockClear()
       await renderHelp(`#/help?section=${old}`)
-      await waitFor(() => expect(scroll).toHaveBeenCalled())
-      expect((scroll.mock.contexts.at(-1) as HTMLElement).id).toBe(chapter)
+      // It opens at the top, as any chapter does.
+      await waitFor(() => expect(toTop).toHaveBeenCalled())
       // The page shows that chapter alone.
       expect(
         screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent),
       ).toEqual([PAGES.find((page) => page.id === chapter)!.title])
       cleanup()
     }
+    toTop.mockRestore()
     expect(SECTION_ALIASES.what).toBe('why')
     expect(SECTION_ALIASES.data).toBe('company')
   })

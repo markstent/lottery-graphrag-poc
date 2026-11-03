@@ -115,6 +115,8 @@ Purpose: run one question through all three approaches and watch them work.
 
 The layout puts the graph canvas on the left, about three fifths of the width and at least 640 px, and the three approach panels as a rail on the right (D-046).
 At 1920 by 1080, the first screen of a running run holds the question bar, the graph, the panels and the timeline.
+In presentation mode the graph takes the full width and the rest of the first screen's height, and the three panels sit in a row under it, each 32rem tall and scrolling inside (D-112).
+That is what lets a three-step evidence path, such as the H1 recording's incident, platform version and six incidents, show whole at 1920 by 1080.
 
 1. **Question bar.**
    Before a run it is open: the four saved questions under "Tested questions"; their easy-to-read wordings under "Easy-to-read questions, asked as written and not scored" (D-108), each of which puts its wording in the box for your own question, with all markets, so it runs live; a box for your own question; the market scope and the source (Recorded run or Live).
@@ -422,6 +424,8 @@ The target is WCAG AA.
 
 Presentation mode is a header button (`aria-pressed`, with an "On" check mark) and the query parameter `?present=1`, before the hash, so a reload keeps it.
 It hides the sidebar, raises the type scale by one step and makes the canvas and maps taller.
+In Live Lab it also moves the approach panels under the graph, so the graph has the full width (D-112).
+The graph's type is set larger (22 px against 16 px), but fit view may shrink it to the same 14 px floor as the normal screens, so a wide evidence path fits whole instead of running off the edge.
 It never changes the route.
 While it is on, Space plays or pauses the replay of the screen being shown, the right arrow steps it, and R resets it.
 Those keys belong to whatever has focus when it is a button, link, tab, text field or open dialog.
@@ -497,7 +501,7 @@ Recorded at CP2 (`docs/reference/hitl-history.md`) and standing as built until t
 
 - Overview tiles show no per-approach interval (D-048).
 - The replay layout comes from the final graph, and the default fit frames the evidence path with an out-of-view note (D-049, D-050).
-- The visible-node cap of 24 is a legibility choice from the 14 px floor.
+- The visible-node cap of 24 is a legibility choice from the 14 px floor, which presentation mode shares since D-112.
 - The Graph tab's full map is dense, and a per-label neighbourhood map is proposed.
 - Help has no A, B, C walk-through of the SCN-007 worked example, because no recorded run covers it.
 - Which world is the presentation world is not settled, and Help's recovery table omits `make demo-reset` for that reason.

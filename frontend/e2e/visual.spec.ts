@@ -938,6 +938,8 @@ test.describe('Live Lab', () => {
 
   test('live-lab-presentation-end', async ({ page }) => {
     await finishedRecording(page, h1, '?present=1')
+    // The graph takes the full width, so B's whole evidence path is in view (D-112).
+    await expect(page.getByText(/evidence nodes? out of view/)).toHaveCount(0)
     await screenShot(page, 'live-lab-presentation-end')
   })
 })
