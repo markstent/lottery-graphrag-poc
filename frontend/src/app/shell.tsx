@@ -9,6 +9,7 @@ import {
   BookOpen,
   ChartColumn,
   Check,
+  CircleAlert,
   CircleCheck,
   CircleX,
   Database,
@@ -35,7 +36,7 @@ import { datasetName } from './plain-words'
 import { DESTINATIONS, hrefFor, useRoute, type RouteName } from './router'
 import { SettingsDrawer } from './settings-drawer'
 import { useLoad } from './use-load'
-import { useReadiness, type ModelStatus } from './use-readiness'
+import { usesStandIn, useReadiness, type ModelStatus } from './use-readiness'
 import { useSettings } from './use-settings'
 
 const ICONS: Record<RouteName, LucideIcon> = {
@@ -151,6 +152,9 @@ const CHECK_LABELS: Record<string, string> = {
 
 function ModelStatusMenu() {
   const { status, checks } = useReadiness()
+  // Ready on test stand-ins still runs, but its answers are placeholders, so it must not look like the real thing.
+  const standIn = status === 'ready' && usesStandIn(checks)
+  const words = standIn ? 'Test models' : STATUS_WORDS[status]
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -179,7 +183,11 @@ function ModelStatusMenu() {
       <button
         ref={button}
         type="button"
-        aria-label={`Models: ${STATUS_WORDS[status]}`}
+        aria-label={
+          standIn
+            ? 'Models: Ready, but on test stand-ins'
+            : `Models: ${STATUS_WORDS[status]}`
+        }
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
         onClick={() => setOpen(!open)}
@@ -187,32 +195,53 @@ function ModelStatusMenu() {
       >
         <span
           aria-hidden
-          className={`size-2.5 rounded-full ${STATUS_DOT[status]}`}
+          className={`size-2.5 rounded-full ${standIn ? STATUS_DOT.starting : STATUS_DOT[status]}`}
         />
-        {STATUS_WORDS[status]}
+        {words}
       </button>
       {open && (
         <div
           id={listId}
           className="absolute right-0 top-full z-20 mt-1 w-96 rounded-card border border-border bg-surface p-3 shadow-overlay"
         >
+          {standIn && (
+            <p className="mb-3 text-sm text-text-primary">
+              Answers are placeholder text from a stand-in for testing, not from
+              an AI model. To answer with the official run's model, start the
+              backend with <code>make dev-official</code>.
+            </p>
+          )}
           {checks ? (
             <ul aria-label="Readiness checks" className="space-y-2">
               {Object.entries(checks).map(([name, check]) => {
-                const Icon = check.ok ? CircleCheck : CircleX
+                const Icon = check.stand_in
+                  ? CircleAlert
+                  : check.ok
+                    ? CircleCheck
+                    : CircleX
+                const tone = check.stand_in
+                  ? 'text-warning'
+                  : check.ok
+                    ? 'text-success'
+                    : 'text-error'
                 return (
                   <li key={name} className="flex items-start gap-2 text-sm">
                     <Icon
                       aria-hidden
                       size={16}
-                      className={`mt-0.5 shrink-0 ${check.ok ? 'text-success' : 'text-error'}`}
+                      className={`mt-0.5 shrink-0 ${tone}`}
                     />
                     <span>
                       <span className="font-medium text-text-primary">
                         {CHECK_LABELS[name] ?? name}
                       </span>
                       <span className="block text-text-secondary">
-                        {check.ok ? 'Ready' : 'Not ready'}: {check.detail}
+                        {check.stand_in
+                          ? 'Test stand-in'
+                          : check.ok
+                            ? 'Ready'
+                            : 'Not ready'}
+                        : {check.detail}
                       </span>
                     </span>
                   </li>

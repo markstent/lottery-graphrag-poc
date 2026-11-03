@@ -49,6 +49,14 @@ class Check(BaseModel):
 
     ok: bool
     detail: str
+    stand_in: bool = Field(
+        default=False,
+        description=(
+            "True when an offline stand-in for testing (the fake generator or the "
+            "hashing embedder) passed the check in place of a real model, so the "
+            "screens can say that answers are not a real model's."
+        ),
+    )
 
 
 class Readiness(BaseModel):

@@ -52,7 +52,13 @@ make ground-bank            # freeze the question bank into this world
 make dev-backend            # API on :8000
 make dev-frontend           # the screens on :5173
 make dev                    # the last two together
+make dev-official           # both, on the official run's answer model, for a demo
 ```
+
+`make dev` answers with the fake generator of `.env.example`, which needs no model but writes placeholder answers; the header then says Test models.
+`make dev-official` (or `make dev-official-backend` for the API alone) sets the official run's answer settings (qwen3.6 through Ollama, reasoning off, temperature 0, 4,096 output tokens) for that command only, so Live Lab answers come from the model the published results used.
+Both first run `make check-ollama`, which stops with a plain message when Ollama is not answering at `OLLAMA_HOST` or lacks `qwen3.6:latest` or `bge-m3:latest`.
+It does not check Neo4j or Qdrant; start them with `make services-up`, and the header's checks report them.
 
 Open `http://localhost:5173`.
 The frontend calls relative `/api` paths, and both the Vite dev server and `vite preview` forward them to `localhost:8000` (`frontend/vite.config.ts`), so the API must be on port 8000.
@@ -140,6 +146,8 @@ A job started from the API never resumes; its failure message names the command 
 | `make help` | Lists the targets |
 | `make setup` | Installs Python, frontend and Playwright dependencies |
 | `make dev`, `dev-backend`, `dev-frontend` | Runs the API, the screens, or both |
+| `make dev-official`, `dev-official-backend` | Runs both, or the API alone, on the official run's answer model, after `check-ollama` |
+| `make check-ollama` | Checks that Ollama answers and has the answer and embedding models; no model call |
 | `make test` | Backend and frontend unit tests, offline |
 | `make test-graph` | The live graph tests. They wipe Neo4j. |
 | `make lint`, `make typecheck`, `make format` | ruff and oxlint, mypy and tsc, ruff and Prettier |

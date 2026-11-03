@@ -52,6 +52,8 @@ Overview is the default.
   The active one carries a heavy bar and bold text, so it does not rely on colour.
 - The header carries the product name, the active dataset in plain words (for example "dev world, 2026"), the model status, the presentation toggle and Settings.
 - The model status is one button with a dot and a word: Checking, Ready, Starting or Not ready.
+  When everything is ready but a check passed on a stand-in for testing (the fake generator or the hashing embedder), it says Test models with an amber dot instead of Ready (D-111).
+  Its menu then opens with a sentence saying the answers are placeholder text and that `make dev-official` starts the backend on the official run's model, and the stand-in check shows an amber alert icon and "Test stand-in".
   It opens the readiness checks: Retrieval lab, Search index, Graph database, Answer model and Embedding model.
   It polls every 15 seconds while something is not ready and every 60 seconds once all is ready, and pauses while the tab is hidden.
 - Settings is a drawer holding reduced motion, the visible-node cap for graphs (12 to 60), the world and scenario numbers, versions, and the model names with their reachability.

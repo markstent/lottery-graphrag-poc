@@ -81,6 +81,18 @@ export const COMMAND_GROUPS: readonly {
       ['make dev', 'Run the API and the screens together.'],
       ['make dev-backend', 'Run the API alone, on port 8000, with reload.'],
       ['make dev-frontend', 'Run the screens alone, on the Vite dev server.'],
+      [
+        'make dev-official',
+        "Run the API and the screens on the official run's answer model (qwen3.6 through Ollama), for a demo. The header says Test models while the offline stand-in answers instead.",
+      ],
+      [
+        'make dev-official-backend',
+        "Run the API alone on the official run's answer model, with reload.",
+      ],
+      [
+        'make check-ollama',
+        'Check that Ollama answers and has the answer and embedding models; both dev-official targets run it first.',
+      ],
       ['make test', 'Backend and frontend unit tests, offline; no live graph.'],
       ['make test-graph', 'The live graph tests. They wipe Neo4j.'],
       ['make lint', 'ruff and oxlint.'],

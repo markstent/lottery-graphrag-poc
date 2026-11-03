@@ -94,6 +94,7 @@ make ingest-graph        # the graph, in Neo4j
 make index-vector        # the document index, in Qdrant
 make ground-bank         # freeze the question bank into this world
 make dev                 # API on :8000 and the screens on :5173
+make dev-official        # the same, answering with the official run's model (qwen3.6), for a demo
 ```
 
 Open `http://localhost:5173`.

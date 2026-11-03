@@ -202,6 +202,38 @@ describe('header', () => {
     ).toBeVisible()
   })
 
+  it('says Test models, not Ready, when a test stand-in answers, and says how to get real answers', async () => {
+    stubApi({
+      ...SHELL_API,
+      '/api/v1/health/ready': () =>
+        Response.json({
+          ...READY,
+          checks: {
+            ...READY.checks,
+            model: {
+              ok: true,
+              detail: 'fake generator (offline)',
+              stand_in: true,
+            },
+          },
+        }),
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    const button = await screen.findByRole('button', {
+      name: 'Models: Ready, but on test stand-ins',
+    })
+    expect(button).toHaveTextContent('Test models')
+    expect(button.querySelector('span')).toHaveClass('bg-warning')
+    await user.click(button)
+    expect(
+      screen.getByText(/placeholder text from a stand-in for testing/),
+    ).toHaveTextContent('make dev-official')
+    expect(
+      screen.getByRole('list', { name: 'Readiness checks' }),
+    ).toHaveTextContent('Test stand-in: fake generator (offline)')
+  })
+
   it('says Not ready when the server does not answer', async () => {
     stubApi({
       ...SHELL_API,

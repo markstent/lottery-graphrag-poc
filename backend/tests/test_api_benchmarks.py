@@ -537,7 +537,7 @@ def test_readiness_reports_the_benchmark_while_a_job_runs(
 ) -> None:
     client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke())
     graph = client_with_blocking_benchmark.get("/api/v1/health/ready").json()["checks"]["graph"]
-    assert graph == {"ok": False, "detail": "a benchmark run is using the graph"}
+    assert graph == {"ok": False, "detail": "a benchmark run is using the graph", "stand_in": False}
 
 
 class Hold:

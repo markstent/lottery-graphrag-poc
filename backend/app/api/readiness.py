@@ -144,7 +144,7 @@ def _index_state(settings: RetrievalSettings, store: VectorStore) -> Check:
             return Check(
                 ok=False, detail="the index was built by another record serialiser; rebuild it"
             )
-    return Check(ok=True, detail=f"{points} points")
+    return Check(ok=True, detail=f"{points:,} points")
 
 
 def graph_check(config: GraphConfig, dataset_dir: Path | None, world: GraphWorldCheck) -> Check:
@@ -218,7 +218,7 @@ class ModelReachability:
 
     def _probe(self, settings: GenerationSettings, ollama_host: str | None) -> Check:
         if settings.provider == "fake":
-            return Check(ok=True, detail="fake generator (offline)")
+            return Check(ok=True, detail="fake generator (offline)", stand_in=True)
         if settings.provider != "litellm":
             return Check(ok=False, detail="unknown generation provider")
         reached = gateway.probe(settings, ollama_host, self._transport)
@@ -226,7 +226,7 @@ class ModelReachability:
 
     def _probe_embedding(self, settings: EmbeddingSettings) -> Check:
         if settings.provider == "hashing":
-            return Check(ok=True, detail="hashing embedder (offline)")
+            return Check(ok=True, detail="hashing embedder (offline)", stand_in=True)
         if settings.provider != "ollama":
             return Check(ok=False, detail="unknown embedding provider")
         reached = gateway.probe_ollama(settings.host.rstrip("/"), settings.model, self._transport)

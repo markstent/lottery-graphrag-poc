@@ -42,24 +42,35 @@ export function stubApi(routes: Record<string, Route>) {
 export const READY = {
   ready: true,
   checks: {
-    lab: { ok: true, detail: 'built' },
-    index: { ok: true, detail: '1,204 points, record version 2' },
-    graph: { ok: true, detail: 'answering' },
-    model: { ok: true, detail: 'qwen3:8b is reachable' },
-    embedding: { ok: true, detail: 'bge-m3 is reachable' },
+    lab: { ok: true, detail: 'built', stand_in: false },
+    index: {
+      ok: true,
+      detail: '1,204 points, record version 2',
+      stand_in: false,
+    },
+    graph: { ok: true, detail: 'answering', stand_in: false },
+    model: { ok: true, detail: 'qwen3:8b is reachable', stand_in: false },
+    embedding: { ok: true, detail: 'bge-m3 is reachable', stand_in: false },
   },
 }
 
 export const BUILDING = {
   ready: false,
-  checks: { ...READY.checks, lab: { ok: false, detail: 'building' } },
+  checks: {
+    ...READY.checks,
+    lab: { ok: false, detail: 'building', stand_in: false },
+  },
 }
 
 export const DOWN = {
   ready: false,
   checks: {
     ...READY.checks,
-    model: { ok: false, detail: 'qwen3:8b is not listed by the model server' },
+    model: {
+      ok: false,
+      detail: 'qwen3:8b is not listed by the model server',
+      stand_in: false,
+    },
   },
 }
 

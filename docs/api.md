@@ -375,6 +375,8 @@ Each graph request opens one reader, runs each statement once under `NEO4J_TIMEO
 | `embedding` | The embedding model is reachable (an Ollama model must be listed) |
 
 Details are curated sentences, and raw driver text is logged only.
+Each check also carries `stand_in`, true when an offline stand-in for testing passed it in place of a real model: the fake generator for `model`, the hashing embedder for `embedding` (D-111).
+A stand-in still passes, so `ready` stays true and Live Lab still runs; the header shows the difference.
 The decision record D-038 names four checks (`lab`, `index`, `graph`, `model`), and the code runs five.
 The decision text is behind the code on this point.
 
