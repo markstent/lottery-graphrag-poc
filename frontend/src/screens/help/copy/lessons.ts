@@ -11,10 +11,10 @@
  * only, by a script outside the repository (the technical text says how); a
  * test checks that the two agree and that the tables show these numbers.
  *
- * The judges' mark paragraph names no figure: the second judge had not
- * finished marking this run when it was written (D-105). Its figures belong
- * here, typed with their source like the rest, once `make judges-combined
- * RUN=official-2026-10-29` has written combined.json.
+ * The judges' mark figures come from the run's combined.json (D-105),
+ * written by `make second-judge RUN=official-2026-10-29` on 2026-11-03 at
+ * commit 4fe7c5c: the overall means of `metrics.overall` and the family's
+ * tested cells of `comparisons`, rounded as Plain rounds them.
  */
 
 import { percent } from '../../../app/score-words'
@@ -643,7 +643,10 @@ export const lessons: ChapterCopy = {
       'An ontology on top of the graph: questions that compare markets by meaning, use local names, or ask for things "of the same kind". In this run it helped where its links led from the starting record to the shared kind, as with segments and local names, and not on the family and mechanic questions named by code.',
       'All three: a mix of these questions. In this run, as a pattern rather than a tested result, no single approach was best on every kind of question: text search on single facts and planted patterns, the graph on multi-hop questions, and the graph with the ontology on questions across markets. B and C also search documents, so by design the choice is how to share the space between documents and graph records, not which one to keep.',
     ],
-    "A second view of the answers is the judges' mark (chapter 6): how right two AI judges found each answer, tested as a group of its own. Its figures for this run, its tests and the answers the judges disagree on are on Results, under Judges' verdict. The figures in this chapter do not use it.",
+    { kind: 'heading', text: 'What the two judges said' },
+    "A second view of the answers is the judges' mark (chapter 6): how right two AI judges found each answer, from 0 to 1, tested as a group of its own. The figures above do not use it.",
+    "The judges' mark put the three in the same order as the answer score: text search 50 percent, the graph 53 and the graph with the ontology 58. Of its 8 tests, none passed. Two leaned the same way as the answer score but did not pass: the graph above text search on multi-hop questions, by about 18 points, and the graph with the ontology above the graph on questions that match terms across markets, by about 19. The other 6 were too close to call.",
+    "The two judges gave the same mark to 814 of the 899 answers both of them marked (91 percent). On 3 they gave opposite marks, one fully right and the other wrong, all on questions that match terms across markets. The second judge could not read one answer, so it has no judges' mark. Each answer is on Results, under Judges' verdict.",
     { kind: 'heading', text: 'Limits' },
     'The company is made up, and its 22 questions were written by the people who built the system. One answer model answered each question once. Each figure for a single question rests on 6 or 18 cases, and none of those is tested.',
   ],
@@ -674,6 +677,8 @@ export const lessons: ChapterCopy = {
       'L21: every answer of all three says "unknown", and no approach selected a carrier of any claim (evidence recall 0 on all 18 answers).',
     ],
     'Room in the budget: over all 900 answers A showed 1,694 passages, B 800 and C 786; B and C filled the rest with graph records under the same 2,000-token budget the run recorded.',
+    { kind: 'heading', text: "The judges' mark" },
+    "combined.json of the run (schema 1, second judge ollama/muse-glimmer:latest, reasoning off, temperature 0, reply limit 2,048, judge prompt 1.2.0, the first judge's): 900 answers, 899 marked by both judges, one second-judge failure (a reply with no completeness score, so A has 299). Overall judge_mark 0.503 / 0.530 / 0.578. Family of 8, none under Holm 0.05: H1 B against A +18.4 (95 percent interval 7.3 to 29.9, p 0.0071, Holm 0.057); H2 C against B +19.4 (7.3 to 33.0, p 0.014, Holm 0.10); H1 C against B +2.8, H2 B against A -1.4, H3 B against A -1.4, H3 C against B -4.2, H5 B against A -3.1, H5 C against B -2.1, all with Holm 0.5 or more. Same correctness level on 814 of 899 (answered: 87.8 percent, weighted kappa 0.82, n 637; abstained: 97.3 percent, kappa 0.75, n 262); a 2 against a 0 on 3 (L12-2030-GAME_CZ_02 A, L11-2031-SEG_CZ_OBCASNI B, L09-2034-GAME_UK_03 C, each first 2, second 0).",
     { kind: 'heading', text: 'What this does not show' },
     'The why is read from what each approach selected, its starting records, its path lines and its answer text. It does not show what the graph found and the budget then cut in the official worlds. Per-question figures rest on 18 instances in 6 groups (L01 to L14) or 6 instances in 6 groups (L15 to L22), and no test was run on them.',
   ],

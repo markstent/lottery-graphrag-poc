@@ -307,6 +307,15 @@ describe('chapter 12, what the results teach', () => {
     expect(allText).not.toMatch(/Atlas/)
   })
 
+  it("gives the judges' mark of the run as its combined.json has it", () => {
+    expect(plainText).toContain(
+      'text search 50 percent, the graph 53 and the graph with the ontology 58',
+    )
+    expect(plainText).toContain('Of its 8 tests, none passed.')
+    expect(plainText).toContain('814 of the 899 answers')
+    expect(allText).toContain('Overall judge_mark 0.503 / 0.530 / 0.578.')
+  })
+
   it('shows its parts at Plain and the per-question tables only at Technical', () => {
     show('plain', plain)
     expect(
@@ -319,6 +328,7 @@ describe('chapter 12, what the results teach', () => {
       'Where none did well',
       'What to take home',
       'When you would want text, a graph, an ontology, or all three',
+      'What the two judges said',
       'Limits',
     ])
     expect(
