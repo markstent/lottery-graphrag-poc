@@ -23,6 +23,8 @@ import {
 } from './model'
 import { RowsGrid } from './rows-grid'
 import { WarehouseWhy } from './why'
+import { ClickHint, ExploreSteps, Trail } from './explore'
+import { STEPS } from './explore-steps'
 
 type Table = Schemas['TableSchemaOut']
 
@@ -102,14 +104,17 @@ function TableView({
   const links = table.foreign_keys
   return (
     <div className="space-y-4">
+      <Trail
+        steps={[
+          {
+            label: 'All tables',
+            href: hrefFor('data-model', { tab: 'warehouse' }),
+          },
+          { label: plainName(table.table) },
+        ]}
+      />
       <div>
-        <a
-          href={hrefFor('data-model', { tab: 'warehouse' })}
-          className="text-sm text-text-primary underline"
-        >
-          All tables
-        </a>
-        <h2 className="mt-2 text-lg font-semibold text-text-primary">
+        <h2 className="text-lg font-semibold text-text-primary">
           {table.table}
         </h2>
         <p className="mt-1 text-sm text-text-secondary">
@@ -138,6 +143,9 @@ function TableView({
           </p>
         )}
       </div>
+      <ClickHint>
+        Click a row to open that record, then follow it into the graph.
+      </ClickHint>
       <RowsGrid
         key={table.table}
         datasetId={datasetId}
@@ -203,7 +211,8 @@ export function Warehouse({
   }
   return (
     <div className="space-y-4">
-      <WarehouseWhy />
+      <ExploreSteps steps={STEPS.warehouse} />
+      <ClickHint>Click a table to open its rows.</ClickHint>
       <div className="flex flex-wrap items-start gap-4">
         {groupBySystem(dictionary).map(({ system, tables }) => (
           <SystemMap
@@ -215,6 +224,7 @@ export function Warehouse({
           />
         ))}
       </div>
+      <WarehouseWhy />
     </div>
   )
 }

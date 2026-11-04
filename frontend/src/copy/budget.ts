@@ -31,9 +31,11 @@
  * words, which a screen reader needs. The owner raised it to 3,350 on
  * 2026-11-04 (D-113), asking for Data Model write-ups that are easy to
  * follow: how each layer is built, where every kind of graph link is made
- * from, how to read the warehouse maps and the story cards.
+ * from, how to read the warehouse maps and the story cards; and to 3,500
+ * the same day (D-114) for the way-finding the owner asked for, so a reader
+ * can see what to click: three steps on each tab, a trail and a click cue.
  */
-export const OUTSIDE_HELP_WORD_CAP = 3350
+export const OUTSIDE_HELP_WORD_CAP = 3500
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

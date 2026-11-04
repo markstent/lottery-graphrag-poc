@@ -159,7 +159,9 @@ describe('Graph tab map', () => {
     stubApi(ROUTES)
     renderTab()
     expect(
-      await screen.findByText(/Choose a box for its details\./),
+      await screen.findByText(
+        'Click a box for its details and a sample record.',
+      ),
     ).toBeVisible()
     expect(screen.queryByRole('dialog')).toBeNull()
     await userEvent.click(
@@ -173,7 +175,7 @@ describe('Graph tab map', () => {
     expect(within(details).getByText(/^Built from games\./)).toBeVisible()
     expect(
       within(details).getByRole('link', {
-        name: 'Open this node in the graph',
+        name: 'Open this record in the graph',
       }),
     ).toHaveAttribute('href', '#/data-model?tab=graph&node=GAME_001')
   })
@@ -227,7 +229,7 @@ describe('Graph tab map', () => {
     ])
 
     await userEvent.click(
-      screen.getByRole('button', { name: 'Show all relationships' }),
+      screen.getByRole('button', { name: 'Show all links again' }),
     )
     expect(tagged()).toEqual([])
   })

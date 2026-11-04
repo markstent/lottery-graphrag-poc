@@ -4,6 +4,7 @@
  * properties), then where it came from.
  */
 
+import { ArrowRight } from 'lucide-react'
 import { getNode, getRecord, type Schemas } from '../api/client'
 import {
   datasetName,
@@ -121,9 +122,10 @@ function loaded(source: Fetched, followInto?: (nodeId: string) => string) {
               {followInto && record.graph_node_id && (
                 <a
                   href={followInto(record.graph_node_id)}
-                  className="mt-3 block text-sm font-medium text-text-primary underline"
+                  className="mt-4 inline-flex items-center gap-1.5 rounded-chip bg-text-primary px-4 py-2 text-sm font-semibold text-surface hover:opacity-90"
                 >
                   Follow into the graph
+                  <ArrowRight aria-hidden="true" className="size-4" />
                 </a>
               )}
             </>

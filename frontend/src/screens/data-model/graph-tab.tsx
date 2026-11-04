@@ -6,7 +6,8 @@
  * set of its neighbours, which is where "Follow into the graph" lands.
  */
 
-import { useState } from 'react'
+import { ArrowRight } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 
 import {
   getDictionary,
@@ -24,6 +25,8 @@ import { useLoad } from '../../app/use-load'
 import { Drawer } from '../../components/drawer'
 import { Panel } from '../../components/panel'
 import { GraphWhy } from './why'
+import { ClickHint, ExploreSteps, Trail } from './explore'
+import { NEXT_STEP, STEPS } from './explore-steps'
 import { nodeLabel } from '../../design/node-labels'
 import { pipeline } from '../../design/pipelines'
 import {
@@ -166,14 +169,10 @@ function RelationshipTable({ rows }: { rows: RelationshipRow[] }) {
   )
 }
 
-const backToKinds = (
-  <a
-    href={hrefFor('data-model', { tab: 'graph' })}
-    className="text-sm text-text-primary underline"
-  >
-    All kinds of record
-  </a>
-)
+const ALL_KINDS = {
+  label: 'All kinds of record',
+  href: hrefFor('data-model', { tab: 'graph' }),
+}
 
 function Properties({ node }: { node: Node }) {
   return (
@@ -219,16 +218,17 @@ function SampleNode({ table }: { table: string }) {
     >
       {load.status === 'ready' && load.data && (
         <div className="space-y-3">
-          <p className="text-sm text-text-secondary">{`Built from ${table}. One sample node:`}</p>
+          <p className="text-sm text-text-secondary">{`Built from ${table}. One sample record:`}</p>
           <Properties node={load.data} />
           <a
             href={hrefFor('data-model', {
               tab: 'graph',
               node: load.data.node_id,
             })}
-            className="block text-sm font-medium text-text-primary underline"
+            className={NEXT_STEP}
           >
-            Open this node in the graph
+            Open this record in the graph
+            <ArrowRight aria-hidden="true" className="size-4" />
           </a>
         </div>
       )}
@@ -268,10 +268,13 @@ function KindsMap({
   schema,
   stats,
   scale,
+  about,
 }: {
   schema: Schemas['GraphSchema']
   stats: Schemas['GraphStats']
   scale: number
+  /** How the graph is built, between the map and the table of links. */
+  about: ReactNode
 }) {
   const [mode, setMode] = useState<AllowList>('full')
   // The kind chosen stays chosen (its lines are tagged, the rest pale) when
@@ -328,17 +331,20 @@ function KindsMap({
       </p>
       <p className="text-sm text-text-secondary">
         Each box is a kind of record, with how many there are; each line is a
-        kind of link. Choose a box for its details.
+        kind of link.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <ClickHint>Click a box for its details and a sample record.</ClickHint>
         {label !== null && (
           <button
             type="button"
             onClick={() => setLabel(null)}
-            className="ml-3 rounded-chip border border-border px-2 py-0.5 text-text-primary hover:bg-surface-raised"
+            className="rounded-chip border border-border px-2 py-0.5 text-sm text-text-primary hover:bg-surface-raised"
           >
-            Show all relationships
+            Show all links again
           </button>
         )}
-      </p>
+      </div>
       <Diagram
         nodes={nodes}
         edges={edges}
@@ -369,6 +375,7 @@ function KindsMap({
           ))}
         </section>
       )}
+      {about}
       <RelationshipTable rows={rows} />
       <Details
         label={detailsOpen ? label : null}
@@ -399,7 +406,7 @@ function FocusedNode({ nodeId, scale }: { nodeId: string; scale: number }) {
   if (load.status !== 'ready')
     return (
       <div className="space-y-3">
-        {backToKinds}
+        <Trail steps={[ALL_KINDS, { label: nodeId }]} />
         <Panel
           title="Node"
           state={load.status}
@@ -428,7 +435,15 @@ function FocusedNode({ nodeId, scale }: { nodeId: string; scale: number }) {
 
   return (
     <div className="space-y-3">
-      {backToKinds}
+      <Trail
+        steps={[
+          ALL_KINDS,
+          {
+            label: `${titleOf(node)} (${node.labels.map(nodeLabel).join(', ')})`,
+          },
+        ]}
+        hint="Click any record around it to move there. Its details are on the right."
+      />
       <div className="grid grid-cols-[minmax(0,1fr)_26rem] items-start gap-4">
         <div className="space-y-3">
           <Diagram
@@ -487,11 +502,12 @@ function Kinds({ scale }: { scale: number }) {
     )
   return (
     <div className="space-y-4">
-      <GraphWhy caps={load.data.schema.caps} />
+      <ExploreSteps steps={STEPS.graph} />
       <KindsMap
         schema={load.data.schema}
         stats={load.data.stats}
         scale={scale}
+        about={<GraphWhy caps={load.data.schema.caps} />}
       />
     </div>
   )

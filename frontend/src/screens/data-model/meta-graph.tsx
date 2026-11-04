@@ -274,6 +274,7 @@ export function Diagram({
               }
               aria-pressed={selected === undefined ? undefined : chosen}
               data-node-id={node.id}
+              className="map-node"
               style={{ cursor: 'pointer', opacity: node.dimmed ? 0.55 : 1 }}
               onClick={() => onSelect(node.id)}
               onKeyDown={(event) => {

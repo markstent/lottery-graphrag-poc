@@ -104,7 +104,7 @@ describe('OntologyTab', () => {
     expect(within(relationships).getByText(/is a kind of/)).toBeVisible()
     expect(
       within(relationships).getByText(
-        'Bound to 4 local terms across 4 markets',
+        'Matched to 4 country terms across 4 markets',
       ),
     ).toBeVisible()
     expect(
@@ -175,7 +175,7 @@ describe('OntologyTab', () => {
     const card = await screen.findByRole('region', { name: 'Concept' })
     expect(
       within(card).getByText(
-        'Bound to 4 local terms across 4 markets and 1 shared by every market',
+        'Matched to 4 country terms across 4 markets and 1 shared by every market',
       ),
     ).toBeVisible()
     const shared = await screen.findByRole('group', {
@@ -191,7 +191,7 @@ describe('OntologyTab', () => {
     renderAt('&concept=CONCEPT_DIGITAL_CHANNEL')
     const card = await screen.findByRole('region', { name: 'Concept' })
     expect(
-      within(card).getByText('Bound to 2 local terms shared by every market'),
+      within(card).getByText('Matched to 2 country terms shared by every market'),
     ).toBeVisible()
     expect(screen.queryByRole('group', { name: 'Show terms from' })).toBeNull()
   })

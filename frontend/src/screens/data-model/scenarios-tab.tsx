@@ -13,6 +13,8 @@ import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
 import { count } from './model'
 import { ScenariosWhy } from './why'
+import { ExploreSteps } from './explore'
+import { STEPS } from './explore-steps'
 
 type Scenario = Schemas['ScenarioOut']
 
@@ -111,12 +113,13 @@ export function ScenariosTab() {
     )
   return (
     <section aria-label="Scenarios" className="space-y-4">
-      <ScenariosWhy />
+      <ExploreSteps steps={STEPS.scenarios} />
       <div className="grid grid-cols-1 gap-4 min-[1400px]:grid-cols-2 min-[1800px]:grid-cols-4">
         {load.data.map((scenario) => (
           <ScenarioCard key={scenario.scenario_id} scenario={scenario} />
         ))}
       </div>
+      <ScenariosWhy />
     </section>
   )
 }

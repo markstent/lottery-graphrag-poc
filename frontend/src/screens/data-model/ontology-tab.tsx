@@ -12,6 +12,8 @@ import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
 import { OntologyWhy } from './why'
+import { ExploreSteps } from './explore'
+import { STEPS } from './explore-steps'
 import { MARKETS } from '../../run/coverage'
 import { ConceptCard } from './concept-card'
 import { ConceptTree } from './concept-tree'
@@ -170,7 +172,7 @@ export function OntologyTab({ params }: { params: URLSearchParams }) {
   )
   return (
     <div className="space-y-4">
-      <OntologyWhy concepts={concepts.length} bindings={bindings} />
+      <ExploreSteps steps={STEPS.ontology} />
       <div className="grid grid-cols-[18rem_minmax(0,1fr)_minmax(0,22rem)] items-start gap-4">
         <Panel title="Concepts" state="ready">
           <ConceptTree
@@ -186,6 +188,7 @@ export function OntologyTab({ params }: { params: URLSearchParams }) {
         />
         <BoundTerms concept={concept} market={params.get('market')} />
       </div>
+      <OntologyWhy concepts={concepts.length} bindings={bindings} />
     </div>
   )
 }

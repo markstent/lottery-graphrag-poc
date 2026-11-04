@@ -260,13 +260,22 @@ Purpose: what the warehouse, the graph and the ontology look like, with live cou
 
 Four tabs, each a link: Warehouse, Graph, Ontology and Scenarios (`#/data-model?tab=...`).
 
-- **Warehouse.** Above the maps, "What the warehouse is" (D-113): what is in it, how to read the maps, and how the approaches use it.
+Way-finding (D-114), so a reader can see what to click without being told:
+
+- Each tab opens with "How to explore": three numbered steps that say what to choose and what it shows (`STEPS` in `src/screens/data-model/explore-steps.ts`).
+- Every map, table and record view that opens on a click has a cue with a pointer icon right above it, such as "Click a table to open its rows."
+- A box on a map that opens lifts under the pointer and on keyboard focus: its fill and border darken.
+- A page reached by clicking through (a table, a record in the graph) starts with a "You are here" trail whose earlier steps are links, and a one-line cue for what to click next.
+- A link that takes the reader on to the next step, "Open this record in the graph" and "Follow into the graph", is a filled button with an arrow, not an underlined link.
+- The explanation of how a layer is built comes after the map, tree or cards it explains, and folds to its title with Hide and Show; the reader's choice is kept in the browser.
+
+- **Warehouse.** Under the maps, "What the warehouse is" (D-113): what is in it, how to read the maps, and how the approaches use it.
   A map of the tables as boxes with live row counts and the links between them, grouped by source system.
   Every system's map draws its table names at one size, 14 px at normal type, so the maps match; a map wider than its panel scrolls inside the panel.
   Choosing a table (`?table=`) shows its source system, rows and columns, the tables it links to, and its sample rows, 50 to a page.
   A filter takes one column and one value, read as that column's own type.
   A row opens as a record in the evidence drawer, with "Follow into the graph" when it has a node.
-- **Graph.** Above the map, "How the graph is built" (D-101, D-113), in three headed groups.
+- **Graph.** Between the map and the table of links, "How the graph is built" (D-101, D-113), in three headed groups.
   "What is in it": the graph is drawn over the tables, every record points back to its row, and bulk detail stays in the tables.
   "Where the links come from": the kinds of link were designed up front from the questions people ask, no AI model makes them, and a program builds each one in one of three ways (copied from a column, counted from bulk rows, worked out by a rule), so most links are the warehouse's own column links made walkable.
   "How a search uses them": the search limits (depth and record cap, read from `GET /graph/schema`), a worked example, why some kinds are left out, and why B and C share one graph.
@@ -277,10 +286,10 @@ Four tabs, each a link: Warehouse, Graph, Ontology and Scenarios (`#/data-model?
   Choosing a kind shows its properties, its source table and a sample node.
   A node address (`?node=`) shows its properties and up to 20 neighbours.
   Labels that come from the ontology say "Built from the ontology: no sample row."
-- **Ontology.** Above the tree, "How the ontology is built" (D-101, D-113), in three headed groups: the problem it solves, what is in it (the concept count and the count of local codes matched to concepts, read from `GET /ontology`, and the tree of broader ideas), and how a search uses it (only C, kept apart from the questions and planted stories).
+- **Ontology.** Under the tree, "How the ontology is built" (D-101, D-113), in three headed groups: the problem it solves, what is in it (the concept count and the count of local codes matched to concepts, read from `GET /ontology`, and the tree of broader ideas), and how a search uses it (only C, kept apart from the questions and planted stories).
   A tree of concepts, a concept card (`?concept=`) with its definition, its relationships, and "Each country's terms for it" by market, with a market filter.
   The count of shared codes is always shown.
-- **Scenarios.** Above the cards, "What the planted stories are" (D-113): what a story is, how to read a card (strength, noise level, rows added), and where its two links go.
+- **Scenarios.** Under the cards, "What the planted stories are" (D-113): what a story is, how to read a card (strength, noise level, rows added), and where its two links go.
   A card for each planted scenario with strength, noise level, "Rows added" by table and links to its story and its questions in Help.
   A scenario not in the active world says "Not planted in this world".
 
@@ -408,7 +417,7 @@ The graph is 2D and led by evidence.
   A node fades in over 200 ms, and the whole product collapses to near-instant under `prefers-reduced-motion` or the Settings switch.
   Evidence is never delayed for effect.
 - Copy is plain and short.
-  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 3,350 words outside Help (D-055, D-066, D-098, D-101, D-106 to D-109, D-113; raised from 1,300 to 1,360 by the owner on 2026-10-27, to 1,450 on 2026-11-02 for a plain Overview, to 1,800 the same day for the Data Model panels, by steps to 2,400 for the Overview, Live Lab and Architecture, and to 3,350 on 2026-11-04 for Data Model write-ups that are easy to follow).
+  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 3,500 words outside Help (D-055, D-066, D-098, D-101, D-106 to D-109, D-113, D-114; raised from 1,300 to 1,360 by the owner on 2026-10-27, to 1,450 on 2026-11-02 for a plain Overview, to 1,800 the same day for the Data Model panels, by steps to 2,400 for the Overview, Live Lab and Architecture, to 3,350 on 2026-11-04 for Data Model write-ups that are easy to follow, and to 3,500 the same day for the Data Model way-finding).
   Help has no word cap since D-082, and the scan covers Help's Plain text and not its Technical text, where real terms, vendor and model names and dated figures are allowed.
   Text from the API, such as headline sentences, is shown verbatim and is outside both.
 

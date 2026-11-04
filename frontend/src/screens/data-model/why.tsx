@@ -2,14 +2,63 @@
  * How each layer of the data model is built, in plain words above each tab's
  * map (D-101, D-113): what is in it, where it comes from and how a search
  * uses it. The counts and limits come from the API, so the text follows the
- * model it describes.
+ * model it describes. Each panel folds away (D-114), so the map below can be
+ * reached without scrolling past it; the choice is kept for the reader.
  */
 
-import { Panel } from '../../components/panel'
+import { ChevronDown } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 
 interface Group {
   heading: string
   points: readonly string[]
+}
+
+const FOLDED_KEY = (title: string) => `data-model-folded:${title}`
+
+function readFolded(title: string): boolean {
+  try {
+    return window.localStorage.getItem(FOLDED_KEY(title)) === '1'
+  } catch {
+    return false
+  }
+}
+
+function keepFolded(title: string, folded: boolean) {
+  try {
+    if (folded) window.localStorage.setItem(FOLDED_KEY(title), '1')
+    else window.localStorage.removeItem(FOLDED_KEY(title))
+  } catch {
+    // Storage can be blocked; the panel then opens each visit.
+  }
+}
+
+/** A panel that folds to its title, open until the reader folds it. */
+function About({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(() => !readFolded(title))
+  return (
+    <details
+      open={open}
+      onToggle={(event) => {
+        const next = event.currentTarget.open
+        setOpen(next)
+        keepFolded(title, !next)
+      }}
+      className="group rounded-card border border-hairline bg-surface"
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 [&::-webkit-details-marker]:hidden">
+        <h2 className="text-base font-semibold text-text-primary">{title}</h2>
+        <span className="flex items-center gap-1 text-sm text-text-secondary">
+          {open ? 'Hide' : 'Show'}
+          <ChevronDown
+            aria-hidden="true"
+            className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
+          />
+        </span>
+      </summary>
+      <div className="px-4 pb-4">{children}</div>
+    </details>
+  )
 }
 
 function Groups({ groups }: { groups: readonly Group[] }) {
@@ -33,7 +82,7 @@ function Groups({ groups }: { groups: readonly Group[] }) {
 
 export function WarehouseWhy() {
   return (
-    <Panel title="What the warehouse is" state="ready">
+    <About title="What the warehouse is">
       <Groups
         groups={[
           {
@@ -60,13 +109,13 @@ export function WarehouseWhy() {
           },
         ]}
       />
-    </Panel>
+    </About>
   )
 }
 
 export function GraphWhy({ caps }: { caps: Record<string, number> }) {
   return (
-    <Panel title="How the graph is built" state="ready">
+    <About title="How the graph is built">
       <Groups
         groups={[
           {
@@ -99,7 +148,7 @@ export function GraphWhy({ caps }: { caps: Record<string, number> }) {
           },
         ]}
       />
-    </Panel>
+    </About>
   )
 }
 
@@ -111,7 +160,7 @@ export function OntologyWhy({
   bindings: number
 }) {
   return (
-    <Panel title="How the ontology is built" state="ready">
+    <About title="How the ontology is built">
       <Groups
         groups={[
           {
@@ -139,13 +188,13 @@ export function OntologyWhy({
           },
         ]}
       />
-    </Panel>
+    </About>
   )
 }
 
 export function ScenariosWhy() {
   return (
-    <Panel title="What the planted stories are" state="ready">
+    <About title="What the planted stories are">
       <Groups
         groups={[
           {
@@ -173,6 +222,6 @@ export function ScenariosWhy() {
           },
         ]}
       />
-    </Panel>
+    </About>
   )
 }
