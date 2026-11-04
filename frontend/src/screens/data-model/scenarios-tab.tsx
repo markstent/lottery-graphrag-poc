@@ -12,6 +12,7 @@ import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
 import { count } from './model'
+import { ScenariosWhy } from './why'
 
 type Scenario = Schemas['ScenarioOut']
 
@@ -49,16 +50,21 @@ function ScenarioCard({ scenario }: { scenario: Scenario }) {
       {tables.length === 0 ? (
         <p className="text-sm text-text-secondary">No rows planted.</p>
       ) : (
-        <ul aria-label="Planted rows" className="space-y-1 text-sm">
-          {tables.map(([table, rows]) => (
-            <li key={table} className="flex justify-between gap-4">
-              <span className="text-text-secondary">{plainName(table)}</span>
-              <span className="tabular-nums text-text-primary">
-                {count(rows)}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <div className="space-y-1">
+          <h4 className="text-sm font-semibold text-text-primary">
+            Rows added
+          </h4>
+          <ul aria-label="Rows added" className="space-y-1 text-sm">
+            {tables.map(([table, rows]) => (
+              <li key={table} className="flex justify-between gap-4">
+                <span className="text-text-secondary">{plainName(table)}</span>
+                <span className="tabular-nums text-text-primary">
+                  {count(rows)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <div className="mt-auto flex flex-wrap gap-x-4 gap-y-1">
         <a
@@ -104,7 +110,8 @@ export function ScenariosTab() {
       />
     )
   return (
-    <section aria-label="Scenarios" className="space-y-3">
+    <section aria-label="Scenarios" className="space-y-4">
+      <ScenariosWhy />
       <div className="grid grid-cols-1 gap-4 min-[1400px]:grid-cols-2 min-[1800px]:grid-cols-4">
         {load.data.map((scenario) => (
           <ScenarioCard key={scenario.scenario_id} scenario={scenario} />

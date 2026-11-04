@@ -303,7 +303,9 @@ test('the ontology shows one concept under four names, and filters its terms by 
   await expect(card.getByText('Αριθμολαχείο')).toBeVisible()
   await expect(card.getByText('Zahlenziehung')).toBeVisible()
   await expect(card.getByText('National Draw').first()).toBeVisible()
-  const terms = page.getByRole('region', { name: 'Local terms bound to it' })
+  const terms = page.getByRole('region', {
+    name: "Each country's terms for it",
+  })
   await expect(terms.getByRole('group')).toHaveCount(4)
   await shot(page, 'ontology-national-draw')
 

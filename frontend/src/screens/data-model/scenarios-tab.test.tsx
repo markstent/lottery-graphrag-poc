@@ -27,7 +27,7 @@ describe('ScenariosTab', () => {
     render(<ScenariosTab />)
     const card = (await screen.findAllByRole('article'))[0]
     expect(within(card).queryByText(/planted in this world/i)).toBeNull()
-    const rows = within(card).getByRole('list', { name: 'Planted rows' })
+    const rows = within(card).getByRole('list', { name: 'Rows added' })
     expect(within(rows).getByText('sessions').nextSibling).toHaveTextContent(
       '150',
     )

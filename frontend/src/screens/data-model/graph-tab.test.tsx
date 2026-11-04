@@ -61,20 +61,28 @@ describe('Graph tab map', () => {
       table.getAllByRole('columnheader').map((cell) => cell.textContent),
     ).toEqual([
       'What it links',
+      'Made from',
       'How many',
       'Followed by Graph and Graph + Ontology',
-      'Followed by Graph + Ontology only - Ontology links.',
+      'Followed by Graph + Ontology only - These come from the ontology.',
     ])
     expect(
       table
         .getAllByRole('rowheader')
-        .map((cell) => [cell.textContent, cell.nextSibling?.textContent]),
+        .map((cell) => [
+          cell.textContent,
+          cell.nextSibling?.nextSibling?.textContent,
+        ]),
     ).toEqual([
       ['incident affects game', '34'],
       ['game is available in market', '310'],
       ['game and market: each is an instance of business concept', '124'],
       ['game is similar to game', '60'],
     ])
+    expect(
+      table.getByRole('rowheader', { name: 'game is available in market' })
+        .nextSibling,
+    ).toHaveTextContent("Copied from the game's market column.")
     expect(
       table.getByRole('rowheader', { name: 'game is similar to game' }),
     ).toBeVisible()
@@ -96,7 +104,7 @@ describe('Graph tab map', () => {
       table
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent)
-        .slice(2),
+        .slice(3),
     ).toEqual([
       'Followed by Graph and Graph + Ontology',
       'Followed by neither - Left out to keep the search focused: these are many, or lead to many records.',

@@ -41,6 +41,12 @@ interface DiagramProps {
   onSelect: (id: string) => void
   /** Presentation mode raises type and node height by this factor. */
   scale: number
+  /**
+   * Draw the box titles at this many pixels, so maps side by side match; the
+   * map then scrolls when it is wider than its panel. Without it, a map
+   * shrinks to fit down to a readable title size.
+   */
+  titlePx?: number
 }
 
 /** Longest line of a tag's phrase, in characters, before it wraps. */
@@ -116,6 +122,7 @@ export function Diagram({
   selected,
   onSelect,
   scale,
+  titlePx,
 }: DiagramProps) {
   const arrows = useId()
   const height = NODE_HEIGHT * scale
@@ -172,10 +179,14 @@ export function Diagram({
         aria-label={label}
         viewBox={`${box.left} ${box.top} ${box.width} ${box.height}`}
         style={{
-          width: box.width,
-          minWidth:
-            box.width * Math.min(1, MIN_TITLE_PX / (TITLE_FONT * scale)),
-          maxWidth: '100%',
+          ...(titlePx === undefined
+            ? {
+                width: box.width,
+                minWidth:
+                  box.width * Math.min(1, MIN_TITLE_PX / (TITLE_FONT * scale)),
+                maxWidth: '100%',
+              }
+            : { width: box.width * (titlePx / (TITLE_FONT * scale)) }),
           height: 'auto',
         }}
       >

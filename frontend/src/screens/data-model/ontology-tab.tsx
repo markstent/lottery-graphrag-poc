@@ -76,8 +76,8 @@ function BoundTerms({
   ]
   const none =
     chosen === null
-      ? 'No local terms are bound directly.'
-      : 'No local terms from this market.'
+      ? 'No country term points here directly: see the concepts under it.'
+      : 'No term from this market points here.'
   return (
     <div className="space-y-3">
       {bound.length > 0 && (
@@ -100,7 +100,7 @@ function BoundTerms({
         </div>
       )}
       <Panel
-        title="Local terms bound to it"
+        title="Each country's terms for it"
         state={
           load.status === 'ready'
             ? load.data.length === 0

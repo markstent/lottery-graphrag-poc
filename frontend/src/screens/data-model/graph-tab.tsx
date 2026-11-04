@@ -26,7 +26,10 @@ import { Panel } from '../../components/panel'
 import { GraphWhy } from './why'
 import { nodeLabel } from '../../design/node-labels'
 import { pipeline } from '../../design/pipelines'
-import { relationshipPhrase } from '../../design/relationships'
+import {
+  RELATIONSHIP_SOURCES,
+  relationshipPhrase,
+} from '../../design/relationships'
 import { Diagram } from './meta-graph'
 import {
   count,
@@ -74,7 +77,7 @@ const LINK_GROUPS: readonly {
   {
     id: 'c',
     title: 'Followed by Graph + Ontology only',
-    why: 'Ontology links.',
+    why: 'These come from the ontology.',
     holds: (row) => row.follower === 'C',
   },
   {
@@ -102,15 +105,19 @@ function RelationshipTable({ rows }: { rows: RelationshipRow[] }) {
       </h2>
       <p className="max-w-prose text-sm text-text-secondary">
         A link joins two records, such as an incident and the game it affects.
-        Graph and Graph + Ontology search by moving along links. Some kinds are
-        left out on purpose.
+        Each row says what a kind of link joins, where it is made from, and how
+        many there are. Graph and Graph + Ontology search by moving along links;
+        some kinds are left out on purpose, and each group says why.
       </p>
       <ScrollBox label="Kinds of link">
-        <table className="w-full max-w-4xl border-collapse text-sm text-text-primary">
+        <table className="w-full max-w-6xl border-collapse text-sm text-text-primary">
           <thead>
             <tr className="border-b border-hairline text-left text-text-secondary">
               <th scope="col" className="py-2 pr-4 font-semibold">
                 What it links
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                Made from
               </th>
               <th scope="col" className="py-2 pl-3 text-right font-semibold">
                 How many
@@ -125,7 +132,7 @@ function RelationshipTable({ rows }: { rows: RelationshipRow[] }) {
                 <tr>
                   <th
                     scope="colgroup"
-                    colSpan={2}
+                    colSpan={3}
                     className="pb-1 pt-4 text-left font-normal"
                   >
                     <span className="font-semibold">{group.title}</span>
@@ -142,6 +149,9 @@ function RelationshipTable({ rows }: { rows: RelationshipRow[] }) {
                     >
                       {row.sentences.join('; ')}
                     </th>
+                    <td className="py-1.5 pr-4 text-text-secondary">
+                      {RELATIONSHIP_SOURCES[row.type] ?? MISSING}
+                    </td>
                     <td className="tabular py-1.5 pl-3 text-right">
                       {row.total === null ? MISSING : count(row.total)}
                     </td>

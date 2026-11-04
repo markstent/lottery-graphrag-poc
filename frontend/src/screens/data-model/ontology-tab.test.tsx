@@ -121,7 +121,7 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt(`&concept=${NATIONAL_DRAW}`)
     const members = await screen.findByRole('region', {
-      name: 'Local terms bound to it',
+      name: "Each country's terms for it",
     })
     for (const [market, name] of [
       ['United Kingdom', 'National Draw'],
@@ -140,7 +140,7 @@ describe('OntologyTab', () => {
     const { requested } = stubOntology()
     renderAt(`&concept=${NATIONAL_DRAW}`)
     const members = await screen.findByRole('region', {
-      name: 'Local terms bound to it',
+      name: "Each country's terms for it",
     })
     await within(members).findByText('Zahlenziehung')
     await userEvent.click(screen.getByRole('button', { name: 'Greece' }))
@@ -161,7 +161,7 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt('&concept=CONCEPT_DIGITAL_CHANNEL')
     const members = await screen.findByRole('region', {
-      name: 'Local terms bound to it',
+      name: "Each country's terms for it",
     })
     const shared = await within(members).findByRole('group', {
       name: 'Shared by every market',
@@ -200,7 +200,7 @@ describe('OntologyTab', () => {
     const { requested } = stubOntology()
     renderAt('&concept=CONCEPT_PAYMENT_INCIDENT&market=MKT_GR')
     const members = await screen.findByRole('region', {
-      name: 'Local terms bound to it',
+      name: "Each country's terms for it",
     })
     const shared = await within(members).findByRole('group', {
       name: 'Shared by every market',
@@ -238,7 +238,7 @@ describe('OntologyTab', () => {
     )
     renderAt(`&concept=${NATIONAL_DRAW}&market=MKT_GR`)
     expect(
-      await screen.findByText('No local terms from this market.'),
+      await screen.findByText('No term from this market points here.'),
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Greece' })).toHaveAttribute(
       'aria-pressed',
@@ -254,7 +254,9 @@ describe('OntologyTab', () => {
     ).toHaveAttribute('aria-pressed', 'true')
     expect(
       await within(
-        await screen.findByRole('region', { name: 'Local terms bound to it' }),
+        await screen.findByRole('region', {
+          name: "Each country's terms for it",
+        }),
       ).findByText('Annuity Draw'),
     ).toBeVisible()
     expect(requested.filter((path) => path.includes('/members'))).toEqual([
@@ -266,7 +268,9 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt('&concept=CONCEPT_LOTTERY_PRODUCT')
     expect(
-      await screen.findByText('No local terms are bound directly.'),
+      await screen.findByText(
+        'No country term points here directly: see the concepts under it.',
+      ),
     ).toBeVisible()
   })
 

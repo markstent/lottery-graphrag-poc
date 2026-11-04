@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import fixture from '../run/fixtures/run-abc.json'
-import { RELATIONSHIP_PHRASES, relationshipPhrase } from './relationships'
+import {
+  RELATIONSHIP_PHRASES,
+  RELATIONSHIP_SOURCES,
+  relationshipPhrase,
+} from './relationships'
 
 const BANNED =
   /honest|never|real|fake|prototype|telemetry|seed|chunk|rerank|maps_to/i
@@ -30,5 +34,21 @@ describe('relationship phrases', () => {
   it('read an unmapped type as its lower-cased name', () => {
     expect(relationshipPhrase('AFFECTS_GAME')).toBe('affects game')
     expect(relationshipPhrase('MAPS_TO')).toBe('is an instance of concept')
+  })
+})
+
+describe('relationship sources', () => {
+  it('say where every kind of link with a phrase is made from', () => {
+    expect(Object.keys(RELATIONSHIP_SOURCES).sort()).toEqual(
+      Object.keys(RELATIONSHIP_PHRASES).sort(),
+    )
+  })
+
+  it('are plain sentences with none of the banned words', () => {
+    for (const source of Object.values(RELATIONSHIP_SOURCES)) {
+      expect(source).toMatch(/^[A-Z].*\.$/)
+      expect(source).not.toMatch(BANNED)
+      expect(source).not.toMatch(/[A-Z]{2,}|_/)
+    }
   })
 })

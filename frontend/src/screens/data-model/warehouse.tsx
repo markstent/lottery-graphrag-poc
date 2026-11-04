@@ -22,8 +22,12 @@ import {
   type DiagramNode,
 } from './model'
 import { RowsGrid } from './rows-grid'
+import { WarehouseWhy } from './why'
 
 type Table = Schemas['TableSchemaOut']
+
+/** Every system's map draws its table names at this size, so the maps match. */
+const WAREHOUSE_TITLE_PX = 14
 
 /** Width of a table box: its name plus room either side, at normal type. */
 const widthOf = (name: string, scale: number) =>
@@ -61,24 +65,27 @@ function SystemMap({
   )
   const rows = tables.reduce((sum, t) => sum + (rowCounts[t.table] ?? 0), 0)
   return (
-    <Panel
-      title={systemName(system)}
-      purpose={`${plural(tables.length, 'table')}, ${plural(rows, 'row')}`}
-      state="ready"
-    >
-      <Diagram
-        nodes={nodes}
-        edges={edges}
-        label={`${systemName(system)} tables`}
-        scale={scale}
-        onSelect={(table) => {
-          window.location.hash = hrefFor('data-model', {
-            tab: 'warehouse',
-            table,
-          })
-        }}
-      />
-    </Panel>
+    <div className="min-w-0 max-w-full">
+      <Panel
+        title={systemName(system)}
+        purpose={`${plural(tables.length, 'table')}, ${plural(rows, 'row')}`}
+        state="ready"
+      >
+        <Diagram
+          nodes={nodes}
+          edges={edges}
+          label={`${systemName(system)} tables`}
+          scale={scale}
+          titlePx={WAREHOUSE_TITLE_PX * scale}
+          onSelect={(table) => {
+            window.location.hash = hrefFor('data-model', {
+              tab: 'warehouse',
+              table,
+            })
+          }}
+        />
+      </Panel>
+    </div>
   )
 }
 
@@ -196,7 +203,7 @@ export function Warehouse({
   }
   return (
     <div className="space-y-4">
-      <p className="text-sm text-text-secondary">Select a table.</p>
+      <WarehouseWhy />
       <div className="flex flex-wrap items-start gap-4">
         {groupBySystem(dictionary).map(({ system, tables }) => (
           <SystemMap

@@ -28,9 +28,12 @@
  * the same day (D-107, D-108) for the Overview's plainer count line and the
  * Live Lab's easy-to-read questions; and to 2,400 the same day (D-109) for
  * the Architecture screen: its tech stack diagram and the same diagram in
- * words, which a screen reader needs.
+ * words, which a screen reader needs. The owner raised it to 3,350 on
+ * 2026-11-04 (D-113), asking for Data Model write-ups that are easy to
+ * follow: how each layer is built, where every kind of graph link is made
+ * from, how to read the warehouse maps and the story cards.
  */
-export const OUTSIDE_HELP_WORD_CAP = 2400
+export const OUTSIDE_HELP_WORD_CAP = 3350
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

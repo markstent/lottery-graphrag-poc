@@ -658,7 +658,7 @@ test.describe('Data Model', () => {
     await openScreen(page, NATIONAL_DRAW)
     await expect(
       page
-        .getByRole('region', { name: 'Local terms bound to it' })
+        .getByRole('region', { name: "Each country's terms for it" })
         .getByRole('group'),
     ).toHaveCount(4)
     await screenShot(page, 'data-model-ontology-national-draw')
@@ -668,7 +668,7 @@ test.describe('Data Model', () => {
     await openScreen(page, `${NATIONAL_DRAW}&market=MKT_GR`)
     await expect(
       page
-        .getByRole('region', { name: 'Local terms bound to it' })
+        .getByRole('region', { name: "Each country's terms for it" })
         .getByRole('group'),
     ).toHaveCount(1)
     await screenShot(page, 'data-model-ontology-filtered-by-market')
