@@ -50,26 +50,59 @@ test('the official run shows its evidence and answer outcomes per approach, with
     ).toBeVisible()
   await expect(
     evidence
-      .getByText(/^40 percent found, about 0 extra records per question$/)
+      .getByText(/^40 percent found, about 14 extra records per question$/)
       .first(),
   ).toBeVisible()
   const answers = panel.getByRole('figure', { name: /^Answers by score/ })
   await expect(
     answers.getByText('Hatched: said the sources could not answer'),
   ).toBeVisible()
+  // Every band, each with a hatched part, and the answer score the bands add up to.
   await expect(
     answers.getByRole('img', {
-      name: /^Graph: right 0 of 243 \(0 of them said the sources could not answer\), partly right 243 of 243/,
+      name: /^Graph: answer score 40 percent; right 81 of 243 \(27 of them said the sources could not answer\), partly right 45 of 243 \(15 of them said the sources could not answer\), wrong 117 of 243 \(39 of them said the sources could not answer\)\.$/,
     }),
   ).toBeVisible()
+  await expect(
+    answers.getByText('Right 81 (27 of them could not answer)').first(),
+  ).toBeVisible()
+  await expect(answers.locator('[data-declined]')).toHaveCount(9)
   await evidence.getByRole('button', { name: 'Show as table' }).click()
   const table = evidence.getByRole('table', {
     name: 'Evidence found and missed, per approach',
   })
   await expect(
     table.getByRole('row', { name: /^A · Text search/ }),
-  ).toContainText(/40 percent\s*972\s*1458\s*0/)
+  ).toContainText(/40 percent\s*972\s*1458\s*14/)
 })
+
+for (const [width, present] of [
+  [1440, false],
+  [1920, false],
+  [1920, true],
+] as const)
+  test(`at ${width} pixels${present ? ' in presentation mode' : ''} each label beside an evidence bar fits one line`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await mockApi(page, 'official')
+    await page.goto(
+      `/${present ? '?present=1' : ''}#/results?run=fixture-official`,
+    )
+    const labels = page
+      .getByRole('region', { name: 'Outcomes' })
+      .getByRole('figure', { name: /^Evidence found/ })
+      .getByText(/extra records per question$/)
+    await expect(labels).toHaveCount(3)
+    for (const label of await labels.all()) {
+      const lines = await label.evaluate((element) => {
+        const range = document.createRange()
+        range.selectNodeContents(element)
+        return new Set([...range.getClientRects()].map((rect) => rect.top)).size
+      })
+      expect(lines).toBe(1)
+    }
+  })
 
 test('a newer development run is never opened first, and opened it says it is not a result on every panel', async ({
   page,

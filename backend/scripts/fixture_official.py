@@ -6,6 +6,9 @@ the API serves and nothing is edited by hand:
 
 - the official run, ``fixture-official``: the whole bank over three worlds,
   with the same scores for A, B and C so nothing it draws suggests a direction;
+  its answers are spread over right, partly right and wrong, a mean of 0.4 in
+  every kind of question, some of each band say the sources could not answer,
+  and each question brings extra records, so the Outcomes views draw all of it;
 - a subset run, ``fixture-subset``: one world, at most two instances per question;
 - a quick check, ``fixture-smoke``: the scorer smoke test.
 
@@ -37,7 +40,14 @@ from app.config import METHOD_VERSION
 from app.evaluation.grounding import Unavailable
 from app.evaluation.official import run_label
 from app.evaluation.report import summarize
-from app.evaluation.runner import BenchmarkRun, InstanceResult, RunScore, Selection, WorldRun
+from app.evaluation.runner import (
+    BenchmarkRun,
+    InstanceResult,
+    PipelineRun,
+    RunScore,
+    Selection,
+    WorldRun,
+)
 from tests.test_benchmark_report import (
     V03_FIXTURE_LABEL,
     V03_FIXTURE_RUN,
@@ -54,6 +64,21 @@ QUESTIONS = {"H1": 6, "H2": 6, "H3": 6, "H5": 6}
 NAME_ANCHORED = 3
 # The claims each fixture score counts, so a recall of 0.4 is 4 of 10 found.
 CLAIMS = 10
+# The official run's answer score per question of a kind, in question order:
+# right, partly right and wrong, each kind's mean still 0.4.
+SPREAD = (1.0, 1.0, 0.4, 0.0, 0.0, 0.0)
+NAME_SPREAD = (1.0, 0.2, 0.0)
+# An answer of the official run says the sources could not answer when
+# (question index + world seed) % ABSTAIN_EVERY is 0, which lands in every band.
+ABSTAIN_EVERY = 3
+ABSTAIN_VERDICT = "unknown: the sources do not say"
+# The official run's extra records per question: EXTRA_BASE, plus
+# EXTRA_STEP for each step of the question index modulo EXTRA_CYCLE.
+EXTRA_BASE = 12
+EXTRA_STEP = 2
+EXTRA_CYCLE = 3
+# The record that carries each fixture question's one claim (tests/test_benchmark_report.py).
+CARRIER = "Y"
 OFFICIAL = "fixture-official"
 SUBSET = "fixture-subset"
 SMOKE = "fixture-smoke"
@@ -71,30 +96,55 @@ OUTCOMES = "results-outcomes.json"
 WRITTEN = (OFFICIAL_INSTANCES, SUBSET_INSTANCES, *SUMMARIES.values(), RUN_LIST, OUTCOMES)
 
 
-def _world(seed: int) -> WorldRun:
-    same: dict[str, list[tuple[float, float] | None]] = {tag: [SCORE] * 3 for tag in "ABC"}
+def _same(answer: float) -> dict[str, list[tuple[float, float] | None]]:
+    """Three repeats of one answer score, at the fixture recall, for every pipeline."""
+    return {tag: [(answer, SCORE[1])] * 3 for tag in "ABC"}
+
+
+def _spread(result: InstanceResult, q: int, seed: int) -> InstanceResult:
+    """The result with its answers' verdicts and its selected records spread
+    by question and world, the same for every pipeline and repeat."""
+    abstains = (q + seed) % ABSTAIN_EVERY == 0
+    extra = EXTRA_BASE + EXTRA_STEP * (q % EXTRA_CYCLE)
+    selected = (CARRIER, *(f"EXTRA-{i}" for i in range(extra)))
+
+    def spread(run: PipelineRun) -> PipelineRun:
+        verdict = ABSTAIN_VERDICT if abstains else run.verdict
+        return dataclasses.replace(run, verdict=verdict, selected=selected)
+
+    runs = {tag: [spread(run) for run in repeats] for tag, repeats in result.runs.items()}
+    return dataclasses.replace(result, runs=runs)
+
+
+def _world(seed: int, spread: bool) -> WorldRun:
     results: list[InstanceResult] = []
+
+    def add(instance_id: str, stratum: str, sub: str | None, q: int, answer: float) -> None:
+        result = _result(_instance(instance_id, stratum, seed, sub), _same(answer))
+        results.append(_spread(result, q, seed) if spread else result)
+
     for stratum, count in QUESTIONS.items():
         sub = "id_anchored" if stratum == "H2" else None
         for q in range(count):
-            instance = _instance(f"{stratum}-{q}", stratum, seed, sub)
-            results.append(_result(instance, same))
+            add(f"{stratum}-{q}", stratum, sub, q, SPREAD[q] if spread else SCORE[0])
     for q in range(NAME_ANCHORED):
-        instance = _instance(f"H2N-{q}", "H2", seed, "name_anchored")
-        results.append(_result(instance, same))
+        add(f"H2N-{q}", "H2", "name_anchored", q, NAME_SPREAD[q] if spread else SCORE[0])
     return WorldRun(seed, "bankhash", results, (Unavailable("L99", "no anchor"),))
 
 
 def _run(kind: str, started_at: str, seeds: tuple[int, ...], selection: Selection) -> BenchmarkRun:
-    """A run of the current method with equal scores for every pipeline."""
+    """A run of the current method with equal scores for every pipeline; the
+    official run of the whole bank has its answers and records spread."""
     record = dataclasses.replace(
         _record(kind),
         world_seed=seeds[0],
         started_at=started_at,
         method_version=METHOD_VERSION,
     )
-    label = LABEL if selection.full and kind == "official" else run_label(kind, selection)
-    return BenchmarkRun(kind, label, record, [_world(seed) for seed in seeds], selection)
+    official = selection.full and kind == "official"
+    label = LABEL if official else run_label(kind, selection)
+    worlds = [_world(seed, spread=official) for seed in seeds]
+    return BenchmarkRun(kind, label, record, worlds, selection)
 
 
 def _counted(score: RunScore | None) -> RunScore | None:

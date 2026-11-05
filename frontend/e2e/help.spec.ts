@@ -466,7 +466,9 @@ test("chapter 7 draws the newest official run's evidence and answer outcomes", a
     chapter.getByRole('figure', { name: /^Answers by score/ }),
   ).toBeVisible()
   await expect(
-    chapter.getByRole('img', { name: /^Text search: right 0 of 243/ }),
+    chapter.getByRole('img', {
+      name: /^Text search: answer score 40 percent; right 81 of 243/,
+    }),
   ).toBeVisible()
   await shot(page, 'scoring-outcomes')
 })

@@ -7,55 +7,55 @@
         "found": 972,
         "missed": 1458,
         "found_share": 0.4,
-        "extra_per_question": 0.0
+        "extra_per_question": 14.0
       },
       "B": {
         "repeats": 243,
         "found": 972,
         "missed": 1458,
         "found_share": 0.4,
-        "extra_per_question": 0.0
+        "extra_per_question": 14.0
       },
       "C": {
         "repeats": 243,
         "found": 972,
         "missed": 1458,
         "found_share": 0.4,
-        "extra_per_question": 0.0
+        "extra_per_question": 14.0
       }
     },
     "answers": {
       "A": {
         "scored": 243,
-        "right": 0,
-        "partly": 243,
-        "partly_score_sum": 97.2000000000003,
-        "wrong": 0,
-        "right_declined": 0,
-        "partly_declined": 0,
-        "wrong_declined": 0,
+        "right": 81,
+        "partly": 45,
+        "partly_score_sum": 16.200000000000006,
+        "wrong": 117,
+        "right_declined": 27,
+        "partly_declined": 15,
+        "wrong_declined": 39,
         "not_scored": 0
       },
       "B": {
         "scored": 243,
-        "right": 0,
-        "partly": 243,
-        "partly_score_sum": 97.2000000000003,
-        "wrong": 0,
-        "right_declined": 0,
-        "partly_declined": 0,
-        "wrong_declined": 0,
+        "right": 81,
+        "partly": 45,
+        "partly_score_sum": 16.200000000000006,
+        "wrong": 117,
+        "right_declined": 27,
+        "partly_declined": 15,
+        "wrong_declined": 39,
         "not_scored": 0
       },
       "C": {
         "scored": 243,
-        "right": 0,
-        "partly": 243,
-        "partly_score_sum": 97.2000000000003,
-        "wrong": 0,
-        "right_declined": 0,
-        "partly_declined": 0,
-        "wrong_declined": 0,
+        "right": 81,
+        "partly": 45,
+        "partly_score_sum": 16.200000000000006,
+        "wrong": 117,
+        "right_declined": 27,
+        "partly_declined": 15,
+        "wrong_declined": 39,
         "not_scored": 0
       }
     }

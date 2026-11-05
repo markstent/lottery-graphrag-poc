@@ -34,7 +34,7 @@ from app.evaluation import official, second_judge
 from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
 from app.evaluation.judge import FakeJudge
-from app.evaluation.official import InstanceHook, WorldPaths, world_paths
+from app.evaluation.official import InstanceHook, WorldPaths, load_results, world_paths
 from app.evaluation.report import summarize
 from app.evaluation.runner import OFFICIAL_MIN_REPEATS, WorldRun, settings_fields
 from app.evaluation.truth_ledger import load_ledger
@@ -1382,11 +1382,10 @@ def test_outcomes_route_reads_results_once_until_the_file_changes(
     client_with_runs: TestClient, runs_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     loads: list[Path] = []
-    load = benchmarks.load_results
 
     def counting(run_dir: Path) -> dict[str, Any]:
         loads.append(run_dir)
-        return load(run_dir)
+        return load_results(run_dir)
 
     monkeypatch.setattr(benchmarks, "load_results", counting)
     url = "/api/v1/benchmarks/official-fixture/outcomes"

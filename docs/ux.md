@@ -213,15 +213,17 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
    A subset run says what it covered, a development run says it is not a result, and a quick check says its numbers are not results.
    Under the headlines, every run but a quick check gets an interval-and-test line, pointing at the paired differences chart below; a quick check draws no charts and gets none.
 3. **Outcomes** (D-116), under the Verdict: two figures drawn by `OutcomeBars` (`frontend/src/components/outcome-bars.tsx`) from `GET /benchmarks/{run_id}/outcomes`, which works them out from the run's stored `results.json` and changes no published file.
-   "Evidence found" has one bar per approach, the share of the needed facts found and the share missed; the share is the published evidence recall, so the bar matches the Verdict.
+   "Evidence found (evidence recall, as in the Verdict)" has one bar per approach, the share of the needed facts found and the share missed; the share is the published evidence recall, so the bar matches the Verdict.
+   Results keeps the technical name, "Evidence recall", on its tiles, and the figure's title gives both names so one measure never reads as two; Help and Overview call it "Evidence found".
    Beside each bar it reads "N percent found, about M extra records per question", where an extra record is a chosen record, apart from the starting record, that states no needed fact, by the scorer's own rule.
-   "Answers by score" has one bar per approach in three bands, right (a score of exactly 1), partly right (above 0, below 1) and wrong (0), as shares of the scored answers, beside the counts in words.
+   "Answers by score" has one bar per approach in three bands, right (a score of exactly 1), partly right (above 0, below 1) and wrong (0), as shares of the scored answers.
+   Beside each bar it reads "Answer score N percent", worked out as (right + the sum of the partly right scores) / scored, so the bands tie to the Verdict's answer score, then each band's count in words, such as "Right 117 (5 of them could not answer)".
    Inside each band a hatched part counts the answers that said the sources could not answer; they stay in their band and are never moved into a band of their own (owner's option 1, D-116).
    The caption says that an answer can say the sources could not answer and still score, because it named part of the answer key on the way.
    Answers that were not scored are named under the bars and are outside the bands.
-   Every count is in each bar's text alternative and in a "Show as table" twin, and the hatching is the non-colour cue.
+   Every count is in each bar's text alternative and in a "Show as table" twin, and the hatching is the non-colour cue; the key shows the hatching on a neutral grey swatch, since a hatched part sits in any band.
    A run that did not store what the counts need reads "Not recorded for this run.", and the panel has a loading state and an error state with Retry.
-   A subset or a development run labels both figures with its standing, and a quick check shows no Outcomes panel.
+   A subset or a development run labels both figures with its standing, and a quick check shows no Outcomes panel and does not ask for its outcomes.
 4. **Scores by kind of question.** A switch between Evidence recall and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
    A run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
@@ -388,7 +390,7 @@ A picture is sized in em, so it grows with the screen's text, and it never grows
 - Chapter 4, one picture for each approach (`approachA`, `approachB`, `approachC`), and `countries`: the four countries' own names for the national draw, one above the other, joined to the one shared idea in the ontology.
 - Chapter 5, `evidence`, how evidence is chosen within the budget, and `found`: the facts a question needs against what an approach brought, as found, missed and extra.
 - Chapter 6, `marking`: the answer and the answer key go to the scoring program, which gives the answer score, and to two AI judges, which give a second opinion.
-- Chapter 8, `interval`: a difference with its margin of error, one that crosses zero and is too close to call, and one clear of zero.
+- Chapter 8, `interval`: a difference with its margin of error, one that crosses zero and is too close to call, and one clear of zero, which counts only if its test also passes.
 A test draws every picture and checks its text alternative and the words it draws, and an end-to-end test checks that the approach pictures and the countries picture stay whole, with text of at least 11 pixels, in a column 960 and 768 pixels wide.
 
 **Term help.** The first time a chapter uses one of its glossary terms, the word is underlined with dots, and its plain meaning from the glossary shows on hover and on keyboard focus (`term.tsx`, planned by `mark-terms.tsx`).
@@ -399,6 +401,7 @@ Each chapter's `terms` must each appear in its text, and each glossary meaning i
 
 **The run's own figures in Help.** Two components read the newest official run from the API, with loading and error states, so no figure of theirs is typed into the copy.
 - Chapter 7, `outcomes`: the Outcomes views of Results (`OutcomeBars`), evidence found and missed with the extra records, and the answers by score with those that said the sources could not answer hatched inside their band.
+  Only a full official run is drawn, by the rule Overview uses (`isFullOfficial`); when the newest run is any other kind, or there is none, the chapter reads "No official run is published yet."
 - Chapter 12, `resultsByKind`: Overview's chart of the scores by kind of question with its switch, shared as `frontend/src/components/kind-chart.tsx`; chapter 12's own findings stay fixed to the official run of 2026-10-29, and a line under the chart says so.
 
 Chapter 9 holds the assumptions and limits register, with its reasons, costs if wrong and sources at Technical.

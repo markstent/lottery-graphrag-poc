@@ -2369,51 +2369,51 @@
     "judge_agreement": {
       "overall": {
         "answered": {
-          "n": 729,
-          "agreement": 0.0,
+          "n": 486,
+          "agreement": 0.3333333333333333,
           "weighted_kappa": 0.0
         },
         "abstained": {
-          "n": 0,
-          "agreement": null,
-          "weighted_kappa": null
+          "n": 243,
+          "agreement": 0.3333333333333333,
+          "weighted_kappa": 0.0
         }
       },
       "pipelines": {
         "A": {
           "answered": {
-            "n": 243,
-            "agreement": 0.0,
+            "n": 162,
+            "agreement": 0.3333333333333333,
             "weighted_kappa": 0.0
           },
           "abstained": {
-            "n": 0,
-            "agreement": null,
-            "weighted_kappa": null
+            "n": 81,
+            "agreement": 0.3333333333333333,
+            "weighted_kappa": 0.0
           }
         },
         "B": {
           "answered": {
-            "n": 243,
-            "agreement": 0.0,
+            "n": 162,
+            "agreement": 0.3333333333333333,
             "weighted_kappa": 0.0
           },
           "abstained": {
-            "n": 0,
-            "agreement": null,
-            "weighted_kappa": null
+            "n": 81,
+            "agreement": 0.3333333333333333,
+            "weighted_kappa": 0.0
           }
         },
         "C": {
           "answered": {
-            "n": 243,
-            "agreement": 0.0,
+            "n": 162,
+            "agreement": 0.3333333333333333,
             "weighted_kappa": 0.0
           },
           "abstained": {
-            "n": 0,
-            "agreement": null,
-            "weighted_kappa": null
+            "n": 81,
+            "agreement": 0.3333333333333333,
+            "weighted_kappa": 0.0
           }
         }
       }
