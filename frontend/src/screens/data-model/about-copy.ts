@@ -141,3 +141,24 @@ export const SCENARIOS_ABOUT: AboutCopy = {
     },
   ],
 }
+
+/**
+ * The Overview's short notes on how each layer is built, shortened from the
+ * copy above. They keep the points the spec names: a program builds the graph
+ * from the tables, most links are copied from columns, some are counted or
+ * worked out by a rule, and only Graph + Ontology may follow the ontology's.
+ */
+export const LAYER_NOTES: readonly { layer: string; text: string }[] = [
+  {
+    layer: 'Tables',
+    text: 'Made up for this test by a program that builds the same world every time. Each source system keeps its own tables, as in a company.',
+  },
+  {
+    layer: 'Graph',
+    text: 'A program builds the graph from the tables; no AI model makes the links. Most are copied from a column: an incident names its platform version. Some are counted from bulk rows, such as tickets, or worked out by a rule.',
+  },
+  {
+    layer: 'Concepts',
+    text: "A dictionary written by hand matches each country's own codes to one shared concept. Only Graph + Ontology may follow these links, so the gap between it and Graph measures the ontology alone.",
+  },
+]

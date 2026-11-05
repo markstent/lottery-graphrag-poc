@@ -35,10 +35,13 @@
  * the same day (D-114) for the way-finding the owner asked for, so a reader
  * can see what to click: three steps on each tab, a trail and a click cue.
  * The rise to 3,510 on 2026-11-05 is temporary, for the D-115 Data Model
- * redesign while its old and new views both exist; Task 9 of that plan sets
- * the final value.
+ * redesign while its old and new views both exist, and so is the rise to
+ * 3,850 the same day for the new Overview tab (its layer cards, the example
+ * through the layers and the short notes on how each layer is built), while
+ * the old explanation panels it replaces are still in the code; Task 9 of
+ * that plan sets the final value.
  */
-export const OUTSIDE_HELP_WORD_CAP = 3510
+export const OUTSIDE_HELP_WORD_CAP = 3850
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

@@ -10,16 +10,9 @@ import { hrefFor } from '../../app/router'
 import { plural } from '../../charts/scale'
 import { Panel } from '../../components/panel'
 import { relationshipPhrase } from '../../design/relationships'
-import { labelOf } from './model'
+import { LANGUAGES, labelOf } from './model'
 
 type Concept = Schemas['ConceptOut']
-
-const LANGUAGES = [
-  { id: 'en', name: 'English' },
-  { id: 'el', name: 'Greek' },
-  { id: 'de', name: 'German' },
-  { id: 'cs', name: 'Czech' },
-] as const
 
 const conceptLink = (concept: Concept) => (
   <a

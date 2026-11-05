@@ -13,6 +13,7 @@ import { useSettings } from '../../app/use-settings'
 import { Screen } from '../screen'
 import { GraphTab } from './graph-tab'
 import { OntologyTab } from './ontology-tab'
+import { OverviewTab } from './overview-tab'
 import { ScenariosTab } from './scenarios-tab'
 import { Warehouse } from './warehouse'
 
@@ -26,14 +27,14 @@ interface Tab {
 
 /**
  * The five tabs, in order. Overview opens when the address names no tab.
- * Overview, Tables, Concepts and Stories show the views of D-114 until each
- * is rebuilt on the explorer layout.
+ * Tables, Concepts and Stories show the views of D-114 until each is rebuilt
+ * on the explorer layout.
  */
 const TABS: readonly Tab[] = [
   {
     id: 'overview',
     label: 'Overview',
-    render: (params, scale) => <Warehouse params={params} scale={scale} />,
+    render: (_params, scale) => <OverviewTab scale={scale} />,
   },
   {
     id: 'tables',

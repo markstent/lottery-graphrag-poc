@@ -181,6 +181,14 @@ export function metaGraphModel(
   }
 }
 
+/** The ontology's four languages, in the markets' order. */
+export const LANGUAGES = [
+  { id: 'en', name: 'English' },
+  { id: 'el', name: 'Greek' },
+  { id: 'de', name: 'German' },
+  { id: 'cs', name: 'Czech' },
+] as const
+
 /** The concept's name in `language`, or its English name when it has none there. */
 export const labelOf = (
   concept: Schemas['ConceptOut'],
@@ -211,7 +219,7 @@ function linkTail(type: string, to: string): string {
 }
 
 /** "a, b and c". */
-const listed = (items: readonly string[]): string =>
+export const listed = (items: readonly string[]): string =>
   items.length < 2
     ? items.join('')
     : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`

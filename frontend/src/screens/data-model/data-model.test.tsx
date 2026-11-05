@@ -42,9 +42,8 @@ describe('DataModel', () => {
       ),
     ).toBeVisible()
     current('Overview')
-    // Until the Overview is built (Task 5), it shows the tables.
     expect(
-      await screen.findByRole('button', { name: 'games, 120 rows' }),
+      await screen.findByRole('region', { name: "The company's data" }),
     ).toBeVisible()
   })
 
@@ -81,7 +80,7 @@ describe('DataModel', () => {
     renderAt('#/data-model?tab=nonsense')
     current('Overview')
     expect(
-      await screen.findByRole('button', { name: 'games, 120 rows' }),
+      await screen.findByRole('region', { name: "The company's data" }),
     ).toBeVisible()
   })
 
