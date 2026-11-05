@@ -926,11 +926,14 @@ class MemberOut(BaseModel):
 
 class ScenarioOut(BaseModel):
     """A catalogue scenario and whether the active dataset planted it. Carries
-    configuration only: never the truth ledger."""
+    configuration only: never the truth ledger. ``description`` is the
+    catalogue's plain description of the story, which is configuration, not
+    truth."""
 
     scenario_id: str
     scenario_type: str
     title: str
+    description: str
     planted: bool
     planted_rows: dict[str, int]
     strength: float | None

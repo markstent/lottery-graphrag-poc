@@ -18,7 +18,7 @@ from app.datasets.config import GenerationConfig
 from app.datasets.world import build_world
 from app.main import create_app
 from app.ontology.loader import load_ontology
-from app.scenarios.catalogue import ENABLED
+from app.scenarios.catalogue import ENABLED, SCENARIO_CATALOGUE
 from app.scenarios.engine import apply_scenarios
 from fastapi.testclient import TestClient
 
@@ -132,6 +132,13 @@ def test_members_with_an_unknown_market_are_422(client: TestClient) -> None:
 
 
 # -- scenarios ----------------------------------------------------------------
+
+
+def test_scenarios_carry_the_catalogue_description(client: TestClient) -> None:
+    described = {spec.scenario_id: spec.description for spec in SCENARIO_CATALOGUE}
+    for item in client.get("/api/v1/scenarios").json():
+        assert item["description"] == described[item["scenario_id"]]
+        assert isinstance(item["description"], str) and item["description"]
 
 
 def test_scenarios_report_planted_rows_and_no_truth(client: TestClient) -> None:

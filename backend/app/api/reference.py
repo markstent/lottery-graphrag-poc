@@ -159,6 +159,7 @@ def build_reference_router() -> APIRouter:
                     scenario_id=spec.scenario_id,
                     scenario_type=spec.scenario_type,
                     title=spec.scenario_type.replace("_", " ").capitalize(),
+                    description=spec.description,
                     planted=entry is not None,
                     planted_rows=dict(entry["planted_rows"]) if entry else {},
                     strength=entry["strength"] if entry else None,
