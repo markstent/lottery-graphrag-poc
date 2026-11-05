@@ -136,12 +136,14 @@ export function TablesTab({ params }: { params: URLSearchParams }) {
       steps={STEPS}
       about={<AboutContent copy={WAREHOUSE_ABOUT} />}
       list={
-        <PickList
-          label="Search tables"
-          groups={groups}
-          chosen={table?.table}
-          onChoose={(id) => show({ table: id })}
-        />
+        <div className="max-h-[calc(100vh-14rem)] overflow-y-auto pr-1">
+          <PickList
+            label="Search tables"
+            groups={groups}
+            chosen={table?.table}
+            onChoose={(id) => show({ table: id })}
+          />
+        </div>
       }
       main={
         table ? (
