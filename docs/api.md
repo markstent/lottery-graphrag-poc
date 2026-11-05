@@ -42,6 +42,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | `GET /benchmarks/questions` | The bank's questions with answer keys, hidden truths and scores |
 | `GET /benchmarks/{run_id}` | One run's summary |
 | `GET /benchmarks/{run_id}/instances` | One run's per-question scores |
+| `GET /benchmarks/{run_id}/outcomes` | One run's evidence found, missed and extra, and its answers right, partly right and wrong |
 | `GET /benchmarks/{run_id}/second-judge` | The run's second judge, a recorded second opinion (D-100), and the two judges' combined mark (D-105) |
 | `POST /benchmarks` | Start a benchmark job. Returns 202. |
 | `GET /benchmarks/jobs`, `GET /benchmarks/jobs/{job_id}` | List or read jobs |
@@ -297,6 +298,16 @@ A malformed `summary.json` is a server error and is never silently skipped.
 - `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, its failure classes, and `cut_off_repeats` and `token_limit_repeats`, the repeats whose answer was cut off and those among them that stopped at the output limit (null for a run recorded before answer parser 2.0.0, D-096).
   It carries the question text and scores only, never the expected answer, claims, checks, answer text or context blocks.
   A run without `results.json` is a 404.
+- `GET /benchmarks/{run_id}/outcomes` returns `{recorded, evidence, answers}`, each map keyed by approach, worked out from the run's `results.json` (`app/evaluation/outcomes.py`).
+  `evidence` holds `{repeats, found, missed, extra_per_question}` over the repeats whose question keeps at least one claim once the starting record is set apart; a repeat with no claim left is not measured and is in no count.
+  `extra_per_question` is the average, over those repeats, of the distinct selected records, apart from the starting record, that carry no claim, by the scorer's own rule; it is null when no repeat was measured.
+  `answers` holds `{scored, right, partly, wrong, right_declined, partly_declined, wrong_declined, not_scored}`: right is an answer score of exactly 1, partly right above 0 and below 1, and wrong 0.
+  Each `*_declined` counts the answers in that band whose verdict says it could not tell (it opens with "unknown"); they stay in their band, so an answer can decline and still score.
+  `not_scored` counts the repeats with no answer score (no checks, or a failed generation), which are outside the bands.
+  `recorded` is false, with both maps empty, for a run that did not store the selected evidence, the claims or the claim counts.
+  The counts are computed once per run and served until the size or modification time of `results.json` changes; the file is only read.
+  The route reads no truth ledger.
+  A run that is not published, or has no `results.json`, is a 404.
 - `GET /benchmarks/{run_id}/second-judge` returns `{run_id, run, labels, combined}` (D-100, D-105): `run` is the newest second-judge summary of the run (schema 1), `labels` the newest label check of the same model, or null, and `combined` the two judges' combined mark (`combined.json`, schema 1, typed `JudgesMarkOut`), or null.
   `combined` holds the definitions and versions, the counts, per kind of question and approach the mean mark (`metrics`), the judges' own family of comparisons in the run's `ComparisonCell` shape, its headlines, the agreement between the judges and the list of answers the judges disagree on (`JudgesDisagreeOut`); see [evaluation.md](evaluation.md#judges-mark).
   It is null until `make judges-combined` (or `make second-judge`) has written it, and null again when it was computed from an earlier pass than the summary served, so a stale mark is not shown.

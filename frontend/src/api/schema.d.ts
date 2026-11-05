@@ -145,6 +145,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/benchmarks/{run_id}/outcomes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Outcomes */
+        get: operations["read_outcomes_api_v1_benchmarks__run_id__outcomes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/benchmarks/{run_id}/second-judge": {
         parameters: {
             query?: never;
@@ -600,6 +617,32 @@ export interface components {
         AnswerLevelAgreementOut: {
             first: components["schemas"]["JudgeAgreementOut"];
             second: components["schemas"]["JudgeAgreementOut"];
+        };
+        /**
+         * AnswerOutcome
+         * @description One pipeline's scored answers by band of answer score: right (exactly
+         *     1), partly right (above 0, below 1) and wrong (0). Each ``*_declined`` is
+         *     the part of its band whose verdict says it could not tell; it stays in
+         *     the band. ``not_scored`` counts repeats with no answer score (no checks,
+         *     or a failed generation), outside the bands.
+         */
+        AnswerOutcome: {
+            /** Not Scored */
+            not_scored: number;
+            /** Partly */
+            partly: number;
+            /** Partly Declined */
+            partly_declined: number;
+            /** Right */
+            right: number;
+            /** Right Declined */
+            right_declined: number;
+            /** Scored */
+            scored: number;
+            /** Wrong */
+            wrong: number;
+            /** Wrong Declined */
+            wrong_declined: number;
         };
         /**
          * ApiErrorBody
@@ -1069,6 +1112,23 @@ export interface components {
             valid_from?: string | null;
             /** Valid To */
             valid_to?: string | null;
+        };
+        /**
+         * EvidenceOutcome
+         * @description One pipeline's evidence over the repeats whose question keeps a claim
+         *     after anchor exclusion: claims found and missed, and the average count
+         *     of extra records (selected, not the anchor, carrying no claim) per
+         *     repeat; None when no repeat was measured.
+         */
+        EvidenceOutcome: {
+            /** Extra Per Question */
+            extra_per_question: number | null;
+            /** Found */
+            found: number;
+            /** Missed */
+            missed: number;
+            /** Repeats */
+            repeats: number;
         };
         /**
          * ExperimentSettings
@@ -3363,6 +3423,25 @@ export interface components {
             /** Runs */
             runs: components["schemas"]["RunSummary"][];
         };
+        /**
+         * RunOutcomesOut
+         * @description The evidence and answer outcomes of a stored run
+         *     (GET /api/v1/benchmarks/{run_id}/outcomes), per pipeline. ``recorded`` is
+         *     false, with both maps empty, for a run that did not store the selected
+         *     evidence or the claims.
+         */
+        RunOutcomesOut: {
+            /** Answers */
+            answers: {
+                [key: string]: components["schemas"]["AnswerOutcome"];
+            };
+            /** Evidence */
+            evidence: {
+                [key: string]: components["schemas"]["EvidenceOutcome"];
+            };
+            /** Recorded */
+            recorded: boolean;
+        };
         /** RunStarted */
         RunStarted: {
             /** Event Id */
@@ -4117,6 +4196,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InstanceResultOut"][];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_outcomes_api_v1_benchmarks__run_id__outcomes_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOutcomesOut"];
                 };
             };
             /** @description Not Found */

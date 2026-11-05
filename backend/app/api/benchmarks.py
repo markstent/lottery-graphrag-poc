@@ -56,6 +56,7 @@ from app.api.schemas import (
     JudgesMarkOut,
     PipelineScore,
     QuestionOut,
+    RunOutcomesOut,
     SecondJudgeLabelsOut,
     SecondJudgeOut,
     SecondJudgeRunOut,
@@ -85,6 +86,7 @@ from app.evaluation.official import (
     run_id,
     world_paths,
 )
+from app.evaluation.outcomes import RunOutcomes, payload_outcomes
 from app.evaluation.report import SUMMARY_SCHEMA_VERSION, instance_means
 from app.evaluation.runner import (
     OFFICIAL_MIN_REPEATS,
@@ -282,6 +284,26 @@ def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
                 )
             )
     return out
+
+
+def _outcomes(runs_dir: Path, name: str) -> RunOutcomesOut:
+    """The evidence and answer outcomes of the run, worked out from its
+    ``results.json`` once and served until the file's size or modification
+    time changes; the file is only read."""
+    _published(runs_dir, name)
+    path = runs_dir / name / "results.json"
+    stamp = _stat_key(path)
+    if stamp is None:
+        raise ApiError(404, ErrorCode.NOT_FOUND, "This run has no per-question results.")
+    cached = _outcomes_cache.get(path)
+    if cached is None or cached[0] != stamp:
+        cached = (stamp, payload_outcomes(load_results(runs_dir / name)))
+        _outcomes_cache[path] = cached
+    return RunOutcomesOut.model_validate(dataclasses.asdict(cached[1]))
+
+
+# The outcomes of each run's results.json with the stamp they were worked out on.
+_outcomes_cache: dict[Path, tuple[tuple[int, int], RunOutcomes]] = {}
 
 
 def _count_answers(
@@ -681,6 +703,14 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
     )
     def read_instances(run_id: str) -> list[InstanceResultOut]:
         return _instances(runs_dir, run_id)
+
+    @router.get(
+        "/benchmarks/{run_id}/outcomes",
+        response_model=RunOutcomesOut,
+        responses=error_responses(404, 422),
+    )
+    def read_outcomes(run_id: str) -> RunOutcomesOut:
+        return _outcomes(runs_dir, run_id)
 
     @router.get(
         "/benchmarks/{run_id}/second-judge",

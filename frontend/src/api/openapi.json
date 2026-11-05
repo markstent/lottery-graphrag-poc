@@ -73,6 +73,55 @@
         "title": "AnswerLevelAgreementOut",
         "type": "object"
       },
+      "AnswerOutcome": {
+        "description": "One pipeline's scored answers by band of answer score: right (exactly\n1), partly right (above 0, below 1) and wrong (0). Each ``*_declined`` is\nthe part of its band whose verdict says it could not tell; it stays in\nthe band. ``not_scored`` counts repeats with no answer score (no checks,\nor a failed generation), outside the bands.",
+        "properties": {
+          "not_scored": {
+            "title": "Not Scored",
+            "type": "integer"
+          },
+          "partly": {
+            "title": "Partly",
+            "type": "integer"
+          },
+          "partly_declined": {
+            "title": "Partly Declined",
+            "type": "integer"
+          },
+          "right": {
+            "title": "Right",
+            "type": "integer"
+          },
+          "right_declined": {
+            "title": "Right Declined",
+            "type": "integer"
+          },
+          "scored": {
+            "title": "Scored",
+            "type": "integer"
+          },
+          "wrong": {
+            "title": "Wrong",
+            "type": "integer"
+          },
+          "wrong_declined": {
+            "title": "Wrong Declined",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scored",
+          "right",
+          "partly",
+          "wrong",
+          "right_declined",
+          "partly_declined",
+          "wrong_declined",
+          "not_scored"
+        ],
+        "title": "AnswerOutcome",
+        "type": "object"
+      },
       "ApiErrorBody": {
         "description": "The error object every failure carries (docs/reference/07 section 11).",
         "properties": {
@@ -1154,6 +1203,42 @@
           "rank"
         ],
         "title": "EvidenceChunk",
+        "type": "object"
+      },
+      "EvidenceOutcome": {
+        "description": "One pipeline's evidence over the repeats whose question keeps a claim\nafter anchor exclusion: claims found and missed, and the average count\nof extra records (selected, not the anchor, carrying no claim) per\nrepeat; None when no repeat was measured.",
+        "properties": {
+          "extra_per_question": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extra Per Question"
+          },
+          "found": {
+            "title": "Found",
+            "type": "integer"
+          },
+          "missed": {
+            "title": "Missed",
+            "type": "integer"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "repeats",
+          "found",
+          "missed",
+          "extra_per_question"
+        ],
+        "title": "EvidenceOutcome",
         "type": "object"
       },
       "ExperimentSettings": {
@@ -6823,6 +6908,36 @@
         "title": "RunHistory",
         "type": "object"
       },
+      "RunOutcomesOut": {
+        "description": "The evidence and answer outcomes of a stored run\n(GET /api/v1/benchmarks/{run_id}/outcomes), per pipeline. ``recorded`` is\nfalse, with both maps empty, for a run that did not store the selected\nevidence or the claims.",
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/AnswerOutcome"
+            },
+            "title": "Answers",
+            "type": "object"
+          },
+          "evidence": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/EvidenceOutcome"
+            },
+            "title": "Evidence",
+            "type": "object"
+          },
+          "recorded": {
+            "title": "Recorded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "recorded",
+          "evidence",
+          "answers"
+        ],
+        "title": "RunOutcomesOut",
+        "type": "object"
+      },
       "RunStarted": {
         "additionalProperties": false,
         "properties": {
@@ -8286,6 +8401,65 @@
           }
         },
         "summary": "Read Instances"
+      }
+    },
+    "/api/v1/benchmarks/{run_id}/outcomes": {
+      "get": {
+        "operationId": "read_outcomes_api_v1_benchmarks__run_id__outcomes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOutcomesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Read Outcomes"
       }
     },
     "/api/v1/benchmarks/{run_id}/second-judge": {

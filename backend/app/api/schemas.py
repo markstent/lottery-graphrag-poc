@@ -649,6 +649,46 @@ class InstanceResultOut(BaseModel):
     pipelines: dict[str, InstancePipelineOut]
 
 
+class EvidenceOutcome(BaseModel):
+    """One pipeline's evidence over the repeats whose question keeps a claim
+    after anchor exclusion: claims found and missed, and the average count
+    of extra records (selected, not the anchor, carrying no claim) per
+    repeat; None when no repeat was measured."""
+
+    repeats: int
+    found: int
+    missed: int
+    extra_per_question: float | None
+
+
+class AnswerOutcome(BaseModel):
+    """One pipeline's scored answers by band of answer score: right (exactly
+    1), partly right (above 0, below 1) and wrong (0). Each ``*_declined`` is
+    the part of its band whose verdict says it could not tell; it stays in
+    the band. ``not_scored`` counts repeats with no answer score (no checks,
+    or a failed generation), outside the bands."""
+
+    scored: int
+    right: int
+    partly: int
+    wrong: int
+    right_declined: int
+    partly_declined: int
+    wrong_declined: int
+    not_scored: int
+
+
+class RunOutcomesOut(BaseModel):
+    """The evidence and answer outcomes of a stored run
+    (GET /api/v1/benchmarks/{run_id}/outcomes), per pipeline. ``recorded`` is
+    false, with both maps empty, for a run that did not store the selected
+    evidence or the claims."""
+
+    recorded: bool
+    evidence: dict[str, EvidenceOutcome]
+    answers: dict[str, AnswerOutcome]
+
+
 class BenchmarkStart(BaseModel):
     """Request for POST /api/v1/benchmarks; the seeds, strata and kind are
     checked against the harness's own before a job starts. A dev run uses

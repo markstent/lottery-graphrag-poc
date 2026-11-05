@@ -51,14 +51,24 @@ def evidence_score(
     scored = exclude_anchor(claims, anchor_id)
     if not scored:
         return EvidenceScore(None, None, None, None, 0, None, anchor_resolved)
-    items = [item for item in dict.fromkeys(selected) if item != anchor_id]
+    items = selected_items(selected, anchor_id)
     found = sum(1 for claim in scored if not claim.carriers.isdisjoint(items))
-    carrying = sum(1 for item in items if any(item in claim.carriers for claim in scored))
+    carrying = sum(1 for item in items if carries_claim(item, scored))
     recall = found / len(scored)
     precision = carrying / len(items) if items else 0.0
     f1 = 2 * recall * precision / (recall + precision) if recall + precision else 0.0
     efficiency = found * 1000 / context_tokens if context_tokens else None
     return EvidenceScore(recall, precision, f1, found, len(scored), efficiency, anchor_resolved)
+
+
+def selected_items(selected: Sequence[str], anchor_id: str) -> list[str]:
+    """The distinct selected items in selection order, the anchor apart."""
+    return [item for item in dict.fromkeys(selected) if item != anchor_id]
+
+
+def carries_claim(item: str, claims: Sequence[Claim]) -> bool:
+    """Whether ``item`` carries at least one of ``claims`` (after anchor exclusion)."""
+    return any(item in claim.carriers for claim in claims)
 
 
 def classify_failure(answer: float | None, evidence: EvidenceScore, seeded: bool) -> str | None:

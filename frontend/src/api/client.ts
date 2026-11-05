@@ -178,6 +178,11 @@ export const getBenchmarkInstances = (runId: string, signal?: AbortSignal) =>
     path: { run_id: runId },
     signal,
   })
+export const getBenchmarkOutcomes = (runId: string, signal?: AbortSignal) =>
+  call('get', '/api/v1/benchmarks/{run_id}/outcomes', {
+    path: { run_id: runId },
+    signal,
+  })
 export const getSecondJudge = (runId: string, signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks/{run_id}/second-judge', {
     path: { run_id: runId },

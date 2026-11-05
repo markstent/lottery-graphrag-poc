@@ -366,6 +366,12 @@ describe('route groups', () => {
       '/api/v1/benchmarks/R-1/instances',
     ],
     [
+      'benchmarks: outcomes',
+      () => client.getBenchmarkOutcomes('R-1'),
+      'GET',
+      '/api/v1/benchmarks/R-1/outcomes',
+    ],
+    [
       'benchmarks: questions',
       () => client.getBenchmarkQuestions('R-1'),
       'GET',

@@ -1319,6 +1319,82 @@ def test_instances_route_404_without_results_json(client_with_runs: TestClient) 
     assert unknown.status_code == 404 and unknown.json()["error"]["error_code"] == "NOT_FOUND"
 
 
+def test_outcomes_route_counts_evidence_and_answers(client_with_runs: TestClient) -> None:
+    response = client_with_runs.get("/api/v1/benchmarks/official-fixture/outcomes")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["recorded"] is True
+    # Every scored repeat of the fixture finds its one claim and selects nothing.
+    for tag in ("A", "B", "C"):
+        assert body["evidence"][tag] == {
+            "repeats": 108,
+            "found": 108,
+            "missed": 0,
+            "extra_per_question": 0.0,
+        }
+    # A: the H3 questions score 1.0, 0.5 and a failed generation; the rest 0.2.
+    assert body["answers"]["A"] == {
+        "scored": 108,
+        "right": 12,
+        "partly": 96,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 12,
+    }
+    assert body["answers"]["C"]["partly"] == body["answers"]["C"]["scored"] == 108
+
+
+def test_outcomes_route_404_for_an_unknown_run_or_one_without_results(
+    client_with_runs: TestClient,
+) -> None:
+    unknown = client_with_runs.get("/api/v1/benchmarks/nope/outcomes")
+    assert unknown.status_code == 404 and unknown.json()["error"]["error_code"] == "NOT_FOUND"
+    missing = client_with_runs.get("/api/v1/benchmarks/no-split/outcomes")
+    assert missing.status_code == 404
+    assert missing.json()["error"]["message"] == "This run has no per-question results."
+
+
+def test_outcomes_route_is_not_recorded_for_a_run_without_the_fields(
+    client_with_runs: TestClient, runs_dir: Path
+) -> None:
+    results = json.loads((runs_dir / "official-fixture" / "results.json").read_text())
+    for world in results["worlds"]:
+        for result in world["results"]:
+            for runs in result["runs"].values():
+                for run in runs:
+                    del run["selected"]
+    publish(runs_dir, "pilot", "dev", "2026-10-03T09:00:00+00:00", results=results)
+    body = client_with_runs.get("/api/v1/benchmarks/pilot/outcomes").json()
+    assert body == {"recorded": False, "evidence": {}, "answers": {}}
+
+
+def test_outcomes_route_reads_results_once_until_the_file_changes(
+    client_with_runs: TestClient, runs_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    loads: list[Path] = []
+    load = benchmarks.load_results
+
+    def counting(run_dir: Path) -> dict[str, Any]:
+        loads.append(run_dir)
+        return load(run_dir)
+
+    monkeypatch.setattr(benchmarks, "load_results", counting)
+    url = "/api/v1/benchmarks/official-fixture/outcomes"
+    first = client_with_runs.get(url).json()
+    assert client_with_runs.get(url).json() == first
+    assert len(loads) == 1
+    path = runs_dir / "official-fixture" / "results.json"
+    results = json.loads(path.read_text())
+    h3 = next(r for r in results["worlds"][0]["results"] if r["instance"]["stratum"] == "H3")
+    h3["runs"]["A"][0]["verdict"] = "unknown: the records do not say"
+    path.write_text(json.dumps(results, indent=1))
+    changed = client_with_runs.get(url).json()["answers"]["A"]
+    assert len(loads) == 2
+    assert (changed["right"], changed["right_declined"]) == (12, 1)
+
+
 def test_jobs_list_newest_first_with_world_progress(
     client_with_blocking_benchmark: TestClient,
     gate: threading.Event,
