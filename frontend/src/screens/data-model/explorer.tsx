@@ -18,10 +18,13 @@ export const NEXT_STEP =
 function Column({
   step,
   heading,
+  action,
   children,
 }: {
   step: number
   heading: string
+  /** A control at the end of the heading row. */
+  action?: ReactNode
   children: ReactNode
 }) {
   const id = useId()
@@ -30,15 +33,18 @@ function Column({
       aria-labelledby={id}
       className="min-w-0 rounded-card border border-hairline bg-surface p-5"
     >
-      <h2
-        id={id}
-        className="mb-4 flex items-center gap-2 text-base font-semibold text-text-primary"
-      >
-        <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm tabular-nums">
-          {step}
-        </span>{' '}
-        {heading}
-      </h2>
+      <div className="mb-4 flex min-h-8 items-center justify-between gap-2">
+        <h2
+          id={id}
+          className="flex items-center gap-2 text-base font-semibold text-text-primary"
+        >
+          <span className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm tabular-nums">
+            {step}
+          </span>{' '}
+          {heading}
+        </h2>
+        {action}
+      </div>
       {children}
     </section>
   )
@@ -60,16 +66,6 @@ export function Explorer({
   const [aboutOpen, setAboutOpen] = useState(false)
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={() => setAboutOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-raised hover:text-text-primary"
-        >
-          <Info aria-hidden size={16} />
-          About this
-        </button>
-      </div>
       <div className="grid gap-6 lg:grid-cols-[minmax(14rem,1fr)_minmax(0,2.6fr)_minmax(18rem,1.2fr)]">
         <Column step={1} heading={steps[0]}>
           {list}
@@ -77,7 +73,20 @@ export function Explorer({
         <Column step={2} heading={steps[1]}>
           {main}
         </Column>
-        <Column step={3} heading={steps[2]}>
+        <Column
+          step={3}
+          heading={steps[2]}
+          action={
+            <button
+              type="button"
+              onClick={() => setAboutOpen(true)}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-raised hover:text-text-primary"
+            >
+              <Info aria-hidden size={16} />
+              About this
+            </button>
+          }
+        >
           {detail}
         </Column>
       </div>

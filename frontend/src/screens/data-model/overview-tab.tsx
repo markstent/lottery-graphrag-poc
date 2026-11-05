@@ -6,7 +6,7 @@
  * part loads on its own, so one failure shows its own error and retry.
  */
 
-import { ArrowLeft, ArrowRight, TriangleAlert } from 'lucide-react'
+import { ArrowLeft, ArrowRight } from 'lucide-react'
 import { useId, type ReactNode } from 'react'
 
 import {
@@ -22,7 +22,8 @@ import { marketsInWords, plainName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { useLoad, type Load } from '../../app/use-load'
 import { plural } from '../../charts/scale'
-import { Notice, Panel, SkeletonBar } from '../../components/panel'
+import { ErrorNote } from '../../components/error-note'
+import { Panel, SkeletonBar } from '../../components/panel'
 import { relationshipPhrase } from '../../design/relationships'
 import { LAYER_NOTES } from './about-copy'
 import { loadExample, type ExampleLink, type LayeredExample } from './example'
@@ -59,29 +60,6 @@ const Id = ({ children }: { children: string }) => (
     {children}
   </span>
 )
-
-export function ErrorNote({
-  error,
-  retry,
-}: {
-  error: Error
-  retry: () => void
-}) {
-  return (
-    <div role="alert">
-      <Notice icon={<TriangleAlert size={16} className="text-error" />}>
-        <p className="text-text-primary">{error.message}</p>
-        <button
-          type="button"
-          onClick={retry}
-          className="rounded-chip border border-border px-3 py-1 text-text-primary hover:bg-surface-raised"
-        >
-          Retry
-        </button>
-      </Notice>
-    </div>
-  )
-}
 
 function LayerCard<T>({
   step,

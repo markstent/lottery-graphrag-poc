@@ -10,6 +10,7 @@
 import {
   getDataModelExample,
   getDictionary,
+  getGraphSchema,
   listDatasets,
   type Schemas,
 } from '../../api/client'
@@ -36,8 +37,12 @@ async function loadWorld(signal: AbortSignal) {
   const worlds = await listDatasets(signal)
   const world = worlds.find((w) => w.active) ?? worlds[0]
   if (!world) return null
-  const dictionary = await getDictionary(world.dataset_id, signal)
-  return dictionary.length > 0 ? { world, dictionary } : null
+  const [dictionary, schema] = await Promise.all([
+    getDictionary(world.dataset_id, signal),
+    // Without the graph's schema a record's links still read, naming "records".
+    getGraphSchema(signal).catch(() => null),
+  ])
+  return dictionary.length > 0 ? { world, dictionary, schema } : null
 }
 
 function TableRows({
@@ -110,7 +115,7 @@ export function TablesTab({ params }: { params: URLSearchParams }) {
       />
     )
 
-  const { world: dataset, dictionary } = world.data
+  const { world: dataset, dictionary, schema } = world.data
   const tableName = named ?? INCIDENTS
   const rowId =
     named === null
@@ -163,6 +168,7 @@ export function TablesTab({ params }: { params: URLSearchParams }) {
             datasetId={dataset.dataset_id}
             table={table.table}
             rowId={rowId}
+            schema={schema}
           />
         ) : (
           <p className="text-sm text-text-secondary">

@@ -7,7 +7,7 @@
 
 import { ArrowRight } from 'lucide-react'
 
-import { getRecord } from '../../api/client'
+import { getRecord, type Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
 import {
   distinctFields,
@@ -17,21 +17,52 @@ import {
 } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
+import { ErrorNote } from '../../components/error-note'
 import { SkeletonBar } from '../../components/panel'
-import { relationshipPhrase } from '../../design/relationships'
+import { linkLines } from '../../design/relationships'
 import { NEXT_STEP } from './explorer'
-import { ErrorNote } from './overview-tab'
 
 const NOTE = 'text-sm text-text-secondary'
+
+/**
+ * The kind of record at the other end of a link of this type from a row of
+ * `table`, when the graph schema names exactly one; otherwise nothing.
+ */
+function otherEnd(
+  schema: Schemas['GraphSchema'] | null,
+  table: string,
+  type: string,
+  direction: 'out' | 'in',
+): string | undefined {
+  const own = Object.entries(schema?.node_tables ?? {}).find(
+    ([, name]) => name === table,
+  )?.[0]
+  if (schema === null || own === undefined) return undefined
+  const others = new Set(
+    schema.relationship_types
+      .filter((r) => r.type === type)
+      .flatMap((r) =>
+        direction === 'out' && r.from_label === own
+          ? [r.to_label]
+          : direction === 'in' && r.to_label === own
+            ? [r.from_label]
+            : [],
+      ),
+  )
+  return others.size === 1 ? [...others][0] : undefined
+}
 
 export function RecordDetail({
   datasetId,
   table,
   rowId,
+  schema,
 }: {
   datasetId: string
   table: string
   rowId: string | undefined
+  /** The graph's schema, which names the kind of record at the other end of each link; null when it could not be read. */
+  schema: Schemas['GraphSchema'] | null
 }) {
   const load = useLoad(
     (signal) =>
@@ -62,19 +93,11 @@ export function RecordDetail({
   if (record === null) return null
 
   const fields = distinctFields(record.row)
-  const edges = record.edges ?? []
+  const lines = linkLines(record.edges ?? [], (type, direction) =>
+    otherEnd(schema, table, type, direction),
+  )
   return (
     <div className="space-y-5">
-      <dl className="space-y-3 text-sm">
-        {fields.map(([name, value]) => (
-          <div key={name}>
-            <dt className="text-text-muted">{plainName(name)}</dt>
-            <dd className="break-words text-text-primary">
-              {plainValue(value)}
-            </dd>
-          </div>
-        ))}
-      </dl>
       <section aria-labelledby="record-links" className="space-y-2">
         <h3
           id="record-links"
@@ -89,31 +112,39 @@ export function RecordDetail({
               : 'This row is not in the graph.'}
           </p>
         )}
-        {record.graph_node_id !== null && edges.length === 0 && (
+        {record.graph_node_id !== null && lines.length === 0 && (
           <p className={NOTE}>It has no links in the graph.</p>
         )}
-        {edges.length > 0 && (
+        {lines.length > 0 && (
           <ul className="space-y-1 text-sm text-text-primary">
-            {edges.map((edge) => (
-              <li key={`${edge.type}-${edge.direction}`}>
-                {`${relationshipPhrase(edge.type)}: ${edge.count.toLocaleString('en-GB')} ${edge.direction === 'out' ? 'outgoing' : 'incoming'}`}
-              </li>
+            {lines.map((line) => (
+              <li key={line}>{line}</li>
             ))}
           </ul>
         )}
+        {record.graph_node_id !== null && (
+          <a
+            href={hrefFor('data-model', {
+              tab: 'graph',
+              node: record.graph_node_id,
+            })}
+            className={`${NEXT_STEP} mt-2`}
+          >
+            Open in the graph
+            <ArrowRight aria-hidden size={16} />
+          </a>
+        )}
       </section>
-      {record.graph_node_id !== null && (
-        <a
-          href={hrefFor('data-model', {
-            tab: 'graph',
-            node: record.graph_node_id,
-          })}
-          className={NEXT_STEP}
-        >
-          Open in the graph
-          <ArrowRight aria-hidden size={16} />
-        </a>
-      )}
+      <dl className="space-y-3 border-t border-hairline pt-4 text-sm">
+        {fields.map(([name, value]) => (
+          <div key={name}>
+            <dt className="text-text-muted">{plainName(name)}</dt>
+            <dd className="break-words text-text-primary">
+              {plainValue(value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }

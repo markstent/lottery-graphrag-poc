@@ -4,6 +4,7 @@ import fixture from '../run/fixtures/run-abc.json'
 import {
   RELATIONSHIP_PHRASES,
   RELATIONSHIP_SOURCES,
+  linkLines,
   relationshipPhrase,
 } from './relationships'
 
@@ -50,5 +51,52 @@ describe('relationship sources', () => {
       expect(source).not.toMatch(BANNED)
       expect(source).not.toMatch(/[A-Z]{2,}|_/)
     }
+  })
+})
+
+describe('link lines', () => {
+  const kinds: Record<string, string> = {
+    'AVAILABLE_IN/out': 'Market',
+    'AFFECTS/in': 'Incident',
+    'PLAYS/in': 'Player',
+    'BELONGS_TO/out': 'GameFamily',
+  }
+  const lines = (links: Parameters<typeof linkLines>[0]) =>
+    linkLines(links, (type, direction) => kinds[`${type}/${direction}`])
+
+  it('puts the count first and the direction in the verb', () => {
+    expect(
+      lines([
+        { type: 'AVAILABLE_IN', direction: 'out', count: 1 },
+        { type: 'AFFECTS', direction: 'in', count: 1 },
+        { type: 'PLAYS', direction: 'in', count: 2573 },
+        { type: 'BELONGS_TO', direction: 'out', count: 3 },
+      ]),
+    ).toEqual([
+      'is available in 1 market',
+      '1 incident affects it',
+      '2,573 players play it',
+      'belongs to 3 game families',
+    ])
+  })
+
+  it('merges a symmetric kind of link into one line counting both directions', () => {
+    expect(
+      lines([
+        { type: 'SIMILAR_TO', direction: 'in', count: 3 },
+        { type: 'SIMILAR_TO', direction: 'out', count: 3 },
+        { type: 'RELATED_TO', direction: 'in', count: 24 },
+        { type: 'RELATED_TO', direction: 'out', count: 1 },
+      ]),
+    ).toEqual(['is similar to 6 others', 'is related to 25 others'])
+  })
+
+  it('calls an unknown other end a record and an unknown type by its phrase', () => {
+    expect(
+      lines([
+        { type: 'REFERENCES', direction: 'in', count: 1 },
+        { type: 'NEW_KIND', direction: 'out', count: 2 },
+      ]),
+    ).toEqual(['1 record refers to it', 'new kind 2 records'])
   })
 })

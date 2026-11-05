@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { failure, stubApi } from '../../test/api-stub'
-import { DATASET, DICTIONARY, GAME_ROWS } from './data-model.fixtures'
+import { DATASET, DICTIONARY, GAME_ROWS, SCHEMA } from './data-model.fixtures'
 import { TablesTab } from './tables-tab'
 
 const BASE = '/api/v1/datasets/dev-seed2026'
@@ -33,8 +33,11 @@ const INCIDENT: Schemas['RecordOut'] = {
   },
   graph_node_id: 'INC_002',
   edges: [
+    { type: 'AFFECTS', direction: 'out', count: 3 },
     { type: 'AFFECTS_MARKET', direction: 'out', count: 1 },
     { type: 'RELATED_TO', direction: 'in', count: 24 },
+    { type: 'RELATED_TO', direction: 'out', count: 1 },
+    { type: 'REFERENCES', direction: 'in', count: 1 },
   ],
   graph_error: null,
 }
@@ -42,6 +45,13 @@ const INCIDENT: Schemas['RecordOut'] = {
 const ROUTES = {
   '/api/v1/datasets': [DATASET],
   [`${BASE}/dictionary`]: DICTIONARY,
+  '/api/v1/graph/schema': {
+    ...SCHEMA,
+    relationship_types: [
+      ...SCHEMA.relationship_types,
+      { type: 'AFFECTS_MARKET', from_label: 'Incident', to_label: 'Market' },
+    ],
+  },
   '/api/v1/data-model/example': { incident_id: 'INC_002' },
   [`${BASE}/tables/games/rows`]: GAME_ROWS(0, 3),
   [`${BASE}/tables/incidents/rows`]: INCIDENT_ROWS(),
@@ -142,12 +152,31 @@ describe('Tables tab', () => {
     ).toBeVisible()
     const items = record.getAllByRole('listitem').map((li) => li.textContent)
     expect(items).toEqual([
-      'affects market: 1 outgoing',
-      'is related to: 24 incoming',
+      'affects 3 games',
+      'affects 1 market',
+      'is related to 25 others',
+      '1 record refers to it',
     ])
+    const button = record.getByRole('link', { name: 'Open in the graph' })
+    expect(button).toHaveAttribute(
+      'href',
+      '#/data-model?tab=graph&node=INC_002',
+    )
+    // The way on comes before the fields, so it is never below the fold.
     expect(
-      record.getByRole('link', { name: 'Open in the graph' }),
-    ).toHaveAttribute('href', '#/data-model?tab=graph&node=INC_002')
+      button.compareDocumentPosition(
+        record.getByText('Payment provider degraded'),
+      ) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy()
+  })
+
+  it('still words the links when the graph schema cannot be read', async () => {
+    stubApi({
+      ...ROUTES,
+      '/api/v1/graph/schema': () => failure('The graph is down.', true),
+    })
+    renderTab('table=incidents&row=INC_002')
+    expect(await screen.findByText('affects 3 records')).toBeVisible()
   })
 
   it('says a row has no graph record when it has no node, and gives no button', async () => {
