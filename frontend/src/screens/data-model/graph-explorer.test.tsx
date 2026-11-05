@@ -247,6 +247,10 @@ describe('Graph explorer', () => {
     expect(
       await (await column(LIST)).findByText('No record with that id.'),
     ).toBeVisible()
+    // Announced, so a screen reader hears that the search found nothing.
+    expect((await column(LIST)).getByRole('status')).toHaveTextContent(
+      'No record with that id.',
+    )
     expect(window.location.hash).toBe('#/data-model')
   })
 
@@ -256,6 +260,42 @@ describe('Graph explorer', () => {
     expect(
       await (await column(MAIN)).findByText('No record with that id.'),
     ).toBeVisible()
+  })
+
+  it('opens a sample of the kind the address names, when it names no record', async () => {
+    const fetchSpy = stubApi(ROUTES)
+    renderTab('kind=Game')
+    expect(
+      await screen.findByRole('button', { name: 'Albion Millions 1, game' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      (await column(LIST)).getByRole('button', { name: /^game ?120$/ }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    const asked = fetchSpy.mock.calls.map(([input]) => String(input))
+    expect(asked.some((url) => url.includes('/data-model/example'))).toBe(false)
+  })
+
+  it('falls back to the search prompt when the example cannot be read', async () => {
+    for (const status of [404, 503]) {
+      stubApi({
+        ...ROUTES,
+        '/api/v1/data-model/example': () =>
+          failure('The example is not answering.', true, status),
+      })
+      const { unmount } = renderTab()
+      expect(
+        await (
+          await column(MAIN)
+        ).findByText('Find a record by its id, or choose a kind of record.'),
+      ).toBeVisible()
+      expect(
+        (await column(LIST)).getByRole('searchbox', {
+          name: 'Find a record by id',
+        }),
+      ).toBeVisible()
+      unmount()
+      vi.unstubAllGlobals()
+    }
   })
 
   it('opens a sample record when a kind is chosen', async () => {
@@ -451,6 +491,12 @@ describe('Graph explorer', () => {
     expect(
       (await column(MAIN)).getByRole('button', { name: 'Retry' }),
     ).toBeVisible()
+    // The details column does not invite a search beside the error.
+    expect(
+      (await column(DETAIL)).queryByText(
+        'Find a record by its id, or choose a kind of record.',
+      ),
+    ).toBeNull()
   })
 
   it('says plainly when the graph has not been built', async () => {

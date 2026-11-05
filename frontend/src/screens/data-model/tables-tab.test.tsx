@@ -217,6 +217,25 @@ describe('Tables tab', () => {
     ).toHaveAttribute('aria-pressed', 'true')
   })
 
+  it('opens on the incidents table with no row chosen when the example cannot be read', async () => {
+    for (const status of [404, 503]) {
+      stubApi({
+        ...ROUTES,
+        '/api/v1/data-model/example': () =>
+          failure('The example is not answering.', true, status),
+      })
+      const { unmount } = renderTab()
+      expect(
+        await screen.findByText('Choose a row to see its record.'),
+      ).toBeVisible()
+      expect(
+        screen.getByRole('button', { name: /^incidents ?25$/ }),
+      ).toHaveAttribute('aria-pressed', 'true')
+      unmount()
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('says so in the rows column when the table is unknown', async () => {
     stubApi(ROUTES)
     renderTab('table=nonsense')

@@ -4,7 +4,9 @@
  * chosen row as a record on the right, with the graph links it becomes. The
  * table and row are in the address (`tab=tables&table=<table>&row=<id>`), so
  * every step is a link. With no table in the address it opens on the example
- * incident the Overview follows, or the incidents table when there is none.
+ * incident the Overview follows, or the incidents table with no row chosen
+ * when there is none or the example cannot be read (the Overview shows that
+ * error; here it would only block the tables).
  */
 
 import {
@@ -105,15 +107,8 @@ export function TablesTab({ params }: { params: URLSearchParams }) {
         onRetry={world.retry}
       />
     )
-  if (named === null && example.status !== 'ready')
-    return (
-      <Panel
-        title="Tables"
-        state={example.status}
-        error={example.status === 'error' ? example.error : undefined}
-        onRetry={example.retry}
-      />
-    )
+  if (named === null && example.status === 'loading')
+    return <Panel title="Tables" state="loading" />
 
   const { world: dataset, dictionary, schema } = world.data
   const tableName = named ?? INCIDENTS

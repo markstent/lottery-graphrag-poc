@@ -5,7 +5,8 @@
  * all meet one another, support case, incident, game and market, cannot be
  * drawn without one crossing). Lines carry no tags; the links are listed in
  * words beneath, which is also the text alternative. Pointing at or focusing
- * a kind brings its links forward and dims the rest.
+ * a kind brings its links forward and dims the rest; each kind opens the
+ * Graph tab on a sample of that kind (`tab=graph&kind=<label>`).
  */
 
 import { useState } from 'react'
@@ -87,7 +88,6 @@ export function CoreMap({
   const byKind = [...links].sort(
     (a, b) => CORE_KINDS.indexOf(a.from) - CORE_KINDS.indexOf(b.from),
   )
-  const graphHref = hrefFor('data-model', { tab: 'graph' })
   // Two links between the same pair would draw one line; it is drawn once.
   const lines = [
     ...new Map(links.map((l) => [`${l.from}>${l.to}`, l])).values(),
@@ -144,7 +144,7 @@ export function CoreMap({
           return (
             <a
               key={kind}
-              href={graphHref}
+              href={hrefFor('data-model', { tab: 'graph', kind })}
               aria-label={`${title}, ${detail}`}
               data-kind={kind}
               className="core-kind motion-safe:transition-opacity"

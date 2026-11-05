@@ -264,20 +264,21 @@ describe('OverviewTab', () => {
     ).toHaveAttribute('href', '#/data-model?tab=stories')
   })
 
-  it('draws the core of the graph from the schema, each kind a link to the Graph tab', async () => {
+  it('draws the core of the graph from the schema, each kind a link to its sample in the Graph tab', async () => {
     stubApi(ROUTES)
     render(<OverviewTab scale={1} />)
     const core = await screen.findByRole('region', {
       name: 'The core of the graph',
     })
-    for (const name of [
-      'incident, 25 records',
-      'game, 120 records',
-      'market, 4 records',
+    // Each kind opens the Graph tab on a sample of that kind.
+    for (const [name, kind] of [
+      ['incident, 25 records', 'Incident'],
+      ['game, 120 records', 'Game'],
+      ['market, 4 records', 'Market'],
     ])
       expect(await within(core).findByRole('link', { name })).toHaveAttribute(
         'href',
-        '#/data-model?tab=graph',
+        `#/data-model?tab=graph&kind=${kind}`,
       )
     // A kind outside the core is left out.
     expect(

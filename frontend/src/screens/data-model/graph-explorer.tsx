@@ -6,7 +6,9 @@
  * neighbours of one kind of link are one box (`neighbour-groups.ts`); choosing
  * the box lists them on the right. The record and the open box are in the
  * address (`tab=graph&node=<id>&group=<type>:<direction>`); with no record in
- * the address it opens on the example incident the Overview follows.
+ * the address it opens on a sample of the kind it names (`kind=<label>`, as
+ * the Overview's core map links), else on the example incident the Overview
+ * follows.
  */
 
 import { ArrowLeft, ArrowRight } from 'lucide-react'
@@ -236,7 +238,11 @@ function RecordFinder({
           Opening the record
         </p>
       )}
-      {note.kind === 'message' && <p className={NOTE}>{note.text}</p>}
+      {note.kind === 'message' && (
+        <p role="status" className={NOTE}>
+          {note.text}
+        </p>
+      )}
       {note.kind === 'error' && (
         <ErrorNote error={note.error} retry={note.retry} />
       )}
@@ -624,10 +630,12 @@ function GraphRecord({
         scale={scale}
       />
     )
+  // A read error shows in the middle only, with no search prompt beside it.
+  const failed = load.status === 'error' && !notFound(load.error)
   const detail =
     load.status === 'loading' ? (
       <Loading what="its details" />
-    ) : data === null ? (
+    ) : failed ? null : data === null ? (
       <p className={NOTE}>{CHOOSE}</p>
     ) : group ? (
       <GroupMembers node={data.node} group={group} schema={schema} />
@@ -657,6 +665,42 @@ function GraphRecord({
   )
 }
 
+/**
+ * The address names no record: open a sample of the kind it names (as when
+ * the kind is chosen on the left), else the example incident. When neither
+ * can be found or read, the search prompt shows, so a failed example never
+ * blocks the tab (the Overview shows that error).
+ */
+function GraphStart({
+  kind,
+  schema,
+  stats,
+  scale,
+}: {
+  kind: string | null
+  schema: Schema
+  stats: Schemas['GraphStats']
+  scale: number
+}) {
+  const start = useLoad(
+    (signal) =>
+      kind === null
+        ? getDataModelExample(signal).then((e) => e.incident_id ?? null)
+        : sampleOf(kind, schema, signal),
+    `graph-start/${kind}`,
+  )
+  if (start.status === 'loading') return <Panel title="Graph" state="loading" />
+  return (
+    <GraphRecord
+      nodeId={start.status === 'ready' ? start.data : null}
+      groupId={null}
+      schema={schema}
+      stats={stats}
+      scale={scale}
+    />
+  )
+}
+
 export function GraphExplorer({
   params,
   scale,
@@ -672,14 +716,6 @@ export function GraphExplorer({
     ])
     return { schema, stats }
   }, 'graph-explorer')
-  // The example is only asked for when the address names no record.
-  const example = useLoad(
-    (signal) =>
-      named === null
-        ? getDataModelExample(signal).then((e) => e.incident_id ?? null)
-        : Promise.resolve(null),
-    `graph-example/${named === null}`,
-  )
 
   const empty =
     graph.status === 'ready' && graph.data.schema.labels.length === 0
@@ -693,19 +729,19 @@ export function GraphExplorer({
         onRetry={graph.retry}
       />
     )
-  if (named === null && example.status !== 'ready')
+  if (named === null)
     return (
-      <Panel
-        title="Graph"
-        state={example.status}
-        error={example.status === 'error' ? example.error : undefined}
-        onRetry={example.retry}
+      <GraphStart
+        kind={params.get('kind')}
+        schema={graph.data.schema}
+        stats={graph.data.stats}
+        scale={scale}
       />
     )
 
   return (
     <GraphRecord
-      nodeId={named ?? (example.status === 'ready' ? example.data : null)}
+      nodeId={named}
       groupId={params.get('group')}
       schema={graph.data.schema}
       stats={graph.data.stats}
