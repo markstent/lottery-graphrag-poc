@@ -54,6 +54,8 @@ const box = (page: Page, id: string) =>
 
 const EXAMPLE_ID = EXAMPLE.incident_id!
 const NATIONAL_DRAW = '#/data-model?tab=concepts&concept=CONCEPT_NATIONAL_DRAW'
+/** An incident with enough support cases in the capture to fold into one box. */
+const MANY_CASES = 'INC_031'
 
 test('the mock names an example incident', () => {
   expect(EXAMPLE_ID).toMatch(/^INC_\d+$/)
@@ -78,7 +80,7 @@ test.describe('Overview', () => {
       ).toBeVisible()
     // Through the layers, the incident type ends at its shared concept.
     const fit = page.getByRole('region', { name: 'How they fit together' })
-    await expect(fit.getByText('Payment incident')).toBeVisible()
+    await expect(fit.getByText('Application incident')).toBeVisible()
     await shot(page, 'overview')
   })
 
@@ -96,6 +98,23 @@ test.describe('Overview', () => {
         page.getByRole('heading', { name: heading, level: 2 }),
       ).toBeVisible()
     })
+
+  test('a kind in the core of the graph opens a sample of that kind', async ({
+    page,
+  }) => {
+    await open(page, '#/data-model')
+    await page
+      .getByRole('region', { name: 'The core of the graph' })
+      .getByRole('link', { name: /^game, / })
+      .click()
+    await expect(page).toHaveURL(/#\/data-model\?tab=graph&kind=Game$/)
+    await expect(
+      column(page, 1).getByRole('button', { name: /^game \d+$/ }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      page.getByRole('img', { name: / and its neighbours$/ }),
+    ).toBeVisible()
+  })
 
   test('the stories line opens the Stories tab', async ({ page }) => {
     await open(page, '#/data-model')
@@ -292,13 +311,13 @@ test.describe('Graph', () => {
     await expect(page.getByText('No record with that id.')).toBeVisible()
 
     // Many neighbours of one kind of link are one box; choosing it lists them.
-    await page.goto(`/#/data-model?tab=graph&node=${EXAMPLE_ID}`)
+    await page.goto(`/#/data-model?tab=graph&node=${MANY_CASES}`)
     const group = page.getByRole('button', {
       name: /^\d+ support cases, click to list them$/,
     })
     await group.click()
     await expect(page).toHaveURL(
-      new RegExp(`node=${EXAMPLE_ID}&group=RELATED_TO%3Ain$`),
+      new RegExp(`node=${MANY_CASES}&group=RELATED_TO%3Ain$`),
     )
     await expect(group).toHaveAttribute('aria-pressed', 'true')
     const members = column(page, 3)

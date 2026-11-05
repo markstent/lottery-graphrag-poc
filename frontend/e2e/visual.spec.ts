@@ -585,7 +585,11 @@ test.describe('Data Model', () => {
   // One case per tab (D-115), each as the address opens it; Concepts on a
   // concept with terms in every market, so its third column is not empty.
   const TABS = [
-    ['overview', '#/data-model', 'How they fit together'],
+    [
+      'overview',
+      '#/data-model',
+      'One record followed through the three layers.',
+    ],
     ['tables', '#/data-model?tab=tables', 'Becomes these links in the graph'],
     ['graph', '#/data-model?tab=graph', 'Where it comes from'],
     [
