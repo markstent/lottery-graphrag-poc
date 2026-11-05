@@ -273,3 +273,47 @@ export function relationshipRows(
     [...rows.values()].filter((row) => row.follower === follower),
   )
 }
+
+/**
+ * The core of the graph the Overview draws (`core-map.tsx`): where each main
+ * kind sits, as column and row of a three by three grid. The places let the
+ * lines cross only once: support case, incident, game and market all meet
+ * one another, which cannot be drawn on a grid without one crossing.
+ */
+export const CORE_PLACES: Readonly<
+  Record<string, { col: number; row: number }>
+> = {
+  Market: { col: 1, row: 0 },
+  SupportCase: { col: 2, row: 0 },
+  Player: { col: 0, row: 1 },
+  Game: { col: 1, row: 1 },
+  Incident: { col: 2, row: 1 },
+  Campaign: { col: 0, row: 2 },
+  Platform: { col: 1, row: 2 },
+  PlatformVersion: { col: 2, row: 2 },
+}
+
+/** The core kinds, in reading order of the grid. */
+export const CORE_KINDS = Object.keys(CORE_PLACES)
+
+export interface CoreLink {
+  id: string
+  type: string
+  from: string
+  to: string
+}
+
+/** The schema's links between two different core kinds, in schema order. */
+export function coreLinks(schema: Schemas['GraphSchema']): CoreLink[] {
+  const present = new Set(schema.labels)
+  const core = (kind: string) => kind in CORE_PLACES && present.has(kind)
+  return schema.relationship_types
+    .filter((r) => core(r.from_label) && core(r.to_label))
+    .filter((r) => r.from_label !== r.to_label)
+    .map((r) => ({
+      id: `${r.type}:${r.from_label}>${r.to_label}`,
+      type: r.type,
+      from: r.from_label,
+      to: r.to_label,
+    }))
+}

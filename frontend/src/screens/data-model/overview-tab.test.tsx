@@ -6,6 +6,7 @@ import { failure, json, stubApi, type Route } from '../../test/api-stub'
 import { DATASET, DICTIONARY, SCHEMA, STATS } from './data-model.fixtures'
 import { ONTOLOGY, SCENARIOS } from './ontology.fixtures'
 import { OverviewTab } from './overview-tab'
+import { coreLinks, CORE_KINDS } from './model'
 
 const RECORD: Schemas['RecordOut'] = {
   table: 'incidents',
@@ -244,25 +245,63 @@ describe('OverviewTab', () => {
     ).toHaveAttribute('href', '#/data-model?tab=stories')
   })
 
-  it('draws the core of the graph from the schema, with a way to every kind', async () => {
+  it('draws the core of the graph from the schema, each kind a link to the Graph tab', async () => {
     stubApi(ROUTES)
     render(<OverviewTab scale={1} />)
     const core = await screen.findByRole('region', {
       name: 'The core of the graph',
     })
-    expect(
-      await within(core).findByRole('button', { name: 'incident, 25 records' }),
-    ).toBeVisible()
-    expect(within(core).getByRole('button', { name: 'game, 120 records' }))
-    expect(within(core).getByRole('button', { name: 'market, 4 records' }))
+    for (const name of [
+      'incident, 25 records',
+      'game, 120 records',
+      'market, 4 records',
+    ])
+      expect(await within(core).findByRole('link', { name })).toHaveAttribute(
+        'href',
+        '#/data-model?tab=graph',
+      )
     // A kind outside the core is left out.
     expect(
-      within(core).queryByRole('button', { name: /business concept/ }),
+      within(core).queryByRole('link', { name: /business concept/ }),
     ).toBeNull()
-    expect(within(core).getByText('incident affects game')).toBeInTheDocument()
+    // The lines carry no tags; the links are listed in words, visibly.
+    const map = within(core).getByRole('group', {
+      name: 'The main kinds of record',
+    })
+    expect(map).not.toHaveTextContent('affects')
+    const words = within(core).getByRole('list', {
+      name: 'The main kinds of record, in words',
+    })
+    expect(
+      within(words)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['game is available in market', 'incident affects game'])
+    expect(words).toBeVisible()
     expect(
       within(core).getByRole('link', { name: /See every kind of record/ }),
     ).toHaveAttribute('href', '#/data-model?tab=graph')
+  })
+
+  it("brings a kind's links forward when it is pointed at or focused", async () => {
+    stubApi(ROUTES)
+    render(<OverviewTab scale={1} />)
+    const incident = await screen.findByRole('link', {
+      name: 'incident, 25 records',
+    })
+    const line = (id: string) =>
+      document.querySelector(`[data-link="${id}"]`) as Element
+    expect(line('AVAILABLE_IN:Game>Market')).not.toHaveAttribute('data-dimmed')
+    fireEvent.mouseEnter(incident)
+    expect(line('AFFECTS:Incident>Game')).not.toHaveAttribute('data-dimmed')
+    expect(line('AVAILABLE_IN:Game>Market')).toHaveAttribute('data-dimmed')
+    expect(screen.getByText('game is available in market')).toHaveAttribute(
+      'data-dimmed',
+    )
+    fireEvent.mouseLeave(incident)
+    expect(line('AVAILABLE_IN:Game>Market')).not.toHaveAttribute('data-dimmed')
+    fireEvent.focus(screen.getByRole('link', { name: 'market, 4 records' }))
+    expect(line('AFFECTS:Incident>Game')).toHaveAttribute('data-dimmed')
   })
 
   it('says how each layer is built', () => {
@@ -276,5 +315,47 @@ describe('OverviewTab', () => {
     expect(notes).toHaveTextContent(/counted from bulk rows/)
     expect(notes).toHaveTextContent(/worked out by a rule/)
     expect(notes).toHaveTextContent(/Only Graph \+ Ontology may follow/)
+  })
+})
+
+describe('coreLinks', () => {
+  it('keeps every schema link between two core kinds, and only those', () => {
+    const schema = {
+      ...SCHEMA,
+      labels: [...CORE_KINDS, 'AppVersion'],
+      relationship_types: [
+        { type: 'RELATED_TO', from_label: 'SupportCase', to_label: 'Incident' },
+        { type: 'CONCERNS', from_label: 'SupportCase', to_label: 'Game' },
+        { type: 'FROM_MARKET', from_label: 'SupportCase', to_label: 'Market' },
+        { type: 'PLAYS', from_label: 'Player', to_label: 'Game' },
+        { type: 'EXPOSED_TO', from_label: 'Player', to_label: 'Campaign' },
+        { type: 'PROMOTES', from_label: 'Campaign', to_label: 'Game' },
+        { type: 'AFFECTS', from_label: 'Incident', to_label: 'Game' },
+        { type: 'AFFECTS_MARKET', from_label: 'Incident', to_label: 'Market' },
+        { type: 'RELATED_TO', from_label: 'Incident', to_label: 'Platform' },
+        {
+          type: 'RELATED_TO_VERSION',
+          from_label: 'Incident',
+          to_label: 'PlatformVersion',
+        },
+        {
+          type: 'VERSION_OF',
+          from_label: 'PlatformVersion',
+          to_label: 'Platform',
+        },
+        { type: 'RUNS_ON', from_label: 'Game', to_label: 'Platform' },
+        { type: 'AVAILABLE_IN', from_label: 'Game', to_label: 'Market' },
+        { type: 'SIMILAR_TO', from_label: 'Game', to_label: 'Game' },
+        {
+          type: 'RELATED_TO_APP_VERSION',
+          from_label: 'Incident',
+          to_label: 'AppVersion',
+        },
+      ],
+    }
+    expect(coreLinks(schema)).toHaveLength(13)
+    expect(coreLinks(schema).map((l) => l.id)).not.toContain(
+      'SIMILAR_TO:Game>Game',
+    )
   })
 })

@@ -23,33 +23,14 @@ import { hrefFor } from '../../app/router'
 import { useLoad, type Load } from '../../app/use-load'
 import { plural } from '../../charts/scale'
 import { Notice, Panel, SkeletonBar } from '../../components/panel'
-import { nodeLabel } from '../../design/node-labels'
 import { relationshipPhrase } from '../../design/relationships'
 import { LAYER_NOTES } from './about-copy'
 import { loadExample, type ExampleLink, type LayeredExample } from './example'
 import { NEXT_STEP } from './explorer'
-import { Diagram } from './meta-graph'
-import {
-  count,
-  groupBySystem,
-  LANGUAGES,
-  listed,
-  type DiagramEdge,
-} from './model'
+import { CoreMap } from './core-map'
+import { count, groupBySystem, LANGUAGES, listed } from './model'
 
 type Concept = Schemas['ConceptOut']
-
-/** The main kinds of record, drawn as the core of the graph (spec, Overview). */
-const CORE_KINDS = [
-  'Incident',
-  'PlatformVersion',
-  'Platform',
-  'Game',
-  'Market',
-  'SupportCase',
-  'Player',
-  'Campaign',
-] as const
 
 /**
  * The link the graph card shows: the example is chosen for its platform
@@ -374,49 +355,14 @@ function CoreOfGraph({
       />
     )
   const [schema, stats] = load.data
-  const core = new Set<string>(
-    CORE_KINDS.filter((k) => schema.labels.includes(k)),
-  )
-  const nodes = [...core].map((kind) => {
-    const title = nodeLabel(kind)
-    return {
-      id: kind,
-      title,
-      detail: plural(stats.nodes_by_label[kind] ?? 0, 'record'),
-      width: Math.round(Math.max(150, title.length * 11 + 40) * scale),
-    }
-  })
-  const edges: DiagramEdge[] = schema.relationship_types
-    .filter(
-      (r) =>
-        core.has(r.from_label) &&
-        core.has(r.to_label) &&
-        r.from_label !== r.to_label,
-    )
-    .map((r) => ({
-      id: `${r.type}:${r.from_label}>${r.to_label}`,
-      source: r.from_label,
-      target: r.to_label,
-      label: relationshipPhrase(r.type),
-    }))
   return (
     <Panel
       title="The core of the graph"
-      purpose="The main kinds of record and the links between them."
+      purpose="The main kinds of record and the links between them. Point at a kind to see its links."
       state="ready"
       headerAction={link}
     >
-      <div className="flex justify-center *:min-w-0">
-        <Diagram
-          nodes={nodes}
-          edges={edges}
-          label="The main kinds of record"
-          scale={scale}
-          onSelect={() => {
-            window.location.hash = tab('graph')
-          }}
-        />
-      </div>
+      <CoreMap schema={schema} stats={stats} scale={scale} />
     </Panel>
   )
 }

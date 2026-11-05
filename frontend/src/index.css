@@ -183,6 +183,13 @@ body {
   stroke: var(--color-grey-900);
 }
 
+/* A kind on the Overview's core map opens the Graph tab (D-115). */
+.core-kind:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 10px;
+}
+
 .graph-node:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 5px;
