@@ -747,12 +747,21 @@ describe('states', () => {
   })
 })
 
+/** Matches a paragraph or list item by its whole text, which a marked glossary term splits across elements. */
+const textOfElement =
+  (pattern: RegExp) => (_: string, element: Element | null) =>
+    element !== null &&
+    ['P', 'LI'].includes(element.tagName) &&
+    pattern.test(element.textContent ?? '')
+
 describe('scoring and glossary', () => {
   it('defines the evidence score on the scale Overview uses', async () => {
     await renderHelp('#/help?section=scoring')
     expect(
       within(section('7. How scoring works')).getByText(
-        /Evidence recall is the share of the claims that the chosen evidence covers, from 0 to 1/,
+        textOfElement(
+          /Evidence recall is the share of the claims that the chosen evidence covers, from 0 to 1/,
+        ),
       ),
     ).toBeVisible()
   })
@@ -775,7 +784,7 @@ describe('one name for the record a question names', () => {
     const scoring = within(section('7. How scoring works'))
     expect(
       scoring.getByText(
-        /The starting record \(the record the question names\)/,
+        textOfElement(/The starting record \(the record the question names\)/),
       ),
     ).toBeVisible()
     cleanup()

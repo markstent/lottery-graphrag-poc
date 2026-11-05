@@ -106,12 +106,18 @@ export interface TableBlock {
 /**
  * One block of a chapter. A string is a paragraph and a list of strings is a
  * bulleted list; either may hold `{setting_key}`, filled from the settings.
- * A heading names the part of the chapter that follows it.
+ * A heading names the part of the chapter that follows it. A key line is the
+ * chapter's point in one sentence, drawn boxed as "In one line"; "more"
+ * folds blocks behind a disclosure (summary "More detail" when left empty);
+ * steps are a numbered list.
  */
 export type Block =
   | string
   | readonly string[]
   | { kind: 'heading'; text: string }
+  | { kind: 'key'; text: string }
+  | { kind: 'more'; summary: string; blocks: readonly Block[] }
+  | { kind: 'steps'; items: readonly string[] }
   | TableBlock
   | { kind: 'settings'; keys: readonly SettingKey[] }
   | { kind: 'diagram'; name: DiagramName }

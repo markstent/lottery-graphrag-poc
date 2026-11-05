@@ -12,6 +12,7 @@ import { Panel } from '../../components/panel'
 import { Blocks } from './blocks'
 import { PAGES, type ChapterCopy, type ChapterId } from './chapters'
 import { useHelpData } from './help-data'
+import { bodyTexts, markTerms } from './mark-terms'
 
 const BODY =
   'space-y-3 break-words [&_ol]:max-w-4xl [&_p]:max-w-4xl [&_ul]:max-w-4xl'
@@ -27,6 +28,10 @@ export function Chapter({
 }) {
   const { level } = useHelpData()
   const { title } = PAGES.find((chapter) => chapter.id === id)!
+  const terms = copy.terms ?? []
+  // The Technical blocks follow the Plain ones, so a term the Plain blocks marked is not marked again.
+  const inPlain = new Set<string>()
+  for (const text of bodyTexts(copy.plain)) markTerms(text, terms, inPlain)
   return (
     <div id={id} className="scroll-mt-24">
       <Panel
@@ -36,14 +41,14 @@ export function Chapter({
         onRetry={load?.retry}
       >
         <div className={`${BODY} text-base text-text-secondary`}>
-          <Blocks blocks={copy.plain} />
+          <Blocks blocks={copy.plain} terms={terms} />
           {level === 'plain' && copy.plainHint && <p>{copy.plainHint}</p>}
           {level === 'technical' && copy.technical.length > 0 && (
             <div className={`${BODY} border-t border-hairline pt-3`}>
               <h3 className="text-base font-semibold text-text-primary">
                 Technical detail
               </h3>
-              <Blocks blocks={copy.technical} />
+              <Blocks blocks={copy.technical} terms={terms} marked={inPlain} />
             </div>
           )}
         </div>

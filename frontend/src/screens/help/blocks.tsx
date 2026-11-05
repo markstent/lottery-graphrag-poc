@@ -30,6 +30,7 @@ import {
 } from './settings'
 import { Stories } from './stories'
 import { ScrollBox } from '../../components/scroll-box'
+import { markTerms } from './mark-terms'
 
 const DIAGRAMS: Record<DiagramName, ReactElement> = {
   approachA: <ApproachDiagram id="A" />,
@@ -162,9 +163,23 @@ function TextTable({ caption, columns, rows }: Omit<TableBlock, 'kind'>) {
   )
 }
 
-export function Blocks({ blocks }: { blocks: readonly Block[] }) {
+/**
+ * `terms` are marked in body text at their first occurrence; `marked` holds
+ * the ones already marked earlier in the chapter and gains those marked here.
+ */
+export function Blocks({
+  blocks,
+  terms = [],
+  marked = new Set<string>(),
+}: {
+  blocks: readonly Block[]
+  terms?: readonly string[]
+  marked?: ReadonlySet<string>
+}) {
   const values = useSettingValues()
-  const fill = (text: string) => fillSettings(text, values)
+  const used = new Set(marked)
+  const fill = (text: string) =>
+    markTerms(fillSettings(text, values), terms, used)
   return blocks.map((block, index) => {
     if (typeof block === 'string') return <p key={index}>{fill(block)}</p>
     if (!('kind' in block))
@@ -174,6 +189,37 @@ export function Blocks({ blocks }: { blocks: readonly Block[] }) {
             <li key={position}>{fill(item)}</li>
           ))}
         </ul>
+      )
+    if (block.kind === 'key')
+      return (
+        <div
+          key={index}
+          className="rounded-chip border-l-4 border-text-primary bg-surface-raised px-3 py-2"
+        >
+          <b className="text-text-primary">In one line:</b> {fill(block.text)}
+        </div>
+      )
+    if (block.kind === 'steps')
+      return (
+        <ol key={index} className="list-decimal space-y-1 pl-6">
+          {block.items.map((item, position) => (
+            <li key={position}>{fill(item)}</li>
+          ))}
+        </ol>
+      )
+    if (block.kind === 'more')
+      return (
+        <details
+          key={index}
+          className="rounded-chip border border-border px-3 py-2"
+        >
+          <summary className="cursor-pointer font-semibold text-text-primary">
+            {block.summary || 'More detail'}
+          </summary>
+          <div className="mt-2 space-y-3">
+            <Blocks blocks={block.blocks} terms={terms} marked={used} />
+          </div>
+        </details>
       )
     if (block.kind === 'heading')
       return (
