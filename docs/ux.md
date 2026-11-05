@@ -256,7 +256,7 @@ The run in `results-v03` is the report tests' synthetic run through `summarize`,
 
 ### Data Model
 
-Purpose: what the warehouse, the graph and the ontology look like, how they fit together, and one real record followed through all three, with live counts.
+Purpose: what the warehouse, the graph and the ontology look like, how they fit together, and one record followed through all three, with live counts.
 Readers mostly explore it on their own after a presentation, so the screen explains itself (D-115).
 
 Five tabs, each a link, in this order: Overview, Tables, Graph, Concepts and Stories (`#/data-model?tab=...`).

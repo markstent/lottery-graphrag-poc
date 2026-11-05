@@ -4,7 +4,7 @@ const TOUR = [
   {
     tab: 'overview',
     name: 'Overview',
-    line: 'Where the screen opens: the three layers side by side, and one real record followed through all of them.',
+    line: 'Where the screen opens: the three layers side by side, and one record followed through all of them.',
   },
   {
     tab: 'tables',

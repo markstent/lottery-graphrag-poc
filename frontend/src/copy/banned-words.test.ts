@@ -65,6 +65,9 @@ const COPY_ATTRIBUTES = new Set([
   'message',
   'text',
   'caption',
+  // A screen's subtitle and a panel's purpose line, and a Help tour line (D-115 follow-up).
+  'purpose',
+  'line',
 ])
 
 /**
