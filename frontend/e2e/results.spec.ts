@@ -32,6 +32,45 @@ test('the run picker is reachable by keyboard and a chosen run goes to the addre
   ).toHaveCount(0)
 })
 
+test('the official run shows its evidence and answer outcomes per approach, with each count in the table twin', async ({
+  page,
+}) => {
+  await mockApi(page, 'official')
+  await page.goto('/#/results?run=fixture-official')
+  const panel = page.getByRole('region', { name: 'Outcomes' })
+  const evidence = panel.getByRole('figure', { name: /^Evidence found/ })
+  // Test values: the three approaches score the same, so nothing suggests a result.
+  for (const name of [/^Text search: /, /^Graph: /, /^Graph \+ Ontology: /])
+    await expect(
+      evidence.getByRole('img', { name }).and(
+        evidence.getByRole('img', {
+          name: /40 percent of the needed facts found, 60 percent missed/,
+        }),
+      ),
+    ).toBeVisible()
+  await expect(
+    evidence
+      .getByText(/^40 percent found, about 0 extra records per question$/)
+      .first(),
+  ).toBeVisible()
+  const answers = panel.getByRole('figure', { name: /^Answers by score/ })
+  await expect(
+    answers.getByText('Hatched: said the sources could not answer'),
+  ).toBeVisible()
+  await expect(
+    answers.getByRole('img', {
+      name: /^Graph: right 0 of 243 \(0 of them said the sources could not answer\), partly right 243 of 243/,
+    }),
+  ).toBeVisible()
+  await evidence.getByRole('button', { name: 'Show as table' }).click()
+  const table = evidence.getByRole('table', {
+    name: 'Evidence found and missed, per approach',
+  })
+  await expect(
+    table.getByRole('row', { name: /^A · Text search/ }),
+  ).toContainText(/40 percent\s*972\s*1458\s*0/)
+})
+
 test('a newer development run is never opened first, and opened it says it is not a result on every panel', async ({
   page,
 }) => {
@@ -46,6 +85,7 @@ test('a newer development run is never opened first, and opened it says it is no
     page.getByRole('region', { name: 'Verdict' }).getByText(notResult),
   ).toBeVisible()
   for (const name of [
+    'Outcomes',
     'Scores by kind of question',
     'Questions',
     'Efficiency',

@@ -9,6 +9,12 @@ the API serves and nothing is edited by hand:
 - a subset run, ``fixture-subset``: one world, at most two instances per question;
 - a quick check, ``fixture-smoke``: the scorer smoke test.
 
+Each run's evidence and answer outcomes, as GET /benchmarks/{id}/outcomes
+serves them, are written to one file keyed by run id. The report tests count
+one claim found of one whatever the recall, so here every score counts its
+claims out of ``CLAIMS`` in step with its recall, and the outcomes' pooled
+counts agree with their shares.
+
 The run list holds the subset run, the quick check and the report tests'
 v0.3 run (``fixture-v03``, written by tests/test_benchmark_report.py).
 
@@ -26,12 +32,12 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from app.api.benchmarks import _instances, _published, _summary_out, listed
+from app.api.benchmarks import _instances, _outcomes, _published, _summary_out, listed
 from app.config import METHOD_VERSION
 from app.evaluation.grounding import Unavailable
 from app.evaluation.official import run_label
 from app.evaluation.report import summarize
-from app.evaluation.runner import BenchmarkRun, InstanceResult, Selection, WorldRun
+from app.evaluation.runner import BenchmarkRun, InstanceResult, RunScore, Selection, WorldRun
 from tests.test_benchmark_report import (
     V03_FIXTURE_LABEL,
     V03_FIXTURE_RUN,
@@ -46,6 +52,8 @@ LABEL = "Fixture run (test values)"
 SCORE = (0.4, 0.4)
 QUESTIONS = {"H1": 6, "H2": 6, "H3": 6, "H5": 6}
 NAME_ANCHORED = 3
+# The claims each fixture score counts, so a recall of 0.4 is 4 of 10 found.
+CLAIMS = 10
 OFFICIAL = "fixture-official"
 SUBSET = "fixture-subset"
 SMOKE = "fixture-smoke"
@@ -59,7 +67,8 @@ SUMMARIES = {
     SMOKE: "results-smoke-summary.json",
 }
 RUN_LIST = "results-runs.json"
-WRITTEN = (OFFICIAL_INSTANCES, SUBSET_INSTANCES, *SUMMARIES.values(), RUN_LIST)
+OUTCOMES = "results-outcomes.json"
+WRITTEN = (OFFICIAL_INSTANCES, SUBSET_INSTANCES, *SUMMARIES.values(), RUN_LIST, OUTCOMES)
 
 
 def _world(seed: int) -> WorldRun:
@@ -88,14 +97,32 @@ def _run(kind: str, started_at: str, seeds: tuple[int, ...], selection: Selectio
     return BenchmarkRun(kind, label, record, [_world(seed) for seed in seeds], selection)
 
 
+def _counted(score: RunScore | None) -> RunScore | None:
+    """The score with its claims counted out of ``CLAIMS`` in step with its recall."""
+    if score is None or score.evidence.recall is None:
+        return score
+    found = round(score.evidence.recall * CLAIMS)
+    evidence = dataclasses.replace(score.evidence, claims_found=found, claims_total=CLAIMS)
+    return dataclasses.replace(score, evidence=evidence)
+
+
+def _with_claim_counts(run: BenchmarkRun) -> BenchmarkRun:
+    for world in run.worlds:
+        for result in world.results:
+            for tag, scores in result.scores.items():
+                result.scores[tag] = [_counted(score) for score in scores]
+    return run
+
+
 def _runs() -> dict[str, BenchmarkRun]:
     v03 = _benchmark("official", h5_per_world=6, label=V03_FIXTURE_LABEL)
-    return {
+    runs = {
         OFFICIAL: _run("official", "2026-10-19T12:00:00+00:00", SEEDS, Selection()),
         SUBSET: _run("official", "2026-10-19T19:58:50+00:00", SEEDS[:1], SUBSET_SELECTION),
         SMOKE: _run("smoke", "2026-10-19T16:47:50+00:00", SEEDS[:1], Selection()),
         V03_FIXTURE_RUN: v03,
     }
+    return {name: _with_claim_counts(run) for name, run in runs.items()}
 
 
 def write(out: Path) -> None:
@@ -107,7 +134,8 @@ def write(out: Path) -> None:
 
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
-        for name, run in _runs().items():
+        runs = _runs()
+        for name, run in runs.items():
             run_dir = root / name
             run_dir.mkdir()
             (run_dir / "results.json").write_text(json.dumps(run.to_payload()))
@@ -128,6 +156,8 @@ def write(out: Path) -> None:
             for name in (SUBSET, SMOKE, V03_FIXTURE_RUN)
         ]
         save(RUN_LIST, listed_runs)
+        outcomes = {name: _outcomes(root, name).model_dump(mode="json") for name in runs}
+        save(OUTCOMES, outcomes)
 
 
 def main() -> None:

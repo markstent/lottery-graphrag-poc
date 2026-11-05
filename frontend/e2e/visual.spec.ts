@@ -408,6 +408,20 @@ test.describe('Results', () => {
     await expectBaseline(panel, 'results-v03-judges-verdict.png')
   })
 
+  test('results-outcomes', async ({ page }) => {
+    await openScreen(page, '#/results?run=fixture-official', {
+      runs: 'official',
+    })
+    const panel = page.getByRole('region', { name: 'Outcomes' })
+    await expect(
+      panel.getByRole('figure', { name: /^Answers by score/ }),
+    ).toBeVisible()
+    await panel.scrollIntoViewIfNeeded()
+    await page.mouse.move(0, 0)
+    await settle(page)
+    await expectBaseline(panel, 'results-outcomes.png')
+  })
+
   test('results-quick-check', async ({ page }) => {
     await openScreen(page, '#/results?run=fixture-smoke')
     await expect(
@@ -544,6 +558,51 @@ test.describe('Help', () => {
       window.scrollBy(0, -96)
     })
     await screenShot(page, 'help-settings-technical', 'keep')
+  })
+
+  // Each of Help's own pictures on its own, so a change to one shows.
+  const DIAGRAMS = [
+    ['test', 'why', /^The test\./],
+    ['world', 'company', /^What a world is\./],
+    ['countries', 'approaches', /^One idea, four names\./],
+    ['found', 'evidence', /^Evidence found\./],
+    ['marking', 'answer', /^How an answer is marked\./],
+    ['interval', 'results', /^How to read a margin of error\./],
+  ] as const
+  for (const [name, section, label] of DIAGRAMS)
+    test(`help-diagram-${name}`, async ({ page }) => {
+      await openScreen(page, `#/help?section=${section}`)
+      await expectHelpPage(page)
+      const picture = page.getByRole('img', { name: label })
+      await picture.scrollIntoViewIfNeeded()
+      await page.mouse.move(0, 0)
+      await settle(page)
+      await expectBaseline(picture, `help-diagram-${name}.png`)
+    })
+
+  // Chapter 7's outcome views, from the generated run's test values.
+  test('help-scoring-outcomes', async ({ page }) => {
+    await openScreen(page, '#/help?section=scoring')
+    await expectHelpPage(page)
+    await page
+      .locator('#scoring')
+      .getByRole('heading', { name: 'The newest official run' })
+      .evaluate((el) => {
+        el.scrollIntoView({ block: 'start' })
+        // Leave room for the sticky chapter links above the heading.
+        window.scrollBy(0, -96)
+      })
+    await screenShot(page, 'help-scoring-outcomes', 'keep')
+  })
+
+  // Chapter 12 opens with the results by kind of question, from the same test values.
+  test('help-lessons-by-kind', async ({ page }) => {
+    await openScreen(page, '#/help?section=lessons')
+    await expectHelpPage(page)
+    await expect(
+      page.getByRole('img', { name: 'Answer score by kind of question' }),
+    ).toBeVisible()
+    await screenShot(page, 'help-lessons-by-kind')
   })
 })
 

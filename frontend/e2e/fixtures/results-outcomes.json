@@ -1,0 +1,246 @@
+{
+  "fixture-official": {
+    "recorded": true,
+    "evidence": {
+      "A": {
+        "repeats": 243,
+        "found": 972,
+        "missed": 1458,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      },
+      "B": {
+        "repeats": 243,
+        "found": 972,
+        "missed": 1458,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      },
+      "C": {
+        "repeats": 243,
+        "found": 972,
+        "missed": 1458,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      }
+    },
+    "answers": {
+      "A": {
+        "scored": 243,
+        "right": 0,
+        "partly": 243,
+        "partly_score_sum": 97.2000000000003,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      },
+      "B": {
+        "scored": 243,
+        "right": 0,
+        "partly": 243,
+        "partly_score_sum": 97.2000000000003,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      },
+      "C": {
+        "scored": 243,
+        "right": 0,
+        "partly": 243,
+        "partly_score_sum": 97.2000000000003,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      }
+    }
+  },
+  "fixture-subset": {
+    "recorded": true,
+    "evidence": {
+      "A": {
+        "repeats": 81,
+        "found": 324,
+        "missed": 486,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      },
+      "B": {
+        "repeats": 81,
+        "found": 324,
+        "missed": 486,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      },
+      "C": {
+        "repeats": 81,
+        "found": 324,
+        "missed": 486,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      }
+    },
+    "answers": {
+      "A": {
+        "scored": 81,
+        "right": 0,
+        "partly": 81,
+        "partly_score_sum": 32.39999999999995,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      },
+      "B": {
+        "scored": 81,
+        "right": 0,
+        "partly": 81,
+        "partly_score_sum": 32.39999999999995,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      },
+      "C": {
+        "scored": 81,
+        "right": 0,
+        "partly": 81,
+        "partly_score_sum": 32.39999999999995,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      }
+    }
+  },
+  "fixture-smoke": {
+    "recorded": true,
+    "evidence": {
+      "A": {
+        "repeats": 81,
+        "found": 324,
+        "missed": 486,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      },
+      "B": {
+        "repeats": 81,
+        "found": 324,
+        "missed": 486,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      },
+      "C": {
+        "repeats": 81,
+        "found": 324,
+        "missed": 486,
+        "found_share": 0.4,
+        "extra_per_question": 0.0
+      }
+    },
+    "answers": {
+      "A": {
+        "scored": 81,
+        "right": 0,
+        "partly": 81,
+        "partly_score_sum": 32.39999999999995,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      },
+      "B": {
+        "scored": 81,
+        "right": 0,
+        "partly": 81,
+        "partly_score_sum": 32.39999999999995,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      },
+      "C": {
+        "scored": 81,
+        "right": 0,
+        "partly": 81,
+        "partly_score_sum": 32.39999999999995,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      }
+    }
+  },
+  "fixture-v03": {
+    "recorded": true,
+    "evidence": {
+      "A": {
+        "repeats": 108,
+        "found": 216,
+        "missed": 864,
+        "found_share": 0.2,
+        "extra_per_question": 0.0
+      },
+      "B": {
+        "repeats": 108,
+        "found": 420,
+        "missed": 660,
+        "found_share": 0.39111111111111113,
+        "extra_per_question": 0.0
+      },
+      "C": {
+        "repeats": 108,
+        "found": 520,
+        "missed": 560,
+        "found_share": 0.4866666666666667,
+        "extra_per_question": 0.0
+      }
+    },
+    "answers": {
+      "A": {
+        "scored": 108,
+        "right": 12,
+        "partly": 96,
+        "partly_score_sum": 22.79999999999996,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 12
+      },
+      "B": {
+        "scored": 108,
+        "right": 0,
+        "partly": 108,
+        "partly_score_sum": 52.43999999999999,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      },
+      "C": {
+        "scored": 108,
+        "right": 0,
+        "partly": 108,
+        "partly_score_sum": 65.16000000000004,
+        "wrong": 0,
+        "right_declined": 0,
+        "partly_declined": 0,
+        "wrong_declined": 0,
+        "not_scored": 0
+      }
+    }
+  }
+}
