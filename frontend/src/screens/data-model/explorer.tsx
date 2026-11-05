@@ -80,10 +80,11 @@ export function Explorer({
             <button
               type="button"
               onClick={() => setAboutOpen(true)}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-chip border border-border px-3 py-1.5 text-sm text-text-secondary hover:bg-surface-raised hover:text-text-primary"
+              aria-label="About this"
+              className="inline-flex shrink-0 items-center gap-1 rounded-chip border border-border px-2 py-1 text-sm text-text-secondary hover:bg-surface-raised hover:text-text-primary"
             >
-              <Info aria-hidden size={16} />
-              About this
+              <Info aria-hidden size={14} />
+              About
             </button>
           }
         >
