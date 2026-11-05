@@ -1,7 +1,8 @@
 /**
  * One idea, four names, as one picture: each country's own name for its
- * national draw, in that country's colour and with the country named, and
- * the one shared idea in the ontology that joins them.
+ * national draw, in that country's colour and with the country named, one
+ * above the other, joined to the one shared idea in the ontology on the
+ * right. The column keeps the picture narrow enough to read beside the sidebar.
  */
 
 import { Box, Line, Picture } from './parts'
@@ -26,21 +27,24 @@ const COUNTRIES = [
   },
 ] as const
 
-const COLUMN_GAP = 16
-/** The drop from the countries to the shared idea, with the joining lines halfway. */
-const DROP = 48
+/** The space between two countries, one above the other. */
+const ROW_GAP = 12
+/** The run from the countries to the shared idea, with the joining lines halfway. */
+const RUN = 64
 const COUNTRY_W = Math.max(
   ...COUNTRIES.flatMap(({ country, name }) => [
     boxWidth(country),
     boxWidth(name),
   ]),
 )
-const WIDTH = 2 * PAD + 4 * COUNTRY_W + 3 * COLUMN_GAP
 const IDEA_LINES = ['National draw', 'one shared idea in the ontology'] as const
 const IDEA_W = boxWidth(IDEA_LINES[1])
-const IDEA_X = (WIDTH - IDEA_W) / 2
-const IDEA_Y = PAD + BOX_H2 + DROP
-const HEIGHT = IDEA_Y + BOX_H2 + PAD
+const IDEA_X = PAD + COUNTRY_W + RUN
+const WIDTH = IDEA_X + IDEA_W + PAD
+const HEIGHT =
+  2 * PAD + COUNTRIES.length * BOX_H2 + (COUNTRIES.length - 1) * ROW_GAP
+const IDEA_Y = (HEIGHT - BOX_H2) / 2
+const countryY = (index: number) => PAD + index * (BOX_H2 + ROW_GAP)
 
 /** Each colour is written out whole, so the style sheet keeps it. */
 const countryTone = (market: string): Tone => ({
@@ -66,12 +70,13 @@ export function CountriesDiagram() {
       {(arrow) => (
         <>
           {COUNTRIES.map(({ country }, index) => {
-            const from = PAD + index * (COUNTRY_W + COLUMN_GAP) + COUNTRY_W / 2
-            const to = IDEA_X + ((index + 0.5) * IDEA_W) / COUNTRIES.length
+            const from = countryY(index) + BOX_H2 / 2
+            const to = IDEA_Y + ((index + 0.5) * BOX_H2) / COUNTRIES.length
+            const turn = PAD + COUNTRY_W + RUN / 2
             return (
               <Line
                 key={country}
-                d={`M${from} ${PAD + BOX_H2} V${PAD + BOX_H2 + DROP / 2} H${to} V${IDEA_Y}`}
+                d={`M${PAD + COUNTRY_W} ${from} H${turn} V${to} H${IDEA_X}`}
                 arrow={arrow}
               />
             )
@@ -79,8 +84,8 @@ export function CountriesDiagram() {
           {COUNTRIES.map(({ country, name, market }, index) => (
             <Box
               key={country}
-              x={PAD + index * (COUNTRY_W + COLUMN_GAP)}
-              y={PAD}
+              x={PAD}
+              y={countryY(index)}
               w={COUNTRY_W}
               h={BOX_H2}
               lines={[country, name]}

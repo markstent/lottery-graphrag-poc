@@ -21,7 +21,9 @@ export const approaches: ChapterCopy = {
     { kind: 'heading', text: 'What C adds' },
     'C does everything B does, and adds the ontology, the shared dictionary of the whole company.',
     { kind: 'diagram', name: 'approachC' },
-    'A concept is one shared meaning in the ontology, such as one kind of game that each market names in its own way. With the ontology, C does three more things:',
+    'A concept is one shared meaning in the ontology, such as one kind of game that each market names in its own way.',
+    { kind: 'diagram', name: 'countries' },
+    'With the ontology, C does three more things:',
     [
       'It recognises local names in all four languages, such as Zahlenziehung, as starting points.',
       'It adds the names of the matching concepts to its search.',

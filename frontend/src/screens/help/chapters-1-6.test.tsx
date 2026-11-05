@@ -208,6 +208,11 @@ describe('chapters 4 to 6 read in short sections', () => {
     }
   })
 
+  it('chapter 4 shows what a concept is with the four countries picture', () => {
+    const part = section(CHAPTER_COPY.approaches.plain, 'What C adds')
+    expect(part).toContainEqual({ kind: 'diagram', name: 'countries' })
+  })
+
   it('chapter 5 introduces evidence found with its picture', () => {
     const part = section(CHAPTER_COPY.evidence.plain, 'Evidence found')
     expect(part).toContainEqual({ kind: 'diagram', name: 'found' })
@@ -340,11 +345,17 @@ describe('chapters 1 to 6', () => {
         <Blocks blocks={CHAPTER_COPY.approaches.plain} />
       </HelpDataContext.Provider>,
     )
+    // The four countries picture beside C's has no approach name.
     expect(
       screen
         .getAllByRole('figure')
-        .map((figure) => within(figure).getByText(/^[ABC] · /).textContent),
-    ).toEqual(['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
+        .map((figure) => within(figure).queryByText(/^[ABC] · /)?.textContent),
+    ).toEqual([
+      'A · Text search',
+      'B · Graph',
+      'C · Graph + Ontology',
+      undefined,
+    ])
   })
 
   it('names the path line as the one way a piece is shown differently', () => {

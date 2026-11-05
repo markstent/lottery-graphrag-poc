@@ -269,9 +269,10 @@ describe('Help', () => {
 
   it('draws each approach as a picture named by its letter and plain name', async () => {
     await renderHelp('#/help?section=approaches')
-    const figures = within(section('4. The three approaches')).getAllByRole(
-      'figure',
-    )
+    // The approach pictures have a caption; the four countries picture has none.
+    const figures = within(section('4. The three approaches'))
+      .getAllByRole('figure')
+      .filter((figure) => figure.querySelector('figcaption'))
     expect(
       figures.map((figure) => figure.querySelector('figcaption')!.textContent),
     ).toEqual(['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
