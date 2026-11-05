@@ -90,3 +90,12 @@ export function distinctFields(
     ([key, value]) => typeof value !== 'string' || keeper.get(value) === key,
   )
 }
+
+const GRAPH_ERRORS: Record<string, string> = {
+  GRAPH_QUERY_ERROR: 'The graph could not be queried.',
+  OTHER_WORLD: 'The graph holds a different world.',
+}
+
+/** Words for a graph error code; a code from a newer server still reads as a sentence. */
+export const graphErrorWords = (code: string): string =>
+  GRAPH_ERRORS[code] ?? 'The graph could not be read.'

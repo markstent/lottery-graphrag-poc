@@ -15,7 +15,7 @@ import { GraphTab } from './graph-tab'
 import { OntologyTab } from './ontology-tab'
 import { OverviewTab } from './overview-tab'
 import { ScenariosTab } from './scenarios-tab'
-import { Warehouse } from './warehouse'
+import { TablesTab } from './tables-tab'
 
 type TabId = 'overview' | 'tables' | 'graph' | 'concepts' | 'stories'
 
@@ -39,7 +39,7 @@ const TABS: readonly Tab[] = [
   {
     id: 'tables',
     label: 'Tables',
-    render: (params, scale) => <Warehouse params={params} scale={scale} />,
+    render: (params) => <TablesTab params={params} />,
   },
   {
     id: 'graph',

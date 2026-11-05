@@ -32,7 +32,7 @@ export interface LayeredExample {
 }
 
 /** The example is an incident, so its row is in this table. */
-const INCIDENTS = 'incidents'
+export const INCIDENTS = 'incidents'
 /** The incident's column naming its type, whose graph node maps to a concept. */
 const TYPE_COLUMN = 'incident_type'
 /** The most neighbours the API gives in one answer; samples come from these. */

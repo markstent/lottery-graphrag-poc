@@ -12,6 +12,7 @@ const ROUTES = {
   '/api/v1/datasets/dev-seed2026/dictionary': DICTIONARY,
   '/api/v1/graph/schema': SCHEMA,
   '/api/v1/graph/stats': STATS,
+  '/api/v1/data-model/example': { incident_id: null },
 }
 
 const renderAt = (hash: string) => {
@@ -89,7 +90,7 @@ describe('DataModel', () => {
     renderAt('#/data-model?tab=warehouse')
     current('Tables')
     expect(
-      await screen.findByRole('button', { name: 'games, 120 rows' }),
+      await screen.findByRole('heading', { name: '1 Choose a table' }),
     ).toBeVisible()
   })
 

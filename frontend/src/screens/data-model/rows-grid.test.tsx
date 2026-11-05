@@ -29,9 +29,14 @@ function stubRows(
   return queries
 }
 
-const renderGrid = (onOpenRow = vi.fn()) =>
+const renderGrid = (onOpenRow = vi.fn(), chosen?: string) =>
   render(
-    <RowsGrid datasetId="dev-seed2026" schema={GAMES} onOpenRow={onOpenRow} />,
+    <RowsGrid
+      datasetId="dev-seed2026"
+      schema={GAMES}
+      chosen={chosen}
+      onOpenRow={onOpenRow}
+    />,
   )
 
 describe('RowsGrid', () => {
@@ -44,6 +49,41 @@ describe('RowsGrid', () => {
     expect(queries[0].has('column')).toBe(false)
     expect(screen.getAllByRole('row')).toHaveLength(51)
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+  })
+
+  it('links a value in a foreign-key column to the row it names, and marks the chosen row', async () => {
+    stubRows()
+    const onOpenRow = vi.fn()
+    renderGrid(onOpenRow, 'GAME_002')
+    await screen.findByText('Rows 1 to 50 of 120')
+    const link = screen.getAllByRole('link', { name: 'UK' })[0]
+    expect(link).toHaveAttribute(
+      'href',
+      '#/data-model?tab=tables&table=markets&row=UK',
+    )
+    await userEvent.click(link)
+    expect(onOpenRow).not.toHaveBeenCalled()
+    const marked = screen
+      .getAllByRole('row')
+      .filter((row) => row.getAttribute('aria-current') === 'true')
+    expect(marked).toHaveLength(1)
+    expect(marked[0]).toHaveTextContent('GAME_002')
+  })
+
+  it('leaves an empty or none value in a foreign-key column as text', async () => {
+    stubRows(() =>
+      json({
+        ...GAME_ROWS(0, 2),
+        rows: [
+          { game_id: 'GAME_001', name: 'A', market_id: null },
+          { game_id: 'GAME_002', name: 'B', market_id: '' },
+        ],
+      }),
+    )
+    renderGrid()
+    await screen.findByText('Rows 1 to 2 of 120')
+    expect(screen.queryAllByRole('link')).toHaveLength(0)
+    expect(screen.getByText('none')).toBeVisible()
   })
 
   it('says how the value is read, in words, for the column chosen', async () => {

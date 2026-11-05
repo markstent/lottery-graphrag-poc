@@ -60,7 +60,13 @@ const Id = ({ children }: { children: string }) => (
   </span>
 )
 
-function ErrorNote({ error, retry }: { error: Error; retry: () => void }) {
+export function ErrorNote({
+  error,
+  retry,
+}: {
+  error: Error
+  retry: () => void
+}) {
   return (
     <div role="alert">
       <Notice icon={<TriangleAlert size={16} className="text-error" />}>

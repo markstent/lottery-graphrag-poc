@@ -9,6 +9,7 @@ import { getNode, getRecord, type Schemas } from '../api/client'
 import {
   datasetName,
   distinctFields,
+  graphErrorWords,
   plainName,
   plainValue,
 } from '../app/plain-words'
@@ -73,15 +74,6 @@ function Facts({ fields }: { fields: Fields }) {
     </dl>
   )
 }
-
-const GRAPH_ERRORS: Record<string, string> = {
-  GRAPH_QUERY_ERROR: 'The graph could not be queried.',
-  OTHER_WORLD: 'The graph holds a different world.',
-}
-
-/** Words for a graph error code; a code from a newer server still reads as a sentence. */
-const graphErrorWords = (code: string): string =>
-  GRAPH_ERRORS[code] ?? 'The graph could not be read.'
 
 type Fetched = Extract<EvidenceSource, { kind: 'record' | 'node' }>
 
