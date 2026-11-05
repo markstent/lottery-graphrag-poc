@@ -299,9 +299,15 @@ A malformed `summary.json` is a server error and is never silently skipped.
   It carries the question text and scores only, never the expected answer, claims, checks, answer text or context blocks.
   A run without `results.json` is a 404.
 - `GET /benchmarks/{run_id}/outcomes` returns `{recorded, evidence, answers}`, each map keyed by approach, worked out from the run's `results.json` (`app/evaluation/outcomes.py`).
-  `evidence` holds `{repeats, found, missed, extra_per_question}` over the repeats whose question keeps at least one claim once the starting record is set apart; a repeat with no claim left is not measured and is in no count.
-  `extra_per_question` is the average, over those repeats, of the distinct selected records, apart from the starting record, that carry no claim, by the scorer's own rule; it is null when no repeat was measured.
-  `answers` holds `{scored, right, partly, wrong, right_declined, partly_declined, wrong_declined, not_scored}`: right is an answer score of exactly 1, partly right above 0 and below 1, and wrong 0.
+  `evidence` holds `{repeats, found, missed, found_share, extra_per_question}` over the repeats whose question keeps at least one claim once the starting record is set apart; a repeat with no claim left is not measured and is in no count.
+  `found` and `missed` are claim counts pooled over those repeats.
+  `found_share` is the published evidence recall: the mean over questions of each question's mean recall, built with the summary's own `instance_means`.
+  The pooled share found / (found + missed) and `found_share` differ by construction, because a question with many claims weighs more in the pool; a view that shows a share uses `found_share` and `1 - found_share`, so it matches the published figure.
+  `extra_per_question` counts, by the scorer's own rule, the distinct selected records, apart from the starting record, that carry no claim; it is averaged over a question's measured repeats, then over questions.
+  Both means are null when no question was measured.
+  `answers` holds `{scored, right, partly, partly_score_sum, wrong, right_declined, partly_declined, wrong_declined, not_scored}`: right is an answer score of exactly 1, partly right above 0 and below 1, and wrong 0.
+  `partly_score_sum` is the sum of the partly right answers' scores, so (right + partly_score_sum) / scored is the mean answer score per repeat.
+  That is the published answer mean whenever every question has the same number of scored repeats, as in the official run, which asks each question once.
   Each `*_declined` counts the answers in that band whose verdict says it could not tell (it opens with "unknown"); they stay in their band, so an answer can decline and still score.
   `not_scored` counts the repeats with no answer score (no checks, or a failed generation), which are outside the bands.
   `recorded` is false, with both maps empty, for a run that did not store the selected evidence, the claims or the claim counts.

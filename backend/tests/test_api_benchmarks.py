@@ -1324,12 +1324,16 @@ def test_outcomes_route_counts_evidence_and_answers(client_with_runs: TestClient
     assert response.status_code == 200
     body = response.json()
     assert body["recorded"] is True
-    # Every scored repeat of the fixture finds its one claim and selects nothing.
+    summary = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
+    published = summary["metrics"]["overall"]
+    # Every scored repeat of the fixture finds its one claim and selects nothing;
+    # the share found is the published evidence recall, not the pooled counts.
     for tag in ("A", "B", "C"):
         assert body["evidence"][tag] == {
             "repeats": 108,
             "found": 108,
             "missed": 0,
+            "found_share": pytest.approx(published["evidence_recall"][tag]["mean"]),
             "extra_per_question": 0.0,
         }
     # A: the H3 questions score 1.0, 0.5 and a failed generation; the rest 0.2.
@@ -1337,6 +1341,7 @@ def test_outcomes_route_counts_evidence_and_answers(client_with_runs: TestClient
         "scored": 108,
         "right": 12,
         "partly": 96,
+        "partly_score_sum": pytest.approx(12 * 0.5 + 84 * 0.2),
         "wrong": 0,
         "right_declined": 0,
         "partly_declined": 0,
@@ -1344,6 +1349,9 @@ def test_outcomes_route_counts_evidence_and_answers(client_with_runs: TestClient
         "not_scored": 12,
     }
     assert body["answers"]["C"]["partly"] == body["answers"]["C"]["scored"] == 108
+    for tag, answers in body["answers"].items():
+        rebuilt = (answers["right"] + answers["partly_score_sum"]) / answers["scored"]
+        assert rebuilt == pytest.approx(published["answer"][tag]["mean"])
 
 
 def test_outcomes_route_404_for_an_unknown_run_or_one_without_results(

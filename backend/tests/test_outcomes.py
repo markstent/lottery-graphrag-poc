@@ -13,10 +13,11 @@ from app.evaluation.outcomes import (
     payload_outcomes,
     run_outcomes,
 )
+from app.evaluation.report import summarize
 from app.evaluation.runner import InstanceResult, PipelineRun, RunScore
 from app.evaluation.scoring import evidence_score
 
-from tests.test_benchmark_report import _instance, _run, _score
+from tests.test_benchmark_report import _benchmark, _instance, _run, _score
 
 ANCHOR = "X"
 CLAIMS = (
@@ -37,6 +38,9 @@ def _repeat(
     run = dataclasses.replace(_run("A", 0), verdict=verdict, selected=selected)
     score = _score(0.0 if answer is None else answer, 0.5)
     evidence = dataclasses.replace(score.evidence, claims_found=found, claims_total=total)
+    if total == 0:
+        # As the scorer leaves it when no claim survives anchor exclusion.
+        evidence = dataclasses.replace(evidence, recall=None, precision=None, f1=None)
     return run, dataclasses.replace(score, answer=answer, evidence=evidence)
 
 
@@ -68,6 +72,7 @@ def test_answers_band_by_score_and_mark_declines() -> None:
             scored=4,
             right=1,
             partly=1,
+            partly_score_sum=0.5,
             wrong=2,
             right_declined=0,
             partly_declined=1,
@@ -111,7 +116,9 @@ def test_extra_uses_the_scorer_rule() -> None:
     first = _repeat(1.0, selected=(ANCHOR, "Y", "Q", "Q", "Z", "R"))
     second = _repeat(1.0, selected=("Y",))
     evidence = run_outcomes([_result([first, second])]).evidence["A"]
-    assert evidence == EvidenceCounts(repeats=2, found=2, missed=2, extra_per_question=1.0)
+    assert evidence == EvidenceCounts(
+        repeats=2, found=2, missed=2, found_share=0.5, extra_per_question=1.0
+    )
 
 
 def test_extra_matches_the_stored_precision() -> None:
@@ -128,7 +135,34 @@ def test_extra_matches_the_stored_precision() -> None:
 
 def test_no_measured_repeat_gives_no_extra_average() -> None:
     result = _result([_repeat(1.0, found=None, total=0)])
-    assert run_outcomes([result]).evidence["A"] == EvidenceCounts(0, 0, 0, None)
+    assert run_outcomes([result]).evidence["A"] == EvidenceCounts(0, 0, 0, None, None)
+
+
+def test_extra_is_a_mean_per_question_not_per_repeat() -> None:
+    # Question one: extra 2 and 0 over two repeats, a mean of 1; question two: extra 4.
+    one = _result(
+        [_repeat(1.0, selected=("Y", "Q", "R")), _repeat(1.0, selected=("Y",))], question="L10"
+    )
+    two = _result([_repeat(1.0, selected=("Q", "R", "S", "T"))], question="L11")
+    evidence = run_outcomes([one, two]).evidence["A"]
+    # Per question (1 + 4) / 2, where per repeat it would be 6 / 3.
+    assert evidence.extra_per_question == pytest.approx(2.5)
+
+
+def test_found_share_and_answer_bands_match_the_published_means() -> None:
+    """The share found is the summary's evidence recall (a mean of per-question
+    means, not the pooled counts), and the bands add back up to its answer mean."""
+    run = _benchmark("official", h5_per_world=6)
+    published = summarize(run)["metrics"]["overall"]
+    outcomes = run_outcomes([result for world in run.worlds for result in world.results])
+    for tag in ("A", "B", "C"):
+        evidence, answers = outcomes.evidence[tag], outcomes.answers[tag]
+        assert evidence.found_share == pytest.approx(published["evidence_recall"][tag]["mean"])
+        rebuilt = (answers.right + answers.partly_score_sum) / answers.scored
+        assert rebuilt == pytest.approx(published["answer"][tag]["mean"])
+    # The fixture's pooled counts say every claim was found; the published recall does not.
+    assert outcomes.evidence["A"].found == outcomes.evidence["A"].repeats
+    assert outcomes.evidence["A"].found_share == pytest.approx(0.2)
 
 
 def test_pipelines_are_listed_in_order() -> None:

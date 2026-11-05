@@ -633,6 +633,8 @@ export interface components {
             partly: number;
             /** Partly Declined */
             partly_declined: number;
+            /** Partly Score Sum */
+            partly_score_sum: number;
             /** Right */
             right: number;
             /** Right Declined */
@@ -1116,15 +1118,20 @@ export interface components {
         /**
          * EvidenceOutcome
          * @description One pipeline's evidence over the repeats whose question keeps a claim
-         *     after anchor exclusion: claims found and missed, and the average count
-         *     of extra records (selected, not the anchor, carrying no claim) per
-         *     repeat; None when no repeat was measured.
+         *     after anchor exclusion: claims found and missed as pooled counts;
+         *     ``found_share``, the published evidence recall (the mean over questions
+         *     of each question's mean recall), which differs from found / (found +
+         *     missed) by construction; and the average count of extra records
+         *     (selected, not the anchor, carrying no claim) per question. Both means
+         *     are None when no question was measured.
          */
         EvidenceOutcome: {
             /** Extra Per Question */
             extra_per_question: number | null;
             /** Found */
             found: number;
+            /** Found Share */
+            found_share: number | null;
             /** Missed */
             missed: number;
             /** Repeats */

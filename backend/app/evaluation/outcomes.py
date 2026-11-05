@@ -4,16 +4,23 @@ Two views of a run read these counts (docs/superpowers/specs/2026-11-05-help-rea
 
 - Evidence: claims found and missed, summed over the repeats whose question
   keeps at least one claim after anchor exclusion (``claims_total`` above 0);
-  a repeat with no claim left is not measured and is in no count. Extra
-  records are the distinct selected items, apart from the anchor, that carry
-  no claim, by the scorer's own rule (``scoring.selected_items`` and
-  ``scoring.carries_claim``), averaged over the same repeats.
+  a repeat with no claim left is not measured and is in no count. The share
+  found is the published evidence recall, built as the summary builds it: the
+  mean over questions of each question's mean recall (``report.instance_means``).
+  It differs from the pooled counts by construction, since a question with
+  many claims weighs more in the pool. Extra records are the distinct selected
+  items, apart from the anchor, that carry no claim, by the scorer's own rule
+  (``scoring.selected_items`` and ``scoring.carries_claim``), averaged first
+  over a question's measured repeats and then over questions.
 - Answers: every scored repeat falls in one band by its answer score: right
   (exactly 1), partly right (above 0, below 1) or wrong (0), the levels of
-  ``judge.answer_level``. Inside each band
-  the repeats whose verdict is an abstention (``checks.is_abstention``) are
-  counted again as declined; a decline stays in its band. A repeat without an
-  answer score (no checks, or a failed generation) is ``not_scored``.
+  ``judge.answer_level``. Inside each band the repeats whose verdict is an
+  abstention (``checks.is_abstention``) are counted again as declined; a
+  decline stays in its band. A repeat without an answer score (no checks, or a
+  failed generation) is ``not_scored``. ``partly_score_sum`` adds up the
+  partly right scores, so (right + partly_score_sum) / scored is the mean
+  answer score per repeat, the published mean whenever every question has as
+  many scored repeats (one each in the official run).
 
 Everything is read from the run's own results (``results.json``): the
 instance's claims are the evaluator output the run stored, so no truth
@@ -24,11 +31,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from statistics import mean
 from typing import Any
 
 from app.evaluation.checks import is_abstention
 from app.evaluation.claims import exclude_anchor
 from app.evaluation.judge import answer_level
+from app.evaluation.report import instance_means
 from app.evaluation.runner import InstanceResult, instance_result_from_payload
 from app.evaluation.scoring import carries_claim, selected_items
 
@@ -40,12 +49,14 @@ _BANDS = ("wrong", "partly", "right")
 
 @dataclass(frozen=True, slots=True)
 class EvidenceCounts:
-    """One pipeline's evidence over its measured repeats; ``extra_per_question``
-    is None when no repeat was measured."""
+    """One pipeline's evidence over its measured repeats; ``found_share`` and
+    ``extra_per_question`` are means over questions, None when no question was
+    measured."""
 
     repeats: int
     found: int
     missed: int
+    found_share: float | None
     extra_per_question: float | None
 
 
@@ -56,6 +67,7 @@ class AnswerCounts:
     scored: int
     right: int
     partly: int
+    partly_score_sum: float
     wrong: int
     right_declined: int
     partly_declined: int
@@ -113,10 +125,13 @@ def _has_fields(entry: Mapping[str, Any]) -> bool:
 
 
 def _evidence(results: Sequence[InstanceResult], tag: str) -> EvidenceCounts:
-    repeats = found = missed = extra = 0
+    repeats = found = missed = 0
+    recalls: list[float] = []
+    extras: list[float] = []
     for result in results:
         anchor = result.instance.anchor_id
         claims = exclude_anchor(result.instance.claims, anchor)
+        extra: list[int] = []
         for run, score in zip(result.runs.get(tag, []), result.scores.get(tag, []), strict=True):
             if score is None or score.evidence.claims_total == 0:
                 continue
@@ -126,13 +141,26 @@ def _evidence(results: Sequence[InstanceResult], tag: str) -> EvidenceCounts:
             found += claims_found
             missed += score.evidence.claims_total - claims_found
             items = selected_items(run.selected, anchor)
-            extra += sum(1 for item in items if not carries_claim(item, claims))
-    return EvidenceCounts(repeats, found, missed, extra / repeats if repeats else None)
+            extra.append(sum(1 for item in items if not carries_claim(item, claims)))
+        if extra:
+            extras.append(mean(extra))
+        if tag in result.scores:
+            recall = instance_means(result)[tag]["evidence_recall"]
+            if recall is not None:
+                recalls.append(recall)
+    return EvidenceCounts(
+        repeats=repeats,
+        found=found,
+        missed=missed,
+        found_share=mean(recalls) if recalls else None,
+        extra_per_question=mean(extras) if extras else None,
+    )
 
 
 def _answers(results: Sequence[InstanceResult], tag: str) -> AnswerCounts:
     bands = {"right": 0, "partly": 0, "wrong": 0}
     declined = {"right": 0, "partly": 0, "wrong": 0}
+    partly_score_sum = 0.0
     not_scored = 0
     for result in results:
         for run, score in zip(result.runs.get(tag, []), result.scores.get(tag, []), strict=True):
@@ -142,10 +170,13 @@ def _answers(results: Sequence[InstanceResult], tag: str) -> AnswerCounts:
             band = _BANDS[answer_level(score.answer)]
             bands[band] += 1
             declined[band] += is_abstention(run.verdict)
+            if band == "partly":
+                partly_score_sum += score.answer
     return AnswerCounts(
         scored=sum(bands.values()),
         right=bands["right"],
         partly=bands["partly"],
+        partly_score_sum=partly_score_sum,
         wrong=bands["wrong"],
         right_declined=declined["right"],
         partly_declined=declined["partly"],

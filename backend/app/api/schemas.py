@@ -651,13 +651,17 @@ class InstanceResultOut(BaseModel):
 
 class EvidenceOutcome(BaseModel):
     """One pipeline's evidence over the repeats whose question keeps a claim
-    after anchor exclusion: claims found and missed, and the average count
-    of extra records (selected, not the anchor, carrying no claim) per
-    repeat; None when no repeat was measured."""
+    after anchor exclusion: claims found and missed as pooled counts;
+    ``found_share``, the published evidence recall (the mean over questions
+    of each question's mean recall), which differs from found / (found +
+    missed) by construction; and the average count of extra records
+    (selected, not the anchor, carrying no claim) per question. Both means
+    are None when no question was measured."""
 
     repeats: int
     found: int
     missed: int
+    found_share: float | None
     extra_per_question: float | None
 
 
@@ -671,6 +675,9 @@ class AnswerOutcome(BaseModel):
     scored: int
     right: int
     partly: int
+    # The sum of the partly right answers' scores: (right + partly_score_sum) / scored
+    # is the mean answer score per repeat.
+    partly_score_sum: float
     wrong: int
     right_declined: int
     partly_declined: int

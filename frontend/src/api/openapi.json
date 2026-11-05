@@ -88,6 +88,10 @@
             "title": "Partly Declined",
             "type": "integer"
           },
+          "partly_score_sum": {
+            "title": "Partly Score Sum",
+            "type": "number"
+          },
           "right": {
             "title": "Right",
             "type": "integer"
@@ -113,6 +117,7 @@
           "scored",
           "right",
           "partly",
+          "partly_score_sum",
           "wrong",
           "right_declined",
           "partly_declined",
@@ -1206,7 +1211,7 @@
         "type": "object"
       },
       "EvidenceOutcome": {
-        "description": "One pipeline's evidence over the repeats whose question keeps a claim\nafter anchor exclusion: claims found and missed, and the average count\nof extra records (selected, not the anchor, carrying no claim) per\nrepeat; None when no repeat was measured.",
+        "description": "One pipeline's evidence over the repeats whose question keeps a claim\nafter anchor exclusion: claims found and missed as pooled counts;\n``found_share``, the published evidence recall (the mean over questions\nof each question's mean recall), which differs from found / (found +\nmissed) by construction; and the average count of extra records\n(selected, not the anchor, carrying no claim) per question. Both means\nare None when no question was measured.",
         "properties": {
           "extra_per_question": {
             "anyOf": [
@@ -1223,6 +1228,17 @@
             "title": "Found",
             "type": "integer"
           },
+          "found_share": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Found Share"
+          },
           "missed": {
             "title": "Missed",
             "type": "integer"
@@ -1236,6 +1252,7 @@
           "repeats",
           "found",
           "missed",
+          "found_share",
           "extra_per_question"
         ],
         "title": "EvidenceOutcome",
