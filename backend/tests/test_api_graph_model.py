@@ -101,6 +101,11 @@ class FakeGraph:
         "CONCEPT_DRAW_GAME": (["BusinessConcept"], {"id": "CONCEPT_DRAW_GAME"}),
     }
 
+    summaries: ClassVar[dict[str, list[tuple[str, str, int]]]] = {
+        SEED: [("BELONGS_TO", "out", 1), ("FROM_MARKET", "out", 1), ("USES", "out", 28)],
+        "CONCEPT_DRAW_GAME": [("MAPS_TO", "in", 6)],
+    }
+
     def __init__(self, _config: GraphConfig) -> None:
         pass
 
@@ -126,6 +131,10 @@ class FakeGraph:
         edges += [("BELONGS_TO", "out", ["PlayerSegment"], {"id": "SEG_GR_VIP"})]
         matching = [edge for edge in edges if rel_type is None or edge[0] == rel_type]
         return sorted(matching, key=lambda edge: (edge[0], edge[1], edge[3]["id"]))[:limit]
+
+    def edge_summary(self, label: str, node_id: str) -> list[tuple[str, str, int]]:
+        FakeGraph.calls.append(("edge_summary", label, node_id))
+        return FakeGraph.summaries.get(node_id, [])
 
     def close(self) -> None:
         pass
@@ -258,6 +267,22 @@ def test_node_carries_its_properties_and_provenance(
     assert node["node_id"] == SEED and node["labels"] == ["Player"]
     assert node["properties"]["registration_date"] == "2025-03-24"
     assert node["provenance"] == {"table": "players", "row_id": SEED, "dataset_id": "tiny"}
+
+
+def test_node_reports_its_link_counts(client: TestClient, fake_graph: type[FakeGraph]) -> None:
+    node = client.get(f"/api/v1/graph/nodes/{SEED}").json()
+    assert node["edges"] == [
+        {"type": "BELONGS_TO", "direction": "out", "count": 1},
+        {"type": "FROM_MARKET", "direction": "out", "count": 1},
+        {"type": "USES", "direction": "out", "count": 28},
+    ]
+    assert ("edge_summary", "Player", SEED) in FakeGraph.calls
+
+
+def test_concept_node_reports_link_counts(client: TestClient, fake_graph: type[FakeGraph]) -> None:
+    node = client.get("/api/v1/graph/nodes/CONCEPT_DRAW_GAME").json()
+    assert node["provenance"] is None
+    assert node["edges"] == [{"type": "MAPS_TO", "direction": "in", "count": 6}]
 
 
 @pytest.mark.parametrize("node_id", ["PTYPE_JACKPOT", "CONCEPT_DRAW_GAME"])

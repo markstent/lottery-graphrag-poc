@@ -868,12 +868,15 @@ class ProvenanceOut(BaseModel):
 
 class NodeOut(BaseModel):
     """One graph node; ``provenance`` is None for a node no source table
-    maps to (PrizeType, BusinessConcept)."""
+    maps to (PrizeType, BusinessConcept). ``edges`` counts the links meeting
+    the node, per type and direction; only the node route fills it, and the
+    nodes listed as neighbours carry none."""
 
     node_id: str
     labels: list[str]
     properties: dict[str, JsonValue]
     provenance: ProvenanceOut | None
+    edges: list[EdgeSummary] = Field(default_factory=list)
 
 
 class NeighbourOut(BaseModel):
