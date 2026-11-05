@@ -15,7 +15,13 @@ import type {
 } from './chapters'
 import { DataTour } from './data'
 import { ApproachDiagram } from './diagrams/approach-diagram'
+import { CountriesDiagram } from './diagrams/countries-diagram'
 import { EvidenceDiagram } from './diagrams/evidence-diagram'
+import { FoundDiagram } from './diagrams/found-diagram'
+import { IntervalDiagram } from './diagrams/interval-diagram'
+import { MarkingDiagram } from './diagrams/marking-diagram'
+import { TestDiagram } from './diagrams/test-diagram'
+import { WorldDiagram } from './diagrams/world-diagram'
 import { Glossary } from './glossary'
 import { useHelpData } from './help-data'
 import { Questions } from './questions'
@@ -37,6 +43,12 @@ const DIAGRAMS: Record<DiagramName, ReactElement> = {
   approachB: <ApproachDiagram id="B" />,
   approachC: <ApproachDiagram id="C" />,
   evidence: <EvidenceDiagram />,
+  test: <TestDiagram />,
+  world: <WorldDiagram />,
+  countries: <CountriesDiagram />,
+  found: <FoundDiagram />,
+  marking: <MarkingDiagram />,
+  interval: <IntervalDiagram />,
 }
 
 const COMPONENTS: Record<ComponentName, ReactElement> = {

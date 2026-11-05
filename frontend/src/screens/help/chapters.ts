@@ -81,12 +81,22 @@ export const SECTION_ALIASES: Record<string, ChapterId> = {
 /** A key of the settings a run records, such as `top_k`; a nested one is written `context.dedupe_threshold`. */
 export type SettingKey = string
 
-/** The pictures a chapter can show: each approach in chapter 4, and how evidence is chosen in chapter 5. */
+/**
+ * The pictures a chapter can show: each approach, how evidence is chosen, and
+ * the small pictures that explain the test, a world, the four countries'
+ * names, evidence found, how an answer is marked and a margin of error.
+ */
 export const DIAGRAM_NAMES = [
   'approachA',
   'approachB',
   'approachC',
   'evidence',
+  'test',
+  'world',
+  'countries',
+  'found',
+  'marking',
+  'interval',
 ] as const
 
 export type DiagramName = (typeof DIAGRAM_NAMES)[number]
