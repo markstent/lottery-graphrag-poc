@@ -343,8 +343,9 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
   When Neo4j cannot be read, the row is still returned with `edges` null and `graph_error` `GRAPH_QUERY_ERROR`.
   A record of another world has `graph_error` `OTHER_WORLD`.
 - `GET /data-model/example` returns `{incident_id}`, the incident the Overview follows through the three layers, and nothing else.
-  Over the active world's `incidents` in id order, it leaves out every incident the world's truth ledger names, then takes the first whose platform version is also the version of an incident in another market (a null market is a market of its own), else the first one left, else null.
-  A planted incident is never the example, because the Overview would then point at a story's answer, and the response never says which rows were planted or why.
+  Over the active world's `incidents` in id order, it leaves out every incident whose id, platform version or app version the world's truth ledger names, then takes the first whose platform version is also the version of an incident left in another market (a null market is a market of its own), else the first one left, else null.
+  No part of the example's path is planted, because the Overview would then point at a story's answer, and the response never says which rows were planted or why.
+  A ledger that cannot be read is logged by its path and the error's type only, never the error's text, which can quote ledger content.
   The route asks the evaluator for the planted ids (`presentation_planted_ids`), so it is the third API module allowed to import `app.evaluation` (ADR-008).
   The ledger must be the active world's own: its profile, world seed, generator version and scenario seed must match the world's manifest.
   When there is no such ledger, the planted check cannot be made, so `incident_id` is null and a warning names the reason; the rule is never applied without the check.

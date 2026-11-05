@@ -85,10 +85,11 @@ These would make the redesign a failure even if it worked:
 - A fourth, quieter line links to Stories: "Eight stories are planted in this data for the test."
 
 The example is chosen live from the active world by a fixed rule, so it is always real and fits the world shown.
-The rule: the incident, lowest id first, whose platform version is shared with an incident in another market, and which no story planted.
-A planted incident must not be the example, because the Overview would then point at a story's answer.
-In the development world (dev-seed2026) the rule without the planted check picks INC_002, a Greek payments incident; the wireframe's INC_037 was only an illustration.
-If no incident meets the rule, the first incident that no story planted is used; if there is none, the cards show sizes only and the diagram is left out with a short note.
+The rule: the incident, lowest id first, whose platform version is shared with an incident in another market, where no part of the example's path was planted.
+No part of the path, the incident, its platform version or its app version, may be one the truth ledger names, and the incident in the other market must pass the same test.
+A planted path must not be the example, because the Overview would then point at a story's answer.
+In the development world (dev-seed2026) the rule picks INC_003, an Austrian analytics incident whose version PLV_ANALYTICS_2 a Greek incident (INC_010) shares; the wireframe's INC_037 was only an illustration.
+If no incident meets the rule, the first incident with no planted part is used; if there is none, the cards show sizes only and the diagram is left out with a short note.
 The active world is whichever the API reports as active (dev-seed2026 under `make dev`, demo-seed2026 under `make dev-official`).
 
 ### The explorer layout (Tables, Graph, Concepts, Stories)

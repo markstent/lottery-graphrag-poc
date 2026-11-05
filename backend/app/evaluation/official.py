@@ -444,7 +444,10 @@ def presentation_planted_ids() -> frozenset[str]:
         manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
         ledger = load_ledger(paths.ledger_path)
     except (OSError, ValueError) as error:
-        raise NoMatchingLedger(f"unreadable world manifest or ledger: {error}") from None
+        # The type and the path only: a validation error's text quotes ledger content.
+        raise NoMatchingLedger(
+            f"unreadable world manifest or ledger {paths.ledger_path}: {type(error).__name__}"
+        ) from None
     world = ledger.world
     expected = (world.profile, world.world_seed, world.generator_version, ledger.scenario_seed)
     found = tuple(

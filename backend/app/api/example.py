@@ -2,11 +2,12 @@
 the tables, the graph and the ontology (data model redesign, Overview).
 
 The rule, over the active world's ``incidents`` table in ``incident_id``
-order: leave out every incident the world's truth ledger names, then take
-the first whose platform version is also the version of an incident in
-another market (a null market is a market of its own), else the first one
-left, else none. A planted incident is never the example, because the
-Overview would then point at a story's answer.
+order: leave out every incident whose id, platform version or app version
+the world's truth ledger names, then take the first whose platform version
+is also the version of an incident left in another market (a null market is
+a market of its own), else the first one left, else none. No part of the
+example's path is planted, because the Overview would then point at a
+story's answer.
 
 This is one of the three API modules that may import ``app.evaluation``
 (ADR-008): it asks the evaluator which identifiers are planted and answers
@@ -34,8 +35,8 @@ logger = logging.getLogger(__name__)
 
 INCIDENTS_FILE = "incidents.parquet"
 
-# (incident_id, market_id, platform_version_id)
-IncidentRow = tuple[str, str | None, str | None]
+# (incident_id, market_id, platform_version_id, app_version_id)
+IncidentRow = tuple[str, str | None, str | None, str | None]
 
 
 def _incidents(world: Path) -> list[IncidentRow]:
@@ -45,21 +46,22 @@ def _incidents(world: Path) -> list[IncidentRow]:
         raise ApiError(404, ErrorCode.NOT_FOUND, f"dataset {world.name} has no table incidents")
     with duckdb.connect() as connection:
         rows = connection.execute(
-            "SELECT incident_id, market_id, platform_version_id FROM read_parquet(?) "
+            "SELECT incident_id, market_id, platform_version_id, app_version_id "
+            "FROM read_parquet(?) "
             "ORDER BY incident_id",
             [str(path)],
         ).fetchall()
-    return [(row[0], row[1], row[2]) for row in rows]
+    return [(row[0], row[1], row[2], row[3]) for row in rows]
 
 
 def _choose(incidents: Sequence[IncidentRow], planted: frozenset[str]) -> str | None:
     """The example of ``incidents`` (in id order) once ``planted`` is left out."""
-    kept = [row for row in incidents if row[0] not in planted]
+    kept = [row for row in incidents if planted.isdisjoint((row[0], row[2], row[3]))]
     markets: defaultdict[str, set[str | None]] = defaultdict(set)
-    for _incident, market, version in kept:
+    for _incident, market, version, _app_version in kept:
         if version is not None:
             markets[version].add(market)
-    for incident, _market, version in kept:
+    for incident, _market, version, _app_version in kept:
         if version is not None and len(markets[version]) > 1:
             return incident
     return kept[0][0] if kept else None

@@ -261,13 +261,13 @@ Readers mostly explore it on their own after a presentation, so the screen expla
 
 Five tabs, each a link, in this order: Overview, Tables, Graph, Concepts and Stories (`#/data-model?tab=...`).
 `#/data-model` with no tab opens Overview.
-Each chosen item is in the address too, so every view can be linked and the back button works: `tab=tables&table=incidents&row=INC_002`, `tab=graph&node=INC_002&group=RELATED_TO:in`, `tab=concepts&concept=CONCEPT_NATIONAL_DRAW&market=MKT_GR` and `tab=stories&story=SCN-002`.
+Each chosen item is in the address too, so every view can be linked and the back button works: `tab=tables&table=incidents&row=INC_003`, `tab=graph&node=INC_003&group=RELATED_TO:in`, `tab=concepts&concept=CONCEPT_NATIONAL_DRAW&market=MKT_GR` and `tab=stories&story=SCN-002`.
 The tab ids before D-115 still open their tab: `warehouse` opens Tables, `ontology` opens Concepts and `scenarios` opens Stories (`TAB_ALIASES` in `src/screens/data-model/data-model.tsx`), so Help's links and old bookmarks keep working, and `tab=graph&node=<id>` from the evidence drawer opens that record.
 
 The example.
-`GET /api/v1/data-model/example` names one incident, chosen on the backend by a fixed rule: the lowest id whose platform version is shared with an incident in another market and which no story planted, else the first incident no story planted.
+`GET /api/v1/data-model/example` names one incident, chosen on the backend by a fixed rule: the lowest id whose platform version is shared with an incident in another market, where no part of the path (the incident, its platform version or its app version, and the same for the incident in the other market) was planted, else the first incident with no planted part.
 The endpoint returns the id only; the planted check reads the evaluator's `presentation_planted_ids()` and never reaches retrieval code.
-In the development world it is INC_002, a Greek payments incident.
+In the development world it is INC_003, an Austrian analytics incident whose platform version a Greek incident shares.
 Overview, Tables and Graph open on it, so the same record is the first thing a reader sees on each.
 When the world has none, or no truth ledger of its own to check against, the cards show sizes only and say "No example record in this world."
 
