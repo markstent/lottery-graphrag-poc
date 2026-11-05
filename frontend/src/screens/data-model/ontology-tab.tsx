@@ -21,11 +21,7 @@ import { ConceptCard } from './concept-card'
 import { ConceptTree } from './concept-tree'
 import { Explorer, ListSearch } from './explorer'
 
-const STEPS = [
-  'Choose a concept',
-  'The concept',
-  "Each country's terms",
-] as const
+const STEPS = ['Choose a concept', 'The concept', 'Country terms'] as const
 
 type Concept = Schemas['ConceptOut']
 type Member = Schemas['MemberOut']
@@ -110,7 +106,7 @@ function BoundTerms({
           ))}
         </div>
       )}
-      <section aria-label="Each country's terms for it">
+      <section aria-label="Country terms for it">
         {load.status === 'loading' && (
           <div role="status" className="space-y-3">
             <span className="sr-only">Loading the terms</span>

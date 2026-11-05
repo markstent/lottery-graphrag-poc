@@ -121,7 +121,7 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt(`&concept=${NATIONAL_DRAW}`)
     const members = await screen.findByRole('region', {
-      name: "Each country's terms for it",
+      name: 'Country terms for it',
     })
     for (const [market, name] of [
       ['United Kingdom', 'National Draw'],
@@ -140,7 +140,7 @@ describe('OntologyTab', () => {
     const { requested } = stubOntology()
     renderAt(`&concept=${NATIONAL_DRAW}`)
     const members = await screen.findByRole('region', {
-      name: "Each country's terms for it",
+      name: 'Country terms for it',
     })
     await within(members).findByText('Zahlenziehung')
     await userEvent.click(screen.getByRole('button', { name: 'Greece' }))
@@ -161,7 +161,7 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt('&concept=CONCEPT_DIGITAL_CHANNEL')
     const members = await screen.findByRole('region', {
-      name: "Each country's terms for it",
+      name: 'Country terms for it',
     })
     const shared = await within(members).findByRole('group', {
       name: 'Shared by every market',
@@ -202,7 +202,7 @@ describe('OntologyTab', () => {
     const { requested } = stubOntology()
     renderAt('&concept=CONCEPT_PAYMENT_INCIDENT&market=MKT_GR')
     const members = await screen.findByRole('region', {
-      name: "Each country's terms for it",
+      name: 'Country terms for it',
     })
     const shared = await within(members).findByRole('group', {
       name: 'Shared by every market',
@@ -257,7 +257,7 @@ describe('OntologyTab', () => {
     expect(
       await within(
         await screen.findByRole('region', {
-          name: "Each country's terms for it",
+          name: 'Country terms for it',
         }),
       ).findByText('Annuity Draw'),
     ).toBeVisible()
@@ -430,7 +430,7 @@ describe('OntologyTab', () => {
     for (const step of [
       '1 Choose a concept',
       '2 The concept',
-      "3 Each country's terms",
+      '3 Country terms',
     ])
       expect(await screen.findByRole('heading', { name: step })).toBeVisible()
   })
