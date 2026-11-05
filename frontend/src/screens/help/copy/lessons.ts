@@ -691,7 +691,7 @@ export const lessons: ChapterCopy = {
     },
     { kind: 'heading', text: 'What to take home' },
     [
-      'Text search is enough when a question names a record or a document states the answer.',
+      'Text search is enough in this run when a question names a record or a document states the answer.',
       'A graph found more of the needed evidence on multi-hop questions, the one tested result; the gain was where the answer is a record or two away along a link, from a record the graph can start from.',
       'A shared vocabulary helps across markets and with local names: a pattern seen in this run, not confirmed by the test.',
       'Graph records take room from documents, and finding the evidence is not the same as answering well.',

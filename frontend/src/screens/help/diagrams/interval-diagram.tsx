@@ -2,8 +2,8 @@
  * How to read a margin of error, as one picture: two differences, each a dot
  * with its margin of error as a bar around it, against a dashed line at zero
  * (no difference). The first bar crosses zero, too close to call; the second
- * is clear of zero, a clear difference. The positions are an illustration,
- * not results.
+ * is clear of zero, which counts only if its test also passes (chapter 8).
+ * The positions are an illustration, not results.
  */
 
 import { Picture } from './parts'
@@ -13,7 +13,7 @@ const ZERO_X = 150
 const AXIS_START = 40
 const AXIS_END = 340
 const LABEL_X = 364
-const WIDTH = 540
+const WIDTH = 620
 const CAP = 7
 const DOT_R = 6
 
@@ -27,8 +27,8 @@ const ROWS = [
     y: 56,
   },
   {
-    name: 'A clear difference',
-    detail: 'the bar is clear of zero',
+    name: 'Clear of zero',
+    detail: 'counts only if its test also passes',
     from: 200,
     dot: 260,
     to: 320,
@@ -47,7 +47,7 @@ const LABEL = [
   'How to read a margin of error.',
   'Each line is a difference between two approaches: the dot is the difference measured, and the bar around it is its margin of error.',
   'In the first line the bar crosses zero, so no difference at all is still possible: too close to call.',
-  'In the second line the whole bar is clear of zero: a clear difference.',
+  'In the second line the whole bar is clear of zero, which counts only if its test also passes.',
 ].join(' ')
 
 /** A margin of error: a bar with an end cap at each side and, when given, the measured difference as a dot. */

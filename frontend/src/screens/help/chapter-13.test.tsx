@@ -334,6 +334,9 @@ describe('chapter 12, what the results teach', () => {
     expect(plainText).toContain('Only one passed')
     expect(plainText).toMatch(/a pattern seen in this run/)
     expect(plainText).toContain('These questions were not tested.')
+    expect(plainText).toContain(
+      'Text search is enough in this run when a question names a record',
+    )
     expect(allText).toContain('official-2026-10-29')
   })
 

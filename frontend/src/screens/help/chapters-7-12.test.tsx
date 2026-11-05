@@ -172,6 +172,21 @@ describe('chapters 7 and 8 read in short sections', () => {
     expect(text).not.toMatch(/\bdeclin/i)
   })
 
+  it("chapter 7's key line names evidence found as evidence recall", () => {
+    const key = CHAPTER_COPY.scoring.plain[1] as { text: string }
+    expect(key.text).toContain('evidence found (evidence recall)')
+  })
+
+  it('chapter 8 keeps the leaning count line and the width of a margin at Technical', () => {
+    const technical = strings(CHAPTER_COPY.results.technical).join(' ')
+    expect(technical).toContain(
+      'Overview and Results count such comparisons in one line under the headlines',
+    )
+    expect(technical).toContain(
+      'The interval shows how large a difference could still be, in either direction.',
+    )
+  })
+
   it('chapter 8 shows how to read a margin of error', () => {
     expect(CHAPTER_COPY.results.plain).toContainEqual({
       kind: 'diagram',

@@ -12,7 +12,7 @@ export const scoring: ChapterCopy = {
     'Fixed rules score every answer, the same rules for all three approaches.',
     {
       kind: 'key',
-      text: 'The answer score says how right an answer is; evidence recall, how much of the needed evidence was found.',
+      text: 'The answer score says how right an answer is; evidence found (evidence recall), how much needed evidence was found.',
     },
     { kind: 'heading', text: 'The newest official run' },
     'Below, the newest official run: the needed facts each approach found, and its answers by score, with those that said the sources could not answer hatched.',
