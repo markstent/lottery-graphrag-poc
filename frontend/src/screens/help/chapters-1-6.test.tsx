@@ -164,6 +164,77 @@ describe('chapters 1 to 3 read in short sections', () => {
   })
 })
 
+/** The blocks that follow a heading, up to the next heading. */
+const section = (blocks: readonly Block[], heading: string) => {
+  const at = blocks.findIndex(
+    (block) =>
+      isKind(block, 'heading') && (block as { text: string }).text === heading,
+  )
+  expect(at, heading).toBeGreaterThanOrEqual(0)
+  const rest = blocks.slice(at + 1)
+  const next = rest.findIndex((block) => isKind(block, 'heading'))
+  return next < 0 ? rest : rest.slice(0, next)
+}
+
+const sentences = (text: string) => text.match(/[.?!](?=\s|$)/g)?.length ?? 0
+
+describe('chapters 4 to 6 read in short sections', () => {
+  it('each opens with one sentence and a key line, keeps paragraphs to 60 words and has headed sections', () => {
+    for (const id of ['approaches', 'evidence', 'answer'] as const) {
+      const { plain } = CHAPTER_COPY[id]
+      const [first, second] = plain
+      expect(typeof first, id).toBe('string')
+      expect(sentences(first as string), id).toBe(1)
+      expect(isKind(second, 'key'), id).toBe(true)
+      for (const text of bodyTexts(plain))
+        expect(wordCount(text), `${id}: ${text}`).toBeLessThanOrEqual(60)
+      expect(
+        plain.filter((block) => isKind(block, 'heading')).length,
+        id,
+      ).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('chapter 4 gives each approach a heading, a one-line lead and its picture', () => {
+    const { plain } = CHAPTER_COPY.approaches
+    for (const [heading, name] of [
+      ['A: text search', 'approachA'],
+      ['B: graph', 'approachB'],
+      ['C: graph and ontology', 'approachC'],
+    ] as const) {
+      const part = section(plain, heading)
+      expect(typeof part[0], heading).toBe('string')
+      expect(part, heading).toContainEqual({ kind: 'diagram', name })
+    }
+  })
+
+  it('chapter 5 introduces evidence found with its picture', () => {
+    const part = section(CHAPTER_COPY.evidence.plain, 'Evidence found')
+    expect(part).toContainEqual({ kind: 'diagram', name: 'found' })
+  })
+
+  it('chapter 6 is under half its old length, shows how an answer is marked and lists the judges limits', () => {
+    const { plain } = CHAPTER_COPY.answer
+    expect(wordCount(plainWords(plain).join(' '))).toBeLessThan(407)
+    expect(plain.slice(0, 4)).toContainEqual({
+      kind: 'diagram',
+      name: 'marking',
+    })
+    const limits = section(plain, "The judges' limits")
+    expect(limits.some((block) => Array.isArray(block))).toBe(true)
+    // The official agreement figures stay.
+    const text = bodyTexts(plain).join(' ')
+    for (const figure of [
+      '88 percent of the 637',
+      '70 percent of the 263',
+      '99 answers',
+      '90 percent',
+      '2026-10-29',
+    ])
+      expect(text).toContain(figure)
+  })
+})
+
 describe('chapters 1 to 6', () => {
   it('every chapter 1-6 has plain and technical blocks', () => {
     for (const id of FIRST_SIX) {

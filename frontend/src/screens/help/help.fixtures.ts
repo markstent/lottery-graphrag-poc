@@ -126,6 +126,35 @@ export const QUICK_CHECK_NEWER = {
   },
 }
 
+/** The outcomes of a run, as chapter 7 shows them for the newest official run. */
+const answers = (right: number, partly: number, wrong: number) => ({
+  scored: right + partly + wrong,
+  right,
+  partly,
+  wrong,
+  right_declined: 1,
+  partly_declined: 2,
+  wrong_declined: 3,
+  not_scored: 0,
+  partly_score_sum: partly / 2,
+})
+const evidence = (found: number, missed: number) => ({
+  repeats: found + missed,
+  found,
+  missed,
+  found_share: found / (found + missed),
+  extra_per_question: 9,
+})
+export const OUTCOMES = {
+  recorded: true,
+  evidence: {
+    A: evidence(4, 6),
+    B: evidence(5, 5),
+    C: evidence(6, 4),
+  },
+  answers: { A: answers(5, 3, 4), B: answers(6, 3, 3), C: answers(7, 3, 2) },
+}
+
 export const NOT_FOUND = () =>
   json(
     { error: { error_code: 'NOT_FOUND', message: 'none', retryable: false } },
@@ -189,6 +218,8 @@ export function stubBank({
             )
           : json(runs),
       )
+    if (/^\/api\/v1\/benchmarks\/[^/]+\/outcomes$/.test(path))
+      return Promise.resolve(json(OUTCOMES))
     const detail = /^\/api\/v1\/benchmarks\/([^/]+)$/.exec(path)?.[1]
     if (detail && detail in details)
       return Promise.resolve(json(details[detail]))

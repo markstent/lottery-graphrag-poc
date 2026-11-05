@@ -738,16 +738,23 @@ describe('states', () => {
     }
   })
 
-  it('shows a loading state in each page that needs the bank, and not in the others', async () => {
+  it('shows a loading state in each page that needs data, and not in the others', async () => {
     vi.stubGlobal('fetch', () => new Promise(() => undefined))
     for (const hash of ['#/help?section=stories', '#/help?section=questions']) {
       open(hash)
       expect(screen.getAllByRole('status'), hash).toHaveLength(1)
       cleanup()
     }
+    // Chapter 7 waits only for the newest run's outcomes.
     open('#/help?section=scoring')
-    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "Loading the newest run's outcomes.",
+    )
     expect(section('7. How scoring works')).toBeVisible()
+    cleanup()
+    open('#/help?section=answer')
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(section('6. The answer and the judge')).toBeVisible()
   })
 })
 

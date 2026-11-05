@@ -9,18 +9,32 @@ import type { ChapterCopy } from '../chapters'
 
 export const results: ChapterCopy = {
   plain: [
-    'Overview shows the newest official run in plain words. For each approach it gives the share of the needed evidence it found ("Evidence found") and its answer score. Then it says which tested differences were clear, how many others leaned one way without passing the test, and any differences outside the tests.',
-    "Results shows a run you pick in full: its verdict, the scores by kind of question and every question's scores. It also shows how long each approach took to find the evidence and write each answer, how much evidence the answer model read, the failure causes, the judge's marks and the settings the run recorded.",
-    "When a second judge has marked the run, Results also shows the judges' verdict: each approach's judges' mark, its own tests, how often the two judges gave the same verdict, and every answer on which the judges disagree, with both verdicts in words. Overview then adds the judges' mark to each approach, and states any of its tests that passed apart from the others.",
-    'There are several kinds of run. Only an official run over the whole question bank is a result. A development run asks the models about world 2026, one copy of the made-up company, while the method is being built. It is not a result. A quick check tests the scoring code with fixed programs in place of the answer model and the judge, and Results shows no scores for it. A subset run covers part of the questions and is labelled as such.',
-    'Each kind of question gets a headline for each tested comparison. It says one of three things. One approach exceeds or trails another by so many points, with its interval, the margin of error. Or there is no detectable difference. Or there are too few pairs to say.',
-    'Two more headlines describe the questions that name a game family or mechanic by its local name. They give the difference between two approaches, with its interval where there are enough groups. They also say that no test is run on that group.',
-    'What a difference means: for these questions, this made-up company and this answer model, one approach got more of the needed evidence to the answer model, or answered correctly more often. It does not show that the same would hold for another company, other questions or another model (chapter 9).',
-    'What "no detectable difference" means: any difference was too small for this many questions to show. It does not mean the approaches are equal. The interval shows how large a difference could still be, in either direction.',
-    'The result is the official run that started on 2026-10-29 (chapter 1). Of its 14 tests, one found a difference: on multi-hop questions the graph (B) got more of the needed evidence to the answer model than text search (A). Multi-hop questions are those that need links followed across several records. The other 13 found no detectable difference.',
-    'When the interval and the test disagree. In five of those 13 comparisons the interval leaves out zero, yet the test does not pass. The interval looks at one comparison alone, through its average. The test ranks the differences of the question groups, and it allows for 14 comparisons made at once, so it asks for more. For one of the five, planted-story answers, the test fails even before that allowance. The rule written before the run is the test, so these five are not findings.',
-    'The five are: the ontology against the graph on questions that need the ontology (more evidence and better answers for C); the graph against text search on multi-hop answers (better for B); and the graph against text search on planted stories (less evidence and worse answers for B). Overview and Results count such comparisons in one line under the headlines, which points to the difference for each question group.',
-    'One group outside the tests also differs. It is the 36 questions that name a game family or mechanic by its local name. On them, B found less of the evidence than A. C found more than B, and answered correctly more often. These questions were not tested for chance, so they describe the run and prove nothing on their own.',
+    'Two screens show the results: Overview and Results.',
+    {
+      kind: 'key',
+      text: 'Read every difference with its margin of error: when the margin crosses zero, the difference may be chance.',
+    },
+    { kind: 'heading', text: 'What each screen shows' },
+    [
+      'Overview: the newest official run in plain words. For each approach, the share of the needed evidence it found and its answer score; then which tested differences were clear, how many leaned one way without passing, and any outside the tests.',
+      "Results: any run you pick, in full. Its verdict, the scores by kind of question and for every question, the time taken, the evidence read, the failure causes, the judges' marks and the settings the run recorded.",
+    ],
+    { kind: 'heading', text: 'How to read a difference' },
+    { kind: 'diagram', name: 'interval' },
+    'Each kind of question gets a headline for each tested comparison: one approach exceeds or trails another by so many points, or there is no detectable difference, or there are too few pairs to say.',
+    '"No detectable difference" means any difference was too small for this many questions to show. It does not mean the approaches are equal.',
+    { kind: 'heading', text: 'What the official run found' },
+    'The result is the official run that started on 2026-10-29 (chapter 1). Of its 14 tests, one found a difference: on multi-hop questions the graph (B) got more of the needed evidence to the answer model than text search (A). The other 13 found no detectable difference.',
+    {
+      kind: 'more',
+      summary: 'When the margin and the test disagree',
+      blocks: [
+        'In five of those 13 comparisons the margin of error leaves out zero, yet the test does not pass. The margin looks at one comparison alone, through its average. The test ranks the differences of the question groups and allows for 14 comparisons at once, so it asks for more.',
+        'For one of the five, planted-story answers, the test fails even before that allowance. The rule written before the run is the test, so these five are not findings.',
+      ],
+    },
+    { kind: 'heading', text: 'Kinds of run' },
+    'Only an official run over the whole question bank is a result. A development run on world 2026, a quick check of the scoring code and a subset run of part of the questions are not.',
   ],
   technical: [
     'Kinds of run (backend/app/evaluation/__main__.py; docs/evaluation.md):',
