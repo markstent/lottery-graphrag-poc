@@ -27,7 +27,7 @@ describe('App routes', () => {
       expect(
         await screen.findByRole(
           'navigation',
-          { name: 'Help sections' },
+          { name: 'Help pages' },
           { timeout: 15_000 },
         ),
       ).toBeVisible()

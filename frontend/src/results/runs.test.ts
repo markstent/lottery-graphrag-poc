@@ -66,11 +66,11 @@ describe('standing', () => {
     expect(standingWord(dev)).toBe('Development run, not a result')
     expect(standingWord(sweep)).toBe('Depth sweep, not a result')
   })
-  it('classifies the captured runs', () =>
+  it('classifies the fixture runs', () =>
     expect(RUNS.map((r) => [r.run_id, standing(r)])).toEqual([
-      ['pilot-2026-nothink', 'subset'],
-      ['pilot-2026', 'subset'],
-      ['20261019T164733Z-smoke', 'quick-check'],
+      ['fixture-subset', 'subset'],
+      ['fixture-smoke', 'quick-check'],
+      ['fixture-v03', 'result'],
     ]))
 })
 

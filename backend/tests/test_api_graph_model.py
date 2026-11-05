@@ -101,6 +101,11 @@ class FakeGraph:
         "CONCEPT_DRAW_GAME": (["BusinessConcept"], {"id": "CONCEPT_DRAW_GAME"}),
     }
 
+    summaries: ClassVar[dict[str, list[tuple[str, str, int]]]] = {
+        SEED: [("BELONGS_TO", "out", 1), ("FROM_MARKET", "out", 1), ("USES", "out", 28)],
+        "CONCEPT_DRAW_GAME": [("MAPS_TO", "in", 6)],
+    }
+
     def __init__(self, _config: GraphConfig) -> None:
         pass
 
@@ -114,9 +119,9 @@ class FakeGraph:
         return [found] if found is not None else []
 
     def node_neighbours(
-        self, node_id: str, rel_type: str | None, limit: int
+        self, node_id: str, rel_type: str | None, direction: str | None, limit: int
     ) -> list[tuple[str, str, list[str], dict[str, Any]]]:
-        FakeGraph.calls.append(("node_neighbours", node_id, rel_type, limit))
+        FakeGraph.calls.append(("node_neighbours", node_id, rel_type, direction, limit))
         if node_id != SEED:
             return []
         edges = [("USES", "out", ["Device"], {"id": f"DEV_{i:03d}"}) for i in range(28)]
@@ -124,8 +129,17 @@ class FakeGraph:
             ("FROM_MARKET", "out", ["Market"], {"id": "MKT_GR", "source_record_id": "MKT_GR"})
         ]
         edges += [("BELONGS_TO", "out", ["PlayerSegment"], {"id": "SEG_GR_VIP"})]
-        matching = [edge for edge in edges if rel_type is None or edge[0] == rel_type]
+        matching = [
+            edge
+            for edge in edges
+            if (rel_type is None or edge[0] == rel_type)
+            and (direction is None or edge[1] == direction)
+        ]
         return sorted(matching, key=lambda edge: (edge[0], edge[1], edge[3]["id"]))[:limit]
+
+    def edge_summary(self, label: str, node_id: str) -> list[tuple[str, str, int]]:
+        FakeGraph.calls.append(("edge_summary", label, node_id))
+        return FakeGraph.summaries.get(node_id, [])
 
     def close(self) -> None:
         pass
@@ -260,6 +274,22 @@ def test_node_carries_its_properties_and_provenance(
     assert node["provenance"] == {"table": "players", "row_id": SEED, "dataset_id": "tiny"}
 
 
+def test_node_reports_its_link_counts(client: TestClient, fake_graph: type[FakeGraph]) -> None:
+    node = client.get(f"/api/v1/graph/nodes/{SEED}").json()
+    assert node["edges"] == [
+        {"type": "BELONGS_TO", "direction": "out", "count": 1},
+        {"type": "FROM_MARKET", "direction": "out", "count": 1},
+        {"type": "USES", "direction": "out", "count": 28},
+    ]
+    assert ("edge_summary", "Player", SEED) in FakeGraph.calls
+
+
+def test_concept_node_reports_link_counts(client: TestClient, fake_graph: type[FakeGraph]) -> None:
+    node = client.get("/api/v1/graph/nodes/CONCEPT_DRAW_GAME").json()
+    assert node["provenance"] is None
+    assert node["edges"] == [{"type": "MAPS_TO", "direction": "in", "count": 6}]
+
+
 @pytest.mark.parametrize("node_id", ["PTYPE_JACKPOT", "CONCEPT_DRAW_GAME"])
 def test_node_without_a_source_table_has_no_provenance(
     client: TestClient, fake_graph: type[FakeGraph], node_id: str
@@ -327,7 +357,7 @@ def test_neighbours_are_bounded_and_report_truncation(
         f"/api/v1/graph/nodes/{SEED}/neighbours?limit=25"
     ).json()
     assert len(body["items"]) == 25 and body["truncated"] is True
-    assert ("node_neighbours", SEED, None, 26) in FakeGraph.calls
+    assert ("node_neighbours", SEED, None, None, 26) in FakeGraph.calls
 
 
 def test_neighbours_default_to_25_and_carry_each_node(
@@ -355,6 +385,28 @@ def test_neighbours_filter_by_relationship_type(
     body = client.get(f"/api/v1/graph/nodes/{SEED}/neighbours?type=FROM_MARKET").json()
     assert [item["node"]["node_id"] for item in body["items"]] == ["MKT_GR"]
     assert body["truncated"] is False
+
+
+def test_neighbours_filter_by_direction_with_or_without_a_type(
+    client: TestClient, fake_graph: type[FakeGraph]
+) -> None:
+    incoming = client.get(f"/api/v1/graph/nodes/{SEED}/neighbours?direction=in").json()
+    assert incoming["items"] == [] and incoming["truncated"] is False
+    out = client.get(
+        f"/api/v1/graph/nodes/{SEED}/neighbours?type=USES&direction=out&limit=100"
+    ).json()
+    assert len(out["items"]) == 28
+    assert {(item["rel_type"], item["direction"]) for item in out["items"]} == {("USES", "out")}
+    assert ("node_neighbours", SEED, "USES", "out", 101) in fake_graph.calls
+
+
+def test_unknown_direction_is_refused_before_any_graph_read(
+    client: TestClient, fake_graph: type[FakeGraph]
+) -> None:
+    response = client.get(f"/api/v1/graph/nodes/{SEED}/neighbours?direction=sideways")
+    assert response.status_code == 422
+    assert error_of(response)["error_code"] == "VALIDATION_ERROR"
+    assert fake_graph.calls == []
 
 
 def test_neighbour_limit_above_the_maximum_is_refused(client: TestClient) -> None:
@@ -456,6 +508,9 @@ def test_live_graph_schema_node_and_neighbours(monkeypatch: pytest.MonkeyPatch) 
         assert node.status_code != 409, "Neo4j holds another world than dev-seed2026"
         body = live.get(f"/api/v1/graph/nodes/{SEED}/neighbours?limit=3").json()
         segments = live.get(f"/api/v1/graph/nodes/{SEED}/neighbours?type=BELONGS_TO").json()
+        incoming = live.get(
+            f"/api/v1/graph/nodes/{SEED}/neighbours?type=BELONGS_TO&direction=in"
+        ).json()
     assert stats["nodes_by_label"]["Player"] > 0
     assert node.status_code == 200
     assert node.json()["provenance"] == {
@@ -471,3 +526,4 @@ def test_live_graph_schema_node_and_neighbours(monkeypatch: pytest.MonkeyPatch) 
     # A player belongs to a value segment and an engagement segment.
     assert [item["node"]["labels"] for item in segments["items"]] == [["PlayerSegment"]] * 2
     assert segments["truncated"] is False
+    assert incoming["items"] == []

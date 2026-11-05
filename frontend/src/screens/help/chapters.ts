@@ -1,6 +1,9 @@
 /**
- * The twelve chapters of Help, in the order of the spec (docs/superpowers/specs/2026-10-26-help-v2-design.md),
- * the old section ids that still link to them, and the shape of a chapter's copy.
+ * The chapters of Help's guide, in the order of the spec
+ * (docs/superpowers/specs/2026-10-26-help-v2-design.md) with what the official
+ * run teaches at the end, and the questions and answers, which are a page of
+ * their own beside the guide (D-110). Also the old section ids that still
+ * link to them, and the shape of a chapter's copy.
  */
 
 export const CHAPTERS = [
@@ -41,12 +44,27 @@ export const CHAPTERS = [
     nav: 'Assumptions and limits',
     title: '9. Assumptions and limits',
   },
-  { id: 'questions', nav: 'The questions', title: '10. The questions' },
-  { id: 'glossary', nav: 'Glossary', title: '11. Glossary' },
-  { id: 'running', nav: 'Running it', title: '12. Running it' },
+  { id: 'glossary', nav: 'Glossary', title: '10. Glossary' },
+  { id: 'running', nav: 'Running it', title: '11. Running it' },
+  {
+    id: 'lessons',
+    nav: 'What the results teach',
+    title: '12. What the results teach',
+  },
 ] as const
 
-export type ChapterId = (typeof CHAPTERS)[number]['id']
+/** The questions and answers: every benchmark question with its answer key, a page beside the guide. */
+export const QUESTIONS_PAGE = {
+  id: 'questions',
+  nav: 'Questions and answers',
+  title: 'Questions and answers',
+} as const
+
+export type GuideChapterId = (typeof CHAPTERS)[number]['id']
+export type ChapterId = GuideChapterId | typeof QUESTIONS_PAGE.id
+
+/** Every page of Help, the guide's chapters and the questions and answers. */
+export const PAGES = [...CHAPTERS, QUESTIONS_PAGE] as const
 
 /** The eight ids of the first Help, which other screens and shared links still use. */
 export const SECTION_ALIASES: Record<string, ChapterId> = {
@@ -77,13 +95,24 @@ export type DiagramName = (typeof DIAGRAM_NAMES)[number]
 export type ComponentName =
   'dataTour' | 'stories' | 'register' | 'questions' | 'glossary' | 'running'
 
+/** A table of text a chapter states: a caption read by a screen reader, its column names and its rows, the first cell of each row naming it. */
+export interface TableBlock {
+  kind: 'table'
+  caption: string
+  columns: readonly string[]
+  rows: readonly (readonly string[])[]
+}
+
 /**
  * One block of a chapter. A string is a paragraph and a list of strings is a
  * bulleted list; either may hold `{setting_key}`, filled from the settings.
+ * A heading names the part of the chapter that follows it.
  */
 export type Block =
   | string
   | readonly string[]
+  | { kind: 'heading'; text: string }
+  | TableBlock
   | { kind: 'settings'; keys: readonly SettingKey[] }
   | { kind: 'diagram'; name: DiagramName }
   | { kind: 'component'; name: ComponentName }

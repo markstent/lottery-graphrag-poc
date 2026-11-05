@@ -11,8 +11,8 @@ Two generated pages sit beside this one and are never edited by hand:
 ## Status of results
 
 There are two official results.
-The official run v0.3.0, under method v0.3, is the current result, and it awaits the owner's review (CP4).
-The official run v0.2.0, under method 0.2.0, is the earlier result, and it stands as published.
+The official run v0.3.0, under method v0.3, is the current result, approved by the owner on 2026-10-30 (CP4), and the only official run the screens show (D-104).
+The official run v0.2.0, under method 0.2.0, is the earlier result; it is recorded here for reproducibility, and its files stay on disk.
 The figures below are read from each run's `summary.json` and `report.md`.
 
 ### Official run v0.3.0
@@ -207,7 +207,7 @@ Under method 0.2.0 every pipeline also had the same 12 slots.
 |---|---|
 | Recall | The share of claims with at least one carrier selected. In method v0.3 this is the evidence metric of the tested family (D-087). |
 | Precision | The share of selected items that carry at least one claim. An empty selection has precision 0. Descriptive in v0.3, because it depends on how many items fit. |
-| F1 | The harmonic mean of recall and precision. The screens call it the evidence score for a v0.2.0 run, where it was the tested metric; descriptive in v0.3. |
+| F1 | The harmonic mean of recall and precision. The tested evidence metric of method 0.2.0, called the evidence score then; descriptive in v0.3 and not shown on the screens (D-104). |
 | Efficiency | Claims found per 1,000 context tokens |
 
 Retrieval must select the same carriers in every repeat of an instance, and only generation may vary.
@@ -400,6 +400,112 @@ It runs no test and states no p-value.
 The first addendum, written with scorer 2.1.0 on 2026-10-27 into `official-2026-10-26-scorer-2.1.0/`, changed only the H3 answer scores: A 0.722 to 0.944, B 0.667 to 0.917 and C 0.611 to 0.861.
 The second, written with scorer 2.2.0 on 2026-10-28 into `official-2026-10-26-scorer-2.2.0/`, moved only C's H3 answer score, to 0.889; A stayed at 0.944 and B at 0.917.
 
+### The second judge
+
+A second judge model re-judges the stored answers of a run, as a recorded second opinion beside the first judge (D-100).
+It was added after the result of v0.3.0, at the owner's request of 2026-11-02, and it is descriptive: the tested results use the deterministic scorer, and nothing the second judge says changes a score, a comparison or a published run.
+
+What it does:
+
+- For every repeat the first judge was asked about, it rebuilds the exact item the first judge saw (`runner.judge_item`, the same blinding seed) and calls the second model with the same judge prompt (1.2.0), the same parser, temperature and reasoning setting.
+  The prompt text is identical, so the two judges read the same thing.
+- The reply limit is the one setting that may differ (controller ruling of 2026-11-02, D-100 amendment): `SECOND_JUDGE_MAX_TOKENS`, which defaults to the first judge's 300 tokens.
+  Muse Glimmer spends hidden tokens even with reasoning off: in the live check it returned nothing at 300 on a prompt of 4,957 tokens, and clean JSON after about 780 hidden tokens at 2,000.
+  A 300-token limit would then measure the limit, not the judge.
+  The limit bounds the reply only, not what the judge sees.
+  The official second judge runs with `SECOND_JUDGE_MAX_TOKENS=2048`; the value is recorded in every verdict line and in the summary, and Results names it next to the model when it differs from the first judge's.
+- It refuses a second judge with no family, or of the answer model's family or the first judge's family as the run records them, compared without case.
+- It reads the run and never writes into it, nor anywhere under `data/evaluation/runs/`.
+  The item holds the expected answer and the claim statements, which are evaluator data; nothing reaches a pipeline.
+- A failed call is recorded with its message and one of three kinds, and it has no scores: `gateway_error` (the call failed), `empty_reply` (the model answered with no text, as a model does that spends the reply cap on hidden reasoning) and `unusable_reply` (the reply was not the five-score JSON).
+
+Run it:
+
+```bash
+make second-judge LABELS=v0.2.0-sample  # the hand-labelled sample first (100 calls)
+make second-judge RUN=official-2026-10-29
+```
+
+Both read `SECOND_JUDGE_PROVIDER`, `SECOND_JUDGE_MODEL`, `SECOND_JUDGE_MODEL_FAMILY`, `SECOND_JUDGE_REASONING`, `SECOND_JUDGE_TEMPERATURE` (unset means 0), `SECOND_JUDGE_API_BASE` and `SECOND_JUDGE_MAX_TOKENS` (unset means 300), read as the `JUDGE_*` keys are (see [operations.md](operations.md)).
+
+Where it is stored:
+
+- A run's second judge goes to `data/evaluation/second-judge/<run id>/<model slug>/`, the slug being the model name in lower case with every other character run as `-`.
+- The label check goes to `data/evaluation/second-judge/labels-v0.2.0-sample/<model slug>/`.
+- `verdicts.jsonl` gains one line per call as it goes: the key, instance, approach and repeat, the scores or the failure and its kind, the raw reply, the stop reason, whether the reply stopped at the cap, the latency, and the first judge's scores for the same repeat.
+  An interrupted pass resumes: the same command skips every repeat that already has scores, calls again for every repeat recorded as a failure (`gateway_error`, `empty_reply` or `unusable_reply`), and drops a last line cut short.
+  A retried repeat gets a new line after its failed one, and a repeat's latest line is the one that counts, so the summary counts the final state; the failed lines stay in the file as the record of the attempt.
+  A directory holds one model, one prompt (version and hash) and one set of model settings, reply limit included; a line of another is refused, so a change means another directory.
+- `summary.json` (schema 1) is written at the end: the second judge's model, family, reasoning, temperature and reply limit, the judge prompt version and hash, the first judge with its reply limit, the start and end times, the git commit and dirty flag, and counts of repeats, judged, failures by kind and by message, and replies that stopped at the cap.
+
+What the run summary reports:
+
+- `agreement_with_answer_level`: each judge's correctness against the deterministic answer level, split into answered and abstained, overall and per approach, computed as the run's own judge agreement is.
+  The first judge's numbers are recomputed from the stored run and equal the run's published `judge_agreement`.
+- `agreement_between_judges`: the first judge's correctness against the second's over the repeats both judged, split into answered and abstained, with exact agreement, the linear weighted kappa and a 3 by 3 count (rows the first judge's level).
+- `means`: per approach, each judge's mean of the five dimensions over the repeats both judged.
+- The weighted kappa follows the n rule above; the summary records `min_kappa_items`.
+
+The label check judges the 100 labelled items of the v0.2.0 sample (D-089) and adds the second judge as a measure, `second_judge`, to the label agreement analysis, overall, per cell and per approach, beside the first judge as recorded and with the 1.1.0 abstention rule.
+It refuses an unlabelled sample before any model call.
+
+What it cannot show:
+
+- Two judges agreeing does not make them right; only labels can say that.
+- The labels came from one labeller, the controller, a model (D-094), so the label check measures each judge against one model's reading, not a human's.
+- The labelled answers are of v0.2.0, judged by the first judge with prompt 1.0.0, while the second judge reads them with prompt 1.2.0; the first judge with the 1.1.0 abstention rule applied is the nearer comparison.
+- A judge that fails on a repeat drops out of every comparison of that repeat, so the n of each cell says how much each figure rests on.
+
+### Judges' mark
+
+The two judges' correctness, combined per answer, is a second tested measure beside the deterministic answer score and evidence recall (D-105, owner decisions of 2026-11-02).
+The answer score and evidence recall stay as they are and as published; the judges' mark is added with its own comparisons, intervals and tests.
+
+Definition (`backend/app/evaluation/judges_mark.py`):
+
+- Per answer, one repeat of one approach on one instance, `judge_mark = (c1 + c2) / 4`, where c1 and c2 are the first and the second judge's correctness on the 0, 1, 2 rubric.
+  It takes the values 0, 0.25, 0.5, 0.75 and 1.
+- It is defined only when both judges gave scores.
+  An answer without both is counted by reason and left out of every mean and pair; it is not read as 0.
+  The reasons, checked in this order, are `generation_failed`, `first_judge_failed`, `second_judge_pending` and `second_judge_failed`.
+- The judges disagree on an answer when `abs(c1 - c2) == 2`: one says correct (2), the other wrong (0).
+  Each such answer is listed for a person to check.
+- The two judges must have used the same judge prompt version; marks of two prompts are refused, not combined.
+
+The family:
+
+- The judges' mark is tested where the answer score is: H1, H2 (anchored by id), H3 and H5, each for B against A and C against B, eight cells (`JUDGE_FAMILY`, derived from the answer score's cells of `HOLM_FAMILY`).
+  H2_name and C against A are computed and reported untested, as for the answer score.
+- The statistics are the run's, through the same functions (`report.observe`, `paired_comparisons`, `metric_table` and `family_headlines`): an instance's value is the mean over its repeats where the mark is defined, pairs cluster by logical question and world, the 95 percent cluster bootstrap interval, the two-sided Wilcoxon signed-rank test on group means, the pairs and groups gates, and the rule that a difference counts only when its Holm-adjusted p is below 0.05 and its interval leaves out zero.
+- Holm runs over the judges' eight cells only (controller ruling given to the owner, 2026-11-02).
+  The judges' tests are a family of their own, so the published 14 tests, their p-values and their Holm-adjusted p-values do not change.
+- Headlines are written in the run's headline style, in "judges' mark points", for each tested kind of question and comparison, then the name-anchored sub-group's descriptive line on the mark.
+
+Descriptive extras:
+
+- Each approach's mean mark per kind of question and overall, with n and repeats, in the summary's metric cell shape.
+- Agreement between the judges: exact agreement, linear weighted kappa and the 3 by 3 counts, answered and abstaining apart, as in the second judge's summary.
+- The counts: answers, answers both judges scored, those on which they gave the same level, those with no mark by reason, and disagreements.
+- The disagreement list (instance id, question id, world, kind of question, approach, repeat, question text, both levels) and the disagreements per kind of question.
+
+Outputs:
+
+- `combined.json` (schema 1) beside the second judge's `summary.json` in `data/evaluation/second-judge/<run id>/<model slug>/`.
+  It records both judge models and settings, the judge prompt version and hash, the second judge's `finished_at` it was computed from, the computation time and the git commit and dirty flag.
+- `make judges-combined RUN=<run id>` writes it from the stored run and the newest finished second judge of that run, with no model call and no write into the run.
+  It refuses a second judge without `summary.json`, verdict lines of another judge setting, and a location inside the runs directory.
+  It reads `verdicts.jsonl` without changing it, leaving out a last line still being written.
+- `make second-judge RUN=<run id>` writes it at the end of its pass too.
+- A newer second-judge pass makes it stale: the API serves no judges' mark until it is written again.
+- `GET /benchmarks/{run_id}/second-judge` serves it as `combined`; Results shows it under "Judges' verdict", and Overview adds it to each tile, to the chart switch and to its findings, kept apart from the run's own tests.
+
+What it cannot show:
+
+- Two judges agreeing does not make them right.
+- The second judge's label check (99 of the 100 sample answers judged, 90 percent exact agreement with the labels, weighted kappa 0.89) used labels from one model labeller and no person (D-094).
+- Both judges read words, so a confident wrong answer can mislead both.
+- Both judges see the same declared tells of the approach (the path line, bare graph records, concept text), so the blinding is incomplete for both.
+
 ### Statistics
 
 The code is `backend/app/evaluation/statistics.py`, and `report.py` is the only place a benchmark number is computed.
@@ -441,8 +547,8 @@ The `ontology_split` in `summary.json` compares B with A and C with B on the ont
 It is descriptive: outside the Holm family, with no p-value and no headline.
 
 The intervals are on differences.
-The Overview tiles show each approach's mean evidence score with the number of questions and runs behind it, and no interval of their own (D-048, which is an open owner question).
-The tile is worded "Evidence score, questions with claims" for v0.2.0 and "Evidence recall, questions with claims" for v0.3.0, each with its n, the number of questions with claims behind the mean (114 for v0.2.0 and 231 for v0.3.0) (D-087).
+The Overview tiles show each approach's mean evidence recall over the questions with claims (231 in v0.3.0), labelled "Evidence found", and no interval of their own (D-048, which is an open owner question; D-087, D-098).
+The screens show only runs of method 0.3.0 (D-104).
 
 A smoke run keeps every statistic but its only headline says it is a scorer smoke test and not a result.
 A dev run does the same: its only headline says it is a development run on seed 2026 and not a result, and its comparisons table says "tested (development run, not a result)".
@@ -582,12 +688,12 @@ Files are written to a temporary name and moved into place, and `summary.json` i
 | File | Contents |
 |---|---|
 | `results.json` | The selection, the record, and for each world every instance, every repeat of every pipeline (answer, shown blocks, selected carriers, resolved ids, tokens, latency) and every score |
-| `summary.json` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record. Schema version 3 for method v0.3 (evidence recall, groundedness, answered and abstaining agreement with weighted kappa, C against A), schema version 2 for v0.2.0. A v0.3 summary carries `method_note`, the fixed declaration that the method was made after seeing v0.2.0 (D-093), which also heads every v0.3 `report.md`. |
+| `summary.json` | The published numbers: metrics per stratum, comparisons, headlines, judge agreement, failures, the selection and the record. Schema version 3 for method v0.3 (evidence recall, groundedness, answered and abstaining agreement with weighted kappa, C against A), schema version 2 for v0.2.0. A v0.3 summary carries `method_note`, the fixed declaration that the method was made after seeing v0.2.0 (D-093), which also heads every v0.3 `report.md`; the API does not serve it (D-104). |
 | `report.md` | The summary as tables |
 | `sweep.json` | Per depth, the H1 metrics for B and C |
 | `comparison.json` | H7, written to `data/evaluation/comparisons/` |
 
-The API publishes `summary.json` only, of schema 2 or 3, so v0.2.0 stays listed beside v0.3 runs.
+The API publishes `summary.json` only, of schema 3 and of the current `method_version` (D-104); the runs of method 0.2.0, v0.2.0 among them, stay on disk and are not listed.
 `GET /api/v1/benchmarks/latest` serves the newest official run of the whole bank, and when there is none it serves the newest run of any kind with its label.
 While only a smoke run or a subset run exists, the Overview shows "No official run yet" and names the newest run's kind without numbers.
 

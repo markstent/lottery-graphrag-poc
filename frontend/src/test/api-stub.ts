@@ -1,13 +1,13 @@
 /**
  * A fetch stand-in for component tests: each route is a JSON body or a
- * function returning a Response. An unrouted request answers 404 in the
+ * function of the request's URL returning a Response. An unrouted request answers 404 in the
  * backend's error envelope, so a missing stub shows up as an error panel
  * rather than a hang.
  */
 
 import { vi } from 'vitest'
 
-export type Route = unknown | (() => Response | Promise<Response>)
+export type Route = unknown | ((url: URL) => Response | Promise<Response>)
 
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -29,11 +29,14 @@ export function failure(
 
 export function stubApi(routes: Record<string, Route>) {
   const fetchMock = vi.fn((input: RequestInfo | URL, _init?: RequestInit) => {
-    const path = new URL(String(input), 'http://localhost').pathname
+    const url = new URL(String(input), 'http://localhost')
+    const path = url.pathname
     if (!(path in routes))
       return Promise.resolve(failure(`no stub for ${path}`, false, 404))
     const route = routes[path]
-    return Promise.resolve(typeof route === 'function' ? route() : json(route))
+    return Promise.resolve(
+      typeof route === 'function' ? route(url) : json(route),
+    )
   })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
@@ -42,24 +45,35 @@ export function stubApi(routes: Record<string, Route>) {
 export const READY = {
   ready: true,
   checks: {
-    lab: { ok: true, detail: 'built' },
-    index: { ok: true, detail: '1,204 points, record version 2' },
-    graph: { ok: true, detail: 'answering' },
-    model: { ok: true, detail: 'qwen3:8b is reachable' },
-    embedding: { ok: true, detail: 'bge-m3 is reachable' },
+    lab: { ok: true, detail: 'built', stand_in: false },
+    index: {
+      ok: true,
+      detail: '1,204 points, record version 2',
+      stand_in: false,
+    },
+    graph: { ok: true, detail: 'answering', stand_in: false },
+    model: { ok: true, detail: 'qwen3:8b is reachable', stand_in: false },
+    embedding: { ok: true, detail: 'bge-m3 is reachable', stand_in: false },
   },
 }
 
 export const BUILDING = {
   ready: false,
-  checks: { ...READY.checks, lab: { ok: false, detail: 'building' } },
+  checks: {
+    ...READY.checks,
+    lab: { ok: false, detail: 'building', stand_in: false },
+  },
 }
 
 export const DOWN = {
   ready: false,
   checks: {
     ...READY.checks,
-    model: { ok: false, detail: 'qwen3:8b is not listed by the model server' },
+    model: {
+      ok: false,
+      detail: 'qwen3:8b is not listed by the model server',
+      stand_in: false,
+    },
   },
 }
 

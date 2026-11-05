@@ -15,7 +15,7 @@ Cancellation is cooperative, between instances. Jobs live in memory only: a
 restart loses a running job, and its run directory, having no
 ``summary.json``, is never published.
 
-This is one of the two API modules that may import ``app.evaluation``
+This is one of the three API modules that may import ``app.evaluation``
 (ADR-008); it reaches the ledger only through the evaluator's functions.
 """
 
@@ -53,13 +53,18 @@ from app.api.schemas import (
     InstanceResultOut,
     JobProgress,
     JobStatus,
+    JudgesMarkOut,
     PipelineScore,
     QuestionOut,
+    SecondJudgeLabelsOut,
+    SecondJudgeOut,
+    SecondJudgeRunOut,
     SummaryOut,
     error_responses,
 )
 from app.api.scoring import require_bank
-from app.config import REPO_ROOT, from_env, judge_settings_from_env
+from app.config import METHOD_VERSION, REPO_ROOT, from_env, judge_settings_from_env
+from app.evaluation import judges_mark, second_judge
 from app.evaluation.bank import STRATA
 from app.evaluation.catalogue import LedgerMismatch, instance_scores, question_catalogue
 from app.evaluation.grounding import FrozenBank, GroundingError, load_frozen_bank
@@ -92,9 +97,6 @@ from app.observability.logging import run_context
 
 logger = logging.getLogger(__name__)
 
-# The summary schemas the API publishes: 2 for runs of method v0.2 (such as
-# the official run v0.2.0), the current one for method v0.3.
-PUBLISHED_SCHEMA_VERSIONS = frozenset({"2", SUMMARY_SCHEMA_VERSION})
 # The worlds a benchmark job may name: the seen ones only. The official run on
 # the unseen seeds goes through ``make run-benchmark`` after the owner's
 # go-ahead, never through the API (D-091); ``check_seeds`` still refuses a
@@ -117,13 +119,24 @@ def stale_bank_message() -> str:
 def published_runs(runs_dir: Path) -> list[Published]:
     """Every published run under ``runs_dir``, newest first: the latest
     ``reproducibility.run.started_at`` as a point in time, then the directory
-    name. A malformed summary raises rather than being skipped."""
+    name. A malformed summary raises rather than being skipped.
+
+    Only runs of the current method are published (D-104): a summary of
+    another schema or of another method stays on disk and is never served."""
     runs: list[Published] = []
     for path in runs_dir.glob("*/summary.json"):
         summary = json.loads(path.read_text(encoding="utf-8"))
-        if summary.get("schema_version") in PUBLISHED_SCHEMA_VERSIONS:
+        if _current(summary):
             runs.append((path.parent.name, summary))
     return sorted(runs, key=_started, reverse=True)
+
+
+def _current(summary: dict[str, Any]) -> bool:
+    """Whether a summary is of the current schema and the current method."""
+    return (
+        summary.get("schema_version") == SUMMARY_SCHEMA_VERSION
+        and method_of(summary["reproducibility"]["run"]) == METHOD_VERSION
+    )
 
 
 def _started(run: Published) -> tuple[datetime, str]:
@@ -157,6 +170,21 @@ def _published(runs_dir: Path, name: str) -> Published:
     return run
 
 
+def listed(run: Published) -> BenchmarkRunOut:
+    """A published run as GET /benchmarks lists it."""
+    name, summary = run
+    return BenchmarkRunOut(
+        run_id=name,
+        run_kind=summary["run_kind"],
+        label=summary["label"],
+        method_version=method_of(summary["reproducibility"]["run"]),
+        started_at=summary["reproducibility"]["run"]["started_at"],
+        selection=summary["selection"],
+        worlds=summary["worlds"],
+        headlines=summary.get("headlines", []),
+    )
+
+
 def _summary_out(run: Published) -> BenchmarkSummary:
     """The run's summary, typed; one that does not fit is a 500 naming the run."""
     name, summary = run
@@ -173,6 +201,34 @@ def _summary_out(run: Published) -> BenchmarkSummary:
         method_version=method_of(summary["reproducibility"]["run"]),
         summary=typed,
     )
+
+
+def second_judge_dir(runs_dir: Path) -> Path:
+    """Where the second judge writes (D-100): beside the runs directory, as
+    ``data/evaluation/second-judge`` is beside ``data/evaluation/runs``."""
+    return runs_dir.parent / second_judge.SECOND_JUDGE_DIR_NAME
+
+
+def _second_judge(runs_dir: Path, name: str) -> SecondJudgeOut:
+    """The second judge of a published run; a 404 for an unknown run or a run
+    with none, and a 500 naming the run for a summary that does not fit."""
+    _published(runs_dir, name)
+    found = second_judge.published(second_judge_dir(runs_dir), name)
+    if found is None:
+        raise ApiError(404, ErrorCode.NOT_FOUND, f"benchmark run {name!r} has no second judge")
+    run, labels = found
+    combined = judges_mark.published(second_judge_dir(runs_dir), name, run)
+    try:
+        return SecondJudgeOut(
+            run_id=name,
+            run=SecondJudgeRunOut.model_validate(run),
+            labels=None if labels is None else SecondJudgeLabelsOut.model_validate(labels),
+            combined=None if combined is None else JudgesMarkOut.model_validate(combined),
+        )
+    except ValidationError as error:
+        raise RuntimeError(
+            f"the second-judge summary of benchmark run {name!r} is malformed: {error}"
+        ) from error
 
 
 def _instances(runs_dir: Path, name: str) -> list[InstanceResultOut]:
@@ -567,19 +623,7 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
 
     @router.get("/benchmarks", response_model=list[BenchmarkRunOut], responses=error_responses())
     def list_benchmarks() -> list[BenchmarkRunOut]:
-        return [
-            BenchmarkRunOut(
-                run_id=name,
-                run_kind=summary["run_kind"],
-                label=summary["label"],
-                method_version=method_of(summary["reproducibility"]["run"]),
-                started_at=summary["reproducibility"]["run"]["started_at"],
-                selection=summary["selection"],
-                worlds=summary["worlds"],
-                headlines=summary.get("headlines", []),
-            )
-            for name, summary in published_runs(runs_dir)
-        ]
+        return [listed(run) for run in published_runs(runs_dir)]
 
     @router.get(
         "/benchmarks/latest", response_model=BenchmarkSummary, responses=error_responses(404)
@@ -637,6 +681,14 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
     )
     def read_instances(run_id: str) -> list[InstanceResultOut]:
         return _instances(runs_dir, run_id)
+
+    @router.get(
+        "/benchmarks/{run_id}/second-judge",
+        response_model=SecondJudgeOut,
+        responses=error_responses(404, 422),
+    )
+    def read_second_judge(run_id: str) -> SecondJudgeOut:
+        return _second_judge(runs_dir, run_id)
 
     # Last: the run id is a free path segment.
     @router.get(

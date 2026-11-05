@@ -176,6 +176,20 @@ body {
   animation: graph-node-enter var(--duration-panel) ease-out;
 }
 
+/* A box on a Data Model map opens when chosen, so it lifts under the pointer (D-114). */
+.map-node:hover > rect,
+.map-node:focus-visible > rect {
+  fill: var(--color-grey-100);
+  stroke: var(--color-grey-900);
+}
+
+/* A kind on the Overview's core map opens the Graph tab (D-115). */
+.core-kind:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+  border-radius: 10px;
+}
+
 .graph-node:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 5px;

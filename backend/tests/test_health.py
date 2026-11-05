@@ -106,11 +106,23 @@ def test_ready_reports_each_check_and_503_when_the_graph_is_down(
     body = response.json()
     assert response.status_code == 503
     assert body["ready"] is False and set(body["checks"]) == CHECKS
-    assert body["checks"]["graph"] == {"ok": False, "detail": "Neo4j did not answer."}
-    assert body["checks"]["lab"] == {"ok": True, "detail": "built"}
+    assert body["checks"]["graph"] == {
+        "ok": False,
+        "detail": "Neo4j did not answer.",
+        "stand_in": False,
+    }
+    assert body["checks"]["lab"] == {"ok": True, "detail": "built", "stand_in": False}
     assert body["checks"]["index"]["ok"] is True
-    assert body["checks"]["model"] == {"ok": True, "detail": "fake generator (offline)"}
-    assert body["checks"]["embedding"] == {"ok": True, "detail": "hashing embedder (offline)"}
+    assert body["checks"]["model"] == {
+        "ok": True,
+        "detail": "fake generator (offline)",
+        "stand_in": True,
+    }
+    assert body["checks"]["embedding"] == {
+        "ok": True,
+        "detail": "hashing embedder (offline)",
+        "stand_in": True,
+    }
     # The driver's own text, which names the address, is logged and never served.
     assert "127.0.0.1" not in json.dumps(body)
     assert any(r.exc_info for r in caplog.records if r.getMessage() == "readiness check failed")
@@ -222,8 +234,8 @@ def test_start_up_builds_the_lab_once_and_readiness_reports_building(
         assert await_finished(client, run_id)["status"] == "completed"
         after = client.get("/api/v1/health/ready")
     assert during.status_code == 503
-    assert during.json()["checks"]["lab"] == {"ok": False, "detail": "building"}
-    assert after.json()["checks"]["lab"] == {"ok": True, "detail": "built"}
+    assert during.json()["checks"]["lab"] == {"ok": False, "detail": "building", "stand_in": False}
+    assert after.json()["checks"]["lab"] == {"ok": True, "detail": "built", "stand_in": False}
     assert builds == [1]
 
 
@@ -248,6 +260,7 @@ def test_readiness_reports_a_failed_lab_build(
     assert body["checks"]["lab"] == {
         "ok": False,
         "detail": "the last build failed; the next run retries it",
+        "stand_in": False,
     }
     assert "internal-qdrant" not in json.dumps(body)
     assert any(r.getMessage() == "lab warm-up failed" for r in caplog.records)
@@ -330,7 +343,7 @@ def litellm_settings(model: str = "openai/gpt-test") -> GenerationSettings:
 
 def test_the_fake_generator_is_always_reachable() -> None:
     check = ModelReachability().check(make_settings().generation)
-    assert check == Check(ok=True, detail="fake generator (offline)")
+    assert check == Check(ok=True, detail="fake generator (offline)", stand_in=True)
 
 
 def test_the_model_check_is_the_gateway_probe(stub_litellm: StubLiteLLM) -> None:
@@ -440,7 +453,11 @@ def test_the_embedding_check_is_the_model_reachability_check(
         run_to_completion(client, configurations=["A"])
         response = client.get("/api/v1/health/ready")
     assert response.status_code == 503
-    assert response.json()["checks"]["embedding"] == {"ok": False, "detail": "not pulled"}
+    assert response.json()["checks"]["embedding"] == {
+        "ok": False,
+        "detail": "not pulled",
+        "stand_in": False,
+    }
     assert asked == [indexed_lab.settings.embedding]
 
 
@@ -482,7 +499,7 @@ def test_an_invalid_configuration_is_reported_not_raised(monkeypatch: pytest.Mon
         response = client.get("/api/v1/health/ready")
     checks = response.json()["checks"]
     assert response.status_code == 503
-    invalid = {"ok": False, "detail": "the configuration is invalid"}
+    invalid = {"ok": False, "detail": "the configuration is invalid", "stand_in": False}
     assert checks["index"] == checks["model"] == checks["embedding"] == invalid
     assert checks["graph"]["ok"] is True
 

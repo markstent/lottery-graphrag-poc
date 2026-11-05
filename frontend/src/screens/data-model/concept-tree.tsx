@@ -2,6 +2,8 @@
  * The concepts as a WAI-ARIA tree, flat with `aria-level`: one tab stop that
  * rests on the selected concept, arrows move, Right and Left open and close,
  * Enter or Space selects. Choosing a concept is the caller's (`onSelect`).
+ * A `filter` keeps the concepts it matches, in any language, under all the
+ * concepts above them, opened, so a match shows in place.
  */
 
 import { ChevronDown, ChevronRight } from 'lucide-react'
@@ -46,17 +48,43 @@ function ancestorsOf(id: string, byId: Map<string, Concept>): string[] {
   return found
 }
 
+/** The concepts a filter matches in any language, with every concept above them; null when there is no filter. */
+function keptByFilter(
+  concepts: Concept[],
+  byId: Map<string, Concept>,
+  filter: string,
+): Set<string> | null {
+  const needle = filter.trim().toLowerCase()
+  if (needle === '') return null
+  const kept = new Set<string>()
+  for (const concept of concepts)
+    if (
+      Object.values(concept.labels).some((label) =>
+        label.toLowerCase().includes(needle),
+      )
+    ) {
+      kept.add(concept.concept_id)
+      ancestorsOf(concept.concept_id, byId).forEach((id) => kept.add(id))
+    }
+  return kept
+}
+
 /** The rows a person sees, depth first, skipping what a collapsed concept hides. */
 function visibleRows(
   children: Map<string | null, Concept[]>,
   expanded: Set<string>,
+  kept: Set<string> | null,
 ): Row[] {
   const rows: Row[] = []
   const walk = (parent: string | null, level: number) => {
-    const siblings = children.get(parent) ?? []
+    const siblings = (children.get(parent) ?? []).filter(
+      (c) => kept === null || kept.has(c.concept_id),
+    )
     siblings.forEach((concept, index) => {
-      const below = children.get(concept.concept_id) ?? []
-      const open = expanded.has(concept.concept_id)
+      const below = (children.get(concept.concept_id) ?? []).filter(
+        (c) => kept === null || kept.has(c.concept_id),
+      )
+      const open = kept !== null || expanded.has(concept.concept_id)
       rows.push({
         concept,
         level,
@@ -76,10 +104,12 @@ export function ConceptTree({
   concepts,
   selected,
   onSelect,
+  filter = '',
 }: {
   concepts: Concept[]
   selected: string
   onSelect: (id: string) => void
+  filter?: string
 }) {
   const byId = new Map(concepts.map((c) => [c.concept_id, c]))
   const children = childrenByParent(concepts)
@@ -100,7 +130,11 @@ export function ConceptTree({
     setExpanded(new Set([...expanded, ...ancestorsOf(selected, byId)]))
   }
 
-  const rows = visibleRows(children, expanded)
+  const rows = visibleRows(
+    children,
+    expanded,
+    keptByFilter(concepts, byId, filter),
+  )
   const ids = rows.map((r) => r.concept.concept_id)
   const stop =
     focused && ids.includes(focused)
@@ -156,13 +190,11 @@ export function ConceptTree({
     event.preventDefault()
   }
 
+  if (rows.length === 0)
+    return <p className="px-2 text-sm text-text-secondary">No match</p>
+
   return (
-    <div
-      role="tree"
-      aria-label="Concepts"
-      onKeyDown={onKeyDown}
-      className="max-h-[calc(100vh-20rem)] overflow-y-auto"
-    >
+    <div role="tree" aria-label="Concepts" onKeyDown={onKeyDown}>
       {rows.map(({ concept, level, position, siblings, ...state }) => {
         const id = concept.concept_id
         return (

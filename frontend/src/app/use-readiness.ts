@@ -24,6 +24,13 @@ export function statusOf(reading: Reading): ModelStatus {
   return reading.checks.lab?.detail === 'building' ? 'starting' : 'not-ready'
 }
 
+/** Whether a test stand-in (the fake generator or the hashing embedder) passed a check in place of a real model. */
+export function usesStandIn(checks: Readiness['checks'] | null): boolean {
+  return (
+    checks !== null && Object.values(checks).some((check) => check.stand_in)
+  )
+}
+
 export function useReadiness(): {
   status: ModelStatus
   checks: Readiness['checks'] | null

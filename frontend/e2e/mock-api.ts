@@ -15,6 +15,7 @@ import {
   GRAPH_SCHEMA,
   GRAPH_STATS,
   graphNode,
+  EXAMPLE,
   neighboursOf,
   recordOf,
   rowsOf,
@@ -29,6 +30,7 @@ import pilotSummary from './fixtures/results-pilot-summary.json' with { type: 'j
 import runsFixture from './fixtures/results-runs.json' with { type: 'json' }
 import smokeSummary from './fixtures/results-smoke-summary.json' with { type: 'json' }
 import v03Instances from './fixtures/results-v03-instances.json' with { type: 'json' }
+import secondJudge from './fixtures/results-v03-second-judge.json' with { type: 'json' }
 import v03Summary from './fixtures/results-v03-summary.json' with { type: 'json' }
 import world from './fixtures/world-shell.json' with { type: 'json' }
 import settingsFixture from '../src/test/settings.fixture.json' with { type: 'json' }
@@ -38,11 +40,11 @@ const BANK_INSTANCES = scoredQuestions.length
 const REPEATS = 3
 
 /*
- * Everything the shell, Overview and Results show comes from a capture of the
- * real API (scripts/capture-shell.mjs): the demo questions, models, readiness,
- * datasets and the published runs. The one invented thing is FIXTURE_OFFICIAL,
- * an "official run" of the whole bank: no such run exists yet, so the screens
- * that show one are baselined with test values, named `fixture-official`.
+ * The shell's demo questions, models, readiness and datasets are a capture of
+ * the API (scripts/capture-shell.mjs). The runs are generated with test
+ * values (backend/scripts/fixture_official.py and the report tests), and
+ * FIXTURE_OFFICIAL below is the whole-bank run Overview's tiles read, so no
+ * screenshot shows a result.
  */
 const SUMMARY = world.datasets[0]
 const READY = world.ready
@@ -68,11 +70,25 @@ const FIXTURE_SCORE = 0.4
  * Test values, not results: a whole-bank official run, so Overview draws its
  * tiles. The three scores are equal so no screenshot can suggest a result.
  */
+/** The same test values for each kind of question, so the Overview chart draws its groups. */
+const FIXTURE_KIND = {
+  evidence_recall: {
+    A: cell(FIXTURE_SCORE, BANK_INSTANCES),
+    B: cell(FIXTURE_SCORE, BANK_INSTANCES),
+    C: cell(FIXTURE_SCORE, BANK_INSTANCES),
+  },
+  answer: {
+    A: cell(FIXTURE_SCORE, BANK_INSTANCES),
+    B: cell(FIXTURE_SCORE, BANK_INSTANCES),
+    C: cell(FIXTURE_SCORE, BANK_INSTANCES),
+  },
+}
+
 const FIXTURE_OFFICIAL = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: null,
-  method_version: '0.2.0',
+  method_version: '0.3.0',
   summary: {
     bank_version: 'fixture-bank (test value)',
     selection: { strata: null, limit: null },
@@ -82,48 +98,56 @@ const FIXTURE_OFFICIAL = {
     ],
     metrics: {
       overall: {
-        evidence_f1: {
+        evidence_recall: {
+          A: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
+          B: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
+          C: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
+        },
+        answer: {
           A: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
           B: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
           C: cell(FIXTURE_SCORE, BANK_INSTANCES * REPEATS),
         },
       },
+      H1: FIXTURE_KIND,
+      H2: FIXTURE_KIND,
+      H5: FIXTURE_KIND,
     },
-  },
-}
-
-/** The same test values as a whole-bank run of method v0.3, which compares evidence recall. */
-const FIXTURE_OFFICIAL_V03 = {
-  ...FIXTURE_OFFICIAL,
-  run_id: 'fixture-official-v03',
-  method_version: '0.3.0',
-  summary: {
-    ...FIXTURE_OFFICIAL.summary,
-    method_note: v03Summary.summary.method_note,
-    metrics: {
-      overall: {
-        evidence_recall: FIXTURE_OFFICIAL.summary.metrics.overall.evidence_f1,
+    // One tested comparison with no difference, so the plain summary line draws.
+    comparisons: [
+      {
+        stratum: 'H1',
+        metric: 'evidence_recall',
+        comparison: 'B_vs_A',
+        n: BANK_INSTANCES,
+        clusters: 24,
+        mean: 0,
+        low: -0.1,
+        high: 0.1,
+        p: 1,
+        p_holm: 1,
+        in_family: true,
+        reason: 'tested',
       },
-    },
+    ],
+    instances: { total: { overall: BANK_INSTANCES }, per_world: {} },
   },
 }
 
 /**
- * What GET /benchmarks/latest answers: the invented official run of either
- * method, the newest smoke run, or the newest published run as captured (a
- * subset run, so Overview says there is no official run yet).
+ * What GET /benchmarks/latest answers: the whole-bank official run, the
+ * quick check, or the subset run (so Overview says there is no official run yet).
  */
 const LATEST = {
   official: FIXTURE_OFFICIAL,
-  v03: FIXTURE_OFFICIAL_V03,
-  smoke: world.latest_smoke,
-  none: world.latest,
+  smoke: smokeSummary,
+  none: pilotSummary,
 } as const
 
 /**
  * The run list Results sees: as published, with the generated whole-bank run
- * too, with the generated method v0.3 run as well, with a newer development
- * run on top of those, none, or failing.
+ * too, with the report tests' whole-bank run as well, with a newer
+ * development run on top of those, none, or failing.
  */
 export type RunsMode =
   'published' | 'official' | 'v03' | 'dev' | 'none' | 'unavailable' | 'pending'
@@ -131,7 +155,7 @@ export type RunsMode =
 export type LatestRun = keyof typeof LATEST | 'unavailable' | 'pending'
 
 /**
- * A development run: the generated v0.3 run's numbers under
+ * A development run: the report tests' run's numbers under
  * kind "dev" with the label and fixed headline the harness gives that kind
  * (backend/app/evaluation/runner.py, report.py).
  */
@@ -152,20 +176,19 @@ const DEV_SUMMARY = {
 }
 
 /**
- * The runs Results can open, by id: the captured pilot and quick check, and
- * the generated "Fixture run (test values)" whole-bank run, which has no
- * counterpart in the published list. Overview's own official run stays
- * FIXTURE_OFFICIAL above, so its baselines keep their look.
+ * The runs Results can open, by id: the subset run, the quick check and the
+ * whole-bank "Fixture run (test values)" runs. Overview's own official run
+ * stays FIXTURE_OFFICIAL above.
  */
 const RUN_SUMMARIES: Record<string, unknown> = {
-  'pilot-2026-nothink': pilotSummary,
-  '20261019T164733Z-smoke': smokeSummary,
+  [pilotSummary.run_id]: pilotSummary,
+  [smokeSummary.run_id]: smokeSummary,
   [officialSummary.run_id]: officialSummary,
   [v03Summary.run_id]: v03Summary,
   [DEV_SUMMARY.run_id]: DEV_SUMMARY,
 }
 const RUN_INSTANCES: Record<string, unknown> = {
-  'pilot-2026-nothink': pilotInstances,
+  [pilotSummary.run_id]: pilotInstances,
   [officialSummary.run_id]: officialInstances,
   [v03Summary.run_id]: v03Instances,
   [DEV_SUMMARY.run_id]: v03Instances,
@@ -183,7 +206,7 @@ const OFFICIAL_RUN = {
   headlines: officialSummary.summary.headlines,
 }
 
-/** The generated method v0.3 run as the run list shows it, newest of all. */
+/** The report tests' whole-bank run as the run list shows it, newest of all. */
 const V03_RUN = {
   run_id: v03Summary.run_id,
   run_kind: v03Summary.run_kind,
@@ -231,6 +254,7 @@ const ROUTES: Record<string, unknown> = {
   [`/api/v1/datasets/${DATASET_ID}/dictionary`]: DICTIONARY,
   '/api/v1/graph/schema': GRAPH_SCHEMA,
   '/api/v1/graph/stats': GRAPH_STATS,
+  '/api/v1/data-model/example': EXAMPLE,
 }
 
 const TABLES_PREFIX = `/api/v1/datasets/${DATASET_ID}/tables/`
@@ -255,12 +279,14 @@ const DATA_MODEL_PATHS = [
   '/api/v1/graph/schema',
   '/api/v1/ontology',
   '/api/v1/scenarios',
+  '/api/v1/data-model/example',
 ]
 
 /** What each Data Model route answers when the world has none. */
 const NONE: Record<string, unknown> = {
   '/api/v1/graph/schema': { ...GRAPH_SCHEMA, labels: [] },
   '/api/v1/ontology': { ...ONTOLOGY, concepts: [] },
+  '/api/v1/data-model/example': { incident_id: null },
 }
 
 const MEMBERS = /^\/api\/v1\/ontology\/concepts\/([^/]+)\/members$/
@@ -332,6 +358,20 @@ export async function mockApi(
       )
     if (path.startsWith(RUN_PREFIX) && path !== '/api/v1/benchmarks/jobs') {
       const [id, part] = path.slice(RUN_PREFIX.length).split('/')
+      // No run has a second judge unless a test calls mockSecondJudge.
+      if (part === 'second-judge')
+        return route.fulfill(
+          json(
+            {
+              error: {
+                error_code: 'NOT_FOUND',
+                message: 'This run has no second judge.',
+                retryable: false,
+              },
+            },
+            404,
+          ),
+        )
       const table = part === 'instances' ? RUN_INSTANCES : RUN_SUMMARIES
       if (part === undefined || part === 'instances') {
         const answer = table[decodeURIComponent(id)]
@@ -367,10 +407,10 @@ export async function mockApi(
       const id = decodeURIComponent(
         path.slice(NODE_PREFIX.length, -'/neighbours'.length),
       )
-      const limit = Number(
-        new URL(route.request().url()).searchParams.get('limit') ?? 25,
+      const answer = neighboursOf(
+        id,
+        new URL(route.request().url()).searchParams,
       )
-      const answer = neighboursOf(id, limit)
       return route.fulfill(json(answer.body, answer.status))
     }
     if (path.startsWith(NODE_PREFIX)) {
@@ -418,7 +458,7 @@ export const RUNNING_JOB: JobState = {
 export const COMPLETED_JOB: JobState = {
   ...RUNNING_JOB,
   status: 'completed',
-  run_id: 'pilot-2026-nothink',
+  run_id: pilotSummary.run_id,
   progress: null,
 }
 
@@ -429,6 +469,19 @@ export const COMPLETED_JOB: JobState = {
  * after a reload; otherwise POST /benchmarks starts it. The request bodies
  * and the cancel calls are kept for the test to read.
  */
+/** What the second-judge route answers for every run: the fixture's second judge, a failing server, or never an answer. */
+export type SecondJudgeState = 'ready' | 'error' | 'pending'
+
+/** Answers GET /benchmarks/{run_id}/second-judge, after mockApi, with the fixture's second judge (test values). */
+export async function mockSecondJudge(page: Page, state: SecondJudgeState) {
+  await page.route('**/api/v1/benchmarks/*/second-judge', async (route) => {
+    if (state === 'pending') return new Promise<void>(() => undefined)
+    if (state === 'error')
+      return route.fulfill(envelope('The second judge is unavailable.', 503))
+    return route.fulfill(json(secondJudge))
+  })
+}
+
 export async function mockJobs(
   page: Page,
   { script, attached = false }: { script: JobState[]; attached?: boolean },

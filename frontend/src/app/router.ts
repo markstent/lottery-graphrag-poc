@@ -1,6 +1,6 @@
 /**
- * Hash router for the five destinations (spec 7.1). A hand-written module
- * rather than react-router: five static routes, and deep links survive a
+ * Hash router for the six destinations (spec 7.1; Architecture since D-109).
+ * A hand-written module rather than react-router: six static routes, and deep links survive a
  * refresh by design (DECISIONS.md D-011). The routes of the earlier
  * application redirect to the destination that took their place.
  */
@@ -8,7 +8,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
 
 export type RouteName =
-  'overview' | 'live-lab' | 'results' | 'data-model' | 'help'
+  'overview' | 'live-lab' | 'results' | 'data-model' | 'architecture' | 'help'
 
 export interface Destination {
   name: RouteName
@@ -22,7 +22,7 @@ export const DESTINATIONS: readonly Destination[] = [
     name: 'overview',
     label: 'Overview',
     purpose:
-      'The verdict from the latest official run, how the three approaches differ, and a button to run a question',
+      'What we found, how the three approaches work, and questions to try',
   },
   {
     name: 'live-lab',
@@ -39,7 +39,13 @@ export const DESTINATIONS: readonly Destination[] = [
     name: 'data-model',
     label: 'Data Model',
     purpose:
-      'What the warehouse, the graph and the ontology look like, with live counts and sample rows',
+      'What the warehouse, the graph and the ontology look like, how they fit together, and one real record followed through all three, with live counts',
+  },
+  {
+    name: 'architecture',
+    label: 'Architecture',
+    purpose:
+      'The tech stack: the data platform, the graph and ontology layers on top, and what each part runs on',
   },
   {
     name: 'help',

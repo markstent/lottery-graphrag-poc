@@ -49,6 +49,14 @@ class Check(BaseModel):
 
     ok: bool
     detail: str
+    stand_in: bool = Field(
+        default=False,
+        description=(
+            "True when an offline stand-in for testing (the fake generator or the "
+            "hashing embedder) passed the check in place of a real model, so the "
+            "screens can say that answers are not a real model's."
+        ),
+    )
 
 
 class Readiness(BaseModel):
@@ -200,6 +208,9 @@ class DemoQuestion(BaseModel):
     text: str
     stratum: str
     market_scope: list[str]
+    # An easy-to-read wording of the same question (D-108), asked as written
+    # and not scored; None when the question has none in this world.
+    easy_text: str | None = None
 
 
 class UnavailableOut(BaseModel):
@@ -283,20 +294,6 @@ class JudgeAgreementOut(BaseModel):
     pipelines: dict[str, AgreementSplitOut]
 
 
-class ThresholdAgreementOut(BaseModel):
-    """Agreement as runs before method v0.3 recorded it: judge correctness 2
-    against an answer score of at least 0.5, with Cohen's kappa."""
-
-    n: int
-    agreement: float | None
-    kappa: float | None
-
-
-class ThresholdJudgeAgreementOut(BaseModel):
-    overall: ThresholdAgreementOut
-    pipelines: dict[str, ThresholdAgreementOut]
-
-
 class FailuresOut(BaseModel):
     """Per pipeline: scored repeats, generation and judge failures, and the
     repeats per failure class."""
@@ -325,19 +322,14 @@ class ReproducibilityOut(BaseModel):
 
 
 class SummaryOut(BaseModel):
-    """A run's ``summary.json``, every key the harness writes: schema 2 for a
-    run of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose
-    comparisons add C_vs_A cells and test evidence recall.
+    """A run's ``summary.json``, schema 3, the keys the clients read.
 
     A key added later is ignored, so an older client keeps reading.
     """
 
     model_config = ConfigDict(extra="ignore")
 
-    schema_version: Literal["2", "3"]
-    # Method v0.3's declaration that it was made after seeing v0.2.0 (D-093);
-    # None for a run of method v0.2.
-    method_note: str | None = None
+    schema_version: Literal["3"]
     run_kind: str
     label: str | None
     bank_version: str
@@ -347,10 +339,9 @@ class SummaryOut(BaseModel):
     anchor_resolution_basis: dict[str, str]
     metrics: dict[str, dict[str, dict[str, MetricCell]]]
     comparisons: list[ComparisonCell]
-    ontology_split: list[SplitCell] | None = None
+    ontology_split: list[SplitCell]
     headlines: list[str]
-    # A run published before method v0.3 (such as v0.2.0) keeps its threshold agreement.
-    judge_agreement: JudgeAgreementOut | ThresholdJudgeAgreementOut | None
+    judge_agreement: JudgeAgreementOut | None
     failures: FailuresOut
     selection: SelectionOut
     reproducibility: ReproducibilityOut
@@ -359,12 +350,12 @@ class SummaryOut(BaseModel):
 class BenchmarkSummary(BaseModel):
     """Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
 
-    ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
-    benchmark source the API publishes. ``run_kind`` and ``label`` are
-    copied out of it so a client can tell a smoke or sweep run from an
-    official result without reading the summary. ``method_version`` is the
-    method the run was made under, from its record: 0.2.0 for a run recorded
-    before the field existed (such as v0.2.0).
+    ``summary`` is the run's ``summary.json``, typed: the only benchmark
+    source the API publishes. ``run_kind`` and ``label`` are copied out of
+    it so a client can tell a smoke or sweep run from an official result
+    without reading the summary. ``method_version`` is the method the run was
+    made under, from its record; only runs of the current method are
+    published (D-104).
     """
 
     run_id: str
@@ -372,6 +363,200 @@ class BenchmarkSummary(BaseModel):
     label: str | None
     method_version: str
     summary: SummaryOut
+
+
+class SecondJudgeModelOut(BaseModel):
+    """The second judge model and the settings it was called with."""
+
+    model: str
+    model_family: str
+    reasoning: str
+    temperature: float
+    max_tokens: int
+
+
+class FirstJudgeOut(BaseModel):
+    """The first judge as the run recorded it, and its reply limit (the
+    code's; absent in a summary written before it was recorded)."""
+
+    model: str | None
+    model_family: str | None
+    prompt_version: str | None
+    max_tokens: int | None = None
+
+
+class SecondJudgeCountsOut(BaseModel):
+    """Repeats to judge, those judged, failures by kind and by message,
+    repeats not yet judged, and replies that stopped at the reply cap."""
+
+    repeats: int
+    judged: int
+    failures: int
+    pending: int
+    failure_kinds: dict[str, int]
+    failure_messages: dict[str, int]
+    cut_off_replies: int
+
+
+class SecondJudgeHeaderOut(BaseModel):
+    """What every second-judge summary records (schema 1, D-100)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    schema_version: Literal[1]
+    second_judge: SecondJudgeModelOut
+    judge_prompt_version: str
+    judge_prompt_hash: str
+    first_judge: FirstJudgeOut
+    generation_model: str | None
+    started_at: str | None
+    finished_at: str
+    git_sha: str
+    git_dirty: bool | None
+    min_kappa_items: int
+    counts: SecondJudgeCountsOut
+    run_id: str
+
+
+class AnswerLevelAgreementOut(BaseModel):
+    """Each judge's agreement with the answer level, as the run reports the first judge's."""
+
+    first: JudgeAgreementOut
+    second: JudgeAgreementOut
+
+
+class BetweenJudgesCellOut(AgreementOut):
+    """Correctness of the first judge against the second; ``confusion[i][j]``
+    counts repeats the first judge put on level i and the second on level j."""
+
+    confusion: list[list[int]]
+
+
+class BetweenJudgesOut(BaseModel):
+    answered: BetweenJudgesCellOut
+    abstained: BetweenJudgesCellOut
+
+
+class JudgeMeansOut(BaseModel):
+    """Each judge's mean of the five dimensions over ``n`` repeats both judged."""
+
+    n: int
+    first: dict[str, float]
+    second: dict[str, float]
+
+
+class SecondJudgeRunOut(SecondJudgeHeaderOut):
+    """The second judge over one run."""
+
+    kind: Literal["run"]
+    agreement_with_answer_level: AnswerLevelAgreementOut
+    agreement_between_judges: BetweenJudgesOut
+    means: dict[str, JudgeMeansOut]
+
+
+class LabelMeasureOut(BaseModel):
+    """One measure's agreement with the consensus labels; ``kappa_shown`` is
+    False below the item count a kappa is shown from."""
+
+    n: int
+    agreement: float | None
+    weighted_kappa: float | None
+    kappa_shown: bool
+    wrong_share: float | None
+
+
+class LabelCellOut(BaseModel):
+    n: int
+    measures: dict[str, LabelMeasureOut]
+
+
+class LabelAgreementOut(BaseModel):
+    """The labelling analysis with the second judge added as ``second_judge``."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    run: str
+    measures: dict[str, str]
+    overall: dict[str, LabelMeasureOut]
+    cells: dict[str, LabelCellOut]
+
+
+class SecondJudgeLabelsOut(SecondJudgeHeaderOut):
+    """The second judge over the hand-labelled sample, beside the first judge."""
+
+    kind: Literal["labels"]
+    sample: str
+    agreement_with_labels: LabelAgreementOut
+
+
+class JudgesCountsOut(BaseModel):
+    """Answers of the run, those both judges scored, those on which they gave
+    the same correctness, those with no mark by reason, and the answers the
+    judges disagree on."""
+
+    answers: int
+    both_judged: int
+    agreed: int
+    missing: dict[str, int]
+    disagreements: int
+
+
+class JudgesDisagreeOut(BaseModel):
+    """One answer the judges disagree on: one gave correctness 2, the other 0."""
+
+    instance_id: str
+    question_id: str
+    world_seed: int
+    stratum: str
+    pipeline: str
+    repeat: int
+    question: str
+    first: int
+    second: int
+
+
+class JudgesMarkOut(BaseModel):
+    """The two judges' combined mark (``combined.json``, schema 1, D-105):
+    per answer (c1 + c2) / 4, tested as its own family. ``metrics`` is per
+    stratum and pipeline, ``comparisons`` and ``headlines`` have the run's
+    shapes, ``agreement`` is between the judges."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    schema_version: Literal[1]
+    kind: Literal["combined"]
+    family: Literal["judges"]
+    run_id: str
+    measure: str
+    definition: str
+    first_judge: FirstJudgeOut
+    second_judge: SecondJudgeModelOut
+    judge_prompt_version: str
+    judge_prompt_hash: str
+    second_judge_finished_at: str
+    computed_at: str
+    git_sha: str
+    git_dirty: bool | None
+    min_kappa_items: int
+    counts: JudgesCountsOut
+    metrics: dict[str, dict[str, MetricCell]]
+    comparisons: list[ComparisonCell]
+    headlines: list[str]
+    agreement: BetweenJudgesOut
+    disagreements_by_stratum: dict[str, int]
+    disagreements: list[JudgesDisagreeOut]
+
+
+class SecondJudgeOut(BaseModel):
+    """Response for GET /api/v1/benchmarks/{run_id}/second-judge: the newest
+    second-judge summary of the run and, when there is one, the newest label
+    check of the same model (D-100), and the two judges' combined mark when it
+    has been computed from that summary's pass (D-105), else null."""
+
+    run_id: str
+    run: SecondJudgeRunOut
+    labels: SecondJudgeLabelsOut | None
+    combined: JudgesMarkOut | None = None
 
 
 class BenchmarkRunOut(BaseModel):
@@ -683,12 +868,15 @@ class ProvenanceOut(BaseModel):
 
 class NodeOut(BaseModel):
     """One graph node; ``provenance`` is None for a node no source table
-    maps to (PrizeType, BusinessConcept)."""
+    maps to (PrizeType, BusinessConcept). ``edges`` counts the links meeting
+    the node, per type and direction; only the node route fills it, and the
+    nodes listed as neighbours carry none."""
 
     node_id: str
     labels: list[str]
     properties: dict[str, JsonValue]
     provenance: ProvenanceOut | None
+    edges: list[EdgeSummary] = Field(default_factory=list)
 
 
 class NeighbourOut(BaseModel):
@@ -739,13 +927,25 @@ class MemberOut(BaseModel):
     name: str | None
 
 
+class DataModelExample(BaseModel):
+    """The incident the Data Model Overview follows through the three layers,
+    or null when the active world has none (no incidents, or no truth ledger
+    of its own to check against). Carries the example's id only: never which
+    rows were planted or why."""
+
+    incident_id: str | None
+
+
 class ScenarioOut(BaseModel):
     """A catalogue scenario and whether the active dataset planted it. Carries
-    configuration only: never the truth ledger."""
+    configuration only: never the truth ledger. ``description`` is the
+    catalogue's plain description of the story, which is configuration, not
+    truth."""
 
     scenario_id: str
     scenario_type: str
     title: str
+    description: str
     planted: bool
     planted_rows: dict[str, int]
     strength: float | None

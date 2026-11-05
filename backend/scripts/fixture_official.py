@@ -1,19 +1,18 @@
-"""Write the Results screen's method v0.2 fixtures: test values, not results.
+"""Write the Results screen's run fixtures: test values, not results.
 
-The official run is a whole-bank run over three worlds built from the report
-tests' hand-made results, with the same scores for A, B and C so nothing it
-draws suggests a direction. Its instances pass through the API's own builder.
+Three runs of the current method, each the report tests' hand-made results
+through ``summarize`` and the API's own builders, so every fixture is what
+the API serves and nothing is edited by hand:
 
-Method v0.3 replaced the code that wrote summary schema 2 (D-092), so the
-v0.2 summaries these fixtures hold, the official run's and the captured pilot
-and quick check, are kept as they were written and served again through the
-API's own builder (``_summary_out``). That adds what the API now serves for
-them, ``method_version`` (from ``method_of``), and nothing is edited by hand.
-The captured run list and the shell capture hold listed runs and slim
-summaries with no record: every one was recorded before ``method_version``
-existed, which ``method_of`` reads as 0.2.0, as the API does.
+- the official run, ``fixture-official``: the whole bank over three worlds,
+  with the same scores for A, B and C so nothing it draws suggests a direction;
+- a subset run, ``fixture-subset``: one world, at most two instances per question;
+- a quick check, ``fixture-smoke``: the scorer smoke test.
 
-The fixtures are read from and written back to ``--out``. Run from backend/:
+The run list holds the subset run, the quick check and the report tests'
+v0.3 run (``fixture-v03``, written by tests/test_benchmark_report.py).
+
+The fixtures are written to ``--out``. Run from backend/:
     uv run python -m scripts.fixture_official --out ../frontend/e2e/fixtures
 then run prettier --write on the output in frontend/.
 """
@@ -27,29 +26,40 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from app.api.benchmarks import _instances, _published, _summary_out
-from app.api.schemas import BenchmarkRunOut
+from app.api.benchmarks import _instances, _published, _summary_out, listed
+from app.config import METHOD_VERSION
 from app.evaluation.grounding import Unavailable
-from app.evaluation.official import method_of
+from app.evaluation.official import run_label
 from app.evaluation.report import summarize
-from app.evaluation.runner import BenchmarkRun, InstanceResult, WorldRun
-from tests.test_benchmark_report import _instance, _record, _result
+from app.evaluation.runner import BenchmarkRun, InstanceResult, Selection, WorldRun
+from tests.test_benchmark_report import (
+    V03_FIXTURE_LABEL,
+    V03_FIXTURE_RUN,
+    _benchmark,
+    _instance,
+    _record,
+    _result,
+)
 
 SEEDS = (2026, 2027, 2028)
 LABEL = "Fixture run (test values)"
 SCORE = (0.4, 0.4)
 QUESTIONS = {"H1": 6, "H2": 6, "H3": 6, "H5": 6}
 NAME_ANCHORED = 3
+OFFICIAL = "fixture-official"
+SUBSET = "fixture-subset"
+SMOKE = "fixture-smoke"
+SUBSET_SELECTION = Selection(limit=2)
 OFFICIAL_INSTANCES = "results-official-instances.json"
+SUBSET_INSTANCES = "results-pilot-instances.json"
 # The fixtures that hold one run's summary, as GET /benchmarks/{id} serves it.
-SERVED_SUMMARIES = (
-    "results-official-summary.json",
-    "results-pilot-summary.json",
-    "results-smoke-summary.json",
-)
+SUMMARIES = {
+    OFFICIAL: "results-official-summary.json",
+    SUBSET: "results-pilot-summary.json",
+    SMOKE: "results-smoke-summary.json",
+}
 RUN_LIST = "results-runs.json"
-SHELL = "world-shell.json"
-WRITTEN = (OFFICIAL_INSTANCES, *SERVED_SUMMARIES, RUN_LIST, SHELL)
+WRITTEN = (OFFICIAL_INSTANCES, SUBSET_INSTANCES, *SUMMARIES.values(), RUN_LIST)
 
 
 def _world(seed: int) -> WorldRun:
@@ -66,58 +76,58 @@ def _world(seed: int) -> WorldRun:
     return WorldRun(seed, "bankhash", results, (Unavailable("L99", "no anchor"),))
 
 
-def official_instances() -> list[dict[str, Any]]:
-    """The official run's instances, as GET /benchmarks/{id}/instances serves them."""
-    record = dataclasses.replace(_record("official"), world_seed=SEEDS[0])
-    run = BenchmarkRun("official", LABEL, record, [_world(seed) for seed in SEEDS])
-    with tempfile.TemporaryDirectory() as tmp:
-        run_dir = Path(tmp) / "fixture-official"
-        run_dir.mkdir()
-        (run_dir / "results.json").write_text(json.dumps(run.to_payload()))
-        (run_dir / "summary.json").write_text(json.dumps(summarize(run)))
-        return [row.model_dump(mode="json") for row in _instances(Path(tmp), run_dir.name)]
+def _run(kind: str, started_at: str, seeds: tuple[int, ...], selection: Selection) -> BenchmarkRun:
+    """A run of the current method with equal scores for every pipeline."""
+    record = dataclasses.replace(
+        _record(kind),
+        world_seed=seeds[0],
+        started_at=started_at,
+        method_version=METHOD_VERSION,
+    )
+    label = LABEL if selection.full and kind == "official" else run_label(kind, selection)
+    return BenchmarkRun(kind, label, record, [_world(seed) for seed in seeds], selection)
 
 
-def served(fixture: dict[str, Any]) -> dict[str, Any]:
-    """A stored summary served again by the API's own builder."""
-    with tempfile.TemporaryDirectory() as tmp:
-        run_dir = Path(tmp) / fixture["run_id"]
-        run_dir.mkdir()
-        (run_dir / "summary.json").write_text(json.dumps(fixture["summary"]))
-        return _summary_out(_published(Path(tmp), run_dir.name)).model_dump(mode="json")
-
-
-def listed(run: dict[str, Any]) -> dict[str, Any]:
-    """A captured run-list entry with the method the API serves for it."""
-    fields = {key: value for key, value in run.items() if key != "method_version"}
-    return BenchmarkRunOut(**fields, method_version=method_of({})).model_dump(mode="json")
-
-
-def with_method(slim: dict[str, Any]) -> dict[str, Any]:
-    """A slim captured summary with the method the API serves for it."""
-    fields = {key: value for key, value in slim.items() if key not in ("method_version", "summary")}
-    return {**fields, "method_version": method_of({}), "summary": slim["summary"]}
+def _runs() -> dict[str, BenchmarkRun]:
+    v03 = _benchmark("official", h5_per_world=6, label=V03_FIXTURE_LABEL)
+    return {
+        OFFICIAL: _run("official", "2026-10-19T12:00:00+00:00", SEEDS, Selection()),
+        SUBSET: _run("official", "2026-10-19T19:58:50+00:00", SEEDS[:1], SUBSET_SELECTION),
+        SMOKE: _run("smoke", "2026-10-19T16:47:50+00:00", SEEDS[:1], Selection()),
+        V03_FIXTURE_RUN: v03,
+    }
 
 
 def write(out: Path) -> None:
     """Rewrite every fixture in ``WRITTEN`` under ``out``."""
 
-    def load(name: str) -> Any:
-        return json.loads((out / name).read_text(encoding="utf-8"))
-
     def save(name: str, value: Any) -> None:
         text = json.dumps(value, indent=2, ensure_ascii=False) + "\n"
         (out / name).write_text(text, encoding="utf-8")
 
-    save(OFFICIAL_INSTANCES, official_instances())
-    for name in SERVED_SUMMARIES:
-        save(name, served(load(name)))
-    save(RUN_LIST, [listed(run) for run in load(RUN_LIST)])
-    shell = load(SHELL)
-    shell["runs"] = [listed(run) for run in shell["runs"]]
-    shell["latest"] = with_method(shell["latest"])
-    shell["latest_smoke"] = with_method(shell["latest_smoke"])
-    save(SHELL, shell)
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        for name, run in _runs().items():
+            run_dir = root / name
+            run_dir.mkdir()
+            (run_dir / "results.json").write_text(json.dumps(run.to_payload()))
+            (run_dir / "summary.json").write_text(json.dumps(summarize(run)))
+
+        def served(name: str) -> dict[str, Any]:
+            return _summary_out(_published(root, name)).model_dump(mode="json")
+
+        def instances(name: str) -> list[dict[str, Any]]:
+            return [row.model_dump(mode="json") for row in _instances(root, name)]
+
+        for name, fixture in SUMMARIES.items():
+            save(fixture, served(name))
+        save(OFFICIAL_INSTANCES, instances(OFFICIAL))
+        save(SUBSET_INSTANCES, instances(SUBSET))
+        listed_runs = [
+            listed(_published(root, name)).model_dump(mode="json")
+            for name in (SUBSET, SMOKE, V03_FIXTURE_RUN)
+        ]
+        save(RUN_LIST, listed_runs)
 
 
 def main() -> None:

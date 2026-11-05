@@ -282,22 +282,31 @@ class JudgeSettings:
     temperature: float
     # "default" or "off" (app.models.gateway.REASONING_MODES).
     reasoning: str = "default"
+    # The reply limit; None is the judge's own JUDGE_MAX_TOKENS. Only the
+    # second judge sets it (SECOND_JUDGE_MAX_TOKENS, D-100).
+    max_tokens: int | None = None
 
 
-def judge_settings_from_env() -> JudgeSettings:
-    """Read the JUDGE_* variables (see .env.example); empty means unset."""
-    model = os.environ.get("JUDGE_MODEL", FAKE_JUDGE_MODEL)
-    provider = os.environ.get("JUDGE_PROVIDER", "fake")
+def judge_settings_from_env(prefix: str = "JUDGE") -> JudgeSettings:
+    """Read the JUDGE_* variables (see .env.example); empty means unset.
+
+    ``prefix`` "SECOND_JUDGE" reads the second judge's SECOND_JUDGE_* the same way (D-100).
+    """
+    model = os.environ.get(f"{prefix}_MODEL", FAKE_JUDGE_MODEL)
+    provider = os.environ.get(f"{prefix}_PROVIDER", "fake")
     return JudgeSettings(
         provider=provider,
         model=model,
-        model_family=os.environ.get("JUDGE_MODEL_FAMILY") or None,
-        api_base=os.environ.get("JUDGE_API_BASE") or None,
-        temperature=_env_float("JUDGE_TEMPERATURE", 0.0)
-        if os.environ.get("JUDGE_TEMPERATURE")
+        model_family=os.environ.get(f"{prefix}_MODEL_FAMILY") or None,
+        api_base=os.environ.get(f"{prefix}_API_BASE") or None,
+        temperature=_env_float(f"{prefix}_TEMPERATURE", 0.0)
+        if os.environ.get(f"{prefix}_TEMPERATURE")
         else 0.0,
         reasoning=parse_reasoning_for_model(
-            os.environ.get("JUDGE_REASONING") or "default", "JUDGE_REASONING", provider, model
+            os.environ.get(f"{prefix}_REASONING") or "default",
+            f"{prefix}_REASONING",
+            provider,
+            model,
         ),
     )
 

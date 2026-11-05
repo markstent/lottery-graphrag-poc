@@ -12,6 +12,9 @@ import { ScrollBox } from '../../components/scroll-box'
 
 const CELL = 'border-b border-hairline px-3 py-2 align-top'
 
+/** Keeps a decision id such as D-001 on one line: its hyphen becomes a non-breaking one. */
+const keepIds = (text: string) => text.replace(/\bD-(\d)/g, 'D\u2011$1')
+
 const PLAIN_COLUMNS = ['Assumption or limit', 'What it means'] as const
 const TECHNICAL_COLUMNS = [
   'Why',
@@ -30,7 +33,8 @@ export function Register() {
   return (
     <ScrollBox label="Assumptions and limits">
       <table
-        className={`w-full text-left text-sm ${technical ? 'min-w-[64rem]' : 'min-w-[36rem]'}`}
+        // 48rem fits the chapter column beside the chapter list at 1440 px, so all five columns show without scrolling.
+        className={`w-full text-left text-sm ${technical ? 'min-w-[48rem]' : 'min-w-[36rem]'}`}
       >
         <caption className="sr-only">Assumptions and limits</caption>
         <thead className="text-text-muted">
@@ -47,7 +51,7 @@ export function Register() {
             <tr key={row.id} id={`limit-${row.id}`}>
               <th
                 scope="row"
-                className={`${CELL} w-48 font-semibold text-text-primary`}
+                className={`${CELL} ${technical ? 'w-36' : 'w-48'} font-semibold text-text-primary`}
               >
                 {fill(row.item)}
               </th>
@@ -56,8 +60,8 @@ export function Register() {
                 <>
                   <td className={CELL}>{fill(row.reason)}</td>
                   <td className={CELL}>{fill(row.cost)}</td>
-                  <td className={`${CELL} w-40`}>
-                    {row.decision ? fill(row.decision) : 'None'}
+                  <td className={`${CELL} w-40 wrap-anywhere`}>
+                    {row.decision ? keepIds(fill(row.decision)) : 'None'}
                   </td>
                 </>
               )}

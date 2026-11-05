@@ -62,7 +62,8 @@ export interface FoldedGroup {
  * edge at the bottom of the window.
  */
 const HEIGHT = 'clamp(35rem, calc(100vh - 32.25rem), 50rem)'
-const PRESENTATION_HEIGHT = 'clamp(38rem, calc(100vh - 27.5rem), 56rem)'
+// In presentation mode the panels sit under the graph (D-112), so it takes the rest of the first screen.
+const PRESENTATION_HEIGHT = 'clamp(38rem, calc(100vh - 20rem), 64rem)'
 
 const heightOf = (presentation: boolean) =>
   presentation ? PRESENTATION_HEIGHT : HEIGHT

@@ -12,6 +12,36 @@ describe('Diagram', () => {
     { id: 'e', source: 'a', target: 'b', label: 'is available in' },
   ]
 
+  it('draws a reversed link with its arrow back at the source, and reads it from the target', async () => {
+    const { container } = render(
+      <Diagram
+        nodes={nodes}
+        edges={[
+          { ...edges[0], reversed: true },
+          {
+            id: 'f',
+            source: 'a',
+            target: 'b',
+            label: 'are deployed to it',
+            reversed: true,
+          },
+        ]}
+        label="Map"
+        onSelect={() => undefined}
+        scale={1}
+        titlePx={18}
+      />,
+    )
+    expect(
+      await screen.findByText('market is available in game'),
+    ).toBeInTheDocument()
+    // An incoming phrase names the source as "it", so the words name it instead.
+    expect(screen.getByText('market are deployed to game')).toBeInTheDocument()
+    const path = container.querySelector('g[data-edge-id="e"] path')
+    expect(path).toHaveAttribute('marker-start')
+    expect(path).not.toHaveAttribute('marker-end')
+  })
+
   it('draws a keyboard-reachable button for each node and lists each link in words', async () => {
     const onSelect = vi.fn()
     render(
@@ -21,6 +51,7 @@ describe('Diagram', () => {
         label="Map"
         onSelect={onSelect}
         scale={1}
+        titlePx={18}
       />,
     )
     const game = await screen.findByRole('button', { name: 'game, 120 nodes' })
@@ -40,6 +71,7 @@ describe('Diagram', () => {
         selected="b"
         onSelect={() => undefined}
         scale={1}
+        titlePx={18}
       />,
     )
     expect(

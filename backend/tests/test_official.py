@@ -221,8 +221,8 @@ class FakeRunner:
 @pytest.fixture(autouse=True)
 def clean_checkout(monkeypatch: pytest.MonkeyPatch) -> None:
     """A fixed revision on a clean checkout, whatever this repository's state."""
-    monkeypatch.setattr(runner_module, "_git_sha", lambda: "abc123")
-    monkeypatch.setattr(runner_module, "_git_dirty", lambda: False)
+    monkeypatch.setattr(runner_module, "git_sha", lambda: "abc123")
+    monkeypatch.setattr(runner_module, "git_dirty", lambda: False)
 
 
 @pytest.fixture
@@ -497,7 +497,7 @@ def test_an_official_run_starts_only_from_a_known_clean_checkout(
 ) -> None:
     """D-091: a fresh official run, the full run and the dry run alike, is
     refused before anything is prepared unless git says the tree is clean."""
-    monkeypatch.setattr(runner_module, "_git_dirty", lambda: dirty)
+    monkeypatch.setattr(runner_module, "git_dirty", lambda: dirty)
     with pytest.raises(ValueError, match="starts or resumes only from a clean checkout"):
         preflight("official", 3)
     for seeds, questions in ((UNSEEN_RUN, None), ((2026,), ["L05"])):
@@ -515,7 +515,7 @@ def test_an_official_run_starts_from_a_clean_checkout(gateway_env: None, data_di
 def test_other_run_kinds_only_record_a_dirty_checkout(
     gateway_env: None, data_dir: Path, monkeypatch: pytest.MonkeyPatch, kind: str
 ) -> None:
-    monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
+    monkeypatch.setattr(runner_module, "git_dirty", lambda: True)
     preflight(kind, 1)
 
 
@@ -1526,10 +1526,10 @@ def test_an_official_run_resumes_only_from_a_clean_checkout(
     tmp_path: Path, gateway_env: None, data_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     failing, fresh = _failed_then_fresh(tmp_path, kind="official", repeats=3)
-    monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
+    monkeypatch.setattr(runner_module, "git_dirty", lambda: True)
     with pytest.raises(ValueError, match="clean checkout"):
         _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
-    monkeypatch.setattr(runner_module, "_git_dirty", lambda: False)
+    monkeypatch.setattr(runner_module, "git_dirty", lambda: False)
     _edit_kept(failing, 2029, lambda saved: saved["record"].update(git_dirty=True))
     with pytest.raises(ValueError, match="kept world 2029 was run on a checkout with uncommitted"):
         _run(fresh, UNSEEN_RUN, kind="official", repeats=3, resume=True)
@@ -1541,7 +1541,7 @@ def test_a_smoke_run_may_resume_across_a_dirty_checkout(
 ) -> None:
     failing, fresh = _failed_then_fresh(tmp_path)
     _edit_kept(failing, 2026, lambda saved: saved["record"].update(git_dirty=True))
-    monkeypatch.setattr(runner_module, "_git_dirty", lambda: True)
+    monkeypatch.setattr(runner_module, "git_dirty", lambda: True)
     _run(fresh, resume=True)
     assert [r["seed"] for r in fresh.runners] == [2027, 2028]
 

@@ -1,11 +1,18 @@
 /**
  * Draws the blocks of a chapter: paragraphs and lists with their settings
- * filled in, the settings table, the pictures and the live components.
+ * filled in, headings, tables of text, the settings table, the pictures and
+ * the live components.
  */
 
 import type { ReactElement } from 'react'
 
-import type { Block, ComponentName, DiagramName, SettingKey } from './chapters'
+import type {
+  Block,
+  ComponentName,
+  DiagramName,
+  SettingKey,
+  TableBlock,
+} from './chapters'
 import { DataTour } from './data'
 import { ApproachDiagram } from './diagrams/approach-diagram'
 import { EvidenceDiagram } from './diagrams/evidence-diagram'
@@ -119,6 +126,42 @@ function SettingsTable({ keys }: { keys: readonly SettingKey[] }) {
   )
 }
 
+function TextTable({ caption, columns, rows }: Omit<TableBlock, 'kind'>) {
+  return (
+    <ScrollBox label={caption}>
+      <table className="w-full min-w-[48rem] text-left text-sm">
+        <caption className="sr-only">{caption}</caption>
+        <thead className="text-text-muted">
+          <tr>
+            {columns.map((name) => (
+              <th key={name} scope="col" className={CELL}>
+                {name}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([name, ...cells]) => (
+            <tr key={name}>
+              <th
+                scope="row"
+                className={`${CELL} font-semibold text-text-primary`}
+              >
+                {name}
+              </th>
+              {cells.map((cell, position) => (
+                <td key={position} className={`${CELL} tabular`}>
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </ScrollBox>
+  )
+}
+
 export function Blocks({ blocks }: { blocks: readonly Block[] }) {
   const values = useSettingValues()
   const fill = (text: string) => fillSettings(text, values)
@@ -132,6 +175,16 @@ export function Blocks({ blocks }: { blocks: readonly Block[] }) {
           ))}
         </ul>
       )
+    if (block.kind === 'heading')
+      return (
+        <h3
+          key={index}
+          className="pt-2 text-base font-semibold text-text-primary"
+        >
+          {block.text}
+        </h3>
+      )
+    if (block.kind === 'table') return <TextTable key={index} {...block} />
     if (block.kind === 'settings')
       return <SettingsTable key={index} keys={block.keys} />
     if (block.kind === 'diagram')

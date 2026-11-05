@@ -8,7 +8,7 @@ deterministic scorer (``score_pipeline_run``), so a live score equals what
 the runner computes for the same pipeline results. The judge never runs
 here: it runs only in official runs.
 
-This is one of the two API modules that may import ``app.evaluation``
+This is one of the three API modules that may import ``app.evaluation``
 (ADR-008); the expected answer, checks and claims stay in this module and
 never reach a pipeline, an event or a log record.
 """
@@ -19,6 +19,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from app.api.easy_questions import easy_wording
 from app.api.errors import ApiError, ErrorCode
 from app.api.schemas import (
     DemoQuestion,
@@ -64,7 +65,8 @@ class BankQuestion:
 
 
 def demo_questions(bank: FrozenBank) -> list[DemoQuestion]:
-    """The first instance in bank order of each demo stratum, in stratum order."""
+    """The first instance in bank order of each demo stratum, in stratum order,
+    each with its easy-to-read wording where it has one."""
     return [
         DemoQuestion(
             instance_id=first.instance_id,
@@ -72,6 +74,7 @@ def demo_questions(bank: FrozenBank) -> list[DemoQuestion]:
             text=first.text,
             stratum=first.stratum,
             market_scope=list(INSTANCE_SCOPE),
+            easy_text=easy_wording(first.instance_id, bank.world_manifest_hash),
         )
         for first in demo_instances(bank)
     ]

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { GLOSSARY_TERMS } from '../../copy/glossary'
 import { Blocks } from './blocks'
-import { CHAPTERS, type Block, type ChapterId } from './chapters'
+import { PAGES, type Block, type ChapterId } from './chapters'
 import { CHAPTER_COPY } from './copy'
 import { REGISTER } from './copy/limits'
 import { HelpDataContext, type HelpData } from './help-data'
@@ -28,7 +28,6 @@ function helpData(level: HelpData['level']): HelpData {
     level,
     bank: { status: 'loading', retry: () => undefined },
     scores: 'none',
-    evidence: 'evidence_f1',
     story: null,
     settings: {
       status: 'ready',
@@ -98,7 +97,7 @@ function chapterText(id: ChapterId): string {
   return own.join('\n')
 }
 
-const allHelpText = () => CHAPTERS.map(({ id }) => chapterText(id)).join('\n')
+const allHelpText = () => PAGES.map(({ id }) => chapterText(id)).join('\n')
 
 describe('chapters 7 to 12', () => {
   it('chapters 7, 8, 9, 10 and 12 have plain and technical prose, and 11 a plain framing', () => {
@@ -131,7 +130,6 @@ describe('chapters 7 to 12', () => {
         'bank-size',
         'question-groups',
         'interval-and-test',
-        'method-after-result',
         'bank-authors',
       ]),
     )
@@ -143,7 +141,7 @@ describe('chapters 7 to 12', () => {
   it("the register states the official run's own limits with their source", () => {
     const row = (id: string) => REGISTER.find((r) => r.id === id)!
     const agreement = row('judge-agreement')
-    // The official run v0.3.0 (official-2026-10-29) is the current result.
+    // The official run (official-2026-10-29) is the result.
     expect(agreement.plain).toContain('88 percent')
     expect(agreement.plain).toContain('70 percent')
     expect(agreement.reason).toMatch(/weighted kappa 0\.77/)
@@ -152,20 +150,28 @@ describe('chapters 7 to 12', () => {
     expect(agreement.reason).toContain('D-096')
     expect(row('question-groups').plain).toContain('24 groups')
     expect(row('interval-and-test').plain).toContain('five tested comparisons')
-    expect(row('method-after-result').plain).toContain('v0.2.0')
   })
 
-  it('names the official run v0.3.0 as the current result, and v0.2.0 as the earlier one', () => {
+  it('describes one method and one official run, with no word of an earlier method or run (D-104)', () => {
+    const help = [
+      allHelpText(),
+      ...GLOSSARY_TERMS.flatMap(({ meaning, technical }) => [
+        meaning,
+        technical ?? '',
+      ]),
+      ...COMMAND_GROUPS.flatMap(({ rows }) => rows.flat()),
+    ].join('\n')
+    expect(help).not.toMatch(
+      /\bv0\.[0-9]|method 0\.[0-9]|official-2026-10-26|old method|earlier (?:official )?run|first method|second method|method was changed|after seeing/i,
+    )
     for (const id of ['why', 'results'] as const) {
       const text = chapterText(id)
-      expect(text, id).toContain('official run v0.3.0')
+      expect(text, id).toContain('official run')
+      expect(text, id).toContain('2026-10-29')
       expect(text, id).not.toMatch(
         /result so far|will use six worlds|will be published whatever/,
       )
     }
-    expect(chapterText('results')).toContain(
-      'The earlier official run, v0.2.0, under the old method',
-    )
     expect(chapterText('why')).toContain('22.1 percentage points')
   })
 
@@ -220,7 +226,10 @@ describe('chapters 7 to 12', () => {
     )
   })
 
-  it('every command in Help is a Makefile target, and every target is listed in Running it', () => {
+  /** Targets that act only on a run the site does not show, so Running it leaves them out (D-104). */
+  const EARLIER_RUN_TARGETS = new Set(['addendum-v020'])
+
+  it('every command in Help is a Makefile target, and every target but those of a run the site does not show is listed in Running it', () => {
     const makefile = readFileSync(resolve(process.cwd(), '../Makefile'), 'utf8')
     const defined = [...makefile.matchAll(/^([a-z0-9-]+):.*##/gm)].map(
       (match) => match[1]!,
@@ -233,15 +242,17 @@ describe('chapters 7 to 12', () => {
     const listed = COMMAND_GROUPS.flatMap(({ rows }) =>
       rows.map(([command]) => command),
     )
-    for (const target of defined)
+    for (const target of defined.filter((t) => !EARLIER_RUN_TARGETS.has(t)))
       expect(listed, target).toContain(`make ${target}`)
+    for (const target of EARLIER_RUN_TARGETS)
+      expect(listed, target).not.toContain(`make ${target}`)
   })
 
   it('terms used in chapters are in the glossary', () => {
     const glossary = new Set(
       GLOSSARY_TERMS.map(({ term }) => term.toLowerCase()),
     )
-    for (const { id } of CHAPTERS) {
+    for (const { id } of PAGES) {
       const terms = CHAPTER_COPY[id].terms ?? []
       if (id !== 'glossary') expect(terms.length, id).toBeGreaterThan(0)
       const text = chapterText(id).toLowerCase()
@@ -254,7 +265,7 @@ describe('chapters 7 to 12', () => {
 
   it('every glossary term is used by some chapter', () => {
     const used = new Set(
-      CHAPTERS.flatMap(({ id }) =>
+      PAGES.flatMap(({ id }) =>
         (CHAPTER_COPY[id].terms ?? []).map((term) => term.toLowerCase()),
       ),
     )
@@ -303,7 +314,7 @@ describe('chapters 7 to 12', () => {
     }
   })
 
-  it('states method v0.3 where Help v2 stated v0.2 facts', () => {
+  it('states the facts of the official run', () => {
     // Running it: the official run is the six unseen worlds, each question once (D-097).
     show('technical', [{ kind: 'component', name: 'running' }])
     expect(
@@ -313,11 +324,9 @@ describe('chapters 7 to 12', () => {
     )
     expect(document.body).not.toHaveTextContent(/on three worlds/)
     cleanup()
-    // The questions: 150 instances belong to v0.2.0, not to the official run now.
+    // The questions: the official run grounded 300 instances over six worlds.
     const questions = chapterText('questions')
-    expect(questions).toContain(
-      'the three worlds of the official run v0.2.0 gave 150',
-    )
+    expect(questions).toContain('its six worlds gave 300, 50 in each')
     expect(questions).not.toMatch(/the three official worlds/)
     // A token is charged for the whole block, not the bare text.
     const token = GLOSSARY_TERMS.find(({ term }) => term === 'Token')!
@@ -338,6 +347,24 @@ describe('chapters 7 to 12', () => {
     expect(why).not.toMatch(/the one declared extra/)
     expect(why).toContain('target-type tier')
     expect(why).toContain("C's concept text")
+  })
+
+  it('states the scoring rules as the official run applied them', () => {
+    const scoring = strings(CHAPTER_COPY.scoring.plain).join(' ')
+    // 3 of 72 single-fact instances kept a claim in that run (results.json); not every one reads Missing.
+    expect(scoring).toContain('almost every single-fact question')
+    expect(scoring).toContain('3 of the 72 single-fact questions')
+    expect(scoring).not.toMatch(/case for every single-fact question/)
+    // Detectable needs the Holm test and an interval that leaves out zero (statistics.py).
+    expect(scoring).toContain('its margin of error leaves out zero')
+    expect(scoring).toContain('once by default')
+    const term = (name: string) =>
+      GLOSSARY_TERMS.find(({ term }) => term === name)!
+    expect(term('Detectable difference').meaning).toContain(
+      'margin of error leaves out zero',
+    )
+    expect(term('Judge').technical).toContain('judge prompt 1.2.0 (D-096)')
+    expect(chapterText('glossary')).not.toContain('2026-10-27.')
   })
 
   it("says only B shares A's first block, and that turns are one for one", () => {

@@ -1,394 +1,191 @@
 /**
- * The Graph tab: the graph's kinds of record sized by count, with the
- * relationships between them, for the relationships each approach may follow
- * or the whole schema; choosing a kind shows its properties and a sample
- * node. A node address in the route (`?node=`) shows that node with a bounded
- * set of its neighbours, which is where "Follow into the graph" lands.
+ * The Graph tab's "Kinds of link" table, for its "About this" drawer (D-113,
+ * D-115): what each kind of link joins, where it is made from and how many
+ * there are, grouped by which approaches may follow it, with a filter for the
+ * links Graph follows, those Graph + Ontology follows, or all of them.
  */
 
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
-import {
-  getDictionary,
-  getGraphSchema,
-  getGraphStats,
-  getNeighbours,
-  getNode,
-  getRows,
-  listDatasets,
-  type Schemas,
-} from '../../api/client'
-import { distinctFields, plainName, plainValue } from '../../app/plain-words'
-import { hrefFor } from '../../app/router'
-import { useLoad } from '../../app/use-load'
-import { Drawer } from '../../components/drawer'
-import { Panel } from '../../components/panel'
-import { nodeLabel } from '../../design/node-labels'
+import type { Schemas } from '../../api/client'
+import { MISSING } from '../../app/score-words'
+import { ScrollBox } from '../../components/scroll-box'
 import { pipeline } from '../../design/pipelines'
-import { relationshipPhrase } from '../../design/relationships'
-import { Diagram } from './meta-graph'
+import { RELATIONSHIP_SOURCES } from '../../design/relationships'
 import {
-  metaGraphModel,
+  count,
+  FOLLOWED_BY,
+  relationshipRows,
   type AllowList,
-  type DiagramEdge,
-  type DiagramNode,
+  type RelationshipRow,
 } from './model'
-
-type Node = Schemas['NodeOut']
-
-/** How many neighbours of a node are asked for; the server allows 100. */
-export const NEIGHBOUR_LIMIT = 20
 
 const MODES: { id: AllowList; label: string }[] = [
   { id: 'B', label: pipeline('B').label },
   { id: 'C', label: pipeline('C').label },
-  { id: 'full', label: 'Full schema' },
+  { id: 'full', label: 'All links' },
 ]
 
-const backToKinds = (
-  <a
-    href={hrefFor('data-model', { tab: 'graph' })}
-    className="text-sm text-text-primary underline"
-  >
-    All kinds of record
-  </a>
-)
+/** Links to documents, which every approach reaches by text search instead. */
+const DOCUMENT_LINKS = new Set(['HAS_CHUNK', 'REFERENCES'])
 
-function Properties({ node }: { node: Node }) {
-  return (
-    <dl className="space-y-2">
-      {distinctFields(node.properties).map(([name, value]) => (
-        <div key={name} className="grid grid-cols-[9rem_1fr] gap-x-4 text-sm">
-          <dt className="text-text-muted">{plainName(name)}</dt>
-          <dd className="min-w-0 break-words text-text-primary">
-            {plainValue(value)}
-          </dd>
-        </div>
-      ))}
-    </dl>
-  )
-}
+/** The groups of the table: who may walk a kind of link, and why when not both. */
+const LINK_GROUPS: readonly {
+  id: string
+  title: string
+  why?: string
+  holds: (row: RelationshipRow) => boolean
+}[] = [
+  {
+    id: 'both',
+    title: FOLLOWED_BY.both,
+    holds: (row) => row.follower === 'both',
+  },
+  {
+    id: 'b',
+    title: FOLLOWED_BY.B,
+    holds: (row) => row.follower === 'B',
+  },
+  {
+    id: 'c',
+    title: FOLLOWED_BY.C,
+    why: 'These come from the ontology.',
+    holds: (row) => row.follower === 'C',
+  },
+  {
+    id: 'documents',
+    title: FOLLOWED_BY.neither,
+    why: 'Documents are found by text search, in all three approaches.',
+    holds: (row) => row.follower === 'neither' && DOCUMENT_LINKS.has(row.type),
+  },
+  {
+    id: 'focus',
+    title: FOLLOWED_BY.neither,
+    why: 'Left out to keep the search focused: these are many, or lead to many records.',
+    holds: (row) => row.follower === 'neither' && !DOCUMENT_LINKS.has(row.type),
+  },
+]
 
-/** The first row of the kind's table, followed to its graph node; null when the table is empty. */
-async function sampleOf(
-  table: string,
-  signal: AbortSignal,
-): Promise<Node | null> {
-  const worlds = await listDatasets(signal)
-  const world = worlds.find((w) => w.active) ?? worlds[0]
-  if (!world) return null
-  const dictionary = await getDictionary(world.dataset_id, signal)
-  const key = dictionary.find((t) => t.table === table)?.primary_key
-  if (!key) return null
-  const page = await getRows(world.dataset_id, table, { limit: 1 }, signal)
-  const row = page.rows[0]
-  return row ? getNode(String(row[key]), signal) : null
-}
-
-function SampleNode({ table }: { table: string }) {
-  const load = useLoad((signal) => sampleOf(table, signal), `sample/${table}`)
-  const empty = load.status === 'ready' && load.data === null
-  return (
-    <Panel
-      title="Details"
-      state={empty ? 'empty' : load.status}
-      message="No rows, so no sample."
-      error={load.status === 'error' ? load.error : undefined}
-      onRetry={load.retry}
-    >
-      {load.status === 'ready' && load.data && (
-        <div className="space-y-3">
-          <p className="text-sm text-text-secondary">{`Built from ${table}. One sample node:`}</p>
-          <Properties node={load.data} />
-          <a
-            href={hrefFor('data-model', {
-              tab: 'graph',
-              node: load.data.node_id,
-            })}
-            className="block text-sm font-medium text-text-primary underline"
-          >
-            Open this node in the graph
-          </a>
-        </div>
-      )}
-    </Panel>
-  )
-}
-
-function Details({
-  label,
-  schema,
-  onClose,
+function RelationshipTable({
+  rows,
+  filter,
 }: {
-  label: string | null
-  schema: Schemas['GraphSchema']
-  onClose: () => void
+  rows: RelationshipRow[]
+  filter: ReactNode
 }) {
-  const table = label === null ? undefined : schema.node_tables[label]
   return (
-    <Drawer
-      open={label !== null}
-      title={label === null ? '' : nodeLabel(label)}
-      onClose={onClose}
-    >
-      {label !== null && table === undefined && (
-        <Panel
-          title="Details"
-          state="disabled"
-          message="Built from the ontology: no sample row."
-        />
-      )}
-      {table !== undefined && <SampleNode key={table} table={table} />}
-    </Drawer>
+    <section aria-labelledby="links-title" className="space-y-3">
+      <h4
+        id="links-title"
+        className="text-base font-semibold text-text-primary"
+      >
+        Kinds of link
+      </h4>
+      <p className="max-w-prose text-sm text-text-secondary">
+        A link joins two records, such as an incident and the game it affects.
+        Each row says what a kind of link joins, where it is made from, and how
+        many there are. Graph and Graph + Ontology search by moving along links;
+        some kinds are left out on purpose, and each group says why.
+      </p>
+      {filter}
+      <ScrollBox label="Kinds of link">
+        <table className="w-full max-w-6xl border-collapse text-sm text-text-primary">
+          <thead>
+            <tr className="border-b border-hairline text-left text-text-secondary">
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                What it links
+              </th>
+              <th scope="col" className="py-2 pr-4 font-semibold">
+                Made from
+              </th>
+              <th scope="col" className="py-2 pl-3 text-right font-semibold">
+                How many
+              </th>
+            </tr>
+          </thead>
+          {LINK_GROUPS.map((group) => {
+            const members = rows.filter(group.holds)
+            if (members.length === 0) return null
+            return (
+              <tbody key={group.id}>
+                <tr>
+                  <th
+                    scope="colgroup"
+                    colSpan={3}
+                    className="pb-1 pt-4 text-left font-normal"
+                  >
+                    <span className="font-semibold">{group.title}</span>
+                    {group.why && (
+                      <span className="text-text-secondary">{` - ${group.why}`}</span>
+                    )}
+                  </th>
+                </tr>
+                {members.map((row) => (
+                  <tr key={row.type} className="border-b border-hairline">
+                    <th
+                      scope="row"
+                      className="py-1.5 pr-4 text-left font-normal"
+                    >
+                      {row.sentences.join('; ')}
+                    </th>
+                    <td className="py-1.5 pr-4 text-text-secondary">
+                      {RELATIONSHIP_SOURCES[row.type] ?? MISSING}
+                    </td>
+                    <td className="tabular py-1.5 pl-3 text-right">
+                      {row.total === null ? MISSING : count(row.total)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            )
+          })}
+        </table>
+      </ScrollBox>
+    </section>
   )
 }
 
-function KindsMap({
+/** The table of every kind of link, narrowed to what one approach may follow when chosen. */
+export function KindsOfLink({
   schema,
   stats,
-  scale,
 }: {
   schema: Schemas['GraphSchema']
   stats: Schemas['GraphStats']
-  scale: number
 }) {
   const [mode, setMode] = useState<AllowList>('full')
-  // The kind chosen stays chosen (its lines are tagged, the rest pale) when
-  // its details are closed, until the reader clears it.
-  const [label, setLabel] = useState<string | null>(null)
-  const [detailsOpen, setDetailsOpen] = useState(false)
-  const choose = (id: string) => {
-    setLabel(id)
-    setDetailsOpen(true)
-  }
-  const model = metaGraphModel(schema, stats, mode, scale)
-  const { nodes, isolated, types, hasOutside } = model
-  const edges = model.edges.map((edge) => {
-    const touches = edge.source === label || edge.target === label
-    return {
-      ...edge,
-      tagged: touches,
-      faint: label !== null && !touches,
-    }
-  })
-  const typeCount = new Set(schema.relationship_types.map((r) => r.type))
-  const followed = mode === 'full' ? null : schema.allow_list[mode]?.length
-
+  const followed = mode === 'full' ? null : new Set(schema.allow_list[mode])
+  const rows = relationshipRows(schema, stats).filter(
+    (row) => followed === null || followed.has(row.type),
+  )
   return (
-    <div className="space-y-3">
-      <div
-        role="radiogroup"
-        aria-label="Relationships shown"
-        className="flex flex-wrap gap-2"
-      >
-        {MODES.map((option) => (
-          <label
-            key={option.id}
-            className="flex cursor-pointer items-center gap-2 rounded-chip border border-border px-3 py-1 text-sm text-text-primary has-[:checked]:bg-surface-raised has-[:checked]:font-semibold has-[:focus-visible]:outline-2"
-          >
-            <input
-              type="radio"
-              name="allow-list"
-              checked={mode === option.id}
-              onChange={() => setMode(option.id)}
-            />
-            {option.label}
-          </label>
-        ))}
-      </div>
-      <p className="text-sm text-text-secondary">
-        {followed === null
-          ? `Every relationship in the schema, ${typeCount.size} types.${hasOutside ? ' Dashed grey: in neither approach.' : ''}`
-          : `${MODES.find((m) => m.id === mode)?.label} follows ${followed} of the ${typeCount.size} relationship types.`}
-      </p>
-      <p className="text-sm text-text-secondary">
-        Choose a kind of record.
-        {label !== null && (
-          <button
-            type="button"
-            onClick={() => setLabel(null)}
-            className="ml-3 rounded-chip border border-border px-2 py-0.5 text-text-primary hover:bg-surface-raised"
-          >
-            Show all relationships
-          </button>
-        )}
-      </p>
-      <Diagram
-        nodes={nodes}
-        edges={edges}
-        label="Kinds of record"
-        selected={label}
-        onSelect={choose}
-        scale={scale}
-      />
-      {isolated.length > 0 && (
-        <section
-          aria-label="Kinds with no relationships"
-          className="flex flex-wrap items-center gap-2 text-sm text-text-secondary"
+    <RelationshipTable
+      rows={rows}
+      filter={
+        <div
+          role="radiogroup"
+          aria-labelledby="links-shown"
+          className="flex flex-wrap items-center gap-2"
         >
-          <h2 className="text-base font-semibold text-text-primary">
-            No relationships in the schema
-          </h2>
-          {isolated.map((node) => (
-            <button
-              key={node.id}
-              type="button"
-              aria-pressed={label === node.id}
-              aria-label={`${node.title}, ${node.detail}`}
-              onClick={() => choose(node.id)}
-              className="rounded-chip border border-border px-3 py-1 text-text-primary hover:bg-surface-raised aria-pressed:bg-surface-raised aria-pressed:font-semibold"
+          <span id="links-shown" className="text-sm text-text-secondary">
+            Show the links followed by
+          </span>
+          {MODES.map((option) => (
+            <label
+              key={option.id}
+              className="flex cursor-pointer items-center gap-2 rounded-chip border border-border px-3 py-1 text-sm text-text-primary has-[:checked]:bg-surface-raised has-[:checked]:font-semibold has-[:focus-visible]:outline-2"
             >
-              {`${node.title} · ${node.detail}`}
-            </button>
+              <input
+                type="radio"
+                name="allow-list"
+                checked={mode === option.id}
+                onChange={() => setMode(option.id)}
+              />
+              {option.label}
+            </label>
           ))}
-        </section>
-      )}
-      <section aria-label="Relationships">
-        <h2 className="text-base font-semibold text-text-primary">
-          Relationships
-        </h2>
-        <ul className="mt-2 columns-3 gap-6 text-sm text-text-primary">
-          {types.map((line) => (
-            <li key={line.type} className="break-inside-avoid py-0.5">
-              {line.text}
-              {line.note && (
-                <span className="text-text-muted">{` (${line.note})`}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-      <Details
-        label={detailsOpen ? label : null}
-        schema={schema}
-        onClose={() => setDetailsOpen(false)}
-      />
-    </div>
-  )
-}
-
-const titleOf = (node: Node): string => {
-  const { name, title } = node.properties
-  return typeof name === 'string'
-    ? name
-    : typeof title === 'string'
-      ? title
-      : node.node_id
-}
-
-function FocusedNode({ nodeId, scale }: { nodeId: string; scale: number }) {
-  const load = useLoad(async (signal) => {
-    const [node, neighbours] = await Promise.all([
-      getNode(nodeId, signal),
-      getNeighbours(nodeId, { limit: NEIGHBOUR_LIMIT }, signal),
-    ])
-    return { node, neighbours }
-  }, `node/${nodeId}`)
-  if (load.status !== 'ready')
-    return (
-      <div className="space-y-3">
-        {backToKinds}
-        <Panel
-          title="Node"
-          state={load.status}
-          error={load.status === 'error' ? load.error : undefined}
-          onRetry={load.retry}
-        />
-      </div>
-    )
-
-  const { node, neighbours } = load.data
-  const unique = new Map(neighbours.items.map((i) => [i.node.node_id, i.node]))
-  const nodes: DiagramNode[] = [
-    ...[node, ...unique.values()].map((n) => ({
-      id: n.node_id,
-      title: titleOf(n),
-      detail: n.labels.map(nodeLabel).join(', '),
-      width: Math.round(Math.max(190, titleOf(n).length * 12 + 40) * scale),
-    })),
-  ]
-  const edges: DiagramEdge[] = neighbours.items.map((item) => ({
-    id: `${item.rel_type}:${item.direction}:${item.node.node_id}`,
-    source: item.direction === 'out' ? node.node_id : item.node.node_id,
-    target: item.direction === 'out' ? item.node.node_id : node.node_id,
-    label: relationshipPhrase(item.rel_type),
-  }))
-
-  return (
-    <div className="space-y-3">
-      {backToKinds}
-      <div className="grid grid-cols-[minmax(0,1fr)_26rem] items-start gap-4">
-        <div className="space-y-3">
-          <Diagram
-            nodes={nodes}
-            edges={edges}
-            label={`${titleOf(node)} and its neighbours`}
-            selected={node.node_id}
-            scale={scale}
-            onSelect={(id) => {
-              if (id !== node.node_id)
-                window.location.hash = hrefFor('data-model', {
-                  tab: 'graph',
-                  node: id,
-                })
-            }}
-          />
-          {neighbours.truncated && (
-            <p className="text-sm text-text-secondary">
-              {`Showing the first ${NEIGHBOUR_LIMIT}.`}
-            </p>
-          )}
         </div>
-        <Panel title="Properties" state="ready">
-          <div className="space-y-3">
-            {node.provenance && (
-              <p className="text-sm text-text-secondary">
-                {`Built from ${node.provenance.table}, row ${node.provenance.row_id}`}
-              </p>
-            )}
-            <Properties node={node} />
-          </div>
-        </Panel>
-      </div>
-    </div>
-  )
-}
-
-function Kinds({ scale }: { scale: number }) {
-  const load = useLoad(async (signal) => {
-    const [schema, stats] = await Promise.all([
-      getGraphSchema(signal),
-      getGraphStats(signal),
-    ])
-    return { schema, stats }
-  }, 'graph-map')
-  const empty = load.status === 'ready' && load.data.schema.labels.length === 0
-  if (load.status !== 'ready' || empty)
-    return (
-      <Panel
-        title="Kinds of record"
-        state={empty ? 'empty' : load.status}
-        message="None yet."
-        error={load.status === 'error' ? load.error : undefined}
-        onRetry={load.retry}
-      />
-    )
-  return (
-    <KindsMap schema={load.data.schema} stats={load.data.stats} scale={scale} />
-  )
-}
-
-export function GraphTab({
-  params,
-  scale,
-}: {
-  params: URLSearchParams
-  scale: number
-}) {
-  const nodeId = params.get('node')
-  return nodeId === null ? (
-    <Kinds scale={scale} />
-  ) : (
-    <FocusedNode nodeId={nodeId} scale={scale} />
+      }
+    />
   )
 }

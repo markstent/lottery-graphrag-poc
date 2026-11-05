@@ -105,6 +105,8 @@ export const getScenarios = (signal?: AbortSignal) =>
 // Data model
 export const listDatasets = (signal?: AbortSignal) =>
   call('get', '/api/v1/datasets', { signal })
+export const getDataModelExample = (signal?: AbortSignal) =>
+  call('get', '/api/v1/data-model/example', { signal })
 export const getDataset = (id: string, signal?: AbortSignal) =>
   call('get', '/api/v1/datasets/{dataset_id}', {
     path: { dataset_id: id },
@@ -173,6 +175,11 @@ export const getBenchmark = (id: string, signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks/{run_id}', { path: { run_id: id }, signal })
 export const getBenchmarkInstances = (runId: string, signal?: AbortSignal) =>
   call('get', '/api/v1/benchmarks/{run_id}/instances', {
+    path: { run_id: runId },
+    signal,
+  })
+export const getSecondJudge = (runId: string, signal?: AbortSignal) =>
+  call('get', '/api/v1/benchmarks/{run_id}/second-judge', {
     path: { run_id: runId },
     signal,
   })

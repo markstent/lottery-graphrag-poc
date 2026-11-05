@@ -19,6 +19,7 @@ export const MEASURES = {
 export const QUESTION_HEADS = {
   question: 'Question',
   kind: 'Kind',
+  approach: 'Approach',
   world: 'World',
   answer: 'Answer',
   liveLab: 'Live Lab',
@@ -31,7 +32,6 @@ export const TABLE_HEADS = {
   group: 'Group',
   pairs: 'Pairs judged',
   agreement: 'Agreement',
-  kappa: 'Kappa',
   weightedKappa: 'Weighted kappa',
   supported: 'Held by cited blocks',
   unsupported: 'In no shown block',

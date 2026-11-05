@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test'
 
-import { expectNoUnmockedRequests, mockApi } from './mock-api'
+import { expectNoUnmockedRequests, mockApi, mockSecondJudge } from './mock-api'
 
 /*
  * Reading a run on Results, against the mock API. Starting, following and
@@ -22,8 +22,8 @@ test('the run picker is reachable by keyboard and a chosen run goes to the addre
   await page.keyboard.press('Tab')
   await expect(picker).toBeFocused()
   // A native select's popup is the browser's own; choosing sets the value and fires change.
-  await picker.selectOption('20261019T164733Z-smoke')
-  await expect(page).toHaveURL(/#\/results\?run=20261019T164733Z-smoke$/)
+  await picker.selectOption('fixture-smoke')
+  await expect(page).toHaveURL(/#\/results\?run=fixture-smoke$/)
   await expect(
     page.getByText('A quick check tests the scoring code'),
   ).toBeVisible()
@@ -66,11 +66,11 @@ test('the metric switch redraws the charts for the other score', async ({
   const charts = page.getByRole('region', {
     name: 'Scores by kind of question',
   })
-  const evidence = charts.getByRole('button', { name: 'Evidence score' })
+  const evidence = charts.getByRole('button', { name: 'Evidence recall' })
   const answer = charts.getByRole('button', { name: 'Answer score' })
   await expect(evidence).toHaveAttribute('aria-pressed', 'true')
   await expect(
-    charts.getByText('Evidence score by kind of question'),
+    charts.getByText('Evidence recall by kind of question'),
   ).toBeVisible()
   await answer.focus()
   await page.keyboard.press('Enter')
@@ -109,14 +109,16 @@ test('a failure count filters the question table, and a row opens by keyboard', 
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
 })
 
-test('a run of method v0.3 names its method and shows recall, C against A, split agreement and groundedness', async ({
+test('a run names no method and shows recall, C against A, split agreement and groundedness', async ({
   page,
 }) => {
   await mockApi(page, 'v03')
   await page.goto('/#/results?run=fixture-v03')
   const verdict = page.getByRole('region', { name: 'Verdict' })
-  await expect(verdict.getByText('Method v0.3', { exact: true })).toBeVisible()
-  await expect(verdict.getByText(/^Method v0.3 was made after/)).toBeVisible()
+  await expect(
+    verdict.getByText('Evidence recall: A · Text search'),
+  ).toBeVisible()
+  await expect(page.getByText(/Method v0/)).toHaveCount(0)
   const charts = page.getByRole('region', {
     name: 'Scores by kind of question',
   })
@@ -124,7 +126,7 @@ test('a run of method v0.3 names its method and shows recall, C against A, split
     charts.getByRole('button', { name: 'Evidence recall' }),
   ).toHaveAttribute('aria-pressed', 'true')
   await expect(charts.getByText(/C against A/).first()).toBeAttached()
-  const judge = page.getByRole('region', { name: 'Judge' })
+  const judge = page.getByRole('region', { name: 'Judge', exact: true })
   await expect(
     judge.getByRole('rowheader', { name: 'All questions, abstained' }),
   ).toBeVisible()
@@ -136,20 +138,99 @@ test('a run of method v0.3 names its method and shows recall, C against A, split
   ).toBeVisible()
 })
 
-test('a run of method v0.2 says it is of the old method, and has no groundedness', async ({
+test('a run with a second judge shows it after the judge, labelled descriptive', async ({
   page,
 }) => {
   await mockApi(page, 'v03')
-  await page.goto('/#/results?run=fixture-official')
+  await mockSecondJudge(page, 'ready')
+  await page.goto('/#/results?run=fixture-v03')
+  const panel = page.getByRole('region', { name: 'Second judge' })
   await expect(
-    page
-      .getByRole('region', { name: 'Verdict' })
-      .getByText('Method v0.2 (old method)'),
+    panel.getByText(/Descriptive, not tested. Added after the result/),
   ).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Judge' })).toBeVisible()
-  await expect(page.getByRole('region', { name: 'Groundedness' })).toHaveCount(
+  await expect(
+    panel.getByText('ollama/muse-glimmer:latest, reply limit 2,048 tokens', {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(
+    panel.getByRole('rowheader', { name: 'Second judge, answered' }),
+  ).toBeVisible()
+  await expect(
+    panel.getByRole('table', {
+      name: 'With the hand labels, on a sample of answers',
+    }),
+  ).toBeVisible()
+  // It follows the judge's own panel and the judges' verdict, among the
+  // screen's panels (a panel's own labelled parts are left out).
+  const order = await page
+    .getByRole('region')
+    .evaluateAll((regions) =>
+      regions
+        .filter((r) => !r.parentElement?.closest('section'))
+        .map((r) => r.getAttribute('aria-label')),
+    )
+  expect(order.indexOf("Judges' verdict")).toBe(order.indexOf('Judge') + 1)
+  expect(order.indexOf('Second judge')).toBe(order.indexOf('Judge') + 2)
+})
+
+test("a run with a second judge shows the judges' verdict, tested as its own group, with the answers the judges disagree on", async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await mockSecondJudge(page, 'ready')
+  await page.goto('/#/results?run=fixture-v03')
+  const panel = page.getByRole('region', { name: "Judges' verdict" })
+  await expect(
+    panel.getByText('Tested apart from the evidence and answer score tests.'),
+  ).toBeVisible()
+  await expect(panel.getByText("Judges' mark: A · Text search")).toBeVisible()
+  await expect(
+    panel.getByRole('img', { name: "Paired differences in judges' mark" }),
+  ).toBeVisible()
+  await expect(
+    panel.getByText(/^Same verdict on \d+ of \d+ answers/),
+  ).toBeVisible()
+  const table = panel.getByRole('table', { name: 'Judges disagree' })
+  await expect(
+    table.getByRole('columnheader', { name: 'Second judge' }),
+  ).toBeVisible()
+  await expect(table.getByRole('row').nth(1)).toContainText(
+    /correct|partly|wrong/,
+  )
+})
+
+test('a run without a second judge shows no second judge panel', async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await page.goto('/#/results?run=fixture-v03')
+  await expect(
+    page.getByRole('region', { name: 'Judge', exact: true }),
+  ).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Groundedness' })).toBeVisible()
+  await expect(page.getByRole('region', { name: 'Second judge' })).toHaveCount(
     0,
   )
+  await expect(
+    page.getByRole('region', { name: "Judges' verdict" }),
+  ).toHaveCount(0)
+})
+
+test('the second judge panel shows its loading and error states', async ({
+  page,
+}) => {
+  await mockApi(page, 'v03')
+  await mockSecondJudge(page, 'pending')
+  await page.goto('/#/results?run=fixture-v03')
+  const panel = page.getByRole('region', { name: 'Second judge' })
+  await expect(panel.getByText('Loading Second judge')).toBeAttached()
+  await mockSecondJudge(page, 'error')
+  await page.reload()
+  await expect(
+    panel.getByRole('alert').getByText('The second judge is unavailable.'),
+  ).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Retry' })).toBeVisible()
 })
 
 /** No box around the tooltip clips it: every ancestor that clips holds it whole. */

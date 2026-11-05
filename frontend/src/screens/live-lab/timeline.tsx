@@ -34,14 +34,11 @@ function summary(label: string, segments: PlacedSegment[]): string {
 
 function Bar({
   pipeline,
-  oldMethod,
   segment,
   total,
   hue,
 }: {
   pipeline: PipelineId
-  /** A recording of the old method, which keeps its own step names. */
-  oldMethod: boolean
   segment: PlacedSegment
   total: number
   hue: string
@@ -49,7 +46,7 @@ function Bar({
   const stopped = segment.status === 'failed' || segment.status === 'cancelled'
   return (
     <span
-      title={`${stageLabel(pipeline, segment.stage, oldMethod)}: ${formatDuration(segment.to - segment.from)}, from ${formatDuration(segment.from)} to ${formatDuration(segment.to)}`}
+      title={`${stageLabel(pipeline, segment.stage)}: ${formatDuration(segment.to - segment.from)}, from ${formatDuration(segment.from)} to ${formatDuration(segment.to)}`}
       className="absolute rounded-chip"
       style={{
         top:
@@ -70,14 +67,11 @@ function Bar({
 
 export function Timeline({
   state,
-  oldMethod = false,
   originMs,
   timeline,
   controls,
 }: {
   state: RunState
-  /** A recording of the old method, which keeps its own step names. */
-  oldMethod?: boolean
   originMs: number
   timeline: TimelineValue
   controls: TimelineControls
@@ -188,7 +182,6 @@ export function Timeline({
                 <Bar
                   key={segment.stage}
                   pipeline={id}
-                  oldMethod={oldMethod}
                   segment={segment}
                   total={total}
                   hue={hue}

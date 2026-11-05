@@ -6,11 +6,13 @@
  * the way the backend does: the value is read as the column's own type, and a
  * value that does not fit is a 422. A record's graph node, its edge summary
  * and a node's neighbours are worked out from the rows themselves, by the
- * dictionary's foreign keys and the graph schema's relationship types, so
- * nothing about the graph is listed by hand.
+ * dictionary's foreign keys and the graph schema's relationship types, and
+ * the ontology's concepts and the country codes matched to each (its capture
+ * in `ontology-world.json`), so nothing about the graph is listed by hand.
  */
 
 import captured from './fixtures/data-model-world.json' with { type: 'json' }
+import ontologyCapture from './fixtures/ontology-world.json' with { type: 'json' }
 
 interface Column {
   name: string
@@ -29,7 +31,13 @@ interface TableDef {
   foreign_keys: ForeignKey[]
 }
 type Row = Record<string, unknown>
-type Node = ReturnType<typeof nodeOf>
+interface Node {
+  node_id: string
+  labels: string[]
+  properties: Row
+  /** Null for a node no table row makes, such as a concept. */
+  provenance: { table: string; row_id: string; dataset_id: string } | null
+}
 
 const world = captured as unknown as {
   dataset_id: string
@@ -41,6 +49,7 @@ const world = captured as unknown as {
     relationship_types: { type: string; from_label: string; to_label: string }[]
   }
   stats: unknown
+  example: { incident_id: string | null }
   row_counts: Record<string, number>
   rows: Record<string, Row[]>
 }
@@ -49,6 +58,8 @@ export const DATASET_ID = world.dataset_id
 export const DICTIONARY = world.dictionary
 export const GRAPH_SCHEMA = world.schema
 export const GRAPH_STATS = world.stats
+/** The incident the Overview follows, as the API chose it (never a planted one). */
+export const EXAMPLE = world.example
 /** The world's own row counts, whatever the sample of rows below holds. */
 export const ROW_COUNTS = world.row_counts
 
@@ -148,7 +159,7 @@ const labelOfTable = Object.fromEntries(
   ]),
 )
 
-function nodeOf(label: string, table: string, row: Row, id: string) {
+function nodeOf(label: string, table: string, row: Row, id: string): Node {
   const def = tableDef(table)!
   return {
     node_id: id,
@@ -233,8 +244,60 @@ for (const def of world.dictionary) {
   }
 }
 
-/** A graph node by id, or null for an id no node table holds. */
-export const graphNode = (id: string) => nodes.get(id) ?? null
+// ---- the ontology's concepts, and the codes matched to each ----
+
+const ontology = ontologyCapture as unknown as {
+  ontology: {
+    concepts: {
+      concept_id: string
+      parent_id: string | null
+      definition: string
+      labels: Record<string, string>
+    }[]
+  }
+  members: Record<string, { all: { code: string }[] }>
+}
+
+for (const concept of ontology.ontology.concepts) {
+  const id = concept.concept_id
+  nodes.set(id, {
+    node_id: id,
+    labels: ['BusinessConcept'],
+    properties: {
+      id,
+      canonical_name: concept.labels.en ?? id,
+      definition: concept.definition,
+      parent_id: concept.parent_id,
+      ...Object.fromEntries(
+        Object.entries(concept.labels).map(([lang, label]) => [
+          `label_${lang}`,
+          label,
+        ]),
+      ),
+      source_record_id: id,
+      source_system: 'ontology',
+      source_table: 'ontology.yaml',
+    },
+    // A concept comes from the ontology file, not a table row.
+    provenance: null,
+  })
+}
+for (const concept of ontology.ontology.concepts) {
+  const id = concept.concept_id
+  if (concept.parent_id)
+    edges.set(`IS_A:${id}>${concept.parent_id}`, {
+      type: 'IS_A',
+      from: id,
+      to: concept.parent_id,
+    })
+  for (const { code } of ontology.members[id]?.all ?? [])
+    if (nodes.has(code))
+      edges.set(`MAPS_TO:${code}>${id}`, {
+        type: 'MAPS_TO',
+        from: code,
+        to: id,
+      })
+}
 
 /** A node's neighbours, the rarer kinds of relationship first, so a cap keeps the varied ones. */
 function itemsOf(id: string) {
@@ -255,10 +318,39 @@ function itemsOf(id: string) {
   return items.sort((a, b) => size(a.rel_type) - size(b.rel_type))
 }
 
-export function neighboursOf(id: string, limit: number): Answer {
+/** How many links of each type and direction meet a node, as the node and record routes count them. */
+function edgesOf(id: string) {
+  const summary = new Map<
+    string,
+    { type: string; direction: string; count: number }
+  >()
+  for (const { rel_type, direction } of itemsOf(id)) {
+    const key = `${rel_type}:${direction}`
+    const entry = summary.get(key) ?? { type: rel_type, direction, count: 0 }
+    entry.count += 1
+    summary.set(key, entry)
+  }
+  return [...summary.values()]
+}
+
+/** A graph node by id with the links meeting it, or null for an id no node table holds. */
+export function graphNode(id: string) {
+  const node = nodes.get(id)
+  return node ? { ...node, edges: edgesOf(id) } : null
+}
+
+/** A node's neighbours, of one type and direction when the query names them. */
+export function neighboursOf(id: string, query: URLSearchParams): Answer {
   if (!nodes.has(id))
     return failure(404, 'NOT_FOUND', `no graph node with id ${id}`)
-  const items = itemsOf(id)
+  const limit = Number(query.get('limit') ?? 25)
+  const type = query.get('type')
+  const direction = query.get('direction')
+  const items = itemsOf(id).filter(
+    (i) =>
+      (type === null || i.rel_type === type) &&
+      (direction === null || i.direction === direction),
+  )
   return {
     status: 200,
     body: {
@@ -288,23 +380,13 @@ export function recordOf(table: string, id: string): Answer {
       `row id ${id} is not unique in ${table}; filter its rows page instead`,
     )
   const isNode = labelOfTable[table] !== undefined
-  const summary = new Map<
-    string,
-    { type: string; direction: string; count: number }
-  >()
-  for (const { rel_type, direction } of isNode ? itemsOf(id) : []) {
-    const key = `${rel_type}:${direction}`
-    const entry = summary.get(key) ?? { type: rel_type, direction, count: 0 }
-    entry.count += 1
-    summary.set(key, entry)
-  }
   return {
     status: 200,
     body: {
       table,
       row: found[0],
       graph_node_id: isNode ? id : null,
-      edges: [...summary.values()],
+      edges: isNode ? edgesOf(id) : [],
       graph_error: null,
     },
   }

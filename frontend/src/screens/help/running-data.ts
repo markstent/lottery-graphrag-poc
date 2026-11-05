@@ -81,6 +81,18 @@ export const COMMAND_GROUPS: readonly {
       ['make dev', 'Run the API and the screens together.'],
       ['make dev-backend', 'Run the API alone, on port 8000, with reload.'],
       ['make dev-frontend', 'Run the screens alone, on the Vite dev server.'],
+      [
+        'make dev-official',
+        "Run the API and the screens on the official run's answer model (qwen3.6 through Ollama), for a demo. The header says Test models while the offline stand-in answers instead.",
+      ],
+      [
+        'make dev-official-backend',
+        "Run the API alone on the official run's answer model, with reload.",
+      ],
+      [
+        'make check-ollama',
+        'Check that Ollama answers and has the answer and embedding models; both dev-official targets run it first.',
+      ],
       ['make test', 'Backend and frontend unit tests, offline; no live graph.'],
       ['make test-graph', 'The live graph tests. They wipe Neo4j.'],
       ['make lint', 'ruff and oxlint.'],
@@ -163,20 +175,24 @@ export const COMMAND_GROUPS: readonly {
         'Depth sweep: the H1 questions for B and C at depths 0 to 3, on the three seen worlds.',
       ],
       [
-        'make addendum-v020',
-        'Rescore the official run v0.2.0 with the current scorer and groundedness, beside the run; no model.',
-      ],
-      [
         'make diagnose-selection',
         'Read-only: which claims each approach finds and which reach the prompt, on world 2026 with no answer model.',
       ],
       [
         'make label-sample',
-        'Build the hand-labelling sample from the official run v0.2.0; no model.',
+        'Build the hand-labelling sample from a stored run; no model.',
       ],
       [
         'make label-agreement',
         'How far the measures agree with the hand labels on that sample; no model.',
+      ],
+      [
+        'make second-judge',
+        "A second judge model marks the answers of a stored run (RUN=<run id>) or the hand-labelled sample (LABELS=<sample name>), as a second opinion; the run itself is unchanged. Over a run it then works out the judges' mark.",
+      ],
+      [
+        'make judges-combined',
+        "Works out the judges' mark of a run again (RUN=<run id>) once its second judge has finished, and tests it as its own group; no model.",
       ],
     ],
   },

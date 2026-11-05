@@ -120,12 +120,12 @@ def _git(*args: str) -> str | None:
         return None
 
 
-def _git_sha() -> str:
+def git_sha() -> str:
     output = _git("rev-parse", "HEAD")
     return "unknown" if output is None else output.strip()
 
 
-def _git_dirty() -> bool | None:
+def git_dirty() -> bool | None:
     """Whether the checkout has uncommitted changes; None when git is unavailable."""
     output = _git("status", "--porcelain")
     return None if output is None else bool(output.strip())
@@ -137,7 +137,7 @@ def require_clean_checkout(kind: str) -> None:
     clean (D-091): uncommitted code must never reach an official result, and
     a checkout git cannot read is not known to be clean. Other kinds only
     record git_dirty."""
-    if kind == "official" and _git_dirty() is not False:
+    if kind == "official" and git_dirty() is not False:
         raise ValueError(
             "an official run starts or resumes only from a clean checkout, and this one has "
             "uncommitted changes (or git is unavailable); commit them first"
@@ -156,8 +156,8 @@ def settings_fields(
     """
     settings_b, settings_c = bc_graph_settings(settings)
     return {
-        "git_sha": _git_sha(),
-        "git_dirty": _git_dirty(),
+        "git_sha": git_sha(),
+        "git_dirty": git_dirty(),
         "question_bank_version": BANK_VERSION,
         "rrf_k": RRF_K,
         "generation_model": settings.generation.model,
@@ -689,18 +689,8 @@ class BenchmarkRunner:
             )
 
     def _judge(self, instance: BankInstance, run: PipelineRun) -> JudgeVerdict:
-        """Judge one successful repeat; the seed blinds the block order."""
-        return self.judge.judge(
-            JudgeItem(
-                question=instance.text,
-                expected_answer=instance.expected_answer,
-                claim_statements=tuple(claim.statement for claim in instance.claims),
-                blocks=run.blocks,
-                answer=run.answer,
-                cited_blocks=run.cited_blocks,
-                blind_seed=f"{instance.instance_id}:{run.pipeline}:{run.repeat}",
-            )
-        )
+        """Judge one successful repeat."""
+        return self.judge.judge(judge_item(instance, run))
 
     def _execute(
         self,
@@ -763,6 +753,20 @@ class BenchmarkRunner:
             cut_off=None if answer is None else answer.cut_off,
             surrogates_replaced=None if answer is None else answer.surrogates_replaced,
         )
+
+
+def judge_item(instance: BankInstance, run: PipelineRun) -> JudgeItem:
+    """What the judge sees of one repeat; the seed blinds the block order.
+    The second judge (D-100) rebuilds a stored repeat's item with it."""
+    return JudgeItem(
+        question=instance.text,
+        expected_answer=instance.expected_answer,
+        claim_statements=tuple(claim.statement for claim in instance.claims),
+        blocks=run.blocks,
+        answer=run.answer,
+        cited_blocks=run.cited_blocks,
+        blind_seed=f"{instance.instance_id}:{run.pipeline}:{run.repeat}",
+    )
 
 
 def score_pipeline_run(

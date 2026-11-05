@@ -1,7 +1,6 @@
 import {
   act,
   fireEvent,
-  cleanup,
   render,
   screen,
   waitFor,
@@ -22,7 +21,6 @@ import type { RunStreamHandlers } from '../../api/stream'
 import { SettingsProvider } from '../../app/settings'
 import fixture from '../../run/fixtures/run-abc.json'
 import { loadRecording } from '../../run/recorded'
-import { asOldMethod, indexAsOldMethod } from '../../test/old-method'
 import { RECORDINGS } from '../../test/recordings'
 import type { RunEvent } from '../../run/reduce'
 import { DOWN, failure, json, READY, stubApi } from '../../test/api-stub'
@@ -37,10 +35,6 @@ vi.mock('../../run/recorded', async (original) => {
   return { ...actual, loadRecording: vi.fn(actual.loadRecording) }
 })
 
-const loadActual = (id: string) =>
-  vi
-    .importActual<typeof import('../../run/recorded')>('../../run/recorded')
-    .then((actual) => actual.loadRecording(id))
 const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const durationOf = (run: (typeof RECORDINGS)[number]) =>
   run.events.at(-1)!.t_ms - run.events[0].t_ms
@@ -140,7 +134,7 @@ describe('Live Lab', () => {
     const user = userEvent.setup()
     open()
     const question = await screen.findByRole('button', { name: h1.question })
-    const saved = screen.getByRole('group', { name: 'Saved questions' })
+    const saved = screen.getByRole('group', { name: 'Tested questions' })
     for (const button of within(saved).getAllByRole('button'))
       expect(button).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
@@ -166,40 +160,6 @@ describe('Live Lab', () => {
         'The answer model is not ready: qwen3:8b is not listed by the model server.',
       ),
     ).toBeVisible()
-  })
-
-  it('says nothing of the old method for a recording of method v0.3', async () => {
-    api({ '/api/v1/health/ready': DOWN })
-    open()
-    await userEvent.click(
-      await screen.findByRole('button', { name: h1.question }),
-    )
-    const source = screen.getByRole('group', { name: 'Source' })
-    expect(
-      within(source).getByRole('button', { name: 'Recorded run' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    expect(within(source).queryByText(/old method/)).toBeNull()
-  })
-
-  it('says a recording was made under the old method when one is chosen, and not for a live run', async () => {
-    const undo = indexAsOldMethod(h1.instance_id)
-    try {
-      api({ '/api/v1/health/ready': DOWN })
-      open()
-      const note = 'recorded under the old method (v0.2)'
-      await userEvent.click(
-        await screen.findByRole('button', { name: h1.question }),
-      )
-      const source = screen.getByRole('group', { name: 'Source' })
-      expect(within(source).getByText(note)).toBeVisible()
-      await userEvent.type(
-        screen.getByRole('textbox', { name: 'Or ask your own question' }),
-        'Which games run in Greece?',
-      )
-      expect(within(source).queryByText(note)).toBeNull()
-    } finally {
-      undo()
-    }
   })
 
   it('plays a recorded run to its end at once under reduced motion', async () => {
@@ -275,12 +235,11 @@ describe('Live Lab', () => {
     const bar = await screen.findByRole('region', { name: 'Question' })
     expect(within(bar).getByText(h1.question)).toBeVisible()
     expect(within(bar).getByText('Recorded run')).toBeVisible()
-    expect(within(bar).queryByText(/old method/)).toBeNull()
     expect(
       within(bar).getByRole('button', { name: 'Change question' }),
     ).toBeVisible()
     expect(
-      within(bar).queryByRole('group', { name: 'Saved questions' }),
+      within(bar).queryByRole('group', { name: 'Tested questions' }),
     ).toBeNull()
     await waitFor(() =>
       expect(
@@ -297,13 +256,13 @@ describe('Live Lab', () => {
     await user.click(
       await screen.findByRole('button', { name: 'Change question' }),
     )
-    const saved = screen.getByRole('group', { name: 'Saved questions' })
+    const saved = screen.getByRole('group', { name: 'Tested questions' })
     expect(within(saved).getAllByRole('button')[0]).toHaveFocus()
     expect(
       within(saved).getByRole('button', { name: h1.question }),
     ).toHaveAttribute('aria-pressed', 'true')
     await user.click(screen.getByRole('button', { name: 'Run' }))
-    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Tested questions' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Run' })).toHaveFocus()
   })
 
@@ -321,7 +280,7 @@ describe('Live Lab', () => {
     expect(opened).toBeVisible()
     expect(opened).toHaveAttribute('aria-expanded', 'true')
     await user.click(opened)
-    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Tested questions' })).toBeNull()
     const closed = screen.getByRole('button', { name: 'Change question' })
     expect(closed).toHaveAttribute('aria-expanded', 'false')
     expect(closed).toHaveFocus()
@@ -337,11 +296,11 @@ describe('Live Lab', () => {
     )
     expect(
       within(
-        screen.getByRole('group', { name: 'Saved questions' }),
+        screen.getByRole('group', { name: 'Tested questions' }),
       ).getAllByRole('button')[0],
     ).toHaveFocus()
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('group', { name: 'Saved questions' })).toBeNull()
+    expect(screen.queryByRole('group', { name: 'Tested questions' })).toBeNull()
     expect(
       screen.getByRole('button', { name: 'Change question' }),
     ).toHaveFocus()
@@ -412,6 +371,53 @@ describe('Live Lab', () => {
     expect(
       screen.getByText('Your own question needs the live source.'),
     ).toBeVisible()
+  })
+
+  it('asks an easy-to-read wording as written, live, over every market', async () => {
+    const easy =
+      'How much does a ticket for Alpen Star, a game in Austria (GAME_AT_04), cost?'
+    const fetchMock = api({
+      '/api/v1/demo/questions': [
+        ...QUESTIONS.slice(0, 1).map((q) => ({ ...q, easy_text: easy })),
+        ...QUESTIONS.slice(1),
+      ],
+    })
+    const user = userEvent.setup()
+    open()
+    const group = await screen.findByRole('group', {
+      name: 'Easy-to-read questions, asked as written and not scored',
+    })
+    const wording = within(group).getByRole('button', { name: easy })
+    expect(within(group).getAllByRole('button')).toHaveLength(1)
+    await user.click(wording)
+    expect(wording).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      screen.getByRole('textbox', { name: 'Or ask your own question' }),
+    ).toHaveValue(easy)
+    expect(screen.getByRole('button', { name: 'Recorded run' })).toBeDisabled()
+    const run = screen.getByRole('button', { name: 'Run' })
+    await waitFor(() => expect(run).toBeEnabled())
+    await user.click(run)
+    await waitFor(() => expect(stream.subscribeRun).toHaveBeenCalled())
+    const [, init] = fetchMock.mock.calls.find(
+      ([url]) => String(url) === '/api/v1/queries',
+    ) as [string, RequestInit]
+    expect(JSON.parse(String(init.body))).toEqual({
+      question: easy,
+      configurations: ['A', 'B', 'C'],
+      market_scope: [],
+    })
+  })
+
+  it('shows no easy-to-read row when no saved question has a wording', async () => {
+    api()
+    open()
+    await screen.findByRole('group', { name: 'Tested questions' })
+    expect(
+      screen.queryByRole('group', {
+        name: 'Easy-to-read questions, asked as written and not scored',
+      }),
+    ).toBeNull()
   })
 
   it('has no recording to run for a saved question that lacks one', async () => {
@@ -1162,13 +1168,15 @@ describe('Live Lab, results', () => {
     })
     const card = await screen.findByRole('region', { name: 'Scorecard' })
     expect(
-      within(card).getByText('No answer key exists for this question.'),
+      within(card).getByText(
+        'Not scored: this wording is not in the tested set.',
+      ),
     ).toBeVisible()
     expect(within(card).queryByText('scored against the answer key')).toBeNull()
     expect(within(card).queryByText('Answer')).toBeNull()
   })
 
-  it('scores a live run and a recording of method v0.3 on evidence recall, and a recording of the old method on its evidence score', async () => {
+  it('scores a live run and a recording on evidence recall', async () => {
     const scored = structuredClone(h1.results) as typeof h1.results
     for (const id of ['A', 'B', 'C'] as const)
       scored.score!.per_pipeline[id] = {
@@ -1196,7 +1204,6 @@ describe('Live Lab, results', () => {
     expect(
       within(card).getByRole('columnheader', { name: 'Evidence recall' }),
     ).toBeVisible()
-    expect(within(card).queryByText('Evidence score')).toBeNull()
     unmount()
 
     await finishRecording(userEvent.setup())
@@ -1204,22 +1211,5 @@ describe('Live Lab, results', () => {
     expect(
       within(recorded).getByRole('columnheader', { name: 'Evidence recall' }),
     ).toBeVisible()
-    expect(within(recorded).queryByText('Evidence score')).toBeNull()
-    cleanup()
-
-    const undo = indexAsOldMethod(h1.instance_id)
-    vi.mocked(loadRecording).mockImplementationOnce(async (id) =>
-      asOldMethod(await loadActual(id)),
-    )
-    try {
-      await finishRecording(userEvent.setup())
-    } finally {
-      undo()
-    }
-    const old = screen.getByRole('region', { name: 'Scorecard' })
-    expect(
-      within(old).getByRole('columnheader', { name: 'Evidence score' }),
-    ).toBeVisible()
-    expect(within(old).queryByText('Evidence recall')).toBeNull()
   })
 })

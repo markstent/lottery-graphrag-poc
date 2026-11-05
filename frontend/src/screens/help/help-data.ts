@@ -7,7 +7,6 @@
 import { createContext, useContext } from 'react'
 
 import type { Schemas } from '../../api/client'
-import type { EvidenceMetric } from '../../app/method'
 import type { Load } from '../../app/use-load'
 import type { Bank, ScoreState } from './bank'
 import type { Level } from './level'
@@ -16,8 +15,6 @@ export interface HelpData {
   level: Level
   bank: Load<Bank>
   scores: ScoreState
-  /** The evidence metric of the newest official run's method, which its scores are read on (D-087). */
-  evidence: EvidenceMetric
   /** The story a link pointed at, to mark. */
   story: string | null
   settings: Load<Schemas['ExperimentSettings']>

@@ -2,23 +2,28 @@ import { hrefFor } from '../../app/router'
 
 const TOUR = [
   {
-    tab: 'warehouse',
-    name: 'Warehouse',
-    line: 'The tables of players, tickets, games, incidents and documents, with their row counts.',
+    tab: 'overview',
+    name: 'Overview',
+    line: 'Where the screen opens: the three layers side by side, and one real record followed through all of them.',
+  },
+  {
+    tab: 'tables',
+    name: 'Tables',
+    line: 'The tables of players, tickets, games, incidents and documents, with how many records each holds.',
   },
   {
     tab: 'graph',
     name: 'Graph',
-    line: 'The same records as nodes joined by relationships, each pointing back to its source row.',
+    line: 'The same records as points joined by links, each pointing back to the row it came from.',
   },
   {
-    tab: 'ontology',
-    name: 'Ontology',
+    tab: 'concepts',
+    name: 'Concepts',
     line: 'The shared concepts, and the local term each market uses for them.',
   },
   {
-    tab: 'scenarios',
-    name: 'Scenarios',
+    tab: 'stories',
+    name: 'Stories',
     line: 'The stories planted in the data, with how strongly each is planted.',
   },
 ] as const

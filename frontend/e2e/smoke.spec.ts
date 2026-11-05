@@ -9,7 +9,7 @@ const DESTINATIONS = [
     name: 'Overview',
     hash: '#/overview',
     purpose:
-      'The verdict from the latest official run, how the three approaches differ, and a button to run a question',
+      'What we found, how the three approaches work, and questions to try',
   },
   {
     name: 'Live Lab',
@@ -26,7 +26,13 @@ const DESTINATIONS = [
     name: 'Data Model',
     hash: '#/data-model',
     purpose:
-      'What the warehouse, the graph and the ontology look like, with live counts and sample rows',
+      'What the warehouse, the graph and the ontology look like, how they fit together, and one real record followed through all three, with live counts',
+  },
+  {
+    name: 'Architecture',
+    hash: '#/architecture',
+    purpose:
+      'The tech stack: the data platform, the graph and ontology layers on top, and what each part runs on',
   },
   {
     name: 'Help',
@@ -39,7 +45,7 @@ const DESTINATIONS = [
 // A call the mock does not answer is refused; it must not go unnoticed.
 test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
-test('the sidebar lists the five destinations in order', async ({ page }) => {
+test('the sidebar lists the six destinations in order', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByText('Semantic Context Lab')).toBeVisible()
   const links = page
@@ -112,8 +118,7 @@ test.describe('Results run list', () => {
 
 test.describe('Overview latest run', () => {
   const LATEST = [
-    ['official', 'Method v0.2 (old method)'],
-    ['v03', 'Method v0.3 was made after seeing the v0.2.0 result'],
+    ['official', 'Answer score by kind of question'],
     ['smoke', 'Latest run: scorer smoke test'],
     ['none', 'No official run yet'],
     ['unavailable', 'The latest run is unavailable.'],
@@ -158,7 +163,8 @@ test.describe('presentation mode on every destination', () => {
 test.describe('the approach diagrams in presentation mode', () => {
   for (const [hash, name] of [
     ['#/overview', 'How the three approaches differ'],
-    ['#/help?section=approaches', /^C · Graph \+ Ontology\./],
+    // A, not C: beside Help's chapter list C is stacked at normal size, and a row only when presenting.
+    ['#/help?section=approaches', /^A · Text search\./],
   ] as const) {
     test(`grow with the type scale on ${hash}`, async ({ page }) => {
       await page.setViewportSize({ width: 1920, height: 1080 })
@@ -183,9 +189,14 @@ test('a recorded run plays to completion in Live Lab', async ({ page }) => {
   await page.getByRole('button', { name: h1.question }).click()
   await page.getByRole('button', { name: 'Recorded run', exact: true }).click()
   await page.getByRole('button', { name: 'Run', exact: true }).click()
-  // Play it from the start at 4x, so the recording of about 36 s takes about 9 s.
-  await page.getByRole('button', { name: '4x', exact: true }).click()
+  // Play it from the start at 4x, so the recording of about 71 s takes about 18 s.
+  // The speed is set once the recording plays, so the click is not lost while it loads.
+  await expect(page.getByRole('button', { name: 'Pause' })).toBeVisible()
+  const fast = page.getByRole('button', { name: '4x', exact: true })
+  await fast.click()
+  await expect(fast).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: 'Replay', exact: true }).click()
+  await expect(fast).toHaveAttribute('aria-pressed', 'true')
 
   await expect(page.getByText('The run is complete.')).toBeVisible({
     timeout: 30_000,

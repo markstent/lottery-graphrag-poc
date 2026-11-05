@@ -12,7 +12,7 @@ This page names those pages and does not repeat them.
 | Pipelines A, B and C | [retrieval.md](retrieval.md) |
 | The question bank, scoring and statistics | [evaluation.md](evaluation.md) |
 | Routes, events and errors | [api.md](api.md) |
-| The five screens | [ux.md](ux.md) |
+| The six screens | [ux.md](ux.md) |
 | Running, recovering and testing | [operations.md](operations.md) |
 
 ## Purpose
@@ -189,8 +189,9 @@ It is written once per generation to `data/truth/` and is read back only inside 
 Retrieval code never imports or queries it, and no live route, event or log record carries an expected answer or a hidden truth.
 Tests enforce the boundary:
 
-- a static scan of every module in `retrieval`, `api`, `datasets`, `graph`, `ontology`, `scenarios`, `config`, `events`, `observability`, `persistence`, `models` and `lab.py` for imports of `app.evaluation` and for the ledger path, with the two API modules below as the only exceptions;
-- only `app/api/benchmarks.py` and `app/api/scoring.py` may import `app.evaluation`, and they reach the ledger only through evaluator functions (D-035);
+- a static scan of every module in `retrieval`, `api`, `datasets`, `graph`, `ontology`, `scenarios`, `config`, `events`, `observability`, `persistence`, `models` and `lab.py` for imports of `app.evaluation` and for the ledger path, with the three API modules below as the only exceptions;
+- only `app/api/benchmarks.py`, `app/api/scoring.py` and `app/api/example.py` may import `app.evaluation`, and they reach the ledger only through evaluator functions (D-035);
+- `app/api/example.py` takes only `presentation_planted_ids` and `NoMatchingLedger` from the evaluator, and its response carries one incident id and nothing else;
 - the ontology package imports nothing from the bank or the scenarios;
 - a subprocess test imports the lab and every retrieval module in a fresh interpreter and asserts that no evaluation module was loaded;
 - a test that the generated manifest carries no ledger fields (four marker words are absent, and only planted row counts appear).
@@ -209,7 +210,7 @@ Its layers are kept apart:
 | Folder | Holds |
 |---|---|
 | `src/api/` | The typed client, the error type and the event-stream subscription. Types are generated from the committed OpenAPI file (D-042). |
-| `src/app/` | The shell, the hash router (five destinations), settings, presentation mode and the readiness poll |
+| `src/app/` | The shell, the hash router (six destinations), settings, presentation mode and the readiness poll |
 | `src/run/` | The run reducer, the replay clock, the recorded runs, the step lanes and the market coverage rule |
 | `src/graph/` | The graph view model, layout, canvas and the textual path list |
 | `src/results/` | Run, question and start-form logic for Results |

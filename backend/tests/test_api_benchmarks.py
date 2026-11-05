@@ -9,7 +9,6 @@ temporary data directory, so nothing is generated, ingested or indexed.
 
 from __future__ import annotations
 
-import dataclasses
 import json
 import os
 import shlex
@@ -23,20 +22,20 @@ from typing import Any
 import pytest
 from app.api import benchmarks
 from app.api.graph_world import GraphLease
-from app.api.schemas import BenchmarkStart
-from app.config import METHOD_VERSION, REPO_ROOT, from_env
+from app.api.schemas import BenchmarkStart, SecondJudgeOut
+from app.config import METHOD_VERSION, REPO_ROOT, JudgeSettings, from_env
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
 from app.datasets.schema import TABLE_SCHEMAS
 from app.datasets.world import build_world
 from app.evaluation import __main__ as cli
 from app.evaluation import judge as judge_module
-from app.evaluation import official
+from app.evaluation import official, second_judge
 from app.evaluation.catalogue import hidden_truth, question_catalogue
 from app.evaluation.grounding import FrozenBank, freeze_bank, write_frozen_bank
 from app.evaluation.judge import FakeJudge
 from app.evaluation.official import InstanceHook, WorldPaths, world_paths
-from app.evaluation.report import METHOD_NOTE, summarize
+from app.evaluation.report import summarize
 from app.evaluation.runner import OFFICIAL_MIN_REPEATS, WorldRun, settings_fields
 from app.evaluation.truth_ledger import load_ledger
 from app.events import TERMINAL_EVENT_TYPES
@@ -50,6 +49,7 @@ from fastapi.testclient import TestClient
 from tests.conftest import build_lab_offline
 from tests.test_benchmark_report import _benchmark
 from tests.test_official import FakeRunner, Recorder
+from tests.test_second_judge import FakeGateway
 
 GRAPH_BUSY = "a benchmark run is using the graph; try again when it finishes"
 # The request the Results screen's start form sends unless the reader changes it
@@ -537,7 +537,7 @@ def test_readiness_reports_the_benchmark_while_a_job_runs(
 ) -> None:
     client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke())
     graph = client_with_blocking_benchmark.get("/api/v1/health/ready").json()["checks"]["graph"]
-    assert graph == {"ok": False, "detail": "a benchmark run is using the graph"}
+    assert graph == {"ok": False, "detail": "a benchmark run is using the graph", "stand_in": False}
 
 
 class Hold:
@@ -688,11 +688,13 @@ def publish(
     name: str,
     kind: str,
     started_at: str,
-    schema: str = "2",
+    schema: str = "3",
     selection: dict[str, Any] | None = None,
     results: dict[str, Any] | None = None,
-    method_version: str | None = None,
+    method_version: str | None = METHOD_VERSION,
 ) -> None:
+    """A minimal summary of the current method; ``method_version=None``
+    writes a record without one, as runs of method v0.2 were written."""
     run_dir = root / name
     run_dir.mkdir(parents=True)
     summary: dict[str, Any] = {
@@ -706,6 +708,7 @@ def publish(
         "anchor_resolution_basis": {"A": "selection"},
         "metrics": {},
         "comparisons": [],
+        "ontology_split": [],
         "headlines": [f"{name} headline"],
         "judge_agreement": None,
         "failures": {"repeats": {}, "generation": {}, "judge": {}, "classes": {}},
@@ -742,7 +745,7 @@ def test_runs_are_listed_newest_first(client: TestClient, runs_dir: Path) -> Non
         "selection": {"strata": None, "limit": None},
         "worlds": [2026],
         "headlines": ["new headline"],
-        "method_version": "0.2.0",
+        "method_version": METHOD_VERSION,
     }
 
 
@@ -845,25 +848,30 @@ def test_latest_benchmark_ignores_summaries_of_another_schema(runs_dir: Path) ->
     assert status == 404
 
 
-def test_a_schema_2_summary_of_method_v02_is_still_published(
+def _publish_v02(runs_dir: Path, name: str, kind: str, started_at: str) -> None:
+    """A run of method v0.2 as it lies on disk: schema 2, no method recorded."""
+    publish(runs_dir, name, kind, started_at, schema="2", method_version=None)
+
+
+def test_runs_of_an_earlier_method_are_not_published(client: TestClient, runs_dir: Path) -> None:
+    """D-104: only runs of the current method are listed, read or latest,
+    even when a run of method v0.2 is newer; its files stay on disk."""
+    publish(runs_dir, "v03", "official", "2026-10-28T09:00:00+00:00")
+    _publish_v02(runs_dir, "v02", "official", "2026-11-03T09:00:00+00:00")
+    _publish_v02(runs_dir, "v02-smoke", "smoke", "2026-11-04T09:00:00+00:00")
+    publish(runs_dir, "v03-schema-2", "official", "2026-11-05T09:00:00+00:00", schema="2")
+    assert [run["run_id"] for run in client.get("/api/v1/benchmarks").json()] == ["v03"]
+    assert client.get("/api/v1/benchmarks/latest").json()["run_id"] == "v03"
+    assert client.get("/api/v1/benchmarks/v02").status_code == 404
+    assert (runs_dir / "v02" / "summary.json").is_file()
+
+
+def test_with_only_runs_of_an_earlier_method_there_is_no_latest(
     client: TestClient, runs_dir: Path
 ) -> None:
-    """Summary schema 3 came with method v0.3; v0.2 runs (schema 2) stay published."""
-    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00", schema="2")
-    publish(runs_dir, "v03", "official", "2026-10-28T09:00:00+00:00", schema="3")
-    runs = client.get("/api/v1/benchmarks").json()
-    assert [run["run_id"] for run in runs] == ["v03", "v02"]
-    body = client.get("/api/v1/benchmarks/v02").json()
-    assert body["summary"]["schema_version"] == "2"
-    assert client.get("/api/v1/benchmarks/v03").json()["summary"]["schema_version"] == "3"
-
-
-def test_old_run_summary_is_served_with_method_0_2_0(client: TestClient, runs_dir: Path) -> None:
-    """A run recorded before ``method_version`` existed was made under method v0.2.0."""
-    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
-    assert client.get("/api/v1/benchmarks/v02").json()["method_version"] == "0.2.0"
-    assert client.get("/api/v1/benchmarks/latest").json()["method_version"] == "0.2.0"
-    assert client.get("/api/v1/benchmarks").json()[0]["method_version"] == "0.2.0"
+    _publish_v02(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
+    assert client.get("/api/v1/benchmarks").json() == []
+    assert client.get("/api/v1/benchmarks/latest").status_code == 404
 
 
 def test_v03_summary_schema_3_validates(client: TestClient, runs_dir: Path) -> None:
@@ -875,26 +883,9 @@ def test_v03_summary_schema_3_validates(client: TestClient, runs_dir: Path) -> N
     assert summary["schema_version"] == "3"
     assert {cell["metric"] for cell in summary["comparisons"]} == {"evidence_recall", "answer"}
     assert "abstained" in summary["judge_agreement"]["overall"]
+    # The run's note on how the method came about is not served (D-104).
+    assert "method_note" not in summary
     assert client.get("/api/v1/benchmarks").json()[0]["method_version"] == "0.3.0"
-
-
-@pytest.mark.parametrize(
-    ("v02_started", "v03_started", "latest"),
-    [
-        ("2026-10-26T09:00:00+00:00", "2026-11-02T09:00:00+00:00", "v03"),
-        ("2026-11-03T09:00:00+00:00", "2026-11-02T09:00:00+00:00", "v02"),
-    ],
-)
-def test_latest_official_is_the_newest_official_run_whatever_its_method(
-    runs_dir: Path, v02_started: str, v03_started: str, latest: str
-) -> None:
-    """v0.2.0 stays the default until a newer official run exists, of whatever method."""
-    publish(runs_dir, "v02", "official", v02_started)
-    publish(runs_dir, "v03", "official", v03_started, schema="3", method_version="0.3.0")
-    publish(runs_dir, "dev", "dev", "2026-11-04T09:00:00+00:00", schema="3", method_version="0.3.0")
-    status, body = _latest(runs_dir)
-    assert (status, body["run_id"]) == (200, latest)
-    assert body["method_version"] == ("0.3.0" if latest == "v03" else "0.2.0")
 
 
 # -- the question catalogue -------------------------------------------------------
@@ -1253,9 +1244,7 @@ def test_summary_is_typed_for_every_run_shape(client_with_runs: TestClient) -> N
     assert len(runs) == 4
     for run in runs:
         body = client_with_runs.get(f"/api/v1/benchmarks/{run['run_id']}").json()
-        # The harness writes schema 3; the hand-written fixtures are v0.2 runs (schema 2).
-        written = run["run_id"] in ("official-fixture", "smoke-fixture")
-        assert body["summary"]["schema_version"] == ("3" if written else "2")
+        assert body["summary"]["schema_version"] == "3"
     official = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
     assert official["metrics"]["H3"]["answer"]["A"]["n"] == 12
     assert official["comparisons"][0]["comparison"] == "B_vs_A"
@@ -1268,48 +1257,19 @@ def test_summary_is_typed_for_every_run_shape(client_with_runs: TestClient) -> N
     assert official["reproducibility"]["run"]["judge_temperature"] == 0.0
 
 
-def test_a_v0_2_run_keeps_its_threshold_agreement(client: TestClient, runs_dir: Path) -> None:
-    """A run published before method v0.3 recorded one boolean agreement
-    (n, agreement, kappa) per pipeline; it still reads, unchanged."""
-    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
-    path = runs_dir / "v02" / "summary.json"
-    summary = json.loads(path.read_text(encoding="utf-8"))
-    cell = {"n": 1092, "agreement": 0.418, "kappa": 0.104}
-    summary["judge_agreement"] = {"overall": cell, "pipelines": {"A": cell}}
-    path.write_text(json.dumps(summary), encoding="utf-8")
-    body = client.get("/api/v1/benchmarks/v02").json()
-    assert body["summary"]["judge_agreement"] == {"overall": cell, "pipelines": {"A": cell}}
-
-
-def test_older_run_without_split_or_new_reproducibility_fields_reads(
+def test_a_record_without_some_fields_and_a_key_added_later_reads(
     client_with_runs: TestClient, runs_dir: Path
 ) -> None:
     path = runs_dir / "official-fixture" / "summary.json"
     summary = json.loads(path.read_text(encoding="utf-8"))
-    del summary["ontology_split"]
     for record in (summary["reproducibility"]["run"], *summary["reproducibility"]["worlds"]):
         for field in ("git_dirty", "graph_label_version", "judge_temperature"):
             record.pop(field, None)
     summary["a_key_added_later"] = {"x": 1}
     path.write_text(json.dumps(summary), encoding="utf-8")
     body = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
-    assert body["ontology_split"] is None
     assert "judge_temperature" not in body["reproducibility"]["run"]
     assert "a_key_added_later" not in body
-
-
-def test_the_method_note_passes_through_the_api(client: TestClient, runs_dir: Path) -> None:
-    """D-093: a v0.3 summary's method_note reaches the client; a v0.2 summary has none."""
-    run = _benchmark("official", h5_per_world=6)
-    run = dataclasses.replace(
-        run, record=dataclasses.replace(run.record, method_version=METHOD_VERSION)
-    )
-    run_dir = runs_dir / "v03"
-    run_dir.mkdir(parents=True)
-    (run_dir / "summary.json").write_text(json.dumps(summarize(run)), encoding="utf-8")
-    publish(runs_dir, "v02", "official", "2026-10-26T09:00:00+00:00")
-    assert client.get("/api/v1/benchmarks/v03").json()["summary"]["method_note"] == METHOD_NOTE
-    assert client.get("/api/v1/benchmarks/v02").json()["summary"]["method_note"] is None
 
 
 def test_a_summary_that_does_not_fit_is_a_server_error_naming_the_run(
@@ -1497,3 +1457,70 @@ def test_settings_invalid_judge_is_a_configuration_error(
     response = client.get("/api/v1/settings")
     assert response.status_code == 503
     assert response.json()["error"]["error_code"] == "CONFIGURATION_ERROR"
+
+
+# -- the second judge (D-100) -----------------------------------------------------
+
+
+def _second_judge_of(runs_dir: Path, name: str) -> Path:
+    """Run the second judge, with a fake gateway, over a published run."""
+    settings = JudgeSettings("litellm", "ollama/muse-glimmer:latest", "muse", None, 0.0, "off")
+    root = benchmarks.second_judge_dir(runs_dir)
+    return second_judge.judge_run(runs_dir / name, settings, root, FakeGateway())
+
+
+def test_second_judge_is_served_typed(client_with_runs: TestClient, runs_dir: Path) -> None:
+    summary_path = _second_judge_of(runs_dir, "official-fixture")
+    assert summary_path.is_relative_to(runs_dir.parent / "second-judge")
+    response = client_with_runs.get("/api/v1/benchmarks/official-fixture/second-judge")
+    assert response.status_code == 200
+    body = SecondJudgeOut.model_validate(response.json())
+    assert body.run_id == "official-fixture"
+    assert body.labels is None
+    assert body.run.second_judge.model == "ollama/muse-glimmer:latest"
+    published = client_with_runs.get("/api/v1/benchmarks/official-fixture").json()["summary"]
+    first = body.run.agreement_with_answer_level.first.model_dump()
+    assert first == published["judge_agreement"]
+    assert body.run.counts.repeats == body.run.counts.judged > 0
+    assert set(body.run.means) == {"A", "B", "C"}
+
+
+def test_second_judge_carries_the_label_check_of_the_same_model(
+    client_with_runs: TestClient, runs_dir: Path
+) -> None:
+    run = json.loads(_second_judge_of(runs_dir, "official-fixture").read_text(encoding="utf-8"))
+    measure = {"n": 4, "agreement": 0.5, "weighted_kappa": None, "kappa_shown": False}
+    found = {**measure, "wrong_share": 0.5}
+    labels = {
+        **{key: run[key] for key in ("schema_version", "second_judge", "judge_prompt_version")},
+        **{key: run[key] for key in ("judge_prompt_hash", "first_judge", "generation_model")},
+        **{key: run[key] for key in ("started_at", "finished_at", "git_sha", "git_dirty")},
+        **{key: run[key] for key in ("min_kappa_items", "counts")},
+        "run_id": "official-2026-10-26",
+        "kind": "labels",
+        "sample": "v0.2.0-sample",
+        "agreement_with_labels": {
+            "run": "official-2026-10-26",
+            "measures": {"judge_abstention_rule": "judge", "second_judge": "second"},
+            "overall": {"judge_abstention_rule": found, "second_judge": found},
+            "cells": {"agree": {"n": 4, "measures": {"second_judge": {**found, "flagged": False}}}},
+        },
+    }
+    path = runs_dir.parent / "second-judge" / "labels-v0.2.0-sample" / "ollama-muse-glimmer-latest"
+    path.mkdir(parents=True)
+    (path / "summary.json").write_text(json.dumps(labels), encoding="utf-8")
+    body = client_with_runs.get("/api/v1/benchmarks/official-fixture/second-judge").json()
+    assert body["labels"]["sample"] == "v0.2.0-sample"
+    assert body["labels"]["agreement_with_labels"]["overall"]["second_judge"]["n"] == 4
+
+
+def test_second_judge_is_404_for_a_run_without_one_or_an_unknown_run(
+    client_with_runs: TestClient, runs_dir: Path
+) -> None:
+    response = client_with_runs.get("/api/v1/benchmarks/official-fixture/second-judge")
+    assert response.status_code == 404
+    assert response.json()["error"]["error_code"] == "NOT_FOUND"
+    assert "no second judge" in response.json()["error"]["message"]
+    missing = client_with_runs.get("/api/v1/benchmarks/no-such-run/second-judge")
+    assert missing.status_code == 404
+    assert "no published benchmark run" in missing.json()["error"]["message"]

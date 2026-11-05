@@ -7,7 +7,7 @@
 import { writeFileSync } from 'node:fs'
 
 const API = `${process.argv[2] ?? 'http://localhost:8000'}/api/v1`
-const RUN = process.argv[3] ?? 'pilot-2026-nothink'
+const RUN = process.argv[3] ?? 'dry-run-2026-10-29'
 
 const get = async (path) => {
   const response = await fetch(`${API}${path}`)

@@ -17,7 +17,11 @@ const world = captured as unknown as {
 }
 
 export const ONTOLOGY = world.ontology
-export const SCENARIOS = world.scenarios
+/** The captured scenarios predate `description`, so each gets a plain one. */
+export const SCENARIOS: Schemas['ScenarioOut'][] = world.scenarios.map((s) => ({
+  ...s,
+  description: s.description ?? `What happens in ${s.title.toLowerCase()}.`,
+}))
 export const NATIONAL_DRAW = 'CONCEPT_NATIONAL_DRAW'
 
 /** The members of a concept as the API gives them: all, or those of one market. */

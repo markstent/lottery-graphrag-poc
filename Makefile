@@ -11,7 +11,7 @@ UV := uv --directory $(BACKEND)
 PNPM := pnpm -C $(FRONTEND)
 
 .DEFAULT_GOAL := help
-.PHONY: help setup dev dev-backend dev-frontend test test-graph lint typecheck format build api-contract e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep dry-run dev-run diagnose-selection traces addendum-v020 label-sample label-agreement
+.PHONY: help setup dev dev-backend dev-frontend check-ollama dev-official dev-official-backend test test-graph lint typecheck format build api-contract e2e services-up services-down generate-dev-data generate-demo-data ingest-graph index-vector pull-models ingest-demo-graph index-demo-vector serve-demo-api demo-reset ground-bank ground-demo-bank run-smoke run-benchmark run-sweep dry-run dev-run diagnose-selection traces addendum-v020 label-sample label-agreement second-judge judges-combined
 
 help: ## Show available commands
 	@grep -E '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-19s %s\n", $$1, $$2}'
@@ -29,6 +29,26 @@ dev-frontend: ## Run the Vite frontend dev server
 
 dev: ## Run backend and frontend together (Ctrl+C stops both; the backend reads Neo4j and Qdrant and calls the configured models)
 	$(MAKE) -j2 dev-backend dev-frontend
+
+# The official run's answer model and settings (official-2026-10-29), so Live Lab
+# answers come from the model the published results used, not the fake default.
+OLLAMA_HOST ?= http://localhost:11434
+REAL_MODEL := qwen3.6:latest
+EMBEDDING_MODEL_TAG := bge-m3:latest
+REAL_MODEL_ENV = GENERATION_PROVIDER=litellm GENERATION_MODEL=ollama/$(REAL_MODEL) GENERATION_MODEL_FAMILY=qwen GENERATION_API_BASE=$(OLLAMA_HOST) GENERATION_REASONING=off GENERATION_TEMPERATURE=0 GENERATION_MAX_TOKENS=4096
+
+check-ollama: ## Check that Ollama answers and holds the official answer model (qwen3.6) and the embedding model (bge-m3); no model call
+	@tags=$$(curl -sf --max-time 5 $(OLLAMA_HOST)/api/tags) || { echo "Ollama is not answering at $(OLLAMA_HOST). Start it (open -a Ollama, or ollama serve) and try again."; exit 1; }; \
+	for model in $(REAL_MODEL) $(EMBEDDING_MODEL_TAG); do \
+	  echo "$$tags" | grep -q "\"name\":\"$$model\"" || { echo "Ollama does not have $$model. Run: ollama pull $$model"; exit 1; }; \
+	done; \
+	echo "Ollama is answering at $(OLLAMA_HOST) and has $(REAL_MODEL) and $(EMBEDDING_MODEL_TAG)."
+
+dev-official-backend: check-ollama ## Run the backend with reload on the official answer model (qwen3.6 through Ollama) instead of the fake one
+	$(REAL_MODEL_ENV) $(UV) run uvicorn app.main:app --reload --port 8000
+
+dev-official: check-ollama ## Run backend and frontend together on the official answer model, for a demo (Ctrl+C stops both)
+	$(MAKE) -j2 dev-official-backend dev-frontend
 
 test: ## Run Python and frontend unit tests (never the live graph tests)
 	env -u GRAPH_E2E $(UV) run pytest
@@ -150,6 +170,15 @@ label-sample: ## Build the hand-labelling sample from the official run v0.2.0 (n
 
 label-agreement: ## Agreement of the measures with the hand labels (no Neo4j, no model)
 	$(UV) run python -m app.evaluation label-agreement --run ../data/evaluation/runs/official-2026-10-26
+
+second-judge: ## Second judge over a stored run, RUN=<run id>, or the hand-labelled sample, LABELS=v0.2.0-sample (D-100; no Neo4j; calls the SECOND_JUDGE_* model, writes data/evaluation/second-judge, resumes)
+	@test -n "$(RUN)$(LABELS)" || { echo "set RUN=<run id> (under data/evaluation/runs) or LABELS=v0.2.0-sample"; exit 1; }
+	@test "$$SECOND_JUDGE_PROVIDER" = litellm || { echo "set SECOND_JUDGE_PROVIDER=litellm and the SECOND_JUDGE_* model (see .env.example)"; exit 1; }
+	$(UV) run python -m app.evaluation second-judge $(if $(RUN),--run $(RUN),--labels $(LABELS))
+
+judges-combined: ## The two judges' combined mark of a run whose second judge has finished, RUN=<run id> (D-105; no Neo4j, no model; writes combined.json beside the second judge)
+	@test -n "$(RUN)" || { echo "set RUN=<run id> (under data/evaluation/runs)"; exit 1; }
+	$(UV) run python -m app.evaluation judges-combined --run $(RUN)
 
 run-sweep: ## H1 depth sweep 0 to 3 for B and C on three worlds (wipes and restores Neo4j, indexes new worlds in Qdrant; calls the judge model, and the answer model unless GENERATION_PROVIDER=fake)
 	@test "$$JUDGE_PROVIDER" = litellm || { echo "set JUDGE_PROVIDER=litellm and the JUDGE_* model (see .env.example)"; exit 1; }

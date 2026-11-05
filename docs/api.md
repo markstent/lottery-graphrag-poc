@@ -42,6 +42,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | `GET /benchmarks/questions` | The bank's questions with answer keys, hidden truths and scores |
 | `GET /benchmarks/{run_id}` | One run's summary |
 | `GET /benchmarks/{run_id}/instances` | One run's per-question scores |
+| `GET /benchmarks/{run_id}/second-judge` | The run's second judge, a recorded second opinion (D-100), and the two judges' combined mark (D-105) |
 | `POST /benchmarks` | Start a benchmark job. Returns 202. |
 | `GET /benchmarks/jobs`, `GET /benchmarks/jobs/{job_id}` | List or read jobs |
 | `POST /benchmarks/jobs/{job_id}/cancel` | Ask a job to stop |
@@ -49,6 +50,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | `GET /datasets/{dataset_id}/dictionary` | The data dictionary |
 | `GET /datasets/{dataset_id}/tables/{table}/rows` | A page of rows |
 | `GET /datasets/{dataset_id}/tables/{table}/rows/{row_id}` | One record with its graph node |
+| `GET /data-model/example` | The incident the Data Model Overview follows, never a planted one |
 | `GET /graph/schema`, `GET /graph/stats` | The graph model, and the counts ingestion pushed |
 | `GET /graph/nodes/{node_id}`, `.../neighbours` | One node, and its neighbours |
 | `GET /ontology`, `GET /ontology/concepts/{concept_id}/members` | The concept tree, and the codes bound to a concept |
@@ -146,7 +148,11 @@ A metric the instance does not define is null.
 ### Demo questions
 
 `GET /demo/questions` returns the first instance in bank order of each of the strata H1, H2, H3 and H5, from the presentation world's frozen bank (D-036).
-Each has `instance_id`, `question_id`, `text`, `stratum` and `market_scope`.
+Each has `instance_id`, `question_id`, `text`, `stratum`, `market_scope` and `easy_text`.
+`easy_text` is an easy-to-read wording of the same question (D-108), written by hand from the presentation world's records and kept in `backend/app/api/easy_questions.py`, or null.
+It names the record by its name or kind, country and date and keeps the record's id in brackets.
+It is served only when the bank's `world_manifest_hash` is the world the wordings were written from (`dev-seed2026`), because another world may give the id to another record.
+A client asks it as its own question (`question`, no `benchmark_instance_id`), so it runs live and is not scored.
 Before the bank is grounded the route is a 503 `CONFIGURATION_ERROR`, never an empty list.
 
 ## Events
@@ -249,7 +255,7 @@ graph.generation.started  graph.generation.completed
   Discard reasons are `excluded_label`, `out_of_scope_market`, `same_record`, `context_budget` and `duplicate`.
 - `graph.context.assembled` carries `structured_nodes`, `document_chunks`, `context_tokens`, `budget_tokens` and `stated_links`, the number of stated-link rows read for the target tier, null when the question names no target type.
 - A run stored under method 0.2.0 still replays: its events validate against separate old-method payload models, which carry `rerank_score` on nodes, `evidence_slots`, and the reasons `slot_limit` and `superseded_by_structured_fact`.
-  The Live Lab labels such a run as the old method.
+  The Live Lab offers no such run: its recordings and live runs are of the current method.
 - `graph.evidence_path.completed` carries counts only, not the paths.
   The paths are in the stored result.
 
@@ -275,15 +281,15 @@ The visual state of a node (seed, candidate, selected, discarded, ontology conce
 
 ## Benchmark routes
 
-A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of schema version 2 (method 0.2.0) or 3 (method v0.3), which the harness writes last.
-A directory with another schema version is not listed.
-Schema 3 adds evidence recall and its comparisons, C against A cells (`not_in_family`), groundedness means, and a judge agreement with `answered` and `abstained` cells, each with `n`, `agreement` and `weighted_kappa`.
-Schema 3 also carries `method_note`: for a method v0.3 run, the fixed declaration that the method was made after seeing the v0.2.0 result (D-093); null otherwise.
+A run is published when its directory under `BENCHMARK_DIR` holds a `summary.json` of schema version 3, which the harness writes last, and its record's `method_version` is the method the code runs now (`METHOD_VERSION`, 0.3.0).
+Any other run is not listed, not served by id and never `latest`; its files stay on disk untouched (D-104).
+Schema 3 carries evidence recall and its comparisons, C against A cells (`not_in_family`), the ontology-dependent split, groundedness means, and a judge agreement with `answered` and `abstained` cells, each with `n`, `agreement` and `weighted_kappa`.
+The summary's `method_note` is not served.
 The weighted kappa is in the data at any n; a client shows it only from n of 10, as the Results screen does (D-086).
 A malformed `summary.json` is a server error and is never silently skipped.
 
 - `GET /benchmarks` lists published runs newest first by start time, each with `run_id`, `run_kind`, `label`, `method_version`, `started_at`, `selection` and `worlds`.
-  `method_version` is the method the run was made under, read from its record: 0.2.0 for a run recorded before the field existed (D-092).
+  `method_version` is the method the run was made under, read from its record (D-092); every listed run has the current one.
 - `GET /benchmarks/latest` and `GET /benchmarks/{run_id}` return `{run_id, run_kind, label, method_version, summary}`.
   `latest` is the newest official run of the whole bank, else the newest run of any kind.
   It is a 404 when nothing is published.
@@ -291,6 +297,13 @@ A malformed `summary.json` is a server error and is never silently skipped.
 - `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, its failure classes, and `cut_off_repeats` and `token_limit_repeats`, the repeats whose answer was cut off and those among them that stopped at the output limit (null for a run recorded before answer parser 2.0.0, D-096).
   It carries the question text and scores only, never the expected answer, claims, checks, answer text or context blocks.
   A run without `results.json` is a 404.
+- `GET /benchmarks/{run_id}/second-judge` returns `{run_id, run, labels, combined}` (D-100, D-105): `run` is the newest second-judge summary of the run (schema 1), `labels` the newest label check of the same model, or null, and `combined` the two judges' combined mark (`combined.json`, schema 1, typed `JudgesMarkOut`), or null.
+  `combined` holds the definitions and versions, the counts, per kind of question and approach the mean mark (`metrics`), the judges' own family of comparisons in the run's `ComparisonCell` shape, its headlines, the agreement between the judges and the list of answers the judges disagree on (`JudgesDisagreeOut`); see [evaluation.md](evaluation.md#judges-mark).
+  It is null until `make judges-combined` (or `make second-judge`) has written it, and null again when it was computed from an earlier pass than the summary served, so a stale mark is not shown.
+  The summaries are read from `second-judge/` beside the runs directory (`data/evaluation/second-judge/` by default), never from the run.
+  It is a 404 for a run that is not published and for a published run with no second judge.
+  A summary that does not fit the schema is a server error naming the run.
+  It is descriptive and was added after the result; see [evaluation.md](evaluation.md#the-second-judge).
 - `GET /benchmarks/questions` lists the presentation world's bank for the Help screen, with each question's expected answer, the hidden truth of a planted question, and per-pipeline scores (`answer`, `evidence_recall` and `evidence_f1`, means over the scored repeats) from the run named by the optional `run_id`, else the newest official run.
   A missing or stale bank is a 503 `CONFIGURATION_ERROR`.
 
@@ -329,6 +342,14 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
   A 409 `CONFLICT` means the id is not unique in a link table.
   When Neo4j cannot be read, the row is still returned with `edges` null and `graph_error` `GRAPH_QUERY_ERROR`.
   A record of another world has `graph_error` `OTHER_WORLD`.
+- `GET /data-model/example` returns `{incident_id}`, the incident the Overview follows through the three layers, and nothing else.
+  Over the active world's `incidents` in id order, it leaves out every incident whose id, platform version or app version the world's truth ledger names, then takes the first whose platform version is also the version of an incident left in another market (a null market is a market of its own), else the first one left, else null.
+  No part of the example's path is planted, because the Overview would then point at a story's answer, and the response never says which rows were planted or why.
+  A ledger that cannot be read is logged by its path and the error's type only, never the error's text, which can quote ledger content.
+  The route asks the evaluator for the planted ids (`presentation_planted_ids`), so it is the third API module allowed to import `app.evaluation` (ADR-008).
+  The ledger must be the active world's own: its profile, world seed, generator version and scenario seed must match the world's manifest.
+  When there is no such ledger, the planted check cannot be made, so `incident_id` is null and a warning names the reason; the rule is never applied without the check.
+  A world without an `incidents` table is a 404.
 
 ## Graph and reference routes
 
@@ -336,11 +357,15 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
 - `GET /graph/stats` reads `_graph_stats.json` and works without Neo4j.
   It is a 404 for a dataset without the file.
 - `GET /graph/nodes/{node_id}` returns labels, properties and provenance (table, row id and dataset).
+  It also returns `edges`, how many relationships of each type meet the node in each direction, for every node including ontology concepts.
+  Each item of the neighbours route carries `edges` empty: the counts are read for the requested node only.
   A node no table maps to (`PrizeType`, `BusinessConcept`) has null provenance.
 - `GET /graph/nodes/{node_id}/neighbours` takes `limit` (default 25, 1 to 100) and an optional relationship `type`, ordered by type, direction and id, with `truncated` when there are more.
+  An optional `direction` (`out` or `in`) keeps the links that leave or reach the node; any other value is a 422, as an unknown `type` is.
 - `GET /ontology` reads the YAML: the version, every concept with its parent, labels, synonyms and definition (D-058), binding counts by market, and `relationships`, which is derived from ingestion and not declared.
 - `GET /ontology/concepts/{concept_id}/members` lists the bound local codes, with an optional `market` filter.
 - `GET /scenarios` lists each enabled scenario with what the manifest says was planted, and never where or why.
+  Each carries `description`, the catalogue's plain description of the story, which is configuration and not truth.
 - `GET /models` reports the embedding, sparse, re-ranker and generation models and the judge, each as `provider`, `model`, `reachable` and `detail`.
   Results are cached for 30 seconds.
   The sparse model and re-ranker run in process, so their `reachable` is null until the lab has loaded them.
@@ -363,6 +388,8 @@ Each graph request opens one reader, runs each statement once under `NEO4J_TIMEO
 | `embedding` | The embedding model is reachable (an Ollama model must be listed) |
 
 Details are curated sentences, and raw driver text is logged only.
+Each check also carries `stand_in`, true when an offline stand-in for testing passed it in place of a real model: the fake generator for `model`, the hashing embedder for `embedding` (D-111).
+A stand-in still passes, so `ready` stays true and Live Lab still runs; the header shows the difference.
 The decision record D-038 names four checks (`lab`, `index`, `graph`, `model`), and the code runs five.
 The decision text is behind the code on this point.
 
@@ -438,7 +465,7 @@ CORS allows the configured origins, GET and POST, and the headers `content-type`
 
 ## Testing
 
-- Offline: `test_api_queries.py`, `test_api_runs.py`, `test_api_stream.py`, `test_api_scoring.py`, `test_api_benchmarks.py`, `test_api_data_model.py`, `test_api_graph_model.py`, `test_api_reference.py`, `test_api_errors.py`, `test_store.py`, `test_health.py` and `test_event_payloads.py`.
+- Offline: `test_api_queries.py`, `test_api_runs.py`, `test_api_stream.py`, `test_api_scoring.py`, `test_api_benchmarks.py`, `test_api_data_model.py`, `test_api_graph_model.py`, `test_api_reference.py`, `test_api_example.py`, `test_api_errors.py`, `test_store.py`, `test_health.py` and `test_event_payloads.py`.
 - Contract: `test_openapi_contract.py` compares the committed `openapi.json` with the app's own schema and checks it does not depend on the environment.
   `pnpm api:check` regenerates the types and compares them byte for byte.
 - Live: `test_api_live.py` starts the app on the presentation world, runs the first H1 demo question over the event stream, waits for its score, restarts the app on the same run store, and checks that the run, its events and readiness survive and that no log record holds the expected answer.

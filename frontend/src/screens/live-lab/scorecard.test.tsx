@@ -49,7 +49,7 @@ const measured = (
 
 describe('Scorecard', () => {
   it('is a labelled region with a row per pipeline and a column per measure', () => {
-    render(<Scorecard metric="evidence_recall" results={h1} />)
+    render(<Scorecard results={h1} />)
     const region = screen.getByRole('region', { name: 'Scorecard' })
     expect(region).toBeVisible()
     expect(
@@ -73,13 +73,13 @@ describe('Scorecard', () => {
   })
 
   it('says the score is against the answer key, once, for a scored bank question', () => {
-    render(<Scorecard metric="evidence_recall" results={h1} />)
+    render(<Scorecard results={h1} />)
     expect(screen.getAllByText('scored against the answer key')).toHaveLength(1)
-    expect(screen.queryByText(/No answer key exists/)).toBeNull()
+    expect(screen.queryByText(/Not scored: this wording/)).toBeNull()
   })
 
   it('shows each pipeline answer, evidence found and starting record from the run score', () => {
-    render(<Scorecard metric="evidence_recall" results={h1} />)
+    render(<Scorecard results={h1} />)
     expect(cells('Answer')).toEqual([
       'Partly correct (50%)',
       'Partly correct (40%)',
@@ -97,7 +97,7 @@ describe('Scorecard', () => {
     const changed = structuredClone(h1) as Results
     changed.score!.per_pipeline.C.answer = 0.5
     changed.score!.per_pipeline.B.answer = 1
-    render(<Scorecard metric="evidence_recall" results={changed} />)
+    render(<Scorecard results={changed} />)
     expect(cells('Answer')).toEqual([
       'Partly correct (50%)',
       'Correct',
@@ -106,7 +106,7 @@ describe('Scorecard', () => {
   })
 
   it('gives the one-line reason from the failure class in plain words', () => {
-    render(<Scorecard metric="evidence_recall" results={h1} />)
+    render(<Scorecard results={h1} />)
     expect(cells('Reason')).toEqual([
       'The needed evidence was not retrieved',
       'The evidence was retrieved but the answer was wrong',
@@ -115,7 +115,7 @@ describe('Scorecard', () => {
   })
 
   it('shows a null measure as missing, never as 0', () => {
-    render(<Scorecard metric="evidence_recall" results={h3} />)
+    render(<Scorecard results={h3} />)
     expect(cells('Evidence recall')).toEqual(['Missing', 'Missing', 'Missing'])
     expect(cells('Answer')).toEqual(['Correct', 'Correct', 'Correct'])
     expect(cells('Reason')).toEqual([
@@ -128,7 +128,6 @@ describe('Scorecard', () => {
   it('shows answer writing time and context size, with deltas against A for B and C only', () => {
     render(
       <Scorecard
-        metric="evidence_recall"
         results={measured({
           A: [10000, 1400],
           B: [4000, 1500],
@@ -151,7 +150,6 @@ describe('Scorecard', () => {
   it('shows an answer writing time of none as "<1 ms", never "0 s"', () => {
     render(
       <Scorecard
-        metric="evidence_recall"
         results={measured({ A: [0, 1400], B: [0, 1500], C: [250, 1400] })}
       />,
     )
@@ -166,7 +164,7 @@ describe('Scorecard', () => {
     const changed = structuredClone(h1) as Results
     changed.score!.per_pipeline.B.evidence_recall = 0.4
     changed.score!.per_pipeline.C.evidence_recall = 0
-    render(<Scorecard metric="evidence_recall" results={changed} />)
+    render(<Scorecard results={changed} />)
     expect(cells('Evidence recall')).toEqual([
       '0.00',
       '0.40 | +0.40 vs A',
@@ -174,32 +172,11 @@ describe('Scorecard', () => {
     ])
   })
 
-  it('keeps the words "Evidence score" for the F1 of a recording of the old method, never the recall its score lacks', () => {
-    const old = structuredClone(h1) as Results
-    for (const [id, f1] of [
-      ['A', 0.25],
-      ['B', 0.75],
-      ['C', null],
-    ] as const)
-      old.score!.per_pipeline[id] = {
-        ...old.score!.per_pipeline[id],
-        evidence_f1: f1,
-        evidence_recall: null,
-      }
-    render(<Scorecard metric="evidence_f1" results={old} />)
-    expect(hasColumn('Evidence recall')).toBe(false)
-    expect(cells('Evidence score')).toEqual([
-      '0.25',
-      '0.75 | +0.50 vs A',
-      'Missing',
-    ])
-  })
-
   it('shows no delta when either side is missing', () => {
     const changed = structuredClone(h1) as Results
     changed.score!.per_pipeline.B.evidence_recall = null
     changed.score!.per_pipeline.C.evidence_recall = 0.2
-    render(<Scorecard metric="evidence_recall" results={changed} />)
+    render(<Scorecard results={changed} />)
     expect(cells('Evidence recall')).toEqual([
       '0.00',
       'Missing',
@@ -208,16 +185,16 @@ describe('Scorecard', () => {
   })
 
   it('counts the markets each pipeline reached', () => {
-    render(<Scorecard metric="evidence_recall" results={h1} />)
+    render(<Scorecard results={h1} />)
     const counts = cells('Markets reached')
     expect(counts).toHaveLength(3)
     for (const text of counts) expect(text).toMatch(/^[0-4] of 4/)
   })
 
   it('for an ad hoc question shows the measurable items only and says there is no key', () => {
-    render(<Scorecard metric="evidence_recall" results={adHoc} />)
+    render(<Scorecard results={adHoc} />)
     expect(
-      screen.getByText('No answer key exists for this question.'),
+      screen.getByText('Not scored: this wording is not in the tested set.'),
     ).toBeVisible()
     expect(screen.queryByText('scored against the answer key')).toBeNull()
     for (const name of [
@@ -238,7 +215,6 @@ describe('Scorecard', () => {
   it('says scoring has not finished while the score is pending', () => {
     render(
       <Scorecard
-        metric="evidence_recall"
         results={{ ...h1, score_status: 'pending', score: null } as Results}
       />,
     )
@@ -249,7 +225,6 @@ describe('Scorecard', () => {
   it('says so when scoring failed', () => {
     render(
       <Scorecard
-        metric="evidence_recall"
         results={{ ...h1, score_status: 'failed', score: null } as Results}
       />,
     )
@@ -259,7 +234,7 @@ describe('Scorecard', () => {
   it('shows a dash for a pipeline with no result', () => {
     const partial = structuredClone(h1) as Results
     delete partial.results!.C
-    render(<Scorecard metric="evidence_recall" results={partial} />)
+    render(<Scorecard results={partial} />)
     expect(cells('Answer writing time')[2]).toBe('No result')
   })
 })

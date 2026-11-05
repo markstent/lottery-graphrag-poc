@@ -82,12 +82,14 @@ class GraphReader:
         return [(list(record["labels"]), dict(record["props"])) for record in records]
 
     def node_neighbours(
-        self, node_id: str, rel_type: str | None, limit: int
+        self, node_id: str, rel_type: str | None, direction: str | None, limit: int
     ) -> list[tuple[str, str, list[str], dict[str, Any]]]:
         """(relationship type, direction, labels, properties) of up to
-        ``limit`` neighbours, ordered by type, direction and neighbour id."""
+        ``limit`` neighbours, of one type and one direction when given,
+        ordered by type, direction and neighbour id."""
         records = self._records_once(
-            statements.GRAPH_NEIGHBOURS, {"id": node_id, "rel_type": rel_type, "limit": limit}
+            statements.GRAPH_NEIGHBOURS,
+            {"id": node_id, "rel_type": rel_type, "direction": direction, "limit": limit},
         )
         return [
             (

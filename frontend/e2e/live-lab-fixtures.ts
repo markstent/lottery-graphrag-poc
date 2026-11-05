@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import cancelled from '../src/run/fixtures/run-cancelled.json' with { type: 'json' }
 import adhoc from '../src/run/fixtures/run-adhoc.json' with { type: 'json' }
 import live from '../src/run/fixtures/run-abc.json' with { type: 'json' }
+import world from './fixtures/world-shell.json' with { type: 'json' }
 
 /* What the Live Lab specs share: the recorded runs on disk, the questions the
    mock API lists for them, and a live run whose stream is served from a capture. */
@@ -20,12 +21,18 @@ export const RECORDED_RUNS: {
   .filter((file) => file !== 'index.json')
   .map((file) => JSON.parse(readFileSync(`${RECORDED_DIR}/${file}`, 'utf8')))
 export const h1 = RECORDED_RUNS.find((run) => run.stratum === 'H1')!
+// Each saved question's easy-to-read wording, as the API capture serves it (D-108).
+const EASY = new Map(
+  world.demo_questions.map((q) => [q.instance_id, q.easy_text ?? null]),
+)
+
 export const QUESTIONS = RECORDED_RUNS.map((run) => ({
   instance_id: run.instance_id,
   question_id: run.instance_id.slice(0, 3),
   text: run.question,
   stratum: run.stratum,
   market_scope: [],
+  easy_text: EASY.get(run.instance_id) ?? null,
 }))
 
 /** Stored results whose answers carry plain text, so pictures show no fixture tokens. */

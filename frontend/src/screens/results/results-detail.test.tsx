@@ -20,7 +20,7 @@ const OFFICIAL_RUN: Schemas['BenchmarkRunOut'] = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: 'Fixture run (test values)',
-  method_version: '0.2.0',
+  method_version: '0.3.0',
   started_at: '2026-10-20T09:00:00Z',
   selection: { strata: null, limit: null },
   worlds: [2026, 2027, 2028],
@@ -31,7 +31,7 @@ const summaryOf = (run_id: string, summary: Schemas['SummaryOut']) => ({
   run_id,
   run_kind: 'official',
   label: null,
-  method_version: '0.2.0',
+  method_version: '0.3.0',
   summary,
 })
 
@@ -44,15 +44,12 @@ const ROUTES = {
     OFFICIAL,
   ),
   '/api/v1/benchmarks/fixture-official/instances': OFFICIAL_INSTANCES,
-  '/api/v1/benchmarks/20261019T164733Z-smoke': {
-    ...summaryOf('20261019T164733Z-smoke', SMOKE),
+  '/api/v1/benchmarks/fixture-smoke': {
+    ...summaryOf('fixture-smoke', SMOKE),
     run_kind: 'smoke',
   },
-  '/api/v1/benchmarks/pilot-2026-nothink': summaryOf(
-    'pilot-2026-nothink',
-    PILOT,
-  ),
-  '/api/v1/benchmarks/pilot-2026-nothink/instances': PILOT_INSTANCES,
+  '/api/v1/benchmarks/fixture-subset': summaryOf('fixture-subset', PILOT),
+  '/api/v1/benchmarks/fixture-subset/instances': PILOT_INSTANCES,
 }
 
 const open = (query: string) => {
@@ -82,14 +79,12 @@ describe('question table', () => {
 
   it('choosing a filter writes it to the address', async () => {
     stubApi(ROUTES)
-    open('run=pilot-2026-nothink')
+    open('run=fixture-subset')
     const table = await questionTable()
     fireEvent.change(await table.findByRole('combobox', { name: 'World' }), {
       target: { value: '2026' },
     })
-    expect(window.location.hash).toBe(
-      '#/results?run=pilot-2026-nothink&world=2026',
-    )
+    expect(window.location.hash).toBe('#/results?run=fixture-subset&world=2026')
   })
 
   it('failure count filters the table and moves focus', async () => {
@@ -119,7 +114,7 @@ describe('question table', () => {
   it('row expands by keyboard', async () => {
     stubApi(ROUTES)
     const user = userEvent.setup()
-    open('run=pilot-2026-nothink')
+    open('run=fixture-subset')
     const table = await questionTable()
     const toggle = (
       await table.findAllByRole('button', { name: /^Details for / })
@@ -154,17 +149,17 @@ describe('question table', () => {
     expect(table.getAllByText('Not loaded')).toHaveLength(elsewhere)
   })
 
-  it('older run renders with missing fields', async () => {
+  it('a field the run did not record reads Not recorded', async () => {
     stubApi(ROUTES)
-    open('run=pilot-2026-nothink')
+    open('run=fixture-subset')
     const repro = within(
       await screen.findByRole('region', { name: 'Reproducibility' }),
     )
-    const term = repro.getAllByText('git_dirty')[0]
+    const term = repro.getAllByText('generation_quantisation')[0]
     expect(term.nextElementSibling).toHaveTextContent('Not recorded')
     expect(repro.getByRole('link', { name: 'Raw record' })).toHaveAttribute(
       'href',
-      '/api/v1/benchmarks/pilot-2026-nothink',
+      '/api/v1/benchmarks/fixture-subset',
     )
   })
 
@@ -185,10 +180,10 @@ describe('question table', () => {
   it('instances error keeps the charts', async () => {
     stubApi({
       ...ROUTES,
-      '/api/v1/benchmarks/pilot-2026-nothink/instances': () =>
+      '/api/v1/benchmarks/fixture-subset/instances': () =>
         failure('This run has no per-question results.', false, 404),
     })
-    open('run=pilot-2026-nothink')
+    open('run=fixture-subset')
     expect(
       await within(
         await screen.findByRole('region', { name: 'Questions' }),
@@ -232,7 +227,7 @@ describe('question table', () => {
 
   it('subset run labels the table and panels', async () => {
     stubApi(ROUTES)
-    open('run=pilot-2026-nothink')
+    open('run=fixture-subset')
     for (const name of ['Questions', 'Efficiency', 'Failures', 'Judge'])
       expect(
         await within(await screen.findByRole('region', { name })).findByText(
@@ -246,7 +241,7 @@ describe('question table', () => {
       ...ROUTES,
       '/api/v1/benchmarks': CAPTURED_RUNS,
     })
-    open('run=20261019T164733Z-smoke')
+    open('run=fixture-smoke')
     expect(
       await screen.findByRole('region', { name: 'Reproducibility' }),
     ).toBeVisible()
@@ -294,7 +289,7 @@ describe('panels', () => {
   })
 })
 
-describe('two methods', () => {
+describe('a run with every comparison, a judge and groundedness', () => {
   const V03_LISTED: Schemas['BenchmarkRunOut'] = {
     run_id: V03_RUN.run_id,
     run_kind: V03_RUN.run_kind,
@@ -314,17 +309,13 @@ describe('two methods', () => {
   const verdict = async () =>
     within(await screen.findByRole('region', { name: 'Verdict' }))
 
-  it('a v0.3 run names its method, compares evidence recall and C against A without a test', async () => {
+  it('a run compares evidence recall and C against A without a test, and names no method', async () => {
     stubApi(routes)
     open(`run=${V03_RUN.run_id}`)
-    expect(await (await verdict()).findByText('Method v0.3')).toBeVisible()
-    // The run's own declaration of the method change stands beside the badge.
     expect(
-      (await verdict()).getByText(V03_RUN.summary.method_note!),
+      await (await verdict()).findByText('Evidence recall: A · Text search'),
     ).toBeVisible()
-    expect(
-      (await verdict()).getByText('Evidence recall: A · Text search'),
-    ).toBeVisible()
+    expect(screen.queryByText(/Method v0/)).toBeNull()
     const scores = within(
       screen.getByRole('region', { name: 'Scores by kind of question' }),
     )
@@ -336,7 +327,7 @@ describe('two methods', () => {
     ).toBeGreaterThan(0)
   })
 
-  it("a v0.3 run's question table shows each question's evidence recall, never its F1", async () => {
+  it("a run's question table shows each question's evidence recall, never its F1", async () => {
     // F1 set apart from recall, so the cell shows which one it reads.
     const instances = structuredClone(V03_INSTANCES)
     for (const row of instances)
@@ -420,16 +411,7 @@ describe('two methods', () => {
     ).toEqual(['Not recorded', 'Not recorded', 'Not recorded'])
   })
 
-  it("a v0.2 run's question table keeps its evidence score", async () => {
-    stubApi(routes)
-    open('run=fixture-official')
-    const table = await questionTable()
-    expect(
-      await table.findAllByRole('columnheader', { name: 'Evidence score' }),
-    ).toHaveLength(3)
-  })
-
-  it('a v0.3 run splits judge agreement and shows groundedness', async () => {
+  it('a run splits judge agreement and shows groundedness', async () => {
     stubApi(routes)
     open(`run=${V03_RUN.run_id}`)
     const judge = within(await screen.findByRole('region', { name: 'Judge' }))
@@ -439,7 +421,6 @@ describe('two methods', () => {
     expect(
       judge.getByRole('columnheader', { name: 'Weighted kappa' }),
     ).toBeVisible()
-    expect(judge.queryByRole('columnheader', { name: 'Kappa' })).toBeNull()
     expect(judge.getAllByText('Too few to say').length).toBeGreaterThan(0)
     const grounded = within(
       screen.getByRole('region', { name: 'Groundedness' }),
@@ -450,23 +431,5 @@ describe('two methods', () => {
         name: 'All questions - C · Graph + Ontology',
       }),
     ).toBeVisible()
-  })
-
-  it('a v0.2 run reads as before, with the old method named and no groundedness', async () => {
-    stubApi(routes)
-    open('run=fixture-official')
-    expect(
-      await (await verdict()).findByText('Method v0.2 (old method)'),
-    ).toBeVisible()
-    expect(
-      (await verdict()).getByText('Evidence score: A · Text search'),
-    ).toBeVisible()
-    expect((await verdict()).queryByText(/Method v0.3 was made/)).toBeNull()
-    const judge = within(await screen.findByRole('region', { name: 'Judge' }))
-    expect(judge.getByRole('columnheader', { name: 'Kappa' })).toBeVisible()
-    expect(
-      judge.getByRole('rowheader', { name: 'All questions' }),
-    ).toBeVisible()
-    expect(screen.queryByRole('region', { name: 'Groundedness' })).toBeNull()
   })
 })

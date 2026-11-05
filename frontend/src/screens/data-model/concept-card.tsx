@@ -8,23 +8,15 @@ import type { ReactNode } from 'react'
 import type { Schemas } from '../../api/client'
 import { hrefFor } from '../../app/router'
 import { plural } from '../../charts/scale'
-import { Panel } from '../../components/panel'
 import { relationshipPhrase } from '../../design/relationships'
-import { labelOf } from './model'
+import { LANGUAGES, labelOf } from './model'
 
 type Concept = Schemas['ConceptOut']
-
-const LANGUAGES = [
-  { id: 'en', name: 'English' },
-  { id: 'el', name: 'Greek' },
-  { id: 'de', name: 'German' },
-  { id: 'cs', name: 'Czech' },
-] as const
 
 const conceptLink = (concept: Concept) => (
   <a
     href={hrefFor('data-model', {
-      tab: 'ontology',
+      tab: 'concepts',
       concept: concept.concept_id,
     })}
     className="text-text-primary underline"
@@ -33,15 +25,15 @@ const conceptLink = (concept: Concept) => (
   </a>
 )
 
-/** "Bound to 4 local terms across 4 markets and 1 shared by every market"; null when nothing is bound. */
+/** "Matched to 4 country terms across 4 markets and 1 shared by every market"; null when nothing is matched. */
 function bindingLine(counts: Record<string, number>): string | null {
   const shared = counts.shared ?? 0
   const markets = Object.entries(counts).filter(([id]) => id !== 'shared')
   const terms = markets.reduce((sum, [, n]) => sum + n, 0)
   if (terms === 0 && shared === 0) return null
   if (terms === 0)
-    return `Bound to ${plural(shared, 'local term')} shared by every market`
-  const own = `Bound to ${plural(terms, 'local term')} across ${plural(markets.length, 'market')}`
+    return `Matched to ${plural(shared, 'country term')} shared by every market`
+  const own = `Matched to ${plural(terms, 'country term')} across ${plural(markets.length, 'market')}`
   return shared > 0 ? `${own} and ${shared} shared by every market` : own
 }
 
@@ -100,7 +92,7 @@ export function ConceptCard({
     ({ id }) => (concept.synonyms[id] ?? []).length > 0,
   )
   return (
-    <Panel state="ready" title="Concept">
+    <section aria-label="Concept">
       <h3 className="text-lg font-semibold text-text-primary">
         {labelOf(concept)}
       </h3>
@@ -138,6 +130,6 @@ export function ConceptCard({
         </h4>
         <Relationships concept={concept} parent={parent} kinds={kinds} />
       </div>
-    </Panel>
+    </section>
   )
 }

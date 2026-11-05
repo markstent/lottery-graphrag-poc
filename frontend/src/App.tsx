@@ -23,6 +23,11 @@ const DataModel = lazy(() =>
     default: m.DataModel,
   })),
 )
+const Architecture = lazy(() =>
+  import('./screens/architecture/architecture').then((m) => ({
+    default: m.Architecture,
+  })),
+)
 const Help = lazy(() =>
   import('./screens/help/help').then((m) => ({ default: m.Help })),
 )
@@ -37,6 +42,8 @@ function Page({ name }: { name: RouteName }) {
       return <Results />
     case 'data-model':
       return <DataModel />
+    case 'architecture':
+      return <Architecture />
     case 'help':
       return <Help />
   }

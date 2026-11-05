@@ -12,15 +12,21 @@ async function open(concept = 'CONCEPT_LOTTERY_PRODUCT') {
   window.history.replaceState(
     null,
     '',
-    `/#/data-model?tab=ontology&concept=${concept}`,
+    `/#/data-model?tab=concepts&concept=${concept}`,
   )
   stubOntology()
   render(
     <OntologyTab
-      params={new URLSearchParams(`tab=ontology&concept=${concept}`)}
+      params={new URLSearchParams(`tab=concepts&concept=${concept}`)}
     />,
   )
   await screen.findByRole('tree', { name: 'Concepts' })
+}
+
+/** Tab past the search box, which comes first, onto the tree's one tab stop. */
+const enterTree = async () => {
+  await userEvent.tab()
+  await userEvent.tab()
 }
 
 beforeEach(() => window.history.replaceState(null, '', '/#/data-model'))
@@ -55,7 +61,7 @@ describe('the concept tree', () => {
 
   it('moves with the arrow keys, Home and End without selecting', async () => {
     await open()
-    await userEvent.tab()
+    await enterTree()
     expect(
       screen.getByRole('treeitem', { name: /Lottery product/ }),
     ).toHaveFocus()
@@ -69,14 +75,14 @@ describe('the concept tree', () => {
     await userEvent.keyboard('{Home}')
     expect(items[0]).toHaveFocus()
     expect(window.location.hash).toBe(
-      '#/data-model?tab=ontology&concept=CONCEPT_LOTTERY_PRODUCT',
+      '#/data-model?tab=concepts&concept=CONCEPT_LOTTERY_PRODUCT',
     )
     expect(items.filter((i) => i.tabIndex === 0)).toEqual([items[0]])
   })
 
   it('expands with Right, then moves into the first child', async () => {
     await open()
-    await userEvent.tab()
+    await enterTree()
     const top = screen.getByRole('treeitem', { name: /Lottery product/ })
     await userEvent.keyboard('{ArrowLeft}')
     expect(top).toHaveAttribute('aria-expanded', 'false')
@@ -90,7 +96,7 @@ describe('the concept tree', () => {
 
   it('collapses with Left, and Left on a leaf or collapsed item goes to its parent', async () => {
     await open('CONCEPT_NATIONAL_DRAW')
-    await userEvent.tab()
+    await enterTree()
     expect(
       screen.getByRole('treeitem', { name: /National Draw/ }),
     ).toHaveFocus()
@@ -106,14 +112,14 @@ describe('the concept tree', () => {
 
   it('selects with Enter and with Space, which updates the address', async () => {
     await open()
-    await userEvent.tab()
+    await enterTree()
     await userEvent.keyboard('{ArrowRight}{ArrowRight}{Enter}')
     expect(window.location.hash).toBe(
-      '#/data-model?tab=ontology&concept=CONCEPT_DRAW_GAME',
+      '#/data-model?tab=concepts&concept=CONCEPT_DRAW_GAME',
     )
     await userEvent.keyboard('{ArrowDown}{ }')
     expect(window.location.hash).toBe(
-      '#/data-model?tab=ontology&concept=CONCEPT_NATIONAL_DRAW',
+      '#/data-model?tab=concepts&concept=CONCEPT_NATIONAL_DRAW',
     )
   })
 

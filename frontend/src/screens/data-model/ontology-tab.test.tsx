@@ -7,7 +7,7 @@ import { NATIONAL_DRAW, ONTOLOGY, stubOntology } from './ontology.fixtures'
 import { OntologyTab } from './ontology-tab'
 
 const renderAt = (query = '') => {
-  window.history.replaceState(null, '', `/#/data-model?tab=ontology${query}`)
+  window.history.replaceState(null, '', `/#/data-model?tab=concepts${query}`)
   const view = () => (
     <OntologyTab
       params={new URLSearchParams(window.location.hash.split('?')[1])}
@@ -26,7 +26,7 @@ const renderAt = (query = '') => {
 
 const goTo = (query: string) =>
   act(() => {
-    window.location.hash = `#/data-model?tab=ontology${query}`
+    window.location.hash = `#/data-model?tab=concepts${query}`
     window.dispatchEvent(new HashChangeEvent('hashchange'))
   })
 
@@ -104,14 +104,14 @@ describe('OntologyTab', () => {
     expect(within(relationships).getByText(/is a kind of/)).toBeVisible()
     expect(
       within(relationships).getByText(
-        'Bound to 4 local terms across 4 markets',
+        'Matched to 4 country terms across 4 markets',
       ),
     ).toBeVisible()
     expect(
       within(relationships).getByRole('link', { name: 'Draw game' }),
     ).toHaveAttribute(
       'href',
-      `#/data-model?tab=ontology&concept=CONCEPT_DRAW_GAME`,
+      `#/data-model?tab=concepts&concept=CONCEPT_DRAW_GAME`,
     )
     expect(document.body.textContent).not.toMatch(/MAPS_TO|IS_A/)
     expect(card.textContent).not.toMatch(/[A-Z]+_[A-Z]+/)
@@ -121,7 +121,7 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt(`&concept=${NATIONAL_DRAW}`)
     const members = await screen.findByRole('region', {
-      name: 'Local terms bound to it',
+      name: 'Country terms for it',
     })
     for (const [market, name] of [
       ['United Kingdom', 'National Draw'],
@@ -140,7 +140,7 @@ describe('OntologyTab', () => {
     const { requested } = stubOntology()
     renderAt(`&concept=${NATIONAL_DRAW}`)
     const members = await screen.findByRole('region', {
-      name: 'Local terms bound to it',
+      name: 'Country terms for it',
     })
     await within(members).findByText('Zahlenziehung')
     await userEvent.click(screen.getByRole('button', { name: 'Greece' }))
@@ -161,7 +161,7 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt('&concept=CONCEPT_DIGITAL_CHANNEL')
     const members = await screen.findByRole('region', {
-      name: 'Local terms bound to it',
+      name: 'Country terms for it',
     })
     const shared = await within(members).findByRole('group', {
       name: 'Shared by every market',
@@ -175,7 +175,7 @@ describe('OntologyTab', () => {
     const card = await screen.findByRole('region', { name: 'Concept' })
     expect(
       within(card).getByText(
-        'Bound to 4 local terms across 4 markets and 1 shared by every market',
+        'Matched to 4 country terms across 4 markets and 1 shared by every market',
       ),
     ).toBeVisible()
     const shared = await screen.findByRole('group', {
@@ -191,7 +191,9 @@ describe('OntologyTab', () => {
     renderAt('&concept=CONCEPT_DIGITAL_CHANNEL')
     const card = await screen.findByRole('region', { name: 'Concept' })
     expect(
-      within(card).getByText('Bound to 2 local terms shared by every market'),
+      within(card).getByText(
+        'Matched to 2 country terms shared by every market',
+      ),
     ).toBeVisible()
     expect(screen.queryByRole('group', { name: 'Show terms from' })).toBeNull()
   })
@@ -200,7 +202,7 @@ describe('OntologyTab', () => {
     const { requested } = stubOntology()
     renderAt('&concept=CONCEPT_PAYMENT_INCIDENT&market=MKT_GR')
     const members = await screen.findByRole('region', {
-      name: 'Local terms bound to it',
+      name: 'Country terms for it',
     })
     const shared = await within(members).findByRole('group', {
       name: 'Shared by every market',
@@ -238,7 +240,7 @@ describe('OntologyTab', () => {
     )
     renderAt(`&concept=${NATIONAL_DRAW}&market=MKT_GR`)
     expect(
-      await screen.findByText('No local terms from this market.'),
+      await screen.findByText('No term from this market points here.'),
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Greece' })).toHaveAttribute(
       'aria-pressed',
@@ -254,7 +256,9 @@ describe('OntologyTab', () => {
     ).toHaveAttribute('aria-pressed', 'true')
     expect(
       await within(
-        await screen.findByRole('region', { name: 'Local terms bound to it' }),
+        await screen.findByRole('region', {
+          name: 'Country terms for it',
+        }),
       ).findByText('Annuity Draw'),
     ).toBeVisible()
     expect(requested.filter((path) => path.includes('/members'))).toEqual([
@@ -266,7 +270,9 @@ describe('OntologyTab', () => {
     stubOntology()
     renderAt('&concept=CONCEPT_LOTTERY_PRODUCT')
     expect(
-      await screen.findByText('No local terms are bound directly.'),
+      await screen.findByText(
+        'No country term points here directly: see the concepts under it.',
+      ),
     ).toBeVisible()
   })
 
@@ -286,7 +292,7 @@ describe('OntologyTab', () => {
       await screen.findByRole('treeitem', { name: /Draw game/ }),
     )
     expect(window.location.hash).toBe(
-      '#/data-model?tab=ontology&concept=CONCEPT_DRAW_GAME',
+      '#/data-model?tab=concepts&concept=CONCEPT_DRAW_GAME',
     )
     stop()
   })
@@ -298,11 +304,11 @@ describe('OntologyTab', () => {
       await screen.findByRole('button', { name: 'Austria' }),
     )
     expect(window.location.hash).toBe(
-      `#/data-model?tab=ontology&concept=${NATIONAL_DRAW}&market=MKT_AT`,
+      `#/data-model?tab=concepts&concept=${NATIONAL_DRAW}&market=MKT_AT`,
     )
     await userEvent.click(screen.getByRole('treeitem', { name: /Draw game/ }))
     expect(window.location.hash).toBe(
-      '#/data-model?tab=ontology&concept=CONCEPT_DRAW_GAME',
+      '#/data-model?tab=concepts&concept=CONCEPT_DRAW_GAME',
     )
     stop()
   })
@@ -361,5 +367,71 @@ describe('OntologyTab', () => {
     goTo('&concept=CONCEPT_QUICK_PICK')
     expect(await screen.findByText('Τυχαία επιλογή')).toBeVisible()
     stop()
+  })
+  it('searches the tree: a match shows in place under its ancestors and the rest are hidden', async () => {
+    stubOntology()
+    renderAt('&concept=CONCEPT_LOTTERY_PRODUCT')
+    const tree = await screen.findByRole('tree', { name: 'Concepts' })
+    await userEvent.type(
+      screen.getByRole('searchbox', { name: 'Search concepts' }),
+      'national draw',
+    )
+    const items = within(tree).getAllByRole('treeitem')
+    expect(items.map((item) => item.getAttribute('aria-level'))).toEqual([
+      '1',
+      '2',
+      '3',
+    ])
+    expect(items[0]).toHaveTextContent('Lottery product')
+    expect(items[1]).toHaveTextContent('Draw game')
+    expect(items[2]).toHaveTextContent('National Draw')
+    expect(within(tree).queryByText('Quick Pick')).toBeNull()
+  })
+
+  it('finds a concept by its name in another language', async () => {
+    stubOntology()
+    renderAt()
+    await userEvent.type(
+      await screen.findByRole('searchbox', { name: 'Search concepts' }),
+      'Zahlenziehung',
+    )
+    expect(
+      within(screen.getByRole('tree')).getByRole('treeitem', {
+        name: /National Draw/,
+      }),
+    ).toBeVisible()
+  })
+
+  it('says so when no concept matches, and shows the tree again when cleared', async () => {
+    stubOntology()
+    renderAt()
+    const box = await screen.findByRole('searchbox', {
+      name: 'Search concepts',
+    })
+    await userEvent.type(box, 'zzzz')
+    expect(screen.queryByRole('tree')).toBeNull()
+    expect(screen.getByText('No match')).toBeVisible()
+    await userEvent.clear(box)
+    expect(screen.getAllByRole('treeitem').length).toBeGreaterThan(3)
+  })
+
+  it('opens the ontology copy from About this', async () => {
+    stubOntology()
+    renderAt()
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'About this' }),
+    )
+    expect(await screen.findByText('How the ontology is built')).toBeVisible()
+  })
+
+  it('is headed by the three steps', async () => {
+    stubOntology()
+    renderAt()
+    for (const step of [
+      '1 Choose a concept',
+      '2 The concept',
+      '3 Country terms',
+    ])
+      expect(await screen.findByRole('heading', { name: step })).toBeVisible()
   })
 })

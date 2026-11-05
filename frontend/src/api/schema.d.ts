@@ -145,6 +145,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/benchmarks/{run_id}/second-judge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Second Judge */
+        get: operations["read_second_judge_api_v1_benchmarks__run_id__second_judge_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/data-model/example": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Example */
+        get: operations["read_example_api_v1_data_model_example_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets": {
         parameters: {
             query?: never;
@@ -560,6 +594,14 @@ export interface components {
             answered: components["schemas"]["AgreementOut"];
         };
         /**
+         * AnswerLevelAgreementOut
+         * @description Each judge's agreement with the answer level, as the run reports the first judge's.
+         */
+        AnswerLevelAgreementOut: {
+            first: components["schemas"]["JudgeAgreementOut"];
+            second: components["schemas"]["JudgeAgreementOut"];
+        };
+        /**
          * ApiErrorBody
          * @description The error object every failure carries (docs/reference/07 section 11).
          */
@@ -644,12 +686,12 @@ export interface components {
          * BenchmarkSummary
          * @description Response for GET /api/v1/benchmarks/latest and /benchmarks/{run_id}.
          *
-         *     ``summary`` is the run's ``summary.json`` (schema 2 or 3), typed: the only
-         *     benchmark source the API publishes. ``run_kind`` and ``label`` are
-         *     copied out of it so a client can tell a smoke or sweep run from an
-         *     official result without reading the summary. ``method_version`` is the
-         *     method the run was made under, from its record: 0.2.0 for a run recorded
-         *     before the field existed (such as v0.2.0).
+         *     ``summary`` is the run's ``summary.json``, typed: the only benchmark
+         *     source the API publishes. ``run_kind`` and ``label`` are copied out of
+         *     it so a client can tell a smoke or sweep run from an official result
+         *     without reading the summary. ``method_version`` is the method the run was
+         *     made under, from its record; only runs of the current method are
+         *     published (D-104).
          */
         BenchmarkSummary: {
             /** Label */
@@ -663,6 +705,26 @@ export interface components {
             summary: components["schemas"]["SummaryOut"];
         };
         /**
+         * BetweenJudgesCellOut
+         * @description Correctness of the first judge against the second; ``confusion[i][j]``
+         *     counts repeats the first judge put on level i and the second on level j.
+         */
+        BetweenJudgesCellOut: {
+            /** Agreement */
+            agreement: number | null;
+            /** Confusion */
+            confusion: number[][];
+            /** N */
+            n: number;
+            /** Weighted Kappa */
+            weighted_kappa: number | null;
+        };
+        /** BetweenJudgesOut */
+        BetweenJudgesOut: {
+            abstained: components["schemas"]["BetweenJudgesCellOut"];
+            answered: components["schemas"]["BetweenJudgesCellOut"];
+        };
+        /**
          * Check
          * @description One readiness check: whether it passed and a curated detail, never a
          *     service address or raw driver or provider text.
@@ -672,6 +734,12 @@ export interface components {
             detail: string;
             /** Ok */
             ok: boolean;
+            /**
+             * Stand In
+             * @description True when an offline stand-in for testing (the fake generator or the hashing embedder) passed the check in place of a real model, so the screens can say that answers are not a real model's.
+             * @default false
+             */
+            stand_in: boolean;
         };
         /**
          * Citation
@@ -772,6 +840,17 @@ export interface components {
             };
         };
         /**
+         * DataModelExample
+         * @description The incident the Data Model Overview follows through the three layers,
+         *     or null when the active world has none (no incidents, or no truth ledger
+         *     of its own to check against). Carries the example's id only: never which
+         *     rows were planted or why.
+         */
+        DataModelExample: {
+            /** Incident Id */
+            incident_id: string | null;
+        };
+        /**
          * DatasetDetail
          * @description Response for GET /datasets/{dataset_id}; ``index_status`` is None
          *     when no persistent index was built over the world.
@@ -816,6 +895,8 @@ export interface components {
          *     markets): the bank defines no scope of its own.
          */
         DemoQuestion: {
+            /** Easy Text */
+            easy_text?: string | null;
             /** Instance Id */
             instance_id: string;
             /** Market Scope */
@@ -1027,6 +1108,21 @@ export interface components {
             repeats: {
                 [key: string]: number;
             };
+        };
+        /**
+         * FirstJudgeOut
+         * @description The first judge as the run recorded it, and its reply limit (the
+         *     code's; absent in a summary written before it was recorded).
+         */
+        FirstJudgeOut: {
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Model */
+            model: string | null;
+            /** Model Family */
+            model_family: string | null;
+            /** Prompt Version */
+            prompt_version: string | null;
         };
         /**
          * ForeignKeyOut
@@ -1945,6 +2041,176 @@ export interface components {
             };
         };
         /**
+         * JudgeMeansOut
+         * @description Each judge's mean of the five dimensions over ``n`` repeats both judged.
+         */
+        JudgeMeansOut: {
+            /** First */
+            first: {
+                [key: string]: number;
+            };
+            /** N */
+            n: number;
+            /** Second */
+            second: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * JudgesCountsOut
+         * @description Answers of the run, those both judges scored, those on which they gave
+         *     the same correctness, those with no mark by reason, and the answers the
+         *     judges disagree on.
+         */
+        JudgesCountsOut: {
+            /** Agreed */
+            agreed: number;
+            /** Answers */
+            answers: number;
+            /** Both Judged */
+            both_judged: number;
+            /** Disagreements */
+            disagreements: number;
+            /** Missing */
+            missing: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * JudgesDisagreeOut
+         * @description One answer the judges disagree on: one gave correctness 2, the other 0.
+         */
+        JudgesDisagreeOut: {
+            /** First */
+            first: number;
+            /** Instance Id */
+            instance_id: string;
+            /** Pipeline */
+            pipeline: string;
+            /** Question */
+            question: string;
+            /** Question Id */
+            question_id: string;
+            /** Repeat */
+            repeat: number;
+            /** Second */
+            second: number;
+            /** Stratum */
+            stratum: string;
+            /** World Seed */
+            world_seed: number;
+        };
+        /**
+         * JudgesMarkOut
+         * @description The two judges' combined mark (``combined.json``, schema 1, D-105):
+         *     per answer (c1 + c2) / 4, tested as its own family. ``metrics`` is per
+         *     stratum and pipeline, ``comparisons`` and ``headlines`` have the run's
+         *     shapes, ``agreement`` is between the judges.
+         */
+        JudgesMarkOut: {
+            agreement: components["schemas"]["BetweenJudgesOut"];
+            /** Comparisons */
+            comparisons: components["schemas"]["ComparisonCell"][];
+            /** Computed At */
+            computed_at: string;
+            counts: components["schemas"]["JudgesCountsOut"];
+            /** Definition */
+            definition: string;
+            /** Disagreements */
+            disagreements: components["schemas"]["JudgesDisagreeOut"][];
+            /** Disagreements By Stratum */
+            disagreements_by_stratum: {
+                [key: string]: number;
+            };
+            /**
+             * Family
+             * @constant
+             */
+            family: "judges";
+            first_judge: components["schemas"]["FirstJudgeOut"];
+            /** Git Dirty */
+            git_dirty: boolean | null;
+            /** Git Sha */
+            git_sha: string;
+            /** Headlines */
+            headlines: string[];
+            /** Judge Prompt Hash */
+            judge_prompt_hash: string;
+            /** Judge Prompt Version */
+            judge_prompt_version: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "combined";
+            /** Measure */
+            measure: string;
+            /** Metrics */
+            metrics: {
+                [key: string]: {
+                    [key: string]: components["schemas"]["MetricCell"];
+                };
+            };
+            /** Min Kappa Items */
+            min_kappa_items: number;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            second_judge: components["schemas"]["SecondJudgeModelOut"];
+            /** Second Judge Finished At */
+            second_judge_finished_at: string;
+        };
+        /**
+         * LabelAgreementOut
+         * @description The labelling analysis with the second judge added as ``second_judge``.
+         */
+        LabelAgreementOut: {
+            /** Cells */
+            cells: {
+                [key: string]: components["schemas"]["LabelCellOut"];
+            };
+            /** Measures */
+            measures: {
+                [key: string]: string;
+            };
+            /** Overall */
+            overall: {
+                [key: string]: components["schemas"]["LabelMeasureOut"];
+            };
+            /** Run */
+            run: string;
+        };
+        /** LabelCellOut */
+        LabelCellOut: {
+            /** Measures */
+            measures: {
+                [key: string]: components["schemas"]["LabelMeasureOut"];
+            };
+            /** N */
+            n: number;
+        };
+        /**
+         * LabelMeasureOut
+         * @description One measure's agreement with the consensus labels; ``kappa_shown`` is
+         *     False below the item count a kappa is shown from.
+         */
+        LabelMeasureOut: {
+            /** Agreement */
+            agreement: number | null;
+            /** Kappa Shown */
+            kappa_shown: boolean;
+            /** N */
+            n: number;
+            /** Weighted Kappa */
+            weighted_kappa: number | null;
+            /** Wrong Share */
+            wrong_share: number | null;
+        };
+        /**
          * LivePipelineScore
          * @description One pipeline's deterministic scores on a live bank question; None
          *     where the instance does not define the metric.
@@ -2078,9 +2344,13 @@ export interface components {
         /**
          * NodeOut
          * @description One graph node; ``provenance`` is None for a node no source table
-         *     maps to (PrizeType, BusinessConcept).
+         *     maps to (PrizeType, BusinessConcept). ``edges`` counts the links meeting
+         *     the node, per type and direction; only the node route fills it, and the
+         *     nodes listed as neighbours carry none.
          */
         NodeOut: {
+            /** Edges */
+            edges?: components["schemas"]["EdgeSummary"][];
             /** Labels */
             labels: string[];
             /** Node Id */
@@ -3153,9 +3423,13 @@ export interface components {
         /**
          * ScenarioOut
          * @description A catalogue scenario and whether the active dataset planted it. Carries
-         *     configuration only: never the truth ledger.
+         *     configuration only: never the truth ledger. ``description`` is the
+         *     catalogue's plain description of the story, which is configuration, not
+         *     truth.
          */
         ScenarioOut: {
+            /** Description */
+            description: string;
             /** Noise Level */
             noise_level: string | null;
             /** Planted */
@@ -3172,6 +3446,144 @@ export interface components {
             strength: number | null;
             /** Title */
             title: string;
+        };
+        /**
+         * SecondJudgeCountsOut
+         * @description Repeats to judge, those judged, failures by kind and by message,
+         *     repeats not yet judged, and replies that stopped at the reply cap.
+         */
+        SecondJudgeCountsOut: {
+            /** Cut Off Replies */
+            cut_off_replies: number;
+            /** Failure Kinds */
+            failure_kinds: {
+                [key: string]: number;
+            };
+            /** Failure Messages */
+            failure_messages: {
+                [key: string]: number;
+            };
+            /** Failures */
+            failures: number;
+            /** Judged */
+            judged: number;
+            /** Pending */
+            pending: number;
+            /** Repeats */
+            repeats: number;
+        };
+        /**
+         * SecondJudgeLabelsOut
+         * @description The second judge over the hand-labelled sample, beside the first judge.
+         */
+        SecondJudgeLabelsOut: {
+            agreement_with_labels: components["schemas"]["LabelAgreementOut"];
+            counts: components["schemas"]["SecondJudgeCountsOut"];
+            /** Finished At */
+            finished_at: string;
+            first_judge: components["schemas"]["FirstJudgeOut"];
+            /** Generation Model */
+            generation_model: string | null;
+            /** Git Dirty */
+            git_dirty: boolean | null;
+            /** Git Sha */
+            git_sha: string;
+            /** Judge Prompt Hash */
+            judge_prompt_hash: string;
+            /** Judge Prompt Version */
+            judge_prompt_version: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "labels";
+            /** Min Kappa Items */
+            min_kappa_items: number;
+            /** Run Id */
+            run_id: string;
+            /** Sample */
+            sample: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            second_judge: components["schemas"]["SecondJudgeModelOut"];
+            /** Started At */
+            started_at: string | null;
+        };
+        /**
+         * SecondJudgeModelOut
+         * @description The second judge model and the settings it was called with.
+         */
+        SecondJudgeModelOut: {
+            /** Max Tokens */
+            max_tokens: number;
+            /** Model */
+            model: string;
+            /** Model Family */
+            model_family: string;
+            /** Reasoning */
+            reasoning: string;
+            /** Temperature */
+            temperature: number;
+        };
+        /**
+         * SecondJudgeOut
+         * @description Response for GET /api/v1/benchmarks/{run_id}/second-judge: the newest
+         *     second-judge summary of the run and, when there is one, the newest label
+         *     check of the same model (D-100), and the two judges' combined mark when it
+         *     has been computed from that summary's pass (D-105), else null.
+         */
+        SecondJudgeOut: {
+            combined?: components["schemas"]["JudgesMarkOut"] | null;
+            labels: components["schemas"]["SecondJudgeLabelsOut"] | null;
+            run: components["schemas"]["SecondJudgeRunOut"];
+            /** Run Id */
+            run_id: string;
+        };
+        /**
+         * SecondJudgeRunOut
+         * @description The second judge over one run.
+         */
+        SecondJudgeRunOut: {
+            agreement_between_judges: components["schemas"]["BetweenJudgesOut"];
+            agreement_with_answer_level: components["schemas"]["AnswerLevelAgreementOut"];
+            counts: components["schemas"]["SecondJudgeCountsOut"];
+            /** Finished At */
+            finished_at: string;
+            first_judge: components["schemas"]["FirstJudgeOut"];
+            /** Generation Model */
+            generation_model: string | null;
+            /** Git Dirty */
+            git_dirty: boolean | null;
+            /** Git Sha */
+            git_sha: string;
+            /** Judge Prompt Hash */
+            judge_prompt_hash: string;
+            /** Judge Prompt Version */
+            judge_prompt_version: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "run";
+            /** Means */
+            means: {
+                [key: string]: components["schemas"]["JudgeMeansOut"];
+            };
+            /** Min Kappa Items */
+            min_kappa_items: number;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            second_judge: components["schemas"]["SecondJudgeModelOut"];
+            /** Started At */
+            started_at: string | null;
         };
         /**
          * SelectionOut
@@ -3218,9 +3630,7 @@ export interface components {
         };
         /**
          * SummaryOut
-         * @description A run's ``summary.json``, every key the harness writes: schema 2 for a
-         *     run of method v0.2 (such as v0.2.0), schema 3 for method v0.3, whose
-         *     comparisons add C_vs_A cells and test evidence recall.
+         * @description A run's ``summary.json``, schema 3, the keys the clients read.
          *
          *     A key added later is ignored, so an older client keeps reading.
          */
@@ -3237,12 +3647,9 @@ export interface components {
             /** Headlines */
             headlines: string[];
             instances: components["schemas"]["InstanceCounts"];
-            /** Judge Agreement */
-            judge_agreement: components["schemas"]["JudgeAgreementOut"] | components["schemas"]["ThresholdJudgeAgreementOut"] | null;
+            judge_agreement: components["schemas"]["JudgeAgreementOut"] | null;
             /** Label */
             label: string | null;
-            /** Method Note */
-            method_note?: string | null;
             /** Metrics */
             metrics: {
                 [key: string]: {
@@ -3252,15 +3659,15 @@ export interface components {
                 };
             };
             /** Ontology Split */
-            ontology_split?: components["schemas"]["SplitCell"][] | null;
+            ontology_split: components["schemas"]["SplitCell"][];
             reproducibility: components["schemas"]["ReproducibilityOut"];
             /** Run Kind */
             run_kind: string;
             /**
              * Schema Version
-             * @enum {string}
+             * @constant
              */
-            schema_version: "2" | "3";
+            schema_version: "3";
             selection: components["schemas"]["SelectionOut"];
             /** Unavailable */
             unavailable: {
@@ -3300,27 +3707,6 @@ export interface components {
             source_system: string;
             /** Table */
             table: string;
-        };
-        /**
-         * ThresholdAgreementOut
-         * @description Agreement as runs before method v0.3 recorded it: judge correctness 2
-         *     against an answer score of at least 0.5, with Cohen's kappa.
-         */
-        ThresholdAgreementOut: {
-            /** Agreement */
-            agreement: number | null;
-            /** Kappa */
-            kappa: number | null;
-            /** N */
-            n: number;
-        };
-        /** ThresholdJudgeAgreementOut */
-        ThresholdJudgeAgreementOut: {
-            overall: components["schemas"]["ThresholdAgreementOut"];
-            /** Pipelines */
-            pipelines: {
-                [key: string]: components["schemas"]["ThresholdAgreementOut"];
-            };
         };
         /**
          * UnavailableOut
@@ -3760,6 +4146,93 @@ export interface operations {
             };
         };
     };
+    read_second_judge_api_v1_benchmarks__run_id__second_judge_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecondJudgeOut"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Unprocessable Content */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_example_api_v1_data_model_example_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataModelExample"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
     list_datasets_api_v1_datasets_get: {
         parameters: {
             query?: never;
@@ -4112,6 +4585,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 type?: string | null;
+                direction?: ("out" | "in") | null;
             };
             header?: never;
             path: {

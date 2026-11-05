@@ -9,11 +9,11 @@ import {
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { SettingsProvider } from '../../app/settings'
 import { GLOSSARY_TERMS } from '../../copy/glossary'
-import { SECTION_ALIASES, CHAPTERS } from './chapters'
+import { SECTION_ALIASES, CHAPTERS, PAGES } from './chapters'
 import { Help } from './help'
 import { BRING_UP, MODELS, RECOVERY } from './running-data'
 import {
@@ -21,7 +21,7 @@ import {
   RECORDED_RUNS,
   OFFICIAL_STRATA,
   OFFICIAL_SUBSET,
-  OFFICIAL_V03,
+  OFFICIAL,
   SCENARIOS,
   SCORED,
   SMOKE,
@@ -29,6 +29,10 @@ import {
   UNSCORED,
   type BankStub,
 } from './help.fixtures'
+import { PLAIN_STORIES } from './copy/stories'
+
+/** A dataset code, such as INC_041, MKT_GR or PLAYER_GR_000165, or a scenario id. */
+const DATASET_CODE = /\b[A-Z]{2,}_[A-Z0-9_]+\b|SCN-\d/
 
 const CHAPTER_TITLES = [
   '1. Why this exists',
@@ -40,9 +44,9 @@ const CHAPTER_TITLES = [
   '7. How scoring works',
   '8. Reading the results',
   '9. Assumptions and limits',
-  '10. The questions',
-  '11. Glossary',
-  '12. Running it',
+  '10. Glossary',
+  '11. Running it',
+  '12. What the results teach',
 ]
 
 /** Names only Running it may use: its own commands and settings, and the vendors and models it names. */
@@ -72,6 +76,16 @@ async function renderHelp(hash = '#/help', stub: BankStub = {}) {
       <Help />
     </SettingsProvider>,
   )
+  // Every page has the "Help pages" nav and its chapter's region; a page that reads the bank has drawn it once nothing is loading.
+  await screen.findByRole('navigation', { name: 'Help pages' })
+  await screen.findByRole('heading', { level: 2 })
+  await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+  return view
+}
+
+/** Opens the questions and answers page, which `renderHelp` leaves once its table is drawn. */
+async function renderQuestions(query = '', stub: BankStub = {}) {
+  const view = await renderHelp(`#/help?section=questions${query}`, stub)
   await screen.findByRole('table', { name: 'Benchmark questions' })
   return view
 }
@@ -83,6 +97,11 @@ const section = (name: string) => screen.getByRole('region', { name })
 
 const { scrollBy } = window
 
+// jsdom has no scrollIntoView, which a page opened on a section calls.
+beforeEach(() => {
+  Element.prototype.scrollIntoView = vi.fn()
+})
+
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
@@ -93,41 +112,159 @@ afterEach(() => {
 })
 
 describe('Help', () => {
-  it('has its twelve chapters in the order of the specification', async () => {
+  it('has the twelve chapters of the specification in order, one page each', async () => {
     await renderHelp()
-    const headings = screen
-      .getAllByRole('heading', { level: 2 })
-      .map((heading) => heading.textContent)
-    expect(headings).toEqual(CHAPTER_TITLES)
+    const nav = screen.getByRole('navigation', { name: 'Help chapters' })
+    expect(
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(CHAPTER_TITLES)
+    expect(
+      screen
+        .getAllByRole('heading', { level: 2 })
+        .map((heading) => heading.textContent),
+    ).toEqual([CHAPTER_TITLES[0]])
   })
 
-  it('opens with the purpose sentence and links to each section', async () => {
+  it('opens with the purpose sentence and links to the guide and to the questions and answers', async () => {
     await renderHelp()
-    const nav = screen.getByRole('navigation', { name: 'Help sections' })
-    expect(within(nav).getAllByRole('link')).toHaveLength(12)
+    const nav = screen.getByRole('navigation', { name: 'Help pages' })
     expect(
-      within(nav).getByRole('link', { name: 'The questions' }),
-    ).toHaveAttribute('href', '#/help?section=questions')
+      within(nav)
+        .getAllByRole('link')
+        .map((link) => [link.textContent, link.getAttribute('href')]),
+    ).toEqual([
+      ['Guide', '#/help?section=why'],
+      ['Questions and answers', '#/help?section=questions'],
+    ])
+    expect(section('1. Why this exists')).toHaveTextContent(
+      /official run started on 2026-10-29/,
+    )
+  })
+
+  it('with no section opens chapter 1, marked as the current chapter and the Guide as the current page', async () => {
+    await renderHelp()
+    const pages = screen.getByRole('navigation', { name: 'Help pages' })
+    expect(within(pages).getByRole('link', { name: 'Guide' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(
+      within(pages).getByRole('link', { name: 'Questions and answers' }),
+    ).not.toHaveAttribute('aria-current')
+    const chapters = screen.getByRole('navigation', { name: 'Help chapters' })
+    expect(
+      within(chapters)
+        .getAllByRole('link')
+        .filter((link) => link.getAttribute('aria-current') === 'page')
+        .map((link) => link.textContent),
+    ).toEqual(['1. Why this exists'])
+    expect(
+      screen.queryByRole('table', { name: 'Benchmark questions' }),
+    ).toBeNull()
+  })
+
+  it('links to the chapter before and after, none before the first and none after the last', async () => {
+    const around = () =>
+      screen.getByRole('navigation', { name: 'Chapter before and after' })
+    await renderHelp()
+    expect(within(around()).queryByText(/^Previous:/)).toBeNull()
+    expect(
+      within(around()).getByRole('link', {
+        name: 'Next: 2. The made-up company',
+      }),
+    ).toHaveAttribute('href', '#/help?section=company')
+    cleanup()
+
+    await renderHelp('#/help?section=scoring')
+    expect(
+      within(around()).getByRole('link', {
+        name: 'Previous: 6. The answer and the judge',
+      }),
+    ).toHaveAttribute('href', '#/help?section=answer')
+    expect(
+      within(around()).getByRole('link', {
+        name: 'Next: 8. Reading the results',
+      }),
+    ).toHaveAttribute('href', '#/help?section=results')
+    cleanup()
+
+    await renderHelp('#/help?section=lessons&level=technical')
+    expect(
+      within(around()).getByRole('link', {
+        name: 'Previous: 11. Running it',
+      }),
+    ).toHaveAttribute('href', '#/help?section=running&level=technical')
+    expect(within(around()).queryByText(/^Next:/)).toBeNull()
+  })
+
+  it('opens the questions and answers on its own, with no chapter list', async () => {
+    await renderHelp('#/help?section=questions')
+    await screen.findByRole('table', { name: 'Benchmark questions' })
+    expect(
+      screen.queryByRole('navigation', { name: 'Help chapters' }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('navigation', { name: 'Chapter before and after' }),
+    ).toBeNull()
+    const pages = screen.getByRole('navigation', { name: 'Help pages' })
+    expect(
+      within(pages).getByRole('link', { name: 'Questions and answers' }),
+    ).toHaveAttribute('aria-current', 'page')
+    expect(
+      within(pages).getByRole('link', { name: 'Guide' }),
+    ).not.toHaveAttribute('aria-current')
+    expect(
+      screen
+        .getAllByRole('heading', { level: 2 })
+        .map((heading) => heading.textContent),
+    ).toEqual(['Questions and answers'])
+  })
+
+  it('goes from the questions and answers back to chapter 1 by the Guide link', async () => {
+    const user = userEvent.setup()
+    await renderHelp('#/help?section=questions')
+    await user.click(
+      within(screen.getByRole('navigation', { name: 'Help pages' })).getByRole(
+        'link',
+        { name: 'Guide' },
+      ),
+    )
+    await waitFor(() => expect(window.location.hash).toBe('#/help?section=why'))
+  })
+
+  it('an old section id opens the chapter it names', async () => {
+    await renderHelp('#/help?section=what')
+    expect(section('1. Why this exists')).toBeVisible()
+    const chapters = screen.getByRole('navigation', { name: 'Help chapters' })
+    expect(
+      within(chapters).getByRole('link', { name: '1. Why this exists' }),
+    ).toHaveAttribute('aria-current', 'page')
+    cleanup()
+    await renderHelp('#/help?section=data')
+    expect(section('2. The made-up company')).toBeVisible()
   })
 
   it('states the official result in chapter 1 as it is, with its dates', async () => {
     await renderHelp()
     const why = section('1. Why this exists')
-    // The current result is the official run v0.3.0; v0.2.0 is the earlier one.
+    expect(why).toHaveTextContent(/official run started on 2026-10-29/)
     expect(why).toHaveTextContent(
-      /official run v0\.3\.0, which started on 2026-10-29/,
+      /We fixed 14 comparisons before the run\. One showed a clear difference/,
     )
     expect(why).toHaveTextContent(
-      /Of the 14 comparisons tested, one showed a difference/,
+      /text search \(A\) got 42 of every 100 needed facts to the answer model, the graph \(B\) 45 and the graph with the ontology \(C\) 57/,
     )
-    expect(why).toHaveTextContent(/0\.42 for A, 0\.45 for B and 0\.57 for C/)
+    // A newcomer is told what a world is where the result first uses the word.
     expect(why).toHaveTextContent(
-      /v0\.2\.0 \(2026-10-26 to 2026-10-27\), had found no detectable difference/,
+      /copies of the made-up company, which we call worlds/,
     )
+    expect(why).not.toHaveTextContent(/v0\.2|old method/)
   })
 
   it('draws each approach as a picture named by its letter and plain name', async () => {
-    await renderHelp()
+    await renderHelp('#/help?section=approaches')
     const figures = within(section('4. The three approaches')).getAllByRole(
       'figure',
     )
@@ -139,36 +276,77 @@ describe('Help', () => {
   })
 
   it('links the data tour to the Data Model tabs', async () => {
-    await renderHelp()
+    await renderHelp('#/help?section=company')
     const links = within(section('2. The made-up company')).getAllByRole('link')
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
-      '#/data-model?tab=warehouse',
+      '#/data-model?tab=overview',
+      '#/data-model?tab=tables',
       '#/data-model?tab=graph',
-      '#/data-model?tab=ontology',
-      '#/data-model?tab=scenarios',
+      '#/data-model?tab=concepts',
+      '#/data-model?tab=stories',
     ])
   })
 })
 
 describe('the planted stories', () => {
-  it('shows each hidden truth verbatim under its scenario title', async () => {
-    await renderHelp()
+  const withTruth = SCORED.filter((q) => q.hidden_truth !== null)
+  const cardOf = (stories: HTMLElement, scenarioId: string) =>
+    within(stories)
+      .getByRole('heading', {
+        name: SCENARIOS.find((s) => s.scenario_id === scenarioId)!.title,
+      })
+      .closest('article')!
+
+  it('shows each hidden truth verbatim under its scenario title at Technical', async () => {
+    await renderHelp('#/help?section=stories&level=technical')
     const stories = section('3. The planted stories')
-    const withTruth = SCORED.filter((q) => q.hidden_truth !== null)
     expect(withTruth).toHaveLength(8)
     for (const question of withTruth) {
-      const title = SCENARIOS.find(
-        (s) => s.scenario_id === question.scenario_id,
-      )!.title
-      const card = within(stories)
-        .getByRole('heading', { name: title })
-        .closest('article')!
+      const card = cardOf(stories, question.scenario_id!)
       expect(within(card).getByText(question.hidden_truth!)).toBeVisible()
+      expect(card).toHaveTextContent(question.scenario_id!)
+      expect(card).toHaveTextContent(PLAIN_STORIES[question.scenario_id!]!)
+    }
+  })
+
+  it('tells each story in plain words at Plain, with no dataset code and no hidden truth', async () => {
+    await renderHelp('#/help?section=stories')
+    const stories = section('3. The planted stories')
+    for (const question of withTruth) {
+      const card = cardOf(stories, question.scenario_id!)
+      expect(card).toHaveTextContent(PLAIN_STORIES[question.scenario_id!]!)
+      expect(card).not.toHaveTextContent(question.hidden_truth!)
+      // The worked example's question names its incident by code, as data; the rest of every card names none.
+      const own = card.cloneNode(true) as HTMLElement
+      own.querySelectorAll('dd[data-api]').forEach((node) => node.remove())
+      expect(own.textContent, question.scenario_id!).not.toMatch(DATASET_CODE)
+    }
+  })
+
+  it('names in each plain story exactly the countries its hidden truth and answer key hold', () => {
+    const COUNTRIES: Record<string, string> = {
+      UK: 'United Kingdom',
+      GR: 'Greece',
+      AT: 'Austria',
+      CZ: 'Czech Republic',
+    }
+    for (const question of withTruth) {
+      const data = `${question.hidden_truth} ${question.expected_answer}`
+      const codes = new Set(
+        [...data.matchAll(/(?:^|[^A-Z])[A-Z]+_(UK|GR|AT|CZ)(?=_|\b)/g)].map(
+          (match) => match[1]!,
+        ),
+      )
+      const story = PLAIN_STORIES[question.scenario_id!]!
+      const named = Object.keys(COUNTRIES).filter((code) =>
+        story.includes(COUNTRIES[code]!),
+      )
+      expect(new Set(named), question.scenario_id!).toEqual(codes)
     }
   })
 
   it('says so when no question describes a story', async () => {
-    await renderHelp('#/help', {
+    await renderHelp('#/help?section=stories', {
       questions: SCORED.filter((q) => q.scenario_id !== 'SCN-010'),
     })
     const card = within(section('3. The planted stories'))
@@ -180,14 +358,29 @@ describe('the planted stories', () => {
   })
 
   it('tells SCN-007 once, as the worked example, with its question and answer key', async () => {
-    await renderHelp()
+    await renderHelp('#/help?section=stories')
     const l18 = SCORED.find((q) => q.scenario_id === 'SCN-007')!
-    const stories = section('3. The planted stories')
-    expect(within(stories).getAllByText('Worked example')).toHaveLength(1)
-    const card = within(stories).getByText('Worked example').closest('article')!
-    expect(card).toHaveTextContent('Cross market platform incident')
-    expect(within(card).getByText(l18.text)).toBeVisible()
-    expect(within(card).getByText(l18.expected_answer)).toBeVisible()
+    const worked = () => {
+      const stories = section('3. The planted stories')
+      expect(within(stories).getAllByText('Worked example')).toHaveLength(1)
+      const card = within(stories)
+        .getByText('Worked example')
+        .closest('article')!
+      expect(card).toHaveTextContent('Cross market platform incident')
+      expect(within(card).getByText(l18.text)).toBeVisible()
+      return card
+    }
+    // At Plain the answer key names the countries; the codes it holds are the bank's.
+    expect(
+      within(worked()).getByText(
+        'Incidents on the same platform version as INC_042 were seen in Austria and the Czech Republic, and the United Kingdom was unaffected.',
+      ),
+    ).toBeVisible()
+    expect(screen.queryByText(l18.hidden_truth!)).toBeNull()
+    cleanup()
+
+    await renderHelp('#/help?section=stories&level=technical')
+    expect(within(worked()).getByText(l18.expected_answer)).toBeVisible()
     expect(screen.getAllByText(l18.hidden_truth!)).toHaveLength(1)
   })
 
@@ -203,12 +396,23 @@ describe('the planted stories', () => {
     expect(scroll.mock.contexts.at(-1)).toBe(card)
   })
 
-  it('scrolls to the section named in the link', async () => {
+  it('opens a chapter at the top of the screen, and scrolls to a story named in the link', async () => {
     const scroll = vi.fn()
+    const toTop = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
     Element.prototype.scrollIntoView = scroll
     await renderHelp('#/help?section=glossary')
+    await waitFor(() =>
+      expect(toTop).toHaveBeenCalledWith({ top: 0, behavior: 'instant' }),
+    )
+    expect(scroll).not.toHaveBeenCalled()
+    cleanup()
+
+    await renderHelp('#/help?section=stories&story=SCN-007')
     await waitFor(() => expect(scroll).toHaveBeenCalled())
-    expect((scroll.mock.contexts.at(-1) as HTMLElement).id).toBe('glossary')
+    expect((scroll.mock.contexts.at(-1) as HTMLElement).id).toBe(
+      'story-SCN-007',
+    )
+    toTop.mockRestore()
   })
 })
 
@@ -220,20 +424,40 @@ describe('the questions table', () => {
   const groups = () => questionTable().querySelectorAll('tbody')
 
   it('groups instances under their question, with what it tests', async () => {
-    await renderHelp()
+    await renderQuestions()
     expect(groups()).toHaveLength(22)
     expect(rows()).toHaveLength(SCORED.length)
     const first = SCORED[0]
-    expect(groups()[0]).toHaveTextContent(first.question_id)
-    expect(groups()[0]).toHaveTextContent(first.tests)
+    // Plain names no question id; Technical does.
+    const head = () => groups()[0].querySelector('th')!
+    expect(head()).toHaveTextContent(first.tests)
+    expect(head()).not.toHaveTextContent(first.question_id)
     expect(rows()[0]).toHaveTextContent(first.text)
     expect(rows()[0]).toHaveTextContent(first.expected_answer)
     expect(questionTable().querySelectorAll('thead th')).toHaveLength(5)
     expect(screen.getByText('22 questions, 50 instances')).toBeVisible()
+    cleanup()
+    await renderQuestions('&level=technical')
+    expect(head()).toHaveTextContent(`${first.question_id} · Single fact`)
+  })
+
+  it('writes market codes as countries at Plain and keeps the bank text at Technical', async () => {
+    const l05 = SCORED.find((q) => /\bMKT_/.test(q.expected_answer))!
+    await renderQuestions(`&stratum=${l05.stratum}`)
+    const row = rows().find((r) => r.textContent!.includes(l05.text))!
+    expect(row).not.toHaveTextContent(/\bMKT_/)
+    expect(row).toHaveTextContent(
+      /Czech Republic|Austria|Greece|United Kingdom/,
+    )
+    cleanup()
+    await renderQuestions(`&stratum=${l05.stratum}&level=technical`)
+    expect(
+      rows().find((r) => r.textContent!.includes(l05.text)),
+    ).toHaveTextContent(l05.expected_answer)
   })
 
   it('names the ontology-dependent kind in full', async () => {
-    await renderHelp()
+    await renderQuestions()
     expect(
       within(
         screen.getByRole('combobox', { name: 'Kind of question' }),
@@ -243,7 +467,7 @@ describe('the questions table', () => {
 
   it('filters by kind of question and keeps the filter in the URL', async () => {
     const user = userEvent.setup()
-    await renderHelp()
+    await renderQuestions()
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Kind of question' }),
       'H5',
@@ -258,7 +482,7 @@ describe('the questions table', () => {
   })
 
   it('filters by story, and the link from Data Model preselects it', async () => {
-    await renderHelp('#/help?section=questions&story=SCN-007')
+    await renderQuestions('&story=SCN-007')
     expect(screen.getByRole('combobox', { name: 'Story' })).toHaveValue(
       'SCN-007',
     )
@@ -267,7 +491,7 @@ describe('the questions table', () => {
   })
 
   it('keeps the kind filter on a story link in the table', async () => {
-    await renderHelp('#/help?section=questions&stratum=H5')
+    await renderQuestions('&stratum=H5')
     expect(
       within(groups()[0]).getByRole('link', {
         name: 'App release conversion failure',
@@ -277,59 +501,66 @@ describe('the questions table', () => {
 
   it('says so when no question matches both filters, and clears them', async () => {
     const user = userEvent.setup()
-    await renderHelp('#/help?section=questions&story=SCN-007&stratum=H1')
+    await renderQuestions('&story=SCN-007&stratum=H1')
     expect(screen.getByText('No question matches these filters.')).toBeVisible()
     await user.click(screen.getByRole('link', { name: 'Clear the filters' }))
     await waitFor(() => expect(rows()).toHaveLength(SCORED.length))
   })
 
   it('ignores a story or kind that does not exist', async () => {
-    await renderHelp('#/help?section=questions&story=SCN-999&stratum=H9')
+    await renderQuestions('&story=SCN-999&stratum=H9')
     expect(rows()).toHaveLength(SCORED.length)
   })
 
-  it('shows each instance its own answer and evidence scores, worded as in Live Lab', async () => {
-    await renderHelp('#/help?section=questions&story=SCN-007')
-    const row = rows()[0]
-    // A: answer 0.33, evidence 0.45; B and C: answer 0.33, evidence 0.37.
+  /** The one multi-market instance the captured run scored, and its row among the H2 questions. */
+  const L09 = 'L09-2026-GAME_AT_05'
+  const l09Row = () =>
+    rows()[
+      SCORED.filter((q) => q.stratum === 'H2').findIndex(
+        (q) => q.instance_id === L09,
+      )
+    ]
+
+  it('shows each instance its own answer and evidence recall, worded as in Live Lab', async () => {
+    await renderQuestions('&stratum=H2')
+    const row = l09Row()
+    // A: answer 0.4, recall 0.67; B and C: answer 0.5, recall 0.33.
+    expect(within(row).getByText('Answer: Partly correct (40%)')).toBeVisible()
+    expect(within(row).getByText('Evidence recall: 0.67')).toBeVisible()
     expect(
-      within(row).getAllByText('Answer: Partly correct (33%)'),
-    ).toHaveLength(3)
-    expect(within(row).getByText('Evidence score: 0.45')).toBeVisible()
-    expect(within(row).getAllByText('Evidence score: 0.37')).toHaveLength(2)
+      within(row).getAllByText('Answer: Partly correct (50%)'),
+    ).toHaveLength(2)
+    expect(within(row).getAllByText('Evidence recall: 0.33')).toHaveLength(2)
   })
 
-  it('shows Missing where the instance has no evidence score, and says why', async () => {
-    await renderHelp('#/help?section=questions&stratum=H3')
+  it('shows Missing where the instance has no evidence recall, and says why', async () => {
+    await renderQuestions('&stratum=H3')
     expect(
-      within(rows()[0]).getAllByText('Evidence score: Missing'),
+      within(rows()[0]).getAllByText('Evidence recall: Missing'),
     ).toHaveLength(3)
     expect(within(rows()[0]).getAllByText('Answer: Correct')).toHaveLength(3)
+    cleanup()
+    await renderHelp('#/help?section=scoring')
     expect(
       within(section('7. How scoring works')).getByText(/read Missing/),
     ).toBeVisible()
   })
 
-  it('shows evidence recall, never F1, when the newest official run is of method v0.3', async () => {
+  it('shows evidence recall, never F1', async () => {
     const questions = structuredClone(SCORED)
     for (const question of questions)
       for (const score of Object.values(question.scores ?? {}))
-        if (score) score.evidence_recall = 0.9
-    await renderHelp('#/help?section=questions&story=SCN-007', {
-      questions,
-      latest: OFFICIAL_V03,
-    })
-    const row = rows()[0]
-    expect(within(row).getAllByText('Evidence recall: 0.90')).toHaveLength(3)
-    expect(row).not.toHaveTextContent('Evidence score')
+        if (score) score.evidence_f1 = 0.99
+    await renderQuestions('&stratum=H2', { questions })
+    expect(l09Row()).not.toHaveTextContent('0.99')
   })
 
   it('says the newest official run scored none of these questions, never that there is none', async () => {
-    await renderHelp('#/help?section=questions', {
+    await renderQuestions('', {
       questions: UNSCORED,
-      latest: OFFICIAL_V03,
+      latest: OFFICIAL,
     })
-    const questions = section('10. The questions')
+    const questions = section('Questions and answers')
     expect(
       within(questions).getByText(
         /^The newest official run scored none of these world 2026 questions; its scores are on Results\./,
@@ -339,11 +570,11 @@ describe('the questions table', () => {
   })
 
   it('hides the score columns when the newest official run scored none of these questions, and keeps the note and its link', async () => {
-    await renderHelp('#/help?section=questions', {
+    await renderQuestions('', {
       questions: UNSCORED,
-      latest: OFFICIAL_V03,
+      latest: OFFICIAL,
     })
-    const questions = section('10. The questions')
+    const questions = section('Questions and answers')
     const table = within(questions).getByRole('table', {
       name: 'Benchmark questions',
     })
@@ -351,7 +582,7 @@ describe('the questions table', () => {
       within(table)
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
-    ).toEqual(['Instance', 'Answer key'])
+    ).toEqual(['Question', 'Answer key'])
     expect(
       within(questions).queryByText('Not scored by the newest official run'),
     ).toBeNull()
@@ -364,30 +595,30 @@ describe('the questions table', () => {
   })
 
   it('hides the score columns when there is no official run', async () => {
-    await renderHelp('#/help?section=questions', {
+    await renderQuestions('', {
       questions: UNSCORED,
       latest: null,
     })
-    const table = within(section('10. The questions')).getByRole('table', {
+    const table = within(section('Questions and answers')).getByRole('table', {
       name: 'Benchmark questions',
     })
     expect(
       within(table)
         .getAllByRole('columnheader')
         .map((cell) => cell.textContent),
-    ).toEqual(['Instance', 'Answer key'])
+    ).toEqual(['Question', 'Answer key'])
   })
 
   it('keeps the score columns when the newest official run scored these questions', async () => {
-    await renderHelp()
-    const table = within(section('10. The questions')).getByRole('table', {
+    await renderQuestions()
+    const table = within(section('Questions and answers')).getByRole('table', {
       name: 'Benchmark questions',
     })
     expect(within(table).getAllByRole('columnheader')).toHaveLength(5)
   })
 
   it('says an instance was not part of the run when it has no scores', async () => {
-    await renderHelp()
+    await renderQuestions()
     const unscored = SCORED.findIndex((q) => q.scores === null)
     expect(unscored).toBeGreaterThan(-1)
     expect(rows()[unscored]).toHaveTextContent('Not scored in this run')
@@ -411,8 +642,8 @@ describe('the questions table', () => {
   ])(
     'says "No official run yet" once, above the table, for %s',
     async (_, stub) => {
-      await renderHelp('#/help?section=questions', stub)
-      const questions = section('10. The questions')
+      await renderQuestions('', stub)
+      const questions = section('Questions and answers')
       expect(
         within(questions).getByText(
           /^No official run yet\. Scores appear after a full official run\./,
@@ -429,23 +660,20 @@ describe('the questions table', () => {
         within(table)
           .getAllByRole('columnheader')
           .map((cell) => cell.textContent),
-      ).toEqual(['Instance', 'Answer key'])
+      ).toEqual(['Question', 'Answer key'])
     },
   )
 
   it('still has the question text and answer keys with no official run', async () => {
-    await renderHelp('#/help', { questions: UNSCORED, latest: null })
+    await renderQuestions('', { questions: UNSCORED, latest: null })
     expect(rows()[0]).toHaveTextContent(UNSCORED[0].expected_answer)
   })
 
   it('keeps the stories and questions when the newest run cannot be read, and hides scores', async () => {
-    await renderHelp('#/help?section=questions', {
+    await renderQuestions('', {
       questions: SCORED,
       failLatest: true,
     })
-    expect(
-      within(section('3. The planted stories')).getAllByRole('article'),
-    ).toHaveLength(SCENARIOS.length)
     expect(
       screen.getByText(
         /The latest run could not be read, so scores are hidden\./,
@@ -453,40 +681,75 @@ describe('the questions table', () => {
     ).toBeVisible()
     expect(rows()).toHaveLength(SCORED.length)
     expect(questionTable()).not.toHaveTextContent(/Answer:|Evidence score/)
+    cleanup()
+    await renderHelp('#/help?section=stories', {
+      questions: SCORED,
+      failLatest: true,
+    })
+    expect(
+      within(section('3. The planted stories')).getAllByRole('article'),
+    ).toHaveLength(SCENARIOS.length)
   })
 })
 
 describe('states', () => {
-  it('keeps the sections that need no data when the bank fails to load', async () => {
-    window.history.replaceState(null, '', '/#/help')
-    stubBank({ failQuestions: true })
+  const open = (hash: string) => {
+    window.history.replaceState(null, '', `/${hash}`)
     render(
       <SettingsProvider>
         <Help />
       </SettingsProvider>,
     )
-    expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0)
-    expect(screen.getAllByText('The bank is unavailable.').length).toBe(2)
-    expect(section('7. How scoring works')).toBeVisible()
-    expect(section('11. Glossary')).toBeVisible()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Retry' })[0])
+  }
+
+  it('keeps the chapters that need no data when the bank fails to load', async () => {
+    stubBank({ failQuestions: true })
+    open('#/help?section=scoring')
+    expect(
+      await screen.findByRole('region', { name: '7. How scoring works' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('alert')).toBeNull()
+    cleanup()
+    open('#/help?section=glossary')
+    expect(
+      await screen.findByRole('region', { name: '10. Glossary' }),
+    ).toBeVisible()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByText('The bank is unavailable.')).toBeNull()
   })
 
-  it('shows a loading state in the two sections that need the bank', async () => {
-    window.history.replaceState(null, '', '/#/help')
+  it('shows the error in each page that needs the bank, with a retry', async () => {
+    for (const hash of ['#/help?section=stories', '#/help?section=questions']) {
+      stubBank({ failQuestions: true })
+      open(hash)
+      expect(
+        (await screen.findAllByRole('alert')).length,
+        hash,
+      ).toBeGreaterThan(0)
+      expect(screen.getAllByText('The bank is unavailable.').length, hash).toBe(
+        1,
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+      cleanup()
+    }
+  })
+
+  it('shows a loading state in each page that needs the bank, and not in the others', async () => {
     vi.stubGlobal('fetch', () => new Promise(() => undefined))
-    render(
-      <SettingsProvider>
-        <Help />
-      </SettingsProvider>,
-    )
-    expect(screen.getAllByRole('status')).toHaveLength(2)
+    for (const hash of ['#/help?section=stories', '#/help?section=questions']) {
+      open(hash)
+      expect(screen.getAllByRole('status'), hash).toHaveLength(1)
+      cleanup()
+    }
+    open('#/help?section=scoring')
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(section('7. How scoring works')).toBeVisible()
   })
 })
 
 describe('scoring and glossary', () => {
   it('defines the evidence score on the scale Overview uses', async () => {
-    await renderHelp()
+    await renderHelp('#/help?section=scoring')
     expect(
       within(section('7. How scoring works')).getByText(
         /Evidence recall is the share of the claims that the chosen evidence covers, from 0 to 1/,
@@ -495,8 +758,8 @@ describe('scoring and glossary', () => {
   })
 
   it('shows every glossary term with its plain meaning', async () => {
-    await renderHelp()
-    const glossary = section('11. Glossary')
+    await renderHelp('#/help?section=glossary')
+    const glossary = section('10. Glossary')
     expect(within(glossary).getAllByRole('term')).toHaveLength(
       GLOSSARY_TERMS.length,
     )
@@ -508,14 +771,16 @@ describe('scoring and glossary', () => {
 
 describe('one name for the record a question names', () => {
   it('calls it the starting record in scoring and the glossary, and never an anchor', async () => {
-    const { container } = await renderHelp()
+    await renderHelp('#/help?section=scoring')
     const scoring = within(section('7. How scoring works'))
     expect(
       scoring.getByText(
         /The starting record \(the record the question names\)/,
       ),
     ).toBeVisible()
-    const glossary = section('11. Glossary')
+    cleanup()
+    await renderHelp('#/help?section=glossary')
+    const glossary = section('10. Glossary')
     const meaning = (term: string) =>
       within(glossary).getByText(term).nextElementSibling!.textContent
     expect(meaning('Starting record')).toMatch(
@@ -524,40 +789,56 @@ describe('one name for the record a question names', () => {
     expect(meaning('Starting record')).toContain('Not the graph')
     expect(meaning('Starting point')).toContain('Where the graph walk begins')
     expect(meaning('Starting point')).toContain('Not the starting record')
-    const rest = container.cloneNode(true) as HTMLElement
-    rest.querySelectorAll('[data-api]').forEach((node) => node.remove())
-    expect(rest.textContent).not.toMatch(/\banchor/i)
+    // No page of Help uses the old word.
+    for (const { id } of PAGES) {
+      cleanup()
+      const { container } = await renderHelp(`#/help?section=${id}`)
+      const rest = container.cloneNode(true) as HTMLElement
+      rest.querySelectorAll('[data-api]').forEach((node) => node.remove())
+      expect(rest.textContent, id).not.toMatch(/\banchor/i)
+    }
   })
 })
 
 describe('Running it and the vendor names', () => {
   it('names vendors and engineering commands in Running it at Technical, and nowhere at Plain', async () => {
-    const { container } = await renderHelp()
+    // Every page but Running it, read at Plain, names none of them and has no code.
+    for (const { id } of PAGES.filter((page) => page.id !== 'running')) {
+      const { container } = await renderHelp(`#/help?section=${id}`)
+      for (const name of RUNNING_ONLY)
+        expect(
+          container.textContent!.toLowerCase(),
+          `${id} ${name}`,
+        ).not.toContain(name.toLowerCase())
+      expect(container.querySelectorAll('code'), id).toHaveLength(0)
+      cleanup()
+    }
+    const { container } = await renderHelp('#/help?section=running')
     for (const name of RUNNING_ONLY)
       expect(container.textContent!.toLowerCase(), name).not.toContain(
         name.toLowerCase(),
       )
     expect(container.querySelectorAll('code')).toHaveLength(0)
-    expect(section('12. Running it')).toHaveTextContent(/operators/)
+    expect(section('11. Running it')).toHaveTextContent(/operators/)
     cleanup()
 
-    await renderHelp('#/help?level=technical')
-    const running = section('12. Running it')
+    await renderHelp('#/help?section=running&level=technical')
+    const running = section('11. Running it')
     for (const name of RUNNING_ONLY)
       expect(running.textContent, name).toContain(name)
   })
 
   it('gives a real remedy for a model the server does not list', async () => {
-    await renderHelp('#/help?level=technical')
-    const table = within(section('12. Running it')).getByRole('table', {
+    await renderHelp('#/help?section=running&level=technical')
+    const table = within(section('11. Running it')).getByRole('table', {
       name: 'Recovery',
     })
     expect(within(table).getByText('ollama pull <model>')).toBeVisible()
   })
 
   it('has a recovery table with the graph ingest command and the world note', async () => {
-    await renderHelp('#/help?level=technical')
-    const table = within(section('12. Running it')).getByRole('table', {
+    await renderHelp('#/help?section=running&level=technical')
+    const table = within(section('11. Running it')).getByRole('table', {
       name: 'Recovery',
     })
     expect(within(table).getByText('make ingest-graph')).toBeVisible()
@@ -566,9 +847,9 @@ describe('Running it and the vendor names', () => {
 
   it('gives commands that exist in the Makefile', async () => {
     const makefile = readFileSync(resolve(process.cwd(), '../Makefile'), 'utf8')
-    await renderHelp('#/help?level=technical')
+    await renderHelp('#/help?section=running&level=technical')
     const targets = [
-      ...within(section('12. Running it')).getAllByText(/^make [a-z-]+$/),
+      ...within(section('11. Running it')).getAllByText(/^make [a-z-]+$/),
     ].map((element) => element.textContent!.slice('make '.length))
     expect(targets.length).toBeGreaterThan(20)
     for (const target of targets)
@@ -594,8 +875,8 @@ describe('reading levels', () => {
   })
 
   it('shows the plain text before the technical detail at technical', async () => {
-    await renderHelp('#/help?level=technical')
-    const running = section('12. Running it')
+    await renderHelp('#/help?section=running&level=technical')
+    const running = section('11. Running it')
     const plain = within(running).getByText(/is for operators/)
     const heading = within(running).getByRole('heading', {
       name: 'Technical detail',
@@ -603,6 +884,8 @@ describe('reading levels', () => {
     expect(
       plain.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy()
+    cleanup()
+    await renderHelp('#/help?level=technical')
     expect(
       within(section('1. Why this exists')).getAllByRole('paragraph').length,
     ).toBeGreaterThan(0)
@@ -618,11 +901,9 @@ describe('reading levels', () => {
     vi.spyOn(chapter, 'getBoundingClientRect').mockImplementation(
       () => ({ top: top(), bottom: top() + 300 }) as DOMRect,
     )
+    // Only the chapter shown is in the page.
     for (const other of CHAPTERS.filter((c) => c.id !== 'scoring'))
-      vi.spyOn(
-        document.getElementById(other.id)!,
-        'getBoundingClientRect',
-      ).mockImplementation(() => ({ top: -900, bottom: -10 }) as DOMRect)
+      expect(document.getElementById(other.id), other.id).toBeNull()
     const scrolled = vi.fn()
     window.scrollBy = scrolled
     await user.click(radio('Technical'))
@@ -677,8 +958,10 @@ describe('reading levels', () => {
     const user = userEvent.setup()
     window.localStorage.setItem('help-level', 'technical')
     await renderHelp('#/help')
-    const nav = screen.getByRole('navigation', { name: 'Help sections' })
-    const link = within(nav).getByRole('link', { name: 'The questions' })
+    const nav = screen.getByRole('navigation', { name: 'Help pages' })
+    const link = within(nav).getByRole('link', {
+      name: 'Questions and answers',
+    })
     expect(link).toHaveAttribute(
       'href',
       '#/help?section=questions&level=technical',
@@ -713,10 +996,10 @@ describe('reading levels', () => {
 
   it('points to Technical at Plain only, and not once Technical is chosen', async () => {
     await renderHelp('#/help?section=running')
-    expect(section('12. Running it')).toHaveTextContent(/Choose Technical/)
+    expect(section('11. Running it')).toHaveTextContent(/Choose Technical/)
     cleanup()
     await renderHelp('#/help?section=running&level=technical')
-    expect(section('12. Running it')).not.toHaveTextContent(/Choose Technical/)
+    expect(section('11. Running it')).not.toHaveTextContent(/Choose Technical/)
     expect(document.body).not.toHaveTextContent(/Choose Technical/)
   })
 
@@ -734,10 +1017,14 @@ describe('reading levels', () => {
   it('keeps the level in the links and filters of Help when the URL names it', async () => {
     const user = userEvent.setup()
     await renderHelp('#/help?section=questions&level=technical')
-    const nav = screen.getByRole('navigation', { name: 'Help sections' })
+    const nav = screen.getByRole('navigation', { name: 'Help pages' })
     expect(
-      within(nav).getByRole('link', { name: 'The questions' }),
+      within(nav).getByRole('link', { name: 'Questions and answers' }),
     ).toHaveAttribute('href', '#/help?section=questions&level=technical')
+    expect(within(nav).getByRole('link', { name: 'Guide' })).toHaveAttribute(
+      'href',
+      '#/help?section=why&level=technical',
+    )
     await user.selectOptions(
       screen.getByRole('combobox', { name: 'Kind of question' }),
       'H5',
@@ -750,15 +1037,19 @@ describe('reading levels', () => {
 
 describe('section links', () => {
   it('every old section id lands on its chapter', async () => {
-    const scroll = vi.fn()
-    Element.prototype.scrollIntoView = scroll
+    const toTop = vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
     for (const [old, chapter] of Object.entries(SECTION_ALIASES)) {
-      scroll.mockClear()
+      toTop.mockClear()
       await renderHelp(`#/help?section=${old}`)
-      await waitFor(() => expect(scroll).toHaveBeenCalled())
-      expect((scroll.mock.contexts.at(-1) as HTMLElement).id).toBe(chapter)
+      // It opens at the top, as any chapter does.
+      await waitFor(() => expect(toTop).toHaveBeenCalled())
+      // The page shows that chapter alone.
+      expect(
+        screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent),
+      ).toEqual([PAGES.find((page) => page.id === chapter)!.title])
       cleanup()
     }
+    toTop.mockRestore()
     expect(SECTION_ALIASES.what).toBe('why')
     expect(SECTION_ALIASES.data).toBe('company')
   })
@@ -769,6 +1060,8 @@ describe('section links', () => {
       .getByRole('heading', { name: 'Cross market platform incident' })
       .closest('article')!
     expect(card).toHaveAttribute('aria-current', 'true')
+    cleanup()
+    await renderQuestions('&story=SCN-007&level=technical')
     expect(screen.getByRole('combobox', { name: 'Story' })).toHaveValue(
       'SCN-007',
     )
@@ -778,7 +1071,7 @@ describe('section links', () => {
 describe('settings in Help', () => {
   // The table in Running it; chapters 4 to 6 have tables of their own.
   const settingsRow = (key: string) =>
-    within(section('12. Running it')).getByRole('row', {
+    within(section('11. Running it')).getByRole('row', {
       name: new RegExp(`^${key}\\b`),
     })
 
@@ -844,7 +1137,7 @@ describe('settings in Help', () => {
     await within(row).findByText('20')
     expect(within(row).getByText('Not available')).toBeVisible()
     expect(within(row).queryByText('Not recorded')).toBeNull()
-    const retry = within(section('12. Running it')).getByRole('button', {
+    const retry = within(section('11. Running it')).getByRole('button', {
       name: 'Retry loading settings',
     })
     expect(retry).toBeVisible()
@@ -861,7 +1154,7 @@ describe('settings in Help', () => {
       failSettings: true,
       failRuns: true,
     })
-    const running = section('12. Running it')
+    const running = section('11. Running it')
     expect(
       await within(running).findByText('The settings are invalid.'),
     ).toBeVisible()
@@ -884,14 +1177,17 @@ describe('settings in Help', () => {
     await renderHelp('#/help?section=running&level=technical', {
       failSettings: true,
     })
-    const running = section('12. Running it')
+    const running = section('11. Running it')
     expect(
       (await within(running).findAllByText('Not available')).length,
     ).toBeGreaterThan(0)
-    const headings = screen
-      .getAllByRole('heading', { level: 2 })
-      .map((heading) => heading.textContent)
-    expect(headings).toEqual(CHAPTER_TITLES)
+    // The other chapters are one link away, whatever the settings did.
+    const chapters = screen.getByRole('navigation', { name: 'Help chapters' })
+    expect(
+      within(chapters)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(CHAPTER_TITLES)
     const fetchMock = vi.mocked(fetch)
     const before = fetchMock.mock.calls.length
     await user.click(

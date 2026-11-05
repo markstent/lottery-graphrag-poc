@@ -15,6 +15,7 @@ import { MODEL_LABELS, REACHABLE } from '../app/settings-labels'
 import { PIPELINES } from '../design/pipelines'
 import { CHAPTER_COPY } from '../screens/help/copy'
 import { REGISTER } from '../screens/help/copy/limits'
+import { PLAIN_STORIES } from '../screens/help/copy/stories'
 import type { Block, ChapterCopy } from '../screens/help/chapters'
 import { STRATUM_NAMES } from '../screens/help/bank'
 import { KIND_WORDS } from '../app/run-kinds'
@@ -67,12 +68,11 @@ const COPY_ATTRIBUTES = new Set([
 ])
 
 /**
- * Spec 7.6 names the Data Model tab "Ontology", which is the one place that
- * word stands alone as a name. It is the concept, not the v1 pipeline.
+ * Copy allowed to break a rule in one file, where it means something else.
+ * Spec 7.6 named the Data Model tab "Ontology", the one such case, until
+ * D-115 renamed the tab "Concepts"; none is needed now.
  */
-const NAMED_EXCEPTIONS = [
-  { file: 'screens/data-model/data-model.tsx', text: 'Ontology' },
-] as const
+const NAMED_EXCEPTIONS: readonly { file: string; text: string }[] = []
 
 /** Attributes read out or kept as a fallback, never drawn: they do not count toward the budget. */
 const NOT_SHOWN = /^(?:aria-.*|alt)$/
@@ -414,11 +414,19 @@ describe('copy in expressions', () => {
   })
 })
 
-/** The sentences of the Plain blocks of a chapter: paragraphs and list items. Technical blocks are not read. */
+/** The text a Plain block shows: a paragraph, list items, a heading, or a table's caption, column names and cells. */
+const blockTexts = (block: Block): string[] => {
+  if (typeof block === 'string') return [block]
+  if (!('kind' in block)) return [...block]
+  if (block.kind === 'heading') return [block.text]
+  if (block.kind === 'table')
+    return [block.caption, ...block.columns, ...block.rows.flat()]
+  return []
+}
+
+/** The text of the Plain blocks of a chapter. Technical blocks are not read. */
 const plainTexts = ({ plain, plainHint }: ChapterCopy): string[] => [
-  ...plain.flatMap((block: Block) =>
-    typeof block === 'string' ? [block] : 'kind' in block ? [] : [...block],
-  ),
+  ...plain.flatMap(blockTexts),
   ...(plainHint ? [plainHint] : []),
 ]
 
@@ -429,12 +437,22 @@ describe('Help chapters', () => {
         'A seed node',
         ['a fake one', 'fine'],
         { kind: 'diagram', name: 'evidence' },
+        { kind: 'heading', text: 'Where the telemetry went' },
+        {
+          kind: 'table',
+          caption: 'Kinds',
+          columns: ['Kind', 'Real score'],
+          rows: [['Multi-hop', 'a rerank']],
+        },
       ],
       technical: ['The seed is chosen', ['a chunk']],
     }
     expect(plainTexts(sample).filter((text) => violation(text))).toEqual([
       'A seed node',
       'a fake one',
+      'Where the telemetry went',
+      'Real score',
+      'a rerank',
     ])
   })
 
@@ -448,6 +466,12 @@ describe('Help chapters', () => {
     // The Technical columns (reason, cost, decision) are not read, as with Technical blocks.
     const texts = REGISTER.flatMap(({ item, plain }) => [item, plain])
     expect(texts.length).toBeGreaterThan(20)
+    expect(texts.filter((text) => violation(text))).toEqual([])
+  })
+
+  it('has no banned word in the plain stories the story cards show', () => {
+    const texts = Object.values(PLAIN_STORIES)
+    expect(texts.length).toBe(8)
     expect(texts.filter((text) => violation(text))).toEqual([])
   })
 })

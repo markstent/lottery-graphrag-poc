@@ -20,9 +20,9 @@ from app.evaluation.report import (
     SMOKE_HEADLINE,
     SUMMARY_SCHEMA_VERSION,
     _agreement_section,
-    _judge_agreement,
-    _observe,
     instance_means,
+    judge_agreement,
+    observe,
     render_report,
     summarize,
 )
@@ -495,7 +495,7 @@ def test_agreement_section_reports_answered_and_abstained() -> None:
         "A": [_score(1.0, 1.0, judged=2), _score(0.0, 0.0, judged=2), None],
         "B": [_score(0.5, 1.0, judged=1), _score(0.0, 1.0, judged=0)],
     }
-    agreements = _judge_agreement([InstanceResult(instance, runs, scores)], ["A", "B"])
+    agreements = judge_agreement([InstanceResult(instance, runs, scores)], ["A", "B"])
     # Answered pairs (answer level, judge correctness): A (2, 2), B (1, 1) and (0, 0).
     assert agreements["overall"]["answered"] == {"n": 3, "agreement": 1.0, "weighted_kappa": 1.0}
     # The one abstention scores 0 where the judge gave 2: no agreement, and
@@ -682,7 +682,7 @@ def test_instance_means_matches_the_observation(run_with_ontology_flags: Benchma
     # A's failed repeat is excluded: (1.0 + 0.5) / 2.
     assert instance_means(h3)["A"]["answer"] == pytest.approx(0.75)
     for r in results:
-        means, observed = instance_means(r), _observe(r).values
+        means, observed = instance_means(r), observe(r).values
         for tag in r.scores:
             for metric in ("evidence_recall", "answer"):
                 assert means[tag][metric] == observed[metric][tag][0]

@@ -50,6 +50,8 @@ export interface GroupedBarsProps extends ChartStateProps {
   unit: string
   domain: Domain
   decimals?: number
+  /** Print each bar's value above it, for a chart read at a glance; off where whiskers or a delta need the room. */
+  valueLabels?: boolean
 }
 
 const MARGIN = { top: 52, right: 16, left: 48 }
@@ -82,6 +84,7 @@ export function GroupedBars({
   unit,
   domain,
   decimals,
+  valueLabels = false,
   status,
   error,
   disabled = false,
@@ -344,6 +347,19 @@ export function GroupedBars({
                   low={y(range[0])}
                   high={y(range[1])}
                 />
+              ) : null}
+              {valueLabels && !range ? (
+                <text
+                  data-mark="value"
+                  x={cx}
+                  y={Math.min(base, end) - 6}
+                  textAnchor="middle"
+                  fontSize={12}
+                  fill={TOKENS['color-text-secondary']}
+                  className="tabular"
+                >
+                  {fmt(bar.value)}
+                </text>
               ) : null}
             </g>
           )

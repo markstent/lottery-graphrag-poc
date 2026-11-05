@@ -344,14 +344,16 @@ LIMIT 2
 """
 
 # The relationships meeting one node, optionally of one type ($rel_type null
-# for every type), in a stable order and cut at $limit. The caller asks for
-# one more than it shows to learn whether the list was cut.
+# for every type) and one direction ($direction 'out', 'in', or null for
+# both), in a stable order and cut at $limit. The caller asks for one more
+# than it shows to learn whether the list was cut.
 GRAPH_NEIGHBOURS = """
 MATCH (n {id: $id})-[r]-(m)
 WHERE $rel_type IS NULL OR type(r) = $rel_type
 WITH type(r) AS rel_type,
      CASE WHEN startNode(r) = n THEN 'out' ELSE 'in' END AS direction,
      m
+WHERE $direction IS NULL OR direction = $direction
 RETURN rel_type, direction, labels(m) AS labels, properties(m) AS props
 ORDER BY rel_type, direction, m.id
 LIMIT $limit

@@ -11,6 +11,7 @@ import pilotSummary from '../../e2e/fixtures/results-pilot-summary.json'
 import runsJson from '../../e2e/fixtures/results-runs.json'
 import smokeSummary from '../../e2e/fixtures/results-smoke-summary.json'
 import v03Instances from '../../e2e/fixtures/results-v03-instances.json'
+import v03SecondJudge from '../../e2e/fixtures/results-v03-second-judge.json'
 import v03Summary from '../../e2e/fixtures/results-v03-summary.json'
 
 export const RUNS = runsJson as Schemas['BenchmarkRunOut'][]
@@ -26,3 +27,4 @@ export const V03_RUN = v03Summary as Schemas['BenchmarkSummary']
 export const V03 = V03_RUN.summary
 export const V03_INSTANCES =
   v03Instances as unknown as Schemas['InstanceResultOut'][]
+export const V03_SECOND_JUDGE = v03SecondJudge as Schemas['SecondJudgeOut']

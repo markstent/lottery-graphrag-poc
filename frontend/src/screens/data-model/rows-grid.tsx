@@ -3,13 +3,15 @@
  * column and paging that keeps the filter. The server casts the typed value to
  * the column's own type, so a timestamp copied from a row finds that row; a
  * value that does not fit the type comes back as a message, shown as it is.
- * A row opens as a record in the evidence drawer (the caller's `onOpenRow`).
+ * Choosing a row calls the caller's `onOpenRow`, and the chosen row is marked.
+ * A value in a column that names another table's row is a link to that row.
  */
 
 import { useState } from 'react'
 
 import { getRows, type Schemas } from '../../api/client'
 import { plainValue } from '../../app/plain-words'
+import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
 import { count } from './model'
@@ -40,11 +42,22 @@ const field =
 interface RowsGridProps {
   datasetId: string
   schema: Schemas['TableSchemaOut']
+  /** The key of the chosen row, which is marked. */
+  chosen?: string
   /** Called with the row's key when a row is opened. */
   onOpenRow: (rowId: string) => void
 }
 
-export function RowsGrid({ datasetId, schema, onOpenRow }: RowsGridProps) {
+/** The text of a value that is not a link: empty and "none" name no row. */
+const namesARow = (value: unknown): value is string =>
+  typeof value === 'string' && value !== '' && value !== 'none'
+
+export function RowsGrid({
+  datasetId,
+  schema,
+  chosen,
+  onOpenRow,
+}: RowsGridProps) {
   const [offset, setOffset] = useState(0)
   const [applied, setApplied] = useState<Filter | null>(null)
   const [column, setColumn] = useState(schema.primary_key)
@@ -68,6 +81,9 @@ export function RowsGrid({ datasetId, schema, onOpenRow }: RowsGridProps) {
     setApplied(next)
     setOffset(0)
   }
+  const linkedTable = new Map(
+    schema.foreign_keys.map((fk) => [fk.column, fk.table]),
+  )
   const typeOf = schema.columns.find((c) => c.name === column)?.type
 
   return (
@@ -175,30 +191,52 @@ export function RowsGrid({ datasetId, schema, onOpenRow }: RowsGridProps) {
               <tbody>
                 {page.rows.map((row, position) => {
                   const key = String(row[schema.primary_key])
+                  const isChosen = key === chosen
                   return (
                     <tr
                       key={`${offset}/${position}`}
+                      aria-current={isChosen ? 'true' : undefined}
                       onClick={() => onOpenRow(key)}
-                      className="cursor-pointer border-t border-hairline hover:bg-surface-raised"
+                      className="cursor-pointer border-t border-hairline hover:bg-surface-raised aria-[current=true]:bg-surface-raised"
                     >
-                      {schema.columns.map((c, index) => (
-                        <td
-                          key={c.name}
-                          className="px-2 py-1.5 whitespace-nowrap text-text-primary"
-                        >
-                          {index === 0 ? (
-                            <button
-                              type="button"
-                              aria-label={`Open ${key}`}
-                              className="underline"
-                            >
-                              {key}
-                            </button>
-                          ) : (
-                            plainValue(row[c.name])
-                          )}
-                        </td>
-                      ))}
+                      {schema.columns.map((c, index) => {
+                        const target = linkedTable.get(c.name)
+                        const cell = row[c.name]
+                        return (
+                          <td
+                            key={c.name}
+                            className={`px-2 py-1.5 whitespace-nowrap text-text-primary ${
+                              index === 0 && isChosen
+                                ? 'border-l-4 border-text-primary font-semibold'
+                                : ''
+                            }`}
+                          >
+                            {index === 0 ? (
+                              <button
+                                type="button"
+                                aria-label={`Open ${key}`}
+                                className="underline"
+                              >
+                                {key}
+                              </button>
+                            ) : target !== undefined && namesARow(cell) ? (
+                              <a
+                                href={hrefFor('data-model', {
+                                  tab: 'tables',
+                                  table: target,
+                                  row: cell,
+                                })}
+                                onClick={(event) => event.stopPropagation()}
+                                className="underline"
+                              >
+                                {cell}
+                              </a>
+                            ) : (
+                              plainValue(cell)
+                            )}
+                          </td>
+                        )
+                      })}
                     </tr>
                   )
                 })}

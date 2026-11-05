@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { OFFICIAL, PILOT } from './results.fixtures'
+import { OFFICIAL } from './results.fixtures'
 import { REPRO_KEYS, reproFields } from './reproducibility'
 
 describe('reproFields', () => {
@@ -43,15 +43,6 @@ describe('reproFields', () => {
     expect(
       keys.filter((k) => !(REPRO_KEYS as readonly string[]).includes(k)),
     ).toEqual([])
-  })
-  it('an older pilot record has only fields that exist, the rest not recorded', () => {
-    const fields = reproFields(PILOT.reproducibility.run)
-    expect(fields.find((f) => f.key === 'git_dirty')?.value).toBe(
-      'Not recorded',
-    )
-    expect(fields.find((f) => f.key === 'git_sha')?.value).not.toBe(
-      'Not recorded',
-    )
   })
   it('leaves out of the run list a field only the worlds record', () => {
     const run = { git_sha: 'abc' }

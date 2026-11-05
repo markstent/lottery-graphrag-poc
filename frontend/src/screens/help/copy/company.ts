@@ -2,10 +2,13 @@ import type { ChapterCopy } from '../chapters'
 
 export const company: ChapterCopy = {
   plain: [
-    'The company is made up: a lottery operator in four markets, the United Kingdom, Greece, Austria and the Czech Republic. No player, customer, employee or document in it exists.',
-    'It holds what such an operator would hold: players and their tickets, games and draws, retailers, campaigns, incidents and support cases, the release history of its apps and platforms, and documents such as release notes, incident reports and game rules. Documents are in English, Greek, German and Czech.',
-    'Each market works like a separate company on its own systems. It has its own codes and its own names for the same kinds of thing, and nothing in the data says that two markets mean the same thing. That is the gap the ontology fills.',
-    'Why made up: the questions need answers that are known in advance, and a story can be planted on purpose only in data we generate (chapter 3). Made-up data also holds nothing private, and it can be built again, identically, from the same settings.',
+    'The company is made up: a lottery operator in four markets, the United Kingdom, Greece, Austria and the Czech Republic. A market is one country the company works in. No player, customer, employee or document in it exists.',
+    'It holds what such an operator would hold: players and their tickets, games and draws, shops that sell tickets, campaigns, incidents and support cases. It also holds the release history of its apps and platforms, and documents such as release notes, incident reports and game rules. Documents are in English, Greek, German and Czech.',
+    'Each market works like a separate company on its own systems. It has its own codes and its own names for the same kinds of thing. Nothing in the data says that two markets mean the same thing. That is the gap the ontology, the shared dictionary, fills.',
+    'Each row in a table, such as one game or one incident, is a record. A record has a reference code, such as INC_022 for an incident.',
+    { kind: 'heading', text: 'Why the company is made up' },
+    'The questions need answers that are known in advance. A story can be planted on purpose only in data we generate (chapter 3). Made-up data also holds nothing private. And it can be built again, identically, from the same settings.',
+    'The system can build the company more than once, with different random draws. Each copy is called a world. Every world has the same markets and the same kinds of records, but the details differ. The same settings build the same world again.',
     'Data Model shows the data in four tabs:',
     { kind: 'component', name: 'dataTour' },
   ],
@@ -20,7 +23,7 @@ export const company: ChapterCopy = {
       'Record texts: one short English text for each row of 16 tables, plus shared devices, shared payment methods and the players taking part in a share, written by one fixed template per table (backend/app/retrieval/standard/records.py, serialiser 2.1.0). They sit in the same search index as the passages and give A the same access to the tables that B and C get through the graph (D-028).',
       'The graph: 29 node labels and 30 relationship types (backend/app/graph/statements.py) holding the entities, their relationships, the ontology and, on every node, the source table and row it came from. High-volume facts (tickets, prizes, sessions, campaign exposures, daily KPIs) stay in the tables and appear in the graph only as aggregates on a relationship. The graph holds one world at a time.',
     ],
-    "Seeds: a world is fixed by its profile, its world seed and its scenario seed, which the world's _manifest.json records with the generator version. The official worlds of method v0.3 use the dev profile with world seeds 2029 to 2034, which no one has looked at, each with the scenario seed equal to the world seed (OFFICIAL_SEEDS in backend/app/evaluation/official.py); the official run v0.2.0 used seeds 2026, 2027 and 2028. Live Lab and Data Model show seed 2026.",
+    "Seeds: a world is fixed by its profile, its world seed and its scenario seed, which the world's _manifest.json records with the generator version. The official worlds use the dev profile with world seeds 2029 to 2034, which no one has looked at, each with the scenario seed equal to the world seed (OFFICIAL_SEEDS in backend/app/evaluation/official.py). Live Lab and Data Model show seed 2026.",
     "Determinism: each table generator draws from its own random stream, keyed by the generator version, the world seed and the component name (backend/app/datasets/rng.py), and each scenario from its own stream keyed by the scenario seed and its id, so one component's draws do not shift another's. The same version, seeds and configuration reproduce the same world. backend/tests/test_determinism.py checks this within a process, and test_golden_world.py pins a hash of the written Parquet files and the truth ledger across processes (fixture tests/fixtures/golden/tiny-seed7.json).",
     "Validation (validate_world) checks referential integrity over all 61 foreign keys, that a player's segments come from the player's own market, market and currency consistency, time order (a session runs only an app version its market had released), the volume targets and provenance coverage.",
   ],

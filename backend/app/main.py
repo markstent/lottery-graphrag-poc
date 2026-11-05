@@ -23,7 +23,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.api import benchmarks, data_model, graph_model, health, queries, reference
+from app.api import benchmarks, data_model, example, graph_model, health, queries, reference
 from app.api.errors import install_handlers
 from app.api.graph_world import GraphLease, GraphWorldCheck
 from app.api.readiness import ReadinessChecks
@@ -132,6 +132,7 @@ def create_app(
         graph_model.build_graph_router(graph, graph_world), prefix=API_PREFIX
     )
     application.include_router(reference.build_reference_router(), prefix=API_PREFIX)
+    application.include_router(example.build_example_router(), prefix=API_PREFIX)
     return application
 
 

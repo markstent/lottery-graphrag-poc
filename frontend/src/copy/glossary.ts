@@ -71,13 +71,6 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'A claim statement and its carriers: the record ids and passage ids whose text states the fact. Carriers are computed at grounding time and frozen with the bank (backend/app/evaluation/claims.py).',
   },
   {
-    term: "Cohen's kappa",
-    meaning:
-      'How far two ways of marking agree beyond what chance alone would give: 0 is chance, 1 is full agreement.',
-    technical:
-      'The agreement measure of the old method: "judge correctness is 2" against "answer score is at least 0.5", overall and for each approach, as in the official run v0.2.0. Shown only from 10 judged answers (D-086).',
-  },
-  {
     term: 'Concept',
     meaning:
       'One shared meaning in the ontology, such as a game family that each market names differently.',
@@ -89,12 +82,12 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A kind of run that asks the questions needing several links again, with the graph followed 0, 1, 2 and 3 steps.',
     technical:
-      'Run kind sweep (make run-sweep): B and C on the H1 questions at graph depths 0 to 3. It reports intervals and runs no test. None had been run by 2026-10-27.',
+      'Run kind sweep (make run-sweep): B and C on the H1 questions at graph depths 0 to 3. It reports intervals and runs no test. None had been run by 2026-10-28.',
   },
   {
     term: 'Detectable difference',
     meaning:
-      'A difference between two approaches larger than chance would explain, after allowing for how many comparisons were made at once.',
+      'A difference between two approaches that passes the test, larger than chance would explain after allowing for how many comparisons were made at once, and whose margin of error leaves out zero.',
     technical:
       'A Holm-adjusted p-value below 0.05 from a two-sided Wilcoxon signed-rank test on the per-group mean differences, with the 95 percent interval wholly above or below 0, in a cell of at least 10 pairs and 6 groups (backend/app/evaluation/statistics.py).',
   },
@@ -120,16 +113,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Evidence recall',
     meaning:
-      'The share of the needed facts that the evidence an approach chose covers, from 0 to 1. Method v0.3 tests it.',
+      'The share of the needed facts found: how many of the facts a correct answer needs are covered by the evidence an approach chose, from 0 to 1. The method tests it.',
     technical:
-      'The share of claims with at least one carrier selected, after the starting record is removed; undefined when no claim is left. The evidence metric of the tested family since method v0.3 (D-087).',
-  },
-  {
-    term: 'Evidence score',
-    meaning:
-      'How much of the needed evidence an approach found without padding, from 0 to 1. The official run v0.2.0 tested it; method v0.3 shows it without a test.',
-    technical:
-      'F1: the harmonic mean of recall (the share of claims with at least one carrier selected) and precision (the share of selected items that carry a claim), after the starting record is removed. Undefined when no claim is left. Descriptive since method v0.3, because precision depends on how many items fit the budget (D-087).',
+      'The share of claims with at least one carrier selected, after the starting record is removed; undefined when no claim is left. The evidence metric of the tested family (D-087).',
   },
   {
     term: 'Failure cause',
@@ -155,14 +141,14 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Groundedness',
     meaning:
-      'How far the ids, dates and numbers an answer states are held by the pieces it cites, and how many no piece shown to the model holds. Shown, not tested.',
+      'How far the codes, dates and numbers an answer states are backed by the pieces it cites, and how many appear in no piece shown to the model. Shown, not tested.',
     technical:
-      'Supported and unsupported shares of checkable atoms per sentence, with no model (backend/app/evaluation/checks.py, D-088); descriptive and outside the Holm family. A v0.2.0 figure and a v0.3 one are not comparable.',
+      'Supported and unsupported shares of checkable atoms per sentence, with no model (backend/app/evaluation/checks.py, D-088); descriptive and outside the Holm family.',
   },
   {
     term: 'Hidden truth',
     meaning:
-      'The fact planted behind a story. Help shows it, and no approach can see it.',
+      'The fact planted behind a story. Help shows it on the story cards at the Technical level, and no approach can see it.',
   },
   {
     term: 'Hybrid search',
@@ -179,9 +165,16 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'H1 to H7, from the overhaul design (docs/superpowers/specs/2026-10-18-overhaul-design.md, section 5.5) and docs/evaluation.md.',
   },
   {
+    term: 'Instance',
+    meaning:
+      'One filled-in version of a question, about one record in one world. One question gives up to three instances in each world.',
+    technical:
+      'A grounded bank instance: one logical question with one anchor in one world, frozen with the bank (backend/app/evaluation/bank.py, D-030).',
+  },
+  {
     term: 'Interval',
     meaning:
-      'The range a difference between two approaches most likely lies in, with 95 percent confidence.',
+      'The margin of error of a difference between two approaches: the range the difference most likely lies in, with 95 percent confidence.',
     technical:
       'A 95 percent paired bootstrap interval of the mean difference over question groups, from 10,000 resamples with a fixed seed of 2026 (backend/app/evaluation/statistics.py).',
   },
@@ -190,7 +183,21 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'A second language model, from another model family, that marks each answer from 0 to 2 on five counts. Its marks are a second opinion.',
     technical:
-      'JUDGE_MODEL, prompt version 1.0.0. It sees block text only, shuffled and renumbered, and no word of its prompt names an approach (D-031).',
+      'JUDGE_MODEL, judge prompt 1.2.0 (D-096). It sees block text only, shuffled and renumbered, and no word of its prompt names an approach (D-031).',
+  },
+  {
+    term: 'Judges disagree',
+    meaning:
+      'One judge says an answer is right and the other says it is wrong. Results lists each such answer for a person to check.',
+    technical:
+      'judges_disagree: the two correctness levels differ by 2. Listed in combined.json with the question, the approach and both levels, and counted per kind of question.',
+  },
+  {
+    term: "Judges' mark",
+    meaning:
+      'How right two AI judges found an answer, averaged, from 0 to 1. It is tested on its own, apart from the other scores.',
+    technical:
+      "Per answer, (c1 + c2) / 4 over the first and the second judge's correctness (0, 1, 2), defined only when both gave scores. Tested in its own Holm family over the answer score's eight cells (backend/app/evaluation/judges_mark.py, D-105).",
   },
   {
     term: 'Kind of question',
@@ -216,6 +223,13 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'One country the made-up company operates in: the United Kingdom, Greece, Austria or the Czech Republic.',
   },
   {
+    term: 'Method',
+    meaning:
+      'The rules a run follows to choose the evidence and score the answers.',
+    technical:
+      'Recorded as method_version in every run (D-092): the selection rule of D-083 and D-084, with evidence recall as the tested metric (D-087).',
+  },
+  {
     term: 'Model family',
     meaning:
       'A line of language models built by one group. The judge comes from a different family than the answer model.',
@@ -225,9 +239,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Official run',
     meaning:
-      'Every question run on several worlds, once each, scored identically for all approaches. Only an official run is a result.',
+      'A run over the whole question bank whose scores count as a result: every question asked of several worlds, and scored the same way for every approach.',
     technical:
-      'Run kind official over the whole bank, with one repeat unless --repeats N asks more (D-097), and a gateway answer model and judge (make run-benchmark): for method v0.3 on the six unseen world seeds 2029 to 2034 (D-091); v0.2.0 used seeds 2026, 2027 and 2028.',
+      'Run kind official over the whole bank, with one repeat unless --repeats N asks more (D-097), and a gateway answer model and judge (make run-benchmark), on the six unseen world seeds 2029 to 2034 (D-091).',
   },
   {
     term: 'Pair',
@@ -246,7 +260,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Planted story',
     meaning:
-      'A pattern added to the synthetic data on purpose, so its true answer is known.',
+      'A pattern added to the made-up data on purpose, so its true answer is known.',
     technical:
       'A scenario (SCN-001 and so on) in backend/app/scenarios/; eight are enabled.',
   },
@@ -265,7 +279,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Question group',
     meaning:
-      'The questions made from one question in one world. They are alike, so the statistics count each group once.',
+      'The versions of one question in one world, up to three. They are alike, so the statistics count each group once.',
     technical:
       'A cluster, keyed question id and world seed. The cluster is the unit of the interval and of the test (D-032).',
   },
@@ -281,7 +295,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     meaning:
       'The model that scores each passage and record text for how well it answers the question, so the best come first. It does not score graph records.',
     technical:
-      'The re-ranker: one cross-encoder, BAAI/bge-reranker-v2-m3, run in process by fastembed (D-021). One instance serves A, B and C, on the document channel only since method v0.3 (D-083).',
+      'The re-ranker: one cross-encoder, BAAI/bge-reranker-v2-m3, run in process by fastembed (D-021). One instance serves A, B and C, on the document channel only (D-083).',
   },
   {
     term: 'Reasoning',
@@ -305,9 +319,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'Repeat',
     meaning:
-      'One of the times a question is asked. An official run asks each question once; a run can ask more than once, to see whether a model’s answer varies.',
+      'One of the times a question is asked. An official run now asks each question once unless told to ask more; a run can ask more than once, to see whether a model’s answer varies.',
     technical:
-      'An official run takes one repeat unless --repeats N asks more (D-097; v0.2.0 took 3); a failed repeat has no score and is left out of every metric.',
+      'An official run takes one repeat unless --repeats N asks more (D-097); a failed repeat has no score and is left out of every metric.',
   },
   {
     term: 'Starting point',
@@ -332,6 +346,13 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     term: 'Temperature',
     meaning:
       'A setting for how much a model varies its wording from one try to the next; 0 is the least.',
+  },
+  {
+    term: 'Test',
+    meaning:
+      'A statistical check of whether a difference between two approaches is larger than chance would explain.',
+    technical:
+      "A two-sided Wilcoxon signed-rank test with Pratt's treatment of zeros on the per-group mean differences, Holm-corrected over the 14 tests of the family (D-032).",
   },
   {
     term: 'Text search',
@@ -364,8 +385,8 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'World',
     meaning:
-      'One generated version of the made-up company. The same settings build the same world again.',
+      'One copy of the made-up company, built by the system. Every world has the same markets and kinds of records, but the details differ. The same settings build the same world again.',
     technical:
-      'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2029 to 2034 for method v0.3, and were 2026, 2027 and 2028 for v0.2.0.',
+      'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2029 to 2034.',
   },
 ]

@@ -19,13 +19,12 @@ import {
 } from '../../results/results.fixtures'
 import { failure, json, stubApi } from '../../test/api-stub'
 import { Results } from './results'
-import { BELOW_FLOOR_NOTE } from './verdict'
 
 const OFFICIAL_RUN: Schemas['BenchmarkRunOut'] = {
   run_id: 'fixture-official',
   run_kind: 'official',
   label: 'Fixture run (test values)',
-  method_version: '0.2.0',
+  method_version: '0.3.0',
   started_at: '2026-10-20T09:00:00Z',
   selection: { strata: null, limit: null },
   worlds: [2026],
@@ -37,7 +36,7 @@ const summaryOf = (
   run_id: string,
   run_kind: string,
   summary: Schemas['SummaryOut'],
-) => ({ run_id, run_kind, label: null, method_version: '0.2.0', summary })
+) => ({ run_id, run_kind, label: null, method_version: '0.3.0', summary })
 
 const ROUTES = {
   '/api/v1/benchmarks/jobs': [],
@@ -47,16 +46,43 @@ const ROUTES = {
     'official',
     OFFICIAL,
   ),
-  '/api/v1/benchmarks/pilot-2026-nothink': summaryOf(
-    'pilot-2026-nothink',
+  '/api/v1/benchmarks/fixture-subset': summaryOf(
+    'fixture-subset',
     'official',
     PILOT,
   ),
-  '/api/v1/benchmarks/20261019T164733Z-smoke': summaryOf(
-    '20261019T164733Z-smoke',
+  '/api/v1/benchmarks/fixture-smoke': summaryOf(
+    'fixture-smoke',
     'smoke',
     SMOKE,
   ),
+}
+
+/** The subset run as the harness writes single facts: no evidence recall, so no evidence pairs. */
+const NO_SINGLE_FACT_EVIDENCE = {
+  ...ROUTES,
+  '/api/v1/benchmarks/fixture-subset': summaryOf('fixture-subset', 'official', {
+    ...PILOT,
+    metrics: {
+      ...PILOT.metrics,
+      H3: { ...PILOT.metrics.H3, evidence_recall: {} },
+    },
+    comparisons: PILOT.comparisons.map((c) =>
+      c.stratum === 'H3' && c.metric === 'evidence_recall'
+        ? {
+            ...c,
+            n: 0,
+            clusters: 0,
+            mean: null,
+            low: null,
+            high: null,
+            p: null,
+            p_holm: null,
+            reason: 'too_few',
+          }
+        : c,
+    ),
+  }),
 }
 
 const figureOf = (title: RegExp) =>
@@ -90,7 +116,7 @@ describe('Results', () => {
     )
     expect(screen.getByText(OFFICIAL.headlines[0])).toBeVisible()
     expect(
-      screen.getAllByRole('group', { name: /evidence score$/ }),
+      screen.getAllByRole('group', { name: /evidence recall$/ }),
     ).toHaveLength(3)
   })
 
@@ -102,8 +128,8 @@ describe('Results', () => {
     expect(options.map((o) => o.textContent)).toEqual([
       '20 October 2026 - Official run - Fixture run (test values)',
       '19 October 2026 - Official run - subset run (at most 2 instances per question)',
-      '19 October 2026 - Official run - subset run (at most 1 instance per question)',
       '19 October 2026 - Quick check - scorer smoke test',
+      '19 October 2026 - Official run - Fixture run (test values)',
     ])
     expect(
       within(picker.parentElement as HTMLElement).getByText('Result'),
@@ -115,27 +141,17 @@ describe('Results', () => {
     open()
     const history = (await screen.findByText('All runs')).closest('details')
     expect(history).not.toHaveAttribute('open')
-    const link = within(history as HTMLElement).getAllByRole('link')[3]
-    expect(link).toHaveAttribute('href', '#/results?run=20261019T164733Z-smoke')
+    const link = within(history as HTMLElement).getAllByRole('link')[2]
+    expect(link).toHaveAttribute('href', '#/results?run=fixture-smoke')
   })
 
   it('run param selects a run', async () => {
     stubApi(ROUTES)
-    open('pilot-2026-nothink')
+    open('fixture-subset')
     expect(await within(await verdict()).findByText('Subset run')).toBeVisible()
     expect(screen.getByRole('combobox', { name: 'Run' })).toHaveValue(
-      'pilot-2026-nothink',
+      'fixture-subset',
     )
-  })
-
-  it('notes under the headlines an interval the charts leave out', async () => {
-    stubApi(ROUTES)
-    open('pilot-2026-nothink')
-    const panel = await verdict()
-    expect(
-      await within(panel).findByText(/95 percent interval 1\.9 to 13\.6/),
-    ).toBeVisible()
-    expect(within(panel).getByText(BELOW_FLOOR_NOTE)).toBeVisible()
   })
 
   it('says under the headlines how many tested cells the interval and the test disagree on, and points at the paired differences', async () => {
@@ -172,7 +188,7 @@ describe('Results', () => {
     ).toBeVisible()
     // The line points at a chart that is on this screen.
     expect(
-      screen.getByText(/^Paired differences in evidence score$/),
+      screen.getByText(/^Paired differences in evidence recall$/),
     ).toBeVisible()
   })
 
@@ -183,26 +199,18 @@ describe('Results', () => {
     await within(panel).findByRole('list')
     expect(within(panel).queryByText(/failed the test/)).toBeNull()
     cleanup()
-    open('20261019T164733Z-smoke')
+    open('fixture-smoke')
     const smoke = await verdict()
     await within(smoke).findByRole('list')
     expect(within(smoke).queryByText(/failed the test/)).toBeNull()
-  })
-
-  it('has no such note for a run that follows the rule', async () => {
-    stubApi(ROUTES)
-    open('fixture-official')
-    const panel = await verdict()
-    await within(panel).findByRole('list')
-    expect(within(panel).queryByText(BELOW_FLOOR_NOTE)).toBeNull()
   })
 
   it('choosing a run in the picker puts it in the address', async () => {
     stubApi(ROUTES)
     open()
     const picker = await screen.findByRole('combobox', { name: 'Run' })
-    fireEvent.change(picker, { target: { value: '20261019T164733Z-smoke' } })
-    expect(window.location.hash).toBe('#/results?run=20261019T164733Z-smoke')
+    fireEvent.change(picker, { target: { value: 'fixture-smoke' } })
+    expect(window.location.hash).toBe('#/results?run=fixture-smoke')
   })
 
   it('an unknown run says so and keeps the picker', async () => {
@@ -216,7 +224,7 @@ describe('Results', () => {
 
   it('quick check shows no results', async () => {
     stubApi(ROUTES)
-    open('20261019T164733Z-smoke')
+    open('fixture-smoke')
     expect(await screen.findByText(SMOKE.headlines[0])).toBeVisible()
     expect(
       screen.getByText(
@@ -225,22 +233,22 @@ describe('Results', () => {
     ).toBeVisible()
     expect(screen.queryByRole('figure')).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
-    expect(screen.queryByText(/evidence score/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/evidence recall/i)).not.toBeInTheDocument()
   })
 
   it('subset run is labelled beside its numbers', async () => {
     stubApi(ROUTES)
-    open('pilot-2026-nothink')
+    open('fixture-subset')
     expect(await within(await verdict()).findByText('Subset run')).toBeVisible()
     expect(
       screen.getByText('All strata; at most 2 instances per question'),
     ).toBeVisible()
     expect(
-      screen.getAllByRole('group', { name: /evidence score$/ }),
+      screen.getAllByRole('group', { name: /evidence recall$/ }),
     ).toHaveLength(3)
     await screen.findAllByRole('figure')
     const figures = scoreFigures()
-    expect(figures).toHaveLength(2)
+    expect(figures).toHaveLength(3)
     for (const figure of figures) {
       expect(within(figure).getByText('Subset run')).toBeVisible()
       fireEvent.click(
@@ -308,11 +316,11 @@ describe('Results', () => {
 
   it('tiles show evidence to two places and the answer score as a percentage', async () => {
     stubApi(ROUTES)
-    open('pilot-2026-nothink')
+    open('fixture-subset')
     await verdict()
     await screen.findAllByRole('figure')
     const tile = screen.getByRole('group', {
-      name: 'A · Text search evidence score',
+      name: 'A · Text search evidence recall',
     })
     expect(within(tile).getByText(/^\d\.\d\d$/)).toBeVisible()
     expect(within(tile).getByText(/^Answer score \d+%$/)).toBeVisible()
@@ -321,7 +329,7 @@ describe('Results', () => {
 
   it('too few pairs draws no interval', async () => {
     stubApi(ROUTES)
-    open('pilot-2026-nothink')
+    open('fixture-subset')
     await verdict()
     await screen.findAllByRole('figure')
     const figure = figureOf(/Paired differences/)
@@ -338,14 +346,14 @@ describe('Results', () => {
       'no value',
       'no value',
       'no value',
-      '8 pairs in 4 groups',
+      '6 pairs in 6 groups',
       'Too few pairs',
     ])
   })
 
   it('a cell with no pairs reads No pairs, with no counts line', async () => {
-    stubApi(ROUTES)
-    open('pilot-2026-nothink')
+    stubApi(NO_SINGLE_FACT_EVIDENCE)
+    open('fixture-subset')
     await screen.findAllByRole('figure')
     const figure = figureOf(/Paired differences/)
     expect(within(figure).getAllByText('No pairs').length).toBeGreaterThan(0)
@@ -385,7 +393,7 @@ describe('Results', () => {
     const heading = await screen.findByRole('heading', {
       name: 'Ontology-dependent split',
     })
-    const figure = figureOf(/^Differences in evidence score$/)
+    const figure = figureOf(/^Differences in evidence recall$/)
     expect(heading.nextElementSibling).toBe(figure)
     expect(
       within(figure).getByText('Descriptive: not part of the tested family.'),
@@ -404,26 +412,12 @@ describe('Results', () => {
   })
 
   it('says once, horizontally, that single facts have no evidence score', async () => {
-    stubApi(ROUTES)
-    open('pilot-2026-nothink')
+    stubApi(NO_SINGLE_FACT_EVIDENCE)
+    open('fixture-subset')
     await screen.findAllByRole('figure')
-    const figure = figureOf(/Evidence score by kind of question/)
+    const figure = figureOf(/Evidence recall by kind of question/)
     expect(within(figure).getByText(/^No evidence/)).toBeVisible()
     expect(within(figure).queryByText('no value')).not.toBeInTheDocument()
-  })
-
-  it('split absent says the run predates it', async () => {
-    stubApi(ROUTES)
-    open('pilot-2026-nothink')
-    const heading = await screen.findByRole('heading', {
-      name: 'Ontology-dependent split',
-    })
-    expect(heading.nextElementSibling).toHaveTextContent(
-      'This run predates the split.',
-    )
-    expect(
-      screen.queryByText('Descriptive: not part of the tested family.'),
-    ).not.toBeInTheDocument()
   })
 
   it('metric switch by keyboard', async () => {
@@ -431,7 +425,7 @@ describe('Results', () => {
     const user = userEvent.setup()
     open()
     const evidence = await screen.findByRole('button', {
-      name: 'Evidence score',
+      name: 'Evidence recall',
     })
     const answer = screen.getByRole('button', { name: 'Answer score' })
     expect(evidence).toHaveAttribute('aria-pressed', 'true')

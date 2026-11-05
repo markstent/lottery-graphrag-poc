@@ -16,7 +16,7 @@ import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query
 from neo4j.time import Date, DateTime, Duration, Time
@@ -28,6 +28,7 @@ from app.api.graph_world import GRAPH_BUSY_MESSAGE, GraphWorldCheck
 from app.api.schemas import (
     NEIGHBOURS_LIMIT_DEFAULT,
     NEIGHBOURS_LIMIT_MAX,
+    EdgeSummary,
     GraphSchema,
     GraphStats,
     NeighbourOut,
@@ -86,8 +87,14 @@ def _json(value: Any) -> JsonValue:
     return result
 
 
-def _node(labels: list[str], props: dict[str, Any], dataset_id: str) -> NodeOut:
-    """A node; its provenance is the source row ingestion built it from."""
+def _node(
+    labels: list[str],
+    props: dict[str, Any],
+    dataset_id: str,
+    edges: list[EdgeSummary] | None = None,
+) -> NodeOut:
+    """A node; its provenance is the source row ingestion built it from, and
+    ``edges`` the link counts when the caller read them."""
     table = node_table(labels[0]) if labels else None
     row_id = props.get("source_record_id")
     return NodeOut(
@@ -97,6 +104,7 @@ def _node(labels: list[str], props: dict[str, Any], dataset_id: str) -> NodeOut:
         provenance=ProvenanceOut(table=table, row_id=str(row_id), dataset_id=dataset_id)
         if table is not None and row_id is not None
         else None,
+        edges=edges or [],
     )
 
 
@@ -172,7 +180,12 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
         active = active_dataset_dir()
         with _reader(graph, world, active) as reader:
             labels, props = _one_node(reader, node_id)
-        return _node(labels, props, active.name)
+            summary = reader.edge_summary(labels[0], node_id)
+        edges = [
+            EdgeSummary.model_validate({"type": kind, "direction": way, "count": count})
+            for kind, way, count in sorted(summary)
+        ]
+        return _node(labels, props, active.name, edges)
 
     @router.get(
         "/graph/nodes/{node_id}/neighbours",
@@ -183,6 +196,7 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
         node_id: str,
         limit: Annotated[int, Query(ge=1, le=NEIGHBOURS_LIMIT_MAX)] = NEIGHBOURS_LIMIT_DEFAULT,
         rel_type: Annotated[str | None, Query(alias="type")] = None,
+        direction: Literal["out", "in"] | None = None,
     ) -> Neighbours:
         if rel_type is not None and rel_type not in RELATIONSHIP_TYPES:
             raise ApiError(
@@ -191,7 +205,7 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
         active = active_dataset_dir()
         with _reader(graph, world, active) as reader:
             _one_node(reader, node_id)
-            found = reader.node_neighbours(node_id, rel_type, limit + 1)
+            found = reader.node_neighbours(node_id, rel_type, direction, limit + 1)
         return Neighbours(
             node_id=node_id,
             items=[

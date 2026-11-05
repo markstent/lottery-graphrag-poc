@@ -22,7 +22,7 @@ from __future__ import annotations
 import dataclasses
 import statistics
 from collections import Counter
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -161,7 +161,7 @@ METRICS: dict[str, Extractor] = {
 
 
 @dataclass(frozen=True, slots=True)
-class _Observation:
+class Observation:
     """One instance: its stratum key, its cluster and, per metric and
     pipeline, the mean over the repeats that define it and their count."""
 
@@ -172,7 +172,7 @@ class _Observation:
 
 
 @dataclass(slots=True)
-class _Comparison:
+class Comparison:
     stratum: str
     metric: str
     comparison: str
@@ -212,8 +212,8 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
     """The machine-readable result of a run, written as ``summary.json``."""
     results = [result for world in run.worlds for result in world.results]
     pipelines = _pipelines(results)
-    observations = [_observe(result) for result in results]
-    comparisons = _comparisons(observations)
+    observations = [observe(result) for result in results]
+    comparisons = paired_comparisons(observations)
     smoke = run.kind == "smoke"
     reproducibility = run.reproducibility()
     run_record = reproducibility["run"]
@@ -240,9 +240,11 @@ def summarize(run: BenchmarkRun) -> dict[str, Any]:
         "comparisons": [c.to_payload() for c in comparisons],
         "ontology_split": _ontology_split(observations),
         "headlines": (
-            [FIXED_HEADLINES[run.kind]] if run.kind in FIXED_HEADLINES else _headlines(comparisons)
+            [FIXED_HEADLINES[run.kind]]
+            if run.kind in FIXED_HEADLINES
+            else family_headlines(comparisons)
         ),
-        "judge_agreement": _judge_agreement(results, pipelines),
+        "judge_agreement": judge_agreement(results, pipelines),
         "failures": _failures(results, pipelines),
         "selection": run.selection.to_payload(),
         "reproducibility": reproducibility,
@@ -254,10 +256,10 @@ def metric_tables(
 ) -> dict[str, dict[str, dict[str, dict[str, Any]]]]:
     """Per stratum key and overall, per metric and pipeline: the mean over
     instances, the instance count ``n`` and the scored ``repeats``."""
-    observations = [_observe(result) for result in results]
+    observations = [observe(result) for result in results]
     pipelines = _pipelines(results)
     return {
-        key: _metric_table([o for o in observations if key in (o.stratum, OVERALL)], pipelines)
+        key: metric_table([o for o in observations if key in (o.stratum, OVERALL)], pipelines)
         for key in (*STRATUM_KEYS, OVERALL)
     }
 
@@ -266,7 +268,9 @@ def _pipelines(results: Sequence[InstanceResult]) -> list[str]:
     return [tag for tag in PIPELINES if any(tag in r.scores for r in results)]
 
 
-def _defined_values(result: InstanceResult) -> dict[str, dict[str, list[float]]]:
+def _defined_values(
+    result: InstanceResult, metrics: Mapping[str, Extractor] = METRICS
+) -> dict[str, dict[str, list[float]]]:
     """Per pipeline and metric, the values of the repeats where it is defined."""
     return {
         tag: {
@@ -275,7 +279,7 @@ def _defined_values(result: InstanceResult) -> dict[str, dict[str, list[float]]]
                 for score, run in zip(scores, result.runs[tag], strict=True)
                 if score is not None and (value := extract(score, run)) is not None
             ]
-            for metric, extract in METRICS.items()
+            for metric, extract in metrics.items()
         }
         for tag, scores in result.scores.items()
     }
@@ -299,15 +303,17 @@ def instance_means(result: InstanceResult) -> dict[str, dict[str, float | None]]
     return _means(_defined_values(result))
 
 
-def _observe(result: InstanceResult) -> _Observation:
-    defined = _defined_values(result)
-    values: dict[str, dict[str, tuple[float, int]]] = {metric: {} for metric in METRICS}
+def observe(result: InstanceResult, metrics: Mapping[str, Extractor] = METRICS) -> Observation:
+    """One instance as an observation of metrics (by default every metric
+    of the summary; the judges' mark passes its own, D-105)."""
+    defined = _defined_values(result, metrics)
+    values: dict[str, dict[str, tuple[float, int]]] = {metric: {} for metric in metrics}
     for tag, per_metric in _means(defined).items():
         for metric, mean in per_metric.items():
             if mean is not None:
                 values[metric][tag] = (mean, len(defined[tag][metric]))
     instance = result.instance
-    return _Observation(
+    return Observation(
         stratum_key(instance),
         f"{instance.question_id}:{instance.world_seed}",
         instance.ontology_dependent,
@@ -320,11 +326,15 @@ def _stratum_counts(instances: Iterable[BankInstance]) -> dict[str, int]:
     return {**{key: counts[key] for key in STRATUM_KEYS}, OVERALL: counts.total()}
 
 
-def _metric_table(
-    observations: Sequence[_Observation], pipelines: Sequence[str]
+def metric_table(
+    observations: Sequence[Observation],
+    pipelines: Sequence[str],
+    metrics: Iterable[str] = METRICS,
 ) -> dict[str, dict[str, dict[str, Any]]]:
+    """Per metric and pipeline: the mean over the observations that define
+    it, their count n and the repeats behind them."""
     table: dict[str, dict[str, dict[str, Any]]] = {}
-    for metric in METRICS:
+    for metric in metrics:
         table[metric] = {}
         for tag in pipelines:
             cells = [o.values[metric][tag] for o in observations if tag in o.values[metric]]
@@ -348,7 +358,7 @@ class _Paired:
     too_few: bool
 
 
-def _pairs(observations: Sequence[_Observation], metric: str, x: str, y: str) -> _Paired:
+def _pairs(observations: Sequence[Observation], metric: str, x: str, y: str) -> _Paired:
     """The paired differences x minus y, their clusters, the bootstrap interval
     (whenever there is a pair) and the pairs and groups gate."""
     diffs: list[float] = []
@@ -369,16 +379,22 @@ def _pairs(observations: Sequence[_Observation], metric: str, x: str, y: str) ->
     )
 
 
-def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
-    """Every compared cell; p and the Holm p only for cells in the family
-    that pass both the pairs gate and the groups gate."""
-    cells: list[_Comparison] = []
+def paired_comparisons(
+    observations: Sequence[Observation],
+    metrics: Sequence[str] = COMPARED_METRICS,
+    family: frozenset[tuple[str, str, str]] = HOLM_FAMILY,
+) -> list[Comparison]:
+    """Every compared cell of metrics; p and the Holm p only for cells in
+    family that pass both the pairs gate and the groups gate. Holm runs
+    over this call's tested cells only, so another family (the judges' mark,
+    D-105) leaves the published adjusted p-values as they are."""
+    cells: list[Comparison] = []
     for stratum in STRATUM_KEYS:
         members = [o for o in observations if o.stratum == stratum]
-        for metric in COMPARED_METRICS:
+        for metric in metrics:
             for comparison, (x, y) in COMPARISONS.items():
                 paired = _pairs(members, metric, x, y)
-                if (comparison, stratum, metric) not in HOLM_FAMILY:
+                if (comparison, stratum, metric) not in family:
                     reason = "not_in_family"
                 elif paired.too_few:
                     reason = "too_few"
@@ -386,7 +402,7 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
                     reason = "tested"
                 in_family = reason == "tested"
                 cells.append(
-                    _Comparison(
+                    Comparison(
                         stratum=stratum,
                         metric=metric,
                         comparison=comparison,
@@ -399,13 +415,13 @@ def _comparisons(observations: Sequence[_Observation]) -> list[_Comparison]:
                         reason=reason,
                     )
                 )
-    family = {str(i): c.p for i, c in enumerate(cells) if c.p is not None}
-    for i, adjusted in holm(family).items():
+    tested = {str(i): c.p for i, c in enumerate(cells) if c.p is not None}
+    for i, adjusted in holm(tested).items():
         cells[int(i)].p_holm = adjusted
     return cells
 
 
-def _ontology_split(observations: Sequence[_Observation]) -> list[dict[str, Any]]:
+def _ontology_split(observations: Sequence[Observation]) -> list[dict[str, Any]]:
     """B versus A and C versus B on the ontology-dependent questions and on the
     rest, grouped by the instance flag across every stratum. Descriptive: the
     cells are never in the Holm family, so p and the Holm p are always None."""
@@ -436,33 +452,39 @@ def _ontology_split(observations: Sequence[_Observation]) -> list[dict[str, Any]
     return cells
 
 
-def _headlines(comparisons: Sequence[_Comparison]) -> list[str]:
+def family_headlines(
+    comparisons: Sequence[Comparison],
+    primary: Mapping[str, str] = PRIMARY_METRIC,
+    units: Mapping[str, str] = METRIC_UNITS,
+    subgroup_metric: str = "evidence_recall",
+) -> list[str]:
+    """One headline per tested stratum and comparison on the stratum's
+    primary metric, then the name-anchored sub-group's descriptive line
+    per comparison on subgroup_metric."""
     cells = {(c.stratum, c.metric, c.comparison): c for c in comparisons}
     lines = []
-    for stratum, metric in PRIMARY_METRIC.items():
+    for stratum, metric in primary.items():
         for comparison in TESTED_COMPARISONS:
             cell = cells[(stratum, metric, comparison)]
             # A cell without pairs takes the "too few" form, which reads only n and clusters.
             interval = cell.interval or Interval(0.0, 0.0, 0.0, 0, 0)
             lines.append(
-                headline(
-                    comparison, STRATUM_LABELS[stratum], METRIC_UNITS[metric], interval, cell.p_holm
-                )
+                headline(comparison, STRATUM_LABELS[stratum], units[metric], interval, cell.p_holm)
             )
     for comparison in TESTED_COMPARISONS:
-        cell = cells[("H2_name", "evidence_recall", comparison)]
+        cell = cells[("H2_name", subgroup_metric, comparison)]
         lines.append(
             subgroup_line(
                 comparison,
                 STRATUM_LABELS["H2_name"],
-                METRIC_UNITS["evidence_recall"],
+                units[subgroup_metric],
                 cell.interval,
             )
         )
     return lines
 
 
-def _judge_agreement(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> dict[str, Any]:
+def judge_agreement(results: Sequence[InstanceResult], pipelines: Sequence[str]) -> dict[str, Any]:
     """Three-level agreement of the judge with the answer score, split by
     whether the answer abstained, overall and per pipeline."""
 

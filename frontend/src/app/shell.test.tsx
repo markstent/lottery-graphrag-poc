@@ -22,7 +22,7 @@ import {
 const DESTINATIONS = [
   [
     'Overview',
-    'The verdict from the latest official run, how the three approaches differ, and a button to run a question',
+    'What we found, how the three approaches work, and questions to try',
   ],
   [
     'Live Lab',
@@ -34,7 +34,11 @@ const DESTINATIONS = [
   ],
   [
     'Data Model',
-    'What the warehouse, the graph and the ontology look like, with live counts and sample rows',
+    'What the warehouse, the graph and the ontology look like, how they fit together, and one real record followed through all three, with live counts',
+  ],
+  [
+    'Architecture',
+    'The tech stack: the data platform, the graph and ontology layers on top, and what each part runs on',
   ],
   [
     'Help',
@@ -59,7 +63,7 @@ afterEach(() => {
 })
 
 describe('shell navigation', () => {
-  it('has five links in order, each described by its purpose sentence', () => {
+  it('has six links in order, each described by its purpose sentence', () => {
     render(<App />)
     const links = within(sidebar()).getAllByRole('link')
     expect(links.map((link) => link.textContent?.trim())).toEqual(
@@ -196,6 +200,38 @@ describe('header', () => {
     expect(
       await screen.findByRole('button', { name: /Models: Not ready/ }),
     ).toBeVisible()
+  })
+
+  it('says Test models, not Ready, when a test stand-in answers, and says how to get real answers', async () => {
+    stubApi({
+      ...SHELL_API,
+      '/api/v1/health/ready': () =>
+        Response.json({
+          ...READY,
+          checks: {
+            ...READY.checks,
+            model: {
+              ok: true,
+              detail: 'fake generator (offline)',
+              stand_in: true,
+            },
+          },
+        }),
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    const button = await screen.findByRole('button', {
+      name: 'Models: Ready, but on test stand-ins',
+    })
+    expect(button).toHaveTextContent('Test models')
+    expect(button.querySelector('span')).toHaveClass('bg-warning')
+    await user.click(button)
+    expect(
+      screen.getByText(/placeholder text from a stand-in for testing/),
+    ).toHaveTextContent('make dev-official')
+    expect(
+      screen.getByRole('list', { name: 'Readiness checks' }),
+    ).toHaveTextContent('Test stand-in: fake generator (offline)')
   })
 
   it('says Not ready when the server does not answer', async () => {

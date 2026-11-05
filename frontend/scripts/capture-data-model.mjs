@@ -1,6 +1,7 @@
 // Captures the Data Model answers of a running API into e2e/fixtures/data-model-world.json,
-// which the e2e mock API serves: the dictionary, the graph schema and statistics, and
-// the world's real row counts, and rows of every table. A table above the cap (and not
+// which the e2e mock API serves: the dictionary, the graph schema and statistics, the
+// example incident the Overview follows, the world's real row counts, and rows of every
+// table. A table above the cap (and not
 // in FULL) is sampled in blocks spread across its ordered rows, so ids and timestamps
 // keep the world's spread; the mock shows the real counts and refuses a page or a filter
 // the sample cannot answer. Usage: node scripts/capture-data-model.mjs
@@ -40,10 +41,11 @@ const get = async (path) => {
   return response.json()
 }
 
-const [datasets, schema, stats] = await Promise.all([
+const [datasets, schema, stats, example] = await Promise.all([
   get('/datasets'),
   get('/graph/schema'),
   get('/graph/stats'),
+  get('/data-model/example'),
 ])
 const world = datasets.find((d) => d.active)
 const dictionary = await get(`/datasets/${world.dataset_id}/dictionary`)
@@ -80,6 +82,7 @@ writeFileSync(
     dictionary,
     schema,
     stats,
+    example,
     rows,
   }),
 )

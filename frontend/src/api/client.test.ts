@@ -294,6 +294,12 @@ describe('route groups', () => {
     ['health: health', () => client.getHealth(), 'GET', '/api/v1/health'],
     ['data: datasets', () => client.listDatasets(), 'GET', '/api/v1/datasets'],
     [
+      'data: example',
+      () => client.getDataModelExample(),
+      'GET',
+      '/api/v1/data-model/example',
+    ],
+    [
       'data: dataset',
       () => client.getDataset('DS'),
       'GET',

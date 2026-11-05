@@ -23,7 +23,7 @@ import {
 import type { Schemas } from '../../api/client'
 import { useReadiness } from '../../app/use-readiness'
 import type { Load } from '../../app/use-load'
-import { RECORDED_INDEX, recordingNote } from '../../run/recorded'
+import { RECORDED_INDEX } from '../../run/recorded'
 import { liveUnavailableReason, type Source } from './source'
 import type { RunRequest } from './use-live-run'
 
@@ -120,6 +120,10 @@ export function QuestionBar({
   }
 
   const list = questions.status === 'ready' ? questions.data : []
+  // Each saved question's easy-to-read wording, which runs as your own question would (D-108).
+  const easy = list.flatMap((question) =>
+    question.easy_text ? [question.easy_text] : [],
+  )
   const adHoc = text.trim() !== ''
   // Nothing looks chosen until the link or the reader chooses a question.
   const selected = adHoc
@@ -138,11 +142,6 @@ export function QuestionBar({
         ? 'live'
         : 'recorded'))
   const shownScope = selected ? selected.market_scope : scope
-  // A recording of the old method says so wherever it is the source.
-  const methodNote =
-    source === 'recorded'
-      ? recordingNote(selected?.instance_id ?? chosenId ?? linkedId)
-      : null
 
   const blocker =
     adHoc && liveOff !== null
@@ -246,9 +245,6 @@ export function QuestionBar({
         <p className="text-sm text-text-secondary">
           {source === 'live' ? 'Live' : 'Recorded run'}
         </p>
-        {methodNote !== null && (
-          <p className="text-sm text-text-muted">{methodNote}</p>
-        )}
         {toggle}
         {controls}
       </section>
@@ -285,9 +281,14 @@ export function QuestionBar({
           </p>
         )}
         {list.length > 0 && (
+          <p id="saved-questions" className="text-sm text-text-secondary">
+            Tested questions
+          </p>
+        )}
+        {list.length > 0 && (
           <div
             role="group"
-            aria-label="Saved questions"
+            aria-labelledby="saved-questions"
             ref={saved}
             className="flex flex-wrap gap-2"
           >
@@ -304,6 +305,31 @@ export function QuestionBar({
               </Choice>
             ))}
           </div>
+        )}
+        {easy.length > 0 && (
+          <>
+            <p id="easy-questions" className="pt-2 text-sm text-text-secondary">
+              Easy-to-read questions, asked as written and not scored
+            </p>
+            <div
+              role="group"
+              aria-labelledby="easy-questions"
+              className="flex flex-wrap gap-2"
+            >
+              {easy.map((wording) => (
+                <Choice
+                  key={wording}
+                  pressed={text.trim() === wording}
+                  onClick={() => {
+                    setText(wording)
+                    setScope([])
+                  }}
+                >
+                  {wording}
+                </Choice>
+              ))}
+            </div>
+          </>
         )}
         <label className="block text-sm text-text-secondary">
           <input
@@ -373,9 +399,6 @@ export function QuestionBar({
           >
             Live
           </Choice>
-          {methodNote !== null && (
-            <span className="ml-1 text-sm text-text-muted">{methodNote}</span>
-          )}
           {liveOff !== null && (
             <span className="ml-1 text-sm text-text-muted">{liveOff}</span>
           )}

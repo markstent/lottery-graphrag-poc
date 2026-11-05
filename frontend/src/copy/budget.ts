@@ -18,9 +18,28 @@
  * owner raised it to 1,360 on 2026-10-27 (D-055), because method v0.3 labels
  * two methods: the method badge, evidence recall, the split judge agreement,
  * the groundedness table, the graph order in Live Lab and the start form's
- * reason for not starting the official run.
+ * reason for not starting the official run. The owner raised it to 1,450 on
+ * 2026-11-02 (D-098) for an Overview a newcomer can read at first glance,
+ * then to 1,800 the same day (D-101) for the Data Model panels on why the
+ * graph and the ontology are built as they are, and the Graph tab's table
+ * of kinds of link, which the owner asked to be made understandable; and
+ * to 1,900 the same day (D-106) for the Overview's score key, plain
+ * findings and chart of evidence found by kind of question; and to 1,950
+ * the same day (D-107, D-108) for the Overview's plainer count line and the
+ * Live Lab's easy-to-read questions; and to 2,400 the same day (D-109) for
+ * the Architecture screen: its tech stack diagram and the same diagram in
+ * words, which a screen reader needs. The owner raised it to 3,350 on
+ * 2026-11-04 (D-113), asking for Data Model write-ups that are easy to
+ * follow: how each layer is built, where every kind of graph link is made
+ * from, how to read the warehouse maps and the story cards; and to 3,500
+ * the same day (D-114) for the way-finding the owner asked for, so a reader
+ * can see what to click: three steps on each tab, a trail and a click cue.
+ * It is 3,900 since 2026-11-05 (D-115), for the Data Model redesign: the
+ * Overview tab and an "About this" drawer for each of the four explorer tabs
+ * (Tables, Graph, Concepts and Stories; the Overview has none), in place of
+ * the old panels.
  */
-export const OUTSIDE_HELP_WORD_CAP = 1360
+export const OUTSIDE_HELP_WORD_CAP = 3900
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

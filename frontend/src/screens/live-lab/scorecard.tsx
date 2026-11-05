@@ -10,7 +10,7 @@
 import type { ReactNode } from 'react'
 
 import type { Schemas } from '../../api/client'
-import { EVIDENCE_LABELS, type EvidenceMetric } from '../../app/method'
+import { EVIDENCE_LABEL } from '../../app/method'
 import {
   answerWords,
   evidenceScore,
@@ -42,15 +42,15 @@ interface Row {
   measure?: { kind: DeltaKind; value: (column: ScoreColumn) => number | null }
 }
 
-/** The rows of a card whose evidence measure is `metric`. */
-const rowsFor = (metric: EvidenceMetric): Row[] => [
+/** The rows of a card. */
+const ROWS: Row[] = [
   {
     name: 'Answer',
     scoreOnly: true,
     show: (c) => answerWords(c.answer),
   },
   {
-    name: EVIDENCE_LABELS[metric],
+    name: EVIDENCE_LABEL,
     scoreOnly: true,
     show: (c) => evidenceScore(c.evidence),
     measure: { kind: 'score', value: (c) => c.evidence },
@@ -133,16 +133,9 @@ function Note({ children }: { children: ReactNode }) {
   return <p className="px-4 py-2 text-sm text-text-secondary">{children}</p>
 }
 
-export function Scorecard({
-  results,
-  metric,
-}: {
-  results: Schemas['QueryResults']
-  /** The run method's evidence metric: recall, or F1 for a recording of the old method. */
-  metric: EvidenceMetric
-}) {
-  const card = scorecard(results, metric)
-  const rows = rowsFor(metric).filter((row) => card.scored || !row.scoreOnly)
+export function Scorecard({ results }: { results: Schemas['QueryResults'] }) {
+  const card = scorecard(results)
+  const rows = ROWS.filter((row) => card.scored || !row.scoreOnly)
   return (
     <section
       aria-label="Scorecard"
@@ -199,7 +192,8 @@ function unscoredNote({
   answer_key,
   score_status,
 }: Schemas['QueryResults']): string {
-  if (answer_key === 'none') return 'No answer key exists for this question.'
+  if (answer_key === 'none')
+    return 'Not scored: this wording is not in the tested set.'
   return score_status === 'failed'
     ? 'Scoring failed for this run.'
     : 'Scoring has not finished.'

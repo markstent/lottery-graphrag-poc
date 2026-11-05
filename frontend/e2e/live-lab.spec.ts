@@ -87,7 +87,7 @@ test('follows a live run and offers the timeline when it ends', async ({
   await expect(page.getByRole('slider', { name: 'Position' })).toBeEnabled()
 })
 
-test('shows where the graph put each record under method v0.3, and why one was set aside', async ({
+test('shows where the graph put each record, and why one was set aside', async ({
   page,
 }) => {
   await serveLiveRun(page, live.events, live.results)
@@ -110,17 +110,13 @@ test('shows where the graph put each record under method v0.3, and why one was s
   await expect(
     evidence.getByText('Set aside: the context was full').first(),
   ).toBeAttached()
-  await expect(evidence.getByText(/old method/)).toHaveCount(0)
   await shot(page, 'live-v03-end')
 })
 
-test('shows a recording as made under method v0.3, with its reasons and graph ranks', async ({
-  page,
-}) => {
+test('shows a recording with its reasons and graph ranks', async ({ page }) => {
   await page.goto(`/#/live-lab?question=${h1.instance_id}`)
   const bar = page.getByRole('region', { name: 'Question' })
   await expect(bar.getByText('Recorded run', { exact: true })).toBeVisible()
-  await expect(bar.getByText(/old method/)).toHaveCount(0)
   await page.getByRole('button', { name: 'Pause' }).click()
   const duration = Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)
   await page.getByRole('slider', { name: 'Position' }).fill(String(duration))
@@ -140,7 +136,6 @@ test('shows a recording as made under method v0.3, with its reasons and graph ra
   await expect(
     evidence.getByText('Set aside: the context was full').first(),
   ).toBeAttached()
-  await expect(evidence.getByText(/old method/)).toHaveCount(0)
   await expect(
     page
       .getByRole('region', { name: 'Scorecard' })
@@ -523,7 +518,7 @@ test('shows only what can be measured for a question with no answer key', async 
   await serveLiveRun(page, live.events, adHoc)
   await runTyped(page, live.question)
   await expect(
-    page.getByText('No answer key exists for this question.'),
+    page.getByText('Not scored: this wording is not in the tested set.'),
   ).toBeVisible()
   await expect(page.getByText('scored against the answer key')).toHaveCount(0)
   await expectPathNodesInViewOrCounted(page, 'Graph for B · Graph')

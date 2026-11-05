@@ -54,7 +54,15 @@ describe('screens', () => {
   it('are found by the scan, so an empty result is not a broken scan', () => {
     const screens = new Set(Object.keys(sources).map(screenOf))
     expect(screens).toEqual(
-      new Set([null, 'data-model', 'help', 'live-lab', 'overview', 'results']),
+      new Set([
+        null,
+        'architecture',
+        'data-model',
+        'help',
+        'live-lab',
+        'overview',
+        'results',
+      ]),
     )
     const help = '/src/screens/help/chapter.tsx'
     expect(targetScreen(help, '../overview/overview')).toBe('overview')

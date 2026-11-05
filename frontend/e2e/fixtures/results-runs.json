@@ -1,9 +1,9 @@
 [
   {
-    "run_id": "pilot-2026-nothink",
+    "run_id": "fixture-subset",
     "run_kind": "official",
     "label": "subset run (at most 2 instances per question)",
-    "method_version": "0.2.0",
+    "method_version": "0.3.0",
     "started_at": "2026-10-19T19:58:50+00:00",
     "selection": {
       "strata": null,
@@ -11,55 +11,55 @@
     },
     "worlds": [2026],
     "headlines": [
-      "Too few pairs to say for Graph and text search on multi-hop questions (8 pairs in 4 groups).",
-      "Too few pairs to say for Graph + Ontology and Graph on multi-hop questions (8 pairs in 4 groups).",
-      "Too few pairs to say for Graph and text search on ontology-dependent questions anchored by id (8 pairs in 4 groups).",
-      "Too few pairs to say for Graph + Ontology and Graph on ontology-dependent questions anchored by id (8 pairs in 4 groups).",
-      "Too few pairs to say for Graph and text search on single facts (8 pairs in 4 groups).",
-      "Too few pairs to say for Graph + Ontology and Graph on single facts (8 pairs in 4 groups).",
-      "Too few pairs to say for Graph and text search on planted patterns (8 pairs in 8 groups).",
-      "Too few pairs to say for Graph + Ontology and Graph on planted patterns (8 pairs in 8 groups).",
-      "Name-anchored questions: Graph minus text search -1.8 evidence points (95 percent interval -3.7 to 0.0, 4 pairs in 2 groups); no test is run on this sub-group.",
-      "Name-anchored questions: Graph + Ontology minus Graph 7.8 evidence points (95 percent interval 1.9 to 13.6, 4 pairs in 2 groups); no test is run on this sub-group."
+      "Too few pairs to say for Graph and text search on multi-hop questions (6 pairs in 6 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on multi-hop questions (6 pairs in 6 groups).",
+      "Too few pairs to say for Graph and text search on ontology-dependent questions anchored by id (6 pairs in 6 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on ontology-dependent questions anchored by id (6 pairs in 6 groups).",
+      "Too few pairs to say for Graph and text search on single facts (6 pairs in 6 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on single facts (6 pairs in 6 groups).",
+      "Too few pairs to say for Graph and text search on planted patterns (6 pairs in 6 groups).",
+      "Too few pairs to say for Graph + Ontology and Graph on planted patterns (6 pairs in 6 groups).",
+      "Name-anchored questions: Graph minus text search 0.0 evidence points, too few groups for an interval (3 pairs in 3 groups); no test is run on this sub-group.",
+      "Name-anchored questions: Graph + Ontology minus Graph 0.0 evidence points, too few groups for an interval (3 pairs in 3 groups); no test is run on this sub-group."
     ]
   },
   {
-    "run_id": "pilot-2026",
-    "run_kind": "official",
-    "label": "subset run (at most 1 instance per question)",
-    "method_version": "0.2.0",
-    "started_at": "2026-10-19T18:24:47+00:00",
-    "selection": {
-      "strata": null,
-      "limit": 1
-    },
-    "worlds": [2026],
-    "headlines": [
-      "Too few pairs to say for Graph and text search on multi-hop questions (0 pairs in 0 groups).",
-      "Too few pairs to say for Graph + Ontology and Graph on multi-hop questions (0 pairs in 0 groups).",
-      "Too few pairs to say for Graph and text search on ontology-dependent questions anchored by id (0 pairs in 0 groups).",
-      "Too few pairs to say for Graph + Ontology and Graph on ontology-dependent questions anchored by id (0 pairs in 0 groups).",
-      "Too few pairs to say for Graph and text search on single facts (4 pairs in 4 groups).",
-      "Too few pairs to say for Graph + Ontology and Graph on single facts (3 pairs in 3 groups).",
-      "Too few pairs to say for Graph and text search on planted patterns (0 pairs in 0 groups).",
-      "Too few pairs to say for Graph + Ontology and Graph on planted patterns (0 pairs in 0 groups).",
-      "Name-anchored questions: no pairs for Graph minus text search; no test is run on this sub-group.",
-      "Name-anchored questions: no pairs for Graph + Ontology minus Graph; no test is run on this sub-group."
-    ]
-  },
-  {
-    "run_id": "20261019T164733Z-smoke",
+    "run_id": "fixture-smoke",
     "run_kind": "smoke",
     "label": "scorer smoke test",
-    "method_version": "0.2.0",
+    "method_version": "0.3.0",
     "started_at": "2026-10-19T16:47:50+00:00",
     "selection": {
       "strata": null,
       "limit": null
     },
-    "worlds": [2026, 2027, 2028],
+    "worlds": [2026],
     "headlines": [
       "Scorer smoke test: the fake generator answers from titles only; these numbers are not a result."
+    ]
+  },
+  {
+    "run_id": "fixture-v03",
+    "run_kind": "official",
+    "label": "Fixture run (test values)",
+    "method_version": "0.3.0",
+    "started_at": "2026-10-19T10:00:00+00:00",
+    "selection": {
+      "strata": null,
+      "limit": null
+    },
+    "worlds": [2026, 2027],
+    "headlines": [
+      "Graph exceeds text search by 25.0 evidence points (95 percent interval 23.0 to 27.0, 12 pairs in 12 groups) on multi-hop questions.",
+      "Graph + Ontology exceeds Graph by 12.5 evidence points (95 percent interval 11.5 to 13.5, 12 pairs in 12 groups) on multi-hop questions.",
+      "Graph exceeds text search by 25.0 evidence points (95 percent interval 23.0 to 27.0, 12 pairs in 12 groups) on ontology-dependent questions anchored by id.",
+      "Graph + Ontology exceeds Graph by 12.5 evidence points (95 percent interval 11.5 to 13.5, 12 pairs in 12 groups) on ontology-dependent questions anchored by id.",
+      "Graph trails text search by 12.5 answer points (95 percent interval -17.5 to -7.5, 12 pairs in 12 groups) on single facts.",
+      "Graph + Ontology exceeds Graph by 10.0 answer points (95 percent interval 10.0 to 10.0, 12 pairs in 12 groups) on single facts.",
+      "Graph exceeds text search by 25.0 evidence points (95 percent interval 23.0 to 27.0, 12 pairs in 12 groups) on planted patterns.",
+      "Graph + Ontology exceeds Graph by 12.5 evidence points (95 percent interval 11.5 to 13.5, 12 pairs in 12 groups) on planted patterns.",
+      "Name-anchored questions: Graph minus text search 22.0 evidence points (95 percent interval 20.7 to 23.3, 6 pairs in 6 groups); no test is run on this sub-group.",
+      "Name-anchored questions: Graph + Ontology minus Graph 11.0 evidence points (95 percent interval 10.3 to 11.7, 6 pairs in 6 groups); no test is run on this sub-group."
     ]
   }
 ]

@@ -9,7 +9,7 @@ import {
   type Schemas,
 } from '../../api/client'
 import { cutOffCount } from '../../app/cut-off'
-import { EVIDENCE_LABELS, type EvidenceMetric } from '../../app/method'
+import { EVIDENCE_LABEL, EVIDENCE_METRIC } from '../../app/method'
 import { failureWords } from '../../app/plain-words'
 import { hrefFor, useRoute } from '../../app/router'
 import { evidenceScore, MISSING, percent } from '../../app/score-words'
@@ -107,21 +107,13 @@ function Details({ row, maxTokens }: { row: Row; maxTokens: number | null }) {
 
 const CELL = 'tabular whitespace-nowrap px-2 py-2 text-right'
 
-/** One approach's cells; `metric` is the evidence metric of the run's method. */
-function Scores({
-  row,
-  id,
-  metric,
-}: {
-  row: Row
-  id: string
-  metric: EvidenceMetric
-}) {
+/** One approach's cells. */
+function Scores({ row, id }: { row: Row; id: string }) {
   const s = row.pipelines[id]
   const evidence = s
-    ? s[metric] === null && row.stratum === 'H3'
+    ? s[EVIDENCE_METRIC] === null && row.stratum === 'H3'
       ? NO_EVIDENCE
-      : num(s[metric], evidenceScore)
+      : num(s[EVIDENCE_METRIC], evidenceScore)
     : MISSING
   return (
     <>
@@ -140,7 +132,6 @@ function Scores({
 
 function QuestionRow({
   row,
-  metric,
   maxTokens,
   open,
   onToggle,
@@ -148,7 +139,6 @@ function QuestionRow({
   worldsFailed,
 }: {
   row: Row
-  metric: EvidenceMetric
   maxTokens: number | null
   open: boolean
   onToggle: () => void
@@ -187,7 +177,7 @@ function QuestionRow({
         <td className="px-2 py-2">{STRATUM_SHORT[stratumOf(row)]}</td>
         <td className={CELL}>{row.world_seed}</td>
         {PIPELINES.map(({ id }) => (
-          <Scores key={id} row={row} id={id} metric={metric} />
+          <Scores key={id} row={row} id={id} />
         ))}
         <td className="px-2 py-2">
           {'href' in link ? (
@@ -302,7 +292,6 @@ function Filters({
 
 function Table({
   rows,
-  metric,
   maxTokens,
   tableRef,
   badge,
@@ -310,7 +299,6 @@ function Table({
   worldsFailed,
 }: {
   rows: Row[]
-  metric: EvidenceMetric
   maxTokens: number | null
   tableRef: RefObject<HTMLDivElement | null>
   badge?: string
@@ -382,19 +370,17 @@ function Table({
             </tr>
             <tr className="border-b border-hairline text-right text-text-secondary">
               {PIPELINES.flatMap(({ id }) =>
-                [
-                  QUESTION_HEADS.answer,
-                  EVIDENCE_LABELS[metric],
-                  MEASURES.judge,
-                ].map((name) => (
-                  <th
-                    key={`${id}-${name}`}
-                    scope="col"
-                    className="whitespace-nowrap px-2 py-1 font-semibold"
-                  >
-                    {name}
-                  </th>
-                )),
+                [QUESTION_HEADS.answer, EVIDENCE_LABEL, MEASURES.judge].map(
+                  (name) => (
+                    <th
+                      key={`${id}-${name}`}
+                      scope="col"
+                      className="whitespace-nowrap px-2 py-1 font-semibold"
+                    >
+                      {name}
+                    </th>
+                  ),
+                ),
               )}
             </tr>
           </thead>
@@ -403,7 +389,6 @@ function Table({
               <QuestionRow
                 key={row.instance_id}
                 row={row}
-                metric={metric}
                 maxTokens={maxTokens}
                 open={opened.has(row.instance_id)}
                 onToggle={() => toggle(row.instance_id)}
@@ -448,14 +433,11 @@ function Table({
 /** Loads the run's per-question scores and the loaded world; a failure here leaves the rest of the screen alone. */
 export function QuestionsPanel({
   runId,
-  evidence,
   maxTokens,
   tableRef,
   badge,
 }: {
   runId: string
-  /** The evidence metric of the run's method: F1 under v0.2, recall from v0.3 (D-087). */
-  evidence: EvidenceMetric
   /** The answer model's output limit the run recorded, or null when it recorded none. */
   maxTokens: number | null
   tableRef: RefObject<HTMLDivElement | null>
@@ -480,7 +462,6 @@ export function QuestionsPanel({
       {instances.status === 'ready' && (
         <Table
           rows={instances.data}
-          metric={evidence}
           maxTokens={maxTokens}
           tableRef={tableRef}
           badge={badge}

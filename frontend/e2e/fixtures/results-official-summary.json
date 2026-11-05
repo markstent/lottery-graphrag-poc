@@ -2,10 +2,9 @@
   "run_id": "fixture-official",
   "run_kind": "official",
   "label": "Fixture run (test values)",
-  "method_version": "0.2.0",
+  "method_version": "0.3.0",
   "summary": {
-    "schema_version": "2",
-    "method_note": null,
+    "schema_version": "3",
     "run_kind": "official",
     "label": "Fixture run (test values)",
     "bank_version": "2.0.0",
@@ -327,6 +326,40 @@
             "n": 18,
             "repeats": 54
           }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          }
         }
       },
       "H2": {
@@ -581,6 +614,40 @@
           },
           "C": {
             "mean": 2.0,
+            "n": 18,
+            "repeats": 54
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          },
+          "C": {
+            "mean": 0.25,
             "n": 18,
             "repeats": 54
           }
@@ -841,6 +908,40 @@
             "n": 9,
             "repeats": 27
           }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 9,
+            "repeats": 27
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 9,
+            "repeats": 27
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 9,
+            "repeats": 27
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 9,
+            "repeats": 27
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 9,
+            "repeats": 27
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 9,
+            "repeats": 27
+          }
         }
       },
       "H3": {
@@ -1095,6 +1196,40 @@
           },
           "C": {
             "mean": 2.0,
+            "n": 18,
+            "repeats": 54
+          }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          },
+          "C": {
+            "mean": 0.25,
             "n": 18,
             "repeats": 54
           }
@@ -1355,6 +1490,40 @@
             "n": 18,
             "repeats": 54
           }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 18,
+            "repeats": 54
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 18,
+            "repeats": 54
+          }
         }
       },
       "overall": {
@@ -1612,13 +1781,47 @@
             "n": 81,
             "repeats": 243
           }
+        },
+        "grounded_supported": {
+          "A": {
+            "mean": 0.75,
+            "n": 81,
+            "repeats": 243
+          },
+          "B": {
+            "mean": 0.75,
+            "n": 81,
+            "repeats": 243
+          },
+          "C": {
+            "mean": 0.75,
+            "n": 81,
+            "repeats": 243
+          }
+        },
+        "grounded_unsupported": {
+          "A": {
+            "mean": 0.25,
+            "n": 81,
+            "repeats": 243
+          },
+          "B": {
+            "mean": 0.25,
+            "n": 81,
+            "repeats": 243
+          },
+          "C": {
+            "mean": 0.25,
+            "n": 81,
+            "repeats": 243
+          }
         }
       }
     },
     "comparisons": [
       {
         "stratum": "H1",
-        "metric": "evidence_f1",
+        "metric": "evidence_recall",
         "comparison": "B_vs_A",
         "n": 18,
         "clusters": 18,
@@ -1632,7 +1835,7 @@
       },
       {
         "stratum": "H1",
-        "metric": "evidence_f1",
+        "metric": "evidence_recall",
         "comparison": "C_vs_B",
         "n": 18,
         "clusters": 18,
@@ -1643,6 +1846,20 @@
         "p_holm": 1.0,
         "in_family": true,
         "reason": "tested"
+      },
+      {
+        "stratum": "H1",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
       },
       {
         "stratum": "H1",
@@ -1673,36 +1890,22 @@
         "reason": "tested"
       },
       {
-        "stratum": "H2",
-        "metric": "evidence_f1",
-        "comparison": "B_vs_A",
-        "n": 18,
-        "clusters": 18,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H2",
-        "metric": "evidence_f1",
-        "comparison": "C_vs_B",
-        "n": 18,
-        "clusters": 18,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H2",
+        "stratum": "H1",
         "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2",
+        "metric": "evidence_recall",
         "comparison": "B_vs_A",
         "n": 18,
         "clusters": 18,
@@ -1716,7 +1919,7 @@
       },
       {
         "stratum": "H2",
-        "metric": "answer",
+        "metric": "evidence_recall",
         "comparison": "C_vs_B",
         "n": 18,
         "clusters": 18,
@@ -1729,65 +1932,9 @@
         "reason": "tested"
       },
       {
-        "stratum": "H2_name",
-        "metric": "evidence_f1",
-        "comparison": "B_vs_A",
-        "n": 9,
-        "clusters": 9,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": null,
-        "p_holm": null,
-        "in_family": false,
-        "reason": "not_in_family"
-      },
-      {
-        "stratum": "H2_name",
-        "metric": "evidence_f1",
-        "comparison": "C_vs_B",
-        "n": 9,
-        "clusters": 9,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": null,
-        "p_holm": null,
-        "in_family": false,
-        "reason": "not_in_family"
-      },
-      {
-        "stratum": "H2_name",
-        "metric": "answer",
-        "comparison": "B_vs_A",
-        "n": 9,
-        "clusters": 9,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": null,
-        "p_holm": null,
-        "in_family": false,
-        "reason": "not_in_family"
-      },
-      {
-        "stratum": "H2_name",
-        "metric": "answer",
-        "comparison": "C_vs_B",
-        "n": 9,
-        "clusters": 9,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": null,
-        "p_holm": null,
-        "in_family": false,
-        "reason": "not_in_family"
-      },
-      {
-        "stratum": "H3",
-        "metric": "evidence_f1",
-        "comparison": "B_vs_A",
+        "stratum": "H2",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
         "n": 18,
         "clusters": 18,
         "mean": 0.0,
@@ -1799,21 +1946,7 @@
         "reason": "not_in_family"
       },
       {
-        "stratum": "H3",
-        "metric": "evidence_f1",
-        "comparison": "C_vs_B",
-        "n": 18,
-        "clusters": 18,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": null,
-        "p_holm": null,
-        "in_family": false,
-        "reason": "not_in_family"
-      },
-      {
-        "stratum": "H3",
+        "stratum": "H2",
         "metric": "answer",
         "comparison": "B_vs_A",
         "n": 18,
@@ -1827,7 +1960,259 @@
         "reason": "tested"
       },
       {
+        "stratum": "H2",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": 1.0,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H2",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H2_name",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 9,
+        "clusters": 9,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
         "stratum": "H3",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H3",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": 1.0,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H3",
+        "metric": "answer",
+        "comparison": "C_vs_B",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": 1.0,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H3",
+        "metric": "answer",
+        "comparison": "C_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "B_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": 1.0,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_B",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": 1.0,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
+        "metric": "evidence_recall",
+        "comparison": "C_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
+      },
+      {
+        "stratum": "H5",
+        "metric": "answer",
+        "comparison": "B_vs_A",
+        "n": 18,
+        "clusters": 18,
+        "mean": 0.0,
+        "low": 0.0,
+        "high": 0.0,
+        "p": 1.0,
+        "p_holm": 1.0,
+        "in_family": true,
+        "reason": "tested"
+      },
+      {
+        "stratum": "H5",
         "metric": "answer",
         "comparison": "C_vs_B",
         "n": 18,
@@ -1842,65 +2227,23 @@
       },
       {
         "stratum": "H5",
-        "metric": "evidence_f1",
-        "comparison": "B_vs_A",
-        "n": 18,
-        "clusters": 18,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H5",
-        "metric": "evidence_f1",
-        "comparison": "C_vs_B",
-        "n": 18,
-        "clusters": 18,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H5",
         "metric": "answer",
-        "comparison": "B_vs_A",
+        "comparison": "C_vs_A",
         "n": 18,
         "clusters": 18,
         "mean": 0.0,
         "low": 0.0,
         "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
-      },
-      {
-        "stratum": "H5",
-        "metric": "answer",
-        "comparison": "C_vs_B",
-        "n": 18,
-        "clusters": 18,
-        "mean": 0.0,
-        "low": 0.0,
-        "high": 0.0,
-        "p": 1.0,
-        "p_holm": 1.0,
-        "in_family": true,
-        "reason": "tested"
+        "p": null,
+        "p_holm": null,
+        "in_family": false,
+        "reason": "not_in_family"
       }
     ],
     "ontology_split": [
       {
         "group": "ontology_dependent",
-        "metric": "evidence_f1",
+        "metric": "evidence_recall",
         "comparison": "B_vs_A",
         "n": 27,
         "clusters": 27,
@@ -1914,7 +2257,7 @@
       },
       {
         "group": "ontology_dependent",
-        "metric": "evidence_f1",
+        "metric": "evidence_recall",
         "comparison": "C_vs_B",
         "n": 27,
         "clusters": 27,
@@ -1956,7 +2299,7 @@
       },
       {
         "group": "other",
-        "metric": "evidence_f1",
+        "metric": "evidence_recall",
         "comparison": "B_vs_A",
         "n": 54,
         "clusters": 54,
@@ -1970,7 +2313,7 @@
       },
       {
         "group": "other",
-        "metric": "evidence_f1",
+        "metric": "evidence_recall",
         "comparison": "C_vs_B",
         "n": 54,
         "clusters": 54,
@@ -2025,25 +2368,53 @@
     ],
     "judge_agreement": {
       "overall": {
-        "n": 729,
-        "agreement": 0.0,
-        "kappa": 0.0
+        "answered": {
+          "n": 729,
+          "agreement": 0.0,
+          "weighted_kappa": 0.0
+        },
+        "abstained": {
+          "n": 0,
+          "agreement": null,
+          "weighted_kappa": null
+        }
       },
       "pipelines": {
         "A": {
-          "n": 243,
-          "agreement": 0.0,
-          "kappa": 0.0
+          "answered": {
+            "n": 243,
+            "agreement": 0.0,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
         },
         "B": {
-          "n": 243,
-          "agreement": 0.0,
-          "kappa": 0.0
+          "answered": {
+            "n": 243,
+            "agreement": 0.0,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
         },
         "C": {
-          "n": 243,
-          "agreement": 0.0,
-          "kappa": 0.0
+          "answered": {
+            "n": 243,
+            "agreement": 0.0,
+            "weighted_kappa": 0.0
+          },
+          "abstained": {
+            "n": 0,
+            "agreement": null,
+            "weighted_kappa": null
+          }
         }
       }
     },
@@ -2103,8 +2474,8 @@
         "top_k": 8,
         "context_budget_tokens": 4000,
         "context": {
-          "dedupe_threshold": 0.9,
-          "evidence_slots": 8
+          "budget_tokens": 4000,
+          "dedupe_threshold": 0.9
         },
         "graph_limits": {
           "depth": 2
@@ -2116,7 +2487,7 @@
         "excluded_labels": [],
         "ontology_version": "1",
         "graph_label_version": "v2",
-        "started_at": "2026-10-19T10:00:00+00:00",
+        "started_at": "2026-10-19T12:00:00+00:00",
         "bank_version": "2.0.0",
         "bank_hash": "bankhash",
         "scorer_version": "2.0.0",
@@ -2134,7 +2505,12 @@
         "judge_prompt_hash": "judgehash",
         "judge_temperature": 0.0,
         "generation_reasoning": "default",
-        "judge_reasoning": "default"
+        "judge_reasoning": "default",
+        "selection_rule": null,
+        "method_version": "0.3.0",
+        "record_facts_version": null,
+        "prompt_extras": null,
+        "answer_parser_version": null
       },
       "worlds": [
         {
@@ -2159,8 +2535,8 @@
           "top_k": 8,
           "context_budget_tokens": 4000,
           "context": {
-            "dedupe_threshold": 0.9,
-            "evidence_slots": 8
+            "budget_tokens": 4000,
+            "dedupe_threshold": 0.9
           },
           "graph_limits": {
             "depth": 2
@@ -2172,7 +2548,7 @@
           "excluded_labels": [],
           "ontology_version": "1",
           "graph_label_version": "v2",
-          "started_at": "2026-10-19T10:00:00+00:00",
+          "started_at": "2026-10-19T12:00:00+00:00",
           "bank_version": "2.0.0",
           "bank_hash": "bankhash",
           "scorer_version": "2.0.0",
@@ -2190,7 +2566,12 @@
           "judge_prompt_hash": "judgehash",
           "judge_temperature": 0.0,
           "generation_reasoning": "default",
-          "judge_reasoning": "default"
+          "judge_reasoning": "default",
+          "selection_rule": null,
+          "method_version": "0.3.0",
+          "record_facts_version": null,
+          "prompt_extras": null,
+          "answer_parser_version": null
         }
       ]
     }

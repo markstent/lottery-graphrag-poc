@@ -9,7 +9,6 @@ import {
 } from '../../run/reduce'
 import cancelled from '../../run/fixtures/run-cancelled.json'
 import runAbc from '../../run/fixtures/run-abc.json'
-import oldMethod from '../../run/fixtures/run-old-method.json'
 import {
   contextLine,
   evidenceRows,
@@ -23,7 +22,6 @@ import type { RunPhase, Timeline as TimelineView } from './use-live-run'
 
 const h1 = RECORDINGS.find((run) => run.stratum === 'H1')!
 const finished = reduceAll(h1.events)
-const oldMethodState = reduceAll(oldMethod.events as unknown as RunEvent[])
 const cancelledState = reduceAll(cancelled.events as unknown as RunEvent[])
 
 const upTo = (events: RunEvent[], type: string): RunState => {
@@ -102,16 +100,14 @@ describe('stageRows', () => {
   })
 })
 
-describe('stageRows, the re-rank step by method', () => {
-  it('names what v0.3 does, and keeps the old name for a recording of the old method', () => {
+describe('stageRows, the re-rank step', () => {
+  it('names what each pipeline does', () => {
     const start = initialRunState()
-    const rerank = (id: 'A' | 'B', old: boolean) =>
-      stageRows(id, start.pipelines[id], old).find(
-        (row) => row.stage === 'rerank',
-      )?.label
-    expect(rerank('A', false)).toBe('Re-order and pick passages')
-    expect(rerank('B', false)).toBe('Re-order passages, take turns')
-    expect(rerank('B', true)).toBe('Re-order and pick')
+    const rerank = (id: 'A' | 'B') =>
+      stageRows(id, start.pipelines[id]).find((row) => row.stage === 'rerank')
+        ?.label
+    expect(rerank('A')).toBe('Re-order and pick passages')
+    expect(rerank('B')).toBe('Re-order passages, take turns')
   })
 })
 
@@ -121,14 +117,13 @@ describe('stageRows, a step the pipeline never ran', () => {
 
   it('says "Not run" for a step a completed pipeline skipped, such as C with no ontology links', () => {
     expect(state.pipelines.C.status).toBe('completed')
-    // The recording was made under the old method, so it keeps that step name.
-    const rows = stageRows('C', state.pipelines.C, true)
+    const rows = stageRows('C', state.pipelines.C)
     expect(rows.map((row) => [row.label, row.status])).toEqual([
       ['Find starting points', 'done'],
       ['Add ontology terms', 'done'],
       ['Follow relationships', 'done'],
       ['Add linked records', 'not-run'],
-      ['Re-order and pick', 'done'],
+      ['Re-order passages, take turns', 'done'],
       ['Build the context', 'done'],
       ['Write the answer', 'done'],
     ])
@@ -271,18 +266,6 @@ describe('evidenceRows under method v0.3', () => {
   })
 })
 
-describe('evidenceRows of an old-method recording', () => {
-  it('says a record was set aside under the old method, with no graph rank', () => {
-    const rows = evidenceRows('B', oldMethodState)
-    const aside = rows.filter((row) => row.state === 'discarded')
-    expect(aside.length).toBeGreaterThan(0)
-    expect(
-      aside.every((row) => row.detail === 'Set aside under the old method'),
-    ).toBe(true)
-    expect(rows.every((row) => row.place === null)).toBe(true)
-  })
-})
-
 describe('targetLine', () => {
   it("names the question's target types in plain words", () => {
     expect(
@@ -292,7 +275,7 @@ describe('targetLine', () => {
     )
   })
 
-  it('says when the question named none, and is silent for A and old recordings', () => {
+  it('says when the question named none, and is silent for A', () => {
     const none = reduceAll([
       {
         event_id: 'e1',
@@ -307,7 +290,6 @@ describe('targetLine', () => {
     ])
     expect(targetLine('B', none)).toBe("Question's target: none named")
     expect(targetLine('A', none)).toBeNull()
-    expect(targetLine('B', oldMethodState)).toBeNull()
   })
 })
 
@@ -317,9 +299,8 @@ describe('contextLine', () => {
     expect(contextLine(v03.pipelines.B)).toBe('Context: 1,996 of 2,000 tokens')
   })
 
-  it('is silent before the context is built and for an old recording, which had no budget', () => {
+  it('is silent before the context is built', () => {
     expect(contextLine(initialRunState().pipelines.A)).toBeNull()
-    expect(contextLine(oldMethodState.pipelines.A)).toBeNull()
   })
 })
 
