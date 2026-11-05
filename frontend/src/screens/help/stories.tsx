@@ -103,7 +103,7 @@ export function Stories() {
   const { bank, story } = useHelpData()
   if (bank.status !== 'ready') return null
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 items-start gap-4">
       {bank.data.scenarios.map((scenario) => (
         <Story
           key={scenario.scenario_id}
