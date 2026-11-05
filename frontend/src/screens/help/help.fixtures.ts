@@ -230,3 +230,10 @@ export function stubBank({
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
 }
+
+/** A copy of `element` without the glossary meanings that first-use terms carry, so its text is what a reader sees. */
+export function withoutTermHelp(element: Element): Element {
+  const copy = element.cloneNode(true) as Element
+  for (const help of copy.querySelectorAll('[role="tooltip"]')) help.remove()
+  return copy
+}

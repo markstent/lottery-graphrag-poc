@@ -163,30 +163,32 @@ function TextTable({ caption, columns, rows }: Omit<TableBlock, 'kind'>) {
   )
 }
 
+const NO_MARKS: ReadonlyMap<string, readonly string[]> = new Map()
+
 /**
- * `terms` are marked in body text at their first occurrence; `marked` holds
- * the ones already marked earlier in the chapter and gains those marked here.
+ * `plan` says which terms to mark in which body text (see `planTerms`); a
+ * text is found by `path`, the block indexes joined by dots.
  */
 export function Blocks({
   blocks,
-  terms = [],
-  marked = new Set<string>(),
+  path = 'b',
+  plan = NO_MARKS,
 }: {
   blocks: readonly Block[]
-  terms?: readonly string[]
-  marked?: ReadonlySet<string>
+  path?: string
+  plan?: ReadonlyMap<string, readonly string[]>
 }) {
   const values = useSettingValues()
-  const used = new Set(marked)
-  const fill = (text: string) =>
-    markTerms(fillSettings(text, values), terms, used)
+  const fill = (text: string, at: string) =>
+    markTerms(fillSettings(text, values), plan.get(at) ?? [], new Set())
   return blocks.map((block, index) => {
-    if (typeof block === 'string') return <p key={index}>{fill(block)}</p>
+    const at = `${path}.${index}`
+    if (typeof block === 'string') return <p key={index}>{fill(block, at)}</p>
     if (!('kind' in block))
       return (
         <ul key={index} className="list-disc space-y-1 pl-6">
           {block.map((item, position) => (
-            <li key={position}>{fill(item)}</li>
+            <li key={position}>{fill(item, `${at}.${position}`)}</li>
           ))}
         </ul>
       )
@@ -196,14 +198,15 @@ export function Blocks({
           key={index}
           className="rounded-chip border-l-4 border-text-primary bg-surface-raised px-3 py-2"
         >
-          <b className="text-text-primary">In one line:</b> {fill(block.text)}
+          <b className="text-text-primary">In one line:</b>{' '}
+          {fill(block.text, at)}
         </div>
       )
     if (block.kind === 'steps')
       return (
         <ol key={index} className="list-decimal space-y-1 pl-6">
           {block.items.map((item, position) => (
-            <li key={position}>{fill(item)}</li>
+            <li key={position}>{fill(item, `${at}.${position}`)}</li>
           ))}
         </ol>
       )
@@ -217,7 +220,7 @@ export function Blocks({
             {block.summary || 'More detail'}
           </summary>
           <div className="mt-2 space-y-3">
-            <Blocks blocks={block.blocks} terms={terms} marked={used} />
+            <Blocks blocks={block.blocks} path={at} plan={plan} />
           </div>
         </details>
       )

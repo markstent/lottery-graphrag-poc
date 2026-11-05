@@ -390,3 +390,9 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2029 to 2034.',
   },
 ]
+
+/** The glossary entry for `term`, matched without regard to case, if it has one. */
+export const glossaryEntry = (term: string) =>
+  GLOSSARY_TERMS.find(
+    (candidate) => candidate.term.toLowerCase() === term.toLowerCase(),
+  )

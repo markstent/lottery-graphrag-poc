@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 import { Chapter } from './chapter'
 import type { ChapterCopy } from './chapters'
+import { withoutTermHelp } from './help.fixtures'
 import { HelpDataContext, type HelpData } from './help-data'
 
 afterEach(cleanup)
@@ -148,24 +149,81 @@ describe('Chapter blocks', () => {
     expect(marks).toHaveLength(1)
     expect(marks[0]).toHaveTextContent('world')
     expect(chapter.querySelector('h3 [tabindex]')).toBeNull()
-    expect(within(chapter).getByText(/An otherworld is no/)).toHaveTextContent(
-      'An otherworld is no world. Two worlds.',
-    )
+    expect(
+      withoutTermHelp(within(chapter).getByText(/An otherworld is no/)),
+    ).toHaveTextContent('An otherworld is no world. Two worlds.')
   })
 
-  it('marks terms inside key, more and steps text, and not twice across blocks', () => {
+  const marksIn = (chapter: HTMLElement) =>
+    [...chapter.querySelectorAll('[tabindex="0"]')].map(
+      (node) => node.parentElement?.parentElement?.textContent ?? '',
+    )
+  const markedAt = (chapter: HTMLElement) =>
+    [...chapter.querySelectorAll('[tabindex="0"]')].map(
+      (node) => withoutTermHelp(node.closest('p, li, div')!).textContent,
+    )
+
+  it('marks terms in key and steps text and not twice across blocks', () => {
     const chapter = showCopy({
       plain: [
         { kind: 'key', text: 'A world is built.' },
         { kind: 'steps', items: ['Build a world.'] },
-        { kind: 'more', summary: '', blocks: ['A world again.'] },
       ],
       technical: [],
       terms: ['World'],
     })
-    expect(chapter.querySelectorAll('[tabindex="0"]')).toHaveLength(1)
-    expect(
-      chapter.querySelector('[tabindex="0"]')?.closest('div'),
-    ).toHaveTextContent('A world is built.')
+    expect(marksIn(chapter)).toHaveLength(1)
+    expect(markedAt(chapter)).toEqual(['In one line: A world is built.'])
+  })
+
+  it('marks the visible use, not an earlier one inside a more block', () => {
+    const chapter = showCopy({
+      plain: [
+        { kind: 'more', summary: '', blocks: ['Hidden world.'] },
+        'Body world.',
+      ],
+      technical: [],
+      terms: ['World'],
+    })
+    expect(markedAt(chapter)).toEqual(['Body world.'])
+  })
+
+  it('marks a term used only in more blocks once, in the first', () => {
+    const chapter = showCopy({
+      plain: [
+        { kind: 'more', summary: '', blocks: ['First world.'] },
+        { kind: 'more', summary: '', blocks: ['Second world.'] },
+      ],
+      technical: [],
+      terms: ['World'],
+    })
+    expect(markedAt(chapter)).toEqual(['First world.'])
+  })
+
+  it('marks the later visible use at the technical level, not one in a more block', () => {
+    const data: HelpData = {
+      level: 'technical',
+      bank: { status: 'loading', retry: () => undefined },
+      scores: 'none',
+      story: null,
+      settings: { status: 'loading', retry: () => undefined },
+      recorded: { status: 'ready', retry: () => undefined, data: null },
+    }
+    render(
+      <HelpDataContext.Provider value={data}>
+        <Chapter
+          id="evidence"
+          copy={{
+            plain: [{ kind: 'more', summary: '', blocks: ['Hidden world.'] }],
+            technical: ['Later world.'],
+            terms: ['World'],
+          }}
+        />
+      </HelpDataContext.Provider>,
+    )
+    const chapter = screen.getByRole('region', {
+      name: '5. How evidence is chosen',
+    })
+    expect(markedAt(chapter)).toEqual(['Later world.'])
   })
 })

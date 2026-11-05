@@ -28,6 +28,7 @@ import {
   stubBank,
   UNSCORED,
   type BankStub,
+  withoutTermHelp,
 } from './help.fixtures'
 import { PLAIN_STORIES } from './copy/stories'
 
@@ -138,7 +139,7 @@ describe('Help', () => {
       ['Guide', '#/help?section=why'],
       ['Questions and answers', '#/help?section=questions'],
     ])
-    expect(section('1. Why this exists')).toHaveTextContent(
+    expect(withoutTermHelp(section('1. Why this exists'))).toHaveTextContent(
       /official run started on 2026-10-29/,
     )
   })
@@ -249,18 +250,20 @@ describe('Help', () => {
   it('states the official result in chapter 1 as it is, with its dates', async () => {
     await renderHelp()
     const why = section('1. Why this exists')
-    expect(why).toHaveTextContent(/official run started on 2026-10-29/)
-    expect(why).toHaveTextContent(
+    expect(withoutTermHelp(why)).toHaveTextContent(
+      /official run started on 2026-10-29/,
+    )
+    expect(withoutTermHelp(why)).toHaveTextContent(
       /We fixed 14 comparisons before the run\. One showed a clear difference/,
     )
-    expect(why).toHaveTextContent(
+    expect(withoutTermHelp(why)).toHaveTextContent(
       /text search \(A\) got 42 of every 100 needed facts to the answer model, the graph \(B\) 45 and the graph with the ontology \(C\) 57/,
     )
     // A newcomer is told what a world is where the result first uses the word.
-    expect(why).toHaveTextContent(
+    expect(withoutTermHelp(why)).toHaveTextContent(
       /copies of the made-up company, which we call worlds/,
     )
-    expect(why).not.toHaveTextContent(/v0\.2|old method/)
+    expect(withoutTermHelp(why)).not.toHaveTextContent(/v0\.2|old method/)
   })
 
   it('draws each approach as a picture named by its letter and plain name', async () => {
@@ -752,7 +755,7 @@ const textOfElement =
   (pattern: RegExp) => (_: string, element: Element | null) =>
     element !== null &&
     ['P', 'LI'].includes(element.tagName) &&
-    pattern.test(element.textContent ?? '')
+    pattern.test(withoutTermHelp(element).textContent ?? '')
 
 describe('scoring and glossary', () => {
   it('defines the evidence score on the scale Overview uses', async () => {

@@ -3,21 +3,69 @@
 import type { ReactNode } from 'react'
 
 import type { Block } from './chapters'
+import { glossaryEntry } from '../../copy/glossary'
 import { Term } from './term'
 
 const escapeRegExp = (text: string) =>
   text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-/** The body text of blocks that term marks apply to, in reading order. */
-export function bodyTexts(blocks: readonly Block[]): string[] {
-  return blocks.flatMap((block): string[] => {
-    if (typeof block === 'string') return [block]
-    if (!('kind' in block)) return [...block]
-    if (block.kind === 'key') return [block.text]
-    if (block.kind === 'steps') return [...block.items]
-    if (block.kind === 'more') return bodyTexts(block.blocks)
+/** One piece of body text of a chapter, found by its path, and whether it sits inside a "more" block. */
+interface BodyText {
+  path: string
+  text: string
+  inMore: boolean
+}
+
+/** The body texts of `blocks` in document order; a path is the block indexes joined by dots, as `Blocks` builds them. */
+function bodyTexts(
+  blocks: readonly Block[],
+  prefix: string,
+  inMore = false,
+): BodyText[] {
+  return blocks.flatMap((block, index): BodyText[] => {
+    const path = `${prefix}.${index}`
+    if (typeof block === 'string') return [{ path, text: block, inMore }]
+    if (!('kind' in block))
+      return block.map((text, item) => ({
+        path: `${path}.${item}`,
+        text,
+        inMore,
+      }))
+    if (block.kind === 'key') return [{ path, text: block.text, inMore }]
+    if (block.kind === 'steps')
+      return block.items.map((text, item) => ({
+        path: `${path}.${item}`,
+        text,
+        inMore,
+      }))
+    if (block.kind === 'more') return bodyTexts(block.blocks, path, true)
     return []
   })
+}
+
+/**
+ * Which terms are marked in which body text, decided before drawing. A term
+ * is marked at its first use outside any "more" block, in document order;
+ * a term used only inside "more" blocks is marked at its first use there,
+ * so a reader meets help on a visible word whenever there is one.
+ * Keys are paths from `bodyTexts`; `blocks` are the blocks shown, in order.
+ */
+export function planTerms(
+  blocks: ReadonlyMap<string, readonly Block[]>,
+  terms: readonly string[],
+): ReadonlyMap<string, readonly string[]> {
+  const known = terms.filter((term) => glossaryEntry(term))
+  const texts = [...blocks].flatMap(([prefix, list]) => bodyTexts(list, prefix))
+  const plan = new Map<string, string[]>()
+  const used = new Set<string>()
+  for (const inMore of [false, true])
+    for (const body of texts.filter((entry) => entry.inMore === inMore)) {
+      const before = new Set(used)
+      markTerms(body.text, known, used)
+      const added = [...used].filter((term) => !before.has(term))
+      if (added.length > 0) plan.set(body.path, added)
+    }
+  return plan
 }
 
 /**
@@ -31,7 +79,7 @@ export function markTerms(
   used: Set<string>,
 ): ReactNode {
   const found = terms
-    .filter((term) => !used.has(term))
+    .filter((term) => !used.has(term) && glossaryEntry(term))
     .flatMap((term) => {
       const match = new RegExp(`\\b${escapeRegExp(term)}s?\\b`, 'i').exec(text)
       return match

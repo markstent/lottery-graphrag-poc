@@ -418,7 +418,7 @@ describe('copy in expressions', () => {
 })
 
 /** The text a Plain block shows: a paragraph, list items, a heading, or a table's caption, column names and cells. */
-export const blockTexts = (block: Block): string[] => {
+const blockTexts = (block: Block): string[] => {
   if (typeof block === 'string') return [block]
   if (!('kind' in block)) return [...block]
   if (block.kind === 'heading') return [block.text]

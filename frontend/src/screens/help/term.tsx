@@ -1,13 +1,14 @@
 /**
  * First-use help on a term: the first time a chapter uses one of its glossary
  * terms, the word is underlined with dots and its plain meaning shows on hover
- * and on keyboard focus. Escape hides it again without moving focus. The
- * meaning is in the page only while shown, so the chapter's own text is unchanged.
+ * and on keyboard focus. The pointer can move onto the meaning, and Escape
+ * hides it from anywhere. The meaning is always in the page and linked to the
+ * word with aria-describedby, hidden from sight until shown.
  */
 
-import { useId, useState, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 
-import { GLOSSARY_TERMS } from '../../copy/glossary'
+import { glossaryEntry } from '../../copy/glossary'
 
 /** A word that has a glossary meaning; without one it is drawn as plain text. */
 export function Term({
@@ -18,36 +19,49 @@ export function Term({
   children: ReactNode
 }) {
   const id = useId()
-  const [open, setOpen] = useState(false)
-  const entry = GLOSSARY_TERMS.find(
-    (candidate) => candidate.term.toLowerCase() === term.toLowerCase(),
-  )
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
+  const entry = glossaryEntry(term)
+  const open = (hovered || focused) && !dismissed
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDismissed(true)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [open])
   if (!entry) return children
   return (
-    <span className="relative">
+    <span
+      className="relative"
+      onMouseEnter={() => {
+        setDismissed(false)
+        setHovered(true)
+      }}
+      onMouseLeave={() => setHovered(false)}
+    >
       <span
         tabIndex={0}
-        aria-describedby={open ? id : undefined}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onKeyDown={(event) => {
-          if (event.key === 'Escape') setOpen(false)
+        aria-describedby={id}
+        onFocus={() => {
+          setDismissed(false)
+          setFocused(true)
         }}
+        onBlur={() => setFocused(false)}
         className="cursor-help border-b border-dotted border-text-primary"
       >
         {children}
       </span>
-      {open && (
-        <span
-          id={id}
-          role="tooltip"
-          className="absolute left-0 top-full z-10 mt-1 w-64 rounded-chip border border-border bg-surface px-3 py-2 text-sm font-normal text-text-primary shadow-overlay"
-        >
-          {entry.meaning}
-        </span>
-      )}
+      <span
+        id={id}
+        role="tooltip"
+        hidden={!open}
+        className="absolute left-0 top-full z-10 w-64 max-w-[min(16rem,80vw)] rounded-chip border border-border bg-surface px-3 py-2 text-sm font-normal text-text-primary shadow-overlay"
+      >
+        {entry.meaning}
+      </span>
     </span>
   )
 }
