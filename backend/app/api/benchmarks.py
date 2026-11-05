@@ -15,7 +15,7 @@ Cancellation is cooperative, between instances. Jobs live in memory only: a
 restart loses a running job, and its run directory, having no
 ``summary.json``, is never published.
 
-This is one of the two API modules that may import ``app.evaluation``
+This is one of the three API modules that may import ``app.evaluation``
 (ADR-008); it reaches the ledger only through the evaluator's functions.
 """
 

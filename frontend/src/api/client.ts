@@ -105,6 +105,8 @@ export const getScenarios = (signal?: AbortSignal) =>
 // Data model
 export const listDatasets = (signal?: AbortSignal) =>
   call('get', '/api/v1/datasets', { signal })
+export const getDataModelExample = (signal?: AbortSignal) =>
+  call('get', '/api/v1/data-model/example', { signal })
 export const getDataset = (id: string, signal?: AbortSignal) =>
   call('get', '/api/v1/datasets/{dataset_id}', {
     path: { dataset_id: id },

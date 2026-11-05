@@ -8,7 +8,7 @@ deterministic scorer (``score_pipeline_run``), so a live score equals what
 the runner computes for the same pipeline results. The judge never runs
 here: it runs only in official runs.
 
-This is one of the two API modules that may import ``app.evaluation``
+This is one of the three API modules that may import ``app.evaluation``
 (ADR-008); the expected answer, checks and claims stay in this module and
 never reach a pipeline, an event or a log record.
 """

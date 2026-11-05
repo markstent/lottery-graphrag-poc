@@ -7,15 +7,16 @@ The boundary is structural, not conventional:
    reference the truth path by name; the scenario package reaches its output
    path only through ``DEFAULT_TRUTH_PATH``. The trace CLI is the one
    operator tool that reads the frozen bank for its demo questions, through
-   the two API modules (ADR-008): it is held to the import and ledger-name
+   the benchmark and scoring API modules (ADR-008): it is held to the import and ledger-name
    rules but not to the runtime rule below.
 2. The scenario package may write the ledger but must never import the
    loader; producer and consumer share only the JSON contract.
 3. ``app.evaluation`` is imported by nothing under ``app/`` except itself and
-   the two API modules that publish evaluator output (``EVALUATION_API_MODULES``):
-   the benchmark routes and post-run scoring. Every other API module stays
-   under rule 1, and no API module names the ledger: the two reach it only
-   through the evaluator's own functions.
+   the API modules that publish evaluator output (``EVALUATION_API_MODULES``):
+   the benchmark routes, post-run scoring and the Data Model example, which
+   asks the evaluator for the planted ids and answers with one incident id.
+   Every other API module stays under rule 1, and no API module names the
+   ledger: these reach it only through the evaluator's own functions.
 4. At run time, importing the lab and every retrieval module loads no
    ``app.evaluation`` module, directly or through a dependency (a subprocess
    test: the static rules above see direct imports only).
@@ -53,11 +54,21 @@ ISOLATED_NAMESPACES = (
     "models",
 )
 ISOLATED_MODULES = ("lab.py",)
-# The trace CLI reaches the frozen bank only through the two API modules.
+# The trace CLI reaches the frozen bank only through the benchmark and scoring API modules.
 OPERATOR_TOOLS = ("traces.py",)
 FORBIDDEN_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "TRUTH_LEDGER", "app.evaluation")
-# The only API modules that may import app.evaluation (Phase 4).
-EVALUATION_API_MODULES = frozenset({"benchmarks.py", "scoring.py"})
+# The only API modules that may import app.evaluation: the benchmark routes
+# and post-run scoring (Phase 4), and GET /api/v1/data-model/example, which
+# answers with the example incident's id only (data model redesign, Task 3).
+EVALUATION_API_MODULES = frozenset({"benchmarks.py", "scoring.py", "example.py"})
+# All the example route may take from the evaluator: the planted ids, or why there are none.
+EXAMPLE_EVALUATION_IMPORTS = frozenset(
+    {
+        "app.evaluation.official",
+        "app.evaluation.official.NoMatchingLedger",
+        "app.evaluation.official.presentation_planted_ids",
+    }
+)
 LEDGER_STRINGS = ("data/truth", "truth_ledger", "load_ledger", "TRUTH_LEDGER")
 # The hand-label files and their directory (D-089).
 LABEL_STRINGS = ("labels-", "evaluation/labels")
@@ -132,13 +143,23 @@ def test_retrieval_never_names_the_labels_directory() -> None:
         )
 
 
-def test_only_two_api_modules_import_evaluation() -> None:
+def test_only_the_evaluation_api_modules_import_evaluation() -> None:
     importing = {path.name for path in sorted(API_DIR.rglob("*.py")) if _imports_evaluation(path)}
     assert importing <= EVALUATION_API_MODULES, importing - EVALUATION_API_MODULES
     assert all(
         path.parent == API_DIR for path in API_DIR.rglob("*.py") if _imports_evaluation(path)
     )
-    assert importing == {"benchmarks.py", "scoring.py"}
+    assert importing == EVALUATION_API_MODULES
+
+
+def test_example_route_takes_only_the_planted_ids_and_returns_only_an_id() -> None:
+    from app.api.schemas import DataModelExample
+
+    path = API_DIR / "example.py"
+    imports = _imported_modules(_tree(path), path)
+    taken = {name for name in imports if name.startswith("app.evaluation")}
+    assert taken == EXAMPLE_EVALUATION_IMPORTS
+    assert set(DataModelExample.model_fields) == {"incident_id"}
 
 
 def test_api_reads_the_ledger_only_through_evaluation() -> None:
@@ -254,7 +275,7 @@ def test_scenario_writer_never_imports_the_loader() -> None:
         )
 
 
-def test_evaluation_is_imported_only_by_itself_and_the_two_api_modules() -> None:
+def test_evaluation_is_imported_only_by_itself_and_the_evaluation_api_modules() -> None:
     for path in sorted(APP_DIR.rglob("*.py")):
         if path.relative_to(APP_DIR).parts[0] == "evaluation" or _evaluation_api_module(path):
             continue

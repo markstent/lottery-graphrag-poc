@@ -50,6 +50,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | `GET /datasets/{dataset_id}/dictionary` | The data dictionary |
 | `GET /datasets/{dataset_id}/tables/{table}/rows` | A page of rows |
 | `GET /datasets/{dataset_id}/tables/{table}/rows/{row_id}` | One record with its graph node |
+| `GET /data-model/example` | The incident the Data Model Overview follows, never a planted one |
 | `GET /graph/schema`, `GET /graph/stats` | The graph model, and the counts ingestion pushed |
 | `GET /graph/nodes/{node_id}`, `.../neighbours` | One node, and its neighbours |
 | `GET /ontology`, `GET /ontology/concepts/{concept_id}/members` | The concept tree, and the codes bound to a concept |
@@ -341,6 +342,13 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
   A 409 `CONFLICT` means the id is not unique in a link table.
   When Neo4j cannot be read, the row is still returned with `edges` null and `graph_error` `GRAPH_QUERY_ERROR`.
   A record of another world has `graph_error` `OTHER_WORLD`.
+- `GET /data-model/example` returns `{incident_id}`, the incident the Overview follows through the three layers, and nothing else.
+  Over the active world's `incidents` in id order, it leaves out every incident the world's truth ledger names, then takes the first whose platform version is also the version of an incident in another market (a null market is a market of its own), else the first one left, else null.
+  A planted incident is never the example, because the Overview would then point at a story's answer, and the response never says which rows were planted or why.
+  The route asks the evaluator for the planted ids (`presentation_planted_ids`), so it is the third API module allowed to import `app.evaluation` (ADR-008).
+  The ledger must be the active world's own: its profile, world seed, generator version and scenario seed must match the world's manifest.
+  When there is no such ledger, the planted check cannot be made, so `incident_id` is null and a warning names the reason; the rule is never applied without the check.
+  A world without an `incidents` table is a 404.
 
 ## Graph and reference routes
 
@@ -348,11 +356,14 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
 - `GET /graph/stats` reads `_graph_stats.json` and works without Neo4j.
   It is a 404 for a dataset without the file.
 - `GET /graph/nodes/{node_id}` returns labels, properties and provenance (table, row id and dataset).
+  It also returns `edges`, how many relationships of each type meet the node in each direction, for every node including ontology concepts.
+  Each item of the neighbours route carries `edges` empty: the counts are read for the requested node only.
   A node no table maps to (`PrizeType`, `BusinessConcept`) has null provenance.
 - `GET /graph/nodes/{node_id}/neighbours` takes `limit` (default 25, 1 to 100) and an optional relationship `type`, ordered by type, direction and id, with `truncated` when there are more.
 - `GET /ontology` reads the YAML: the version, every concept with its parent, labels, synonyms and definition (D-058), binding counts by market, and `relationships`, which is derived from ingestion and not declared.
 - `GET /ontology/concepts/{concept_id}/members` lists the bound local codes, with an optional `market` filter.
 - `GET /scenarios` lists each enabled scenario with what the manifest says was planted, and never where or why.
+  Each carries `description`, the catalogue's plain description of the story, which is configuration and not truth.
 - `GET /models` reports the embedding, sparse, re-ranker and generation models and the judge, each as `provider`, `model`, `reachable` and `detail`.
   Results are cached for 30 seconds.
   The sparse model and re-ranker run in process, so their `reachable` is null until the lab has loaded them.
@@ -452,7 +463,7 @@ CORS allows the configured origins, GET and POST, and the headers `content-type`
 
 ## Testing
 
-- Offline: `test_api_queries.py`, `test_api_runs.py`, `test_api_stream.py`, `test_api_scoring.py`, `test_api_benchmarks.py`, `test_api_data_model.py`, `test_api_graph_model.py`, `test_api_reference.py`, `test_api_errors.py`, `test_store.py`, `test_health.py` and `test_event_payloads.py`.
+- Offline: `test_api_queries.py`, `test_api_runs.py`, `test_api_stream.py`, `test_api_scoring.py`, `test_api_benchmarks.py`, `test_api_data_model.py`, `test_api_graph_model.py`, `test_api_reference.py`, `test_api_example.py`, `test_api_errors.py`, `test_store.py`, `test_health.py` and `test_event_payloads.py`.
 - Contract: `test_openapi_contract.py` compares the committed `openapi.json` with the app's own schema and checks it does not depend on the environment.
   `pnpm api:check` regenerates the types and compares them byte for byte.
 - Live: `test_api_live.py` starts the app on the presentation world, runs the first H1 demo question over the event stream, waits for its score, restarts the app on the same run store, and checks that the run, its events and readiness survive and that no log record holds the expected answer.

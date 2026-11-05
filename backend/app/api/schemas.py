@@ -927,6 +927,15 @@ class MemberOut(BaseModel):
     name: str | None
 
 
+class DataModelExample(BaseModel):
+    """The incident the Data Model Overview follows through the three layers,
+    or null when the active world has none (no incidents, or no truth ledger
+    of its own to check against). Carries the example's id only: never which
+    rows were planted or why."""
+
+    incident_id: str | None
+
+
 class ScenarioOut(BaseModel):
     """A catalogue scenario and whether the active dataset planted it. Carries
     configuration only: never the truth ledger. ``description`` is the

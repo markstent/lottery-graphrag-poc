@@ -664,6 +664,27 @@
         "title": "ConceptOut",
         "type": "object"
       },
+      "DataModelExample": {
+        "description": "The incident the Data Model Overview follows through the three layers,\nor null when the active world has none (no incidents, or no truth ledger\nof its own to check against). Carries the example's id only: never which\nrows were planted or why.",
+        "properties": {
+          "incident_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Incident Id"
+          }
+        },
+        "required": [
+          "incident_id"
+        ],
+        "title": "DataModelExample",
+        "type": "object"
+      },
       "DatasetDetail": {
         "description": "Response for GET /datasets/{dataset_id}; ``index_status`` is None\nwhen no persistent index was built over the world.",
         "properties": {
@@ -4210,8 +4231,15 @@
         "type": "object"
       },
       "NodeOut": {
-        "description": "One graph node; ``provenance`` is None for a node no source table\nmaps to (PrizeType, BusinessConcept).",
+        "description": "One graph node; ``provenance`` is None for a node no source table\nmaps to (PrizeType, BusinessConcept). ``edges`` counts the links meeting\nthe node, per type and direction; only the node route fills it, and the\nnodes listed as neighbours carry none.",
         "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/EdgeSummary"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
           "labels": {
             "items": {
               "type": "string"
@@ -6956,8 +6984,12 @@
         "type": "object"
       },
       "ScenarioOut": {
-        "description": "A catalogue scenario and whether the active dataset planted it. Carries\nconfiguration only: never the truth ledger.",
+        "description": "A catalogue scenario and whether the active dataset planted it. Carries\nconfiguration only: never the truth ledger. ``description`` is the\ncatalogue's plain description of the story, which is configuration, not\ntruth.",
         "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
           "noise_level": {
             "anyOf": [
               {
@@ -7008,6 +7040,7 @@
           "scenario_id",
           "scenario_type",
           "title",
+          "description",
           "planted",
           "planted_rows",
           "strength",
@@ -8307,6 +8340,44 @@
           }
         },
         "summary": "Read Second Judge"
+      }
+    },
+    "/api/v1/data-model/example": {
+      "get": {
+        "operationId": "read_example_api_v1_data_model_example_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DataModelExample"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal Server Error"
+          }
+        },
+        "summary": "Read Example"
       }
     },
     "/api/v1/datasets": {

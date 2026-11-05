@@ -162,6 +162,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/data-model/example": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Example */
+        get: operations["read_example_api_v1_data_model_example_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/datasets": {
         parameters: {
             query?: never;
@@ -821,6 +838,17 @@ export interface components {
             synonyms: {
                 [key: string]: string[];
             };
+        };
+        /**
+         * DataModelExample
+         * @description The incident the Data Model Overview follows through the three layers,
+         *     or null when the active world has none (no incidents, or no truth ledger
+         *     of its own to check against). Carries the example's id only: never which
+         *     rows were planted or why.
+         */
+        DataModelExample: {
+            /** Incident Id */
+            incident_id: string | null;
         };
         /**
          * DatasetDetail
@@ -2316,9 +2344,13 @@ export interface components {
         /**
          * NodeOut
          * @description One graph node; ``provenance`` is None for a node no source table
-         *     maps to (PrizeType, BusinessConcept).
+         *     maps to (PrizeType, BusinessConcept). ``edges`` counts the links meeting
+         *     the node, per type and direction; only the node route fills it, and the
+         *     nodes listed as neighbours carry none.
          */
         NodeOut: {
+            /** Edges */
+            edges?: components["schemas"]["EdgeSummary"][];
             /** Labels */
             labels: string[];
             /** Node Id */
@@ -3391,9 +3423,13 @@ export interface components {
         /**
          * ScenarioOut
          * @description A catalogue scenario and whether the active dataset planted it. Carries
-         *     configuration only: never the truth ledger.
+         *     configuration only: never the truth ledger. ``description`` is the
+         *     catalogue's plain description of the story, which is configuration, not
+         *     truth.
          */
         ScenarioOut: {
+            /** Description */
+            description: string;
             /** Noise Level */
             noise_level: string | null;
             /** Planted */
@@ -4141,6 +4177,44 @@ export interface operations {
             };
             /** @description Unprocessable Content */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+        };
+    };
+    read_example_api_v1_data_model_example_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataModelExample"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

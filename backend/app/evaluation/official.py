@@ -94,6 +94,7 @@ from app.evaluation.settings_check import (
     settings_differences,
 )
 from app.evaluation.statistics import cluster_bootstrap, points
+from app.evaluation.truth_ledger import load_ledger
 from app.graph import __main__ as graph_cli
 from app.lab import build_generator, build_lab
 from app.retrieval.standard.generation import FakeAnswerGenerator
@@ -401,6 +402,63 @@ def bank_matches_active_world() -> bool:
     if not ((paths.world_dir / WORLD_MANIFEST).is_file() and paths.ledger_path.is_file()):
         return False
     return _bank_is_current(paths)
+
+
+class NoMatchingLedger(ValueError):
+    """The presentation world has no readable truth ledger of its own; the
+    message names the reason."""
+
+
+def _strings(value: Any) -> Iterator[str]:
+    """Every string anywhere in a ledger truth value, through nested lists
+    and mappings."""
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, Mapping):
+        for item in value.values():
+            yield from _strings(item)
+    elif isinstance(value, list):
+        for item in value:
+            yield from _strings(item)
+
+
+def presentation_planted_ids() -> frozenset[str]:
+    """Every identifier the presentation world's truth ledger names, in a
+    scenario's required evidence or anywhere in its truth values.
+
+    The ledger must be the presentation world's own: its world (profile,
+    seed, generator version) and scenario seed are those of the world's
+    manifest. :class:`NoMatchingLedger` names why there is none (an invalid
+    setting, a missing or unreadable file, or a ledger of another world).
+    """
+    try:
+        paths = world_paths(PRESENTATION_SEED)
+    except ValueError as error:
+        raise NoMatchingLedger(f"invalid configuration: {error}") from None
+    manifest_path = paths.world_dir / WORLD_MANIFEST
+    if not manifest_path.is_file():
+        raise NoMatchingLedger(f"the world {paths.world_dir} has no manifest")
+    if not paths.ledger_path.is_file():
+        raise NoMatchingLedger(f"no ledger at {paths.ledger_path}")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        ledger = load_ledger(paths.ledger_path)
+    except (OSError, ValueError) as error:
+        raise NoMatchingLedger(f"unreadable world manifest or ledger: {error}") from None
+    world = ledger.world
+    expected = (world.profile, world.world_seed, world.generator_version, ledger.scenario_seed)
+    found = tuple(
+        manifest.get(key) for key in ("profile", "world_seed", "generator_version", "scenario_seed")
+    )
+    if found != expected:
+        raise NoMatchingLedger(
+            f"the ledger {paths.ledger_path} is for world {expected}, not the active world {found}"
+        )
+    return frozenset(
+        identifier
+        for scenario in ledger.scenarios
+        for identifier in (*scenario.required_evidence, *_strings(scenario.truth))
+    )
 
 
 def _sha256(path: Path) -> str:
