@@ -1,29 +1,38 @@
 /**
- * The Ontology tab: the concepts as a keyboard-navigable tree on the left, the
- * chosen concept in the centre, and the local terms of each market that are
- * bound to it on the right, so "Αριθμολαχείο equals Zahlenziehung equals
- * National Draw" can be read off one screen. The concept and the market
- * filter are in the route (`?concept=`, `?market=`).
+ * The Concepts tab (D-115): the concepts as a keyboard-navigable tree on the
+ * left, with a search box, the chosen concept in the middle, and the local
+ * terms of each market that are bound to it on the right, so "Αριθμολαχείο
+ * equals Zahlenziehung equals National Draw" can be read off one screen. The
+ * concept and the market filter are in the route (`?concept=`, `?market=`).
  */
+
+import { useState } from 'react'
 
 import { getConceptMembers, getOntology, type Schemas } from '../../api/client'
 import { plainName } from '../../app/plain-words'
 import { hrefFor } from '../../app/router'
 import { useLoad } from '../../app/use-load'
-import { Panel } from '../../components/panel'
-import { OntologyWhy } from './why'
-import { ExploreSteps } from './explore'
-import { STEPS } from './explore-steps'
+import { ErrorNote } from '../../components/error-note'
+import { Panel, SkeletonBar } from '../../components/panel'
 import { MARKETS } from '../../run/coverage'
+import { AboutContent } from './about'
+import { ontologyAbout } from './about-copy'
 import { ConceptCard } from './concept-card'
 import { ConceptTree } from './concept-tree'
+import { Explorer, ListSearch } from './explorer'
+
+const STEPS = [
+  'Choose a concept',
+  'The concept',
+  "Each country's terms",
+] as const
 
 type Concept = Schemas['ConceptOut']
 type Member = Schemas['MemberOut']
 
 const goTo = (concept: string, market?: string) => {
   window.location.hash = hrefFor('data-model', {
-    tab: 'ontology',
+    tab: 'concepts',
     concept,
     ...(market ? { market } : {}),
   })
@@ -101,19 +110,21 @@ function BoundTerms({
           ))}
         </div>
       )}
-      <Panel
-        title="Each country's terms for it"
-        state={
-          load.status === 'ready'
-            ? load.data.length === 0
-              ? 'empty'
-              : 'ready'
-            : load.status
-        }
-        error={load.status === 'error' ? load.error : undefined}
-        onRetry={load.retry}
-        message={none}
-      >
+      <section aria-label="Each country's terms for it">
+        {load.status === 'loading' && (
+          <div role="status" className="space-y-3">
+            <span className="sr-only">Loading the terms</span>
+            <SkeletonBar className="w-2/3" />
+            <SkeletonBar />
+            <SkeletonBar className="w-5/6" />
+          </div>
+        )}
+        {load.status === 'error' && (
+          <ErrorNote error={load.error} retry={load.retry} />
+        )}
+        {load.status === 'ready' && load.data.length === 0 && (
+          <p className="text-sm text-text-secondary">{none}</p>
+        )}
         {load.status === 'ready' &&
           groupMembers(load.data).map((group) => (
             <div
@@ -143,13 +154,14 @@ function BoundTerms({
               </ul>
             </div>
           ))}
-      </Panel>
+      </section>
     </div>
   )
 }
 
 export function OntologyTab({ params }: { params: URLSearchParams }) {
   const load = useLoad(getOntology, 'ontology')
+  const [filter, setFilter] = useState('')
   if (load.status !== 'ready')
     return (
       <Panel
@@ -170,25 +182,42 @@ export function OntologyTab({ params }: { params: URLSearchParams }) {
       sum + Object.values(c.binding_counts).reduce((a, b) => a + b, 0),
     0,
   )
+  const tree = (
+    <ConceptTree
+      concepts={concepts}
+      selected={concept.concept_id}
+      onSelect={(id) => goTo(id)}
+      filter={filter}
+    />
+  )
   return (
-    <div className="space-y-4">
-      <ExploreSteps steps={STEPS.ontology} />
-      <div className="grid grid-cols-[18rem_minmax(0,1fr)_minmax(0,22rem)] items-start gap-4">
-        <Panel title="Concepts" state="ready">
-          <ConceptTree
-            concepts={concepts}
-            selected={concept.concept_id}
-            onSelect={(id) => goTo(id)}
+    <Explorer
+      steps={STEPS}
+      about={
+        <AboutContent
+          copy={ontologyAbout({ concepts: concepts.length, bindings })}
+        />
+      }
+      list={
+        <div className="space-y-3">
+          <ListSearch
+            label="Search concepts"
+            value={filter}
+            onChange={setFilter}
           />
-        </Panel>
+          <div className="max-h-[calc(100vh-18rem)] overflow-y-auto pr-1">
+            {tree}
+          </div>
+        </div>
+      }
+      main={
         <ConceptCard
           concept={concept}
           parent={concepts.find((c) => c.concept_id === concept.parent_id)}
           kinds={kinds}
         />
-        <BoundTerms concept={concept} market={params.get('market')} />
-      </div>
-      <OntologyWhy concepts={concepts.length} bindings={bindings} />
-    </div>
+      }
+      detail={<BoundTerms concept={concept} market={params.get('market')} />}
+    />
   )
 }

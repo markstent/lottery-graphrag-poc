@@ -103,7 +103,9 @@ describe('DataModel', () => {
     current('Concepts')
     cleanup()
     renderAt('#/data-model?tab=scenarios')
-    expect(await screen.findAllByRole('article')).toHaveLength(8)
+    expect(
+      await screen.findByRole('heading', { name: '1 Choose a story' }),
+    ).toBeVisible()
     current('Stories')
   })
 
@@ -116,7 +118,9 @@ describe('DataModel', () => {
     current('Concepts')
     cleanup()
     renderAt('#/data-model?tab=stories')
-    expect(await screen.findAllByRole('article')).toHaveLength(8)
+    expect(
+      await screen.findByRole('heading', { name: '1 Choose a story' }),
+    ).toBeVisible()
     current('Stories')
   })
 })

@@ -8,7 +8,6 @@ import type { ReactNode } from 'react'
 import type { Schemas } from '../../api/client'
 import { hrefFor } from '../../app/router'
 import { plural } from '../../charts/scale'
-import { Panel } from '../../components/panel'
 import { relationshipPhrase } from '../../design/relationships'
 import { LANGUAGES, labelOf } from './model'
 
@@ -17,7 +16,7 @@ type Concept = Schemas['ConceptOut']
 const conceptLink = (concept: Concept) => (
   <a
     href={hrefFor('data-model', {
-      tab: 'ontology',
+      tab: 'concepts',
       concept: concept.concept_id,
     })}
     className="text-text-primary underline"
@@ -93,7 +92,7 @@ export function ConceptCard({
     ({ id }) => (concept.synonyms[id] ?? []).length > 0,
   )
   return (
-    <Panel state="ready" title="Concept">
+    <section aria-label="Concept">
       <h3 className="text-lg font-semibold text-text-primary">
         {labelOf(concept)}
       </h3>
@@ -131,6 +130,6 @@ export function ConceptCard({
         </h4>
         <Relationships concept={concept} parent={parent} kinds={kinds} />
       </div>
-    </Panel>
+    </section>
   )
 }

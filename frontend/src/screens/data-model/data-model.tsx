@@ -14,7 +14,7 @@ import { Screen } from '../screen'
 import { GraphExplorer } from './graph-explorer'
 import { OntologyTab } from './ontology-tab'
 import { OverviewTab } from './overview-tab'
-import { ScenariosTab } from './scenarios-tab'
+import { StoriesTab } from './stories-tab'
 import { TablesTab } from './tables-tab'
 
 type TabId = 'overview' | 'tables' | 'graph' | 'concepts' | 'stories'
@@ -27,8 +27,6 @@ interface Tab {
 
 /**
  * The five tabs, in order. Overview opens when the address names no tab.
- * Concepts and Stories show the views of D-114 until each is rebuilt on the
- * explorer layout.
  */
 const TABS: readonly Tab[] = [
   {
@@ -54,7 +52,7 @@ const TABS: readonly Tab[] = [
   {
     id: 'stories',
     label: 'Stories',
-    render: () => <ScenariosTab />,
+    render: (params) => <StoriesTab params={params} />,
   },
 ]
 

@@ -40,9 +40,11 @@
  * through the layers and the short notes on how each layer is built), and
  * the rise to 4,000 for the Tables tab, while the old explanation panels
  * they replace are still in the code; Task 9 of that plan sets the final
- * value.
+ * value. It is 4,100 for the Concepts and Stories tabs (D-115), a temporary
+ * rise while the old tabs they replace are still in the code; Task 9 sets
+ * the final value.
  */
-export const OUTSIDE_HELP_WORD_CAP = 4000
+export const OUTSIDE_HELP_WORD_CAP = 4100
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length
