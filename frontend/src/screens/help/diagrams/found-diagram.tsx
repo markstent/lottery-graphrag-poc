@@ -1,8 +1,9 @@
 /**
- * Evidence found, as one picture: two overlapping circles, the records a
- * question needs (solid) and the records an approach brought (dashed). Where
- * they overlap is found, the rest of the first is missed and the rest of the
- * second is extra. Each part is named on the drawing and in a key below it.
+ * Evidence found, as one picture: two overlapping circles, the facts a
+ * question needs (solid) and what an approach brought (dashed). Where they
+ * overlap is found, the needed facts the evidence states; the rest of the
+ * first is missed and the rest of the second is extra, records that state no
+ * needed fact. Each part is named on the drawing and in a key below it.
  */
 
 import { useId } from 'react'
@@ -20,16 +21,16 @@ const KEY_Y = CY + R + 30
 const KEY_STEP = 22
 
 const KEY = [
-  ['Found', 'needed and brought'],
-  ['Missed', 'needed but not brought'],
-  ['Extra', 'brought but not needed'],
+  ['Found', 'needed facts the evidence states'],
+  ['Missed', 'needed facts it does not state'],
+  ['Extra', 'records brought that state no needed fact'],
 ] as const
 const HEIGHT = KEY_Y + (KEY.length - 1) * KEY_STEP + 10 + PAD
 
 const LABEL = [
   'Evidence found.',
-  'The records a question needs are compared with the records an approach brought.',
-  ...KEY.map(([part, meaning]) => `${part}: records that were ${meaning}.`),
+  'The facts a question needs are compared with what an approach brought.',
+  ...KEY.map(([part, meaning]) => `${part}: ${meaning}.`),
 ].join(' ')
 
 /** Each region's name, at the middle of the part it names. */
@@ -47,7 +48,7 @@ export function FoundDiagram() {
         <>
           <g fontSize={FONT} fontWeight={600} fill={SHARED.text}>
             <text x={PAD} y={TITLE_Y} dominantBaseline="central">
-              Records the question needs
+              Facts the question needs
             </text>
             <text
               x={WIDTH - PAD}
@@ -55,7 +56,7 @@ export function FoundDiagram() {
               textAnchor="end"
               dominantBaseline="central"
             >
-              Records the approach brought
+              What the approach brought
             </text>
           </g>
           <circle cx={NEEDED_X} cy={CY} r={R} fill={SHARED.fill} />

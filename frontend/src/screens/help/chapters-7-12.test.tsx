@@ -157,7 +157,7 @@ describe('chapters 7 and 8 read in short sections', () => {
     expect(views).toBeGreaterThan(0)
     for (const score of [
       'The answer score',
-      'Evidence recall',
+      'Evidence found (evidence recall)',
       'Precision',
       'Groundedness',
     ]) {

@@ -87,15 +87,15 @@ const SAYS: Record<
   },
   found: {
     label: [
-      'records a question needs',
-      'records an approach brought',
-      'Found: records that were needed and brought',
-      'Missed: records that were needed but not brought',
-      'Extra: records that were brought but not needed',
+      'facts a question needs',
+      'what an approach brought',
+      'Found: needed facts the evidence states',
+      'Missed: needed facts it does not state',
+      'Extra: records brought that state no needed fact',
     ],
     drawn: [
-      'Records the question needs',
-      'Records the approach brought',
+      'Facts the question needs',
+      'What the approach brought',
       'Found',
       'Missed',
       'Extra',

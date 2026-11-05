@@ -1,6 +1,6 @@
 /**
- * The official run's outcomes per approach, as two figures: the evidence found
- * and missed, with the extra records brought beside each bar, and the answers
+ * The official run's outcomes per approach, as two figures: the needed facts
+ * found and missed, with the extra records brought beside each bar, and the answers
  * in three bands by score with a hatched part for the answers that said the sources could not answer.
  * Every count is in the "Show as table" twin and in each bar's text.
  */
@@ -77,9 +77,9 @@ function Key({ items }: { items: readonly [string, string, boolean?][] }) {
 function evidenceText(row: EvidenceRow): string {
   const { name } = pipeline(row.id)
   if (row.found === null || row.missed === null)
-    return `${name}: no needed records were scored.`
-  const needed = row.foundRecords + row.missedRecords
-  return `${name}: ${percent(row.found)} of the needed records found, ${percent(row.missed)} missed. ${row.foundRecords} of ${needed} needed records found (added up over all questions).`
+    return `${name}: no needed facts were scored.`
+  const needed = row.foundFacts + row.missedFacts
+  return `${name}: ${percent(row.found)} of the needed facts found, ${percent(row.missed)} missed. ${row.foundFacts} of ${needed} needed facts found (added up over all questions).`
 }
 
 function EvidenceFigure({ rows }: { rows: EvidenceRow[] }) {
@@ -89,17 +89,17 @@ function EvidenceFigure({ rows }: { rows: EvidenceRow[] }) {
       rowHeader="Approach"
       columns={[
         'Share found',
-        'Records found',
-        'Records missed',
-        'Extra per question',
+        'Facts found',
+        'Facts missed',
+        'Extra records per question',
       ]}
       rows={rows.map((row) => ({
         key: row.id,
         label: pipeline(row.id).label,
         cells: [
           row.found === null ? 'No value' : percent(row.found),
-          String(row.foundRecords),
-          String(row.missedRecords),
+          String(row.foundFacts),
+          String(row.missedFacts),
           row.extra === null ? 'No value' : String(row.extra),
         ],
       }))}
@@ -108,7 +108,7 @@ function EvidenceFigure({ rows }: { rows: EvidenceRow[] }) {
   return (
     <ChartFigure
       title="Evidence found"
-      description="Of the records each question needed, the share each approach found and missed, averaged over questions. Records found and missed in the table are added up across all questions, so they can differ a little from the shares."
+      description="Of the facts each question needed, the share each approach found and missed, averaged over questions. A fact counts as found when any chosen record or passage states it. Facts found and missed in the table are added up across all questions, so they can differ a little from the shares. Extra records state no needed fact."
       empty={rows.length === 0}
       legend={
         <Key

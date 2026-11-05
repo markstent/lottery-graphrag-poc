@@ -11,11 +11,11 @@ export type Outcomes = Schemas['RunOutcomesOut']
 
 export interface EvidenceRow {
   id: PipelineId
-  /** Average share of the needed records found, over questions; null where nothing was scored. */
+  /** Average share of the needed facts (claims) found, over questions; null where nothing was scored. */
   found: number | null
   missed: number | null
-  foundRecords: number
-  missedRecords: number
+  foundFacts: number
+  missedFacts: number
   /** Average extra records per question, rounded, or null. */
   extra: number | null
 }
@@ -58,8 +58,8 @@ export function evidenceRows({ evidence }: Outcomes): EvidenceRow[] {
         id,
         found: share,
         missed: share === null ? null : 1 - share,
-        foundRecords: cell.found,
-        missedRecords: cell.missed,
+        foundFacts: cell.found,
+        missedFacts: cell.missed,
         extra:
           cell.extra_per_question === null
             ? null

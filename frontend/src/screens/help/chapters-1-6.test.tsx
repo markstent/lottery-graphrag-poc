@@ -198,9 +198,9 @@ describe('chapters 4 to 6 read in short sections', () => {
   it('chapter 4 gives each approach a heading, a one-line lead and its picture', () => {
     const { plain } = CHAPTER_COPY.approaches
     for (const [heading, name] of [
-      ['A: text search', 'approachA'],
-      ['B: graph', 'approachB'],
-      ['C: graph and ontology', 'approachC'],
+      ['What A does', 'approachA'],
+      ['What B adds', 'approachB'],
+      ['What C adds', 'approachC'],
     ] as const) {
       const part = section(plain, heading)
       expect(typeof part[0], heading).toBe('string')

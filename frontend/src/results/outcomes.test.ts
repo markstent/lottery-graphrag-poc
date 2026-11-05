@@ -58,8 +58,8 @@ describe('evidenceRows', () => {
     const [a] = evidenceRows(OUTCOMES)
     expect(a.found).toBeCloseTo(0.4201)
     expect(a.missed).toBeCloseTo(1 - 0.4201)
-    expect(a.foundRecords).toBe(321)
-    expect(a.missedRecords).toBe(421)
+    expect(a.foundFacts).toBe(321)
+    expect(a.missedFacts).toBe(421)
     expect(a.extra).toBe(16)
   })
 

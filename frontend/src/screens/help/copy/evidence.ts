@@ -36,7 +36,7 @@ export const evidence: ChapterCopy = {
     'A model can read only so much at once, and more text is slower and can bury the fact that matters. With one budget for all three, a difference in their answers comes from what each found, not from how much each could show.',
     'Taking turns one for one gives the graph room, with no split between the two lists that anyone had to tune.',
     { kind: 'heading', text: 'Evidence found' },
-    'Afterwards, the evidence an approach chose is compared with the records the question needed. Chapter 7 scores how much of what was needed it found.',
+    'Afterwards, the evidence an approach chose is compared with the facts the question needed. Chapter 7 scores how much of what was needed it found.',
     { kind: 'diagram', name: 'found' },
     'These rules for choosing the evidence, with the rules for scoring the answers (chapter 7), form the method. The official run used them (chapter 1).',
   ],

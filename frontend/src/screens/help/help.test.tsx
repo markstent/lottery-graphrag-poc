@@ -771,7 +771,7 @@ describe('scoring and glossary', () => {
     expect(
       within(section('7. How scoring works')).getByText(
         textOfElement(
-          /Evidence recall is the share of the claims that the chosen evidence covers, from 0 to 1/,
+          /^The share of the needed facts \(claims\) that the chosen evidence states, from 0 to 1\./,
         ),
       ),
     ).toBeVisible()
