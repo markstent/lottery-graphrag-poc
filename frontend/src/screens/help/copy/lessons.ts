@@ -604,10 +604,10 @@ export const lessons: ChapterCopy = {
     'This chapter reads the official run, which started on 2026-10-29, to see when text search, a graph and an ontology help.',
     {
       kind: 'key',
-      text: 'One difference passed its test: on multi-hop questions the graph found more of the needed evidence than text search. The rest are patterns that may be chance.',
+      text: 'One difference passed its test: on multi-hop questions the graph found more of the needed evidence than text search.',
     },
     { kind: 'component', name: 'resultsByKind' },
-    'The chart shows the newest official run; the text below is fixed to the run of 2026-10-29.',
+    'The chart shows the newest official run (several linked records are the multi-hop questions; hidden patterns the planted patterns); the text is fixed to the 2026-10-29 run.',
     {
       kind: 'more',
       summary: 'The figures and what the test said',
@@ -615,7 +615,7 @@ export const lessons: ChapterCopy = {
     },
     { kind: 'heading', text: 'How to read this chapter' },
     [
-      'A is text search, B the graph, and C the graph with the ontology (chapter 4).',
+      'A is text search, B the graph, and C the graph with the ontology (chapter 4); evidence found is the share of the needed facts that reached the answer model.',
       'Before the run, 14 comparisons were given a test, a check of whether a difference is bigger than chance. Only one passed.',
       'Everything else is a pattern seen in this run, on 6 to 72 cases at a time, and may be chance.',
       'The answer score, how much of the answer key an answer got right, sometimes gives credit a careful reader would not, or holds it back. Where that changes who did best, this chapter says so; it is a known limit in chapter 9.',
@@ -638,11 +638,12 @@ export const lessons: ChapterCopy = {
       summary: 'Why',
       blocks: [
         'Single facts: the answer is in the named record, so all three found it; the misses came from the answer model.',
-        'Planted patterns: most of the evidence gap is one question, which payment provider was behind a support case. The graph cannot start from a support case, and its graph walk from the closest match found none of the evidence.',
+        'Planted patterns: most of the evidence gap is one question, which payment provider was behind a support case. The graph walk, from the closest match to the support case, found none of the evidence.',
         'Text search found the review naming the provider in 5 of 6 worlds, yet the judge marked 5 of its 6 answers wrong.',
         'Most of text search\'s lead on those answers is how the answer score reads text. It credits naming the provider in an answer that says it does not know, and it accepts "United Kingdom" but not "UK", which cost the graph approaches half marks four times.',
         'Read with "UK" accepted, a check made after the run that leaves the published scores as they are, the gap on planted-pattern answers falls from 8.0 to 4.9 points. The judge\'s marks are close: 1.10, 1.04 and 1.00 out of 2.',
-        'Same kind of family or mechanic: text search found most of its evidence in product documents. The graph approaches showed about half as many, because graph records took part of the space. Their graph records held neither the shared kind nor a game of another market, which is four links from the named game.',
+        'Same kind of family or mechanic: text search found most of its evidence in product documents. The graph approaches showed about half as many, because graph records took part of the space.',
+        "Their graph records held neither the shared kind nor a game of another market, which is four links from the named game. This run does not show whether the walk's reach or the space limit is to blame.",
       ],
     },
     { kind: 'heading', text: 'Where the graph did best' },
@@ -656,7 +657,7 @@ export const lessons: ChapterCopy = {
       summary: 'Why',
       blocks: [
         'All of the multi-hop difference came from two questions. From an incident, the graph followed its platform version to the other incidents on it (93 percent against 38 for text search), and followed the games it hit, whose records list their mechanics (54 against 21).',
-        'On the other two multi-hop questions the graph made no difference: on one all three found everything, and on the other all three failed.',
+        'On the other two multi-hop questions all three found everything on one and failed on the other.',
       ],
     },
     { kind: 'heading', text: 'Where the graph with the ontology did best' },
@@ -691,7 +692,7 @@ export const lessons: ChapterCopy = {
     { kind: 'heading', text: 'What to take home' },
     [
       'Text search is enough when a question names a record or a document states the answer.',
-      'A graph helps when the answer is a record or two away along a link the data holds, if the graph can start from the record the question names. This is the one tested result.',
+      'A graph found more of the needed evidence on multi-hop questions, the one tested result; the gain was where the answer is a record or two away along a link, from a record the graph can start from.',
       'A shared vocabulary helps across markets and with local names: a pattern seen in this run, not confirmed by the test.',
       'Graph records take room from documents, and finding the evidence is not the same as answering well.',
     ],
@@ -699,9 +700,9 @@ export const lessons: ChapterCopy = {
     "Advice from this run's patterns; only the multi-hop result was tested.",
     [
       'Text search alone: questions about one record, or answers written in documents.',
-      'A graph: questions that follow links between records, when it can start from the kind of record the question names.',
-      'An ontology on top: questions that compare markets by meaning, use local names, or ask for things "of the same kind".',
-      'All three: a mix of these, since no single approach was best on every kind of question. B and C also search documents, so the choice is how to share the space between documents and graph records.',
+      'A graph: questions that follow links between records it can start from.',
+      'An ontology on top: questions that compare markets by meaning, use local names, or ask for things "of the same kind", though not the family and mechanic questions named by code.',
+      'All three: a mix of these, since no single approach was best on every kind of question. B and C also search documents, so the choice is how to share the space with graph records.',
     ],
     { kind: 'heading', text: 'What the two judges said' },
     [
@@ -711,14 +712,14 @@ export const lessons: ChapterCopy = {
     ],
     {
       kind: 'more',
-      summary: '',
+      summary: 'Where they leaned and disagreed',
       blocks: [
         'Two tests leaned the same way as the answer score without passing: the graph above text search on multi-hop questions, by about 18 points, and the graph with the ontology above the graph across markets, by about 19.',
-        "On 3 answers the judges gave opposite marks, one fully right and the other wrong. One answer has no judges' mark. Each answer is on Results, under Judges' verdict.",
+        "On 3 answers the judges gave opposite marks, one fully right and the other wrong. Each answer is on Results, under Judges' verdict.",
       ],
     },
     { kind: 'heading', text: 'Limits' },
-    'The company is made up, and the people who built the system wrote its 22 questions. One answer model answered each question once. No figure for a single question, on 6 or 18 cases, is tested.',
+    'The company is made up, its builders wrote the 22 questions, and one answer model answered each question once. No figure for a single question is tested.',
   ],
   plainHint:
     'The Technical level adds the figures for each of the 22 questions: wins, ties and losses, failure causes, the cases examined, and how the numbers were computed.',
@@ -762,6 +763,7 @@ export const lessons: ChapterCopy = {
     'Judge',
     "Judges' mark",
     'Kind of question',
+    'Market',
     'Multi-hop',
     'Official run',
     'Passage',
