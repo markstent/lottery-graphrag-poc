@@ -11,7 +11,7 @@ import type { ReactNode } from 'react'
 import { hrefFor, useRoute } from '../../app/router'
 import { useSettings } from '../../app/use-settings'
 import { Screen } from '../screen'
-import { GraphTab } from './graph-tab'
+import { GraphExplorer } from './graph-explorer'
 import { OntologyTab } from './ontology-tab'
 import { OverviewTab } from './overview-tab'
 import { ScenariosTab } from './scenarios-tab'
@@ -27,8 +27,8 @@ interface Tab {
 
 /**
  * The five tabs, in order. Overview opens when the address names no tab.
- * Tables, Concepts and Stories show the views of D-114 until each is rebuilt
- * on the explorer layout.
+ * Concepts and Stories show the views of D-114 until each is rebuilt on the
+ * explorer layout.
  */
 const TABS: readonly Tab[] = [
   {
@@ -44,7 +44,7 @@ const TABS: readonly Tab[] = [
   {
     id: 'graph',
     label: 'Graph',
-    render: (params, scale) => <GraphTab params={params} scale={scale} />,
+    render: (params, scale) => <GraphExplorer params={params} scale={scale} />,
   },
   {
     id: 'concepts',

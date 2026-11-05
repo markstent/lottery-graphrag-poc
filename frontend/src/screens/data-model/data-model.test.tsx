@@ -68,7 +68,7 @@ describe('DataModel', () => {
     stubApi(ROUTES)
     renderAt('#/data-model?tab=graph')
     expect(
-      await screen.findByRole('button', { name: 'game, 120 records' }),
+      await screen.findByRole('button', { name: /^game ?120$/ }),
     ).toBeVisible()
     current('Graph')
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute(

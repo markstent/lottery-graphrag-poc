@@ -96,13 +96,30 @@ function edgeStyle(look: EdgeLook | undefined): {
   }
 }
 
-function bounds(layout: Layout, nodes: DiagramNode[], height: number) {
+/** The box around every node, route and drawn tag, with `PAD` around it. */
+function bounds(
+  layout: Layout,
+  nodes: DiagramNode[],
+  edges: DiagramEdge[],
+  height: number,
+  scale: number,
+) {
   const points: Point[] = []
   for (const node of nodes) {
     const at = layout.positions.get(node.id)
     if (at) points.push(at, { x: at.x + node.width, y: at.y + height })
   }
   for (const route of layout.routes.values()) points.push(...route.points)
+  // A tag can sit past the last node, on a route's outer stretch.
+  for (const edge of edges) {
+    const route = layout.routes.get(edge.id)
+    if (!route || !edge.label || edge.tagged === false) continue
+    const tag = tagSize(edge.label, scale)
+    points.push(
+      { x: route.tag.x - tag.width / 2, y: route.tag.y - tag.height / 2 },
+      { x: route.tag.x + tag.width / 2, y: route.tag.y + tag.height / 2 },
+    )
+  }
   const xs = points.map((p) => p.x)
   const ys = points.map((p) => p.y)
   const left = Math.min(...xs) - PAD
@@ -168,9 +185,9 @@ export function Diagram({
     )
   const { data: layout } = load
   if (layout.positions.size === 0) return null
-  const box = bounds(layout, nodes, height)
-  const title = new Map(nodes.map((n) => [n.id, n.title]))
   const shown = edges.filter((e) => !e.hidden)
+  const box = bounds(layout, nodes, shown, height, scale)
+  const title = new Map(nodes.map((n) => [n.id, n.title]))
 
   return (
     <div className="relative overflow-x-auto">
@@ -211,6 +228,7 @@ export function Diagram({
           if (!route) return null
           const { color, dash } = edgeStyle(edge.look)
           const tag = tagSize(edge.label, scale)
+          const marker = `url(#${arrows}-${edge.look ?? 'plain'})`
           return (
             <g
               key={edge.id}
@@ -223,7 +241,8 @@ export function Diagram({
                 stroke={color}
                 strokeWidth={1.5}
                 strokeDasharray={dash}
-                markerEnd={`url(#${arrows}-${edge.look ?? 'plain'})`}
+                markerStart={edge.reversed ? marker : undefined}
+                markerEnd={edge.reversed ? undefined : marker}
               />
               {edge.label && edge.tagged !== false && (
                 <>
@@ -329,7 +348,9 @@ export function Diagram({
       <ul className="sr-only" aria-label={`${label}, in words`}>
         {shown.map((edge) => (
           <li key={edge.id}>
-            {`${title.get(edge.source)} ${edge.label ?? 'links to'} ${title.get(edge.target)}`}
+            {edge.reversed
+              ? `${title.get(edge.target)} ${edge.label ?? 'links to'} ${title.get(edge.source)}`
+              : `${title.get(edge.source)} ${edge.label ?? 'links to'} ${title.get(edge.target)}`}
           </li>
         ))}
       </ul>

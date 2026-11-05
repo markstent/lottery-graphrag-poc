@@ -37,6 +37,12 @@ export interface DiagramEdge {
   /** Not drawn and not listed, but kept so the layout does not move. */
   hidden?: boolean
   look?: EdgeLook
+  /**
+   * The link runs from target to source: laid out from source to target, so
+   * the source sits on the left, but its arrow points back at the source and
+   * it reads from the target.
+   */
+  reversed?: boolean
 }
 
 /** The source systems as the warehouse names them, in words a reader knows. */
@@ -224,7 +230,48 @@ export const listed = (items: readonly string[]): string =>
     ? items.join('')
     : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
 
-const FOLLOWER_ORDER: readonly Follower[] = ['both', 'B', 'C', 'neither']
+export const FOLLOWER_ORDER: readonly Follower[] = ['both', 'B', 'C', 'neither']
+
+/** Who may walk each kind of link, in words. */
+export const FOLLOWED_BY: Readonly<Record<Follower, string>> = {
+  both: 'Followed by Graph and Graph + Ontology',
+  B: 'Followed by Graph only',
+  C: 'Followed by Graph + Ontology only',
+  neither: 'Followed by neither',
+}
+
+/** Which approaches' search may walk links of `type`, from the schema's allow lists. */
+export function followerOf(
+  schema: Schemas['GraphSchema'],
+  type: string,
+): Follower {
+  const b = schema.allow_list.B?.includes(type) ?? false
+  const c = schema.allow_list.C?.includes(type) ?? false
+  return b ? (c ? 'both' : 'B') : c ? 'C' : 'neither'
+}
+
+/**
+ * The kinds of record the schema puts at the other end of a link of `type`
+ * from a record of kind `label`: its targets when the link goes out, its
+ * sources when it comes in. Each kind once, in schema order.
+ */
+export function otherKinds(
+  schema: Schemas['GraphSchema'],
+  label: string,
+  type: string,
+  direction: 'out' | 'in',
+): string[] {
+  const kinds = schema.relationship_types
+    .filter((r) => r.type === type)
+    .flatMap((r) =>
+      direction === 'out' && r.from_label === label
+        ? [r.to_label]
+        : direction === 'in' && r.to_label === label
+          ? [r.from_label]
+          : [],
+    )
+  return [...new Set(kinds)]
+}
 
 /**
  * Every kind of link in the schema, once, with the pairs it joins, its count
@@ -235,8 +282,6 @@ export function relationshipRows(
   schema: Schemas['GraphSchema'],
   stats: Schemas['GraphStats'],
 ): RelationshipRow[] {
-  const b = new Set(schema.allow_list.B ?? [])
-  const c = new Set(schema.allow_list.C ?? [])
   const rows = new Map<string, RelationshipRow>()
   // The kinds a link starts from, by link type and the kind it ends at.
   const sources = new Map<string, Map<string, string[]>>()
@@ -251,13 +296,7 @@ export function relationshipRows(
       type: rel.type,
       sentences: [],
       total: stats.relationships_by_type[rel.type] ?? null,
-      follower: b.has(rel.type)
-        ? c.has(rel.type)
-          ? 'both'
-          : 'B'
-        : c.has(rel.type)
-          ? 'C'
-          : 'neither',
+      follower: followerOf(schema, rel.type),
     })
   }
   for (const [type, byTarget] of sources) {

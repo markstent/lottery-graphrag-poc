@@ -12,6 +12,24 @@ describe('Diagram', () => {
     { id: 'e', source: 'a', target: 'b', label: 'is available in' },
   ]
 
+  it('draws a reversed link with its arrow back at the source, and reads it from the target', async () => {
+    const { container } = render(
+      <Diagram
+        nodes={nodes}
+        edges={[{ ...edges[0], reversed: true }]}
+        label="Map"
+        onSelect={() => undefined}
+        scale={1}
+      />,
+    )
+    expect(
+      await screen.findByText('market is available in game'),
+    ).toBeInTheDocument()
+    const path = container.querySelector('g[data-edge-id="e"] path')
+    expect(path).toHaveAttribute('marker-start')
+    expect(path).not.toHaveAttribute('marker-end')
+  })
+
   it('draws a keyboard-reachable button for each node and lists each link in words', async () => {
     const onSelect = vi.fn()
     render(

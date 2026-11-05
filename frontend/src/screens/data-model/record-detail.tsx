@@ -21,6 +21,7 @@ import { ErrorNote } from '../../components/error-note'
 import { SkeletonBar } from '../../components/panel'
 import { linkLines } from '../../design/relationships'
 import { NEXT_STEP } from './explorer'
+import { otherKinds } from './model'
 
 const NOTE = 'text-sm text-text-secondary'
 
@@ -38,18 +39,8 @@ function otherEnd(
     ([, name]) => name === table,
   )?.[0]
   if (schema === null || own === undefined) return undefined
-  const others = new Set(
-    schema.relationship_types
-      .filter((r) => r.type === type)
-      .flatMap((r) =>
-        direction === 'out' && r.from_label === own
-          ? [r.to_label]
-          : direction === 'in' && r.to_label === own
-            ? [r.from_label]
-            : [],
-      ),
-  )
-  return others.size === 1 ? [...others][0] : undefined
+  const kinds = otherKinds(schema, own, type, direction)
+  return kinds.length === 1 ? kinds[0] : undefined
 }
 
 export function RecordDetail({

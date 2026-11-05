@@ -146,20 +146,22 @@ const matches = (item: PickItem, query: string) =>
   `${item.id} ${item.title}`.toLowerCase().includes(query)
 
 /**
- * A list to choose from, in named groups, with a search box above it. Each
- * item is a button: it highlights under the pointer and on focus, and the
- * chosen one is pressed.
+ * A list to choose from, in named groups, with a search box above it unless
+ * `searchable` is false. Each item is a button: it highlights under the
+ * pointer and on focus, and the chosen one is pressed.
  */
 export function PickList({
   label,
   groups,
   chosen,
   onChoose,
+  searchable = true,
 }: {
   label: string
   groups: readonly PickGroup[]
   chosen: string | undefined
   onChoose: (id: string) => void
+  searchable?: boolean
 }) {
   const [query, setQuery] = useState('')
   const needle = query.trim().toLowerCase()
@@ -172,7 +174,9 @@ export function PickList({
 
   return (
     <div className="space-y-3">
-      <ListSearch label={label} value={query} onChange={setQuery} />
+      {searchable && (
+        <ListSearch label={label} value={query} onChange={setQuery} />
+      )}
       {shown.length === 0 && needle !== '' && (
         <p className="px-2 text-sm text-text-secondary">No match</p>
       )}
