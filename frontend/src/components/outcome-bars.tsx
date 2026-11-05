@@ -1,10 +1,12 @@
 /**
  * The official run's outcomes per approach, as two figures: the needed facts
  * found and missed, with the extra records brought beside each bar, and the answers
- * in three bands by score with a hatched part for the answers that said the sources could not answer.
+ * in three bands by score with a hatched part for the answers that said the sources could not answer,
+ * and the mean answer score beside each bar.
  * Every count is in the "Show as table" twin and in each bar's text.
  */
 
+import { EVIDENCE_FOUND_LABEL } from '../app/method'
 import { ChartFigure } from '../charts/chart-figure'
 import { DataTable } from '../charts/data-table'
 import { pipeline } from '../design/pipelines'
@@ -27,13 +29,21 @@ const FILL = {
   wrong: 'var(--color-error)',
 } as const
 
+/** The key's swatch for the hatching: a neutral fill, since a hatched part sits in any band. */
+const HATCH_KEY = 'var(--color-grey-500)'
+
 /** Diagonal white stripes over a band: the non-colour cue for answers that said the sources could not answer. */
 const HATCH =
   'repeating-linear-gradient(135deg, var(--color-surface) 0 2px, transparent 2px 6px)'
 
 const BAR = 'flex h-5 w-full overflow-hidden rounded-chip border border-border'
+/**
+ * One approach's row: its name, its bar and the words beside the bar. The
+ * words' column is in em of the row's small text, so the longest evidence
+ * label stays on one line at either type scale, presentation mode included.
+ */
 const ROW =
-  'grid grid-cols-1 items-center gap-x-4 gap-y-1 md:grid-cols-[11rem_minmax(0,1fr)_17rem]'
+  'grid grid-cols-1 items-center gap-x-4 gap-y-1 text-sm lg:grid-cols-[11rem_minmax(0,1fr)_27em]'
 
 /** What an answer that abstained is called, in full and in the tight side labels and table columns. */
 const CANNOT_ANSWER = 'said the sources could not answer'
@@ -85,9 +95,11 @@ function evidenceText(row: EvidenceRow): string {
 function EvidenceFigure({
   rows,
   badge,
+  title,
 }: {
   rows: EvidenceRow[]
   badge?: string
+  title: string
 }) {
   const table = (
     <DataTable
@@ -113,7 +125,7 @@ function EvidenceFigure({
   )
   return (
     <ChartFigure
-      title="Evidence found"
+      title={title}
       badge={badge}
       description="Of the facts each question needed, the share each approach found and missed, averaged over questions. A fact counts as found when any chosen record or passage states it. Facts found and missed in the table are added up across all questions, so they can differ a little from the shares. Extra records state no needed fact."
       empty={rows.length === 0}
@@ -168,12 +180,16 @@ function EvidenceFigure({
   )
 }
 
+const answerScore = (row: AnswerRow) =>
+  row.score === null ? null : `answer score ${percent(row.score)}`
+
 function answerText(row: AnswerRow): string {
   const parts = row.bands.map(
     (band) =>
       `${BAND_NAMES[band.kind].toLowerCase()} ${band.count} of ${row.scored} (${band.declined} of them ${CANNOT_ANSWER})`,
   )
-  return `${pipeline(row.id).name}: ${parts.join(', ')}.`
+  const score = answerScore(row)
+  return `${pipeline(row.id).name}: ${score === null ? '' : `${score}; `}${parts.join(', ')}.`
 }
 
 function AnswerFigure({ rows, badge }: { rows: AnswerRow[]; badge?: string }) {
@@ -216,7 +232,7 @@ function AnswerFigure({ rows, badge }: { rows: AnswerRow[]; badge?: string }) {
             ['Right', FILL.right],
             ['Partly right', FILL.partly],
             ['Wrong', FILL.wrong],
-            [`Hatched: ${CANNOT_ANSWER}`, FILL.wrong, true],
+            [`Hatched: ${CANNOT_ANSWER}`, HATCH_KEY, true],
           ]}
         />
       }
@@ -257,10 +273,15 @@ function AnswerFigure({ rows, badge }: { rows: AnswerRow[]; badge?: string }) {
               </div>
             </div>
             <span className="tabular flex flex-col text-sm text-text-secondary">
+              {row.score !== null && (
+                <span className="font-semibold text-text-primary">
+                  Answer score {percent(row.score)}
+                </span>
+              )}
               {row.bands.map((band) => (
                 <span key={band.kind}>
-                  {BAND_NAMES[band.kind]} {band.count}, {band.declined}{' '}
-                  {CANNOT_ANSWER_SHORT}
+                  {BAND_NAMES[band.kind]} {band.count} ({band.declined} of them{' '}
+                  {CANNOT_ANSWER_SHORT})
                 </span>
               ))}
             </span>
@@ -284,16 +305,23 @@ function AnswerFigure({ rows, badge }: { rows: AnswerRow[]; badge?: string }) {
 export function OutcomeBars({
   outcomes,
   badge,
+  evidenceTitle = EVIDENCE_FOUND_LABEL,
 }: {
   outcomes: Outcomes
   /** The run's standing when it is not a result, shown on each figure. */
   badge?: string
+  /** The evidence figure's title; Results ties it to the Verdict's name for the measure. */
+  evidenceTitle?: string
 }) {
   if (!outcomes.recorded)
     return <p className="text-text-secondary">Not recorded for this run.</p>
   return (
     <div className="flex flex-col gap-10">
-      <EvidenceFigure rows={evidenceRows(outcomes)} badge={badge} />
+      <EvidenceFigure
+        rows={evidenceRows(outcomes)}
+        badge={badge}
+        title={evidenceTitle}
+      />
       <AnswerFigure rows={answerRows(outcomes)} badge={badge} />
     </div>
   )

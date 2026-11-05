@@ -36,6 +36,8 @@ export interface AnswerRow {
   id: PipelineId
   scored: number
   notScored: number
+  /** The mean answer score per scored answer, (right + partly_score_sum) / scored; null when none was scored. */
+  score: number | null
   bands: Band[]
 }
 
@@ -86,6 +88,10 @@ export function answerRows({ answers }: Outcomes): AnswerRow[] {
         id,
         scored: cell.scored,
         notScored: cell.not_scored,
+        score:
+          cell.scored > 0
+            ? (cell.right + cell.partly_score_sum) / cell.scored
+            : null,
         bands: [
           band('right', cell.right, cell.right_declined),
           band('partly', cell.partly, cell.partly_declined),

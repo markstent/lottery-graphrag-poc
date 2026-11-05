@@ -6,17 +6,13 @@
 
 import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
 import { datasetName } from '../../app/plain-words'
-import { EVIDENCE_METRIC } from '../../app/method'
+import { EVIDENCE_FOUND_LABEL, EVIDENCE_METRIC } from '../../app/method'
 import { hrefFor } from '../../app/router'
 import { percent } from '../../app/score-words'
 import { MODEL_LABELS } from '../../app/settings-labels'
 import { useLoad, type Load } from '../../app/use-load'
 import { plural } from '../../charts/scale'
-import {
-  EVIDENCE_LABEL,
-  KindChart,
-  MARK_LABEL,
-} from '../../components/kind-chart'
+import { KindChart, MARK_LABEL } from '../../components/kind-chart'
 import { Panel, type PanelState } from '../../components/panel'
 import { pipeline, PIPELINES, type PipelineId } from '../../design/pipelines'
 import { Screen } from '../screen'
@@ -46,12 +42,12 @@ async function loadConfiguration(signal: AbortSignal) {
 }
 
 /** What the big number on a tile is called. */
-const TILE_LABEL = EVIDENCE_LABEL
+const TILE_LABEL = EVIDENCE_FOUND_LABEL
 
 /** The scores, said once above the tiles; the judges' mark only when the run has it. */
 const SCORE_KEY: readonly [string, string][] = [
   [
-    'Evidence found:',
+    `${EVIDENCE_FOUND_LABEL}:`,
     'before the AI answers, each approach looks up records for it to read. This is the share of the records the question needed that it found.',
   ],
   ['Answer score:', "how close the AI's answer came to the correct answer."],

@@ -10,6 +10,7 @@ const cell = (
   p: number,
   w: number,
   d: [number, number, number],
+  partlySum: number,
 ) => ({
   scored: r + p + w,
   right: r,
@@ -19,7 +20,7 @@ const cell = (
   partly_declined: d[1],
   wrong_declined: d[2],
   not_scored: 0,
-  partly_score_sum: 1,
+  partly_score_sum: partlySum,
 })
 
 const OUTCOMES: Outcomes = {
@@ -48,9 +49,10 @@ const OUTCOMES: Outcomes = {
     },
   },
   answers: {
-    A: cell(117, 103, 80, [5, 15, 71]),
-    B: cell(131, 101, 68, [6, 25, 64]),
-    C: cell(149, 98, 53, [5, 25, 47]),
+    // Partly right sums that give the published answer scores, 0.58, 0.61 and 0.67.
+    A: cell(117, 103, 80, [5, 15, 71], 57),
+    B: cell(131, 101, 68, [6, 25, 64], 52),
+    C: cell(149, 98, 53, [5, 25, 47], 52),
   },
 }
 
@@ -90,7 +92,9 @@ describe('OutcomeBars', () => {
   it('shows three answer bands whose hatched declined parts sit inside them', () => {
     render(<OutcomeBars outcomes={OUTCOMES} />)
     const answers = within(figure('Answers by score'))
-    const label = answers.getByRole('img', { name: /Text search: right 117/ })
+    const label = answers.getByRole('img', {
+      name: /Text search: answer score 58 percent; right 117/,
+    })
     expect(label).toHaveAccessibleName(
       /5 of them said the sources could not answer/,
     )
@@ -111,6 +115,57 @@ describe('OutcomeBars', () => {
     expect(parseFloat(hatch.style.width)).toBeCloseTo((5 / 117) * 100)
     expect(
       answers.getByText(/can say the sources could not answer and still score/),
+    ).toBeInTheDocument()
+  })
+
+  it('shows the answer score beside each answer bar, from the bands', () => {
+    render(<OutcomeBars outcomes={OUTCOMES} />)
+    const answers = within(figure('Answers by score'))
+    for (const [name, score] of [
+      ['Text search', 58],
+      ['Graph', 61],
+      ['Graph \\+ Ontology', 67],
+    ] as const) {
+      expect(
+        answers.getByRole('img', {
+          name: new RegExp(`^${name}: answer score ${score} percent;`),
+        }),
+      ).toBeInTheDocument()
+    }
+    expect(
+      answers.getAllByText(/^Answer score (58|61|67) percent$/),
+    ).toHaveLength(3)
+  })
+
+  it('says beside each bar how many in each band could not answer', () => {
+    render(<OutcomeBars outcomes={OUTCOMES} />)
+    const answers = within(figure('Answers by score'))
+    expect(
+      answers.getByText('Right 117 (5 of them could not answer)'),
+    ).toBeInTheDocument()
+    expect(
+      answers.getByText('Wrong 80 (71 of them could not answer)'),
+    ).toBeInTheDocument()
+  })
+
+  it('keys the hatching on a neutral swatch, not on a band colour', () => {
+    render(<OutcomeBars outcomes={OUTCOMES} />)
+    const key = within(figure('Answers by score'))
+      .getByText(/^Hatched:/)
+      .querySelector('i') as HTMLElement
+    expect(key.style.backgroundColor).toBe('var(--color-grey-500)')
+    expect(key.style.backgroundImage).toContain('repeating-linear-gradient')
+  })
+
+  it('titles the evidence figure as the caller names it', () => {
+    render(
+      <OutcomeBars
+        outcomes={OUTCOMES}
+        evidenceTitle="Evidence found (evidence recall, as in the Verdict)"
+      />,
+    )
+    expect(
+      screen.getByText('Evidence found (evidence recall, as in the Verdict)'),
     ).toBeInTheDocument()
   })
 

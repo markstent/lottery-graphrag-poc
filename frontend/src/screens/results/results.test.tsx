@@ -138,7 +138,11 @@ describe('Results', () => {
     stubApi(ROUTES)
     open('fixture-official')
     const panel = await screen.findByRole('region', { name: 'Outcomes' })
-    expect(await within(panel).findByText('Evidence found')).toBeInTheDocument()
+    expect(
+      await within(panel).findByText(
+        'Evidence found (evidence recall, as in the Verdict)',
+      ),
+    ).toBeInTheDocument()
     expect(within(panel).getByText('Answers by score')).toBeInTheDocument()
     const regions = screen
       .getAllByRole('region')
@@ -162,7 +166,9 @@ describe('Results', () => {
       'could not be read',
     )
     await user.click(within(panel).getByRole('button', { name: 'Retry' }))
-    expect(await within(panel).findByText('Evidence found')).toBeInTheDocument()
+    expect(
+      await within(panel).findByText(/^Evidence found \(evidence recall/),
+    ).toBeInTheDocument()
   })
 
   it('picks the full official run by default', async () => {
@@ -281,7 +287,7 @@ describe('Results', () => {
   })
 
   it('quick check shows no results', async () => {
-    stubApi(ROUTES)
+    const fetchMock = stubApi(ROUTES)
     open('fixture-smoke')
     expect(await screen.findByText(SMOKE.headlines[0])).toBeVisible()
     expect(
@@ -295,6 +301,10 @@ describe('Results', () => {
     expect(
       screen.queryByRole('region', { name: 'Outcomes' }),
     ).not.toBeInTheDocument()
+    // Its panel is hidden, so its outcomes are never asked for.
+    expect(
+      fetchMock.mock.calls.map(([input]) => String(input)),
+    ).not.toContainEqual(expect.stringContaining('/outcomes'))
   })
 
   it('subset run is labelled beside its numbers', async () => {

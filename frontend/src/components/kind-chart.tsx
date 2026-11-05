@@ -7,10 +7,8 @@
 import { useState } from 'react'
 
 import type { Finding, KindFigures, KindMetric } from '../app/latest-run'
+import { EVIDENCE_FOUND_LABEL } from '../app/method'
 import { GroupedBars } from '../charts/grouped-bars'
-
-/** What evidence recall is called on the screens a reader meets first. */
-export const EVIDENCE_LABEL = 'Evidence found'
 
 /** What the two judges' mark is called on those screens. */
 export const MARK_LABEL = "Judges' mark"
@@ -18,7 +16,7 @@ export const MARK_LABEL = "Judges' mark"
 /** Each measure the chart can show, by its name on the screen. */
 const KIND_LABELS: Record<KindMetric, string> = {
   answer: 'Answer score',
-  evidence_recall: EVIDENCE_LABEL,
+  evidence_recall: EVIDENCE_FOUND_LABEL,
   judge_mark: MARK_LABEL,
 }
 

@@ -111,5 +111,12 @@ describe('answerRows', () => {
       answers: { A: answer(0, 0, 0, [0, 0, 0]) },
     })
     expect(rows[0].bands.every((band) => band.share === 0)).toBe(true)
+    expect(rows[0].score).toBeNull()
+  })
+
+  it('works out the mean answer score from the right answers and the partly right sum', () => {
+    const [a] = answerRows(OUTCOMES)
+    // (117 right + 40 partly right) of 300.
+    expect(a.score).toBeCloseTo(157 / 300)
   })
 })
