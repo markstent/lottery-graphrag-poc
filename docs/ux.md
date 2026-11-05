@@ -276,7 +276,7 @@ When the world has none, or no truth ledger of its own to check against, the car
   "How they fit together" follows the example through the layers in three boxes with an arrow between them: its table row and the columns that name other records, the graph links made from them, and the shared concept its incident type is matched to, with one caption under each box.
   When the type is matched to no concept, the third box says so and has no caption.
   "How each layer is built" gives one short note per layer (`LAYER_NOTES` in `src/screens/data-model/about-copy.ts`): a program builds the graph from the tables, most links are copied from a column, some are counted from bulk rows or worked out by a rule, and only Graph + Ontology may follow the ontology's links.
-  "The core of the graph" draws the eight main kinds of record (market, support case, player, game, incident, campaign, platform, platform version) on a fixed three by three grid with the links between them, the links also listed in words; pointing at or focusing a kind brings its links forward, and each kind and "See every kind of record" link to the Graph tab.
+  "The core of the graph" draws the eight main kinds of record (market, support case, player, game, incident, campaign, platform, platform version) on a fixed three by three grid with the links between them, the links also listed in words; pointing at or focusing a kind brings its links forward; each kind opens the Graph tab on a sample of that kind (`tab=graph&kind=<label>`), and "See every kind of record" opens the Graph tab.
   A last, quieter line links to Stories: "8 stories are planted in this data for the test."
   Each card, the example and the core diagram load on their own, so one failure shows its own error with a retry and leaves the rest.
 - **The explorer layout.** Tables, Graph, Concepts and Stories share one layout (`src/screens/data-model/explorer.tsx`): three columns, a list on the left (about a quarter), the chosen item in the middle (the widest) and details and where next on the right.
@@ -292,17 +292,20 @@ When the world has none, or no truth ledger of its own to check against, the car
   Right: the chosen row as a record, first the graph links it becomes in words ("affects 3 games", "6 support cases are related to it"), then "Open in the graph" when it has a graph record, then its fields.
   A row of a table the graph leaves out says "This row is not in the graph."
   With no table in the address the tab opens on the example incident in the incidents table.
+  When the world has no example, or the example cannot be read, it opens on the incidents table with no row chosen; the Overview shows that error, so it never blocks this tab.
 - **Graph.** Left: "Find a record by id" with an Open button, then the kinds of record with their counts; choosing a kind opens a sample record of it.
   Middle: the chosen record and its neighbours one step out, drawn with the record on the left and a box per neighbour on the right, each line tagged with its link and an incoming link drawn with its arrow back at the record; the drawing is listed in words for a screen reader.
   More than four neighbours of one kind of link and direction are one box with a count ("6 support cases"); choosing it lists them in the right column with a search box, up to 100, and "Back to" the record.
   Right: where the record came from (table and row, with "See its table row"), its links in words grouped by which approaches may follow them, and its fields.
-  An id no record has says "No record with that id."
+  An id no record has says "No record with that id.", announced to a screen reader.
+  With no record in the address the tab opens on a sample of the kind the address names (`kind=<label>`), else on the example incident; when neither can be found or read it shows the prompt to find a record or choose a kind.
+  When a record cannot be read, the error and its retry show in the middle and the right column stays empty.
   The Graph tab's "About this" holds "How the graph is built" and the "Kinds of link" table with its "Made from" column (D-101, D-113) and its filter by B · Graph, C · Graph + Ontology or all links.
 - **Concepts.** Left: the concept tree, an ARIA tree that is one tab stop and moves with the arrow keys, with a search box.
   Middle: the chosen concept: its definition, names in English, Greek, German and Czech, other names, the concept it sits under, the concepts under it and how many country terms it is matched to.
   Right: each country's terms for it by market, with a filter by country ("All markets" or one), or a note that no term points at it directly.
-- **Stories.** Left: the planted stories, each with its strength.
-  Middle: the chosen story's title, id, plain description (from the catalogue, `ScenarioOut.description`), strength explained, noise level and the rows it added by table; a story not in the active world says "Not planted in this world".
+- **Stories.** Left: the planted stories, each with its strength ("strength 0.8").
+  Middle: the chosen story's title, id, plain description (from the catalogue, `ScenarioOut.description`), strength and noise level each explained in a line (noise level is how much ordinary activity surrounds the signal, as the story was designed), and the rows it added by table; a story not in the active world says "Not planted in this world".
   Right: "Read the full story" and "See its questions", both in Help.
   There is no link to the rows a story planted, because only the truth ledger names them and pointing at them would give the answer away.
 
