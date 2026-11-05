@@ -70,6 +70,7 @@ export const scoring: ChapterCopy = {
     'Kind of question',
     'Pair',
     'Point',
+    'Precision',
     'Question group',
     'Repeat',
     'Starting record',

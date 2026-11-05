@@ -57,6 +57,13 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'Called a pipeline in the code and in the run record (A, B and C).',
   },
   {
+    term: 'Benchmark',
+    meaning:
+      'A fixed test that several systems take under the same conditions, so that their scores can be compared. Here it is the question bank with its answer keys.',
+    technical:
+      'The benchmark runner (backend/app/evaluation/runner.py) puts one frozen bank to A, B and C, scores every repeat and writes the run under data/evaluation/runs/.',
+  },
+  {
     term: 'Citation',
     meaning:
       'A number in an answer, such as [2], that points to the piece of evidence a statement comes from.',
@@ -237,9 +244,16 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'Recorded as generation_model_family and judge_model_family; an official run refuses to start when the two are equal.',
   },
   {
+    term: 'Multi-hop',
+    meaning:
+      'A question whose answer needs several linked records, followed one link at a time, such as from an incident to its platform version and on to other incidents.',
+    technical:
+      'The H1 kind of question: bank questions L05 to L08, which the depth sweep also asks.',
+  },
+  {
     term: 'Official run',
     meaning:
-      'A run over the whole question bank whose scores count as a result: every question asked of several worlds, and scored the same way for every approach.',
+      'A run over the whole question bank whose scores count as a result: every question asked in several copies of the made-up company, and scored the same way for every approach.',
     technical:
       'Run kind official over the whole bank, with one repeat unless --repeats N asks more (D-097), and a gateway answer model and judge (make run-benchmark), on the six unseen world seeds 2029 to 2034 (D-091).',
   },
@@ -268,6 +282,13 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
     term: 'Point',
     meaning:
       'One hundredth of the 0 to 1 scale: a difference of 0.05 is 5 points.',
+  },
+  {
+    term: 'Precision',
+    meaning:
+      'The share of the chosen evidence that states a needed fact. It is shown but not tested, because it depends on how many pieces fit the budget.',
+    technical:
+      'The share of selected items that carry a claim, 0 for an empty selection; descriptive, like F1, and outside the tested family (backend/app/evaluation/scoring.py).',
   },
   {
     term: 'Question bank',
@@ -322,6 +343,20 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
       'One of the times a question is asked. An official run now asks each question once unless told to ask more; a run can ask more than once, to see whether a model’s answer varies.',
     technical:
       'An official run takes one repeat unless --repeats N asks more (D-097); a failed repeat has no score and is left out of every metric.',
+  },
+  {
+    term: 'Retrieval',
+    meaning:
+      'Finding the evidence for a question. Each approach does it in its own way, before the answer model writes the answer.',
+    technical:
+      'The pipelines in backend/app/retrieval/: standard/ for A and graph/ for B and C. No retrieval module may load the truth ledger.',
+  },
+  {
+    term: 'Run',
+    meaning:
+      'One full pass of the test: the chosen questions put to each approach, with every answer scored and stored.',
+    technical:
+      'Stored under data/evaluation/runs/<run id>/ with summary.json and results.json. Its kind is smoke (quick check), dev, official or sweep (RUN_KINDS in backend/app/evaluation/runner.py).',
   },
   {
     term: 'Starting point',
@@ -385,7 +420,7 @@ export const GLOSSARY_TERMS: readonly GlossaryTerm[] = [
   {
     term: 'World',
     meaning:
-      'One copy of the made-up company, built by the system. Every world has the same markets and kinds of records, but the details differ. The same settings build the same world again.',
+      'One copy of the made-up company, its tables, documents and planted stories, built by a program. Worlds share their markets and kinds of records but differ in detail. The same settings rebuild it exactly.',
     technical:
       'Fixed by its profile, world seed and scenario seed, recorded in its _manifest.json; the official worlds are seeds 2029 to 2034.',
   },

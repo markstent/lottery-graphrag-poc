@@ -6,6 +6,8 @@ import { Chapter } from './chapter'
 import { DIAGRAM_NAMES, type Block, type ChapterId } from './chapters'
 import { CHAPTER_COPY } from './copy'
 import { HelpDataContext, type HelpData } from './help-data'
+import { withoutTermHelp } from './help.fixtures'
+import { glossaryEntry } from '../../copy/glossary'
 
 afterEach(cleanup)
 
@@ -64,6 +66,103 @@ function showEvidence(
   )
   return screen.getByRole('region', { name: '5. How evidence is chosen' })
 }
+
+/** Every piece of Plain body text: paragraphs, list items, key lines and steps, inside "More detail" too. */
+const bodyTexts = (blocks: readonly Block[]): string[] =>
+  blocks.flatMap((block): string[] => {
+    if (typeof block === 'string') return [block]
+    if (!('kind' in block)) return [...block]
+    if (block.kind === 'key') return [block.text]
+    if (block.kind === 'steps') return [...block.items]
+    if (block.kind === 'more') return bodyTexts(block.blocks)
+    return []
+  })
+
+/** Every word a reader can see in Plain blocks: body text, headings and "More detail" summaries. */
+const plainWords = (blocks: readonly Block[]): string[] =>
+  blocks.flatMap((block): string[] => {
+    if (typeof block !== 'string' && 'kind' in block) {
+      if (block.kind === 'heading') return [block.text]
+      if (block.kind === 'more')
+        return [block.summary, ...plainWords(block.blocks)]
+    }
+    return bodyTexts([block])
+  })
+
+const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length
+
+const isKind = (block: Block | undefined, kind: string) =>
+  block !== undefined &&
+  typeof block !== 'string' &&
+  'kind' in block &&
+  block.kind === kind
+
+const WORLD = /\bworlds?\b/i
+
+describe('chapters 1 to 3 read in short sections', () => {
+  it('chapter 1 opens with the exam sentence, a key line and the picture of the test', () => {
+    const [first, second, third] = CHAPTER_COPY.why.plain
+    expect(first).toMatch(/^This is a test with an answer key, like an exam\./)
+    expect(isKind(second, 'key')).toBe(true)
+    expect(third).toEqual({ kind: 'diagram', name: 'test' })
+  })
+
+  it('chapter 2 says what a world is first, with a key line and the picture of a world', () => {
+    const plain = CHAPTER_COPY.company.plain
+    const headings = plain.flatMap((block, index) =>
+      isKind(block, 'heading') ? [index] : [],
+    )
+    const [at, next] = headings
+    expect(plain[at!]).toEqual({ kind: 'heading', text: 'What a world is' })
+    // Nothing before the heading uses the word.
+    expect(plainWords(plain.slice(0, at)).join(' ')).not.toMatch(WORLD)
+    const section = plain.slice(at! + 1, next)
+    expect(section[0]).toMatch(/^A world is /)
+    expect(section.some((block) => isKind(block, 'key'))).toBe(true)
+    expect(section).toContainEqual({ kind: 'diagram', name: 'world' })
+  })
+
+  it('no Plain text before chapter 2 uses the word world, nor the help of a term it marks', () => {
+    const { plain, plainHint, terms = [] } = CHAPTER_COPY.why
+    const own = [...plainWords(plain), plainHint ?? ''].join(' ')
+    expect(own).not.toMatch(WORLD)
+    for (const term of terms)
+      expect(glossaryEntry(term)!.meaning, term).not.toMatch(WORLD)
+
+    // What chapter 1 draws at Plain, its pictures included.
+    render(
+      <HelpDataContext.Provider value={helpData('plain', null)}>
+        <Chapter id="why" copy={CHAPTER_COPY.why} />
+      </HelpDataContext.Provider>,
+    )
+    const chapter = screen.getByRole('region', { name: '1. Why this exists' })
+    expect(withoutTermHelp(chapter).textContent).not.toMatch(WORLD)
+    for (const picture of within(chapter).getAllByRole('img'))
+      expect(picture.getAttribute('aria-label')).not.toMatch(WORLD)
+  })
+
+  it('every Plain paragraph in chapters 1 to 3 is at most 60 words, and each chapter has headed sections', () => {
+    for (const id of ['why', 'company', 'stories'] as const) {
+      const { plain } = CHAPTER_COPY[id]
+      for (const text of bodyTexts(plain))
+        expect(wordCount(text), `${id}: ${text}`).toBeLessThanOrEqual(60)
+      expect(
+        plain.filter((block) => isKind(block, 'heading')).length,
+        id,
+      ).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('keeps the longer detail of chapters 1 to 3 at Technical in headed sections', () => {
+    for (const id of ['why', 'company', 'stories'] as const) {
+      const { technical } = CHAPTER_COPY[id]
+      expect(
+        technical.filter((block) => isKind(block, 'heading')).length,
+        id,
+      ).toBeGreaterThanOrEqual(3)
+    }
+  })
+})
 
 describe('chapters 1 to 6', () => {
   it('every chapter 1-6 has plain and technical blocks', () => {

@@ -259,10 +259,11 @@ describe('Help', () => {
     expect(withoutTermHelp(why)).toHaveTextContent(
       /text search \(A\) got 42 of every 100 needed facts to the answer model, the graph \(B\) 45 and the graph with the ontology \(C\) 57/,
     )
-    // A newcomer is told what a world is where the result first uses the word.
+    // A newcomer meets the word world first in chapter 2, where it is explained.
     expect(withoutTermHelp(why)).toHaveTextContent(
-      /copies of the made-up company, which we call worlds/,
+      /six new copies of the made-up company/,
     )
+    expect(withoutTermHelp(why)).not.toHaveTextContent(/\bworlds?\b/i)
     expect(withoutTermHelp(why)).not.toHaveTextContent(/v0\.2|old method/)
   })
 

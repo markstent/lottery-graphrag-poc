@@ -30,16 +30,32 @@ export const PLAIN_STORIES: Readonly<Record<string, string>> = {
 
 export const stories: ChapterCopy = {
   plain: [
-    'A planted story is a pattern put into the data on purpose. For example, one version of a platform breaks checkout in three countries. Because it was planted, the correct answer is known before any approach runs.',
-    'There are eight. Each tests a different kind of question. Some need links followed across several records. Two need the shared dictionary, the ontology, to match things across countries. One sets an out-of-date document against the current record. Each story has one question in the question bank, the fixed list of test questions (Questions and answers).',
-    'What was planted is called the hidden truth. It is kept where no approach can see it. Only the scoring reads it, to write the answer keys and to mark the answers. Help is the one screen that shows it, on the story cards at the Technical level.',
-    'Each card tells one story as it was planted in world 2026. A world is one copy of the made-up company, and world 2026 is the copy the questions in Questions and answers use. Each card says what was planted, where, and what a correct answer must find. The cross-market platform incident is the worked example.',
+    'A planted story is a pattern put into the data on purpose, such as one version of a platform breaking checkout in three countries.',
+    {
+      kind: 'key',
+      text: 'Because each story was planted, its correct answer is known before any approach runs.',
+    },
+    { kind: 'heading', text: 'Eight stories, eight kinds of question' },
+    'There are eight. Each tests a different kind of question:',
+    [
+      'some need links followed across several records;',
+      'two need the shared dictionary, the ontology, to match things across countries;',
+      'one sets an out-of-date document against the current record.',
+    ],
+    'Each story has one question in the question bank, the fixed list of test questions (Questions and answers).',
+    { kind: 'heading', text: 'The hidden truth' },
+    'What was planted is called the hidden truth. It is kept where no approach can see it. Only the scoring reads it, to write the answer keys and to mark the answers.',
+    'Help is the one screen that shows it, on the story cards at the Technical level.',
+    { kind: 'heading', text: 'The story cards' },
+    'Each card tells one story as it was planted in world 2026, the world the questions in Questions and answers use. It says what was planted, where, and what a correct answer must find. The platform incident across three countries is the worked example.',
     { kind: 'component', name: 'stories' },
   ],
   plainHint:
     'Choose Technical at the top of Help to see each hidden truth exactly as the scoring holds it, with the reference codes of its records.',
   technical: [
+    { kind: 'heading', text: 'The engine' },
     'The engine is backend/app/scenarios/. Eight scenarios are enabled in catalogue.py, each with an injector that plant.py maps to it. engine.py runs them in catalogue order, each from its own random stream keyed by the scenario seed and the scenario id, so one plant does not shift another. Seven more (SCN-004, 005, 006, 008, 012, 013 and 014) are registered with enabled=False and have no injector, and no bank question depends on them.',
+    { kind: 'heading', text: 'The signals each story leaves' },
     'The signals each scenario leaves in the data (docs/scenarios.md and the injectors):',
     [
       "SCN-001, app release conversion failure: one market's app release breaks checkout for one device family. The cohort's sessions abandon or fail, support contacts rise, and an incident and a release note follow.",
@@ -54,8 +70,11 @@ export const stories: ChapterCopy = {
     'SCN-010 and SCN-011 were added for the ontology: the local names differ in each market, so the pattern is visible only through the shared concept. SCN-007 and SCN-009 run on platforms and payment providers, which are shared across markets, so they are graph stories.',
     { kind: 'heading', text: 'Strength and noise' },
     "Strength (0.2 subtle, 0.5 moderate, 0.8 strong, 1.0 obvious) scales how many rows are planted: the larger of a fixed minimum and share × strength × the market's daily volume (backend/app/scenarios/planter.py). Five scenarios run at 0.8 and SCN-009, SCN-010 and SCN-011 at 0.5. The noise level (low or moderate) is a label in the catalogue, recorded in the manifest and the ledger; no injector reads it. The noise around a plant is the generated world itself, because planted rows sit among ordinary rows of the same shape. Data Model's Stories tab lists each plant's strength, noise level and row counts in the loaded world.",
+    { kind: 'heading', text: 'What keeps a plant from showing' },
     'Rules that keep a plant from showing by its form: targets (markets, releases, providers, mechanics, segments, games) are drawn from the scenario seed among eligible candidates (D-016); a planted row takes the next id in its table and carries no scenario marker (D-014); injectors do not edit the daily KPIs, which are derived after planting (D-015); planted documents take the shapes of ordinary documents and do not name their sibling incidents; and failing sessions and complaints share one shape across scenarios.',
+    { kind: 'heading', text: 'The truth ledger' },
     "The truth ledger records what was planted. backend/app/scenarios/ledger.py writes it once per generation (version 2): data/truth/ledger.json for world 2026 and data/truth/dev-seed<seed>.json for 2027 and 2028, under schemas/benchmark/truth-ledger.schema.json. For each scenario it holds the strength and noise level, the start date and duration, the affected markets, games and segments, the expected signals, the record ids that carry the truth, and the scenario's own answer fields with the planted ids per table. The bank grounds the eight planted questions (L15 to L22) from the ledger alone, so their expected answers and claims come from nothing else.",
+    { kind: 'heading', text: 'The isolation rule' },
     'The isolation rule: retrieval code never imports, queries or reads the ledger (AGENTS.md), and only backend/app/evaluation/truth_ledger.py loads it. backend/tests/test_truth_ledger_isolation.py enforces this:',
     [
       'no module in retrieval, api, datasets, graph, ontology, scenarios, config, events, observability, persistence or models, nor lab.py, imports app.evaluation or names the ledger path;',
@@ -64,6 +83,7 @@ export const stories: ChapterCopy = {
       'the scenario package writes the ledger but does not import its loader;',
       "the manifest of a generated world names none of the ledger's fields.",
     ],
+    { kind: 'heading', text: 'On the story cards' },
     "The hidden truths on the story cards come from GET /api/v1/benchmarks/questions, which reads the evaluator's output after the fact. At this level each card shows its scenario id and that hidden truth verbatim, after the plain story, and the worked example shows its question and answer key as the bank holds them; at Plain the answer key writes its market codes as countries.",
   ],
   terms: [

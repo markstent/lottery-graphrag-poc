@@ -59,11 +59,16 @@ function showRegister(level: HelpData['level']) {
   return screen.getByRole('table', { name: 'Assumptions and limits' })
 }
 
-/** Every string a list of blocks holds: paragraphs and list items. */
+/** Every string a list of blocks holds as body text: paragraphs, list items, key lines and steps, inside "More detail" too. */
 const strings = (blocks: readonly Block[]): string[] =>
-  blocks.flatMap((block) =>
-    typeof block === 'string' ? [block] : 'kind' in block ? [] : [...block],
-  )
+  blocks.flatMap((block): string[] => {
+    if (typeof block === 'string') return [block]
+    if (!('kind' in block)) return [...block]
+    if (block.kind === 'key') return [block.text]
+    if (block.kind === 'steps') return [...block.items]
+    if (block.kind === 'more') return strings(block.blocks)
+    return []
+  })
 
 /** All the text of a chapter that Help writes itself, at both levels, with the data its widgets show. */
 function chapterText(id: ChapterId): string {
