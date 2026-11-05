@@ -26,7 +26,7 @@ const DESTINATIONS = [
     name: 'Data Model',
     hash: '#/data-model',
     purpose:
-      'What the warehouse, the graph and the ontology look like, with live counts and sample rows',
+      'What the warehouse, the graph and the ontology look like, how they fit together, and one real record followed through all three, with live counts',
   },
   {
     name: 'Architecture',

@@ -275,7 +275,7 @@ describe('Tables tab', () => {
       await screen.findByRole('button', { name: 'About this' }),
     )
     expect(
-      await screen.findByRole('heading', { name: 'What the warehouse is' }),
+      await screen.findByRole('heading', { name: 'What the tables are' }),
     ).toBeVisible()
   })
 })

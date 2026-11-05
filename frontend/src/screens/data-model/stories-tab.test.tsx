@@ -37,7 +37,7 @@ describe('StoriesTab', () => {
     })
     expect(SCENARIOS).toHaveLength(8)
     expect(first).toHaveAttribute('aria-pressed', 'true')
-    expect(first).toHaveTextContent('0.8')
+    expect(first).toHaveTextContent('strength 0.8')
     expect(
       screen
         .getAllByRole('button')
@@ -61,6 +61,11 @@ describe('StoriesTab', () => {
       ),
     ).toBeVisible()
     expect(within(middle).getByText('Noise level')).toBeVisible()
+    expect(
+      within(middle).getByText(
+        'How much ordinary activity surrounds the signal, as the story was designed.',
+      ),
+    ).toBeVisible()
     const rows = within(middle).getByRole('list', { name: 'Rows added' })
     expect(within(rows).getAllByRole('listitem').length).toBeGreaterThan(0)
   })

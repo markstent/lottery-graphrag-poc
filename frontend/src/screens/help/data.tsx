@@ -2,6 +2,11 @@ import { hrefFor } from '../../app/router'
 
 const TOUR = [
   {
+    tab: 'overview',
+    name: 'Overview',
+    line: 'Where the screen opens: the three layers side by side, and one real record followed through all of them.',
+  },
+  {
     tab: 'tables',
     name: 'Tables',
     line: 'The tables of players, tickets, games, incidents and documents, with how many records each holds.',

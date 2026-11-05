@@ -54,6 +54,10 @@ function Planted({ scenario }: { scenario: Scenario }) {
         <dt className="text-text-muted">Noise level</dt>
         <dd className="text-text-primary">
           {scenario.noise_level ?? 'not set'}
+          <span className="block text-text-secondary">
+            How much ordinary activity surrounds the signal, as the story was
+            designed.
+          </span>
         </dd>
       </dl>
       <div className="space-y-1">
@@ -136,7 +140,8 @@ export function StoriesTab({ params }: { params: URLSearchParams }) {
               items: load.data.map((s) => ({
                 id: s.scenario_id,
                 title: s.title,
-                detail: s.strength === null ? undefined : String(s.strength),
+                detail:
+                  s.strength === null ? undefined : `strength ${s.strength}`,
               })),
             },
           ]}

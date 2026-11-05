@@ -35,8 +35,9 @@
  * the same day (D-114) for the way-finding the owner asked for, so a reader
  * can see what to click: three steps on each tab, a trail and a click cue.
  * It is 3,900 since 2026-11-05 (D-115), for the Data Model redesign: the
- * Overview tab and an "About this" for each of the five tabs, in place of the
- * old panels.
+ * Overview tab and an "About this" drawer for each of the four explorer tabs
+ * (Tables, Graph, Concepts and Stories; the Overview has none), in place of
+ * the old panels.
  */
 export const OUTSIDE_HELP_WORD_CAP = 3900
 

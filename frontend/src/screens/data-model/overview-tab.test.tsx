@@ -128,7 +128,7 @@ describe('OverviewTab', () => {
     ).toBeVisible()
     expect(
       await within(card('One dictionary for four countries')).findByText(
-        '42 concepts · 117 country codes',
+        '42 concepts · 117 codes',
       ),
     ).toBeVisible()
   })

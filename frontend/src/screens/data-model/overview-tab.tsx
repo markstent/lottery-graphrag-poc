@@ -504,7 +504,7 @@ export function OverviewTab({ scale }: { scale: number }) {
                   Object.values(c.binding_counts).reduce((a, b) => a + b, 0),
                 0,
               ),
-              'country code',
+              'code',
             )}`
           }
           explore="Explore concepts"

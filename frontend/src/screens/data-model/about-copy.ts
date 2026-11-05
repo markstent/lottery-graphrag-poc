@@ -17,7 +17,7 @@ export interface AboutCopy {
 }
 
 export const WAREHOUSE_ABOUT: AboutCopy = {
-  title: 'What the warehouse is',
+  title: 'What the tables are',
   groups: [
     {
       heading: 'What is in it',
