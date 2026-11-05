@@ -103,7 +103,13 @@ export type DiagramName = (typeof DIAGRAM_NAMES)[number]
 
 /** Live parts of a chapter that plain text cannot hold: they read the bank, the newest run or the API. */
 export type ComponentName =
-  'dataTour' | 'stories' | 'register' | 'questions' | 'glossary' | 'running'
+  | 'dataTour'
+  | 'stories'
+  | 'register'
+  | 'questions'
+  | 'glossary'
+  | 'running'
+  | 'outcomes'
 
 /** A table of text a chapter states: a caption read by a screen reader, its column names and its rows, the first cell of each row naming it. */
 export interface TableBlock {

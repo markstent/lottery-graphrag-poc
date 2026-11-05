@@ -5,9 +5,15 @@
 
 import { useRef, useState } from 'react'
 
-import { getBenchmark, listBenchmarks, type Schemas } from '../../api/client'
+import {
+  getBenchmark,
+  getBenchmarkOutcomes,
+  listBenchmarks,
+  type Schemas,
+} from '../../api/client'
 import { hrefFor, useRoute } from '../../app/router'
 import { useLoad } from '../../app/use-load'
+import { OutcomeBars } from '../../components/outcome-bars'
 import { Panel } from '../../components/panel'
 import { filterFromParams, paramsWithFilter } from '../../results/questions'
 import { recordedNumber } from '../../results/reproducibility'
@@ -36,6 +42,10 @@ function RunView({ run }: { run: Run }) {
     (signal) => getBenchmark(run.run_id, signal),
     `run:${run.run_id}`,
   )
+  const outcomes = useLoad(
+    (signal) => getBenchmarkOutcomes(run.run_id, signal),
+    `outcomes:${run.run_id}`,
+  )
   const kind = standing(run)
   const ready = load.status === 'ready'
   const grounded = ready ? groundednessRows(load.data.summary) : null
@@ -62,6 +72,18 @@ function RunView({ run }: { run: Run }) {
       >
         {ready && <Verdict run={run} summary={load.data.summary} kind={kind} />}
       </Panel>
+      {ready && (
+        <Panel
+          title="Outcomes"
+          state={outcomes.status}
+          error={outcomes.status === 'error' ? outcomes.error : undefined}
+          onRetry={outcomes.retry}
+        >
+          {outcomes.status === 'ready' && (
+            <OutcomeBars outcomes={outcomes.data} />
+          )}
+        </Panel>
+      )}
       {ready && kind !== 'quick-check' && (
         <>
           <Panel title="Scores by kind of question" state="ready">

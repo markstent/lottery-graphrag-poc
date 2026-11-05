@@ -24,6 +24,7 @@ import { TestDiagram } from './diagrams/test-diagram'
 import { WorldDiagram } from './diagrams/world-diagram'
 import { Glossary } from './glossary'
 import { useHelpData } from './help-data'
+import { HelpOutcomes } from './outcomes'
 import { Questions } from './questions'
 import { Running } from './running'
 import { Register } from './register'
@@ -58,6 +59,7 @@ const COMPONENTS: Record<ComponentName, ReactElement> = {
   questions: <Questions />,
   glossary: <Glossary />,
   running: <Running />,
+  outcomes: <HelpOutcomes />,
 }
 
 const CELL = 'border-b border-hairline px-3 py-2 align-top'

@@ -37,9 +37,11 @@
  * It is 3,900 since 2026-11-05 (D-115), for the Data Model redesign: the
  * Overview tab and an "About this" drawer for each of the four explorer tabs
  * (Tables, Graph, Concepts and Stories; the Overview has none), in place of
- * the old panels.
+ * the old panels. It is 4,050 since 2026-11-05 (D-116), for the outcome
+ * views on Results (evidence found and answers by score, with their legend,
+ * caption and table twins), which Help's scoring chapter also shows.
  */
-export const OUTSIDE_HELP_WORD_CAP = 3900
+export const OUTSIDE_HELP_WORD_CAP = 4050
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length
