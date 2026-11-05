@@ -82,7 +82,13 @@ function evidenceText(row: EvidenceRow): string {
   return `${name}: ${percent(row.found)} of the needed facts found, ${percent(row.missed)} missed. ${row.foundFacts} of ${needed} needed facts found (added up over all questions).`
 }
 
-function EvidenceFigure({ rows }: { rows: EvidenceRow[] }) {
+function EvidenceFigure({
+  rows,
+  badge,
+}: {
+  rows: EvidenceRow[]
+  badge?: string
+}) {
   const table = (
     <DataTable
       caption="Evidence found and missed, per approach"
@@ -108,6 +114,7 @@ function EvidenceFigure({ rows }: { rows: EvidenceRow[] }) {
   return (
     <ChartFigure
       title="Evidence found"
+      badge={badge}
       description="Of the facts each question needed, the share each approach found and missed, averaged over questions. A fact counts as found when any chosen record or passage states it. Facts found and missed in the table are added up across all questions, so they can differ a little from the shares. Extra records state no needed fact."
       empty={rows.length === 0}
       legend={
@@ -169,7 +176,7 @@ function answerText(row: AnswerRow): string {
   return `${pipeline(row.id).name}: ${parts.join(', ')}.`
 }
 
-function AnswerFigure({ rows }: { rows: AnswerRow[] }) {
+function AnswerFigure({ rows, badge }: { rows: AnswerRow[]; badge?: string }) {
   const notScored = rows.filter((row) => row.notScored > 0)
   const table = (
     <DataTable
@@ -200,6 +207,7 @@ function AnswerFigure({ rows }: { rows: AnswerRow[] }) {
   return (
     <ChartFigure
       title="Answers by score"
+      badge={badge}
       description="Each answer is right (score 1), partly right (above 0, below 1) or wrong (0). An answer can say the sources could not answer and still score, because it named part of the answer key on the way. The hatched part of a band counts those answers."
       empty={rows.length === 0}
       legend={
@@ -273,13 +281,20 @@ function AnswerFigure({ rows }: { rows: AnswerRow[] }) {
   )
 }
 
-export function OutcomeBars({ outcomes }: { outcomes: Outcomes }) {
+export function OutcomeBars({
+  outcomes,
+  badge,
+}: {
+  outcomes: Outcomes
+  /** The run's standing when it is not a result, shown on each figure. */
+  badge?: string
+}) {
   if (!outcomes.recorded)
     return <p className="text-text-secondary">Not recorded for this run.</p>
   return (
     <div className="flex flex-col gap-10">
-      <EvidenceFigure rows={evidenceRows(outcomes)} />
-      <AnswerFigure rows={answerRows(outcomes)} />
+      <EvidenceFigure rows={evidenceRows(outcomes)} badge={badge} />
+      <AnswerFigure rows={answerRows(outcomes)} badge={badge} />
     </div>
   )
 }

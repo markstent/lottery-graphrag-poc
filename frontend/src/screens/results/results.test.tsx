@@ -292,6 +292,9 @@ describe('Results', () => {
     expect(screen.queryByRole('figure')).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByText(/evidence recall/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Outcomes' }),
+    ).not.toBeInTheDocument()
   })
 
   it('subset run is labelled beside its numbers', async () => {
@@ -332,6 +335,7 @@ describe('Results', () => {
         'dev',
         OFFICIAL,
       ),
+      '/api/v1/benchmarks/fixture-dev/outcomes': OUTCOMES,
     })
     const first = open()
     expect(await screen.findByRole('combobox', { name: 'Run' })).toHaveValue(
@@ -344,6 +348,13 @@ describe('Results', () => {
     ).toBeVisible()
     await screen.findAllByRole('figure')
     for (const figure of scoreFigures())
+      expect(
+        within(figure).getByText('Development run, not a result'),
+      ).toBeVisible()
+    const outcomes = await screen.findByRole('region', { name: 'Outcomes' })
+    const outcomeFigures = await within(outcomes).findAllByRole('figure')
+    expect(outcomeFigures).toHaveLength(2)
+    for (const figure of outcomeFigures)
       expect(
         within(figure).getByText('Development run, not a result'),
       ).toBeVisible()

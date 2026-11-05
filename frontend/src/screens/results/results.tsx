@@ -72,7 +72,7 @@ function RunView({ run }: { run: Run }) {
       >
         {ready && <Verdict run={run} summary={load.data.summary} kind={kind} />}
       </Panel>
-      {ready && (
+      {ready && kind !== 'quick-check' && (
         <Panel
           title="Outcomes"
           state={outcomes.status}
@@ -80,7 +80,7 @@ function RunView({ run }: { run: Run }) {
           onRetry={outcomes.retry}
         >
           {outcomes.status === 'ready' && (
-            <OutcomeBars outcomes={outcomes.data} />
+            <OutcomeBars outcomes={outcomes.data} badge={badge} />
           )}
         </Panel>
       )}
