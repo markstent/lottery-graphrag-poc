@@ -68,12 +68,11 @@ const COPY_ATTRIBUTES = new Set([
 ])
 
 /**
- * Spec 7.6 names the Data Model tab "Ontology", which is the one place that
- * word stands alone as a name. It is the concept, not the v1 pipeline.
+ * Copy allowed to break a rule in one file, where it means something else.
+ * Spec 7.6 named the Data Model tab "Ontology", the one such case, until
+ * D-115 renamed the tab "Concepts"; none is needed now.
  */
-const NAMED_EXCEPTIONS = [
-  { file: 'screens/data-model/data-model.tsx', text: 'Ontology' },
-] as const
+const NAMED_EXCEPTIONS: readonly { file: string; text: string }[] = []
 
 /** Attributes read out or kept as a fallback, never drawn: they do not count toward the budget. */
 const NOT_SHOWN = /^(?:aria-.*|alt)$/

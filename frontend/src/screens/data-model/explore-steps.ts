@@ -1,8 +1,4 @@
-/** The steps of each Data Model tab and the look of a next-step link (D-114). */
-
-/** The look of a link that takes the reader on to the next step. */
-export const NEXT_STEP =
-  'inline-flex items-center gap-1.5 rounded-chip bg-text-primary px-4 py-2 text-sm font-semibold text-surface hover:opacity-90'
+/** The steps of each Data Model tab (D-114). */
 
 export const STEPS = {
   warehouse: [

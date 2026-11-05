@@ -25,8 +25,14 @@ const renderAt = (hash: string) => {
 
 afterEach(() => vi.unstubAllGlobals())
 
+const current = (name: string) =>
+  expect(screen.getByRole('link', { name })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+
 describe('DataModel', () => {
-  it('opens on the Warehouse tab, described by the destination purpose', async () => {
+  it('opens on the Overview tab, described by the destination purpose', async () => {
     stubApi(ROUTES)
     renderAt('#/data-model')
     expect(screen.getByRole('heading', { name: 'Data Model' })).toBeVisible()
@@ -35,16 +41,14 @@ describe('DataModel', () => {
         /What the warehouse, the graph and the ontology look like/,
       ),
     ).toBeVisible()
+    current('Overview')
+    // Until the Overview is built (Task 5), it shows the tables.
     expect(
       await screen.findByRole('button', { name: 'games, 120 rows' }),
     ).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Warehouse' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
   })
 
-  it('lists its tabs as links that keep the tab in the address', () => {
+  it('lists its five tabs, in order, as links that keep the tab in the address', () => {
     stubApi(ROUTES)
     renderAt('#/data-model')
     const nav = screen.getByRole('navigation', { name: 'Data Model sections' })
@@ -52,10 +56,11 @@ describe('DataModel', () => {
     expect(
       [...links].map((a) => [a.textContent, a.getAttribute('href')]),
     ).toEqual([
-      ['Warehouse', '#/data-model?tab=warehouse'],
+      ['Overview', '#/data-model?tab=overview'],
+      ['Tables', '#/data-model?tab=tables'],
       ['Graph', '#/data-model?tab=graph'],
-      ['Ontology', '#/data-model?tab=ontology'],
-      ['Scenarios', '#/data-model?tab=scenarios'],
+      ['Concepts', '#/data-model?tab=concepts'],
+      ['Stories', '#/data-model?tab=stories'],
     ])
   })
 
@@ -65,35 +70,53 @@ describe('DataModel', () => {
     expect(
       await screen.findByRole('button', { name: 'game, 120 records' }),
     ).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Graph' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-    expect(screen.getByRole('link', { name: 'Warehouse' })).not.toHaveAttribute(
+    current('Graph')
+    expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute(
       'aria-current',
     )
   })
 
-  it('falls back to the Warehouse for a tab it does not have', async () => {
+  it('falls back to the Overview for a tab it does not have', async () => {
     stubApi(ROUTES)
     renderAt('#/data-model?tab=nonsense')
+    current('Overview')
     expect(
       await screen.findByRole('button', { name: 'games, 120 rows' }),
     ).toBeVisible()
   })
 
-  it('opens the Ontology and Scenarios tabs the address names', async () => {
+  it('opens Tables for the old warehouse address', async () => {
+    stubApi(ROUTES)
+    renderAt('#/data-model?tab=warehouse')
+    current('Tables')
+    expect(
+      await screen.findByRole('button', { name: 'games, 120 rows' }),
+    ).toBeVisible()
+  })
+
+  it('opens Concepts and Stories for the old ontology and scenarios addresses', async () => {
     stubOntology()
     renderAt('#/data-model?tab=ontology&concept=CONCEPT_NATIONAL_DRAW')
     expect((await screen.findAllByText('Αριθμολαχείο')).length).toBeGreaterThan(
       0,
     )
-    expect(screen.getByRole('link', { name: 'Ontology' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
+    current('Concepts')
     cleanup()
     renderAt('#/data-model?tab=scenarios')
     expect(await screen.findAllByRole('article')).toHaveLength(8)
+    current('Stories')
+  })
+
+  it('opens the Concepts and Stories tabs by their own ids', async () => {
+    stubOntology()
+    renderAt('#/data-model?tab=concepts&concept=CONCEPT_NATIONAL_DRAW')
+    expect((await screen.findAllByText('Αριθμολαχείο')).length).toBeGreaterThan(
+      0,
+    )
+    current('Concepts')
+    cleanup()
+    renderAt('#/data-model?tab=stories')
+    expect(await screen.findAllByRole('article')).toHaveLength(8)
+    current('Stories')
   })
 })

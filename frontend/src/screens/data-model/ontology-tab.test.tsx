@@ -191,7 +191,9 @@ describe('OntologyTab', () => {
     renderAt('&concept=CONCEPT_DIGITAL_CHANNEL')
     const card = await screen.findByRole('region', { name: 'Concept' })
     expect(
-      within(card).getByText('Matched to 2 country terms shared by every market'),
+      within(card).getByText(
+        'Matched to 2 country terms shared by every market',
+      ),
     ).toBeVisible()
     expect(screen.queryByRole('group', { name: 'Show terms from' })).toBeNull()
   })
