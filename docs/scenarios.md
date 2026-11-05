@@ -114,7 +114,7 @@ Scenarios are planted whenever a world is generated (`make generate-dev-data`).
 `--no-scenarios` generates a baseline world without them, and `--scenario-seed` sets the scenario seed, which defaults to 2026.
 In a benchmark run the scenario seed equals the world seed.
 
-The Scenarios tab of the Data Model screen lists each enabled scenario with its strength, noise level and planted row counts, read from the active dataset's manifest.
+The Stories tab of the Data Model screen lists each enabled scenario with its strength, noise level and planted row counts, read from the active dataset's manifest.
 A scenario that is not in the active world reads "Not planted in this world".
 The tab shows what was planted and never where, because the ledger is not read there.
 

@@ -66,7 +66,7 @@ export function Explorer({
   const [aboutOpen, setAboutOpen] = useState(false)
   return (
     <div className="space-y-4">
-      <div className="grid gap-6 lg:grid-cols-[minmax(14rem,1fr)_minmax(0,2.6fr)_minmax(18rem,1.2fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(14rem,1.15fr)_minmax(0,2.6fr)_minmax(18rem,1.2fr)]">
         <Column step={1} heading={steps[0]}>
           {list}
         </Column>

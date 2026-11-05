@@ -34,17 +34,11 @@
  * from, how to read the warehouse maps and the story cards; and to 3,500
  * the same day (D-114) for the way-finding the owner asked for, so a reader
  * can see what to click: three steps on each tab, a trail and a click cue.
- * The rise to 3,510 on 2026-11-05 is temporary, for the D-115 Data Model
- * redesign while its old and new views both exist, and so is the rise to
- * 3,850 the same day for the new Overview tab (its layer cards, the example
- * through the layers and the short notes on how each layer is built), and
- * the rise to 4,000 for the Tables tab, while the old explanation panels
- * they replace are still in the code; Task 9 of that plan sets the final
- * value. It is 4,100 for the Concepts and Stories tabs (D-115), a temporary
- * rise while the old tabs they replace are still in the code; Task 9 sets
- * the final value.
+ * It is 3,900 since 2026-11-05 (D-115), for the Data Model redesign: the
+ * Overview tab and an "About this" for each of the five tabs, in place of the
+ * old panels.
  */
-export const OUTSIDE_HELP_WORD_CAP = 4100
+export const OUTSIDE_HELP_WORD_CAP = 3900
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

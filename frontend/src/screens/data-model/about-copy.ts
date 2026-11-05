@@ -27,11 +27,11 @@ export const WAREHOUSE_ABOUT: AboutCopy = {
       ],
     },
     {
-      heading: 'How to read the maps',
+      heading: 'How to read this tab',
       points: [
-        'Each box is a table, with how many rows it has.',
-        'An arrow means a column in one table names a row in the other: a game names its family, so games point to game families.',
-        'Choose a table to see its rows.',
+        'The left column lists the tables by the system they come from, with how many rows each has.',
+        'Choose a table to see its rows in the middle, and a row to see it on the right as one record.',
+        'A value that names a row in another table is a link: choose it to go to that row.',
       ],
     },
     {
@@ -125,18 +125,11 @@ export const SCENARIOS_ABOUT: AboutCopy = {
       ],
     },
     {
-      heading: 'How to read a card',
+      heading: 'How to read this tab',
       points: [
-        'Strength: how clear the signal is, from 0.2 subtle to 1.0 obvious. A stronger story plants a bigger signal.',
-        'Noise level: how much ordinary activity surrounds the signal, as the story was designed.',
-        'Rows added: how many rows the story put into each table.',
-      ],
-    },
-    {
-      heading: 'Where to go next',
-      points: [
-        '"Read the story" tells what happened, in plain words.',
-        '"See its questions" lists the test questions that ask about it.',
+        'The left column lists the stories, each with its strength: how clear the signal is, from 0.2 subtle to 1.0 obvious.',
+        'The middle says what was planted: noise level is how much ordinary activity surrounds the signal, and rows added is how many rows the story put into each table.',
+        'The right column links to Help, which tells the full story and lists the test questions that ask about it.',
       ],
     },
   ],

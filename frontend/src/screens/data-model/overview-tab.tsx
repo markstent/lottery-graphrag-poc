@@ -191,7 +191,8 @@ function Step({
 }: {
   step: number
   heading: string
-  caption: string
+  /** Under the box; null leaves the row empty, so the three boxes stay aligned. */
+  caption: string | null
   children: ReactNode
 }) {
   return (
@@ -279,9 +280,11 @@ function Flow({
         step={3}
         heading="Shared concept"
         caption={
-          typeof code === 'string'
-            ? `Its type, ${code}, is matched to this concept, and so are the other countries' codes for it.`
-            : 'Its type is matched to this concept.'
+          example.concept === null
+            ? null
+            : typeof code === 'string'
+              ? `Its type, ${code}, is matched to this concept, and so are the other countries' codes for it.`
+              : 'Its type is matched to this concept.'
         }
       >
         {example.concept === null ? (

@@ -15,6 +15,7 @@ import {
   GRAPH_SCHEMA,
   GRAPH_STATS,
   graphNode,
+  EXAMPLE,
   neighboursOf,
   recordOf,
   rowsOf,
@@ -253,6 +254,7 @@ const ROUTES: Record<string, unknown> = {
   [`/api/v1/datasets/${DATASET_ID}/dictionary`]: DICTIONARY,
   '/api/v1/graph/schema': GRAPH_SCHEMA,
   '/api/v1/graph/stats': GRAPH_STATS,
+  '/api/v1/data-model/example': EXAMPLE,
 }
 
 const TABLES_PREFIX = `/api/v1/datasets/${DATASET_ID}/tables/`
@@ -277,12 +279,14 @@ const DATA_MODEL_PATHS = [
   '/api/v1/graph/schema',
   '/api/v1/ontology',
   '/api/v1/scenarios',
+  '/api/v1/data-model/example',
 ]
 
 /** What each Data Model route answers when the world has none. */
 const NONE: Record<string, unknown> = {
   '/api/v1/graph/schema': { ...GRAPH_SCHEMA, labels: [] },
   '/api/v1/ontology': { ...ONTOLOGY, concepts: [] },
+  '/api/v1/data-model/example': { incident_id: null },
 }
 
 const MEMBERS = /^\/api\/v1\/ontology\/concepts\/([^/]+)\/members$/
@@ -403,10 +407,10 @@ export async function mockApi(
       const id = decodeURIComponent(
         path.slice(NODE_PREFIX.length, -'/neighbours'.length),
       )
-      const limit = Number(
-        new URL(route.request().url()).searchParams.get('limit') ?? 25,
+      const answer = neighboursOf(
+        id,
+        new URL(route.request().url()).searchParams,
       )
-      const answer = neighboursOf(id, limit)
       return route.fulfill(json(answer.body, answer.status))
     }
     if (path.startsWith(NODE_PREFIX)) {

@@ -2,8 +2,8 @@ import { hrefFor } from '../../app/router'
 
 const TOUR = [
   {
-    tab: 'warehouse',
-    name: 'Warehouse',
+    tab: 'tables',
+    name: 'Tables',
     line: 'The tables of players, tickets, games, incidents and documents, with how many records each holds.',
   },
   {
@@ -12,13 +12,13 @@ const TOUR = [
     line: 'The same records as points joined by links, each pointing back to the row it came from.',
   },
   {
-    tab: 'ontology',
-    name: 'Ontology',
+    tab: 'concepts',
+    name: 'Concepts',
     line: 'The shared concepts, and the local term each market uses for them.',
   },
   {
-    tab: 'scenarios',
-    name: 'Scenarios',
+    tab: 'stories',
+    name: 'Stories',
     line: 'The stories planted in the data, with how strongly each is planted.',
   },
 ] as const

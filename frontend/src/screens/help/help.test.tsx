@@ -279,10 +279,10 @@ describe('Help', () => {
     await renderHelp('#/help?section=company')
     const links = within(section('2. The made-up company')).getAllByRole('link')
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
-      '#/data-model?tab=warehouse',
+      '#/data-model?tab=tables',
       '#/data-model?tab=graph',
-      '#/data-model?tab=ontology',
-      '#/data-model?tab=scenarios',
+      '#/data-model?tab=concepts',
+      '#/data-model?tab=stories',
     ])
   })
 })

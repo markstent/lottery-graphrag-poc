@@ -29,6 +29,7 @@ describe('Diagram', () => {
         label="Map"
         onSelect={() => undefined}
         scale={1}
+        titlePx={18}
       />,
     )
     expect(
@@ -50,6 +51,7 @@ describe('Diagram', () => {
         label="Map"
         onSelect={onSelect}
         scale={1}
+        titlePx={18}
       />,
     )
     const game = await screen.findByRole('button', { name: 'game, 120 nodes' })
@@ -69,6 +71,7 @@ describe('Diagram', () => {
         selected="b"
         onSelect={() => undefined}
         scale={1}
+        titlePx={18}
       />,
     )
     expect(

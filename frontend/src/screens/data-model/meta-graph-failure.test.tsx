@@ -20,6 +20,7 @@ describe('Diagram when the layout fails', () => {
         label="Map"
         onSelect={() => undefined}
         scale={1}
+        titlePx={18}
       />,
     )
     const alert = await screen.findByRole('alert')

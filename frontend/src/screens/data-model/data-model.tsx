@@ -68,7 +68,7 @@ function tabFor(id: string | null): Tab {
   return TABS.find((t) => t.id === resolved) ?? TABS[0]
 }
 
-/** Presentation mode raises the type in the maps by this factor. */
+/** Presentation mode raises the type in the drawings by this factor. */
 const PRESENTATION_SCALE = 1.4
 
 export function DataModel() {

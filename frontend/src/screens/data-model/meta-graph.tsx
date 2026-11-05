@@ -1,31 +1,24 @@
 /**
- * The two maps of Data Model, drawn by one component: the warehouse tables
- * (links between tables) and the graph's kinds of record (relationships
- * between kinds). Positions and routes come from the shared graph layout
- * (elkjs); this file only draws them as an SVG, with a button per node and the
- * links listed in words for anyone who cannot see the picture.
+ * The Graph tab's drawing of one record and its neighbours. Positions and
+ * routes come from the shared graph layout (elkjs); this file only draws them
+ * as an SVG, with a button per box and the links listed in words for anyone
+ * who cannot see the picture.
  */
 
 import { useId } from 'react'
 
 import { useLoad } from '../../app/use-load'
 import { Panel } from '../../components/panel'
-import { pipeline } from '../../design/pipelines'
 import { TOKENS } from '../../design/tokens'
 import { roundedPath } from '../../graph/edge-path'
 import { layoutGraph, type Layout, type Point } from '../../graph/layout'
-import type { DiagramEdge, DiagramNode, EdgeLook } from './model'
+import type { DiagramEdge, DiagramNode } from './model'
 
 /** Node height and label size at normal type; `scale` raises both for presentation. */
 const NODE_HEIGHT = 56
 const TITLE_FONT = 18
 const DETAIL_FONT = 16
 const TAG_FONT = 15
-/**
- * The smallest size, in px on screen, a node title is shrunk to when the page
- * is narrower than the drawing; below it the drawing scrolls sideways.
- */
-const MIN_TITLE_PX = 13
 /** Space around the drawing, in px. */
 const PAD = 16
 /** Average glyph width as a share of the font size, for sizing tags. */
@@ -42,11 +35,10 @@ interface DiagramProps {
   /** Presentation mode raises type and node height by this factor. */
   scale: number
   /**
-   * Draw the box titles at this many pixels, so maps side by side match; the
-   * map then scrolls when it is wider than its panel. Without it, a map
-   * shrinks to fit down to a readable title size.
+   * Draw the box titles at this many pixels, so the drawing's type matches
+   * the page's; it scrolls when it is wider than its column.
    */
-  titlePx?: number
+  titlePx: number
 }
 
 /** Longest line of a tag's phrase, in characters, before it wraps. */
@@ -80,21 +72,8 @@ const tagSize = (label: string | undefined, scale: number) => {
   }
 }
 
-function edgeStyle(look: EdgeLook | undefined): {
-  color: string
-  dash?: string
-} {
-  switch (look) {
-    case 'b':
-      return { color: pipeline('B').hue }
-    case 'c':
-      return { color: pipeline('C').hue }
-    case 'outside':
-      return { color: TOKENS['color-grey-500'], dash: '6 5' }
-    default:
-      return { color: TOKENS['color-grey-600'] }
-  }
-}
+/** The colour of every line and arrow head. */
+const LINE = TOKENS['color-grey-600']
 
 /** The box around every node, route and drawn tag, with `PAD` around it. */
 function bounds(
@@ -113,7 +92,7 @@ function bounds(
   // A tag can sit past the last node, on a route's outer stretch.
   for (const edge of edges) {
     const route = layout.routes.get(edge.id)
-    if (!route || !edge.label || edge.tagged === false) continue
+    if (!route || !edge.label) continue
     const tag = tagSize(edge.label, scale)
     points.push(
       { x: route.tag.x - tag.width / 2, y: route.tag.y - tag.height / 2 },
@@ -156,8 +135,7 @@ export function Diagram({
 }: DiagramProps) {
   const arrows = useId()
   const height = NODE_HEIGHT * scale
-  // The layout depends on the structure only, so toggling what is shown
-  // (hidden, dimmed, look) never moves a node.
+  // The layout depends on the structure only, so choosing a box never moves one.
   const structure = JSON.stringify([
     scale,
     nodes.map((n) => [n.id, n.width]),
@@ -198,8 +176,7 @@ export function Diagram({
     )
   const { data: layout } = load
   if (layout.positions.size === 0) return null
-  const shown = edges.filter((e) => !e.hidden)
-  const box = bounds(layout, nodes, shown, height, scale)
+  const box = bounds(layout, nodes, edges, height, scale)
   const title = new Map(nodes.map((n) => [n.id, n.title]))
 
   return (
@@ -209,55 +186,39 @@ export function Diagram({
         aria-label={label}
         viewBox={`${box.left} ${box.top} ${box.width} ${box.height}`}
         style={{
-          ...(titlePx === undefined
-            ? {
-                width: box.width,
-                minWidth:
-                  box.width * Math.min(1, MIN_TITLE_PX / (TITLE_FONT * scale)),
-                maxWidth: '100%',
-              }
-            : { width: box.width * (titlePx / (TITLE_FONT * scale)) }),
+          width: box.width * (titlePx / (TITLE_FONT * scale)),
           height: 'auto',
         }}
       >
         <defs>
-          {(['plain', 'b', 'c', 'outside'] as const).map((look) => (
-            <marker
-              key={look}
-              id={`${arrows}-${look}`}
-              viewBox="0 0 10 10"
-              refX="9"
-              refY="5"
-              markerWidth="8"
-              markerHeight="8"
-              orient="auto-start-reverse"
-            >
-              <path d="M0,0 L10,5 L0,10 z" fill={edgeStyle(look).color} />
-            </marker>
-          ))}
+          <marker
+            id={arrows}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="8"
+            markerHeight="8"
+            orient="auto-start-reverse"
+          >
+            <path d="M0,0 L10,5 L0,10 z" fill={LINE} />
+          </marker>
         </defs>
-        {shown.map((edge) => {
+        {edges.map((edge) => {
           const route = layout.routes.get(edge.id)
           if (!route) return null
-          const { color, dash } = edgeStyle(edge.look)
           const tag = tagSize(edge.label, scale)
-          const marker = `url(#${arrows}-${edge.look ?? 'plain'})`
+          const marker = `url(#${arrows})`
           return (
-            <g
-              key={edge.id}
-              data-edge-id={edge.id}
-              opacity={edge.faint ? 0.2 : 1}
-            >
+            <g key={edge.id} data-edge-id={edge.id}>
               <path
                 d={roundedPath(route.points)}
                 fill="none"
-                stroke={color}
+                stroke={LINE}
                 strokeWidth={1.5}
-                strokeDasharray={dash}
                 markerStart={edge.reversed ? marker : undefined}
                 markerEnd={edge.reversed ? undefined : marker}
               />
-              {edge.label && edge.tagged !== false && (
+              {edge.label && (
                 <>
                   <rect
                     x={route.tag.x - tag.width / 2}
@@ -307,7 +268,7 @@ export function Diagram({
               aria-pressed={selected === undefined ? undefined : chosen}
               data-node-id={node.id}
               className="map-node"
-              style={{ cursor: 'pointer', opacity: node.dimmed ? 0.55 : 1 }}
+              style={{ cursor: 'pointer' }}
               onClick={() => onSelect(node.id)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter' || event.key === ' ') {
@@ -329,7 +290,6 @@ export function Diagram({
                   chosen ? TOKENS['color-grey-900'] : TOKENS['color-grey-600']
                 }
                 strokeWidth={chosen ? 3 : 1.5}
-                strokeDasharray={node.dimmed ? '5 4' : undefined}
               />
               <text
                 x={at.x + node.width / 2}
@@ -359,7 +319,7 @@ export function Diagram({
         })}
       </svg>
       <ul className="sr-only" aria-label={`${label}, in words`}>
-        {shown.map((edge) => (
+        {edges.map((edge) => (
           <li key={edge.id}>{inWords(edge, title)}</li>
         ))}
       </ul>

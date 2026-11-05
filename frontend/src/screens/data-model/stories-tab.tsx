@@ -61,7 +61,7 @@ function Planted({ scenario }: { scenario: Scenario }) {
         {tables.length === 0 ? (
           <p className="text-sm text-text-secondary">No rows added.</p>
         ) : (
-          <ul aria-label="Rows added" className="space-y-1 text-sm">
+          <ul aria-label="Rows added" className="max-w-md space-y-1 text-sm">
             {tables.map(([table, rows]) => (
               <li key={table} className="flex justify-between gap-4">
                 <span className="text-text-secondary">{plainName(table)}</span>

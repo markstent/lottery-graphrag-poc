@@ -147,7 +147,7 @@ test.describe('shell', () => {
     await page.goto('/#/__graph?shell=1&evidence=1')
     await expect(page.locator('[data-layout-ready="true"]')).toBeVisible()
     // The first node the framed drawing wholly shows (the fit can leave others
-    // outside it) that the mocked graph API holds a record for.
+    // outside it) that the mocked graph API holds a table record for.
     const inFrame = await page.evaluate(() => {
       const frame = document
         .querySelector('.react-flow')!
@@ -164,7 +164,8 @@ test.describe('shell', () => {
         })
         .map((node) => node.getAttribute('data-node-id') ?? '')
     })
-    const id = inFrame.find((candidate) => graphNode(candidate) !== null) ?? ''
+    const id =
+      inFrame.find((candidate) => graphNode(candidate)?.provenance) ?? ''
     expect(id).not.toBe('')
     await page.locator(`[data-node-id="${id}"]`).click()
     const drawer = page.getByRole('dialog', { name: 'Evidence' })
@@ -581,152 +582,63 @@ test.describe('Help, bank not loaded', () => {
 })
 
 test.describe('Data Model', () => {
-  const DEVICES = '#/data-model?tab=warehouse&table=devices'
-  const GRAPH = '#/data-model?tab=graph'
-  const NATIONAL_DRAW =
-    '#/data-model?tab=ontology&concept=CONCEPT_NATIONAL_DRAW'
+  // One case per tab (D-115), each as the address opens it; Concepts on a
+  // concept with terms in every market, so its third column is not empty.
+  const TABS = [
+    ['overview', '#/data-model', 'How they fit together'],
+    ['tables', '#/data-model?tab=tables', 'Becomes these links in the graph'],
+    ['graph', '#/data-model?tab=graph', 'Where it comes from'],
+    [
+      'concepts',
+      '#/data-model?tab=concepts&concept=CONCEPT_NATIONAL_DRAW',
+      'FAM_AT_ZAHLENZIEHUNG',
+    ],
+    ['stories', '#/data-model?tab=stories', 'Rows added'],
+  ] as const
 
-  test('data-model-warehouse-map', async ({ page }) => {
-    await openScreen(page, '#/data-model')
-    // The drawn map, not its loading panel, whose name starts the same way.
-    await expect(
-      page.getByRole('img', {
-        name: 'Incident management tables',
-        exact: true,
-      }),
-    ).toBeVisible()
-    await expect(page.locator('[aria-busy="true"]')).toHaveCount(0)
-    await screenShot(page, 'data-model-warehouse-map')
-  })
+  /** The tab has its data: its marker text shows and nothing is loading. */
+  async function tabReady(page: Page, text: string) {
+    await expect(page.getByText(text).first()).toBeVisible()
+    await expect(page.getByRole('status')).toHaveCount(0)
+  }
 
-  test('data-model-rows-filtered', async ({ page }) => {
-    await openScreen(page, DEVICES)
-    await page.getByLabel('Column').selectOption('first_seen_at')
-    const stamp = await page
-      .getByRole('row')
-      .nth(1)
-      .getByRole('cell')
-      .nth(
-        (await page.getByRole('columnheader').allInnerTexts()).indexOf(
-          'first_seen_at',
-        ),
-      )
-      .innerText()
-    await page.getByLabel('Value').fill(stamp)
-    await page.getByRole('button', { name: 'Filter', exact: true }).click()
-    await expect(page.getByText(/^Rows 1 to 50 of /)).toBeVisible()
-    await screenShot(page, 'data-model-rows-filtered')
-  })
+  for (const [tab, hash, text] of TABS) {
+    test(`data-model-${tab}`, async ({ page }) => {
+      await openScreen(page, hash)
+      await tabReady(page, text)
+      await screenShot(page, `data-model-${tab}`)
+    })
 
-  test('data-model-record-drawer', async ({ page }) => {
-    await openScreen(page, '#/data-model?tab=warehouse&table=games')
-    await page.getByRole('button', { name: 'Open GAME_UK_01' }).click()
-    const drawer = page.getByRole('dialog', { name: 'Evidence' })
-    await expect(drawer.getByText('ticket price')).toBeVisible()
-    await settle(page)
-    await expectScreen(drawer, 'data-model-record-drawer.png')
-  })
+    test(`data-model-${tab}-presentation`, async ({ page }) => {
+      await openScreen(page, `?present=1${hash}`)
+      await tabReady(page, text)
+      await expect(
+        page.getByRole('navigation', { name: 'Primary' }),
+      ).toHaveCount(0)
+      await screenShot(page, `data-model-${tab}-presentation`)
+    })
+  }
 
-  test('data-model-graph-full', async ({ page }) => {
-    await openScreen(page, GRAPH)
-    await expect(page.getByRole('button', { name: /^game, / })).toBeVisible()
-    await screenShot(page, 'data-model-graph-full')
-  })
-
-  test('data-model-graph-label-tagged', async ({ page }) => {
-    await openScreen(page, GRAPH)
-    await page.getByRole('button', { name: /^game, / }).click()
-    await expect(page.getByRole('region', { name: 'Details' })).toBeVisible()
-    await page.keyboard.press('Escape')
-    await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect(page.locator('g[data-edge-id] text').first()).toBeVisible()
-    await screenShot(page, 'data-model-graph-label-tagged')
-  })
-
-  test('data-model-graph-focused-node', async ({ page }) => {
-    await openScreen(page, '#/data-model?tab=graph&node=GAME_UK_01')
-    await expect(
-      page.getByRole('button', { name: 'Albion Millions, game' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    await expect(
-      page.getByRole('button', { name: 'United Kingdom, market' }),
-    ).toBeVisible()
-    await screenShot(page, 'data-model-graph-focused-node')
-  })
-
-  test('data-model-ontology-national-draw', async ({ page }) => {
-    await openScreen(page, NATIONAL_DRAW)
-    await expect(
-      page
-        .getByRole('region', { name: 'Country terms for it' })
-        .getByRole('group'),
-    ).toHaveCount(4)
-    await screenShot(page, 'data-model-ontology-national-draw')
-  })
-
-  test('data-model-ontology-filtered-by-market', async ({ page }) => {
-    await openScreen(page, `${NATIONAL_DRAW}&market=MKT_GR`)
-    await expect(
-      page
-        .getByRole('region', { name: 'Country terms for it' })
-        .getByRole('group'),
-    ).toHaveCount(1)
-    await screenShot(page, 'data-model-ontology-filtered-by-market')
-  })
-
-  test('data-model-scenarios', async ({ page }) => {
-    await openScreen(page, '#/data-model?tab=scenarios')
-    await expect(page.getByRole('article')).toHaveCount(8)
-    await screenShot(page, 'data-model-scenarios')
-  })
-
-  test('data-model-loading', async ({ page }) => {
+  test('data-model-overview-loading', async ({ page }) => {
     await openScreen(page, '#/data-model', { dataModel: 'pending' })
-    await expect(page.getByRole('status')).toContainText('Loading Tables')
-    await screenShot(page, 'data-model-loading')
+    // The screen itself, not the page's loading panel before it.
+    await expect(
+      page.getByRole('heading', { name: 'Data Model', level: 1 }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('region', { name: "The company's data" }),
+    ).toBeVisible()
+    await expect(page.getByRole('status').first()).toBeVisible()
+    await screenShot(page, 'data-model-overview-loading')
   })
 
-  test('data-model-error', async ({ page }) => {
+  test('data-model-overview-error', async ({ page }) => {
     await openScreen(page, '#/data-model', { dataModel: 'error' })
-    await expect(page.getByRole('alert')).toContainText(
+    await expect(page.getByRole('alert').first()).toContainText(
       'The data is unavailable.',
     )
-    await screenShot(page, 'data-model-error')
+    await screenShot(page, 'data-model-overview-error')
   })
-
-  test('data-model-empty', async ({ page }) => {
-    await openScreen(page, '#/data-model', { dataModel: 'empty' })
-    await expect(
-      page.getByText('No data has been generated yet.'),
-    ).toBeVisible()
-    await screenShot(page, 'data-model-empty')
-  })
-
-  // The Graph and Ontology tabs have their own loading, empty and error states.
-  const TABS = [
-    ['graph', '#/data-model?tab=graph', 'Kinds of record', 'None yet.'],
-    ['ontology', '#/data-model?tab=ontology', 'Concepts', 'None yet.'],
-  ] as const
-  for (const [tab, hash, title, none] of TABS)
-    for (const state of ['pending', 'empty', 'error'] as const)
-      test(`data-model-${tab}-${state === 'pending' ? 'loading' : state}`, async ({
-        page,
-      }) => {
-        await openScreen(page, hash, { dataModel: state })
-        if (state === 'pending')
-          await expect(page.getByRole('status')).toContainText(
-            `Loading ${title}`,
-          )
-        if (state === 'empty') await expect(page.getByText(none)).toBeVisible()
-        if (state === 'error')
-          await expect(page.getByRole('alert')).toContainText(
-            'The data is unavailable.',
-          )
-        await screenShot(
-          page,
-          `data-model-${tab}-${state === 'pending' ? 'loading' : state}`,
-        )
-      })
 })
 
 test.describe('Architecture', () => {
@@ -948,7 +860,6 @@ test.describe('presentation mode', () => {
   const OTHERS = [
     ['overview-fixture-official', '#/overview', 'Evidence found'],
     ['results', '#/results', 'Descriptive: not part of the tested family.'],
-    ['data-model', '#/data-model', 'Incident management'],
     ['architecture', '#/architecture', 'The diagram in words'],
     ['help-fixture-official', '#/help', 'Why this exists'],
   ] as const

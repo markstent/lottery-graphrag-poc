@@ -171,6 +171,25 @@ describe('OverviewTab', () => {
     expect(within(fit).getByText(/and 23 more/)).toBeVisible()
   })
 
+  it('says when the type is matched to no concept, and claims no match under it', async () => {
+    stubApi({
+      ...ROUTES,
+      '/api/v1/graph/nodes/ITYPE_GR_PLIROMES/neighbours': {
+        ...CONCEPT_NEIGHBOURS,
+        items: [],
+      },
+    })
+    render(<OverviewTab scale={1} />)
+    await settled()
+    const fit = await screen.findByRole('region', {
+      name: 'How they fit together',
+    })
+    expect(
+      await within(fit).findByText('Its type is matched to no concept.'),
+    ).toBeVisible()
+    expect(within(fit).queryByText(/is matched to this concept/)).toBeNull()
+  })
+
   it('shows sizes only, with a note, when the world has no example', async () => {
     stubApi({ ...ROUTES, '/api/v1/data-model/example': { incident_id: null } })
     render(<OverviewTab scale={1} />)

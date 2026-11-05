@@ -256,47 +256,62 @@ The run in `results-v03` is the report tests' synthetic run through `summarize`,
 
 ### Data Model
 
-Purpose: what the warehouse, the graph and the ontology look like, with live counts and sample rows.
+Purpose: what the warehouse, the graph and the ontology look like, how they fit together, and one real record followed through all three, with live counts.
+Readers mostly explore it on their own after a presentation, so the screen explains itself (D-115).
 
-Four tabs, each a link: Warehouse, Graph, Ontology and Scenarios (`#/data-model?tab=...`).
+Five tabs, each a link, in this order: Overview, Tables, Graph, Concepts and Stories (`#/data-model?tab=...`).
+`#/data-model` with no tab opens Overview.
+Each chosen item is in the address too, so every view can be linked and the back button works: `tab=tables&table=incidents&row=INC_002`, `tab=graph&node=INC_002&group=RELATED_TO:in`, `tab=concepts&concept=CONCEPT_NATIONAL_DRAW&market=MKT_GR` and `tab=stories&story=SCN-002`.
+The tab ids before D-115 still open their tab: `warehouse` opens Tables, `ontology` opens Concepts and `scenarios` opens Stories (`TAB_ALIASES` in `src/screens/data-model/data-model.tsx`), so Help's links and old bookmarks keep working, and `tab=graph&node=<id>` from the evidence drawer opens that record.
 
-Way-finding (D-114), so a reader can see what to click without being told:
+The example.
+`GET /api/v1/data-model/example` names one incident, chosen on the backend by a fixed rule: the lowest id whose platform version is shared with an incident in another market and which no story planted, else the first incident no story planted.
+The endpoint returns the id only; the planted check reads the evaluator's `presentation_planted_ids()` and never reaches retrieval code.
+In the development world it is INC_002, a Greek payments incident.
+Overview, Tables and Graph open on it, so the same record is the first thing a reader sees on each.
+When the world has none, or no truth ledger of its own to check against, the cards show sizes only and say "No example record in this world."
 
-- Each tab opens with "How to explore": three numbered steps that say what to choose and what it shows (`STEPS` in `src/screens/data-model/explore-steps.ts`).
-- Every map, table and record view that opens on a click has a cue with a pointer icon right above it, such as "Click a table to open its rows."
-- A box on a map that opens lifts under the pointer and on keyboard focus: its fill and border darken.
-- A page reached by clicking through (a table, a record in the graph) starts with a "You are here" trail whose earlier steps are links, and a one-line cue for what to click next.
-- A link that takes the reader on to the next step, "Open this record in the graph" and "Follow into the graph", is a filled button with an arrow, not an underlined link.
-- The explanation of how a layer is built comes after the map, tree or cards it explains, and folds to its title with Hide and Show; the reader's choice is kept in the browser.
-
-- **Warehouse.** Under the maps, "What the warehouse is" (D-113): what is in it, how to read the maps, and how the approaches use it.
-  A map of the tables as boxes with live row counts and the links between them, grouped by source system.
-  Every system's map draws its table names at one size, 14 px at normal type, so the maps match; a map wider than its panel scrolls inside the panel.
-  Choosing a table (`?table=`) shows its source system, rows and columns, the tables it links to, and its sample rows, 50 to a page.
-  A filter takes one column and one value, read as that column's own type.
-  A row opens as a record in the evidence drawer, with "Follow into the graph" when it has a node.
-- **Graph.** Between the map and the table of links, "How the graph is built" (D-101, D-113), in three headed groups.
-  "What is in it": the graph is drawn over the tables, every record points back to its row, and bulk detail stays in the tables.
-  "Where the links come from": the kinds of link were designed up front from the questions people ask, no AI model makes them, and a program builds each one in one of three ways (copied from a column, counted from bulk rows, worked out by a rule), so most links are the warehouse's own column links made walkable.
-  "How a search uses them": the search limits (depth and record cap, read from `GET /graph/schema`), a worked example, why some kinds are left out, and why B and C share one graph.
-  "Kinds of record": the labels as boxes sized by count ("N records"), in three views picked by "Show the links followed by": B · Graph, C · Graph + Ontology, All links.
-  One line says how many kinds of link the view shows and, for all links, that dashed grey lines are followed by neither approach; another says what a box and a line are.
-  Kinds with no links are listed apart as "Reference lists with no links".
-  Under the map, "Kinds of link" (D-101): one sentence on what a link is and what each column says, then a table of every kind of link once, with what it joins in words ("incident affects game"; kinds that share a link and a target are merged, "game and market: each is an instance of business concept") where it is made from ("Made from", `RELATIONSHIP_SOURCES` in `src/design/relationships.ts`, following `backend/app/graph/relationship_rows.py`) and how many there are, grouped by who follows it: Graph and Graph + Ontology; Graph + Ontology only (ontology links); and neither, split into document links (found by text search in all three approaches) and links left out to keep the search focused.
-  Choosing a kind shows its properties, its source table and a sample node.
-  A node address (`?node=`) shows its properties and up to 20 neighbours.
-  Labels that come from the ontology say "Built from the ontology: no sample row."
-- **Ontology.** Under the tree, "How the ontology is built" (D-101, D-113), in three headed groups: the problem it solves, what is in it (the concept count and the count of local codes matched to concepts, read from `GET /ontology`, and the tree of broader ideas), and how a search uses it (only C, kept apart from the questions and planted stories).
-  A tree of concepts, a concept card (`?concept=`) with its definition, its relationships, and "Each country's terms for it" by market, with a market filter.
-  The count of shared codes is always shown.
-- **Scenarios.** Under the cards, "What the planted stories are" (D-113): what a story is, how to read a card (strength, noise level, rows added), and where its two links go.
-  A card for each planted scenario with strength, noise level, "Rows added" by table and links to its story and its questions in Help.
-  A scenario not in the active world says "Not planted in this world".
+- **Overview.** One line says what the screen is: the data the three approaches search, in three layers, each built from the one before.
+  Three equal cards follow, one per layer, each with its number, a plain title ("The company's data", "The links between records", "One dictionary for four countries"), its live size (systems, tables and rows; kinds of record and kinds of link; concepts and country codes), the example at that layer and a filled "Explore" button to its tab.
+  "How they fit together" follows the example through the layers in three boxes with an arrow between them: its table row and the columns that name other records, the graph links made from them, and the shared concept its incident type is matched to, with one caption under each box.
+  When the type is matched to no concept, the third box says so and has no caption.
+  "How each layer is built" gives one short note per layer (`LAYER_NOTES` in `src/screens/data-model/about-copy.ts`): a program builds the graph from the tables, most links are copied from a column, some are counted from bulk rows or worked out by a rule, and only Graph + Ontology may follow the ontology's links.
+  "The core of the graph" draws the eight main kinds of record (market, support case, player, game, incident, campaign, platform, platform version) on a fixed three by three grid with the links between them, the links also listed in words; pointing at or focusing a kind brings its links forward, and each kind and "See every kind of record" link to the Graph tab.
+  A last, quieter line links to Stories: "8 stories are planted in this data for the test."
+  Each card, the example and the core diagram load on their own, so one failure shows its own error with a retry and leaves the rest.
+- **The explorer layout.** Tables, Graph, Concepts and Stories share one layout (`src/screens/data-model/explorer.tsx`): three columns, a list on the left (about a quarter), the chosen item in the middle (the widest) and details and where next on the right.
+  The column headings are numbered steps, so the layout explains itself, such as "1 Choose a table", "2 Its rows", "3 The record".
+  The left list has a search box that narrows it as the reader types (Stories, with eight items, has none); its items highlight under the pointer and on focus, and the chosen one is pressed.
+  Something is always chosen when a tab opens, so no column is empty on arrival.
+  A link that moves the reader on is a filled button with an arrow.
+  "About this" at the top right of the third column opens that layer's explanation (`src/screens/data-model/about-copy.ts`) in a drawer.
+  The columns stack on narrow screens, list first.
+- **Tables.** Left: every table grouped by source system, with its row count.
+  Middle: the chosen table's name, its source system, row and column counts, a filter on one column and one value (read as that column's own type), and its rows, 50 to a page.
+  A value in a column that names a row of another table is an underlined link that opens that row in its own table, and the chosen row is marked.
+  Right: the chosen row as a record, first the graph links it becomes in words ("affects 3 games", "6 support cases are related to it"), then "Open in the graph" when it has a graph record, then its fields.
+  A row of a table the graph leaves out says "This row is not in the graph."
+  With no table in the address the tab opens on the example incident in the incidents table.
+- **Graph.** Left: "Find a record by id" with an Open button, then the kinds of record with their counts; choosing a kind opens a sample record of it.
+  Middle: the chosen record and its neighbours one step out, drawn with the record on the left and a box per neighbour on the right, each line tagged with its link and an incoming link drawn with its arrow back at the record; the drawing is listed in words for a screen reader.
+  More than four neighbours of one kind of link and direction are one box with a count ("6 support cases"); choosing it lists them in the right column with a search box, up to 100, and "Back to" the record.
+  Right: where the record came from (table and row, with "See its table row"), its links in words grouped by which approaches may follow them, and its fields.
+  An id no record has says "No record with that id."
+  The Graph tab's "About this" holds "How the graph is built" and the "Kinds of link" table with its "Made from" column (D-101, D-113) and its filter by B · Graph, C · Graph + Ontology or all links.
+- **Concepts.** Left: the concept tree, an ARIA tree that is one tab stop and moves with the arrow keys, with a search box.
+  Middle: the chosen concept: its definition, names in English, Greek, German and Czech, other names, the concept it sits under, the concepts under it and how many country terms it is matched to.
+  Right: each country's terms for it by market, with a filter by country ("All markets" or one), or a note that no term points at it directly.
+- **Stories.** Left: the planted stories, each with its strength.
+  Middle: the chosen story's title, id, plain description (from the catalogue, `ScenarioOut.description`), strength explained, noise level and the rows it added by table; a story not in the active world says "Not planted in this world".
+  Right: "Read the full story" and "See its questions", both in Help.
+  There is no link to the rows a story planted, because only the truth ledger names them and pointing at them would give the answer away.
 
 All data is live from the API, and no truth ledger value is shown.
-The ontology tree is an ARIA tree, and label text on the maps keeps at least 12 px.
+Every column has its own loading, empty and error state, and an error says what failed with a retry.
+At 1440 and 1600 wide no tab scrolls sideways; a wide rows grid or drawing scrolls inside its own box.
+Presentation mode raises the type one step and draws the Graph tab's drawing and the core diagram 1.4 times larger.
 
-Baselines: `data-model-warehouse-map`, `data-model-rows-filtered`, `data-model-record-drawer`, `data-model-loading`, `data-model-error`, `data-model-empty`, `data-model-graph-full`, `data-model-graph-label-tagged`, `data-model-graph-focused-node`, `data-model-graph-loading`, `data-model-graph-error`, `data-model-graph-empty`, `data-model-ontology-national-draw`, `data-model-ontology-filtered-by-market`, `data-model-ontology-loading`, `data-model-ontology-error`, `data-model-ontology-empty`, `data-model-scenarios`, `presentation-data-model`.
+Baselines: `data-model-overview`, `data-model-tables`, `data-model-graph`, `data-model-concepts`, `data-model-stories`, each also in presentation mode as `data-model-<tab>-presentation`, and `data-model-overview-loading` and `data-model-overview-error`.
 
 ### Architecture
 
@@ -417,7 +432,7 @@ The graph is 2D and led by evidence.
   A node fades in over 200 ms, and the whole product collapses to near-instant under `prefers-reduced-motion` or the Settings switch.
   Evidence is never delayed for effect.
 - Copy is plain and short.
-  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 3,500 words outside Help (D-055, D-066, D-098, D-101, D-106 to D-109, D-113, D-114; raised from 1,300 to 1,360 by the owner on 2026-10-27, to 1,450 on 2026-11-02 for a plain Overview, to 1,800 the same day for the Data Model panels, by steps to 2,400 for the Overview, Live Lab and Architecture, to 3,350 on 2026-11-04 for Data Model write-ups that are easy to follow, and to 3,500 the same day for the Data Model way-finding).
+  A banned-word list and a glossary of plain replacements are enforced by a scan of the source (D-045), and a word budget caps visible text at 3,900 words outside Help (D-055, D-066, D-098, D-101, D-106 to D-109, D-113 to D-115; raised from 1,300 to 1,360 by the owner on 2026-10-27, to 1,450 on 2026-11-02 for a plain Overview, to 1,800 the same day for the Data Model panels, by steps to 2,400 for the Overview, Live Lab and Architecture, to 3,350 on 2026-11-04 for Data Model write-ups that are easy to follow, and to 3,500 the same day for the Data Model way-finding; it is 3,900 since the Data Model redesign of 2026-11-05).
   Help has no word cap since D-082, and the scan covers Help's Plain text and not its Technical text, where real terms, vendor and model names and dated figures are allowed.
   Text from the API, such as headline sentences, is shown verbatim and is outside both.
 
@@ -453,7 +468,7 @@ A suggested run of show, from what is built:
 1. Overview: the verdict, or "No official run yet", and how the three approaches differ.
 2. Live Lab with a recorded run of an H1 question: replay, open a citation, open the evidence path.
 3. Live Lab live, when the model status reads Ready: run a saved question and read the scorecard.
-4. Data Model: the warehouse, the graph and the ontology tree, to show that the graph augments the data and does not replace it.
+4. Data Model: the Overview's example through the three layers, then the same record in Tables and Graph, to show that the graph augments the data and does not replace it.
 5. Results: the published runs, then Help for the questions and the scoring.
 
 Recovery steps are in [operations.md](operations.md).

@@ -1,74 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { SCHEMA, STATS } from './data-model.fixtures'
-import { linkSentence, metaGraphModel, relationshipRows } from './model'
-
-const shown = (mode: 'B' | 'C' | 'full') =>
-  metaGraphModel(SCHEMA, STATS, mode, 1).edges.filter((edge) => !edge.hidden)
-
-describe('metaGraphModel', () => {
-  it('sizes each label by its count and says the count in words', () => {
-    const { nodes } = metaGraphModel(SCHEMA, STATS, 'full', 1)
-    const width = (id: string) => nodes.find((n) => n.id === id)?.width ?? 0
-    expect(width('Game')).toBeGreaterThan(width('Incident'))
-    expect(width('Incident')).toBeGreaterThan(width('Market'))
-    expect(nodes.find((n) => n.id === 'Game')).toMatchObject({
-      title: 'game',
-      detail: '120 records',
-    })
-  })
-
-  it('tags each line with the plain phrase only', () => {
-    expect(shown('full').map((e) => e.label)).toEqual([
-      'affects',
-      'is available in',
-      'is an instance of concept',
-      'is an instance of concept',
-    ])
-  })
-
-  it('shows only the relationships Graph may follow, and dims what they leave out', () => {
-    expect(shown('B').map((e) => e.label)).toEqual([
-      'affects',
-      'is available in',
-    ])
-    const { nodes } = metaGraphModel(SCHEMA, STATS, 'B', 1)
-    expect(nodes.find((n) => n.id === 'BusinessConcept')?.dimmed).toBe(true)
-    expect(nodes.find((n) => n.id === 'Game')?.dimmed).toBe(false)
-  })
-
-  it('adds the ontology relationships for Graph + Ontology and marks them', () => {
-    expect(shown('C').map((e) => e.look)).toEqual(['b', 'b', 'c', 'c'])
-  })
-
-  it('draws every relationship in the full schema and marks the ones neither approach follows', () => {
-    const none = { ...SCHEMA, allow_list: { B: ['AFFECTS'], C: ['AFFECTS'] } }
-    const model = metaGraphModel(none, STATS, 'full', 1)
-    expect(model.edges.filter((e) => e.look === 'outside')).toHaveLength(3)
-    expect(model.edges.every((e) => !e.hidden)).toBe(true)
-    expect(model.hasOutside).toBe(true)
-    expect(metaGraphModel(SCHEMA, STATS, 'full', 1).hasOutside).toBe(false)
-  })
-
-  it('sets apart the kinds that have no relationship at all', () => {
-    const schema = { ...SCHEMA, labels: [...SCHEMA.labels, 'Currency'] }
-    const stats = {
-      ...STATS,
-      nodes_by_label: { ...STATS.nodes_by_label, Currency: 3 },
-    }
-    const { nodes, isolated } = metaGraphModel(schema, stats, 'full', 1)
-    expect(isolated.map((n) => [n.id, n.detail])).toEqual([
-      ['Currency', '3 records'],
-    ])
-    expect(nodes.map((n) => n.id)).not.toContain('Currency')
-  })
-
-  it('scales node widths for presentation mode', () => {
-    const normal = metaGraphModel(SCHEMA, STATS, 'full', 1).nodes[0].width
-    const large = metaGraphModel(SCHEMA, STATS, 'full', 1.4).nodes[0].width
-    expect(large).toBeGreaterThan(normal)
-  })
-})
+import { linkSentence, relationshipRows } from './model'
 
 describe('relationshipRows', () => {
   it('gives each kind of link once, with what it joins, its count and who follows it', () => {
