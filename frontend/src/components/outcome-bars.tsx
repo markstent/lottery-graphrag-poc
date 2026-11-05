@@ -1,7 +1,7 @@
 /**
  * The official run's outcomes per approach, as two figures: the evidence found
  * and missed, with the extra records brought beside each bar, and the answers
- * in three bands by score with a hatched part for the answers that declined.
+ * in three bands by score with a hatched part for the answers that said the sources could not answer.
  * Every count is in the "Show as table" twin and in each bar's text.
  */
 
@@ -27,13 +27,17 @@ const FILL = {
   wrong: 'var(--color-error)',
 } as const
 
-/** Diagonal white stripes over a band: the non-colour cue for "declined". */
+/** Diagonal white stripes over a band: the non-colour cue for answers that said the sources could not answer. */
 const HATCH =
   'repeating-linear-gradient(135deg, var(--color-surface) 0 2px, transparent 2px 6px)'
 
 const BAR = 'flex h-5 w-full overflow-hidden rounded-chip border border-border'
 const ROW =
-  'grid grid-cols-1 items-center gap-x-4 gap-y-1 md:grid-cols-[11rem_minmax(0,1fr)_15rem]'
+  'grid grid-cols-1 items-center gap-x-4 gap-y-1 md:grid-cols-[11rem_minmax(0,1fr)_17rem]'
+
+/** What an answer that abstained is called, in full and in the tight side labels and table columns. */
+const CANNOT_ANSWER = 'said the sources could not answer'
+const CANNOT_ANSWER_SHORT = 'could not answer'
 
 const plural = (count: number, noun: string) =>
   `${count} ${noun}${count === 1 ? '' : 's'}`
@@ -75,7 +79,7 @@ function evidenceText(row: EvidenceRow): string {
   if (row.found === null || row.missed === null)
     return `${name}: no needed records were scored.`
   const needed = row.foundRecords + row.missedRecords
-  return `${name}: ${percent(row.found)} of the needed records found, ${percent(row.missed)} missed. ${row.foundRecords} of ${needed} needed records found across the questions.`
+  return `${name}: ${percent(row.found)} of the needed records found, ${percent(row.missed)} missed. ${row.foundRecords} of ${needed} needed records found (added up over all questions).`
 }
 
 function EvidenceFigure({ rows }: { rows: EvidenceRow[] }) {
@@ -160,7 +164,7 @@ function EvidenceFigure({ rows }: { rows: EvidenceRow[] }) {
 function answerText(row: AnswerRow): string {
   const parts = row.bands.map(
     (band) =>
-      `${BAND_NAMES[band.kind].toLowerCase()} ${band.count} of ${row.scored} (${band.declined} of them declined)`,
+      `${BAND_NAMES[band.kind].toLowerCase()} ${band.count} of ${row.scored} (${band.declined} of them ${CANNOT_ANSWER})`,
   )
   return `${pipeline(row.id).name}: ${parts.join(', ')}.`
 }
@@ -174,11 +178,11 @@ function AnswerFigure({ rows }: { rows: AnswerRow[] }) {
       columns={[
         'Scored answers',
         'Right',
-        'Right, declined',
+        `Right, ${CANNOT_ANSWER_SHORT}`,
         'Partly right',
-        'Partly right, declined',
+        `Partly right, ${CANNOT_ANSWER_SHORT}`,
         'Wrong',
-        'Wrong, declined',
+        `Wrong, ${CANNOT_ANSWER_SHORT}`,
       ]}
       rows={rows.map((row) => ({
         key: row.id,
@@ -204,7 +208,7 @@ function AnswerFigure({ rows }: { rows: AnswerRow[] }) {
             ['Right', FILL.right],
             ['Partly right', FILL.partly],
             ['Wrong', FILL.wrong],
-            ['Hatched: said the sources could not answer', FILL.wrong, true],
+            [`Hatched: ${CANNOT_ANSWER}`, FILL.wrong, true],
           ]}
         />
       }
@@ -247,7 +251,8 @@ function AnswerFigure({ rows }: { rows: AnswerRow[] }) {
             <span className="tabular flex flex-col text-sm text-text-secondary">
               {row.bands.map((band) => (
                 <span key={band.kind}>
-                  {BAND_NAMES[band.kind]} {band.count}, {band.declined} declined
+                  {BAND_NAMES[band.kind]} {band.count}, {band.declined}{' '}
+                  {CANNOT_ANSWER_SHORT}
                 </span>
               ))}
             </span>

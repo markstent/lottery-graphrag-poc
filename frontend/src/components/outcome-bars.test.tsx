@@ -91,9 +91,15 @@ describe('OutcomeBars', () => {
     render(<OutcomeBars outcomes={OUTCOMES} />)
     const answers = within(figure('Answers by score'))
     const label = answers.getByRole('img', { name: /Text search: right 117/ })
-    expect(label).toHaveAccessibleName(/5 of them declined/)
-    expect(label).toHaveAccessibleName(/partly right 103.*15 of them declined/)
-    expect(label).toHaveAccessibleName(/wrong 80.*71 of them declined/)
+    expect(label).toHaveAccessibleName(
+      /5 of them said the sources could not answer/,
+    )
+    expect(label).toHaveAccessibleName(
+      /partly right 103.*15 of them said the sources could not answer/,
+    )
+    expect(label).toHaveAccessibleName(
+      /wrong 80.*71 of them said the sources could not answer/,
+    )
     const bar = label.querySelector('[data-bar]')!
     const widths = [...bar.querySelectorAll('[data-band]')].map((band) =>
       parseFloat((band as HTMLElement).style.width),
