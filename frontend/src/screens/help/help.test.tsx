@@ -752,9 +752,33 @@ describe('states', () => {
     )
     expect(section('7. How scoring works')).toBeVisible()
     cleanup()
+    // Chapter 12 waits only for the newest run's scores by kind of question.
+    open('#/help?section=lessons')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "Loading the newest run's scores by kind of question.",
+    )
+    expect(section('12. What the results teach')).toBeVisible()
+    cleanup()
     open('#/help?section=answer')
     expect(screen.queryByRole('status')).toBeNull()
     expect(section('6. The answer and the judge')).toBeVisible()
+  })
+
+  it('opens chapter 12 with the chart by kind of question, and shows its error with a retry', async () => {
+    await renderHelp('#/help?section=lessons')
+    expect(
+      within(section('12. What the results teach')).getByRole('img', {
+        name: 'Answer score by kind of question',
+      }),
+    ).toBeVisible()
+    cleanup()
+    stubBank({ failLatest: true })
+    open('#/help?section=lessons')
+    const alert = await within(
+      section('12. What the results teach'),
+    ).findByRole('alert')
+    expect(alert).toHaveTextContent('The latest run is unavailable.')
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeVisible()
   })
 })
 

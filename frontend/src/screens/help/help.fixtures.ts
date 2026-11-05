@@ -20,6 +20,12 @@ export const UNSCORED = unscored as unknown as Schemas['QuestionOut'][]
 
 const cell = (mean: number) => ({ mean, n: 36, repeats: 108 })
 
+/** One kind of question's evidence found and answer score per approach. */
+const kind = (a: number, b: number, c: number) => ({
+  evidence_recall: { A: cell(a), B: cell(b), C: cell(c) },
+  answer: { A: cell(a + 0.1), B: cell(b + 0.1), C: cell(c + 0.1) },
+})
+
 const summary = (selection: {
   strata: string[] | null
   limit: number | null
@@ -28,6 +34,11 @@ const summary = (selection: {
   headlines: [],
   metrics: {
     overall: { evidence_recall: { A: cell(0.3), B: cell(0.4), C: cell(0.4) } },
+    H1: kind(0.4, 0.6, 0.6),
+    H2: kind(0.2, 0.2, 0.4),
+    H2_name: kind(0.7, 0.6, 0.9),
+    H3: kind(0.3, 0.3, 0.6),
+    H5: kind(0.5, 0.4, 0.4),
   },
 })
 

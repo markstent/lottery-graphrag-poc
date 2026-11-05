@@ -1,5 +1,5 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { PipelineId } from '../../design/pipelines'
 import { Blocks } from './blocks'
@@ -18,7 +18,10 @@ import {
 import { REGISTER } from './copy/limits'
 import { HelpDataContext, type HelpData } from './help-data'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 
 /**
  * The official run v0.3.0, as data/evaluation/runs/official-2026-10-29/summary.json
@@ -87,16 +90,48 @@ const KINDS = Object.keys(SUMMARY) as KindId[]
 const whole = (value: number) => `${Math.round(value * 100)}%`
 const inWords = (value: number) => `${Math.round(value * 100)} percent`
 
-/** Every string a list of blocks shows: paragraphs, list items, headings and table cells. */
+/** Every string a list of blocks shows: paragraphs, list items, key lines, steps, headings and table cells, inside "More detail" too. */
 const texts = (blocks: readonly Block[]): string[] =>
-  blocks.flatMap((block) => {
+  blocks.flatMap((block): string[] => {
     if (typeof block === 'string') return [block]
     if (!('kind' in block)) return [...block]
-    if (block.kind === 'heading') return [block.text]
+    if (block.kind === 'heading' || block.kind === 'key') return [block.text]
+    if (block.kind === 'steps') return [...block.items]
+    if (block.kind === 'more') return [block.summary, ...texts(block.blocks)]
     if (block.kind === 'table')
       return [block.caption, ...block.columns, ...block.rows.flat()]
     return []
   })
+
+/** The body text of Plain blocks a reader reads as paragraphs or list items, inside "More detail" too. */
+const paragraphs = (blocks: readonly Block[]): string[] =>
+  blocks.flatMap((block): string[] => {
+    if (typeof block === 'string') return [block]
+    if (!('kind' in block)) return [...block]
+    if (block.kind === 'key') return [block.text]
+    if (block.kind === 'steps') return [...block.items]
+    if (block.kind === 'more') return paragraphs(block.blocks)
+    return []
+  })
+
+/** Every word a reader can see in Plain blocks: body text, headings and "More detail" summaries, not table cells. */
+const plainWords = (blocks: readonly Block[]): string[] =>
+  blocks.flatMap((block): string[] => {
+    if (typeof block !== 'string' && 'kind' in block) {
+      if (block.kind === 'heading') return [block.text]
+      if (block.kind === 'more')
+        return [block.summary, ...plainWords(block.blocks)]
+    }
+    return paragraphs([block])
+  })
+
+const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length
+
+const isKind = (block: Block | undefined, kind: string) =>
+  block !== undefined &&
+  typeof block !== 'string' &&
+  'kind' in block &&
+  block.kind === kind
 
 const { plain, technical, plainHint } = CHAPTER_COPY.lessons
 const plainText = [...texts(plain), plainHint ?? ''].join('\n')
@@ -117,6 +152,8 @@ function show(level: HelpData['level'], blocks: readonly Block[]) {
     settings: { status: 'loading', retry: () => undefined },
     recorded: { status: 'loading', retry: () => undefined },
   }
+  // The chart by kind of question loads the newest run; these tests read the copy around it.
+  vi.stubGlobal('fetch', () => new Promise(() => undefined))
   render(
     <HelpDataContext.Provider value={data}>
       <Blocks blocks={blocks} />
@@ -316,18 +353,68 @@ describe('chapter 12, what the results teach', () => {
     expect(allText).toContain('Overall judge_mark 0.503 / 0.530 / 0.578.')
   })
 
+  it('is under half its old length, with paragraphs of at most 60 words', () => {
+    // Body text, headings and "More detail" summaries, as chapters 7 and 8 count them; 2,933 words before.
+    expect(wordCount(plainWords(plain).join(' '))).toBeLessThan(1467)
+    for (const text of paragraphs(plain))
+      expect(wordCount(text), text).toBeLessThanOrEqual(60)
+  })
+
+  it('opens with one sentence, a key line and the chart by kind of question, then short lists of findings', () => {
+    const [first, second] = plain
+    expect(typeof first).toBe('string')
+    expect((first as string).match(/[.?!](?=\s|$)/g)).toHaveLength(1)
+    expect(isKind(second, 'key')).toBe(true)
+    const chart = plain.findIndex(
+      (block) =>
+        isKind(block, 'component') &&
+        (block as { name: string }).name === 'resultsByKind',
+    )
+    const firstHeading = plain.findIndex((block) => isKind(block, 'heading'))
+    expect(chart).toBeGreaterThan(1)
+    expect(chart).toBeLessThan(firstHeading)
+    for (const heading of [
+      'Where text search did best',
+      'Where the graph did best',
+      'Where the graph with the ontology did best',
+      'Where none did well',
+      'What the two judges said',
+    ]) {
+      const at = plain.findIndex(
+        (block) =>
+          isKind(block, 'heading') &&
+          (block as { text: string }).text === heading,
+      )
+      expect(at, heading).toBeGreaterThan(chart)
+      const next = plain.findIndex(
+        (block, index) => index > at && isKind(block, 'heading'),
+      )
+      const section = plain.slice(at + 1, next === -1 ? undefined : next)
+      // A short list of findings, and the longer explanation folded away.
+      expect(Array.isArray(section[0]), heading).toBe(true)
+      expect(
+        section.filter((block) => isKind(block, 'more')),
+        heading,
+      ).toHaveLength(1)
+      expect(
+        section.filter((block) => typeof block === 'string'),
+        heading,
+      ).toHaveLength(0)
+    }
+  })
+
   it('shows its parts at Plain and the per-question tables only at Technical', () => {
     show('plain', plain)
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent),
     ).toEqual([
-      'A caution about the answer score',
+      'How to read this chapter',
       'Where text search did best',
       'Where the graph did best',
       'Where the graph with the ontology did best',
       'Where none did well',
       'What to take home',
-      'When you would want text, a graph, an ontology, or all three',
+      'When to use each',
       'What the two judges said',
       'Limits',
     ])

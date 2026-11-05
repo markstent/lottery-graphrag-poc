@@ -28,6 +28,7 @@ import { HelpOutcomes } from './outcomes'
 import { Questions } from './questions'
 import { Running } from './running'
 import { Register } from './register'
+import { HelpResultsByKind } from './results-by-kind'
 import {
   fillSettings,
   NOT_AVAILABLE,
@@ -60,6 +61,7 @@ const COMPONENTS: Record<ComponentName, ReactElement> = {
   glossary: <Glossary />,
   running: <Running />,
   outcomes: <HelpOutcomes />,
+  resultsByKind: <HelpResultsByKind />,
 }
 
 const CELL = 'border-b border-hairline px-3 py-2 align-top'

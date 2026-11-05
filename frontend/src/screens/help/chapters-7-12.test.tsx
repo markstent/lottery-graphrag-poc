@@ -180,6 +180,27 @@ describe('chapters 7 and 8 read in short sections', () => {
   })
 })
 
+describe('chapters 9 to 11 and the questions page read in short parts', () => {
+  it('have a heading below the title and Plain paragraphs of at most 60 words', () => {
+    for (const id of ['limits', 'glossary', 'running', 'questions'] as const) {
+      const { plain } = CHAPTER_COPY[id]
+      expect(
+        plain.some((block) => isKind(block, 'heading')),
+        id,
+      ).toBe(true)
+      for (const text of strings(plain))
+        expect(wordCount(text), `${id}: ${text}`).toBeLessThanOrEqual(60)
+    }
+  })
+
+  it('the questions page opens with a short lead and a list', () => {
+    const [lead, list] = CHAPTER_COPY.questions.plain
+    expect(typeof lead).toBe('string')
+    expect(wordCount(lead as string)).toBeLessThanOrEqual(30)
+    expect(Array.isArray(list) || isKind(list, 'steps')).toBe(true)
+  })
+})
+
 describe('chapters 7 to 12', () => {
   it('chapters 7, 8, 9, 10 and 12 have plain and technical prose, and 11 a plain framing', () => {
     for (const id of [

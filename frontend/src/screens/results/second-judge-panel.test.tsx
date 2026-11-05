@@ -14,7 +14,9 @@ describe('SecondJudgePanel', () => {
   it('shows the two judges, how they agree, and the label check', async () => {
     stubApi({ [PATH]: V03_SECOND_JUDGE })
     render(<SecondJudgePanel runId="fixture-v03" />)
+    // The panel is drawn, loading, before the data comes: wait for the data.
     const panel = await screen.findByRole('region', { name: 'Second judge' })
+    await within(panel).findByRole('table', { name: 'With each other' })
     expect(
       within(panel).getByText(
         /Descriptive, not tested. Added after the result/,
@@ -42,6 +44,7 @@ describe('SecondJudgePanel', () => {
     const panel = await screen.findByRole('region', {
       name: "Judges' verdict",
     })
+    await within(panel).findByRole('table', { name: 'Judges disagree' })
     const combined = V03_SECOND_JUDGE.combined!
     expect(
       within(panel).getByText(
@@ -82,7 +85,7 @@ describe('SecondJudgePanel', () => {
     const panel = await screen.findByRole('region', {
       name: "Judges' verdict",
     })
-    expect(within(panel).getByText('Not worked out yet.')).toBeVisible()
+    expect(await within(panel).findByText('Not worked out yet.')).toBeVisible()
     expect(
       await screen.findByRole('table', { name: 'With each other' }),
     ).toBeVisible()

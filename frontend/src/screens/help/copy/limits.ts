@@ -208,9 +208,13 @@ export const REGISTER: readonly RegisterRow[] = [
 
 export const limits: ChapterCopy = {
   plain: [
-    'Every experiment rests on choices. Each row below is one assumption or one known limit, including those that cut against the graph. The Technical level adds why each was made, what it costs if it is wrong, and the decision record behind it.',
+    'Every experiment rests on choices.',
+    { kind: 'heading', text: 'Each assumption and limit' },
+    'Each row below is one assumption or one known limit, including those that cut against the graph.',
     { kind: 'component', name: 'register' },
   ],
+  plainHint:
+    'The Technical level adds why each was made, what it costs if it is wrong, and the decision record behind it.',
   technical: [
     'The decision records (D-0xx) are in DECISIONS.md. A row that cites a run gives its date; the figures of the official run are in chapter 8.',
   ],

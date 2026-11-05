@@ -110,6 +110,7 @@ export type ComponentName =
   | 'glossary'
   | 'running'
   | 'outcomes'
+  | 'resultsByKind'
 
 /** A table of text a chapter states: a caption read by a screen reader, its column names and its rows, the first cell of each row naming it. */
 export interface TableBlock {
