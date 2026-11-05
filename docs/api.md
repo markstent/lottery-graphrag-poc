@@ -334,6 +334,8 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
   Only those directories are listed or served, so the ledger is not reachable, and an entry that resolves outside is refused.
 - The dictionary is the world's `_data_dictionary.json`, in position order, with primary keys, source system and foreign keys.
   A field the file lacks comes from the schema registry, and `dictionary_source` says `world` or `registry`.
+- Each table also carries `description`, one plain line saying what a row is and what the table is for.
+  It comes from `TABLE_DESCRIPTIONS` in the schema registry for both sources, so every table has one.
 - `rows` takes `offset` (default 0), `limit` (default 50, at most 200) and an optional `column` and `value` together.
   `table` and `column` must be registry names, otherwise 422 before any query.
   Rows are ordered by primary key, then the other columns, and `total` counts every match.

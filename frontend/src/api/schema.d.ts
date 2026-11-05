@@ -3693,6 +3693,8 @@ export interface components {
         TableSchemaOut: {
             /** Columns */
             columns: components["schemas"]["ColumnOut"][];
+            /** Description */
+            description: string;
             /**
              * Dictionary Source
              * @enum {string}

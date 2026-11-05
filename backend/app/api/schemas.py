@@ -768,6 +768,7 @@ class TableSchemaOut(BaseModel):
     """One table of the data dictionary (GET /datasets/{dataset_id}/dictionary)."""
 
     table: str
+    description: str
     source_system: str
     primary_key: str
     columns: list[ColumnOut]

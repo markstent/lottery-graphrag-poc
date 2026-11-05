@@ -7707,6 +7707,10 @@
             "title": "Columns",
             "type": "array"
           },
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
           "dictionary_source": {
             "enum": [
               "world",
@@ -7747,6 +7751,7 @@
         },
         "required": [
           "table",
+          "description",
           "source_system",
           "primary_key",
           "columns",

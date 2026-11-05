@@ -79,27 +79,51 @@ describe('Tables tab', () => {
     expect(
       list.getByRole('heading', { name: 'Incident management' }),
     ).toBeVisible()
-    expect(list.getByRole('button', { name: /^games ?120$/ })).toBeVisible()
-    expect(list.getByRole('button', { name: /^tickets ?5,400$/ })).toBeVisible()
-    expect(list.getByRole('button', { name: /^incidents ?25$/ })).toBeVisible()
+    expect(list.getByRole('button', { name: /^games ?120/ })).toBeVisible()
+    expect(list.getByRole('button', { name: /^tickets ?5,400/ })).toBeVisible()
+    expect(list.getByRole('button', { name: /^incidents ?25/ })).toBeVisible()
   })
 
   it('narrows the list as the reader types', async () => {
     stubApi(ROUTES)
     renderTab('table=games')
-    await screen.findByRole('button', { name: /^tickets ?5,400$/ })
+    await screen.findByRole('button', { name: /^tickets ?5,400/ })
     await userEvent.type(screen.getByRole('searchbox'), 'tick')
     expect(
-      screen.getByRole('button', { name: /^tickets ?5,400$/ }),
+      screen.getByRole('button', { name: /^tickets ?5,400/ }),
     ).toBeVisible()
-    expect(screen.queryByRole('button', { name: /^games ?120$/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^games ?120/ })).toBeNull()
+  })
+
+  it('finds a table by the words of its description', async () => {
+    stubApi(ROUTES)
+    renderTab('table=games')
+    await screen.findByRole('button', { name: /^tickets ?5,400/ })
+    await userEvent.type(screen.getByRole('searchbox'), 'outage')
+    expect(screen.getByRole('button', { name: /^incidents/ })).toBeVisible()
+    expect(screen.queryByRole('button', { name: /^tickets/ })).toBeNull()
+  })
+
+  it('says what a table holds under its name in the list and above its rows', async () => {
+    stubApi(ROUTES)
+    renderTab('table=games')
+    const list = within(
+      await screen.findByRole('region', { name: '1 Choose a table' }),
+    )
+    expect(
+      list.getByText('Each ticket bought, with who bought it and when.'),
+    ).toBeVisible()
+    const rows = within(screen.getByRole('region', { name: '2 Its rows' }))
+    expect(
+      rows.getByText('Each game sold in a market, with its price and status.'),
+    ).toBeVisible()
   })
 
   it('puts the chosen table, then the chosen row, in the address', async () => {
     stubApi(ROUTES)
     const { rerender } = renderTab('table=games')
     await userEvent.click(
-      await screen.findByRole('button', { name: /^incidents ?25$/ }),
+      await screen.findByRole('button', { name: /^incidents ?25/ }),
     )
     expect(window.location.hash).toBe('#/data-model?tab=tables&table=incidents')
     rerender(<TablesTab params={new URLSearchParams('table=incidents')} />)
@@ -115,7 +139,7 @@ describe('Tables tab', () => {
     stubApi(ROUTES)
     renderTab('table=incidents&row=INC_002')
     expect(
-      await screen.findByRole('button', { name: /^incidents ?25$/ }),
+      await screen.findByRole('button', { name: /^incidents ?25/ }),
     ).toHaveAttribute('aria-pressed', 'true')
     const rows = await screen.findAllByRole('row')
     expect(
@@ -199,7 +223,7 @@ describe('Tables tab', () => {
     stubApi(ROUTES)
     renderTab()
     expect(
-      await screen.findByRole('button', { name: /^incidents ?25$/ }),
+      await screen.findByRole('button', { name: /^incidents ?25/ }),
     ).toHaveAttribute('aria-pressed', 'true')
     expect(
       await screen.findByText('Becomes these links in the graph'),
@@ -213,7 +237,7 @@ describe('Tables tab', () => {
       await screen.findByText('Choose a row to see its record.'),
     ).toBeVisible()
     expect(
-      screen.getByRole('button', { name: /^incidents ?25$/ }),
+      screen.getByRole('button', { name: /^incidents ?25/ }),
     ).toHaveAttribute('aria-pressed', 'true')
   })
 
@@ -229,7 +253,7 @@ describe('Tables tab', () => {
         await screen.findByText('Choose a row to see its record.'),
       ).toBeVisible()
       expect(
-        screen.getByRole('button', { name: /^incidents ?25$/ }),
+        screen.getByRole('button', { name: /^incidents ?25/ }),
       ).toHaveAttribute('aria-pressed', 'true')
       unmount()
       vi.unstubAllGlobals()

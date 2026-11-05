@@ -286,8 +286,9 @@ When the world has none, or no truth ledger of its own to check against, the car
   A link that moves the reader on is a filled button with an arrow.
   "About this" at the top right of the third column opens that layer's explanation (`src/screens/data-model/about-copy.ts`) in a drawer.
   The columns stack on narrow screens, list first.
-- **Tables.** Left: every table grouped by source system, with its row count.
-  Middle: the chosen table's name, its source system, row and column counts, a filter on one column and one value (read as that column's own type), and its rows, 50 to a page.
+- **Tables.** Left: every table grouped by source system, with its row count and, under its name, a one-line plain description of what the table holds.
+  The search matches the description as well as the name.
+  Middle: the chosen table's name, the same description as the first line under it, its source system, row and column counts, a filter on one column and one value (read as that column's own type), and its rows, 50 to a page.
   A value in a column that names a row of another table is an underlined link that opens that row in its own table, and the chosen row is marked.
   Right: the chosen row as a record, first the graph links it becomes in words ("affects 3 games", "6 support cases are related to it"), then "Open in the graph" when it has a graph record, then its fields.
   A row of a table the graph leaves out says "This row is not in the graph."

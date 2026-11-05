@@ -136,6 +136,8 @@ export interface PickItem {
   title: string
   /** A short figure beside the title, such as a row count. */
   detail?: string
+  /** A plain line under the title, such as what a table holds. */
+  note?: string
 }
 
 export interface PickGroup {
@@ -144,7 +146,7 @@ export interface PickGroup {
 }
 
 const matches = (item: PickItem, query: string) =>
-  `${item.id} ${item.title}`.toLowerCase().includes(query)
+  `${item.id} ${item.title} ${item.note ?? ''}`.toLowerCase().includes(query)
 
 /**
  * A list to choose from, in named groups, with a search box above it unless
@@ -195,12 +197,19 @@ export function PickList({
                   type="button"
                   aria-pressed={item.id === chosen}
                   onClick={() => onChoose(item.id)}
-                  className="flex w-full items-baseline justify-between gap-3 rounded-chip px-2 py-1.5 text-left text-sm text-text-primary hover:bg-surface-raised focus-visible:bg-surface-raised aria-pressed:bg-surface-raised aria-pressed:font-semibold"
+                  className="block w-full rounded-chip px-2 py-1.5 text-left text-sm text-text-primary hover:bg-surface-raised focus-visible:bg-surface-raised aria-pressed:bg-surface-raised aria-pressed:font-semibold"
                 >
-                  <span className="min-w-0 break-words">{item.title}</span>
-                  {item.detail && (
-                    <span className="shrink-0 text-text-muted tabular-nums">
-                      {item.detail}
+                  <span className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 break-words">{item.title}</span>
+                    {item.detail && (
+                      <span className="shrink-0 text-text-muted tabular-nums">
+                        {item.detail}
+                      </span>
+                    )}
+                  </span>
+                  {item.note && (
+                    <span className="mt-0.5 block text-xs font-normal text-text-secondary">
+                      {item.note}
                     </span>
                   )}
                 </button>

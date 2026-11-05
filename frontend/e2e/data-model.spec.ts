@@ -546,7 +546,7 @@ test.describe('keyboard only', () => {
   }) => {
     await open(page, '#/data-model?tab=tables')
     await section(page, 'Tables').focus()
-    await tabTo(page, /^markets 4$/)
+    await tabTo(page, /^markets 4 /)
     await expectVisibleFocus(page)
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/tab=tables&table=markets$/)
