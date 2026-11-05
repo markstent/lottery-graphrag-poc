@@ -360,6 +360,7 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
   Each item of the neighbours route carries `edges` empty: the counts are read for the requested node only.
   A node no table maps to (`PrizeType`, `BusinessConcept`) has null provenance.
 - `GET /graph/nodes/{node_id}/neighbours` takes `limit` (default 25, 1 to 100) and an optional relationship `type`, ordered by type, direction and id, with `truncated` when there are more.
+  An optional `direction` (`out` or `in`) keeps the links that leave or reach the node; any other value is a 422, as an unknown `type` is.
 - `GET /ontology` reads the YAML: the version, every concept with its parent, labels, synonyms and definition (D-058), binding counts by market, and `relationships`, which is derived from ingestion and not declared.
 - `GET /ontology/concepts/{concept_id}/members` lists the bound local codes, with an optional `market` filter.
 - `GET /scenarios` lists each enabled scenario with what the manifest says was planted, and never where or why.

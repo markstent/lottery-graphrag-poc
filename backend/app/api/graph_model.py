@@ -16,7 +16,7 @@ import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Query
 from neo4j.time import Date, DateTime, Duration, Time
@@ -196,6 +196,7 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
         node_id: str,
         limit: Annotated[int, Query(ge=1, le=NEIGHBOURS_LIMIT_MAX)] = NEIGHBOURS_LIMIT_DEFAULT,
         rel_type: Annotated[str | None, Query(alias="type")] = None,
+        direction: Literal["out", "in"] | None = None,
     ) -> Neighbours:
         if rel_type is not None and rel_type not in RELATIONSHIP_TYPES:
             raise ApiError(
@@ -204,7 +205,7 @@ def build_graph_router(graph: GraphConfig, world: GraphWorldCheck) -> APIRouter:
         active = active_dataset_dir()
         with _reader(graph, world, active) as reader:
             _one_node(reader, node_id)
-            found = reader.node_neighbours(node_id, rel_type, limit + 1)
+            found = reader.node_neighbours(node_id, rel_type, direction, limit + 1)
         return Neighbours(
             node_id=node_id,
             items=[

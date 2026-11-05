@@ -31,7 +31,11 @@ import { useLoad } from '../../app/use-load'
 import { ErrorNote } from '../../components/error-note'
 import { Panel, SkeletonBar } from '../../components/panel'
 import { nodeLabel } from '../../design/node-labels'
-import { linkLines, relationshipPhrase } from '../../design/relationships'
+import {
+  incomingPhrase,
+  linkLines,
+  relationshipPhrase,
+} from '../../design/relationships'
 import { graphAbout } from './about-copy'
 import { AboutContent } from './about'
 import { Explorer, ListSearch, NEXT_STEP, PickList } from './explorer'
@@ -90,25 +94,22 @@ async function loadNeighbourhood(id: string, signal: AbortSignal) {
     getNeighbours(id, { limit: NEIGHBOUR_LIMIT }, signal),
   ])
   // One page of neighbours can miss a kind of link with few neighbours behind
-  // one with many; those few are drawn one by one, so ask for them by type.
+  // one with many; those few are drawn one by one, so ask for each such kind
+  // of link and direction on its own.
   const key = (type: string, direction: string) => `${type}:${direction}`
   const read = new Map<string, number>()
   for (const item of first.items) {
     const k = key(item.rel_type, item.direction)
     read.set(k, (read.get(k) ?? 0) + 1)
   }
-  const missing = new Set(
-    (node.edges ?? [])
-      .filter(
-        (e) =>
-          e.count <= GROUP_THRESHOLD &&
-          (read.get(key(e.type, e.direction)) ?? 0) < e.count,
-      )
-      .map((e) => e.type),
+  const missing = (node.edges ?? []).filter(
+    (e) =>
+      e.count <= GROUP_THRESHOLD &&
+      (read.get(key(e.type, e.direction)) ?? 0) < e.count,
   )
   const more = await Promise.all(
-    [...missing].map((type) =>
-      getNeighbours(id, { type, limit: NEIGHBOUR_LIMIT }, signal),
+    missing.map(({ type, direction }) =>
+      getNeighbours(id, { type, direction, limit: NEIGHBOUR_LIMIT }, signal),
     ),
   )
   const items = new Map(
@@ -329,7 +330,11 @@ function Neighbourhood({
       id: group.id,
       source: node.node_id,
       target: boxId,
-      label: relationshipPhrase(group.type),
+      // An incoming link reads from the box to the record, as the right column does.
+      label:
+        group.direction === 'in'
+          ? incomingPhrase(group.type, group.total)
+          : relationshipPhrase(group.type),
       reversed: group.direction === 'in',
     })
   }
@@ -389,11 +394,13 @@ function GroupMembers({
     (signal) =>
       getNeighbours(
         node.node_id,
-        { type: group.type, limit: NEIGHBOUR_LIMIT },
+        {
+          type: group.type,
+          direction: group.direction,
+          limit: NEIGHBOUR_LIMIT,
+        },
         signal,
-      ).then((page) =>
-        page.items.filter((i) => i.direction === group.direction),
-      ),
+      ).then((page) => page.items),
     `members/${node.node_id}/${group.id}`,
   )
   const kinds = kindsAround(schema, node)
@@ -434,7 +441,10 @@ function GroupMembers({
         {load.status === 'error' && (
           <ErrorNote error={load.error} retry={load.retry} />
         )}
-        {load.status === 'ready' && (
+        {load.status === 'ready' && load.data.length === 0 && (
+          <p className={NOTE}>None of these records could be read.</p>
+        )}
+        {load.status === 'ready' && load.data.length > 0 && (
           <>
             {load.data.length < group.total && (
               <p

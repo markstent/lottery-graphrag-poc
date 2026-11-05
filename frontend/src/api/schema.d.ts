@@ -4585,6 +4585,7 @@ export interface operations {
             query?: {
                 limit?: number;
                 type?: string | null;
+                direction?: ("out" | "in") | null;
             };
             header?: never;
             path: {

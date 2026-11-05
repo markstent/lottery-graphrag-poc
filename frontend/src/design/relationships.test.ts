@@ -4,6 +4,7 @@ import fixture from '../run/fixtures/run-abc.json'
 import {
   RELATIONSHIP_PHRASES,
   RELATIONSHIP_SOURCES,
+  incomingPhrase,
   linkLines,
   relationshipPhrase,
 } from './relationships'
@@ -98,5 +99,21 @@ describe('link lines', () => {
         { type: 'NEW_KIND', direction: 'out', count: 2 },
       ]),
     ).toEqual(['1 record refers to it', 'new kind 2 records'])
+  })
+})
+
+describe('incoming phrases', () => {
+  it('read from the other record towards this one, for one and for several', () => {
+    expect(incomingPhrase('DEPLOYED_TO', 1)).toBe('is deployed to it')
+    expect(incomingPhrase('DEPLOYED_TO', 4)).toBe('are deployed to it')
+    expect(incomingPhrase('AFFECTS_MARKET', 10)).toBe('affect it')
+    expect(incomingPhrase('FROM_MARKET', 575)).toBe('are from it')
+    expect(incomingPhrase('MAPS_TO', 1)).toBe('is matched to it')
+  })
+
+  it('read a symmetric kind of link the same way, and an unknown type by its phrase', () => {
+    expect(incomingPhrase('RELATED_TO', 22)).toBe('are related to it')
+    expect(incomingPhrase('SIMILAR_TO', 1)).toBe('is similar to it')
+    expect(incomingPhrase('KNOWS_ABOUT', 2)).toBe('knows about it')
   })
 })

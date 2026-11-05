@@ -63,19 +63,23 @@ const AFFECTED_GAME: Schemas['NeighbourOut'] = {
   node: GAME_NODE,
 }
 
-/** At most 100 neighbours a call, as the server; `type` narrows them. */
-const incidentNeighbours = (url: URL) =>
-  json({
-    node_id: 'INC_002',
-    truncated: true,
-    items:
-      url.searchParams.get('type') === 'RELATED_TO'
-        ? Array.from({ length: 100 }, (_, i) => supportCase(i))
-        : [
-            AFFECTED_GAME,
-            ...Array.from({ length: 99 }, (_, i) => supportCase(i)),
-          ],
-  })
+/** At most 100 neighbours a call, as the server; `type` and `direction` narrow them. */
+const incidentNeighbours = (url: URL) => {
+  const type = url.searchParams.get('type')
+  const direction = url.searchParams.get('direction')
+  const items =
+    type === 'RELATED_TO' && direction === 'in'
+      ? Array.from({ length: 100 }, (_, i) => supportCase(i))
+      : type === 'AFFECTS' && direction === 'out'
+        ? [AFFECTED_GAME]
+        : type === null
+          ? [
+              AFFECTED_GAME,
+              ...Array.from({ length: 99 }, (_, i) => supportCase(i)),
+            ]
+          : []
+  return json({ node_id: 'INC_002', truncated: items.length === 100, items })
+}
 
 const CONCEPT: Schemas['NodeOut'] = {
   node_id: 'CONCEPT_DRAW',
@@ -164,7 +168,7 @@ describe('Graph explorer', () => {
     ).toBeVisible()
     expect(screen.queryByRole('button', { name: /^SC_000/ })).toBeNull()
     expect(
-      screen.getByText('150 support cases is related to Payments degraded'),
+      screen.getByText('150 support cases are related to Payments degraded'),
     ).toBeInTheDocument()
   })
 
@@ -342,6 +346,59 @@ describe('Graph explorer', () => {
       within(members).getByRole('button', { name: 'SC_007' }),
     )
     expect(window.location.hash).toBe('#/data-model?tab=graph&node=SC_007')
+  })
+
+  it('asks again, by type and direction, for a kind of link with few neighbours the first page missed', async () => {
+    const fetchSpy = stubApi({
+      ...ROUTES,
+      '/api/v1/graph/nodes/INC_002/neighbours': (url: URL) =>
+        url.searchParams.get('type') === null
+          ? json({
+              node_id: 'INC_002',
+              truncated: true,
+              items: Array.from({ length: 100 }, (_, i) => supportCase(i)),
+            })
+          : incidentNeighbours(url),
+    })
+    renderTab('node=INC_002')
+    expect(
+      await screen.findByRole('button', { name: 'Albion Millions 1, game' }),
+    ).toBeVisible()
+    const asked = fetchSpy.mock.calls
+      .map(([input]) => new URL(String(input), 'http://localhost'))
+      .filter((url) => url.pathname.endsWith('/neighbours'))
+      .map((url) => url.search)
+    expect(asked).toContain('?type=AFFECTS&direction=out&limit=100')
+  })
+
+  it("lists only a group's own direction, asking the server for it", async () => {
+    const fetchSpy = stubApi(ROUTES)
+    renderTab('node=INC_002&group=RELATED_TO:in')
+    const detail = await column(DETAIL)
+    expect(
+      await detail.findByText('Showing the first 100 of 150.'),
+    ).toBeVisible()
+    const asked = fetchSpy.mock.calls
+      .map(([input]) => new URL(String(input), 'http://localhost'))
+      .filter((url) => url.pathname.endsWith('/neighbours'))
+      .map((url) => url.search)
+    expect(asked).toContain('?type=RELATED_TO&direction=in&limit=100')
+  })
+
+  it('says so when a group comes back empty', async () => {
+    stubApi({
+      ...ROUTES,
+      '/api/v1/graph/nodes/INC_002/neighbours': (url: URL) =>
+        url.searchParams.get('direction') === 'in'
+          ? json({ node_id: 'INC_002', truncated: false, items: [] })
+          : incidentNeighbours(url),
+    })
+    renderTab('node=INC_002&group=RELATED_TO:in')
+    const detail = await column(DETAIL)
+    expect(
+      await detail.findByText('None of these records could be read.'),
+    ).toBeVisible()
+    expect(detail.queryByText(/^Showing the first/)).toBeNull()
   })
 
   it('moves to a neighbour when it is chosen', async () => {

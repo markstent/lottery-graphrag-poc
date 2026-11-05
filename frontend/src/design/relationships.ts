@@ -99,6 +99,10 @@ const LINK_WORDS: Record<string, LinkWords> = {
     in: ['is provided by it', 'are provided by it'],
   },
   REFERENCES: { out: 'refers to', in: ['refers to it', 'refer to it'] },
+  RELATED_TO: {
+    out: 'is related to',
+    in: ['is related to it', 'are related to it'],
+  },
   RELATED_TO_APP_VERSION: {
     out: 'is related to',
     in: ['is related to it', 'are related to it'],
@@ -108,6 +112,10 @@ const LINK_WORDS: Record<string, LinkWords> = {
     in: ['is related to it', 'are related to it'],
   },
   RUNS_ON: { out: 'runs on', in: ['runs on it', 'run on it'] },
+  SIMILAR_TO: {
+    out: 'is similar to',
+    in: ['is similar to it', 'are similar to it'],
+  },
   TARGETS: { out: 'targets', in: ['targets it', 'target it'] },
   USES: { out: 'uses', in: ['uses it', 'use it'] },
   USES_PAYMENT: { out: 'uses', in: ['uses it', 'use it'] },
@@ -115,6 +123,18 @@ const LINK_WORDS: Record<string, LinkWords> = {
     out: 'is a version of',
     in: ['is a version of it', 'are versions of it'],
   },
+}
+
+/**
+ * What `count` records linked to this one by `type` do to it, read from
+ * them: "is deployed to it", "4 ... are deployed to it", "affect it". An
+ * unknown type reads as its phrase and "it".
+ */
+export function incomingPhrase(type: string, count: number): string {
+  return (
+    LINK_WORDS[type]?.in[count === 1 ? 0 : 1] ??
+    `${relationshipPhrase(type)} it`
+  )
 }
 
 /** Kinds of link that read the same from either end, so both ends are one line. */

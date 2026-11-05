@@ -132,6 +132,19 @@ function bounds(
   }
 }
 
+/**
+ * A link as a sentence. A reversed link reads from its target; an incoming
+ * phrase ending in "it" ("are deployed to it") names the source in its place.
+ */
+function inWords(edge: DiagramEdge, title: ReadonlyMap<string, string>) {
+  const label = edge.label ?? 'links to'
+  if (!edge.reversed)
+    return `${title.get(edge.source)} ${label} ${title.get(edge.target)}`
+  return label.endsWith(' it')
+    ? `${title.get(edge.target)} ${label.slice(0, -3)} ${title.get(edge.source)}`
+    : `${title.get(edge.target)} ${label} ${title.get(edge.source)}`
+}
+
 export function Diagram({
   nodes,
   edges,
@@ -347,11 +360,7 @@ export function Diagram({
       </svg>
       <ul className="sr-only" aria-label={`${label}, in words`}>
         {shown.map((edge) => (
-          <li key={edge.id}>
-            {edge.reversed
-              ? `${title.get(edge.target)} ${edge.label ?? 'links to'} ${title.get(edge.source)}`
-              : `${title.get(edge.source)} ${edge.label ?? 'links to'} ${title.get(edge.target)}`}
-          </li>
+          <li key={edge.id}>{inWords(edge, title)}</li>
         ))}
       </ul>
     </div>

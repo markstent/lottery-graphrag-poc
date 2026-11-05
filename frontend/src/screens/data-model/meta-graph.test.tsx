@@ -16,7 +16,16 @@ describe('Diagram', () => {
     const { container } = render(
       <Diagram
         nodes={nodes}
-        edges={[{ ...edges[0], reversed: true }]}
+        edges={[
+          { ...edges[0], reversed: true },
+          {
+            id: 'f',
+            source: 'a',
+            target: 'b',
+            label: 'are deployed to it',
+            reversed: true,
+          },
+        ]}
         label="Map"
         onSelect={() => undefined}
         scale={1}
@@ -25,6 +34,8 @@ describe('Diagram', () => {
     expect(
       await screen.findByText('market is available in game'),
     ).toBeInTheDocument()
+    // An incoming phrase names the source as "it", so the words name it instead.
+    expect(screen.getByText('market are deployed to game')).toBeInTheDocument()
     const path = container.querySelector('g[data-edge-id="e"] path')
     expect(path).toHaveAttribute('marker-start')
     expect(path).not.toHaveAttribute('marker-end')
