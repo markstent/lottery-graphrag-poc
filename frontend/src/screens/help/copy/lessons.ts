@@ -4,7 +4,11 @@
  * from the run's record, and what that suggests about text search, a graph and
  * an ontology. Every figure is a fact about that one run, so it is typed here
  * with its source, as chapter 8 types the run's headline figures; a newer run
- * needs this chapter rewritten, not refilled.
+ * needs this chapter rewritten, not refilled. Only the chart that opens the
+ * chapter (resultsByKind) reads the newest official run from the API.
+ *
+ * Plain is short lists of findings, each section's explanation folded into
+ * "More detail"; the cases behind them are at Technical.
  *
  * KIND_FIGURES are the means of `metrics` in the run's summary.json, to four
  * decimals. QUESTION_FIGURES were computed from the run's results.json, read
@@ -597,58 +601,125 @@ export const OUTCOME_TABLE: TableBlock = {
 
 export const lessons: ChapterCopy = {
   plain: [
-    'This chapter explains the official run, which started on 2026-10-29. It says which kinds of question each approach did best at, why, and what that suggests about when you would want text search, a graph, an ontology, or all three. Every figure here comes from that run and is fixed to it.',
-    'Text search is approach A, the graph is B, and the graph with the ontology is C (chapter 4). Two measures are used. "Evidence found" is the share of the facts a correct answer needs that reached the answer model. The answer score is how much of the answer key an answer got right.',
-    'Read the figures with care. Before the run, 14 comparisons were chosen and given a test, a check that a difference is too large to be chance. Only one passed: on multi-hop questions, the graph found more of the needed evidence than text search. Everything else here is a pattern seen in this run, on 6 to 72 cases at a time. A case is one question asked about one record in one copy of the company; each of the 22 questions was asked 6 or 18 times. A pattern may be chance, and it is called a pattern.',
-    { kind: 'heading', text: 'A caution about the answer score' },
-    'The answer score reads the words of an answer, and in places it gives credit a careful reader would not, or holds it back. Where that changes who did best, this chapter says so, and the issue is listed as a known limit in chapter 9.',
-    KIND_TABLE,
-    { kind: 'heading', text: 'Where text search did best' },
-    "Single facts about one named record. Text search answered all 72 correctly, the graph 71 and the graph with the ontology 68, a difference the test did not detect. The question names one record, such as a game or a campaign, and the answer is written in that record, so all three found it. The misses came from the answer model. Once, B and C both had a campaign record with its end date as their first piece of evidence, and both said the date was not there. Three times C said that a game sold only in shops was sold online. Its evidence held the ontology's description of digital sales, but so did its evidence on the three times it answered correctly, so that alone does not explain the error.",
-    'Planted patterns. Each comes from a planted story, hidden in the data on purpose (chapter 3). Text search found 49 percent of the needed evidence and the graph approaches 42 percent each; answer scores were 71 percent against 63 percent. The test found no detectable difference. Most of the evidence gap is one question: which payment provider was behind a given support case. The graph cannot use a support case as its starting point, so it started from the closest record match, which was a different support case in 5 of the 6 worlds. In the sixth it started from the right case, but its two-step graph walk led to other payment complaints in the same market, not to the provider. It found none of the evidence in any world. Text search found the incident review that names the provider in 5 of 6. Even so, four of those answers said the provider could not be determined while mentioning it, one named a different provider, and the judge marked 5 of the 6 wrong.',
-    'Most of text search\'s lead on planted-pattern answers comes from how the answer score reads text, not from better answers. The score gives credit for naming the right provider even in an answer that says it does not know. On another question, which market was unaffected, it accepts "United Kingdom" but not "UK": the graph answered correctly with "UK" in three worlds and the graph with the ontology in one, and each of those answers got half marks. Read with "UK" accepted, a check made after the run that leaves the published scores as they are, the gap between text search and the graph on planted-pattern answers falls from 8.0 to 4.9 points. The judge\'s marks on planted patterns are close: 1.10, 1.04 and 1.00 out of 2.',
-    'Questions where a record states the link outright, such as players who share a device or a payment card, or the games hit by incidents on one platform version. All three found about the same evidence, often all of it. When a record or a document says the answer in plain words, text search finds it and the graph adds little.',
-    "Two questions that cross markets by kind, such as \"which games in other markets belong to the same kind of game family as this one\". All three did badly. Text search found the most evidence: 28 percent against 19 percent on the family question, and 26 against 13 on the mechanic question. Its answers were better on the mechanic question (35 against 22 percent) but not on the family question (23 against 25). Text search found most of what it found in product documents, which name a game's family and mechanic in words. The graph approaches showed about half as many documents, because their graph records take part of the same space. What they passed to the answer model held, at most, the game's own family or mechanic and records linked through its incidents and support cases; none of it was the shared kind or a game of another market. Going from a game through its family and the shared kind to a game in another market takes four links. On the development world, which is not one of the official worlds, the graph did reach some of the needed games by other paths, and the space limit cut them. So whether the walk's reach or the space limit matters more here is not settled by this run.",
-    { kind: 'heading', text: 'Where the graph did best' },
-    'Multi-hop questions, which need several linked records. This is the one result that passed the test. The graph found 65 percent of the needed evidence and text search 43 percent: 22.1 points more. The likely range of that difference, a 95 percent interval, is 10.4 to 34.1 points. On answers the graph scored 60 percent against 48 percent, a difference that leaned the same way but did not pass the test.',
-    'All of that difference came from two of the four multi-hop questions. One asks which other markets had incidents on the same platform version as a given incident. The graph follows the incident to its platform version, then back to the other incidents on that version, and found 93 percent of the evidence against 38 percent for text search. Text search found incident reports, but mostly not the ones on that version. The other asks which game mechanics the games hit by an incident use. The graph follows the incident to the games it affected, whose records list their mechanics: 54 percent against 21 percent. Text search found the incident but not the games, and its answer said "unknown" in 16 of 18 cases.',
-    'On the other two multi-hop questions the graph made no difference. On one, all three found all the evidence. On the other, all three failed (see "Where none did well").',
-    'The graph also helped on one question that asks for incidents of the same kind in other markets: 45 percent of the evidence against 24 percent. It found them by another route than the question implies, through incidents on the same platform version. The ontology approach took the same route and did no better (44 percent).',
-    { kind: 'heading', text: 'Where the graph with the ontology did best' },
-    'Questions that match a kind of thing across markets. The ontology is a shared list of business terms. It says, for example, that a Czech player segment and a British one are the same kind of segment, "low value". On these questions the graph with the ontology found 38 percent of the evidence, against 19 percent for the other two, and its answer score was 45 percent, against 24 percent for the graph. The test leaned its way on both measures but did not pass, so this is a pattern, not a finding.',
-    'All of that came from one question: which player segments in other markets match a given segment. The ontology approach found 76 percent of the evidence and its answer score was 83 percent. The other two found none, and every one of their answers said "unknown". Neither graph approach could start from the segment, because segments are not among the kinds of record the graph can start from either. Both started from a player in that segment. From there the graph reached the segment and other players, but no segment in another market, because nothing but the ontology links segments across markets. The ontology approach went from the player to the segment, from the segment to its shared kind, and from that kind to most of the matching segments in the other three markets.',
-    "Questions that name a game family or mechanic in a local language, such as German or Greek. The ontology approach found all the needed evidence in all 36 cases (100 percent), against 78 percent for text search and 62 percent for the graph. It matched the local name to the shared kind and followed it to the same kind of family or mechanic in every market. The graph matched only the local family or mechanic, then wandered into that game's support cases and incidents. These questions were not tested.",
-    'Finding the evidence was not enough. On the family question the ontology approach had every needed game in front of the answer model, and the answer score was still only 52 percent. The answer model read "the kind of family called X" as that one local family, named only that market\'s game, and in 6 of 18 answers called the others "distinct". Text search\'s answers made the same mistake, and the judge marked them slightly higher (1.00 against 0.83 out of 2). On the mechanic question the ontology approach did better, 90 percent.',
-    { kind: 'heading', text: 'Where none did well' },
-    'Which platform version is behind the incident linked to a support case. All three found about a tenth of the evidence or less, and said "unknown" in 16 or 17 of 18 answers. The graph cannot use a support case as a starting point; it starts from the closest record match instead. For the graph that was the named case only twice in 18, and both times it found all the evidence. The graph with the ontology started from a general idea of an incident instead, and found the evidence once. Text search found the support case every time, but the incident record behind it only twice.',
-    'Two planted questions need a conclusion drawn from several signals: the best game in another market to move a campaign to, and the games in other markets whose players favour the same mechanic. On the first, no approach found any of the needed evidence, and every answer said "unknown". On the second, none found more than 13 percent.',
-    'The answer model sometimes did not use the evidence it had. In 24 answers from text search, 17 from the graph and 19 from the graph with the ontology, of 300 each, at least half of the needed evidence reached the answer model and the answer still scored under half. All of it was there in 4, 2 and 14 of them. Most of these come from the local-name questions above: 14 of the 24 for text search and 12 of the 19 for the ontology approach.',
-    { kind: 'heading', text: 'What to take home' },
+    'This chapter reads the official run, which started on 2026-10-29, to see when text search, a graph and an ontology help.',
+    {
+      kind: 'key',
+      text: 'One difference passed its test: on multi-hop questions the graph found more of the needed evidence than text search.',
+    },
+    { kind: 'component', name: 'resultsByKind' },
+    'The chart shows the newest official run (several linked records are the multi-hop questions; hidden patterns the planted patterns); the text is fixed to the 2026-10-29 run.',
+    {
+      kind: 'more',
+      summary: 'The figures and what the test said',
+      blocks: [KIND_TABLE],
+    },
+    { kind: 'heading', text: 'How to read this chapter' },
     [
-      'Text search is enough when the question names a record, or a document states the answer. All three answered single facts almost perfectly; text search did slightly better (72, 71 and 68 of 72), a difference the test did not detect.',
-      'This is the one tested result: 22.1 more points of evidence found on multi-hop questions. Reading the two questions it came from, the gain was where the answer is a record a step or two away along a link the data holds, such as an incident, its platform version and the other incidents on it.',
-      'A shared vocabulary helps when a question crosses markets by meaning or names something in a local language. Its biggest gain was matching segments, from 0 to 76 percent of the evidence, and it found all the evidence for local names. This is a pattern seen in this run; the test did not confirm it.',
-      'A graph helps only from where it can start. Support cases and segments are not starting points. On the support-case questions the graph found almost nothing, except the few times its closest match happened to be the named case, when it found everything. On the segment question only the ontology approach recovered, by starting from a player in that segment.',
-      'Graph records take room that documents would otherwise use. Over the whole run the graph approaches showed less than half as many document passages as text search. On the two questions about kinds of family and mechanic named by code, where what text search found came almost all from documents, text search found more. Elsewhere, where documents held the answer, the three mostly tied.',
-      "Finding the evidence is not the same as answering well. The answer model sometimes passed over evidence it had, or named the right thing without saying it was the answer. The answer score can also credit an answer for naming the right thing while saying it does not know, in every approach; the judge's marks are given beside it as a check.",
+      'A is text search, B the graph, and C the graph with the ontology (chapter 4); evidence found is the share of the needed facts that reached the answer model.',
+      'Before the run, 14 comparisons were given a test, a check of whether a difference is bigger than chance. Only one passed.',
+      'Everything else is a pattern seen in this run, on 6 to 72 cases at a time, and may be chance.',
+      'The answer score, how much of the answer key an answer got right, sometimes gives credit a careful reader would not, or holds it back. Where that changes who did best, this chapter says so; it is a known limit in chapter 9.',
     ],
     {
-      kind: 'heading',
-      text: 'When you would want text, a graph, an ontology, or all three',
+      kind: 'more',
+      summary: 'What a case is',
+      blocks: [
+        'A case is one question about one record in one world; each of the 22 questions was asked 6 or 18 times.',
+      ],
     },
-    "This advice reads the run's patterns together with how the three approaches are built. Only the multi-hop evidence result was tested, so treat the rest as reasoned guidance, not as findings.",
+    { kind: 'heading', text: 'Where text search did best' },
     [
-      'Text search alone: questions about one record, and answers written in documents such as reports, product specifications and rules.',
-      "A graph: questions that follow links between records, such as from an incident to the games it hit. It helps only if it can start from the kind of record the question names: in this run it could not start from support cases, and the question from a support case to its incident's platform version failed for all three.",
-      'An ontology on top of the graph: questions that compare markets by meaning, use local names, or ask for things "of the same kind". In this run it helped where its links led from the starting record to the shared kind, as with segments and local names, and not on the family and mechanic questions named by code.',
-      'All three: a mix of these questions. In this run, as a pattern rather than a tested result, no single approach was best on every kind of question: text search on single facts and planted patterns, the graph on multi-hop questions, and the graph with the ontology on questions across markets. B and C also search documents, so by design the choice is how to share the space between documents and graph records, not which one to keep.',
+      'Single facts about one named record. Text search answered all 72 correctly, the graph 71 and the graph with the ontology 68, a difference the test did not detect.',
+      'Planted patterns, each from a planted story (chapter 3): 49 percent of the needed evidence against 42 percent for each graph approach, and answer scores of 71 against 63 percent. No detectable difference.',
+      'Two questions that look for games of the same kind of family or mechanic in other markets. All three did badly, but text search found the most: 28 percent against 19 percent on the family question, and 26 against 13 on the mechanic question.',
+    ],
+    {
+      kind: 'more',
+      summary: 'Why',
+      blocks: [
+        'Single facts: the answer is in the named record, so all three found it; the misses came from the answer model.',
+        'Planted patterns: most of the evidence gap is one question, which payment provider was behind a support case. The graph walk, from the closest match to the support case, found none of the evidence.',
+        'Text search found the review naming the provider in 5 of 6 worlds, yet the judge marked 5 of its 6 answers wrong.',
+        'Most of text search\'s lead on those answers is how the answer score reads text. It credits naming the provider in an answer that says it does not know, and it accepts "United Kingdom" but not "UK", which cost the graph approaches half marks four times.',
+        'Read with "UK" accepted, a check made after the run that leaves the published scores as they are, the gap on planted-pattern answers falls from 8.0 to 4.9 points. The judge\'s marks are close: 1.10, 1.04 and 1.00 out of 2.',
+        'Same kind of family or mechanic: text search found most of its evidence in product documents. The graph approaches showed about half as many, because graph records took part of the space.',
+        "Their graph records held neither the shared kind nor a game of another market, which is four links from the named game. This run does not show whether the walk's reach or the space limit is to blame.",
+      ],
+    },
+    { kind: 'heading', text: 'Where the graph did best' },
+    [
+      'Multi-hop questions, which need several linked records, gave the one result that passed the test. The graph found 65 percent of the needed evidence and text search 43 percent: 22.1 points more. The likely range of that difference, a 95 percent interval, is 10.4 to 34.1 points.',
+      'On answers it scored 60 percent against 48 percent, leaning the same way without passing.',
+      'On incidents of the same kind in other markets it found 45 percent against 24, by way of the platform version; the ontology approach found 44.',
+    ],
+    {
+      kind: 'more',
+      summary: 'Why',
+      blocks: [
+        'All of the multi-hop difference came from two questions. From an incident, the graph followed its platform version to the other incidents on it (93 percent against 38 for text search), and followed the games it hit, whose records list their mechanics (54 against 21).',
+        'On the other two multi-hop questions all three found everything on one and failed on the other.',
+      ],
+    },
+    { kind: 'heading', text: 'Where the graph with the ontology did best' },
+    [
+      'Questions that match a kind of thing across markets: 38 percent of the evidence against 19 percent for the other two, and an answer score of 45 against 24 percent for the graph. The test leaned its way but did not pass.',
+      'All of that came from one question, matching player segments across markets: 76 percent of the evidence and an answer score of 83 percent, where the other two found none.',
+      'Questions that name a game family or mechanic in a local language: all the evidence in all 36 cases (100 percent), against 78 percent for text search and 62 percent for the graph. These questions were not tested.',
+    ],
+    {
+      kind: 'more',
+      summary: 'Why',
+      blocks: [
+        'Segments are not a starting point, so both graph approaches started from a player in the segment. Only the ontology links segments across markets, through their shared kind, and the ontology approach reached most of the matching segments.',
+        'On local names it matched the name to the shared kind and followed it to every market; the graph matched only the local family or mechanic.',
+        "Finding the evidence was not enough: on the family question the answer model named only one market's game, and the answer score was only 52 percent, against 90 percent on the mechanic question.",
+      ],
+    },
+    { kind: 'heading', text: 'Where none did well' },
+    [
+      "From a support case to its incident's platform version: all three found about a tenth of the evidence or less. The graph cannot start from a support case.",
+      'Two planted questions that need a conclusion from several signals: no approach found more than 13 percent of the evidence.',
+      'In 24 answers from text search, 17 from the graph and 19 from the graph with the ontology, of 300 each, at least half of the needed evidence reached the answer model and the answer still scored under half.',
+    ],
+    {
+      kind: 'more',
+      summary: 'Why',
+      blocks: [
+        "When the graph's closest match happened to be the named support case, twice in 18, it found all the evidence.",
+        'Most of those weak answers come from the local-name questions: 14 of the 24 for text search and 12 of the 19 for the ontology approach.',
+      ],
+    },
+    { kind: 'heading', text: 'What to take home' },
+    [
+      'Text search is enough in this run when a question names a record or a document states the answer.',
+      'A graph found more of the needed evidence on multi-hop questions, the one tested result; the gain was where the answer is a record or two away along a link, from a record the graph can start from.',
+      'A shared vocabulary helps across markets and with local names: a pattern seen in this run, not confirmed by the test.',
+      'Graph records take room from documents, and finding the evidence is not the same as answering well.',
+    ],
+    { kind: 'heading', text: 'When to use each' },
+    "Advice from this run's patterns; only the multi-hop result was tested.",
+    [
+      'Text search alone: questions about one record, or answers written in documents.',
+      'A graph: questions that follow links between records it can start from.',
+      'An ontology on top: questions that compare markets by meaning, use local names, or ask for things "of the same kind", though not the family and mechanic questions named by code.',
+      'All three: a mix of these, since no single approach was best on every kind of question. B and C also search documents, so the choice is how to share the space with graph records.',
     ],
     { kind: 'heading', text: 'What the two judges said' },
-    "A second view of the answers is the judges' mark (chapter 6): how right two AI judges found each answer, from 0 to 1, tested as a group of its own. The figures above do not use it.",
-    "The judges' mark put the three in the same order as the answer score: text search 50 percent, the graph 53 and the graph with the ontology 58. Of its 8 tests, none passed. Two leaned the same way as the answer score but did not pass: the graph above text search on multi-hop questions, by about 18 points, and the graph with the ontology above the graph on questions that match terms across markets, by about 19. The other 6 were too close to call.",
-    "The two judges gave the same mark to 814 of the 899 answers both of them marked (91 percent). On 3 they gave opposite marks, one fully right and the other wrong, all on questions that match terms across markets. The second judge could not read one answer, so it has no judges' mark. Each answer is on Results, under Judges' verdict.",
+    [
+      "The judges' mark (chapter 6) is how right two AI judges found each answer, tested as a group of its own. It put the three in the same order as the answer score: text search 50 percent, the graph 53 and the graph with the ontology 58.",
+      'Of its 8 tests, none passed.',
+      'The two judges gave the same mark to 814 of the 899 answers both of them marked (91 percent).',
+    ],
+    {
+      kind: 'more',
+      summary: 'Where they leaned and disagreed',
+      blocks: [
+        'Two tests leaned the same way as the answer score without passing: the graph above text search on multi-hop questions, by about 18 points, and the graph with the ontology above the graph across markets, by about 19.',
+        "On 3 answers the judges gave opposite marks, one fully right and the other wrong. Each answer is on Results, under Judges' verdict.",
+      ],
+    },
     { kind: 'heading', text: 'Limits' },
-    'The company is made up, and its 22 questions were written by the people who built the system. One answer model answered each question once. Each figure for a single question rests on 6 or 18 cases, and none of those is tested.',
+    'The company is made up, its builders wrote the 22 questions, and one answer model answered each question once. No figure for a single question is tested.',
   ],
   plainHint:
     'The Technical level adds the figures for each of the 22 questions: wins, ties and losses, failure causes, the cases examined, and how the numbers were computed.',
@@ -677,6 +748,7 @@ export const lessons: ChapterCopy = {
       'L21: every answer of all three says "unknown", and no approach selected a carrier of any claim (evidence recall 0 on all 18 answers).',
     ],
     'Room in the budget: over all 900 answers A showed 1,694 passages, B 800 and C 786; B and C filled the rest with graph records under the same 2,000-token budget the run recorded.',
+    'Where a record states the link outright (L08 games hit by incidents on a platform version, L16 players sharing a device, L17 accounts sharing a payment instrument), the three found about the same evidence, often all of it; there the graph adds little.',
     { kind: 'heading', text: "The judges' mark" },
     "combined.json of the run (schema 1, second judge ollama/muse-glimmer:latest, reasoning off, temperature 0, reply limit 2,048, judge prompt 1.2.0, the first judge's): 900 answers, 899 marked by both judges, one second-judge failure (a reply with no completeness score, so A has 299). Overall judge_mark 0.503 / 0.530 / 0.578. Family of 8, none under Holm 0.05: H1 B against A +18.4 (95 percent interval 7.3 to 29.9, p 0.0071, Holm 0.057); H2 C against B +19.4 (7.3 to 33.0, p 0.014, Holm 0.10); H1 C against B +2.8, H2 B against A -1.4, H3 B against A -1.4, H3 C against B -4.2, H5 B against A -3.1, H5 C against B -2.1, all with Holm 0.5 or more. Same correctness level on 814 of 899 (answered: 87.8 percent, weighted kappa 0.82, n 637; abstained: 97.3 percent, kappa 0.75, n 262); a 2 against a 0 on 3 (L12-2030-GAME_CZ_02 A, L11-2031-SEG_CZ_OBCASNI B, L09-2034-GAME_UK_03 C, each first 2, second 0).",
     { kind: 'heading', text: 'What this does not show' },
@@ -691,6 +763,8 @@ export const lessons: ChapterCopy = {
     'Judge',
     "Judges' mark",
     'Kind of question',
+    'Market',
+    'Multi-hop',
     'Official run',
     'Passage',
     'Planted story',

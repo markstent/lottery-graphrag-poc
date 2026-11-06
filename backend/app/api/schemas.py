@@ -649,6 +649,53 @@ class InstanceResultOut(BaseModel):
     pipelines: dict[str, InstancePipelineOut]
 
 
+class EvidenceOutcome(BaseModel):
+    """One pipeline's evidence over the repeats whose question keeps a claim
+    after anchor exclusion: claims found and missed as pooled counts;
+    ``found_share``, the published evidence recall (the mean over questions
+    of each question's mean recall), which differs from found / (found +
+    missed) by construction; and the average count of extra records
+    (selected, not the anchor, carrying no claim) per question. Both means
+    are None when no question was measured."""
+
+    repeats: int
+    found: int
+    missed: int
+    found_share: float | None
+    extra_per_question: float | None
+
+
+class AnswerOutcome(BaseModel):
+    """One pipeline's scored answers by band of answer score: right (exactly
+    1), partly right (above 0, below 1) and wrong (0). Each ``*_declined`` is
+    the part of its band whose verdict says it could not tell; it stays in
+    the band. ``not_scored`` counts repeats with no answer score (no checks,
+    or a failed generation), outside the bands."""
+
+    scored: int
+    right: int
+    partly: int
+    # The sum of the partly right answers' scores: (right + partly_score_sum) / scored
+    # is the mean answer score per repeat.
+    partly_score_sum: float
+    wrong: int
+    right_declined: int
+    partly_declined: int
+    wrong_declined: int
+    not_scored: int
+
+
+class RunOutcomesOut(BaseModel):
+    """The evidence and answer outcomes of a stored run
+    (GET /api/v1/benchmarks/{run_id}/outcomes), per pipeline. ``recorded`` is
+    false, with both maps empty, for a run that did not store the selected
+    evidence or the claims."""
+
+    recorded: bool
+    evidence: dict[str, EvidenceOutcome]
+    answers: dict[str, AnswerOutcome]
+
+
 class BenchmarkStart(BaseModel):
     """Request for POST /api/v1/benchmarks; the seeds, strata and kind are
     checked against the harness's own before a job starts. A dev run uses
@@ -768,6 +815,7 @@ class TableSchemaOut(BaseModel):
     """One table of the data dictionary (GET /datasets/{dataset_id}/dictionary)."""
 
     table: str
+    description: str
     source_system: str
     primary_key: str
     columns: list[ColumnOut]

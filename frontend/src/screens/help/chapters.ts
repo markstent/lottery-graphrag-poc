@@ -81,19 +81,36 @@ export const SECTION_ALIASES: Record<string, ChapterId> = {
 /** A key of the settings a run records, such as `top_k`; a nested one is written `context.dedupe_threshold`. */
 export type SettingKey = string
 
-/** The pictures a chapter can show: each approach in chapter 4, and how evidence is chosen in chapter 5. */
+/**
+ * The pictures a chapter can show: each approach, how evidence is chosen, and
+ * the small pictures that explain the test, a world, the four countries'
+ * names, evidence found, how an answer is marked and a margin of error.
+ */
 export const DIAGRAM_NAMES = [
   'approachA',
   'approachB',
   'approachC',
   'evidence',
+  'test',
+  'world',
+  'countries',
+  'found',
+  'marking',
+  'interval',
 ] as const
 
 export type DiagramName = (typeof DIAGRAM_NAMES)[number]
 
 /** Live parts of a chapter that plain text cannot hold: they read the bank, the newest run or the API. */
 export type ComponentName =
-  'dataTour' | 'stories' | 'register' | 'questions' | 'glossary' | 'running'
+  | 'dataTour'
+  | 'stories'
+  | 'register'
+  | 'questions'
+  | 'glossary'
+  | 'running'
+  | 'outcomes'
+  | 'resultsByKind'
 
 /** A table of text a chapter states: a caption read by a screen reader, its column names and its rows, the first cell of each row naming it. */
 export interface TableBlock {
@@ -106,12 +123,18 @@ export interface TableBlock {
 /**
  * One block of a chapter. A string is a paragraph and a list of strings is a
  * bulleted list; either may hold `{setting_key}`, filled from the settings.
- * A heading names the part of the chapter that follows it.
+ * A heading names the part of the chapter that follows it. A key line is the
+ * chapter's point in one sentence, drawn boxed as "In one line"; "more"
+ * folds blocks behind a disclosure (summary "More detail" when left empty);
+ * steps are a numbered list.
  */
 export type Block =
   | string
   | readonly string[]
   | { kind: 'heading'; text: string }
+  | { kind: 'key'; text: string }
+  | { kind: 'more'; summary: string; blocks: readonly Block[] }
+  | { kind: 'steps'; items: readonly string[] }
   | TableBlock
   | { kind: 'settings'; keys: readonly SettingKey[] }
   | { kind: 'diagram'; name: DiagramName }

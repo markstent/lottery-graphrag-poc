@@ -20,6 +20,12 @@ export const UNSCORED = unscored as unknown as Schemas['QuestionOut'][]
 
 const cell = (mean: number) => ({ mean, n: 36, repeats: 108 })
 
+/** One kind of question's evidence found and answer score per approach. */
+const kind = (a: number, b: number, c: number) => ({
+  evidence_recall: { A: cell(a), B: cell(b), C: cell(c) },
+  answer: { A: cell(a + 0.1), B: cell(b + 0.1), C: cell(c + 0.1) },
+})
+
 const summary = (selection: {
   strata: string[] | null
   limit: number | null
@@ -28,6 +34,11 @@ const summary = (selection: {
   headlines: [],
   metrics: {
     overall: { evidence_recall: { A: cell(0.3), B: cell(0.4), C: cell(0.4) } },
+    H1: kind(0.4, 0.6, 0.6),
+    H2: kind(0.2, 0.2, 0.4),
+    H2_name: kind(0.7, 0.6, 0.9),
+    H3: kind(0.3, 0.3, 0.6),
+    H5: kind(0.5, 0.4, 0.4),
   },
 })
 
@@ -126,6 +137,35 @@ export const QUICK_CHECK_NEWER = {
   },
 }
 
+/** The outcomes of a run, as chapter 7 shows them for the newest official run. */
+const answers = (right: number, partly: number, wrong: number) => ({
+  scored: right + partly + wrong,
+  right,
+  partly,
+  wrong,
+  right_declined: 1,
+  partly_declined: 2,
+  wrong_declined: 3,
+  not_scored: 0,
+  partly_score_sum: partly / 2,
+})
+const evidence = (found: number, missed: number) => ({
+  repeats: found + missed,
+  found,
+  missed,
+  found_share: found / (found + missed),
+  extra_per_question: 9,
+})
+export const OUTCOMES = {
+  recorded: true,
+  evidence: {
+    A: evidence(4, 6),
+    B: evidence(5, 5),
+    C: evidence(6, 4),
+  },
+  answers: { A: answers(5, 3, 4), B: answers(6, 3, 3), C: answers(7, 3, 2) },
+}
+
 export const NOT_FOUND = () =>
   json(
     { error: { error_code: 'NOT_FOUND', message: 'none', retryable: false } },
@@ -189,6 +229,8 @@ export function stubBank({
             )
           : json(runs),
       )
+    if (/^\/api\/v1\/benchmarks\/[^/]+\/outcomes$/.test(path))
+      return Promise.resolve(json(OUTCOMES))
     const detail = /^\/api\/v1\/benchmarks\/([^/]+)$/.exec(path)?.[1]
     if (detail && detail in details)
       return Promise.resolve(json(details[detail]))
@@ -229,4 +271,11 @@ export function stubBank({
   })
   vi.stubGlobal('fetch', fetchMock)
   return fetchMock
+}
+
+/** A copy of `element` without the glossary meanings that first-use terms carry, so its text is what a reader sees. */
+export function withoutTermHelp(element: Element): Element {
+  const copy = element.cloneNode(true) as Element
+  for (const help of copy.querySelectorAll('[role="tooltip"]')) help.remove()
+  return copy
 }

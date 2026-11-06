@@ -155,6 +155,39 @@ describe('PickList', () => {
     ).toBeVisible()
   })
 
+  it('shows an item note under its title and searches it', async () => {
+    const user = userEvent.setup()
+    render(
+      <PickList
+        label="Find a table"
+        groups={[
+          {
+            items: [
+              {
+                id: 'games',
+                title: 'Games',
+                detail: '120',
+                note: 'Each game sold.',
+              },
+              {
+                id: 'draws',
+                title: 'Draws',
+                note: 'Each draw and its jackpot.',
+              },
+            ],
+          },
+        ]}
+        chosen={undefined}
+        onChoose={vi.fn()}
+      />,
+    )
+    expect(screen.getByText('Each game sold.')).toBeVisible()
+    await user.type(screen.getByRole('searchbox'), 'jackpot')
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([
+      'DrawsEach draw and its jackpot.',
+    ])
+  })
+
   it('says "No match" when the search finds nothing', async () => {
     const user = userEvent.setup()
     render(<Pick onChoose={vi.fn()} />)

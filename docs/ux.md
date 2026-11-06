@@ -82,6 +82,7 @@ Overview is written for a newcomer and reads at first glance (D-098); the full f
    Then one tile for each approach in its own tint, headed by its letter and name, with evidence recall over the questions with claims as a whole percentage, labelled "Evidence found", and its answer score as a percentage under it.
    Then a grouped bar chart, "Answer score by kind of question" (D-106; shown first since D-107), with a two-button switch, "Answer score" then "Evidence found", to "Evidence found by kind of question": one group per kind of question in plain names (Several linked records, Matching terms across countries, Local-language names, Single facts on the answer score only, Hidden patterns), three bars in the approaches' colours, each bar's whole-percentage value printed above it, a legend, hover details and a table view; a group whose kind has a tested comparison that passes on the metric shown is labelled "(clear result)" and the untested local-language kind "(not tested)".
    The values are the summary's per-kind means; nothing is computed.
+   The chart and its switch are one component, `frontend/src/components/kind-chart.tsx`, which Help's chapter 12 also draws (D-116).
    Then a short list, read from the summary's `comparisons`, in plain sentences:
    each tested comparison whose Holm-adjusted p is below 0.05, as "{Approach} did better on {kind of question}." with one example question of that kind, the difference as "about N more of every 100 needed facts" (or "about N points higher on answers"), and "This passed our statistical test, so it is unlikely to be luck.";
    one line (D-107), "Nothing else is proven yet." (or "No difference is proven yet."), then "We made N other checks, each comparing two approaches on one kind of question and one score."; the tested comparisons whose 95 percent interval leaves out zero but whose test does not pass as "In N, one approach came out ahead, but not by enough to rule out luck." and one sentence naming which approach did better on which kind, "{Approach} did better on {kind}, {Approach} on answers to {kind}, and ...", with "on answers to" or "on evidence for" when it led on one of the two scores only; and the rest as "In the other N the approaches were too close to call." (or "In all of them the approaches were too close to call.");
@@ -211,17 +212,29 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
 2. **Verdict.** Three tiles, each with "Evidence recall" and the answer score, then the run's headline sentences as the harness wrote them.
    A subset run says what it covered, a development run says it is not a result, and a quick check says its numbers are not results.
    Under the headlines, every run but a quick check gets an interval-and-test line, pointing at the paired differences chart below; a quick check draws no charts and gets none.
-3. **Scores by kind of question.** A switch between Evidence recall and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
+3. **Outcomes** (D-116), under the Verdict: two figures drawn by `OutcomeBars` (`frontend/src/components/outcome-bars.tsx`) from `GET /benchmarks/{run_id}/outcomes`, which works them out from the run's stored `results.json` and changes no published file.
+   "Evidence found (evidence recall, as in the Verdict)" has one bar per approach, the share of the needed facts found and the share missed; the share is the published evidence recall, so the bar matches the Verdict.
+   Results keeps the technical name, "Evidence recall", on its tiles, and the figure's title gives both names so one measure never reads as two; Help and Overview call it "Evidence found".
+   Beside each bar it reads "N percent found, about M extra records per question", where an extra record is a chosen record, apart from the starting record, that states no needed fact, by the scorer's own rule.
+   "Answers by score" has one bar per approach in three bands, right (a score of exactly 1), partly right (above 0, below 1) and wrong (0), as shares of the scored answers.
+   Beside each bar it reads "Answer score N percent", worked out as (right + the sum of the partly right scores) / scored, so the bands tie to the Verdict's answer score, then each band's count in words, such as "Right 117 (5 of them could not answer)".
+   Inside each band a hatched part counts the answers that said the sources could not answer; they stay in their band and are never moved into a band of their own (owner's option 1, D-116).
+   The caption says that an answer can say the sources could not answer and still score, because it named part of the answer key on the way.
+   Answers that were not scored are named under the bars and are outside the bands.
+   Every count is in each bar's text alternative and in a "Show as table" twin, and the hatching is the non-colour cue; the key shows the hatching on a neutral grey swatch, since a hatched part sits in any band.
+   A run that did not store what the counts need reads "Not recorded for this run.", and the panel has a loading state and an error state with Retry.
+   A subset or a development run labels both figures with its standing, and a quick check shows no Outcomes panel and does not ask for its outcomes.
+4. **Scores by kind of question.** A switch between Evidence recall and Answer score, grouped bars per kind of question, an interval plot of the paired differences, and an interval plot of the ontology-dependent split marked "Descriptive: not part of the tested family."
    A run also reports C against A, which is never tested: its rows read "<kind>: C against A" with the note "Not tested".
    Every chart has a "Show as table" twin.
-4. **Questions.** One row per question and world, with filters, the answer, evidence recall (headed "Evidence recall") and judge score of each approach, and an expanding table of every measure.
+5. **Questions.** One row per question and world, with filters, the answer, evidence recall (headed "Evidence recall") and judge score of each approach, and an expanding table of every measure.
    The table's last row, "Answers cut off", counts each approach's repeats whose answer stops before the model finished it and how many of them stopped at the run's recorded output limit, such as "2 (1 at the 4,096-token limit)", and reads "Not recorded" for a run made before D-096.
    "Open" goes to the question in Live Lab when its world is loaded.
    Fifty rows a page.
-5. **Efficiency.** Latency and context size, with means only.
-6. **Failures.** Failure kinds by approach.
+6. **Efficiency.** Latency and context size, with means only.
+7. **Failures.** Failure kinds by approach.
    Each non-zero count filters the Questions table.
-7. **Judge.** The five judge scores and the agreement with the answer score.
+8. **Judge.** The five judge scores and the agreement with the answer score.
    Each group is split into answers that answered and answers that abstained ("All questions, answered", "All questions, abstained" and so on), with "Pairs judged", "Agreement" and "Weighted kappa", and one line explains the levels.
    Every row shows its number of judged answers and the exact agreement; a kappa is shown only from 10 judged answers, and below that, or with none judged, the cell reads "Too few to say" (owner, 2026-10-27).
    **Judges' verdict**, only for a run that has a second judge (D-105), before the Second judge panel and fed by the same request: "Tested apart from the evidence and answer score tests.", then each approach's judges' mark overall as a whole percentage ("Judges' mark: A · Text search" and so on), the judges' headlines as written with the interval-and-test count line, "Paired differences in judges' mark" drawn with the same interval plot and rows as the run's paired differences (unit "judges' mark points"), one line "Same verdict on N of M answers; opposite verdicts on K.", and a "Judges disagree" table (Question, Approach, First judge, Second judge, each verdict in words: correct, partly or wrong) that scrolls inside a capped height.
@@ -229,7 +242,7 @@ A whole-bank run, a subset or a development run shows all panels, and a quick ch
    **Second judge**, only for a run that has one (D-100): "Descriptive, not tested. Added after the result (owner, 2026-11-02).", the two judge models (the second with its reply limit when it differs from the first judge's), then three tables with "Pairs judged", "Agreement" and "Weighted kappa": "With the answer score" (each judge, answered and abstained), "With each other" (answered and abstained) and, when the second judge has a label check, "With the hand labels, on a sample of answers" (the second judge as the label check names it; the label check's rows for the judge that first marked the sample are left out, D-104).
    A run without one shows no panel; the panel has a loading skeleton and an error state with Retry.
    **Groundedness**: "Descriptive, not tested.", with each kind and approach's share of its answers' ids, dates and numbers "Held by cited blocks" and "In no shown block", and the questions behind them.
-8. **Reproducibility.** Every field of the run's record with its API name, and a raw JSON link.
+9. **Reproducibility.** Every field of the run's record with its API name, and a raw JSON link.
 
 A tested comparison with fewer pairs than the minimum shows "Too few pairs", with no interval and no delta.
 An untested cell with fewer than six groups shows "Too few groups for an interval".
@@ -250,13 +263,14 @@ The end-to-end tests use a mocked job and never start a live run.
 The screen computes no statistic.
 Its state lives in the address: `#/results?run=<id>` with `stratum`, `world` and `failure=<approach>:<kind>`.
 
-Baselines: `results-official`, `results-v03`, `results-v03-agreement-and-groundedness`, `results-subset`, `results-quick-check`, `results-table-expanded`, `results-failure-filter`, `results-start-form`, `results-job-running`, `results-empty`, `results-error`, `results-loading`, `presentation-results`.
+Baselines: `results-official`, `results-outcomes` (the Outcomes panel of the whole-bank run), `results-v03`, `results-v03-agreement-and-groundedness`, `results-subset`, `results-quick-check`, `results-table-expanded`, `results-failure-filter`, `results-start-form`, `results-job-running`, `results-empty`, `results-error`, `results-loading`, `presentation-results`.
 The whole-bank run in `results-official`, `results-table-expanded` and `results-failure-filter`, the subset run in `results-subset` and the quick check in `results-quick-check` are generated by `backend/scripts/fixture_official.py` with equal test values; the whole-bank run is labelled "Fixture run (test values)".
 The run in `results-v03` is the report tests' synthetic run through `summarize`, written by `backend/tests/test_benchmark_report.py`, with the same label.
+Each fixture run's outcomes are written by the same script to `frontend/e2e/fixtures/results-outcomes.json` through the API's own builder; its scores count their claims out of ten in step with their recall, so the counts agree with the shares.
 
 ### Data Model
 
-Purpose: what the warehouse, the graph and the ontology look like, how they fit together, and one real record followed through all three, with live counts.
+Purpose: what the warehouse, the graph and the ontology look like, how they fit together, and one record followed through all three, with live counts.
 Readers mostly explore it on their own after a presentation, so the screen explains itself (D-115).
 
 Five tabs, each a link, in this order: Overview, Tables, Graph, Concepts and Stories (`#/data-model?tab=...`).
@@ -286,8 +300,9 @@ When the world has none, or no truth ledger of its own to check against, the car
   A link that moves the reader on is a filled button with an arrow.
   "About this" at the top right of the third column opens that layer's explanation (`src/screens/data-model/about-copy.ts`) in a drawer.
   The columns stack on narrow screens, list first.
-- **Tables.** Left: every table grouped by source system, with its row count.
-  Middle: the chosen table's name, its source system, row and column counts, a filter on one column and one value (read as that column's own type), and its rows, 50 to a page.
+- **Tables.** Left: every table grouped by source system, with its row count and, under its name, a one-line plain description of what the table holds.
+  The search matches the description as well as the name.
+  Middle: the chosen table's name, the same description as the first line under it, its source system, row and column counts, a filter on one column and one value (read as that column's own type), and its rows, 50 to a page.
   A value in a column that names a row of another table is an underlined link that opens that row in its own table, and the chosen row is marked.
   Right: the chosen row as a record, first the graph links it becomes in words ("affects 3 games", "6 support cases are related to it"), then "Open in the graph" when it has a graph record, then its fields.
   A row of a table the graph leaves out says "This row is not in the graph."
@@ -351,9 +366,45 @@ Twelve chapters: 1 Why this exists, 2 The made-up company, 3 The planted stories
 Questions and answers (`?section=questions`) is the question bank with its answer keys, its filters and its scores, full width, with no chapter list.
 `?section=` picks the chapter or the questions page by its id, and no section opens chapter 1.
 The eight ids of the first Help stay as aliases: `what` to chapter 1, `data` to 2, `stories` to 3, `approaches` to 4, `scoring` to 7, `questions` to Questions and answers, `glossary` to 10 and `running` to 11.
-A paragraph that opened with a short label, such as "Why they might help.", carries it as a subheading instead, so a chapter can be scanned.
 `?story=` marks one story and filters the questions.
-Chapters 4 and 5 draw a diagram of each approach and of how evidence is chosen, and chapter 9 holds the assumptions and limits register, with its reasons, costs if wrong and sources at Technical.
+
+**The chapter shape** (owner's option A, D-116, spec `docs/superpowers/specs/2026-11-05-help-readability-design.md`).
+Each chapter at Plain opens with one plain sentence and a key line, then short sections under their own headings, with a diagram where a picture explains better than words.
+Every chapter has at least one heading below its title, and no Plain paragraph runs past about 60 words.
+Detail that a first read can skip sits behind "More detail", and nothing true was dropped to make a chapter short: cut text moved behind "More detail" or to Technical.
+Chapters 6, 7, 8 and 12 are under half their earlier Plain length.
+A chapter's copy is a list of blocks (`frontend/src/screens/help/chapters.ts`), drawn by `blocks.tsx`:
+- a paragraph, or a bulleted list;
+- `heading`, a subheading inside the chapter;
+- `key`, the key line, drawn as a bar that opens "In one line:";
+- `steps`, a numbered list;
+- `more`, a native disclosure whose summary reads "More detail" unless the block names its own, so it opens and closes with Enter or Space;
+- `table`, `settings` (the settings table below), `diagram` and `component`.
+Every Plain block kind, "More detail" included, is in the banned-word scan.
+
+**The diagrams.** Help's pictures are hand-laid SVG in `frontend/src/screens/help/diagrams/`, sharing one set of sizes and tones (`style.ts`) and one frame (`parts.tsx`), each inside an element with role `img` and a full text alternative.
+A picture is sized in em, so it grows with the screen's text, and it never grows past its column.
+- Chapter 1, `test`: the questions go to the three approaches, their answers are scored against the answer key.
+- Chapter 2, `world`: a recipe, a number and settings, goes through the program and makes one world of tables, documents and eight planted stories, and the same recipe always rebuilds the same world.
+  A world is explained in plain words, with this picture, before Help uses the word anywhere else.
+- Chapter 4, one picture for each approach (`approachA`, `approachB`, `approachC`), and `countries`: the four countries' own names for the national draw, one above the other, joined to the one shared idea in the ontology.
+- Chapter 5, `evidence`, how evidence is chosen within the budget, and `found`: the facts a question needs against what an approach brought, as found, missed and extra.
+- Chapter 6, `marking`: the answer and the answer key go to the scoring program, which gives the answer score, and to two AI judges, which give a second opinion.
+- Chapter 8, `interval`: a difference with its margin of error, one that crosses zero and is too close to call, and one clear of zero, which counts only if its test also passes.
+A test draws every picture and checks its text alternative and the words it draws, and an end-to-end test checks that the approach pictures and the countries picture stay whole, with text of at least 11 pixels, in a column 960 and 768 pixels wide.
+
+**Term help.** The first time a chapter uses one of its glossary terms, the word is underlined with dots, and its plain meaning from the glossary shows on hover and on keyboard focus (`term.tsx`, planned by `mark-terms.tsx`).
+A term is marked at its first use outside any "More detail", in reading order; a term used only inside "More detail" is marked at its first use there.
+The word takes focus with Tab, the pointer can move onto the meaning, and Escape hides it from anywhere.
+The meaning is always in the page, tied to the word with `aria-describedby` and hidden from sight until shown, so a screen reader reads it with the word.
+Each chapter's `terms` must each appear in its text, and each glossary meaning is 5 to 35 plain words.
+
+**The run's own figures in Help.** Two components read the newest official run from the API, with loading and error states, so no figure of theirs is typed into the copy.
+- Chapter 7, `outcomes`: the Outcomes views of Results (`OutcomeBars`), evidence found and missed with the extra records, and the answers by score with those that said the sources could not answer hatched inside their band.
+  Only a full official run is drawn, by the rule Overview uses (`isFullOfficial`); when the newest run is any other kind, or there is none, the chapter reads "No official run is published yet."
+- Chapter 12, `resultsByKind`: Overview's chart of the scores by kind of question with its switch, shared as `frontend/src/components/kind-chart.tsx`; chapter 12's own findings stay fixed to the official run of 2026-10-29, and a line under the chart says so.
+
+Chapter 9 holds the assumptions and limits register, with its reasons, costs if wrong and sources at Technical.
 The judges' mark (D-105) is explained in chapter 6 at both levels (the second judge, how the two marks are combined, what "judges disagree" means, that it is tested as its own group, and its limits), in chapter 7 (compared the same way, its own eight tests), in chapter 8 (the Judges' verdict on Results and the lines on Overview), in the glossary ("Judges' mark", "Judges disagree") and in chapter 11 (`make judges-combined`).
 Chapter 12 says where its figures are and that the chapter's figures do not use it; it gives no figure of its own until the second judge's pass over the official run is finished and the paragraph is rewritten with figures typed from `combined.json`.
 
@@ -386,7 +437,10 @@ The banned-word scan covers the Plain text and the glossary's plain definitions,
 Technical text uses real terms, each defined where first used in the chapter or linked to the glossary.
 The Help word cap is removed (D-082).
 
-Baselines: `help-top`, `help-settings-technical` (the settings table with recorded values and "Differs" marks), `help-stories`, `help-evidence`, `help-evidence-technical`, `help-limits-technical`, `help-glossary`, `help-questions-no-official-run`, `help-questions-fixture-official-filtered-by-story`, `help-loading`, `help-error`, `presentation-help-fixture-official`.
+Baselines: `help-top`, `help-settings-technical` (the settings table with recorded values and "Differs" marks), `help-stories`, `help-evidence`, `help-evidence-technical`, `help-limits-technical`, `help-glossary`, `help-questions-no-official-run`, `help-questions-fixture-official-filtered-by-story`, `help-loading`, `help-error`, `presentation-help-fixture-official`, `help-scoring-outcomes` (chapter 7's outcome views), `help-lessons-by-kind` (chapter 12's chart), and one baseline of each new picture on its own: `help-diagram-test`, `help-diagram-world`, `help-diagram-countries`, `help-diagram-found`, `help-diagram-marking`, `help-diagram-interval`.
+The figures in the run components are the generated whole-bank run's equal test values, so no baseline shows a result.
+
+End-to-end (`frontend/e2e/help.spec.ts`): at 1440 pixels wide the "Next" links lead from chapter 1 to chapter 12 at Plain, and no chapter scrolls sideways; a "More detail" opens and closes by keyboard; a term's meaning shows on keyboard focus and Escape hides it; chapter 7 draws the newest official run's outcomes; chapter 12 draws the results by kind of question.
 
 ## Visual language
 
@@ -505,10 +559,10 @@ Browser storage holds only per-reader preferences: the collapsed sidebar, reduce
 
 ## Testing
 
-- Vitest with Testing Library: 92 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
+- Vitest with Testing Library: 110 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
 - Playwright: ten spec files in `frontend/e2e/`.
   The default config runs the smoke and functional specs.
-  The visual config runs `visual.spec.ts` against 130 committed baselines.
+  The visual config runs `visual.spec.ts` against 138 committed baselines.
 - `pnpm api:check` for the generated types.
 
 ## Extension points

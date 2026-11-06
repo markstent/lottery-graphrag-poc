@@ -38,6 +38,32 @@ const summaryOf = (
   summary: Schemas['SummaryOut'],
 ) => ({ run_id, run_kind, label: null, method_version: '0.3.0', summary })
 
+const OUTCOMES = {
+  recorded: true,
+  evidence: {
+    A: {
+      repeats: 3,
+      found: 3,
+      missed: 4,
+      found_share: 0.42,
+      extra_per_question: 16,
+    },
+  },
+  answers: {
+    A: {
+      scored: 10,
+      right: 4,
+      partly: 3,
+      wrong: 3,
+      right_declined: 1,
+      partly_declined: 1,
+      wrong_declined: 2,
+      not_scored: 0,
+      partly_score_sum: 1,
+    },
+  },
+}
+
 const ROUTES = {
   '/api/v1/benchmarks/jobs': [],
   '/api/v1/benchmarks': RUNS,
@@ -46,6 +72,7 @@ const ROUTES = {
     'official',
     OFFICIAL,
   ),
+  '/api/v1/benchmarks/fixture-official/outcomes': OUTCOMES,
   '/api/v1/benchmarks/fixture-subset': summaryOf(
     'fixture-subset',
     'official',
@@ -107,6 +134,43 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Results', () => {
+  it('shows the evidence and answer outcomes of the selected run under the verdict', async () => {
+    stubApi(ROUTES)
+    open('fixture-official')
+    const panel = await screen.findByRole('region', { name: 'Outcomes' })
+    expect(
+      await within(panel).findByText(
+        'Evidence found (evidence recall, as in the Verdict)',
+      ),
+    ).toBeInTheDocument()
+    expect(within(panel).getByText('Answers by score')).toBeInTheDocument()
+    const regions = screen
+      .getAllByRole('region')
+      .map((r) => r.getAttribute('aria-label'))
+    expect(regions.indexOf('Outcomes')).toBe(regions.indexOf('Verdict') + 1)
+  })
+
+  it('says when the outcomes of a run could not be read, and retries', async () => {
+    const user = userEvent.setup()
+    let calls = 0
+    stubApi({
+      ...ROUTES,
+      '/api/v1/benchmarks/fixture-official/outcomes': () =>
+        ++calls === 1
+          ? failure('The outcomes could not be read.', true)
+          : json(OUTCOMES),
+    })
+    open('fixture-official')
+    const panel = await screen.findByRole('region', { name: 'Outcomes' })
+    expect(await within(panel).findByRole('alert')).toHaveTextContent(
+      'could not be read',
+    )
+    await user.click(within(panel).getByRole('button', { name: 'Retry' }))
+    expect(
+      await within(panel).findByText(/^Evidence found \(evidence recall/),
+    ).toBeInTheDocument()
+  })
+
   it('picks the full official run by default', async () => {
     stubApi(ROUTES)
     open()
@@ -223,7 +287,7 @@ describe('Results', () => {
   })
 
   it('quick check shows no results', async () => {
-    stubApi(ROUTES)
+    const fetchMock = stubApi(ROUTES)
     open('fixture-smoke')
     expect(await screen.findByText(SMOKE.headlines[0])).toBeVisible()
     expect(
@@ -234,6 +298,13 @@ describe('Results', () => {
     expect(screen.queryByRole('figure')).not.toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
     expect(screen.queryByText(/evidence recall/i)).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Outcomes' }),
+    ).not.toBeInTheDocument()
+    // Its panel is hidden, so its outcomes are never asked for.
+    expect(
+      fetchMock.mock.calls.map(([input]) => String(input)),
+    ).not.toContainEqual(expect.stringContaining('/outcomes'))
   })
 
   it('subset run is labelled beside its numbers', async () => {
@@ -274,6 +345,7 @@ describe('Results', () => {
         'dev',
         OFFICIAL,
       ),
+      '/api/v1/benchmarks/fixture-dev/outcomes': OUTCOMES,
     })
     const first = open()
     expect(await screen.findByRole('combobox', { name: 'Run' })).toHaveValue(
@@ -286,6 +358,13 @@ describe('Results', () => {
     ).toBeVisible()
     await screen.findAllByRole('figure')
     for (const figure of scoreFigures())
+      expect(
+        within(figure).getByText('Development run, not a result'),
+      ).toBeVisible()
+    const outcomes = await screen.findByRole('region', { name: 'Outcomes' })
+    const outcomeFigures = await within(outcomes).findAllByRole('figure')
+    expect(outcomeFigures).toHaveLength(2)
+    for (const figure of outcomeFigures)
       expect(
         within(figure).getByText('Development run, not a result'),
       ).toBeVisible()

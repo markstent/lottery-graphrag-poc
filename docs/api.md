@@ -42,6 +42,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | `GET /benchmarks/questions` | The bank's questions with answer keys, hidden truths and scores |
 | `GET /benchmarks/{run_id}` | One run's summary |
 | `GET /benchmarks/{run_id}/instances` | One run's per-question scores |
+| `GET /benchmarks/{run_id}/outcomes` | One run's evidence found, missed and extra, and its answers right, partly right and wrong |
 | `GET /benchmarks/{run_id}/second-judge` | The run's second judge, a recorded second opinion (D-100), and the two judges' combined mark (D-105) |
 | `POST /benchmarks` | Start a benchmark job. Returns 202. |
 | `GET /benchmarks/jobs`, `GET /benchmarks/jobs/{job_id}` | List or read jobs |
@@ -297,6 +298,22 @@ A malformed `summary.json` is a server error and is never silently skipped.
 - `GET /benchmarks/{run_id}/instances` lists the run's scored instances with each pipeline's mean of every metric, its repeat and generation-failure counts, its failure classes, and `cut_off_repeats` and `token_limit_repeats`, the repeats whose answer was cut off and those among them that stopped at the output limit (null for a run recorded before answer parser 2.0.0, D-096).
   It carries the question text and scores only, never the expected answer, claims, checks, answer text or context blocks.
   A run without `results.json` is a 404.
+- `GET /benchmarks/{run_id}/outcomes` returns `{recorded, evidence, answers}`, each map keyed by approach, worked out from the run's `results.json` (`app/evaluation/outcomes.py`).
+  `evidence` holds `{repeats, found, missed, found_share, extra_per_question}` over the repeats whose question keeps at least one claim once the starting record is set apart; a repeat with no claim left is not measured and is in no count.
+  `found` and `missed` are claim counts pooled over those repeats.
+  `found_share` is the published evidence recall: the mean over questions of each question's mean recall, built with the summary's own `instance_means`.
+  The pooled share found / (found + missed) and `found_share` differ by construction, because a question with many claims weighs more in the pool; a view that shows a share uses `found_share` and `1 - found_share`, so it matches the published figure.
+  `extra_per_question` counts, by the scorer's own rule, the distinct selected records, apart from the starting record, that carry no claim; it is averaged over a question's measured repeats, then over questions.
+  Both means are null when no question was measured.
+  `answers` holds `{scored, right, partly, partly_score_sum, wrong, right_declined, partly_declined, wrong_declined, not_scored}`: right is an answer score of exactly 1, partly right above 0 and below 1, and wrong 0.
+  `partly_score_sum` is the sum of the partly right answers' scores, so (right + partly_score_sum) / scored is the mean answer score per repeat.
+  That is the published answer mean whenever every question has the same number of scored repeats, as in the official run, which asks each question once.
+  Each `*_declined` counts the answers in that band whose verdict says it could not tell (it opens with "unknown"); they stay in their band, so an answer can decline and still score.
+  `not_scored` counts the repeats with no answer score (no checks, or a failed generation), which are outside the bands.
+  `recorded` is false, with both maps empty, for a run that did not store the selected evidence, the claims or the claim counts.
+  The counts are computed once per run and served until the size or modification time of `results.json` changes; the file is only read.
+  The route reads no truth ledger.
+  A run that is not published, or has no `results.json`, is a 404.
 - `GET /benchmarks/{run_id}/second-judge` returns `{run_id, run, labels, combined}` (D-100, D-105): `run` is the newest second-judge summary of the run (schema 1), `labels` the newest label check of the same model, or null, and `combined` the two judges' combined mark (`combined.json`, schema 1, typed `JudgesMarkOut`), or null.
   `combined` holds the definitions and versions, the counts, per kind of question and approach the mean mark (`metrics`), the judges' own family of comparisons in the run's `ComparisonCell` shape, its headlines, the agreement between the judges and the list of answers the judges disagree on (`JudgesDisagreeOut`); see [evaluation.md](evaluation.md#judges-mark).
   It is null until `make judges-combined` (or `make second-judge`) has written it, and null again when it was computed from an earlier pass than the summary served, so a stale mark is not shown.
@@ -334,6 +351,8 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
   Only those directories are listed or served, so the ledger is not reachable, and an entry that resolves outside is refused.
 - The dictionary is the world's `_data_dictionary.json`, in position order, with primary keys, source system and foreign keys.
   A field the file lacks comes from the schema registry, and `dictionary_source` says `world` or `registry`.
+- Each table also carries `description`, one plain line saying what a row is and what the table is for.
+  It comes from `TABLE_DESCRIPTIONS` in the schema registry for both sources, so every table has one.
 - `rows` takes `offset` (default 0), `limit` (default 50, at most 200) and an optional `column` and `value` together.
   `table` and `column` must be registry names, otherwise 422 before any query.
   Rows are ordered by primary key, then the other columns, and `total` counts every match.

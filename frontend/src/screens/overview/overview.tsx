@@ -6,14 +6,13 @@
 
 import { getDemoQuestions, getModels, listDatasets } from '../../api/client'
 import { datasetName } from '../../app/plain-words'
-import { EVIDENCE_METRIC } from '../../app/method'
+import { EVIDENCE_FOUND_LABEL, EVIDENCE_METRIC } from '../../app/method'
 import { hrefFor } from '../../app/router'
 import { percent } from '../../app/score-words'
 import { MODEL_LABELS } from '../../app/settings-labels'
 import { useLoad, type Load } from '../../app/use-load'
 import { plural } from '../../charts/scale'
-import { GroupedBars } from '../../charts/grouped-bars'
-import { useState } from 'react'
+import { KindChart, MARK_LABEL } from '../../components/kind-chart'
 import { Panel, type PanelState } from '../../components/panel'
 import { pipeline, PIPELINES, type PipelineId } from '../../design/pipelines'
 import { Screen } from '../screen'
@@ -22,8 +21,6 @@ import {
   loadOverview,
   verdictFrom,
   type Finding,
-  type KindMetric,
-  type Verdict,
   type TileFigures,
 } from '../../app/latest-run'
 
@@ -45,27 +42,17 @@ async function loadConfiguration(signal: AbortSignal) {
 }
 
 /** What the big number on a tile is called. */
-const TILE_LABEL = 'Evidence found'
-
-/** What the judges' mark is called on this screen. */
-const MARK_LABEL = "Judges' mark"
+const TILE_LABEL = EVIDENCE_FOUND_LABEL
 
 /** The scores, said once above the tiles; the judges' mark only when the run has it. */
 const SCORE_KEY: readonly [string, string][] = [
   [
-    'Evidence found:',
+    `${EVIDENCE_FOUND_LABEL}:`,
     'before the AI answers, each approach looks up records for it to read. This is the share of the records the question needed that it found.',
   ],
   ['Answer score:', "how close the AI's answer came to the correct answer."],
   [`${MARK_LABEL}:`, 'how two AI judges rated the answer, averaged.'],
 ]
-
-/** Each measure the chart can show, by its name on this screen. */
-const KIND_LABELS: Record<KindMetric, string> = {
-  answer: 'Answer score',
-  evidence_recall: TILE_LABEL,
-  judge_mark: MARK_LABEL,
-}
 
 /** The kinds of question in everyday words, for the sentences on this screen. */
 const KIND_WORDS: Record<string, string> = {
@@ -75,15 +62,6 @@ const KIND_WORDS: Record<string, string> = {
   H3: 'single-fact questions',
   H5: 'questions about hidden patterns',
   overall: 'all questions',
-}
-
-/** The same kinds as a short name, for the chart. */
-const KIND_NAMES: Record<string, string> = {
-  H1: 'Several linked records',
-  H2: 'Matching terms across countries',
-  H2_name: 'Local-language names',
-  H3: 'Single facts',
-  H5: 'Hidden patterns',
 }
 
 /** One example of each kind, so a reader can picture it. */
@@ -210,65 +188,6 @@ function CountItem({
   )
 }
 
-function KindChart({
-  kinds,
-  clear,
-}: {
-  kinds: Verdict & { kind: 'official' }
-  clear: Finding[]
-}) {
-  const [metric, setMetric] = useState<KindMetric>('answer')
-  const marks = (stratum: string) =>
-    clear.some((f) => f.stratum === stratum && f.metric === metric)
-      ? ' (clear result)'
-      : stratum === 'H2_name'
-        ? ' (not tested)'
-        : ''
-  const shown = (Object.keys(KIND_LABELS) as KindMetric[]).filter(
-    (id) => kinds.kinds[id].length > 0,
-  )
-  const groups = kinds.kinds[metric].map(({ stratum, values }) => ({
-    key: stratum,
-    label: `${KIND_NAMES[stratum] ?? stratum}${marks(stratum)}`,
-    values: Object.fromEntries(
-      Object.entries(values).map(([id, v]) => [
-        id,
-        v === null ? null : v * 100,
-      ]),
-    ),
-  }))
-  const name = KIND_LABELS[metric]
-  return (
-    <div className="space-y-3">
-      <div
-        role="group"
-        aria-label="Score shown"
-        className="inline-flex overflow-hidden rounded-chip border border-border"
-      >
-        {shown.map((id) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={metric === id}
-            onClick={() => setMetric(id)}
-            className={`px-4 py-1 text-sm ${metric === id ? 'bg-surface-raised font-semibold text-text-primary' : 'text-text-secondary hover:bg-surface-raised'}`}
-          >
-            {KIND_LABELS[id]}
-          </button>
-        ))}
-      </div>
-      <GroupedBars
-        title={`${name} by kind of question`}
-        groups={groups}
-        unit="%"
-        domain={[0, 100]}
-        decimals={0}
-        valueLabels
-      />
-    </div>
-  )
-}
-
 function Tile({ figures }: { figures: TileFigures }) {
   const { label: name, tint, strong } = pipeline(figures.pipeline)
   return (
@@ -340,7 +259,10 @@ function LatestRun() {
             ))}
           </div>
           {verdict.kinds.evidence_recall.length > 0 && (
-            <KindChart kinds={verdict} clear={[...clear, ...judgesClear]} />
+            <KindChart
+              kinds={verdict.kinds}
+              clear={[...clear, ...judgesClear]}
+            />
           )}
           {(findings.length > 0 || verdict.tested > 0 || judges) && (
             <ul className="max-w-prose list-disc space-y-3 pl-5 text-base text-text-primary">

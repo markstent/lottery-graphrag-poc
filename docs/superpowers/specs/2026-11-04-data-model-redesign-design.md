@@ -17,7 +17,7 @@ What is wrong today, as reviewed on 2026-11-04:
 - The Warehouse and Graph tabs lead with large, tangled maps of every table and every kind of record, which are hard to read and do not show how the layers relate.
 - Long explanation panels, cue lines, steps strips and tables are stacked one above another, with many type sizes.
 - Drilling into detail happens in different ways on each tab: a drawer on one, a new page on another, a side panel on a third.
-- Nothing shows one real record at all three layers, which is the clearest way to see how they fit together.
+- Nothing shows one record at all three layers, which is the clearest way to see how they fit together.
 
 ## What the owner chose
 

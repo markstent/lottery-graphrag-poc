@@ -24,6 +24,7 @@ import scoredQuestions from './fixtures/benchmark-questions-scored.json' with { 
 import unscoredQuestions from './fixtures/benchmark-questions-unscored.json' with { type: 'json' }
 import { membersOf, ONTOLOGY, SCENARIOS } from './mock-ontology'
 import officialInstances from './fixtures/results-official-instances.json' with { type: 'json' }
+import outcomesFixture from './fixtures/results-outcomes.json' with { type: 'json' }
 import officialSummary from './fixtures/results-official-summary.json' with { type: 'json' }
 import pilotInstances from './fixtures/results-pilot-instances.json' with { type: 'json' }
 import pilotSummary from './fixtures/results-pilot-summary.json' with { type: 'json' }
@@ -186,6 +187,11 @@ const RUN_SUMMARIES: Record<string, unknown> = {
   [officialSummary.run_id]: officialSummary,
   [v03Summary.run_id]: v03Summary,
   [DEV_SUMMARY.run_id]: DEV_SUMMARY,
+}
+/** Each run's outcomes as the API serves them; the development run reuses the v0.3 run's, as its instances do. */
+const RUN_OUTCOMES: Record<string, unknown> = {
+  ...outcomesFixture,
+  [DEV_SUMMARY.run_id]: outcomesFixture['fixture-v03'],
 }
 const RUN_INSTANCES: Record<string, unknown> = {
   [pilotSummary.run_id]: pilotInstances,
@@ -372,8 +378,13 @@ export async function mockApi(
             404,
           ),
         )
-      const table = part === 'instances' ? RUN_INSTANCES : RUN_SUMMARIES
-      if (part === undefined || part === 'instances') {
+      const table =
+        part === 'instances'
+          ? RUN_INSTANCES
+          : part === 'outcomes'
+            ? RUN_OUTCOMES
+            : RUN_SUMMARIES
+      if (part === undefined || part === 'instances' || part === 'outcomes') {
         const answer = table[decodeURIComponent(id)]
         return route.fulfill(
           answer === undefined ? envelope('No such run.', 404) : json(answer),

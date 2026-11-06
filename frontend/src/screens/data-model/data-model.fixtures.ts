@@ -18,6 +18,13 @@ const column = (name: string, type = 'VARCHAR') => ({
   description: null,
 })
 
+const DESCRIPTIONS: Record<string, string> = {
+  markets: 'The countries the business operates in.',
+  games: 'Each game sold in a market, with its price and status.',
+  tickets: 'Each ticket bought, with who bought it and when.',
+  incidents: 'Each outage or fault on a platform and the market it hit.',
+}
+
 const table = (
   name: string,
   source_system: string,
@@ -25,6 +32,7 @@ const table = (
   foreign_keys: Schemas['ForeignKeyOut'][] = [],
 ): Schemas['TableSchemaOut'] => ({
   table: name,
+  description: DESCRIPTIONS[name],
   source_system,
   primary_key: columns[0].name,
   columns,

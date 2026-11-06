@@ -7,10 +7,16 @@ import type { ChapterCopy } from '../chapters'
 
 export const questions: ChapterCopy = {
   plain: [
-    'These are the questions in the question bank: the fixed list of questions every approach answers. Each comes with what it tests and its answer key, the correct answer written down in advance.',
-    'A question is written once and then filled in for each world with a record it names, its starting record. A world is one copy of the made-up company. So one question gives up to three versions in each world, and each version is called an instance. The table shows the instances of world 2026, grouped under the question they come from.',
-    'The questions name records by their reference codes, as the company’s own systems do. A code starts with the kind of record: INC_022 is an incident, CMP_002 a campaign, SUP_02015 a support case and PLV_PAYMENTS_3 a version of the payments platform. MECH_UK_NUMBER_MATCH is a game mechanic, PLAYER_GR_000165 a player account, APPV_GR_531 an app release, PP_BLUEHARBOR a payment provider and DOC_0262 a document. Many codes also carry the country: GAME_AT_04 is a game in Austria, and SEG_CZ_USPORNI a group of players in the Czech Republic. AT is Austria, CZ the Czech Republic, GR Greece and UK the United Kingdom. Where a question or answer key names a country by its code, the table writes the country’s name.',
-    'There are four kinds of question:',
+    'These are the questions every approach answers, the question bank. For each question the table shows:',
+    [
+      'its kind of question and what it tests;',
+      'each version of it, with its answer key, the correct answer written down in advance;',
+      "the newest official run's scores, when that run asked it.",
+    ],
+    { kind: 'heading', text: 'Questions and their versions' },
+    'A question is written once and then filled in for each world with a record it names, its starting record. A world is one copy of the made-up company (chapter 2).',
+    'So one question gives up to three versions in each world, and each version is called an instance. The table shows the instances of world 2026, grouped under the question they come from.',
+    { kind: 'heading', text: 'Kinds of question' },
     [
       'Single fact: read one fact from one record.',
       'Multi-hop: follow links across several records, such as from an incident to its platform version and on to other incidents.',
@@ -18,7 +24,18 @@ export const questions: ChapterCopy = {
       'Planted pattern: find one of the planted stories of chapter 3.',
     ],
     'Filter the table by kind of question or by planted story.',
-    'Scores: the table shows the scores of the newest official run, the run whose scores count as the result, when that run asked these questions. The official run asked them of six other worlds instead, 2029 to 2034. When that is so, the note above the table says so, and the scores are on Results.',
+    { kind: 'heading', text: 'Reference codes' },
+    'The questions name records by their reference codes, as the company’s own systems do. A code starts with the kind of record:',
+    [
+      'INC_022 is an incident, CMP_002 a campaign and SUP_02015 a support case;',
+      'PLV_PAYMENTS_3 is a version of the payments platform and APPV_GR_531 an app release;',
+      'MECH_UK_NUMBER_MATCH is a game mechanic and PLAYER_GR_000165 a player account;',
+      'PP_BLUEHARBOR is a payment provider and DOC_0262 a document.',
+    ],
+    'Many codes also carry the country: GAME_AT_04 is a game in Austria, and SEG_CZ_USPORNI a group of players in the Czech Republic. AT is Austria, CZ the Czech Republic, GR Greece and UK the United Kingdom.',
+    'Where a question or answer key names a country by its code, the table writes the country’s name.',
+    { kind: 'heading', text: 'Scores' },
+    'The table shows the scores of the newest official run, the run whose scores count as the result, when that run asked these questions. The official run asked them of six other worlds instead, 2029 to 2034. When that is so, the note above the table says so, and the scores are on Results.',
     { kind: 'component', name: 'questions' },
   ],
   plainHint:

@@ -22,7 +22,7 @@ import pytest
 from app.config import GraphConfig
 from app.datasets.config import GenerationConfig
 from app.datasets.parquet import write_world
-from app.datasets.schema import TABLE_SCHEMAS
+from app.datasets.schema import TABLE_DESCRIPTIONS, TABLE_SCHEMAS
 from app.datasets.world import build_data_dictionary, build_world
 from app.graph.ingest import GRAPH_STATS_FILE
 from app.main import create_app
@@ -183,6 +183,20 @@ def test_dictionary_names_keys_sources_and_provenance(client: TestClient) -> Non
     assert players["provenance"] == {"source_system": "warehouse", "source_table": "players"}
     assert table(dictionary, "sessions")["source_system"] == "telemetry_platform"
     assert {entry["dictionary_source"] for entry in dictionary} == {"world"}
+
+
+def test_every_table_has_a_one_line_description() -> None:
+    assert set(TABLE_DESCRIPTIONS) == set(TABLE_SCHEMAS)
+    for table_name, text in TABLE_DESCRIPTIONS.items():
+        assert text.strip() == text and text[0].isupper(), table_name
+        assert text.endswith(".") and "\u2014" not in text, table_name
+        assert len(text.split()) <= 22, table_name
+
+
+def test_dictionary_carries_each_description(client: TestClient) -> None:
+    for name in ("tiny", "other"):  # "world" and "registry" sources
+        dictionary = client.get(f"/api/v1/datasets/{name}/dictionary").json()
+        assert {e["table"]: e["description"] for e in dictionary} == TABLE_DESCRIPTIONS
 
 
 def test_dictionary_reads_the_world_file_first(

@@ -47,7 +47,13 @@ from app.api.schemas import (
     error_responses,
 )
 from app.config import GraphConfig, from_env
-from app.datasets.schema import FOREIGN_KEYS, TABLE_PROVENANCE, TABLE_SCHEMAS, primary_key
+from app.datasets.schema import (
+    FOREIGN_KEYS,
+    TABLE_DESCRIPTIONS,
+    TABLE_PROVENANCE,
+    TABLE_SCHEMAS,
+    primary_key,
+)
 from app.datasets.util import split_columns
 from app.graph.node_rows import node_identity
 from app.retrieval.graph.neo4j_adapter import GraphReader
@@ -151,6 +157,7 @@ def _registry_dictionary(provenance: dict[str, Any]) -> list[TableSchemaOut]:
     return [
         TableSchemaOut(
             table=table,
+            description=TABLE_DESCRIPTIONS[table],
             source_system=TABLE_PROVENANCE[table][0],
             primary_key=primary_key(table),
             columns=[
@@ -186,6 +193,7 @@ def _world_dictionary(recorded: dict[str, Any], provenance: dict[str, Any]) -> l
     return [
         TableSchemaOut(
             table=table,
+            description=TABLE_DESCRIPTIONS[table],
             source_system=entries[0].get("source_system") or TABLE_PROVENANCE[table][0],
             primary_key=key_of(table),
             columns=[

@@ -28,6 +28,7 @@ import {
   stubBank,
   UNSCORED,
   type BankStub,
+  withoutTermHelp,
 } from './help.fixtures'
 import { PLAIN_STORIES } from './copy/stories'
 
@@ -138,7 +139,7 @@ describe('Help', () => {
       ['Guide', '#/help?section=why'],
       ['Questions and answers', '#/help?section=questions'],
     ])
-    expect(section('1. Why this exists')).toHaveTextContent(
+    expect(withoutTermHelp(section('1. Why this exists'))).toHaveTextContent(
       /official run started on 2026-10-29/,
     )
   })
@@ -249,25 +250,29 @@ describe('Help', () => {
   it('states the official result in chapter 1 as it is, with its dates', async () => {
     await renderHelp()
     const why = section('1. Why this exists')
-    expect(why).toHaveTextContent(/official run started on 2026-10-29/)
-    expect(why).toHaveTextContent(
+    expect(withoutTermHelp(why)).toHaveTextContent(
+      /official run started on 2026-10-29/,
+    )
+    expect(withoutTermHelp(why)).toHaveTextContent(
       /We fixed 14 comparisons before the run\. One showed a clear difference/,
     )
-    expect(why).toHaveTextContent(
+    expect(withoutTermHelp(why)).toHaveTextContent(
       /text search \(A\) got 42 of every 100 needed facts to the answer model, the graph \(B\) 45 and the graph with the ontology \(C\) 57/,
     )
-    // A newcomer is told what a world is where the result first uses the word.
-    expect(why).toHaveTextContent(
-      /copies of the made-up company, which we call worlds/,
+    // A newcomer meets the word world first in chapter 2, where it is explained.
+    expect(withoutTermHelp(why)).toHaveTextContent(
+      /six new copies of the made-up company/,
     )
-    expect(why).not.toHaveTextContent(/v0\.2|old method/)
+    expect(withoutTermHelp(why)).not.toHaveTextContent(/\bworlds?\b/i)
+    expect(withoutTermHelp(why)).not.toHaveTextContent(/v0\.2|old method/)
   })
 
   it('draws each approach as a picture named by its letter and plain name', async () => {
     await renderHelp('#/help?section=approaches')
-    const figures = within(section('4. The three approaches')).getAllByRole(
-      'figure',
-    )
+    // The approach pictures have a caption; the four countries picture has none.
+    const figures = within(section('4. The three approaches'))
+      .getAllByRole('figure')
+      .filter((figure) => figure.querySelector('figcaption'))
     expect(
       figures.map((figure) => figure.querySelector('figcaption')!.textContent),
     ).toEqual(['A · Text search', 'B · Graph', 'C · Graph + Ontology'])
@@ -734,25 +739,65 @@ describe('states', () => {
     }
   })
 
-  it('shows a loading state in each page that needs the bank, and not in the others', async () => {
+  it('shows a loading state in each page that needs data, and not in the others', async () => {
     vi.stubGlobal('fetch', () => new Promise(() => undefined))
     for (const hash of ['#/help?section=stories', '#/help?section=questions']) {
       open(hash)
       expect(screen.getAllByRole('status'), hash).toHaveLength(1)
       cleanup()
     }
+    // Chapter 7 waits only for the newest run's outcomes.
     open('#/help?section=scoring')
-    expect(screen.queryByRole('status')).toBeNull()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "Loading the newest run's outcomes.",
+    )
     expect(section('7. How scoring works')).toBeVisible()
+    cleanup()
+    // Chapter 12 waits only for the newest run's scores by kind of question.
+    open('#/help?section=lessons')
+    expect(screen.getByRole('status')).toHaveTextContent(
+      "Loading the newest run's scores by kind of question.",
+    )
+    expect(section('12. What the results teach')).toBeVisible()
+    cleanup()
+    open('#/help?section=answer')
+    expect(screen.queryByRole('status')).toBeNull()
+    expect(section('6. The answer and the judge')).toBeVisible()
+  })
+
+  it('opens chapter 12 with the chart by kind of question, and shows its error with a retry', async () => {
+    await renderHelp('#/help?section=lessons')
+    expect(
+      within(section('12. What the results teach')).getByRole('img', {
+        name: 'Answer score by kind of question',
+      }),
+    ).toBeVisible()
+    cleanup()
+    stubBank({ failLatest: true })
+    open('#/help?section=lessons')
+    const alert = await within(
+      section('12. What the results teach'),
+    ).findByRole('alert')
+    expect(alert).toHaveTextContent('The latest run is unavailable.')
+    expect(within(alert).getByRole('button', { name: 'Retry' })).toBeVisible()
   })
 })
+
+/** Matches a paragraph or list item by its whole text, which a marked glossary term splits across elements. */
+const textOfElement =
+  (pattern: RegExp) => (_: string, element: Element | null) =>
+    element !== null &&
+    ['P', 'LI'].includes(element.tagName) &&
+    pattern.test(withoutTermHelp(element).textContent ?? '')
 
 describe('scoring and glossary', () => {
   it('defines the evidence score on the scale Overview uses', async () => {
     await renderHelp('#/help?section=scoring')
     expect(
       within(section('7. How scoring works')).getByText(
-        /Evidence recall is the share of the claims that the chosen evidence covers, from 0 to 1/,
+        textOfElement(
+          /^The share of the needed facts \(claims\) that the chosen evidence states, from 0 to 1\./,
+        ),
       ),
     ).toBeVisible()
   })
@@ -775,7 +820,7 @@ describe('one name for the record a question names', () => {
     const scoring = within(section('7. How scoring works'))
     expect(
       scoring.getByText(
-        /The starting record \(the record the question names\)/,
+        textOfElement(/The starting record \(the record the question names\)/),
       ),
     ).toBeVisible()
     cleanup()

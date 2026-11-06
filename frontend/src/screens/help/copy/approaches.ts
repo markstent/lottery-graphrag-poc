@@ -2,15 +2,33 @@ import type { ChapterCopy } from '../chapters'
 
 export const approaches: ChapterCopy = {
   plain: [
-    'All three approaches answer the same question, from the same data, with the same answer model. They differ in how they look for evidence: the records and passages that state the facts a correct answer needs.',
-    "They differ in one more way. B and C put the records the graph reached in the graph's own order, with records of a kind the question asks about first. Those records then take turns with the passages for room in front of the answer model. A has no graph records.",
+    'All three approaches answer the same question, from the same data, with the same answer model.',
+    {
+      kind: 'key',
+      text: 'They differ in how they look for evidence: the records and passages that state the facts a correct answer needs.',
+    },
+    { kind: 'heading', text: 'What stays the same' },
     'The evidence budget (chapter 5) and the answer model are the same for all three, and so is how a piece of evidence is shown. The one exception is a line that says how the graph reached a record (chapter 6).',
-    'A, text search, looks for the passages that best match the question’s words and meaning. A passage is a short piece of a document. The search also covers record texts. A record text is a short text written for each record in the main business tables, such as a game or an incident. So A can reach, by search, the records whose facts B and C can show.',
+    { kind: 'heading', text: 'What A does' },
+    'A, text search, looks for the passages that best match the question’s words and meaning. A passage is a short piece of a document.',
     { kind: 'diagram', name: 'approachA' },
-    "B, graph, does everything A does. It also picks its starting points from the question, such as an incident the question names. From them it follows the graph's links to related records: the platform version the incident happened on, other incidents on that version, the markets they affected. It puts the records it reaches in its own order. They take turns with the passages for room in front of the answer model (chapter 5).",
+    'The search also covers record texts. A record text is a short text written for each record in the main business tables, such as a game or an incident. So A can reach, by search, the records whose facts B and C can show.',
+    { kind: 'heading', text: 'What B adds' },
+    'B does everything A does, and also follows the links in the knowledge graph from one record to the next.',
     { kind: 'diagram', name: 'approachB' },
-    'C, graph and ontology, does everything B does, and adds the ontology. A concept is one shared meaning in the ontology, such as one kind of game that each market names in its own way. C recognises local names in all four languages, such as Zahlenziehung, as starting points. It adds the names of the matching concepts to its search. And it follows links from a concept to the matching things in every market.',
+    'It picks its starting points from the question, such as an incident the question names. From them it follows links to related records: the platform version the incident happened on, other incidents on that version, the markets they affected.',
+    "The records it reaches go in the graph's own order and take turns with the passages for room in front of the answer model (chapter 5).",
+    { kind: 'heading', text: 'What C adds' },
+    'C does everything B does, and adds the ontology, the shared dictionary of the whole company.',
     { kind: 'diagram', name: 'approachC' },
+    'A concept is one shared meaning in the ontology, such as one kind of game that each market names in its own way.',
+    { kind: 'diagram', name: 'countries' },
+    'With the ontology, C does three more things:',
+    [
+      'It recognises local names in all four languages, such as Zahlenziehung, as starting points.',
+      'It adds the names of the matching concepts to its search.',
+      'It follows links from a concept to the matching things in every market.',
+    ],
   ],
   technical: [
     'The settings in this chapter, now and in the newest official run:',

@@ -10,6 +10,7 @@ import { useId } from 'react'
 
 import { pipeline, type PipelineId } from '../../../design/pipelines'
 import { STAGE_LABELS, STEP } from '../../../run/lanes'
+import { boxWidth, SHARED, TONES, type Tone } from './style'
 
 interface Lane {
   label: string
@@ -90,9 +91,6 @@ const LABEL_FONT = 12
 /** The size of a pixel of text on the page: the picture is sized in em, so it grows with the screen's text. */
 const BASE_PX = 14
 
-/** A box wide enough for its text at 14 px. */
-const boxWidth = (text: string) =>
-  Math.max(112, Math.ceil(text.length * 7.6) + 28)
 const labelWidth = (text: string) => Math.ceil(text.length * 6.8)
 
 interface Box {
@@ -260,36 +258,6 @@ function columnLayout(lanes: readonly Lane[]): Layout {
     labels,
     paths,
   }
-}
-
-interface Tone {
-  fill: string
-  stroke: string
-  text: string
-}
-
-/** Each approach's own steps in its colours; the question and the shared steps in neutral ones. */
-const TONES: Record<PipelineId, Tone> = {
-  A: {
-    fill: 'var(--color-pipeline-a-tint)',
-    stroke: 'var(--color-pipeline-a)',
-    text: 'var(--color-pipeline-a-strong)',
-  },
-  B: {
-    fill: 'var(--color-pipeline-b-tint)',
-    stroke: 'var(--color-pipeline-b)',
-    text: 'var(--color-pipeline-b-strong)',
-  },
-  C: {
-    fill: 'var(--color-pipeline-c-tint)',
-    stroke: 'var(--color-pipeline-c)',
-    text: 'var(--color-pipeline-c-strong)',
-  },
-}
-const SHARED: Tone = {
-  fill: 'var(--color-surface-raised)',
-  stroke: 'var(--color-border)',
-  text: 'var(--color-text-primary)',
 }
 
 function Drawing({

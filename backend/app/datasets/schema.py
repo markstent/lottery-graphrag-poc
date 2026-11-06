@@ -54,6 +54,49 @@ TABLE_SCHEMAS: dict[str, str] = {
     "document_chunks": "chunk_id VARCHAR, document_id VARCHAR, chunk_index INTEGER, text VARCHAR, token_count INTEGER, embedding_version VARCHAR",
 }
 
+# One plain line per table: what a row is and what it is for (shown in the Data Model screen).
+TABLE_DESCRIPTIONS: dict[str, str] = {
+    "markets": "The four countries the business operates in, with currency, language and how digital or retail-led each one is.",
+    "regions": "The regions inside each market, used to place players and retailers.",
+    "currencies": "The currencies used across the markets.",
+    "languages": "The languages used in the markets and in documents.",
+    "channels": "The ways a player can buy or interact, such as retail, web and app.",
+    "suppliers": "The outside companies that provide the platforms.",
+    "game_families": "Groups of related games in each market, named in the local language.",
+    "game_categories": "The kinds of game in each market, such as draw or instant, named in the local language.",
+    "game_mechanics": "The ways a game works, such as how numbers are picked, named in the local language.",
+    "incident_types": "The kinds of outage or fault that can be logged, named in the local language.",
+    "support_categories": "The reasons a player contacts support, named in the local language.",
+    "player_segments": "The player groups used to describe behaviour and value in each market.",
+    "payment_providers": "The companies that process payments, and the market and platform each one serves.",
+    "games": "Each game sold in a market: its name, price, status, launch date and whether it is sold online, in retail or both.",
+    "game_mechanic_map": "Which mechanics each game uses, and how important each one is to that game.",
+    "platforms": "The technical platforms that run the games, and the supplier of each one.",
+    "platform_versions": "Each released version of a platform, with its release and retirement dates.",
+    "app_versions": "Each released version of the mobile app in a market, with its release date.",
+    "players": "Each synthetic player: market, age band, sign-up date, how they were won and their value and engagement groups.",
+    "accounts": "The account behind each player, with its status and whether it has been verified.",
+    "devices": "The phones and computers seen in player activity.",
+    "player_device": "Which devices each player has used, and when.",
+    "payment_methods": "Each payment method on file, such as a card or wallet, and the provider behind it.",
+    "player_payment_method": "Which payment methods each player uses.",
+    "retailers": "Each shop or outlet that sells tickets, with its market, region and the dates it was active.",
+    "draws": "Each draw of a game: when it ran, the jackpot and how many times it rolled over.",
+    "tickets": "Each ticket bought: who bought it, which game and draw, where, when and for how much.",
+    "prizes": "Each prize won on a ticket, with its tier, amount and whether it was claimed.",
+    "sessions": "Each visit a player made on a device, with its channel, app version, start, end and outcome.",
+    "campaigns": "Each marketing campaign: market, type, dates, budget and objective.",
+    "campaign_game_map": "Which games each campaign promoted, and how strongly.",
+    "campaign_exposures": "Each time a campaign reached a player, whether they engaged and whether they went on to play a game.",
+    "incidents": "Each outage or fault on a platform: when it started and ended, and which market it hit.",
+    "incident_game_map": "Which games each incident affected, and how badly.",
+    "support_cases": "Each contact a player made with support, with its category, the game and incident involved and a short summary.",
+    "kpi_daily": "One daily business figure for a market or a game, such as active players, ticket sales or payment failure rate.",
+    "experiments": "Each product or marketing test: its hypothesis, dates, target group and result.",
+    "documents": "Each written document, such as a release note, incident report or policy, with its market, language and full text.",
+    "document_chunks": "The documents cut into short passages, which is what the document search reads.",
+}
+
 # Source-system provenance per table (docs/reference/data/source-system-contracts.md).
 TABLE_PROVENANCE: dict[str, tuple[str, str]] = {
     table: (system, table)

@@ -5,9 +5,16 @@
 
 import { useRef, useState } from 'react'
 
-import { getBenchmark, listBenchmarks, type Schemas } from '../../api/client'
+import {
+  getBenchmark,
+  getBenchmarkOutcomes,
+  listBenchmarks,
+  type Schemas,
+} from '../../api/client'
 import { hrefFor, useRoute } from '../../app/router'
+import { EVIDENCE_FOUND_LABEL } from '../../app/method'
 import { useLoad } from '../../app/use-load'
+import { OutcomeBars } from '../../components/outcome-bars'
 import { Panel } from '../../components/panel'
 import { filterFromParams, paramsWithFilter } from '../../results/questions'
 import { recordedNumber } from '../../results/reproducibility'
@@ -31,12 +38,23 @@ type Run = Schemas['BenchmarkRunOut']
 
 const NOT_PUBLISHED = new Error('This run is not published.')
 
+/** The evidence figure's title on Results, tied to the Verdict's name for the same measure. */
+const EVIDENCE_TITLE = `${EVIDENCE_FOUND_LABEL} (evidence recall, as in the Verdict)`
+
 function RunView({ run }: { run: Run }) {
   const load = useLoad(
     (signal) => getBenchmark(run.run_id, signal),
     `run:${run.run_id}`,
   )
   const kind = standing(run)
+  // A quick check draws no Outcomes panel, so its outcomes are not asked for.
+  const outcomes = useLoad(
+    (signal) =>
+      kind === 'quick-check'
+        ? Promise.resolve(null)
+        : getBenchmarkOutcomes(run.run_id, signal),
+    `outcomes:${run.run_id}`,
+  )
   const ready = load.status === 'ready'
   const grounded = ready ? groundednessRows(load.data.summary) : null
   const badge = kind === 'result' ? undefined : standingWord(run)
@@ -62,6 +80,22 @@ function RunView({ run }: { run: Run }) {
       >
         {ready && <Verdict run={run} summary={load.data.summary} kind={kind} />}
       </Panel>
+      {ready && kind !== 'quick-check' && (
+        <Panel
+          title="Outcomes"
+          state={outcomes.status}
+          error={outcomes.status === 'error' ? outcomes.error : undefined}
+          onRetry={outcomes.retry}
+        >
+          {outcomes.status === 'ready' && outcomes.data !== null && (
+            <OutcomeBars
+              outcomes={outcomes.data}
+              badge={badge}
+              evidenceTitle={EVIDENCE_TITLE}
+            />
+          )}
+        </Panel>
+      )}
       {ready && kind !== 'quick-check' && (
         <>
           <Panel title="Scores by kind of question" state="ready">

@@ -8,14 +8,37 @@ import type { ChapterCopy } from '../chapters'
 
 export const evidence: ChapterCopy = {
   plain: [
-    'The answer model does not read everything the searches find. What it is given must fit a budget of {context_budget_tokens} tokens, the same for all three approaches. A token is a small piece of text; here four characters count as one token. There is no other limit on the number of pieces.',
-    'A re-ordering model puts the passages and record texts in order. It reads the question beside each one and scores how well that one answers it. A takes them in that order until the budget is full. When two passages say nearly the same thing, only the first is taken.',
-    "B and C also have a second list: the records the graph reached, in the graph's own order. The starting points come first. Next come the records of a kind the question asks about, such as incidents when it asks about incidents. Then come the rest. Within each group, a record comes earlier when it is closer to the starting point, more strongly linked and more like the question. A record's place in this order is its graph rank. The re-ordering model does not score graph records.",
-    'The two lists take turns: one passage or record text, then one graph record, then a passage again, until the budget is full. A record already in the evidence is not taken again. When one list runs out, the other carries on alone.',
+    'The answer model does not read everything the searches find.',
+    {
+      kind: 'key',
+      text: 'Each approach fills the same budget with the evidence it puts first, and the answer model reads only that.',
+    },
+    { kind: 'heading', text: 'The budget' },
+    'What the answer model is given must fit a budget of {context_budget_tokens} tokens, the same for all three approaches. A token is a small piece of text; here four characters count as one token. There is no other limit on the number of pieces.',
+    { kind: 'heading', text: 'How the pieces are picked' },
+    'A re-ordering model puts the passages and record texts in order. It reads the question beside each one and scores how well that one answers it.',
+    'A takes them in that order until the budget is full. When two passages say nearly the same thing, only the first is taken.',
+    "B and C also have a second list: the records the graph reached, in the graph's own order. The two lists take turns: one passage or record text, then one graph record, then a passage again, until the budget is full.",
     { kind: 'diagram', name: 'evidence' },
+    'A record already in the evidence is not taken again. When one list runs out, the other carries on alone.',
+    { kind: 'heading', text: "The graph's own order" },
+    'The re-ordering model does not score graph records. They come in three groups:',
+    {
+      kind: 'steps',
+      items: [
+        'The starting points.',
+        'Records of a kind the question asks about, such as incidents when it asks about incidents.',
+        'All the rest.',
+      ],
+    },
+    "Within each group, a record comes earlier when it is closer to the starting point, more strongly linked and more like the question. A record's place in this order is its graph rank.",
     { kind: 'heading', text: 'Why one budget' },
-    'A model can read only so much at once, and more text is slower and can bury the fact that matters. The budget is the same for all three approaches. So a difference in their answers comes from what each found, not from how much each could show. Taking turns one for one gives the graph room, with no split between the two lists that anyone had to tune.',
-    'A method is the set of rules for choosing the evidence and scoring the answers. The official run used the rules of this chapter (chapter 1).',
+    'A model can read only so much at once, and more text is slower and can bury the fact that matters. With one budget for all three, a difference in their answers comes from what each found, not from how much each could show.',
+    'Taking turns one for one gives the graph room, with no split between the two lists that anyone had to tune.',
+    { kind: 'heading', text: 'Evidence found' },
+    'Afterwards, the evidence an approach chose is compared with the facts the question needed. Chapter 7 scores how much of what was needed it found.',
+    { kind: 'diagram', name: 'found' },
+    'These rules for choosing the evidence, with the rules for scoring the answers (chapter 7), form the method. The official run used them (chapter 1).',
   ],
   technical: [
     'The settings in this chapter, now and in the newest official run:',

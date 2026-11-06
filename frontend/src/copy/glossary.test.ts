@@ -14,6 +14,20 @@ describe('glossary terms', () => {
     }
   })
 
+  it('explains the words a newcomer meets first', () => {
+    const names = GLOSSARY_TERMS.map(({ term }) => term)
+    for (const term of [
+      'World',
+      'Retrieval',
+      'Benchmark',
+      'Run',
+      'Approach',
+      'Precision',
+      'Multi-hop',
+    ])
+      expect(names, term).toContain(term)
+  })
+
   it('has a technical definition only where it adds to the plain one', () => {
     for (const { term, meaning, technical } of GLOSSARY_TERMS)
       if (technical !== undefined) {

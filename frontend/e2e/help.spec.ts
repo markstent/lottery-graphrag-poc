@@ -65,7 +65,7 @@ for (const [id, title] of SECTIONS) {
   })
 }
 
-test('Overview links to chapter 12, which shows the kinds of question and, at Technical, every question', async ({
+test('Overview links to chapter 12, which shows the results by kind of question and, at Technical, every question', async ({
   page,
 }) => {
   await mockApi(page, 'published', 'official')
@@ -79,12 +79,13 @@ test('Overview links to chapter 12, which shows the kinds of question and, at Te
       name: '12. What the results teach',
     }),
   ).toBeInViewport()
-  const kinds = chapter.getByRole('table', {
-    name: 'Which approach did best, by kind of question',
-  })
+  // The chart draws the newest official run from the API; the findings are fixed to the 2026-10-29 run.
   await expect(
-    kinds.getByRole('row', { name: /^Multi-hop questions/ }),
-  ).toContainText('43%, 65%, 64%')
+    chapter.getByRole('img', { name: 'Answer score by kind of question' }),
+  ).toBeVisible()
+  await expect(
+    chapter.getByText(/text search 43 percent: 22\.1 points more/),
+  ).toBeVisible()
   await expect(
     chapter.getByRole('table', { name: 'Means for each question' }),
   ).toHaveCount(0)
@@ -268,6 +269,7 @@ for (const width of [960, 768])
       ['approaches', /^A · /],
       ['approaches', /^B · /],
       ['approaches', /^C · /],
+      ['approaches', /^One idea, four names\./],
       ['evidence', /^How evidence is chosen/],
     ] as const) {
       await open(page, `#/help?section=${section}`)
@@ -372,4 +374,101 @@ test('Help is two pages, the guide one chapter at a time and the questions and a
   await expect(chapters).toHaveCount(0)
   await pages.getByRole('link', { name: 'Guide' }).click()
   await expect(page).toHaveURL(/#\/help\?section=why$/)
+})
+
+test.describe('at 1440 pixels wide', () => {
+  test.use({ viewport: { width: 1440, height: 810 } })
+
+  test('the Next links lead from chapter 1 to chapter 12 at Plain, and no chapter scrolls sideways', async ({
+    page,
+  }) => {
+    await open(page, '#/help')
+    const around = page.getByRole('navigation', {
+      name: 'Chapter before and after',
+    })
+    for (const [index, id] of CHAPTER_IDS.entries()) {
+      await expect(page).toHaveURL(
+        index === 0 ? /#\/help$/ : new RegExp(`section=${id}$`),
+      )
+      const chapter = page.locator(`#${id}`)
+      await expect(chapter.getByRole('heading', { level: 2 })).toHaveText(
+        new RegExp(`^${index + 1}\\. `),
+      )
+      await expect(page.locator('#main [aria-busy="true"]')).toHaveCount(0)
+      await expect(page.getByRole('radio', { name: 'Plain' })).toBeChecked()
+      expect(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
+        id,
+      ).toBe(true)
+      await shot(page, `walk-${id}`)
+      if (index < CHAPTER_IDS.length - 1)
+        await around.getByRole('link', { name: /^Next:/ }).click()
+      else
+        await expect(around.getByRole('link', { name: /^Next:/ })).toHaveCount(
+          0,
+        )
+    }
+  })
+})
+
+test('a "More detail" opens and closes by keyboard', async ({ page }) => {
+  await open(page, '#/help')
+  const more = page.locator('#why details').first()
+  const summary = more.locator('summary')
+  await expect(summary).toHaveText('More detail')
+  const hidden = more.getByText(/^For example: this incident happened/)
+  await expect(hidden).toBeHidden()
+  await summary.focus()
+  await page.keyboard.press('Enter')
+  await expect(more).toHaveAttribute('open', '')
+  await expect(hidden).toBeVisible()
+  await shot(page, 'more-detail-open')
+  await page.keyboard.press('Space')
+  await expect(hidden).toBeHidden()
+})
+
+test("a term's meaning shows on keyboard focus and Escape hides it", async ({
+  page,
+}) => {
+  await open(page, '#/help')
+  const term = page.locator('#why [aria-describedby]').first()
+  const meaning = page.locator(
+    `#${await term.getAttribute('aria-describedby')}`,
+  )
+  await expect(meaning).toBeHidden()
+  await term.focus()
+  await expect(meaning).toBeVisible()
+  await expect(meaning).toHaveRole('tooltip')
+  expect((await meaning.innerText()).split(/\s+/).length).toBeGreaterThan(4)
+  await shot(page, 'term-on-focus')
+  await page.keyboard.press('Escape')
+  await expect(meaning).toBeHidden()
+  await page.keyboard.press('Tab')
+  await expect(meaning).toBeHidden()
+})
+
+test("chapter 7 draws the newest official run's evidence and answer outcomes", async ({
+  page,
+}) => {
+  await open(page, '#/help?section=scoring')
+  const chapter = page.locator('#scoring')
+  await expect(
+    chapter.getByRole('figure', { name: /^Evidence found/ }),
+  ).toBeVisible()
+  await expect(
+    chapter.getByRole('img', {
+      name: /^Text search: 40 percent of the needed facts found, 60 percent missed\. 972 of 2430/,
+    }),
+  ).toBeVisible()
+  await expect(
+    chapter.getByRole('figure', { name: /^Answers by score/ }),
+  ).toBeVisible()
+  await expect(
+    chapter.getByRole('img', {
+      name: /^Text search: answer score 40 percent; right 81 of 243/,
+    }),
+  ).toBeVisible()
+  await shot(page, 'scoring-outcomes')
 })

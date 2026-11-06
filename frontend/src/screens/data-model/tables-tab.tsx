@@ -64,7 +64,8 @@ function TableRows({
         <p className="text-base font-semibold text-text-primary">
           {plainName(table.table)}
         </p>
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-primary">{table.description}</p>
+        <p className="mt-1 text-sm text-text-secondary">
           {`From ${systemName(table.source_system)}`}
           {rowCount !== undefined && `, ${plural(rowCount, 'row')}`}
           {`, ${plural(table.columns.length, 'column')}`}
@@ -123,6 +124,7 @@ export function TablesTab({ params }: { params: URLSearchParams }) {
       items: tables.map((t) => ({
         id: t.table,
         title: plainName(t.table),
+        note: t.description,
         detail:
           dataset.row_counts[t.table] === undefined
             ? undefined

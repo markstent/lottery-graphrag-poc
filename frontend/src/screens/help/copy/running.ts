@@ -9,9 +9,14 @@ import type { ChapterCopy } from '../chapters'
 export const running: ChapterCopy = {
   plain: [
     'This chapter is for operators: the people who install the system, load the made-up company and start the runs.',
+    { kind: 'heading', text: 'What this chapter holds' },
+    [
+      'The commands that bring the system up and run each step.',
+      'The models and settings the system runs with now, beside those the newest official run recorded.',
+      'How to repeat or resume an official run.',
+    ],
   ],
-  plainHint:
-    'Choose Technical at the top of Help to see the commands, the model settings, and how to repeat or resume an official run.',
+  plainHint: 'Choose Technical at the top of Help to see them.',
   technical: [
     { kind: 'component', name: 'running' },
     'The settings this system runs with now, beside those recorded by the newest official run:',

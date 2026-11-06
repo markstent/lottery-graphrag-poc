@@ -59,11 +59,16 @@ function showRegister(level: HelpData['level']) {
   return screen.getByRole('table', { name: 'Assumptions and limits' })
 }
 
-/** Every string a list of blocks holds: paragraphs and list items. */
+/** Every string a list of blocks holds as body text: paragraphs, list items, key lines and steps, inside "More detail" too. */
 const strings = (blocks: readonly Block[]): string[] =>
-  blocks.flatMap((block) =>
-    typeof block === 'string' ? [block] : 'kind' in block ? [] : [...block],
-  )
+  blocks.flatMap((block): string[] => {
+    if (typeof block === 'string') return [block]
+    if (!('kind' in block)) return [...block]
+    if (block.kind === 'key') return [block.text]
+    if (block.kind === 'steps') return [...block.items]
+    if (block.kind === 'more') return strings(block.blocks)
+    return []
+  })
 
 /** All the text of a chapter that Help writes itself, at both levels, with the data its widgets show. */
 function chapterText(id: ChapterId): string {
@@ -98,6 +103,118 @@ function chapterText(id: ChapterId): string {
 }
 
 const allHelpText = () => PAGES.map(({ id }) => chapterText(id)).join('\n')
+
+const isKind = (block: Block | undefined, kind: string) =>
+  block !== undefined &&
+  typeof block !== 'string' &&
+  'kind' in block &&
+  block.kind === kind
+
+/** Every word a reader can see in Plain blocks: body text, headings and "More detail" summaries. */
+const plainWords = (blocks: readonly Block[]): string[] =>
+  blocks.flatMap((block): string[] => {
+    if (typeof block !== 'string' && 'kind' in block) {
+      if (block.kind === 'heading') return [block.text]
+      if (block.kind === 'more')
+        return [block.summary, ...plainWords(block.blocks)]
+    }
+    return strings([block])
+  })
+
+const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length
+
+const headingAt = (blocks: readonly Block[], text: string) =>
+  blocks.findIndex(
+    (block) =>
+      isKind(block, 'heading') && (block as { text: string }).text === text,
+  )
+
+describe('chapters 7 and 8 read in short sections', () => {
+  it('are under half their old length, open with one sentence and a key line, and keep paragraphs to 60 words', () => {
+    for (const id of ['scoring', 'results'] as const) {
+      const { plain } = CHAPTER_COPY[id]
+      expect(wordCount(plainWords(plain).join(' ')), id).toBeLessThan(353)
+      const [first, second] = plain
+      expect(typeof first, id).toBe('string')
+      expect((first as string).match(/[.?!](?=\s|$)/g)?.length ?? 0, id).toBe(1)
+      expect(isKind(second, 'key'), id).toBe(true)
+      for (const text of strings(plain))
+        expect(wordCount(text), `${id}: ${text}`).toBeLessThanOrEqual(60)
+      expect(
+        plain.filter((block) => isKind(block, 'heading')).length,
+        id,
+      ).toBeGreaterThanOrEqual(2)
+    }
+  })
+
+  it('chapter 7 shows the two views first, then each score in a headed section that opens with its definition', () => {
+    const { plain } = CHAPTER_COPY.scoring
+    const views = plain.findIndex(
+      (block) =>
+        isKind(block, 'component') &&
+        (block as { name: string }).name === 'outcomes',
+    )
+    expect(views).toBeGreaterThan(0)
+    for (const score of [
+      'The answer score',
+      'Evidence found (evidence recall)',
+      'Precision',
+      'Groundedness',
+    ]) {
+      const at = headingAt(plain, score)
+      expect(at, score).toBeGreaterThan(views)
+      const definition = plain[at + 1]
+      expect(typeof definition, score).toBe('string')
+    }
+    // The views' own words for an answer that abstained.
+    const text = plainWords(plain).join(' ')
+    expect(text).toContain('said the sources could not answer')
+    expect(text).not.toMatch(/\bdeclin/i)
+  })
+
+  it("chapter 7's key line names evidence found as evidence recall", () => {
+    const key = CHAPTER_COPY.scoring.plain[1] as { text: string }
+    expect(key.text).toContain('evidence found (evidence recall)')
+  })
+
+  it('chapter 8 keeps the leaning count line and the width of a margin at Technical', () => {
+    const technical = strings(CHAPTER_COPY.results.technical).join(' ')
+    expect(technical).toContain(
+      'Overview and Results count such comparisons in one line under the headlines',
+    )
+    expect(technical).toContain(
+      'The interval shows how large a difference could still be, in either direction.',
+    )
+  })
+
+  it('chapter 8 shows how to read a margin of error', () => {
+    expect(CHAPTER_COPY.results.plain).toContainEqual({
+      kind: 'diagram',
+      name: 'interval',
+    })
+  })
+})
+
+describe('chapters 9 to 11 and the questions page read in short parts', () => {
+  it('have a heading below the title and Plain paragraphs of at most 60 words', () => {
+    for (const id of ['limits', 'glossary', 'running', 'questions'] as const) {
+      const { plain } = CHAPTER_COPY[id]
+      expect(
+        plain.some((block) => isKind(block, 'heading')),
+        id,
+      ).toBe(true)
+      for (const text of strings(plain))
+        expect(wordCount(text), `${id}: ${text}`).toBeLessThanOrEqual(60)
+    }
+  })
+
+  it('the questions page opens with a short lead and a list', () => {
+    const [lead, list] = CHAPTER_COPY.questions.plain
+    expect(typeof lead).toBe('string')
+    expect(wordCount(lead as string)).toBeLessThanOrEqual(30)
+    expect(Array.isArray(list) || isKind(list, 'steps')).toBe(true)
+  })
+})
 
 describe('chapters 7 to 12', () => {
   it('chapters 7, 8, 9, 10 and 12 have plain and technical prose, and 11 a plain framing', () => {

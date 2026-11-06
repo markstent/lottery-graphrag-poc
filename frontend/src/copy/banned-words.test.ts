@@ -65,6 +65,9 @@ const COPY_ATTRIBUTES = new Set([
   'message',
   'text',
   'caption',
+  // A screen's subtitle and a panel's purpose line, and a Help tour line (D-115 follow-up).
+  'purpose',
+  'line',
 ])
 
 /**
@@ -419,6 +422,10 @@ const blockTexts = (block: Block): string[] => {
   if (typeof block === 'string') return [block]
   if (!('kind' in block)) return [...block]
   if (block.kind === 'heading') return [block.text]
+  if (block.kind === 'key') return [block.text]
+  if (block.kind === 'steps') return [...block.items]
+  if (block.kind === 'more')
+    return [block.summary, ...block.blocks.flatMap(blockTexts)]
   if (block.kind === 'table')
     return [block.caption, ...block.columns, ...block.rows.flat()]
   return []
@@ -438,6 +445,13 @@ describe('Help chapters', () => {
         ['a fake one', 'fine'],
         { kind: 'diagram', name: 'evidence' },
         { kind: 'heading', text: 'Where the telemetry went' },
+        { kind: 'key', text: 'The real point' },
+        { kind: 'steps', items: ['Pick a seed', 'fine'] },
+        {
+          kind: 'more',
+          summary: 'More detail',
+          blocks: ['a chunk inside', { kind: 'key', text: 'a fake key' }],
+        },
         {
           kind: 'table',
           caption: 'Kinds',
@@ -451,6 +465,10 @@ describe('Help chapters', () => {
       'A seed node',
       'a fake one',
       'Where the telemetry went',
+      'The real point',
+      'Pick a seed',
+      'a chunk inside',
+      'a fake key',
       'Real score',
       'a rerank',
     ])
