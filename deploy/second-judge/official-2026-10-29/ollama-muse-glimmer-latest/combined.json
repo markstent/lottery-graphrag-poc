@@ -1,0 +1,457 @@
+{
+  "schema_version": 1,
+  "kind": "combined",
+  "family": "judges",
+  "run_id": "official-2026-10-29",
+  "measure": "judge_mark",
+  "definition": "Per answer, (first judge's correctness + second judge's correctness) / 4 on the 0, 1, 2 rubric; defined only when both judges gave scores.",
+  "first_judge": {
+    "model": "ollama/gemma4:31b",
+    "model_family": "gemma",
+    "prompt_version": "1.2.0",
+    "max_tokens": 300
+  },
+  "second_judge": {
+    "model": "ollama/muse-glimmer:latest",
+    "model_family": "muse",
+    "reasoning": "off",
+    "temperature": 0.0,
+    "max_tokens": 2048
+  },
+  "judge_prompt_version": "1.2.0",
+  "judge_prompt_hash": "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643",
+  "second_judge_finished_at": "2026-11-03T01:46:20.146427+00:00",
+  "computed_at": "2026-11-03T01:46:22.097236+00:00",
+  "git_sha": "4fe7c5cc2e09709e6bca2783b54c8045aaa8f875",
+  "git_dirty": false,
+  "min_kappa_items": 10,
+  "counts": {
+    "answers": 900,
+    "both_judged": 899,
+    "agreed": 814,
+    "missing": {
+      "generation_failed": 0,
+      "first_judge_failed": 0,
+      "second_judge_pending": 0,
+      "second_judge_failed": 1
+    },
+    "disagreements": 3
+  },
+  "metrics": {
+    "H1": {
+      "A": {
+        "mean": 0.3819444444444444,
+        "n": 72,
+        "repeats": 72
+      },
+      "B": {
+        "mean": 0.5659722222222222,
+        "n": 72,
+        "repeats": 72
+      },
+      "C": {
+        "mean": 0.59375,
+        "n": 72,
+        "repeats": 72
+      }
+    },
+    "H2": {
+      "A": {
+        "mean": 0.14788732394366197,
+        "n": 71,
+        "repeats": 71
+      },
+      "B": {
+        "mean": 0.13194444444444445,
+        "n": 72,
+        "repeats": 72
+      },
+      "C": {
+        "mean": 0.3263888888888889,
+        "n": 72,
+        "repeats": 72
+      }
+    },
+    "H2_name": {
+      "A": {
+        "mean": 0.4236111111111111,
+        "n": 36,
+        "repeats": 36
+      },
+      "B": {
+        "mean": 0.3888888888888889,
+        "n": 36,
+        "repeats": 36
+      },
+      "C": {
+        "mean": 0.4583333333333333,
+        "n": 36,
+        "repeats": 36
+      }
+    },
+    "H3": {
+      "A": {
+        "mean": 1.0,
+        "n": 72,
+        "repeats": 72
+      },
+      "B": {
+        "mean": 0.9861111111111112,
+        "n": 72,
+        "repeats": 72
+      },
+      "C": {
+        "mean": 0.9444444444444444,
+        "n": 72,
+        "repeats": 72
+      }
+    },
+    "H5": {
+      "A": {
+        "mean": 0.5260416666666666,
+        "n": 48,
+        "repeats": 48
+      },
+      "B": {
+        "mean": 0.4947916666666667,
+        "n": 48,
+        "repeats": 48
+      },
+      "C": {
+        "mean": 0.4739583333333333,
+        "n": 48,
+        "repeats": 48
+      }
+    },
+    "overall": {
+      "A": {
+        "mean": 0.5033444816053512,
+        "n": 299,
+        "repeats": 299
+      },
+      "B": {
+        "mean": 0.53,
+        "n": 300,
+        "repeats": 300
+      },
+      "C": {
+        "mean": 0.5783333333333334,
+        "n": 300,
+        "repeats": 300
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "stratum": "H1",
+      "metric": "judge_mark",
+      "comparison": "B_vs_A",
+      "n": 72,
+      "clusters": 24,
+      "mean": 0.1840277777777778,
+      "low": 0.07291666666666667,
+      "high": 0.2986111111111111,
+      "p": 0.007063810000891699,
+      "p_holm": 0.056510480007133594,
+      "in_family": true,
+      "reason": "tested"
+    },
+    {
+      "stratum": "H1",
+      "metric": "judge_mark",
+      "comparison": "C_vs_B",
+      "n": 72,
+      "clusters": 24,
+      "mean": 0.027777777777777776,
+      "low": -0.04513888888888889,
+      "high": 0.10416666666666667,
+      "p": 0.5390681820901224,
+      "p_holm": 1.0,
+      "in_family": true,
+      "reason": "tested"
+    },
+    {
+      "stratum": "H1",
+      "metric": "judge_mark",
+      "comparison": "C_vs_A",
+      "n": 72,
+      "clusters": 24,
+      "mean": 0.21180555555555555,
+      "low": 0.08333333333333333,
+      "high": 0.34375,
+      "p": null,
+      "p_holm": null,
+      "in_family": false,
+      "reason": "not_in_family"
+    },
+    {
+      "stratum": "H2",
+      "metric": "judge_mark",
+      "comparison": "B_vs_A",
+      "n": 71,
+      "clusters": 24,
+      "mean": -0.014084507042253521,
+      "low": -0.09859154929577464,
+      "high": 0.07042253521126761,
+      "p": 0.47819136621542613,
+      "p_holm": 1.0,
+      "in_family": true,
+      "reason": "tested"
+    },
+    {
+      "stratum": "H2",
+      "metric": "judge_mark",
+      "comparison": "C_vs_B",
+      "n": 72,
+      "clusters": 24,
+      "mean": 0.19444444444444445,
+      "low": 0.07291666666666667,
+      "high": 0.3298611111111111,
+      "p": 0.014440012870017347,
+      "p_holm": 0.10108009009012142,
+      "in_family": true,
+      "reason": "tested"
+    },
+    {
+      "stratum": "H2",
+      "metric": "judge_mark",
+      "comparison": "C_vs_A",
+      "n": 71,
+      "clusters": 24,
+      "mean": 0.18309859154929578,
+      "low": 0.025,
+      "high": 0.34375,
+      "p": null,
+      "p_holm": null,
+      "in_family": false,
+      "reason": "not_in_family"
+    },
+    {
+      "stratum": "H2_name",
+      "metric": "judge_mark",
+      "comparison": "B_vs_A",
+      "n": 36,
+      "clusters": 12,
+      "mean": -0.034722222222222224,
+      "low": -0.09027777777777778,
+      "high": 0.020833333333333332,
+      "p": null,
+      "p_holm": null,
+      "in_family": false,
+      "reason": "not_in_family"
+    },
+    {
+      "stratum": "H2_name",
+      "metric": "judge_mark",
+      "comparison": "C_vs_B",
+      "n": 36,
+      "clusters": 12,
+      "mean": 0.06944444444444445,
+      "low": -0.05555555555555555,
+      "high": 0.1875,
+      "p": null,
+      "p_holm": null,
+      "in_family": false,
+      "reason": "not_in_family"
+    },
+    {
+      "stratum": "H2_name",
+      "metric": "judge_mark",
+      "comparison": "C_vs_A",
+      "n": 36,
+      "clusters": 12,
+      "mean": 0.034722222222222224,
+      "low": -0.08333333333333333,
+      "high": 0.1597222222222222,
+      "p": null,
+      "p_holm": null,
+      "in_family": false,
+      "reason": "not_in_family"
+    },
+    {
+      "stratum": "H3",
+      "metric": "judge_mark",
+      "comparison": "B_vs_A",
+      "n": 72,
+      "clusters": 24,
+      "mean": -0.013888888888888888,
+      "low": -0.041666666666666664,
+      "high": 0.0,
+      "p": 0.31731050786291415,
+      "p_holm": 1.0,
+      "in_family": true,
+      "reason": "tested"
+    },
+    {
+      "stratum": "H3",
+      "metric": "judge_mark",
+      "comparison": "C_vs_B",
+      "n": 72,
+      "clusters": 24,
+      "mean": -0.041666666666666664,
+      "low": -0.08333333333333333,
+      "high": 0.0,
+      "p": 0.08326451666355039,
+      "p_holm": 0.49958709998130235,
+      "in_family": true,
+      "reason": "tested"
+    },
+    {
+      "stratum": "H3",
+      "metric": "judge_mark",
+      "comparison": "C_vs_A",
+      "n": 72,
+      "clusters": 24,
+      "mean": -0.05555555555555555,
+      "low": -0.1111111111111111,
+      "high": -0.013888888888888888,
+      "p": null,
+      "p_holm": null,
+      "in_family": false,
+      "reason": "not_in_family"
+    },
+    {
+      "stratum": "H5",
+      "metric": "judge_mark",
+      "comparison": "B_vs_A",
+      "n": 48,
+      "clusters": 48,
+      "mean": -0.03125,
+      "low": -0.109375,
+      "high": 0.046875,
+      "p": 0.47263777494244374,
+      "p_holm": 1.0,
+      "in_family": true,
+      "reason": "tested"
+    },
+    {
+      "stratum": "H5",
+      "metric": "judge_mark",
+      "comparison": "C_vs_B",
+      "n": 48,
+      "clusters": 48,
+      "mean": -0.020833333333333332,
+      "low": -0.0625,
+      "high": 0.015625,
+      "p": 0.49026740254038426,
+      "p_holm": 1.0,
+      "in_family": true,
+      "reason": "tested"
+    },
+    {
+      "stratum": "H5",
+      "metric": "judge_mark",
+      "comparison": "C_vs_A",
+      "n": 48,
+      "clusters": 48,
+      "mean": -0.052083333333333336,
+      "low": -0.11979166666666667,
+      "high": 0.010416666666666666,
+      "p": null,
+      "p_holm": null,
+      "in_family": false,
+      "reason": "not_in_family"
+    }
+  ],
+  "headlines": [
+    "No detectable difference between Graph and text search on multi-hop questions (72 pairs in 24 groups).",
+    "No detectable difference between Graph + Ontology and Graph on multi-hop questions (72 pairs in 24 groups).",
+    "No detectable difference between Graph and text search on ontology-dependent questions anchored by id (71 pairs in 24 groups).",
+    "No detectable difference between Graph + Ontology and Graph on ontology-dependent questions anchored by id (72 pairs in 24 groups).",
+    "No detectable difference between Graph and text search on single facts (72 pairs in 24 groups).",
+    "No detectable difference between Graph + Ontology and Graph on single facts (72 pairs in 24 groups).",
+    "No detectable difference between Graph and text search on planted patterns (48 pairs in 48 groups).",
+    "No detectable difference between Graph + Ontology and Graph on planted patterns (48 pairs in 48 groups).",
+    "Name-anchored questions: Graph minus text search -3.5 judges' mark points (95 percent interval -9.0 to 2.1, 36 pairs in 12 groups); no test is run on this sub-group.",
+    "Name-anchored questions: Graph + Ontology minus Graph 6.9 judges' mark points (95 percent interval -5.6 to 18.8, 36 pairs in 12 groups); no test is run on this sub-group."
+  ],
+  "agreement": {
+    "answered": {
+      "n": 637,
+      "agreement": 0.8775510204081632,
+      "weighted_kappa": 0.8161629593368818,
+      "confusion": [
+        [
+          40,
+          1,
+          0
+        ],
+        [
+          51,
+          156,
+          1
+        ],
+        [
+          1,
+          24,
+          363
+        ]
+      ]
+    },
+    "abstained": {
+      "n": 262,
+      "agreement": 0.9732824427480916,
+      "weighted_kappa": 0.7549875311720698,
+      "confusion": [
+        [
+          241,
+          0,
+          0
+        ],
+        [
+          5,
+          13,
+          0
+        ],
+        [
+          2,
+          0,
+          1
+        ]
+      ]
+    }
+  },
+  "disagreements_by_stratum": {
+    "H1": 0,
+    "H2": 3,
+    "H2_name": 0,
+    "H3": 0,
+    "H5": 0,
+    "overall": 3
+  },
+  "disagreements": [
+    {
+      "instance_id": "L12-2030-GAME_CZ_02",
+      "question_id": "L12",
+      "world_seed": 2030,
+      "stratum": "H2",
+      "pipeline": "A",
+      "repeat": 0,
+      "question": "Which games in other markets use the same kind of mechanic as the main mechanic of game GAME_CZ_02?",
+      "first": 2,
+      "second": 0
+    },
+    {
+      "instance_id": "L11-2031-SEG_CZ_OBCASNI",
+      "question_id": "L11",
+      "world_seed": 2031,
+      "stratum": "H2",
+      "pipeline": "B",
+      "repeat": 0,
+      "question": "Which player segments in other markets correspond to segment SEG_CZ_OBCASNI?",
+      "first": 2,
+      "second": 0
+    },
+    {
+      "instance_id": "L09-2034-GAME_UK_03",
+      "question_id": "L09",
+      "world_seed": 2034,
+      "stratum": "H2",
+      "pipeline": "C",
+      "repeat": 0,
+      "question": "Which games in other markets belong to the same kind of game family as game GAME_UK_03?",
+      "first": 2,
+      "second": 0
+    }
+  ]
+}

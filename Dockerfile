@@ -38,7 +38,7 @@ ENV PUBLIC_MODE=1 \
     LOG_LEVEL=INFO
 # The API user owns the world folder: loading the graph writes its statistics there.
 RUN useradd --create-home --uid 10001 lab && mkdir -p /state && chown lab /state && chown -R lab /repo/data/generated \
- && chmod -R a+rX /repo/deploy/published-runs
+ && chmod -R a+rX /repo/deploy/published-runs /repo/deploy/second-judge
 USER lab
 EXPOSE 8000
 CMD ["/repo/backend/.venv/bin/python", "/repo/deploy/start_api.py"]

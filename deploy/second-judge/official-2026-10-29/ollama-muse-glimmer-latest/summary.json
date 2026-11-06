@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "kind": "run",
+  "second_judge": {
+    "model": "ollama/muse-glimmer:latest",
+    "model_family": "muse",
+    "reasoning": "off",
+    "temperature": 0.0,
+    "max_tokens": 2048
+  },
+  "judge_prompt_version": "1.2.0",
+  "judge_prompt_hash": "dbc2bcd861773a3184c3018365a8d4f49ae8cdf0921e1936fece40739a394643",
+  "first_judge": {
+    "model": "ollama/gemma4:31b",
+    "model_family": "gemma",
+    "prompt_version": "1.2.0",
+    "max_tokens": 300
+  },
+  "generation_model": "ollama/qwen3.6:latest",
+  "started_at": "2026-11-02T12:47:38.225088+00:00",
+  "finished_at": "2026-11-03T01:46:20.146427+00:00",
+  "git_sha": "4fe7c5cc2e09709e6bca2783b54c8045aaa8f875",
+  "git_dirty": false,
+  "min_kappa_items": 10,
+  "counts": {
+    "repeats": 900,
+    "judged": 899,
+    "failures": 1,
+    "pending": 0,
+    "failure_kinds": {
+      "unusable_reply": 1
+    },
+    "failure_messages": {
+      "the judge reply has no completeness score": 1
+    },
+    "cut_off_replies": 0
+  },
+  "run_id": "official-2026-10-29",
+  "agreement_with_answer_level": {
+    "first": {
+      "overall": {
+        "answered": {
+          "n": 637,
+          "agreement": 0.880690737833595,
+          "weighted_kappa": 0.7709814215603463
+        },
+        "abstained": {
+          "n": 263,
+          "agreement": 0.7034220532319392,
+          "weighted_kappa": 0.2479082082965578
+        }
+      },
+      "pipelines": {
+        "A": {
+          "answered": {
+            "n": 209,
+            "agreement": 0.8995215311004785,
+            "weighted_kappa": 0.8284072249589491
+          },
+          "abstained": {
+            "n": 91,
+            "agreement": 0.8021978021978022,
+            "weighted_kappa": 0.38467317806160783
+          }
+        },
+        "B": {
+          "answered": {
+            "n": 205,
+            "agreement": 0.8829268292682927,
+            "weighted_kappa": 0.777918208901327
+          },
+          "abstained": {
+            "n": 95,
+            "agreement": 0.6842105263157895,
+            "weighted_kappa": 0.21284308648368722
+          }
+        },
+        "C": {
+          "answered": {
+            "n": 223,
+            "agreement": 0.8609865470852018,
+            "weighted_kappa": 0.7004755508766836
+          },
+          "abstained": {
+            "n": 77,
+            "agreement": 0.6103896103896104,
+            "weighted_kappa": 0.1714682401943769
+          }
+        }
+      }
+    },
+    "second": {
+      "overall": {
+        "answered": {
+          "n": 637,
+          "agreement": 0.8210361067503925,
+          "weighted_kappa": 0.6868097788266618
+        },
+        "abstained": {
+          "n": 262,
+          "agreement": 0.6984732824427481,
+          "weighted_kappa": 0.2084296904140246
+        }
+      },
+      "pipelines": {
+        "A": {
+          "answered": {
+            "n": 209,
+            "agreement": 0.8421052631578947,
+            "weighted_kappa": 0.7605172696022262
+          },
+          "abstained": {
+            "n": 90,
+            "agreement": 0.8,
+            "weighted_kappa": 0.352
+          }
+        },
+        "B": {
+          "answered": {
+            "n": 205,
+            "agreement": 0.7951219512195122,
+            "weighted_kappa": 0.642315278409953
+          },
+          "abstained": {
+            "n": 95,
+            "agreement": 0.6736842105263158,
+            "weighted_kappa": 0.17391304347826086
+          }
+        },
+        "C": {
+          "answered": {
+            "n": 223,
+            "agreement": 0.8251121076233184,
+            "weighted_kappa": 0.6444075628884767
+          },
+          "abstained": {
+            "n": 77,
+            "agreement": 0.6103896103896104,
+            "weighted_kappa": 0.13608396670285916
+          }
+        }
+      }
+    }
+  },
+  "agreement_between_judges": {
+    "answered": {
+      "n": 637,
+      "agreement": 0.8775510204081632,
+      "weighted_kappa": 0.8161629593368818,
+      "confusion": [
+        [
+          40,
+          1,
+          0
+        ],
+        [
+          51,
+          156,
+          1
+        ],
+        [
+          1,
+          24,
+          363
+        ]
+      ]
+    },
+    "abstained": {
+      "n": 262,
+      "agreement": 0.9732824427480916,
+      "weighted_kappa": 0.7549875311720698,
+      "confusion": [
+        [
+          241,
+          0,
+          0
+        ],
+        [
+          5,
+          13,
+          0
+        ],
+        [
+          2,
+          0,
+          1
+        ]
+      ]
+    }
+  },
+  "means": {
+    "A": {
+      "n": 299,
+      "first": {
+        "correctness": 1.0535117056856187,
+        "completeness": 0.8127090301003345,
+        "faithfulness": 1.919732441471572,
+        "citation_accuracy": 1.9130434782608696,
+        "abstention": 1.4013377926421404
+      },
+      "second": {
+        "correctness": 0.959866220735786,
+        "completeness": 0.9230769230769231,
+        "faithfulness": 1.6588628762541806,
+        "citation_accuracy": 1.725752508361204,
+        "abstention": 1.665551839464883
+      }
+    },
+    "B": {
+      "n": 300,
+      "first": {
+        "correctness": 1.11,
+        "completeness": 0.9266666666666666,
+        "faithfulness": 1.9466666666666668,
+        "citation_accuracy": 1.9433333333333334,
+        "abstention": 1.4166666666666667
+      },
+      "second": {
+        "correctness": 1.01,
+        "completeness": 1.0266666666666666,
+        "faithfulness": 1.76,
+        "citation_accuracy": 1.7733333333333334,
+        "abstention": 1.7166666666666666
+      }
+    },
+    "C": {
+      "n": 300,
+      "first": {
+        "correctness": 1.2,
+        "completeness": 1.0566666666666666,
+        "faithfulness": 1.92,
+        "citation_accuracy": 1.93,
+        "abstention": 1.47
+      },
+      "second": {
+        "correctness": 1.1133333333333333,
+        "completeness": 1.0833333333333333,
+        "faithfulness": 1.7433333333333334,
+        "citation_accuracy": 1.8133333333333332,
+        "abstention": 1.7166666666666666
+      }
+    }
+  }
+}
