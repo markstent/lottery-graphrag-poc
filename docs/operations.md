@@ -139,6 +139,48 @@ An official run resumes only from a clean checkout at the same revision, so any 
 A fresh official run, the dry run included, also starts only when git reports a clean checkout; a checkout with uncommitted changes, or one git cannot read, is refused before any world is prepared.
 A job started from the API never resumes; its failure message names the command to run.
 
+## Deploying the public site
+
+The public site is a read-only copy of the lab on a server with no AI model (D-117).
+Everything a visitor can read works as it does locally: Overview, Live Lab's recorded runs, Results, Data Model, Architecture and Help.
+Everything that would ask a model is greyed out on screen and refused by the API.
+
+### The setting
+
+Set `PUBLIC_MODE=1` in the API's environment.
+It is off by default, so local use is unchanged.
+With it on, the API refuses every `POST`, `PUT`, `PATCH` and `DELETE` with 403 `PUBLIC_READ_ONLY`, which covers a live Live Lab question, cancelling one, starting a benchmark run and cancelling one.
+Readiness checks only the world's files and the graph, and reports `public_mode: true`, which the screens read to grey out the live controls (see [api.md](api.md) and [ux.md](ux.md)).
+The lab is never built, so nothing is indexed or embedded at start-up.
+
+### What must run
+
+- The API: `uv run uvicorn app.main:app --host 127.0.0.1 --port 8000` from `backend/`, with `PUBLIC_MODE=1`, behind the web server.
+- The built frontend: `pnpm run build` in `frontend/` writes `frontend/dist/`, which the web server serves as static files.
+  The screens call relative `/api/...` paths, so the web server forwards `/api/` to the API on the same domain, and no CORS setting is needed.
+  The recorded Live Lab runs are part of the build.
+- Neo4j, for the Graph tab, the node reads and the evidence drawer's nodes, holding the ingested world (`make ingest-graph`).
+- The data files under `data/`: the world in `data/generated/dev-seed2026/` with its manifests, the frozen question bank in `data/evaluation/bank/`, the published runs in `data/evaluation/runs/`, the truth ledger in `data/truth/` (Results and the Data Model example read it after the fact, as locally), and the run store `data/app.db`, which the API creates when it is missing.
+
+### What need not run
+
+- No AI model, no Ollama and no GPU: no question is answered, so no generation, embedding, re-ranking or judge model is loaded or called.
+  `GET /models` names the configured models without probing them.
+- No Qdrant.
+  Checked against the code: no read route touches the vector index.
+  The dataset's index status in Settings reads the index manifest file in the world's directory, not Qdrant, and only a live question and the lab build read the collection.
+
+### Keeping it safe
+
+- Keep Neo4j and the API off the public internet.
+  Bind both to `127.0.0.1` (or a private network), let only the web server reach the API, and expose only ports 80 and 443.
+  Neo4j's Browser (7474) and Bolt (7687) ports must not be reachable from outside.
+- Serve the site over HTTPS only, with a certificate from a public authority, and redirect HTTP to HTTPS.
+- Keep secrets out of the repository.
+  Set `NEO4J_PASSWORD` to a new strong value in the server's environment (not `devpassword`), and keep `.env` untracked.
+  The public site needs no model key, so leave `OPENROUTER_API_KEY` unset.
+- `/docs` and `/openapi.json` are read-only and describe the API; hide them at the web server if they should not be public.
+
 ## Command reference
 
 | Command | What it does |
@@ -298,7 +340,7 @@ A key shown commented in that file must stay unset, not empty, to get its defaul
 | Judge | `JUDGE_PROVIDER`, `JUDGE_MODEL`, `JUDGE_MODEL_FAMILY`, `JUDGE_API_BASE`, `JUDGE_TEMPERATURE`, `JUDGE_REASONING` | `fake`, `fake-judge-v1`, unset, unset, 0, `default` |
 | Second judge | `SECOND_JUDGE_PROVIDER`, `SECOND_JUDGE_MODEL`, `SECOND_JUDGE_MODEL_FAMILY`, `SECOND_JUDGE_API_BASE`, `SECOND_JUDGE_TEMPERATURE`, `SECOND_JUDGE_REASONING`, `SECOND_JUDGE_MAX_TOKENS` | `fake` (refused: set `litellm`), `fake-judge-v1`, unset (required), unset, 0, `default`, 300 (the official second judge uses 2048, D-100) |
 | Graph | `GRAPH_DEPTH`, `GRAPH_MAX_NODES_PER_HOP`, `GRAPH_MAX_EDGES_PER_NODE_TYPE`, `GRAPH_MAX_TOTAL_NODES`, `GRAPH_REFERENCE_DATE` | 2, 100, 4, 200, end of the dataset window |
-| API | `CORS_ORIGINS`, `BENCHMARK_DIR`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `LOG_LEVEL` | the two `localhost:5173` and `127.0.0.1:5173` origins, `data/evaluation/runs`, `data/app.db`, 500, 15, `INFO` |
+| API | `CORS_ORIGINS`, `BENCHMARK_DIR`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `LOG_LEVEL`, `PUBLIC_MODE` | the two `localhost:5173` and `127.0.0.1:5173` origins, `data/evaluation/runs`, `data/app.db`, 500, 15, `INFO`, off (`1` makes the public read-only site, D-117) |
 | Test flags | `GRAPH_E2E`, `VECTOR_E2E`, `LIVE_WORLD_E2E` | unset. `make test` runs pytest with `GRAPH_E2E` unset even when `.env` sets it, so the live graph tests, which wipe Neo4j, run only through `make test-graph`. |
 
 The API settings in the last two groups are read once when the app is created, and a change needs a restart.

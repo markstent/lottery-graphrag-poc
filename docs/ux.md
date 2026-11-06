@@ -55,8 +55,13 @@ Overview is the default.
   When everything is ready but a check passed on a stand-in for testing (the fake generator or the hashing embedder), it says Test models with an amber dot instead of Ready (D-111).
   Its menu then opens with a sentence saying the answers are placeholder text and that `make dev-official` starts the backend on the official run's model, and the stand-in check shows an amber alert icon and "Test stand-in".
   It opens the readiness checks: Retrieval lab, Search index, Graph database, Answer model and Embedding model.
+  On the public read-only site (`PUBLIC_MODE=1`, D-117) it always reads "Public read-only" with a grey dot, never Ready or Not ready.
+  When a check fails there, the dot turns red and the button's name says "Public read-only, but a check failed", so the cue is not colour alone.
+  Its menu opens with "This is the public read-only site. No AI model runs here, so live answers and new runs are off.", then the two checks, World data and Graph database.
   It polls every 15 seconds while something is not ready and every 60 seconds once all is ready, and pauses while the tab is hidden.
 - Settings is a drawer holding reduced motion, the visible-node cap for graphs (12 to 60), the world and scenario numbers, versions, and the model names with their reachability.
+  The model rows are shown, not set: Settings has no model control to switch off.
+  On the public site each model row reads "Off on the public site" in place of its reachability.
 - The evidence drawer opens from any citation, evidence row or graph node, and shows the record itself and where it came from.
   It has its own loading, error and "no source record" states.
 - A "Skip to content" link is the first focusable element.
@@ -151,6 +156,12 @@ A **live run** posts to `/queries`, follows the event stream, resumes with `?aft
 A bank question is scored after the run (D-035).
 Your own question can only run live.
 Live is disabled with a plain reason when the backend is not ready.
+
+**On the public read-only site** (D-117) everything live is greyed out, never hidden.
+The question box, the easy-to-read wordings, the market scope and the Live source are disabled, and one line under the box says why: "Live answers are off on the public site. Replay a recorded run below."
+Each disabled control names that line as its description, so a screen reader reads the reason with the control, and the line is not repeated beside Live.
+Recorded run is the source, and Run stays enabled for a tested question with a recording, so replay, the evidence path, the answers and the scores all work.
+Run is disabled for a tested question with no recording, with "No recorded run for this question." beside it.
 
 The market coverage table counts a market for an approach only when evidence it used carries that market in its own field, and never reads the question, the scope, the wording of an answer or an id (D-053).
 
@@ -255,6 +266,7 @@ A development run uses world 2026 only, so 2027 and 2028 are disabled with "Worl
 There is no "Official run" choice, and a line says why: "Neither is a result. Official runs use the unseen worlds 2029 to 2034, from the command line." (D-091).
 The default request is one the API accepts as it stands, and a backend test posts it.
 It shows, without letting the reader change them, the question bank and the generation and judge models.
+On the public read-only site (D-117) "Start a run" is shown greyed out, with "Runs cannot be started on the public site." beside it as its description, and the form never opens.
 A wrong entry is named beside its field before anything is sent.
 After Start, a progress line such as "World 2027 (2 of 3): 12 of 40 questions", a progress bar and Cancel replace the form, and a job already running when the page loads is followed the same way.
 Cancelling stops after the current question.
@@ -559,8 +571,9 @@ Browser storage holds only per-reader preferences: the collapsed sidebar, reduce
 
 ## Testing
 
-- Vitest with Testing Library: 110 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
-- Playwright: ten spec files in `frontend/e2e/`.
+- Vitest with Testing Library: 111 test files under `frontend/src/`, covering the reducer, replay clock, graph model and layout, charts, each screen, the router, the copy budget and banned words, the design tokens and the pinned dependencies.
+- Playwright: eleven spec files in `frontend/e2e/`.
+  `public-site.spec.ts` runs the header, Settings, Live Lab and Results against the mock in public mode, and fails if the page tries any write.
   The default config runs the smoke and functional specs.
   The visual config runs `visual.spec.ts` against 138 committed baselines.
 - `pnpm api:check` for the generated types.
@@ -569,7 +582,7 @@ Browser storage holds only per-reader preferences: the collapsed sidebar, reduce
 
 - A new screen needs an entry in the destination table with its purpose sentence, and a spec in this page.
 - A new status or evidence state needs a shape, an icon and a token pair, and a contrast test.
-- A new string needs to fit the copy budget, which has no margin left outside Help.
+- A new string needs to fit the copy budget, which has little margin left outside Help (4,090 of 4,100 words after D-117).
 - Changing a layout, a hierarchy or an interaction pattern of an approved screen changes the visual contract and needs the owner's approval.
 
 ## Failure modes
@@ -592,7 +605,7 @@ Recorded at CP2 (`docs/reference/hitl-history.md`) and standing as built until t
 - The Graph tab's full map is dense, and a per-label neighbourhood map is proposed.
 - Help has no A, B, C walk-through of the SCN-007 worked example, because no recorded run covers it.
 - Which world is the presentation world is not settled, and Help's recovery table omits `make demo-reset` for that reason.
-- The copy budget has no margin left outside Help.
+- The copy budget has little margin left outside Help.
 - Small gaps: the replay slider can read just below its end at the end of a run, the flow diagram does not grow in presentation mode, the evidence drawer's group list is fixed when opened while a replay plays, idle approach panels are about 30 px shorter than running ones, and the recordings are cast to their type without validating event types.
 
 The archived screen, flow and journey specifications are under [reference/ux/](reference/ux/screen-specifications.md) and [reference/product/](reference/product/user-journeys.md).
