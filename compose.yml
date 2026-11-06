@@ -1,0 +1,71 @@
+# Runs the public, read-only Semantic Context Lab on the Latent Conjecture lab server (see lab.yaml).
+# Only the web container joins the shared `lab` network; the API and Neo4j stay on a private one.
+# NEO4J_PASSWORD comes from the .env file next to this one on the server (never committed).
+services:
+  semantic-context-lab:
+    build: { context: ., target: web }
+    container_name: semantic-context-lab
+    restart: unless-stopped
+    depends_on:
+      api: { condition: service_healthy }
+    mem_limit: 48m
+    cpus: 0.25
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [lab, internal]
+
+  api:
+    build: { context: ., target: api }
+    restart: unless-stopped
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+    depends_on:
+      neo4j: { condition: service_healthy }
+    # About 140 MB at rest; up to about 720 MB while it loads the world into Neo4j (first start only).
+    mem_limit: 800m
+    cpus: 1.0
+    volumes:
+      - state:/state
+    healthcheck:
+      test: ["CMD", "/repo/backend/.venv/bin/python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3).status == 200 else 1)"]
+      interval: 5s
+      timeout: 4s
+      start_period: 20s
+      retries: 24
+    networks: [internal]
+
+  neo4j:
+    image: neo4j:5.26-community
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set NEO4J_PASSWORD in .env}
+      # Sized for a small synthetic world on a 4 GB server.
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 256m
+      NEO4J_server_memory_pagecache_size: 48m
+      NEO4J_dbms_usage__report_enabled: "false"
+    # About 600 MB at rest for this 37k-node world.
+    mem_limit: 768m
+    cpus: 1.0
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/7687' 2>/dev/null"]
+      interval: 5s
+      timeout: 3s
+      start_period: 15s
+      retries: 36
+    networks: [internal]
+
+volumes:
+  state:
+  neo4j_data:
+
+networks:
+  lab:
+    external: true
+  internal:

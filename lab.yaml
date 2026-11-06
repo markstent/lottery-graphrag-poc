@@ -1,0 +1,10 @@
+# How the Latent Conjecture lab server runs this app (github.com/markstent/latent-contjecture-web, labctl).
+# Public, read-only mode: no models, no Qdrant; the API, the screens and Neo4j only.
+name: semantic-context-lab
+title: Semantic Context Lab
+subdomain: semantic
+port: 8080
+healthcheck: /api/v1/health
+access: public
+memory: 1616m            # the three containers' limits (48m web + 800m API + 768m Neo4j); about 760 MB in use while awake
+idle_timeout: 30m        # sleeps when unused; the next visitor wakes it

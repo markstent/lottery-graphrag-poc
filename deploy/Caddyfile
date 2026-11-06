@@ -1,0 +1,18 @@
+# Inside the app: serves the built screens and forwards /api/ to the API container.
+# HTTPS is handled by the lab's front Caddy, so this listens on plain HTTP only.
+{
+	admin off
+	auto_https off
+}
+
+:8080 {
+	encode zstd gzip
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
