@@ -110,7 +110,12 @@ def _judge_model(checks: ReadinessChecks, settings: RetrievalSettings) -> ModelO
     return _model_out(judge.provider, judge.model, probed.ok, probed.detail)
 
 
-def build_reference_router() -> APIRouter:
+# What a model reads on the public read-only site, which runs none (D-117).
+NOT_RUN_PUBLIC = "not run on the public read-only site"
+
+
+def build_reference_router(public_mode: bool = False) -> APIRouter:
+    """The reference reads; on the public site the models are named but never probed."""
     router = APIRouter()
 
     @router.get("/ontology", response_model=OntologyOut, responses=error_responses())
@@ -173,26 +178,26 @@ def build_reference_router() -> APIRouter:
         checks: ReadinessChecks = request.app.state.readiness
         lab, _state = request.app.state.query_service.lab_status()
         settings: RetrievalSettings = lab.settings if lab is not None else from_env()
-        embedding = checks.model.check_embedding(settings.embedding)
-        generation = checks.model.check(settings.generation, settings.embedding.host or None)
         loaded = lab is not None
-        judge_model = _judge_model(checks, settings)
+        embedding: tuple[bool | None, str]
+        generation: tuple[bool | None, str]
+        if public_mode:
+            # Named, never probed: no model runs on the public site.
+            embedding = generation = (None, NOT_RUN_PUBLIC)
+            judge_model = None
+        else:
+            dense = checks.model.check_embedding(settings.embedding)
+            answer = checks.model.check(settings.generation, settings.embedding.host or None)
+            embedding, generation = (dense.ok, dense.detail), (answer.ok, answer.detail)
+            judge_model = _judge_model(checks, settings)
         return ModelsOut(
-            embedding=_model_out(
-                settings.embedding.provider,
-                settings.embedding.model,
-                embedding.ok,
-                embedding.detail,
-            ),
+            embedding=_model_out(settings.embedding.provider, settings.embedding.model, *embedding),
             sparse=_in_process(
                 resolve_sparse_provider(settings.embedding), settings.embedding.sparse_model, loaded
             ),
             rerank=_in_process(settings.rerank.provider, settings.rerank.model, loaded),
             generation=_model_out(
-                settings.generation.provider,
-                settings.generation.model,
-                generation.ok,
-                generation.detail,
+                settings.generation.provider, settings.generation.model, *generation
             ),
             judge=judge_model,
         )

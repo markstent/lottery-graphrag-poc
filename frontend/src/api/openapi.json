@@ -915,7 +915,8 @@
           "INTERRUPTED",
           "CANCELLED",
           "RUN_ERROR",
-          "CONFIGURATION_ERROR"
+          "CONFIGURATION_ERROR",
+          "PUBLIC_READ_ONLY"
         ],
         "title": "ErrorCode",
         "type": "string"
@@ -6384,6 +6385,12 @@
             "title": "Checks",
             "type": "object"
           },
+          "public_mode": {
+            "default": false,
+            "description": "True on the public read-only site (PUBLIC_MODE=1, D-117): every write is refused with PUBLIC_READ_ONLY, no model runs, and the checks are only ``data`` and ``graph``.",
+            "title": "Public Mode",
+            "type": "boolean"
+          },
           "ready": {
             "title": "Ready",
             "type": "boolean"
@@ -7975,6 +7982,16 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "409": {
             "content": {
               "application/json": {
@@ -8135,6 +8152,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "404": {
             "content": {
@@ -9572,6 +9599,16 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
           "409": {
             "content": {
               "application/json": {
@@ -9699,6 +9736,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Forbidden"
           },
           "404": {
             "content": {

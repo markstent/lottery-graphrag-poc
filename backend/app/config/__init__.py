@@ -413,6 +413,8 @@ class ApiSettings:
     sse_heartbeat_s: float
     benchmark_dir: Path  # where the benchmark CLI writes runs
     log_level: str = "INFO"
+    # The public read-only site (D-117): writes are refused and no model is needed.
+    public_mode: bool = False
 
 
 def _positive_int(name: str, default: int) -> int:
@@ -444,6 +446,17 @@ def _log_level() -> str:
     return raw
 
 
+_TRUE = ("1", "true")
+_FALSE = ("", "0", "false")
+
+
+def _public_mode() -> bool:
+    raw = (os.environ.get("PUBLIC_MODE") or "").strip().lower()
+    if raw not in _TRUE + _FALSE:
+        raise ValueError(f"PUBLIC_MODE must be 1 or 0 (true or false), got {raw!r}")
+    return raw in _TRUE
+
+
 def api_from_env() -> ApiSettings:
     """API settings from the environment; invalid values raise ``ValueError``."""
     origins = os.environ.get("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
@@ -456,4 +469,5 @@ def api_from_env() -> ApiSettings:
             os.environ.get("BENCHMARK_DIR") or REPO_ROOT / "data" / "evaluation" / "runs"
         ),
         log_level=_log_level(),
+        public_mode=_public_mode(),
     )

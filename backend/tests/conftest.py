@@ -162,6 +162,13 @@ def no_ingested_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
 
 @pytest.fixture(autouse=True)
+def not_public(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The API runs as the local lab, whatever the shell holds; a test of the
+    public read-only site (D-117) sets PUBLIC_MODE itself."""
+    monkeypatch.delenv("PUBLIC_MODE", raising=False)
+
+
+@pytest.fixture(autouse=True)
 def litellm_offline(monkeypatch: pytest.MonkeyPatch) -> None:
     """A test that loads the real LiteLLM (the API does at start-up when
     GENERATION_PROVIDER=litellm) reads its bundled cost map, never the network."""

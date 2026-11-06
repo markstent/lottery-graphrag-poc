@@ -977,7 +977,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "VALIDATION_ERROR" | "NOT_FOUND" | "CONFLICT" | "METHOD_NOT_ALLOWED" | "MODEL_ERROR" | "EMBEDDING_ERROR" | "VECTOR_RETRIEVAL_ERROR" | "GRAPH_QUERY_ERROR" | "CONTEXT_BUILD_ERROR" | "INTERRUPTED" | "CANCELLED" | "RUN_ERROR" | "CONFIGURATION_ERROR";
+        ErrorCode: "VALIDATION_ERROR" | "NOT_FOUND" | "CONFLICT" | "METHOD_NOT_ALLOWED" | "MODEL_ERROR" | "EMBEDDING_ERROR" | "VECTOR_RETRIEVAL_ERROR" | "GRAPH_QUERY_ERROR" | "CONTEXT_BUILD_ERROR" | "INTERRUPTED" | "CANCELLED" | "RUN_ERROR" | "CONFIGURATION_ERROR" | "PUBLIC_READ_ONLY";
         /**
          * ErrorEnvelope
          * @description The body of every non-2xx response: ``{"error": {...}}``.
@@ -3257,6 +3257,12 @@ export interface components {
             checks: {
                 [key: string]: components["schemas"]["Check"];
             };
+            /**
+             * Public Mode
+             * @description True on the public read-only site (PUBLIC_MODE=1, D-117): every write is refused with PUBLIC_READ_ONLY, no model runs, and the checks are only ``data`` and ``graph``.
+             * @default false
+             */
+            public_mode: boolean;
             /** Ready */
             ready: boolean;
         };
@@ -3866,6 +3872,15 @@ export interface operations {
                     "application/json": components["schemas"]["BenchmarkJob"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Conflict */
             409: {
                 headers: {
@@ -4000,6 +4015,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BenchmarkJob"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description Not Found */
@@ -5095,6 +5119,15 @@ export interface operations {
                     "application/json": components["schemas"]["QueryAccepted"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
             /** @description Conflict */
             409: {
                 headers: {
@@ -5200,6 +5233,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RunSummary"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
                 };
             };
             /** @description Not Found */

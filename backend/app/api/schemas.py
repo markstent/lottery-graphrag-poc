@@ -64,6 +64,14 @@ class Readiness(BaseModel):
 
     ready: bool
     checks: dict[str, Check]
+    public_mode: bool = Field(
+        default=False,
+        description=(
+            "True on the public read-only site (PUBLIC_MODE=1, D-117): every write is "
+            "refused with PUBLIC_READ_ONLY, no model runs, and the checks are only "
+            "``data`` and ``graph``."
+        ),
+    )
 
 
 class QueryRequest(BaseModel):

@@ -113,7 +113,7 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
         "/queries",
         status_code=202,
         response_model=QueryAccepted,
-        responses=error_responses(409, 422, 503),
+        responses=error_responses(403, 409, 422, 503),
     )
     def submit_query(request: QueryRequest, service: Service) -> QueryAccepted:
         with _reading(service.store):
@@ -168,7 +168,7 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
         "/queries/{run_id}/cancel",
         status_code=202,
         response_model=RunSummary,
-        responses=error_responses(404, 409, 422),
+        responses=error_responses(403, 404, 409, 422),
     )
     def cancel_run(run_id: str, service: Service) -> RunSummary:
         with _reading(service.store) as store:
