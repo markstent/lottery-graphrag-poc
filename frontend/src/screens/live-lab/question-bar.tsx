@@ -109,6 +109,11 @@ export function QuestionBar({
   const [chosenSource, setChosenSource] = useState<Source | null>(null)
   const [scope, setScope] = useState<string[]>([])
   const [opened, setOpened] = useState(false)
+  // Text typed before readiness said this is the public site is cleared: it can never run.
+  if (publicSite && (text !== '' || chosenSource === 'live')) {
+    setText('')
+    setChosenSource(null)
+  }
   const saved = useRef<HTMLDivElement>(null)
   const runButton = useRef<HTMLButtonElement>(null)
   const toggleButton = useRef<HTMLButtonElement>(null)
@@ -142,13 +147,16 @@ export function QuestionBar({
   const recorded = hasRecording(selected?.instance_id ?? null)
 
   const liveOff = liveUnavailableReason(status, checks)
-  const source: Source = adHoc
-    ? 'live'
-    : (chosenSource ??
-      // A linked question with no recording can only run live, so Live is shown even when it is off.
-      (!hasRecording(linkedId) && (linkedId !== null || liveOff === null)
-        ? 'live'
-        : 'recorded'))
+  // The public site replays only, so a linked question with no recording says so rather than asking for Live.
+  const source: Source = publicSite
+    ? 'recorded'
+    : adHoc
+      ? 'live'
+      : (chosenSource ??
+        // A linked question with no recording can only run live, so Live is shown even when it is off.
+        (!hasRecording(linkedId) && (linkedId !== null || liveOff === null)
+          ? 'live'
+          : 'recorded'))
   const shownScope = selected ? selected.market_scope : scope
 
   const blocker =

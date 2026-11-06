@@ -26,7 +26,7 @@ describe('liveUnavailableReason', () => {
   it('says live answers are off on the public site and points to the recorded runs', () => {
     expect(liveUnavailableReason('public', PUBLIC.checks)).toBe(PUBLIC_LIVE_OFF)
     expect(PUBLIC_LIVE_OFF).toBe(
-      'Live answers are off on the public site. Replay a recorded run below.',
+      'Live answers are off on the public site. Pick a tested question above to replay its recorded run.',
     )
   })
 })

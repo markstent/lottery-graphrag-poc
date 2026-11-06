@@ -8,7 +8,7 @@ export type Source = 'recorded' | 'live'
 
 /** Why nothing live runs on the public read-only site (D-117), and where to look instead. */
 export const PUBLIC_LIVE_OFF =
-  'Live answers are off on the public site. Replay a recorded run below.'
+  'Live answers are off on the public site. Pick a tested question above to replay its recorded run.'
 
 const CHECK_NAMES: Record<string, string> = {
   data: 'The world data',

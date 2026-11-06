@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
-import { MODELS, PUBLIC, stubApi } from '../../test/api-stub'
+import type { ModelStatus } from '../../app/use-readiness'
+import { MODELS, stubApi } from '../../test/api-stub'
 import { Panel } from '../../components/panel'
 import {
   KINDS_NOTE,
@@ -47,9 +48,9 @@ const job = (change: Partial<Job>): Job => ({
 type Props = Pick<
   Parameters<typeof StartArea>[0],
   'job' | 'error' | 'start' | 'cancel'
->
+> & { site?: ModelStatus }
 
-function Harness(props: Props) {
+function Harness({ site = 'ready', ...props }: Props) {
   const [open, setOpen] = useState(false)
   const [returned, setReturned] = useState(false)
   const close = () => {
@@ -66,6 +67,7 @@ function Harness(props: Props) {
           open={open}
           onOpen={() => setOpen(true)}
           autoFocus={returned}
+          site={site}
         />
       }
       above={
@@ -131,12 +133,18 @@ describe('StartPanel', () => {
   })
 
   it('greys out Start a run on the public site and says why', async () => {
-    show({}, { ...ROUTES, '/api/v1/health/ready': PUBLIC })
-    expect(await screen.findByText(PUBLIC_RUNS_OFF)).toBeVisible()
+    show({ site: 'public' })
+    expect(screen.getByText(PUBLIC_RUNS_OFF)).toBeVisible()
     const button = screen.getByRole('button', { name: 'Start a run' })
     expect(button).toBeDisabled()
     expect(button).toHaveAccessibleDescription(PUBLIC_RUNS_OFF)
     expect(PUBLIC_RUNS_OFF).toBe('Runs cannot be started on the public site.')
+  })
+
+  it('greys out Start a run until the server has said whether this is the public site', () => {
+    show({ site: 'checking' })
+    expect(screen.getByRole('button', { name: 'Start a run' })).toBeDisabled()
+    expect(screen.queryByText(PUBLIC_RUNS_OFF)).toBeNull()
   })
 
   it('opens from a button, which gives way to the form, and puts focus in the form', async () => {

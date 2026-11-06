@@ -244,6 +244,43 @@ describe('Live Lab', () => {
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
   })
 
+  it('shows a linked question with no recording as recorded on the public site, and says it has none', async () => {
+    api({ '/api/v1/health/ready': PUBLIC })
+    open('#/live-lab?question=L99-2026-GR_ONLY')
+    const source = screen.getByRole('group', { name: 'Source' })
+    await waitFor(() =>
+      expect(
+        screen.getByText('No recorded run for this question.'),
+      ).toBeVisible(),
+    )
+    expect(
+      within(source).getByRole('button', { name: 'Recorded run' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(
+      within(source).getByRole('button', { name: 'Live' }),
+    ).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
+  })
+
+  it('clears a typed question once readiness says this is the public site', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    let publicSite = false
+    api({
+      '/api/v1/health/ready': () =>
+        publicSite ? json(PUBLIC) : json(DOWN, 503),
+    })
+    open()
+    const box = await screen.findByRole('textbox', {
+      name: 'Or ask your own question',
+    })
+    fireEvent.change(box, { target: { value: 'What changed in Austria?' } })
+    expect(box).toHaveValue('What changed in Austria?')
+    publicSite = true
+    await act(() => vi.advanceTimersByTimeAsync(15_000))
+    await waitFor(() => expect(box).toBeDisabled())
+    expect(box).toHaveValue('')
+  })
+
   it('plays a recorded run to its end at once under reduced motion', async () => {
     reduceMotion()
     api({ '/api/v1/health/ready': DOWN })

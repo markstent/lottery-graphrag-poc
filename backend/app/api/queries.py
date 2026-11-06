@@ -104,10 +104,20 @@ def _resume_point(last_event_id: str | None, after: str | None) -> int:
     return int(value)
 
 
-def build_queries_router(heartbeat_s: float) -> APIRouter:
+def build_queries_router(heartbeat_s: float, public_mode: bool = False) -> APIRouter:
     """The run routes; the event stream sends a heartbeat after ``heartbeat_s``
-    seconds without an event (ApiSettings.sse_heartbeat_s)."""
+    seconds without an event (ApiSettings.sse_heartbeat_s).
+
+    On the public read-only site (``public_mode``, D-117) no stored run is
+    published, even from a run store copied there by mistake: the history is
+    empty and every run, its events and its stream are unknown (404). The
+    recorded Live Lab runs ship inside the frontend build instead.
+    """
     router = APIRouter()
+
+    def _published(run_id: str) -> None:
+        if public_mode:
+            raise _unknown_run()
 
     @router.post(
         "/queries",
@@ -131,6 +141,8 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
         before: str | None = None,
         status: QueryStatus | None = None,
     ) -> RunHistory:
+        if public_mode:
+            return RunHistory(runs=[], next_before=None)
         with _reading(service.store) as store:
             try:
                 rows = store.list_runs(limit + 1, before, status)
@@ -146,6 +158,7 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
         "/queries/{run_id}", response_model=QueryResults, responses=error_responses(404, 422)
     )
     def read_results(run_id: str, service: Service) -> QueryResults:
+        _published(run_id)
         with _reading(service.store) as store:
             row = store.get_run(run_id)
             if row is None:
@@ -184,6 +197,7 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
         "/queries/{run_id}/events", response_model=EventStream, responses=error_responses(404, 422)
     )
     def read_events(run_id: str, service: Service) -> EventStream:
+        _published(run_id)
         with _reading(service.store) as store:
             row = store.get_run(run_id)
             if row is None:
@@ -215,6 +229,7 @@ def build_queries_router(heartbeat_s: float) -> APIRouter:
     ) -> StreamingResponse:
         """The run's events as server-sent events: every stored event after
         the resume point, then each new one, closing after the terminal event."""
+        _published(run_id)
         start = _resume_point(last_event_id, after)
         with _reading(service.store) as store:
             if store.get_run(run_id) is None:

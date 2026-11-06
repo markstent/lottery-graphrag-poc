@@ -176,8 +176,10 @@ def install_read_only(app: FastAPI) -> None:
     """Refuse every write with 403 ``PUBLIC_READ_ONLY`` (the public site, D-117).
 
     It refuses by method before routing, so a write route added later is
-    refused without being listed anywhere. Call it before adding the CORS
-    middleware, so the browser can read the envelope.
+    refused without being listed anywhere. The guarantee covers HTTP: an
+    HTTP middleware never sees a websocket, so the app must have no websocket
+    route (tests/test_public_mode.py fails on one). Call it before adding the
+    CORS middleware, so the browser can read the envelope.
     """
 
     @app.middleware("http")

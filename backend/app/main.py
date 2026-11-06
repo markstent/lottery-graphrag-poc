@@ -98,7 +98,16 @@ def create_app(
             service.warm_up()
         yield
 
-    application = FastAPI(title="Semantic Context Lab", version=__version__, lifespan=lifespan)
+    # The public site publishes no API description; the contract export runs off it.
+    public = settings.public_mode
+    application = FastAPI(
+        title="Semantic Context Lab",
+        version=__version__,
+        lifespan=lifespan,
+        docs_url=None if public else "/docs",
+        redoc_url=None if public else "/redoc",
+        openapi_url=None if public else "/openapi.json",
+    )
     application.state.benchmark_jobs = jobs
     application.state.graph_lease = lease
     # Before CORS: the unhandled-error middleware must sit inside it.
@@ -130,7 +139,8 @@ def create_app(
     )
     application.include_router(health.router, prefix=API_PREFIX)
     application.include_router(
-        queries.build_queries_router(settings.sse_heartbeat_s), prefix=API_PREFIX
+        queries.build_queries_router(settings.sse_heartbeat_s, settings.public_mode),
+        prefix=API_PREFIX,
     )
     application.include_router(
         benchmarks.build_benchmarks_router(settings.benchmark_dir, jobs), prefix=API_PREFIX

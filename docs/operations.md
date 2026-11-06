@@ -160,7 +160,10 @@ The lab is never built, so nothing is indexed or embedded at start-up.
   The screens call relative `/api/...` paths, so the web server forwards `/api/` to the API on the same domain, and no CORS setting is needed.
   The recorded Live Lab runs are part of the build.
 - Neo4j, for the Graph tab, the node reads and the evidence drawer's nodes, holding the ingested world (`make ingest-graph`).
-- The data files under `data/`: the world in `data/generated/dev-seed2026/` with its manifests, the frozen question bank in `data/evaluation/bank/`, the published runs in `data/evaluation/runs/`, the truth ledger in `data/truth/` (Results and the Data Model example read it after the fact, as locally), and the run store `data/app.db`, which the API creates when it is missing.
+- The data files under `data/`: the world in `data/generated/dev-seed2026/` with its manifests, the frozen question bank in `data/evaluation/bank/`, the published runs in `data/evaluation/runs/`, the truth ledger in `data/truth/` (Results and the Data Model example read it after the fact, as locally), and a fresh, empty run store.
+  Never copy the local `data/app.db` to the server: it holds every question typed into the local lab.
+  Start the public API with no run store and it creates an empty one (point `APP_DB_PATH` at a new path if `data/app.db` exists there).
+  The recorded Live Lab runs ship inside the frontend build, and in public mode the API publishes no stored run anyway: `GET /api/v1/queries` is an empty list and every run, its events and its stream answer 404.
 
 ### What need not run
 
@@ -179,7 +182,7 @@ The lab is never built, so nothing is indexed or embedded at start-up.
 - Keep secrets out of the repository.
   Set `NEO4J_PASSWORD` to a new strong value in the server's environment (not `devpassword`), and keep `.env` untracked.
   The public site needs no model key, so leave `OPENROUTER_API_KEY` unset.
-- `/docs` and `/openapi.json` are read-only and describe the API; hide them at the web server if they should not be public.
+- In public mode the API serves no description of itself: the interactive API pages and `openapi.json` are switched off and answer 404.
 
 ## Command reference
 

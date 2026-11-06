@@ -481,7 +481,11 @@ A middleware refuses every method other than `GET`, `HEAD` and `OPTIONS` with 40
 It refuses by method, so a write route added later is refused without being listed anywhere.
 Today that is `POST /queries`, `POST /queries/{run_id}/cancel`, `POST /benchmarks` and `POST /benchmarks/jobs/{job_id}/cancel`.
 The refusal sits inside the request id and CORS middleware, so it carries `X-Request-ID` and the browser can read it.
-Every `GET` route answers as it does locally.
+Every `GET` route answers, with two exceptions that keep stored runs private.
+`GET /queries` is an empty list, and `GET /queries/{run_id}`, its `/events` and its `/events/stream` answer 404 `NOT_FOUND`, so no stored run is published even if a local run store is copied to the server; the recorded Live Lab runs ship inside the frontend build.
+The API description is not served: `/docs`, `/redoc` and `/openapi.json` are switched off (`make api-contract` runs off public mode and is unchanged).
+The guarantee covers HTTP.
+An HTTP middleware never sees a websocket, so the app has no websocket route, and `test_public_mode.py` fails if one is added.
 
 ## Bounds
 

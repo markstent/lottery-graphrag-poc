@@ -17,7 +17,7 @@ import {
   RUNS as CAPTURED_RUNS,
   SMOKE,
 } from '../../results/results.fixtures'
-import { failure, json, stubApi } from '../../test/api-stub'
+import { failure, json, PUBLIC, stubApi } from '../../test/api-stub'
 import { Results } from './results'
 
 const OFFICIAL_RUN: Schemas['BenchmarkRunOut'] = {
@@ -578,6 +578,42 @@ describe('Results', () => {
       expect(
         within(runs).getByRole('button', { name: 'Start a run' }),
       ).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    it('closes an open form when readiness says this is the public site', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+      try {
+        let publicSite = false
+        stubApi({
+          ...ROUTES,
+          '/api/v1/models': {},
+          '/api/v1/benchmarks/latest': failure('none', false, 404),
+          '/api/v1/health/ready': () =>
+            publicSite ? json(PUBLIC) : failure('not yet', true),
+        })
+        open()
+        const start = await screen.findByRole('button', { name: 'Start a run' })
+        await waitFor(() => expect(start).toBeEnabled())
+        fireEvent.click(start)
+        expect(
+          screen.getByRole('radio', { name: 'Development run' }),
+        ).toBeVisible()
+        publicSite = true
+        await act(() => vi.advanceTimersByTimeAsync(15_000))
+        await waitFor(() =>
+          expect(
+            screen.queryByRole('radio', { name: 'Development run' }),
+          ).toBeNull(),
+        )
+        expect(
+          screen.getByRole('button', { name: 'Start a run' }),
+        ).toBeDisabled()
+        expect(
+          screen.getByText('Runs cannot be started on the public site.'),
+        ).toBeVisible()
+      } finally {
+        vi.useRealTimers()
+      }
     })
 
     const NEW_RUN = {

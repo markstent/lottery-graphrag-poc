@@ -16,7 +16,7 @@ import {
 import { getLatestBenchmark, getModels, type Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
 import { KIND_WORDS } from '../../app/run-kinds'
-import { useReadiness } from '../../app/use-readiness'
+import type { ModelStatus } from '../../app/use-readiness'
 import { useLoad } from '../../app/use-load'
 import { Notice } from '../../components/panel'
 import { STRATUM_LABELS } from '../../results/strata'
@@ -426,24 +426,27 @@ function Progress({
 
 /**
  * The "Start a run" button of the runs panel's heading row; not shown while a
- * job runs, and greyed out with the reason on the public read-only site.
+ * job runs, greyed out while the server's answer is awaited, and greyed out
+ * with the reason on the public read-only site.
  */
 export function StartButton({
   job,
   open,
   onOpen,
   autoFocus,
+  site,
 }: {
   job: Job | null
   open: boolean
   onOpen: () => void
   /** The reader just closed the form, so the button that comes back takes focus. */
   autoFocus: boolean
+  /** The readiness status: `public` is the read-only site, `checking` is not known yet. */
+  site: ModelStatus
 }) {
-  const publicSite = useReadiness().status === 'public'
   const why = useId()
   if (job?.status === 'running' || open) return null
-  if (publicSite)
+  if (site === 'public')
     return (
       <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
         <span id={why} className="text-sm text-text-muted">
@@ -464,6 +467,7 @@ export function StartButton({
       autoFocus={autoFocus}
       type="button"
       aria-expanded={false}
+      disabled={site === 'checking'}
       onClick={onOpen}
       className={BUTTON}
     >

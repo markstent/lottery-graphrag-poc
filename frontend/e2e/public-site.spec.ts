@@ -9,7 +9,7 @@ import { expectNoUnmockedRequests, mockApi, mockPublicSite } from './mock-api'
 test.use({ viewport: { width: 1440, height: 900 } })
 
 const LIVE_OFF =
-  'Live answers are off on the public site. Replay a recorded run below.'
+  'Live answers are off on the public site. Pick a tested question above to replay its recorded run.'
 
 let writes: string[]
 

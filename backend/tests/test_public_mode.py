@@ -14,8 +14,12 @@ from app.api.errors import PUBLIC_READ_ONLY_MESSAGE
 from app.config import GraphConfig, api_from_env
 from app.lab import Lab
 from app.main import create_app
-from fastapi.routing import APIRoute, iter_route_contexts
+from fastapi import FastAPI
+from fastapi.routing import APIRoute, APIWebSocketRoute, iter_route_contexts
 from fastapi.testclient import TestClient
+from starlette.routing import WebSocketRoute
+
+from tests.helpers import run_to_completion
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 # The routes the owner named; the enumeration below must find each of them.
@@ -36,13 +40,14 @@ def _concrete(path: str) -> str:
     return _PARAMETER.sub("unknown-id", path)
 
 
-def _routes(methods: set[str]) -> list[tuple[str, str]]:
-    """Every API route of the app and its methods among ``methods``.
+def _routes(app: FastAPI, methods: set[str]) -> list[tuple[str, str]]:
+    """Every API route of ``app`` and its methods among ``methods``.
 
     ``app.routes`` holds each included router whole; ``iter_route_contexts``
-    walks into them and gives each route its full, prefixed path.
+    walks into them and gives each route its full, prefixed path. The app is
+    built inside each test, never at collection, so the shell's PUBLIC_MODE
+    cannot change what is collected.
     """
-    app = create_app(lab_factory=_never_built, graph_config=GRAPH_DOWN)
     return sorted(
         (method, context.path)
         for context in iter_route_contexts(app.routes)
@@ -75,23 +80,40 @@ def public(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
         yield client
 
 
-def test_the_enumeration_finds_every_named_write_route() -> None:
-    assert NAMED_WRITE_ROUTES.issubset(_routes(WRITE_METHODS))
+def _app(client: TestClient) -> FastAPI:
+    app = client.app
+    assert isinstance(app, FastAPI)
+    return app
 
 
-@pytest.mark.parametrize(("method", "path"), _routes(WRITE_METHODS))
-def test_every_write_route_is_refused_on_the_public_site(
-    public: TestClient, method: str, path: str
-) -> None:
-    response = public.request(method, _concrete(path), json={})
-    assert response.status_code == 403
-    assert response.json() == {
-        "error": {
-            "error_code": "PUBLIC_READ_ONLY",
-            "message": PUBLIC_READ_ONLY_MESSAGE,
-            "retryable": False,
-        }
-    }
+def test_the_enumeration_finds_every_named_write_route(public: TestClient) -> None:
+    assert NAMED_WRITE_ROUTES.issubset(_routes(_app(public), WRITE_METHODS))
+
+
+def test_the_app_has_no_websocket_route(public: TestClient) -> None:
+    """The refusal is an HTTP middleware, which never sees a websocket: a
+    websocket route would bypass the read-only guarantee, so none may exist."""
+    websockets = [
+        context.path
+        for context in iter_route_contexts(_app(public).routes)
+        if isinstance(context.original_route, (APIWebSocketRoute, WebSocketRoute))
+    ]
+    assert websockets == []
+
+
+def test_every_write_route_is_refused_on_the_public_site(public: TestClient) -> None:
+    writes = _routes(_app(public), WRITE_METHODS)
+    assert writes
+    for method, path in writes:
+        response = public.request(method, _concrete(path), json={})
+        assert response.status_code == 403, (method, path)
+        assert response.json() == {
+            "error": {
+                "error_code": "PUBLIC_READ_ONLY",
+                "message": PUBLIC_READ_ONLY_MESSAGE,
+                "retryable": False,
+            }
+        }, (method, path)
 
 
 @pytest.mark.parametrize("method", sorted(WRITE_METHODS))
@@ -99,15 +121,42 @@ def test_a_write_to_a_path_with_no_route_is_refused_too(public: TestClient, meth
     assert public.request(method, "/api/v1/not-a-route-yet").status_code == 403
 
 
-@pytest.mark.parametrize(("method", "path"), _routes({"GET"}))
-def test_every_read_route_still_answers_on_the_public_site(
-    public: TestClient, method: str, path: str
-) -> None:
+def test_every_read_route_still_answers_on_the_public_site(public: TestClient) -> None:
     """A read may find nothing in this empty test world (404, 422, 503), but it is never refused."""
-    response = public.request(method, _concrete(path))
-    assert response.status_code != 403
-    if response.status_code >= 400:
-        assert response.json().get("error", {}).get("error_code") != "PUBLIC_READ_ONLY"
+    reads = _routes(_app(public), {"GET"})
+    assert len(reads) > 20
+    for method, path in reads:
+        response = public.request(method, _concrete(path))
+        assert response.status_code != 403, (method, path)
+        if response.status_code >= 400:
+            code = response.json().get("error", {}).get("error_code")
+            assert code != "PUBLIC_READ_ONLY", (method, path)
+
+
+def test_the_public_site_publishes_no_api_description(public: TestClient) -> None:
+    for path in ("/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"):
+        assert public.get(path).status_code == 404, path
+
+
+def test_the_local_lab_still_publishes_its_api_description() -> None:
+    with TestClient(create_app(graph_config=GRAPH_DOWN)) as client:
+        assert client.get("/openapi.json").status_code == 200
+        assert client.get("/docs").status_code == 200
+
+
+def test_the_public_site_publishes_no_stored_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A run store copied to the public host by mistake still shows nothing:
+    the history is empty, and the run, its events and its stream are unknown."""
+    with TestClient(create_app(graph_config=GRAPH_DOWN)) as client:
+        run_id = run_to_completion(client, configurations=["A"])["run_id"]
+        assert client.get("/api/v1/queries").json()["runs"]
+    monkeypatch.setenv("PUBLIC_MODE", "1")
+    with TestClient(create_app(lab_factory=_never_built, graph_config=GRAPH_DOWN)) as public:
+        assert public.get("/api/v1/queries").json() == {"runs": [], "next_before": None}
+        for suffix in ("", "/events", "/events/stream"):
+            response = public.get(f"/api/v1/queries/{run_id}{suffix}")
+            assert response.status_code == 404, suffix
+            assert response.json()["error"]["error_code"] == "NOT_FOUND"
 
 
 def test_reads_that_need_no_world_answer_200_on_the_public_site(public: TestClient) -> None:

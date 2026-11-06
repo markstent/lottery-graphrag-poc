@@ -158,10 +158,11 @@ Your own question can only run live.
 Live is disabled with a plain reason when the backend is not ready.
 
 **On the public read-only site** (D-117) everything live is greyed out, never hidden.
-The question box, the easy-to-read wordings, the market scope and the Live source are disabled, and one line under the box says why: "Live answers are off on the public site. Replay a recorded run below."
+The question box, the easy-to-read wordings, the market scope and the Live source are disabled, and one line under the box says why: "Live answers are off on the public site. Pick a tested question above to replay its recorded run."
 Each disabled control names that line as its description, so a screen reader reads the reason with the control, and the line is not repeated beside Live.
-Recorded run is the source, and Run stays enabled for a tested question with a recording, so replay, the evidence path, the answers and the scores all work.
-Run is disabled for a tested question with no recording, with "No recorded run for this question." beside it.
+Recorded run is always the source there, and Run stays enabled for a tested question with a recording, so replay, the evidence path, the answers and the scores all work.
+Run is disabled for a tested question with no recording, including one a link names, with "No recorded run for this question." beside it.
+Text typed before readiness answered that this is the public site is cleared.
 
 The market coverage table counts a market for an approach only when evidence it used carries that market in its own field, and never reads the question, the scope, the wording of an answer or an id (D-053).
 
@@ -266,7 +267,8 @@ A development run uses world 2026 only, so 2027 and 2028 are disabled with "Worl
 There is no "Official run" choice, and a line says why: "Neither is a result. Official runs use the unseen worlds 2029 to 2034, from the command line." (D-091).
 The default request is one the API accepts as it stands, and a backend test posts it.
 It shows, without letting the reader change them, the question bank and the generation and judge models.
-On the public read-only site (D-117) "Start a run" is shown greyed out, with "Runs cannot be started on the public site." beside it as its description, and the form never opens.
+On the public read-only site (D-117) "Start a run" is shown greyed out, with "Runs cannot be started on the public site." beside it as its description, and the form never opens; a form already open closes once readiness says so.
+"Start a run" is also greyed out, with no line, for the moment before readiness first answers, so it cannot open on the public site.
 A wrong entry is named beside its field before anything is sent.
 After Start, a progress line such as "World 2027 (2 of 3): 12 of 40 questions", a progress bar and Cancel replace the form, and a job already running when the page loads is followed the same way.
 Cancelling stops after the current question.
@@ -582,7 +584,7 @@ Browser storage holds only per-reader preferences: the collapsed sidebar, reduce
 
 - A new screen needs an entry in the destination table with its purpose sentence, and a spec in this page.
 - A new status or evidence state needs a shape, an icon and a token pair, and a contrast test.
-- A new string needs to fit the copy budget, which has little margin left outside Help (4,090 of 4,100 words after D-117).
+- A new string needs to fit the copy budget, which has little margin left outside Help (4,095 of 4,100 words after D-117, a cap pending the owner's confirmation).
 - Changing a layout, a hierarchy or an interaction pattern of an approved screen changes the visual contract and needs the owner's approval.
 
 ## Failure modes
