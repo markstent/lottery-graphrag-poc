@@ -13,6 +13,7 @@ import App from '../App'
 import {
   BUILDING,
   DOWN,
+  PUBLIC,
   READY,
   SHELL_API,
   failure,
@@ -234,6 +235,51 @@ describe('header', () => {
     ).toHaveTextContent('Test stand-in: fake generator (offline)')
   })
 
+  it('says Public read-only on the public site, and says what that means', async () => {
+    stubApi({ ...SHELL_API, '/api/v1/health/ready': PUBLIC })
+    const user = userEvent.setup()
+    render(<App />)
+    const button = await screen.findByRole('button', {
+      name: 'Models: Public read-only',
+    })
+    expect(button).toHaveTextContent('Public read-only')
+    expect(button).not.toHaveTextContent(/Ready|Not ready/)
+    await user.click(button)
+    expect(
+      screen.getByText(/This is the public read-only site/),
+    ).toHaveTextContent('No AI model runs here')
+    const list = screen.getByRole('list', { name: 'Readiness checks' })
+    expect(list).toHaveTextContent('World data')
+    expect(list).toHaveTextContent('Graph database')
+  })
+
+  it('says a check failed on the public site in words, not only in colour', async () => {
+    stubApi({
+      ...SHELL_API,
+      '/api/v1/health/ready': () =>
+        Response.json(
+          {
+            ...PUBLIC,
+            ready: false,
+            checks: {
+              ...PUBLIC.checks,
+              graph: {
+                ok: false,
+                detail: 'Neo4j did not answer.',
+                stand_in: false,
+              },
+            },
+          },
+          { status: 503 },
+        ),
+    })
+    render(<App />)
+    const button = await screen.findByRole('button', {
+      name: 'Models: Public read-only, but a check failed',
+    })
+    expect(button.querySelector('span')).toHaveClass('bg-error')
+  })
+
   it('says Not ready when the server does not answer', async () => {
     stubApi({
       ...SHELL_API,
@@ -363,6 +409,21 @@ describe('Settings', () => {
       .getAllByRole('term')
       .map((term) => term.textContent)
     expect(labels.join(' ')).not.toMatch(/seed|rerank/i)
+  })
+
+  it('names the models on the public site and says they are off there', async () => {
+    stubApi({ ...SHELL_API, '/api/v1/health/ready': PUBLIC })
+    const user = userEvent.setup()
+    render(<App />)
+    await screen.findByRole('button', { name: 'Models: Public read-only' })
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    const dialog = screen.getByRole('dialog', { name: 'Settings' })
+    const value = async (label: string) =>
+      (await within(dialog).findByText(label, { selector: 'dt' }))
+        .nextElementSibling
+    for (const role of ['Answer model', 'Embedding model'])
+      expect(await value(role)).toHaveTextContent('Off on the public site')
+    expect(within(dialog).queryByText(/Reachable|Not checked/)).toBeNull()
   })
 
   it('shows an error panel with Retry when the values do not load', async () => {

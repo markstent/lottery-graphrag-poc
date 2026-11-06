@@ -4,11 +4,19 @@
  */
 
 import { TriangleAlert } from 'lucide-react'
-import { useEffect, useRef, useState, type ReactNode, type Ref } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react'
 
 import { getLatestBenchmark, getModels, type Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
 import { KIND_WORDS } from '../../app/run-kinds'
+import { useReadiness } from '../../app/use-readiness'
 import { useLoad } from '../../app/use-load'
 import { Notice } from '../../components/panel'
 import { STRATUM_LABELS } from '../../results/strata'
@@ -41,6 +49,9 @@ const SET_IN_CONFIGURATION = 'Set in configuration'
 /** What each kind asks, and why the official run is not offered here. */
 export const KINDS_NOTE =
   'Neither is a result. Official runs use the unseen worlds 2029 to 2034, from the command line.'
+
+/** Why Start a run is greyed out on the public read-only site (D-117). */
+export const PUBLIC_RUNS_OFF = 'Runs cannot be started on the public site.'
 
 const DEV_WORLDS_NOTE = 'World 2026 only'
 const NOTHING_FROM_SERVER: ReturnType<typeof serverErrors> = {
@@ -413,7 +424,10 @@ function Progress({
   )
 }
 
-/** The "Start a run" button of the runs panel's heading row; not shown while a job runs. */
+/**
+ * The "Start a run" button of the runs panel's heading row; not shown while a
+ * job runs, and greyed out with the reason on the public read-only site.
+ */
 export function StartButton({
   job,
   open,
@@ -426,7 +440,25 @@ export function StartButton({
   /** The reader just closed the form, so the button that comes back takes focus. */
   autoFocus: boolean
 }) {
+  const publicSite = useReadiness().status === 'public'
+  const why = useId()
   if (job?.status === 'running' || open) return null
+  if (publicSite)
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+        <span id={why} className="text-sm text-text-muted">
+          {PUBLIC_RUNS_OFF}
+        </span>
+        <button
+          type="button"
+          disabled
+          aria-describedby={why}
+          className={BUTTON}
+        >
+          Start a run
+        </button>
+      </div>
+    )
   return (
     <button
       autoFocus={autoFocus}

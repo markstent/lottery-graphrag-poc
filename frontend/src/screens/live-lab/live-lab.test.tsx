@@ -23,9 +23,17 @@ import fixture from '../../run/fixtures/run-abc.json'
 import { loadRecording } from '../../run/recorded'
 import { RECORDINGS } from '../../test/recordings'
 import type { RunEvent } from '../../run/reduce'
-import { DOWN, failure, json, READY, stubApi } from '../../test/api-stub'
+import {
+  DOWN,
+  failure,
+  json,
+  PUBLIC,
+  READY,
+  stubApi,
+} from '../../test/api-stub'
 import { warmLayout } from '../../test/warm-layout'
 import { LiveLab } from './live-lab'
+import { PUBLIC_LIVE_OFF } from './source'
 
 const stream = vi.hoisted(() => ({ subscribeRun: vi.fn() }))
 vi.mock('../../api/stream', () => stream)
@@ -160,6 +168,80 @@ describe('Live Lab', () => {
         'The answer model is not ready: qwen3:8b is not listed by the model server.',
       ),
     ).toBeVisible()
+  })
+
+  it('greys out everything live on the public site and says why once', async () => {
+    const easy = 'An easy-to-read wording?'
+    api({
+      '/api/v1/health/ready': PUBLIC,
+      '/api/v1/demo/questions': [
+        ...QUESTIONS.slice(0, 1).map((q) => ({ ...q, easy_text: easy })),
+        ...QUESTIONS.slice(1),
+      ],
+    })
+    open()
+    const box = await screen.findByRole('textbox', {
+      name: 'Or ask your own question',
+    })
+    await waitFor(() => expect(box).toBeDisabled())
+    expect(box).toHaveAccessibleDescription(PUBLIC_LIVE_OFF)
+    const source = screen.getByRole('group', { name: 'Source' })
+    const liveButton = within(source).getByRole('button', { name: 'Live' })
+    expect(liveButton).toBeDisabled()
+    expect(liveButton).toHaveAccessibleDescription(PUBLIC_LIVE_OFF)
+    expect(
+      within(source).getByRole('button', { name: 'Recorded run' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    const wording = screen.getByRole('button', { name: easy })
+    expect(wording).toBeDisabled()
+    expect(wording).toHaveAccessibleDescription(PUBLIC_LIVE_OFF)
+    // The market scope is for your own question, so it is greyed out too.
+    const markets = screen.getByRole('group', { name: 'Market scope' })
+    for (const market of within(markets).getAllByRole('button')) {
+      expect(market).toBeDisabled()
+      expect(market).toHaveAccessibleDescription(PUBLIC_LIVE_OFF)
+    }
+    // Said once, under the box, never repeated beside Live.
+    expect(screen.getAllByText(PUBLIC_LIVE_OFF)).toHaveLength(1)
+  })
+
+  it('replays a recorded run on the public site without asking the server for a live one', async () => {
+    reduceMotion()
+    const fetchMock = api({ '/api/v1/health/ready': PUBLIC })
+    const user = userEvent.setup()
+    open()
+    await user.click(await screen.findByRole('button', { name: h1.question }))
+    await waitFor(() =>
+      expect(
+        screen.getByRole('textbox', { name: 'Or ask your own question' }),
+      ).toBeDisabled(),
+    )
+    const run = screen.getByRole('button', { name: 'Run' })
+    expect(run).toBeEnabled()
+    await user.click(run)
+    await waitFor(() =>
+      expect(screen.getByText('The run is complete.')).toBeVisible(),
+    )
+    expect(
+      fetchMock.mock.calls.some(([url]) => String(url) === '/api/v1/queries'),
+    ).toBe(false)
+  })
+
+  it('cannot run a saved question with no recording on the public site', async () => {
+    api({ '/api/v1/health/ready': PUBLIC })
+    const user = userEvent.setup()
+    open()
+    await user.click(
+      await screen.findByRole('button', {
+        name: 'A saved question with no recording?',
+      }),
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByText('No recorded run for this question.'),
+      ).toBeVisible(),
+    )
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled()
   })
 
   it('plays a recorded run to its end at once under reduced motion', async () => {

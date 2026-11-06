@@ -5,9 +5,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import type { Schemas } from '../../api/client'
 import { ApiError } from '../../api/http'
-import { MODELS, stubApi } from '../../test/api-stub'
+import { MODELS, PUBLIC, stubApi } from '../../test/api-stub'
 import { Panel } from '../../components/panel'
-import { KINDS_NOTE, StartArea, StartButton } from './start-panel'
+import {
+  KINDS_NOTE,
+  PUBLIC_RUNS_OFF,
+  StartArea,
+  StartButton,
+} from './start-panel'
 
 type Job = Schemas['BenchmarkJob']
 
@@ -123,6 +128,15 @@ describe('StartPanel', () => {
     expect(within(form()).getByText('qwen3:8b')).toBeVisible()
     expect(within(form()).getByText('judge-model')).toBeVisible()
     expect(within(form()).getAllByText(/Set in configuration/)).toHaveLength(2)
+  })
+
+  it('greys out Start a run on the public site and says why', async () => {
+    show({}, { ...ROUTES, '/api/v1/health/ready': PUBLIC })
+    expect(await screen.findByText(PUBLIC_RUNS_OFF)).toBeVisible()
+    const button = screen.getByRole('button', { name: 'Start a run' })
+    expect(button).toBeDisabled()
+    expect(button).toHaveAccessibleDescription(PUBLIC_RUNS_OFF)
+    expect(PUBLIC_RUNS_OFF).toBe('Runs cannot be started on the public site.')
   })
 
   it('opens from a button, which gives way to the form, and puts focus in the form', async () => {

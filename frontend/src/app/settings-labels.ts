@@ -12,3 +12,6 @@ export const REACHABLE = {
   false: 'Not reachable',
   null: 'Not checked',
 } as const
+
+/** What every model row says on the public read-only site, where no model runs (D-117). */
+export const MODELS_OFF_PUBLIC = 'Off on the public site'

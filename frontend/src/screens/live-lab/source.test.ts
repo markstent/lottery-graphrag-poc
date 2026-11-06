@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { DOWN, READY } from '../../test/api-stub'
-import { liveUnavailableReason } from './source'
+import { DOWN, PUBLIC, READY } from '../../test/api-stub'
+import { liveUnavailableReason, PUBLIC_LIVE_OFF } from './source'
 
 describe('liveUnavailableReason', () => {
   it('is null when the backend is ready', () => {
@@ -20,6 +20,13 @@ describe('liveUnavailableReason', () => {
     )
     expect(liveUnavailableReason('not-ready', null)).toBe(
       'The backend did not answer.',
+    )
+  })
+
+  it('says live answers are off on the public site and points to the recorded runs', () => {
+    expect(liveUnavailableReason('public', PUBLIC.checks)).toBe(PUBLIC_LIVE_OFF)
+    expect(PUBLIC_LIVE_OFF).toBe(
+      'Live answers are off on the public site. Replay a recorded run below.',
     )
   })
 })
