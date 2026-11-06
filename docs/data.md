@@ -70,6 +70,8 @@ Every world records `generator_version` (0.2.0), `world_seed`, `scenario_seed`, 
 The same generator version, seeds and configuration reproduce the same world.
 Each table generator and each scenario draws from its own random stream, seeded by the generator version, the seed and a component name (`app/datasets/rng.py`).
 A golden-hash test pins the written Parquet and the truth ledger across processes (`tests/fixtures/golden/tiny-seed7.json`, `test_golden_world.py`, `test_determinism.py`).
+Parquet is written with ZSTD at level 3 (`app/datasets/parquet.py`), because DuckDB's default codec, Snappy, writes different bytes for the same rows on macOS and on Linux.
+With ZSTD the written files are byte-identical on macOS, Linux arm64 and Linux x86_64.
 After a change to the generator, the ontology or the ledger version, the fixture is regenerated on purpose with `backend/scripts/golden.py`.
 
 All business timestamps fall inside one fixed window: 365 days from 2025-01-01.
