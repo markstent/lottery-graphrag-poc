@@ -472,3 +472,23 @@ test("chapter 7 draws the newest official run's evidence and answer outcomes", a
   ).toBeVisible()
   await shot(page, 'scoring-outcomes')
 })
+
+for (const width of [1024, 1100]) {
+  test(`chapter 7 keeps its outcome bars and does not scroll sideways at ${width} wide`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await open(page, '#/help?section=scoring')
+    const bars = page.locator('#scoring [data-bar]')
+    await expect(bars.first()).toBeVisible()
+    for (const bar of await bars.all()) {
+      const box = await bar.boundingBox()
+      expect(box?.width ?? 0).toBeGreaterThanOrEqual(150)
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    ).toBeLessThanOrEqual(0)
+  })
+}

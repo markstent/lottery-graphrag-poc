@@ -41,9 +41,12 @@ const BAR = 'flex h-5 w-full overflow-hidden rounded-chip border border-border'
  * One approach's row: its name, its bar and the words beside the bar. The
  * words' column is in em of the row's small text, so the longest evidence
  * label stays on one line at either type scale, presentation mode included.
+ * The row goes to three columns by the width of its figure, not the viewport:
+ * 50rem leaves a bar of about 200px beside the name and that column. Narrower,
+ * it stacks the name, the bar and the words.
  */
 const ROW =
-  'grid grid-cols-1 items-center gap-x-4 gap-y-1 text-sm lg:grid-cols-[11rem_minmax(0,1fr)_27em]'
+  'grid grid-cols-1 items-center gap-x-4 gap-y-1 text-sm @min-[50rem]:grid-cols-[11rem_minmax(0,1fr)_27em]'
 
 /** What an answer that abstained is called, in full and in the tight side labels and table columns. */
 const CANNOT_ANSWER = 'said the sources could not answer'
@@ -141,7 +144,7 @@ function EvidenceFigure({
       overlay={null}
       table={table}
     >
-      <div className="flex flex-col gap-3">
+      <div className="@container flex flex-col gap-3">
         {rows.map((row) => (
           <div key={row.id} className={ROW}>
             <span className="text-sm font-semibold text-text-primary">
@@ -240,7 +243,7 @@ function AnswerFigure({ rows, badge }: { rows: AnswerRow[]; badge?: string }) {
       overlay={null}
       table={table}
     >
-      <div className="flex flex-col gap-4">
+      <div className="@container flex flex-col gap-4">
         {rows.map((row) => (
           <div key={row.id} className={ROW}>
             <span className="text-sm font-semibold text-text-primary">
