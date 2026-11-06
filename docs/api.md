@@ -28,7 +28,7 @@ Every schema is typed, no route returns a database object directly, and ids are 
 | Method and path | Purpose |
 |---|---|
 | `GET /health` | Liveness: `{status: "ok", version}` |
-| `GET /health/ready` | Readiness with one check each for `lab`, `index`, `graph`, `model` and `embedding`. 200 when all pass, 503 otherwise. |
+| `GET /health/ready` | Readiness with one check each for `lab`, `index`, `graph`, `model` and `embedding`, or `data` and `graph` on the public site. 200 when all pass, 503 otherwise. Carries `public_mode`. |
 | `POST /queries` | Store a run and start it. Returns 202. |
 | `GET /queries` | Run history, newest first |
 | `GET /queries/{run_id}` | The run with each pipeline's result as it finishes |
@@ -387,6 +387,7 @@ A cancel is cooperative: the job stops before its next instance or world, and a 
   Each carries `description`, the catalogue's plain description of the story, which is configuration and not truth.
 - `GET /models` reports the embedding, sparse, re-ranker and generation models and the judge, each as `provider`, `model`, `reachable` and `detail`.
   Results are cached for 30 seconds.
+  On the public site no model is probed: the embedding and generation models have `reachable` null and the detail "not run on the public read-only site", and `judge` is null.
   The sparse model and re-ranker run in process, so their `reachable` is null until the lab has loaded them.
   `judge` is null while `JUDGE_PROVIDER` is `fake`.
 
@@ -409,8 +410,22 @@ Each graph request opens one reader, runs each statement once under `NEO4J_TIMEO
 Details are curated sentences, and raw driver text is logged only.
 Each check also carries `stand_in`, true when an offline stand-in for testing passed it in place of a real model: the fake generator for `model`, the hashing embedder for `embedding` (D-111).
 A stand-in still passes, so `ready` stays true and Live Lab still runs; the header shows the difference.
+The body also carries `public_mode`, true on the public read-only site (see below).
 The decision record D-038 names four checks (`lab`, `index`, `graph`, `model`), and the code runs five.
 The decision text is behind the code on this point.
+
+### Readiness on the public site
+
+With `PUBLIC_MODE=1` no question is asked, so no model runs and the lab is never built (D-117).
+Readiness then runs two checks, for what the read-only screens read, and `public_mode` is true.
+
+| Check | Passes when |
+|---|---|
+| `data` | The active world's files are present: its `_manifest.json` is a file. The Data Model, Overview, Settings and reference reads need them. |
+| `graph` | As above: Neo4j answers and holds the configured world. The Graph tab, the node reads and the evidence drawer's nodes need it. |
+
+`lab`, `index`, `model` and `embedding` are not run.
+The lab and the vector index serve only live questions, and building the lab would need Qdrant and, on a cold start, the embedding model.
 
 ### Which world the graph holds
 
@@ -436,6 +451,7 @@ Each code has one curated message, and the exception's own text goes to the log 
 |---|---|---|
 | 404 | `NOT_FOUND` | An unknown run, job, dataset, row, node, concept, published run or statistics file |
 | 405 | `METHOD_NOT_ALLOWED` | A method the route does not have |
+| 403 | `PUBLIC_READ_ONLY` | Any write (`POST`, `PUT`, `PATCH` or `DELETE`) on the public read-only site, whatever the path. The message is "This is the public read-only site: live questions and benchmark runs are off." Not retryable. |
 | 409 | `CONFLICT` | Cancelling a finished run or job. The graph is held by a job or a run (retryable). The graph holds another world. A record id that is not unique. |
 | 422 | `VALIDATION_ERROR` | A body or parameter that fails validation, an unknown field, a limit above its maximum, an unknown market, table, column or relationship type, a malformed cursor or resume point, a bank question sent with other text or scope |
 | 500 | `RUN_ERROR` | An unexpected failure. The body is a generic sentence. |
@@ -451,9 +467,25 @@ VECTOR_RETRIEVAL_ERROR  GRAPH_QUERY_ERROR  CONTEXT_BUILD_ERROR  INTERRUPTED  CAN
 RUN_ERROR  CONFIGURATION_ERROR
 ```
 
+`PUBLIC_READ_ONLY` is an HTTP refusal only: a run that never starts cannot fail with it.
+
 Any other 4xx the framework raises is a `VALIDATION_ERROR`, and none is ever a `RUN_ERROR`.
 A timeout appears as the error of the stage that timed out.
 The error schema is one `ErrorEnvelope` declared as the response for 404, 409, 422, 503 and 500 on every route (D-042).
+The four write routes also declare 403.
+
+### The public read-only site
+
+`PUBLIC_MODE=1` makes the API the public read-only site (D-117).
+A middleware refuses every method other than `GET`, `HEAD` and `OPTIONS` with 403 `PUBLIC_READ_ONLY`, before routing.
+It refuses by method, so a write route added later is refused without being listed anywhere.
+Today that is `POST /queries`, `POST /queries/{run_id}/cancel`, `POST /benchmarks` and `POST /benchmarks/jobs/{job_id}/cancel`.
+The refusal sits inside the request id and CORS middleware, so it carries `X-Request-ID` and the browser can read it.
+Every `GET` route answers, with two exceptions that keep stored runs private.
+`GET /queries` is an empty list, and `GET /queries/{run_id}`, its `/events` and its `/events/stream` answer 404 `NOT_FOUND`, so no stored run is published even if a local run store is copied to the server; the recorded Live Lab runs ship inside the frontend build.
+The API description is not served: `/docs`, `/redoc` and `/openapi.json` are switched off (`make api-contract` runs off public mode and is unchanged).
+The guarantee covers HTTP.
+An HTTP middleware never sees a websocket, so the app has no websocket route, and `test_public_mode.py` fails if one is added.
 
 ## Bounds
 
@@ -477,14 +509,16 @@ make serve-demo-api         # the same, against the demo world
 make api-contract           # export the OpenAPI file and regenerate the frontend types
 ```
 
-The API settings are read once when the app is created: `CORS_ORIGINS`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `BENCHMARK_DIR`, `LOG_LEVEL`, and the Neo4j connection settings.
+The API settings are read once when the app is created: `CORS_ORIGINS`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `BENCHMARK_DIR`, `LOG_LEVEL`, `PUBLIC_MODE`, and the Neo4j connection settings.
+`PUBLIC_MODE` is `1` or `true` for the public site, and `0`, `false` or unset (the default) for the local lab; any other value stops start-up.
 A change needs a restart.
 The retrieval, model and traversal settings are read when the lab is built.
 CORS allows the configured origins, GET and POST, and the headers `content-type`, `x-request-id` and `last-event-id`.
 
 ## Testing
 
-- Offline: `test_api_queries.py`, `test_api_runs.py`, `test_api_stream.py`, `test_api_scoring.py`, `test_api_benchmarks.py`, `test_api_data_model.py`, `test_api_graph_model.py`, `test_api_reference.py`, `test_api_example.py`, `test_api_errors.py`, `test_store.py`, `test_health.py` and `test_event_payloads.py`.
+- Offline: `test_api_queries.py`, `test_api_runs.py`, `test_api_stream.py`, `test_api_scoring.py`, `test_api_benchmarks.py`, `test_api_data_model.py`, `test_api_graph_model.py`, `test_api_reference.py`, `test_api_example.py`, `test_api_errors.py`, `test_store.py`, `test_health.py`, `test_event_payloads.py` and `test_public_mode.py`.
+- Public site: `test_public_mode.py` walks every route of the app (`app.routes`, through `iter_route_contexts`) and checks that each write is refused with the 403 envelope in public mode, and that each `GET` route is not.
 - Contract: `test_openapi_contract.py` compares the committed `openapi.json` with the app's own schema and checks it does not depend on the environment.
   `pnpm api:check` regenerates the types and compares them byte for byte.
 - Live: `test_api_live.py` starts the app on the presentation world, runs the first H1 demo question over the event stream, waits for its score, restarts the app on the same run store, and checks that the run, its events and readiness survive and that no log record holds the expected answer.

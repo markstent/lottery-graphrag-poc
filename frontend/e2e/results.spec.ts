@@ -11,6 +11,18 @@ test.use({ viewport: { width: 1920, height: 1080 } })
 
 test.afterEach(({ page }) => expectNoUnmockedRequests(page))
 
+test('Results does not scroll sideways at 1024 wide', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 900 })
+  await mockApi(page, 'official')
+  await page.goto('/#/results')
+  await expect(page.locator('[data-bar]').first()).toBeVisible()
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth - window.innerWidth,
+    ),
+  ).toBeLessThanOrEqual(0)
+})
+
 test('the run picker is reachable by keyboard and a chosen run goes to the address', async ({
   page,
 }) => {

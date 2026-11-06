@@ -14,6 +14,7 @@ import {
 import { hrefFor, useRoute } from '../../app/router'
 import { EVIDENCE_FOUND_LABEL } from '../../app/method'
 import { useLoad } from '../../app/use-load'
+import { useReadiness } from '../../app/use-readiness'
 import { OutcomeBars } from '../../components/outcome-bars'
 import { Panel } from '../../components/panel'
 import { filterFromParams, paramsWithFilter } from '../../results/questions'
@@ -162,6 +163,9 @@ export function Results() {
       : []
   const [starting, setStarting] = useState(false)
   const [returned, setReturned] = useState(false)
+  // The public read-only site starts no run: an open form closes once readiness says so (D-117).
+  const site = useReadiness().status
+  if (site === 'public' && starting) setStarting(false)
   const closeForm = () => {
     setReturned(true)
     setStarting(false)
@@ -186,6 +190,7 @@ export function Results() {
               setStarting(true)
             }}
             autoFocus={returned}
+            site={site}
           />
         }
         above={

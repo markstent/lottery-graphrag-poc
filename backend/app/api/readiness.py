@@ -17,6 +17,15 @@ Five checks, reported separately from liveness:
   listed by its server; the hashing embedder is always reachable), through
   the same cached ``ModelReachability`` as ``model``.
 
+On the public read-only site (``public_mode``, D-117) no question is asked,
+so the lab is never built and no model runs: ``lab``, ``index``, ``model``
+and ``embedding`` are not checked. Two checks remain, for what the
+read-only screens read:
+
+- ``data``: the active world's files are present (its manifest), which the
+  Data Model, Overview and reference reads need.
+- ``graph``: as above, for the Graph tab and the evidence drawer's nodes.
+
 Each check runs in its own thread under its own timeout, so one slow
 service never hides the others and readiness never raises. Details are
 curated sentences: the raw driver or provider text, which can name service
@@ -36,6 +45,7 @@ from pathlib import Path
 
 import httpx
 
+from app.api.data_model import WORLD_MANIFEST_NAME
 from app.api.graph_world import GraphWorldCheck
 from app.api.runs import LabState, QueryService
 from app.api.schemas import Check, Readiness
@@ -147,6 +157,13 @@ def _index_state(settings: RetrievalSettings, store: VectorStore) -> Check:
     return Check(ok=True, detail=f"{points:,} points")
 
 
+def data_check(dataset_dir: Path) -> Check:
+    """The active world's files are present: its manifest is a file."""
+    if not (dataset_dir / WORLD_MANIFEST_NAME).is_file():
+        return Check(ok=False, detail="the world's files are missing")
+    return Check(ok=True, detail=f"world {dataset_dir.name}")
+
+
 def graph_check(config: GraphConfig, dataset_dir: Path | None, world: GraphWorldCheck) -> Check:
     """Neo4j answers and, when ``dataset_dir`` is given, does not hold
     another world than it (a dataset never ingested cannot be compared).
@@ -234,8 +251,8 @@ class ModelReachability:
 
 
 class ReadinessChecks:
-    """Runs the five checks for the API. Settings come from the built lab,
-    or from the environment while it is not built."""
+    """Runs the five checks for the API, or the public site's two. Settings
+    come from the built lab, or from the environment while it is not built."""
 
     def __init__(
         self,
@@ -244,14 +261,18 @@ class ReadinessChecks:
         settings: Callable[[], RetrievalSettings] = from_env,
         clock: Clock = time.monotonic,
         world: GraphWorldCheck | None = None,
+        public_mode: bool = False,
     ) -> None:
         self._service = service
         self._graph = graph
         self._settings = settings
         self.model = ModelReachability(clock)
         self._world = world if world is not None else GraphWorldCheck(clock)
+        self.public_mode = public_mode
 
     def run(self) -> Readiness:
+        if self.public_mode:
+            return self._run_public()
         lab, state = self._service.lab_status()
         dataset_dir: Path | None = None
         try:
@@ -291,3 +312,29 @@ class ReadinessChecks:
             }
         )
         return Readiness(ready=all(check.ok for check in checks.values()), checks=checks)
+
+    def _run_public(self) -> Readiness:
+        """The public site's checks: the world's files and the graph."""
+        try:
+            dataset_dir = Path(self._settings().dataset_dir)
+        except ValueError as error:
+            logger.warning("readiness settings invalid", exc_info=error)
+            invalid = Check(ok=False, detail="the configuration is invalid")
+            data = Probe(lambda: invalid, timeout_s=LAB_TIMEOUT_S)
+            graph_dir: Path | None = None
+        else:
+            data = Probe(lambda: data_check(dataset_dir), timeout_s=LAB_TIMEOUT_S)
+            graph_dir = dataset_dir
+        checks = run_checks(
+            {
+                "data": data,
+                "graph": Probe(
+                    lambda: graph_check(self._graph, graph_dir, self._world),
+                    timeout_s=self._graph.timeout_s,
+                    failure="Neo4j did not answer.",
+                ),
+            }
+        )
+        return Readiness(
+            ready=all(check.ok for check in checks.values()), checks=checks, public_mode=True
+        )

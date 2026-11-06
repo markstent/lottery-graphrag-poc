@@ -8,8 +8,9 @@ import { useState, type ReactNode } from 'react'
 import { getDataset, getModels, getOntology, listDatasets } from '../api/client'
 import { Drawer } from '../components/drawer'
 import { Panel } from '../components/panel'
-import { MODEL_LABELS, REACHABLE } from './settings-labels'
+import { MODEL_LABELS, MODELS_OFF_PUBLIC, REACHABLE } from './settings-labels'
 import { useLoad } from './use-load'
+import { useReadiness } from './use-readiness'
 import { NODE_CAP_MAX, NODE_CAP_MIN, useSettings } from './use-settings'
 
 async function loadSettings(signal: AbortSignal) {
@@ -35,6 +36,7 @@ function Row({ term, children }: { term: string; children: ReactNode }) {
 
 function Values() {
   const load = useLoad(loadSettings, 'settings')
+  const publicSite = useReadiness().status === 'public'
 
   return (
     <Panel
@@ -76,11 +78,11 @@ function Values() {
                   <Row key={role} term={MODEL_LABELS[role]}>
                     {`${model.model} (${model.provider}), `}
                     <span className="whitespace-nowrap">
-                      {
-                        REACHABLE[
-                          String(model.reachable) as keyof typeof REACHABLE
-                        ]
-                      }
+                      {publicSite
+                        ? MODELS_OFF_PUBLIC
+                        : REACHABLE[
+                            String(model.reachable) as keyof typeof REACHABLE
+                          ]}
                     </span>
                   </Row>
                 )

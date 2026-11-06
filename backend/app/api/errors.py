@@ -38,6 +38,11 @@ from app.retrieval.standard.vector_store import VectorStoreError
 logger = logging.getLogger(__name__)
 
 UNEXPECTED_MESSAGE = "The request failed unexpectedly. The details are in the server log."
+PUBLIC_READ_ONLY_MESSAGE = (
+    "This is the public read-only site: live questions and benchmark runs are off."
+)
+# Methods that only read; every other method is a write the public site refuses.
+_READ_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
 class ErrorCode(StrEnum):
@@ -57,6 +62,8 @@ class ErrorCode(StrEnum):
     RUN_ERROR = "RUN_ERROR"
     # The server is missing a prepared artefact (such as the grounded bank).
     CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
+    # The public read-only site refuses every write (D-117).
+    PUBLIC_READ_ONLY = "PUBLIC_READ_ONLY"
 
 
 class ApiErrorBody(BaseModel):
@@ -163,6 +170,29 @@ def _http_code(status: int) -> ErrorCode:
     if status == 405:
         return ErrorCode.METHOD_NOT_ALLOWED
     return ErrorCode.VALIDATION_ERROR if 400 <= status < 500 else ErrorCode.RUN_ERROR
+
+
+def install_read_only(app: FastAPI) -> None:
+    """Refuse every write with 403 ``PUBLIC_READ_ONLY`` (the public site, D-117).
+
+    It refuses by method before routing, so a write route added later is
+    refused without being listed anywhere. The guarantee covers HTTP: an
+    HTTP middleware never sees a websocket, so the app must have no websocket
+    route (tests/test_public_mode.py fails on one). Call it before adding the
+    CORS middleware, so the browser can read the envelope.
+    """
+
+    @app.middleware("http")
+    async def read_only(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        if request.method in _READ_METHODS:
+            return await call_next(request)
+        logger.info(
+            "write refused on the public site",
+            extra={"method": request.method, "path": request.url.path},
+        )
+        return _respond(403, ErrorCode.PUBLIC_READ_ONLY, PUBLIC_READ_ONLY_MESSAGE)
 
 
 def install_handlers(app: FastAPI) -> None:

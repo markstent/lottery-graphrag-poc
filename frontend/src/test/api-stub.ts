@@ -44,6 +44,7 @@ export function stubApi(routes: Record<string, Route>) {
 
 export const READY = {
   ready: true,
+  public_mode: false,
   checks: {
     lab: { ok: true, detail: 'built', stand_in: false },
     index: {
@@ -57,8 +58,19 @@ export const READY = {
   },
 }
 
+/** The public read-only site (D-117): no model runs, so only the world and the graph are checked. */
+export const PUBLIC = {
+  ready: true,
+  public_mode: true,
+  checks: {
+    data: { ok: true, detail: 'world dev-seed2026', stand_in: false },
+    graph: { ok: true, detail: 'Neo4j answered', stand_in: false },
+  },
+}
+
 export const BUILDING = {
   ready: false,
+  public_mode: false,
   checks: {
     ...READY.checks,
     lab: { ok: false, detail: 'building', stand_in: false },
@@ -67,6 +79,7 @@ export const BUILDING = {
 
 export const DOWN = {
   ready: false,
+  public_mode: false,
   checks: {
     ...READY.checks,
     model: {

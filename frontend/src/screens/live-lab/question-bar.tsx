@@ -14,6 +14,7 @@
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type KeyboardEvent,
@@ -24,7 +25,7 @@ import type { Schemas } from '../../api/client'
 import { useReadiness } from '../../app/use-readiness'
 import type { Load } from '../../app/use-load'
 import { RECORDED_INDEX } from '../../run/recorded'
-import { liveUnavailableReason, type Source } from './source'
+import { liveUnavailableReason, PUBLIC_LIVE_OFF, type Source } from './source'
 import type { RunRequest } from './use-live-run'
 
 type Question = Schemas['DemoQuestion']
@@ -49,11 +50,14 @@ const hasRecording = (instanceId: string | null) =>
 function Choice({
   pressed,
   disabled,
+  describedBy,
   onClick,
   children,
 }: {
   pressed: boolean
   disabled?: boolean
+  /** The id of the line that says why the choice is greyed out. */
+  describedBy?: string
   onClick: () => void
   children: string
 }) {
@@ -62,6 +66,7 @@ function Choice({
       type="button"
       aria-pressed={pressed}
       disabled={disabled}
+      aria-describedby={describedBy}
       onClick={onClick}
       className={`${BUTTON} ${pressed ? PRESSED : ''}`}
     >
@@ -96,11 +101,19 @@ export function QuestionBar({
   onCancel: () => void
 }) {
   const { status, checks } = useReadiness()
+  // The public read-only site (D-117): everything live is greyed out, said once under the box.
+  const publicSite = status === 'public'
+  const publicNote = useId()
   const [chosenId, setChosenId] = useState<string | null>(null)
   const [text, setText] = useState('')
   const [chosenSource, setChosenSource] = useState<Source | null>(null)
   const [scope, setScope] = useState<string[]>([])
   const [opened, setOpened] = useState(false)
+  // Text typed before readiness said this is the public site is cleared: it can never run.
+  if (publicSite && (text !== '' || chosenSource === 'live')) {
+    setText('')
+    setChosenSource(null)
+  }
   const saved = useRef<HTMLDivElement>(null)
   const runButton = useRef<HTMLButtonElement>(null)
   const toggleButton = useRef<HTMLButtonElement>(null)
@@ -134,13 +147,16 @@ export function QuestionBar({
   const recorded = hasRecording(selected?.instance_id ?? null)
 
   const liveOff = liveUnavailableReason(status, checks)
-  const source: Source = adHoc
-    ? 'live'
-    : (chosenSource ??
-      // A linked question with no recording can only run live, so Live is shown even when it is off.
-      (!hasRecording(linkedId) && (linkedId !== null || liveOff === null)
-        ? 'live'
-        : 'recorded'))
+  // The public site replays only, so a linked question with no recording says so rather than asking for Live.
+  const source: Source = publicSite
+    ? 'recorded'
+    : adHoc
+      ? 'live'
+      : (chosenSource ??
+        // A linked question with no recording can only run live, so Live is shown even when it is off.
+        (!hasRecording(linkedId) && (linkedId !== null || liveOff === null)
+          ? 'live'
+          : 'recorded'))
   const shownScope = selected ? selected.market_scope : scope
 
   const blocker =
@@ -194,6 +210,11 @@ export function QuestionBar({
         ref={runButton}
         type="button"
         disabled={busy || blocker !== null}
+        aria-describedby={
+          publicSite && full && blocker !== null && blocker === liveOff
+            ? publicNote
+            : undefined
+        }
         onClick={run}
         className="rounded-chip bg-text-primary px-5 py-2 text-sm font-semibold text-surface disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -239,7 +260,11 @@ export function QuestionBar({
         >
           {question}
         </p>
-        <p role="status" className="min-w-0 flex-1 text-sm text-text-secondary">
+        {/* A floor on its width: when the question leaves less room, the status drops to its own row instead of being squeezed. */}
+        <p
+          role="status"
+          className="min-w-64 max-w-full flex-1 text-sm text-text-secondary"
+        >
           {runStatus}
         </p>
         <p className="text-sm text-text-secondary">
@@ -320,6 +345,8 @@ export function QuestionBar({
                 <Choice
                   key={wording}
                   pressed={text.trim() === wording}
+                  disabled={publicSite}
+                  describedBy={publicSite ? publicNote : undefined}
                   onClick={() => {
                     setText(wording)
                     setScope([])
@@ -337,10 +364,17 @@ export function QuestionBar({
             aria-label="Or ask your own question"
             placeholder="Or ask your own question"
             value={text}
+            disabled={publicSite}
+            aria-describedby={publicSite ? publicNote : undefined}
             onChange={(event) => setText(event.target.value)}
-            className="w-full rounded-chip border border-border px-3 py-2 text-base text-text-primary"
+            className="w-full rounded-chip border border-border px-3 py-2 text-base text-text-primary disabled:cursor-not-allowed disabled:bg-surface-raised disabled:text-text-muted"
           />
         </label>
+        {publicSite && (
+          <p id={publicNote} className="text-sm text-text-secondary">
+            {PUBLIC_LIVE_OFF}
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
@@ -352,7 +386,8 @@ export function QuestionBar({
           <span className="mr-1 text-sm text-text-secondary">Markets</span>
           <Choice
             pressed={shownScope.length === 0}
-            disabled={selected !== null}
+            disabled={selected !== null || publicSite}
+            describedBy={publicSite ? publicNote : undefined}
             onClick={() => setScope([])}
           >
             All markets
@@ -361,7 +396,8 @@ export function QuestionBar({
             <Choice
               key={market.id}
               pressed={shownScope.includes(market.id)}
-              disabled={selected !== null}
+              disabled={selected !== null || publicSite}
+              describedBy={publicSite ? publicNote : undefined}
               onClick={() =>
                 setScope(
                   scope.includes(market.id)
@@ -395,11 +431,12 @@ export function QuestionBar({
           <Choice
             pressed={source === 'live'}
             disabled={liveOff !== null}
+            describedBy={publicSite ? publicNote : undefined}
             onClick={() => setChosenSource('live')}
           >
             Live
           </Choice>
-          {liveOff !== null && (
+          {liveOff !== null && !publicSite && (
             <span className="ml-1 text-sm text-text-muted">{liveOff}</span>
           )}
         </div>

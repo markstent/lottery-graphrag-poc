@@ -133,6 +133,7 @@ const STATUS_WORDS: Record<ModelStatus, string> = {
   ready: 'Ready',
   starting: 'Starting',
   'not-ready': 'Not ready',
+  public: 'Public read-only',
 }
 
 const STATUS_DOT: Record<ModelStatus, string> = {
@@ -140,9 +141,11 @@ const STATUS_DOT: Record<ModelStatus, string> = {
   ready: 'bg-success',
   starting: 'bg-warning',
   'not-ready': 'bg-error',
+  public: 'bg-grey-600',
 }
 
 const CHECK_LABELS: Record<string, string> = {
+  data: 'World data',
   lab: 'Retrieval lab',
   index: 'Search index',
   graph: 'Graph database',
@@ -151,10 +154,12 @@ const CHECK_LABELS: Record<string, string> = {
 }
 
 function ModelStatusMenu() {
-  const { status, checks } = useReadiness()
+  const { status, checks, ready } = useReadiness()
   // Ready on test stand-ins still runs, but its answers are placeholders, so it must not look like the real thing.
   const standIn = status === 'ready' && usesStandIn(checks)
   const words = standIn ? 'Test models' : STATUS_WORDS[status]
+  // The public site always reads Public read-only; a failed check shows in the dot and the name.
+  const publicFailed = status === 'public' && !ready
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
@@ -186,7 +191,9 @@ function ModelStatusMenu() {
         aria-label={
           standIn
             ? 'Models: Ready, but on test stand-ins'
-            : `Models: ${STATUS_WORDS[status]}`
+            : publicFailed
+              ? 'Models: Public read-only, but a check failed'
+              : `Models: ${STATUS_WORDS[status]}`
         }
         aria-expanded={open}
         aria-controls={open ? listId : undefined}
@@ -195,7 +202,7 @@ function ModelStatusMenu() {
       >
         <span
           aria-hidden
-          className={`size-2.5 rounded-full ${standIn ? STATUS_DOT.starting : STATUS_DOT[status]}`}
+          className={`size-2.5 rounded-full ${standIn ? STATUS_DOT.starting : publicFailed ? STATUS_DOT['not-ready'] : STATUS_DOT[status]}`}
         />
         {words}
       </button>
@@ -209,6 +216,12 @@ function ModelStatusMenu() {
               Answers are placeholder text from a stand-in for testing, not from
               an AI model. To answer with the official run's model, start the
               backend with <code>make dev-official</code>.
+            </p>
+          )}
+          {status === 'public' && (
+            <p className="mb-3 text-sm text-text-primary">
+              This is the public read-only site. No AI model runs here, so live
+              answers and new runs are off.
             </p>
           )}
           {checks ? (

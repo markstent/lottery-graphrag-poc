@@ -60,6 +60,7 @@ const ERROR_CODES = {
   CANCELLED: true,
   RUN_ERROR: true,
   CONFIGURATION_ERROR: true,
+  PUBLIC_READ_ONLY: true,
 } satisfies Record<ErrorCode, true>
 
 const knownCode = (code: string): ErrorCode =>

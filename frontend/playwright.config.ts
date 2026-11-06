@@ -8,7 +8,7 @@ import { BASE_URL, webServer } from './playwright.shared'
 export default defineConfig({
   testDir: './e2e',
   testMatch:
-    /(smoke|graph-canvas-200|live-lab|live-lab-live|data-model|mock-data-model|help|results-run|results)\.spec\.ts$/,
+    /(smoke|graph-canvas-200|live-lab|live-lab-live|data-model|mock-data-model|help|results-run|results|public-site)\.spec\.ts$/,
   webServer,
   use: { baseURL: BASE_URL },
 })

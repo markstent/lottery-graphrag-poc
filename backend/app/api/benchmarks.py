@@ -668,7 +668,7 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
         "/benchmarks",
         status_code=202,
         response_model=BenchmarkJob,
-        responses=error_responses(409, 422, 503),
+        responses=error_responses(403, 409, 422, 503),
     )
     def start_benchmark(request: BenchmarkStart) -> BenchmarkJob:
         return jobs.start(request)
@@ -689,7 +689,7 @@ def build_benchmarks_router(runs_dir: Path, jobs: BenchmarkJobs) -> APIRouter:
         "/benchmarks/jobs/{job_id}/cancel",
         status_code=202,
         response_model=BenchmarkJob,
-        responses=error_responses(404, 409, 422),
+        responses=error_responses(403, 404, 409, 422),
     )
     def cancel_job(job_id: str) -> BenchmarkJob:
         """Request the job to stop before its next instance; the instance in

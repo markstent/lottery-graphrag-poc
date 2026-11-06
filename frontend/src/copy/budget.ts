@@ -39,9 +39,13 @@
  * (Tables, Graph, Concepts and Stories; the Overview has none), in place of
  * the old panels. It is 4,050 since 2026-11-05 (D-116), for the outcome
  * views on Results (evidence found and answers by score, with their legend,
- * caption and table twins), which Help's scoring chapter also shows.
+ * caption and table twins), which Help's scoring chapter also shows. It is
+ * set to 4,100 on 2026-11-06 (D-117), pending the owner's confirmation, for
+ * the public read-only site: the reason beside each greyed-out control the
+ * owner asked for, the header's "Public read-only" and its one-line
+ * explanation.
  */
-export const OUTSIDE_HELP_WORD_CAP = 4050
+export const OUTSIDE_HELP_WORD_CAP = 4100
 
 export const wordsIn = (text: string): number =>
   text.split(/\s+/).filter(Boolean).length

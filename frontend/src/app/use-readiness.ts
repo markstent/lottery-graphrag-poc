@@ -1,7 +1,8 @@
 /**
  * Model status for the header. Polls readiness every 15 s while something
  * is not ready and every 60 s once all is, pauses while the tab is hidden,
- * and aborts its request when it unmounts.
+ * and aborts its request when it unmounts. On the public read-only site
+ * (D-117) the status is `public` whatever the checks say: no model runs there.
  */
 
 import { useEffect, useState } from 'react'
@@ -9,7 +10,8 @@ import { useEffect, useState } from 'react'
 import { getReadiness, type Schemas } from '../api/client'
 
 export type Readiness = Schemas['Readiness']
-export type ModelStatus = 'checking' | 'ready' | 'starting' | 'not-ready'
+export type ModelStatus =
+  'checking' | 'ready' | 'starting' | 'not-ready' | 'public'
 
 export const POLL_NOT_READY_MS = 15_000
 export const POLL_READY_MS = 60_000
@@ -20,6 +22,7 @@ type Reading = Readiness | 'unreachable' | null
 export function statusOf(reading: Reading): ModelStatus {
   if (reading === null) return 'checking'
   if (reading === 'unreachable') return 'not-ready'
+  if (reading.public_mode) return 'public'
   if (reading.ready) return 'ready'
   return reading.checks.lab?.detail === 'building' ? 'starting' : 'not-ready'
 }
@@ -34,6 +37,8 @@ export function usesStandIn(checks: Readiness['checks'] | null): boolean {
 export function useReadiness(): {
   status: ModelStatus
   checks: Readiness['checks'] | null
+  /** Every check passed; false until the server answers. */
+  ready: boolean
 } {
   const [reading, setReading] = useState<Reading>(null)
 
@@ -79,9 +84,11 @@ export function useReadiness(): {
     }
   }, [])
 
+  const answered =
+    reading === null || reading === 'unreachable' ? null : reading
   return {
     status: statusOf(reading),
-    checks:
-      reading === null || reading === 'unreachable' ? null : reading.checks,
+    checks: answered?.checks ?? null,
+    ready: answered?.ready ?? false,
   }
 }

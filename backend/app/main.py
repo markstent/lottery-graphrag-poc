@@ -7,6 +7,8 @@ runs, the question catalogue and benchmark jobs), the Data Model reads
 (worlds, dictionary, rows and records), the graph reads (schema, ingestion
 statistics, nodes and neighbours) and the reference reads (ontology,
 scenarios and configured models).
+With ``PUBLIC_MODE=1`` it is the public read-only site (D-117): every write
+is refused with 403 ``PUBLIC_READ_ONLY`` and no model or lab is needed.
 The query service reads its world and models from configuration only; it
 never reads the truth ledger (ADR-008). Live runs and benchmark jobs share
 one graph lease, so a benchmark never re-ingests the graph under a live run.
@@ -24,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api import benchmarks, data_model, example, graph_model, health, queries, reference
-from app.api.errors import install_handlers
+from app.api.errors import install_handlers, install_read_only
 from app.api.graph_world import GraphLease, GraphWorldCheck
 from app.api.readiness import ReadinessChecks
 from app.api.runs import QueryService, end_unfinished_run, start_lab
@@ -87,15 +89,32 @@ def create_app(
         factory = lab_factory if lab_factory is not None else default_lab
         service = QueryService(store, factory, graph, lease, graph_world=graph_world)
         application.state.query_service = service
-        application.state.readiness = ReadinessChecks(service, graph, world=graph_world)
-        service.warm_up()
+        application.state.readiness = ReadinessChecks(
+            service, graph, world=graph_world, public_mode=settings.public_mode
+        )
+        # The public site never runs a question, so it never builds the lab,
+        # which needs the vector index and, on a cold start, the embedding model.
+        if not settings.public_mode:
+            service.warm_up()
         yield
 
-    application = FastAPI(title="Semantic Context Lab", version=__version__, lifespan=lifespan)
+    # The public site publishes no API description; the contract export runs off it.
+    public = settings.public_mode
+    application = FastAPI(
+        title="Semantic Context Lab",
+        version=__version__,
+        lifespan=lifespan,
+        docs_url=None if public else "/docs",
+        redoc_url=None if public else "/redoc",
+        openapi_url=None if public else "/openapi.json",
+    )
     application.state.benchmark_jobs = jobs
     application.state.graph_lease = lease
     # Before CORS: the unhandled-error middleware must sit inside it.
     install_handlers(application)
+    if settings.public_mode:
+        # Inside the request id and CORS middleware, so a refusal carries both.
+        install_read_only(application)
 
     @application.middleware("http")
     async def request_id(
@@ -120,7 +139,8 @@ def create_app(
     )
     application.include_router(health.router, prefix=API_PREFIX)
     application.include_router(
-        queries.build_queries_router(settings.sse_heartbeat_s), prefix=API_PREFIX
+        queries.build_queries_router(settings.sse_heartbeat_s, settings.public_mode),
+        prefix=API_PREFIX,
     )
     application.include_router(
         benchmarks.build_benchmarks_router(settings.benchmark_dir, jobs), prefix=API_PREFIX
@@ -131,7 +151,9 @@ def create_app(
     application.include_router(
         graph_model.build_graph_router(graph, graph_world), prefix=API_PREFIX
     )
-    application.include_router(reference.build_reference_router(), prefix=API_PREFIX)
+    application.include_router(
+        reference.build_reference_router(settings.public_mode), prefix=API_PREFIX
+    )
     application.include_router(example.build_example_router(), prefix=API_PREFIX)
     return application
 

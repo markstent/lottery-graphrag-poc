@@ -519,3 +519,63 @@ export async function mockJobs(
   )
   return seen
 }
+
+/** What readiness answers on the public read-only site (D-117): no model, so the world and the graph only. */
+export const PUBLIC_READY = {
+  ready: true,
+  public_mode: true,
+  checks: {
+    data: { ok: true, detail: 'world dev-seed2026', stand_in: false },
+    graph: { ok: true, detail: 'Neo4j answered', stand_in: false },
+  },
+}
+
+/**
+ * The public read-only site over `mockApi`: readiness says so, and every
+ * write is refused with the backend's 403 envelope. Returns the writes the
+ * page tried, which a test expects to be none.
+ */
+export async function mockPublicSite(page: Page): Promise<string[]> {
+  const writes: string[] = []
+  await page.route('**/api/v1/**', async (route) => {
+    const request = route.request()
+    const path = new URL(request.url()).pathname
+    if (request.method() !== 'GET') {
+      writes.push(`${request.method()} ${path}`)
+      return route.fulfill(
+        json(
+          {
+            error: {
+              error_code: 'PUBLIC_READ_ONLY',
+              message:
+                'This is the public read-only site: live questions and benchmark runs are off.',
+              retryable: false,
+            },
+          },
+          403,
+        ),
+      )
+    }
+    if (path === '/api/v1/health/ready')
+      return route.fulfill(json(PUBLIC_READY))
+    if (path === '/api/v1/models')
+      return route.fulfill(
+        json({
+          ...MODELS,
+          generation: {
+            ...MODELS.generation,
+            reachable: null,
+            detail: 'not run on the public read-only site',
+          },
+          embedding: {
+            ...MODELS.embedding,
+            reachable: null,
+            detail: 'not run on the public read-only site',
+          },
+          judge: null,
+        }),
+      )
+    return route.fallback()
+  })
+  return writes
+}
