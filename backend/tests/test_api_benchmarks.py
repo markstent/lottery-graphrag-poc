@@ -84,6 +84,16 @@ def wait_job(client: TestClient, job_id: str) -> dict[str, Any]:
     raise AssertionError(f"job {job_id} did not finish within {DEADLINE_S}s")
 
 
+def wait_running(client: TestClient, job_id: str) -> None:
+    """Poll until the job's runner reports progress, so its world is prepared."""
+    deadline = time.monotonic() + DEADLINE_S
+    while time.monotonic() < deadline:
+        if client.get(f"/api/v1/benchmarks/jobs/{job_id}").json()["progress"] is not None:
+            return
+        time.sleep(0.01)
+    raise AssertionError(f"job {job_id} reported no progress within {DEADLINE_S}s")
+
+
 def wait_query(client: TestClient, run_id: str) -> dict[str, Any]:
     deadline = time.monotonic() + DEADLINE_S
     while time.monotonic() < deadline:
@@ -258,12 +268,15 @@ def test_cancelled_job_publishes_nothing(
     client_with_blocking_benchmark: TestClient, runs_dir: Path, blocking_benchmark: Recorder
 ) -> None:
     job = client_with_blocking_benchmark.post("/api/v1/benchmarks", json=smoke()).json()
+    # Cancel inside the world: a cancel that lands before the job thread
+    # prepares its first world prepares none (test_official covers that case).
+    wait_running(client_with_blocking_benchmark, job["job_id"])
     cancel = client_with_blocking_benchmark.post(f"/api/v1/benchmarks/jobs/{job['job_id']}/cancel")
     assert cancel.status_code == 202
     finished = wait_job(client_with_blocking_benchmark, job["job_id"])
     assert finished["status"] == "cancelled" and finished["run_id"] is None
     assert not list(runs_dir.glob("*/summary.json"))
-    # The presentation graph is restored after the cancelled world.
+    # The world was ingested, then the presentation graph restored before "cancelled".
     assert blocking_benchmark.ingested == [2026, 2026]
 
 

@@ -12,7 +12,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pyarrow.parquet as pq
 from app.datasets.config import GENERATOR_VERSION
+from app.datasets.parquet import write_world
 from app.ontology import ONTOLOGY_VERSION
 from app.scenarios.ledger import LEDGER_VERSION
 from scripts.golden import world_hashes
@@ -61,3 +63,13 @@ def test_fresh_process_regeneration_matches_golden_hashes(tmp_path: Path) -> Non
         )
     assert actual["manifest_excluding_generated_at"] == golden["manifest_excluding_generated_at"]
     assert actual["ledger"] == golden["ledger"]
+
+
+def test_parquet_is_written_with_a_platform_independent_codec(tmp_path: Path) -> None:
+    # Snappy, DuckDB's default, writes different bytes on macOS and Linux for the
+    # same rows, which broke the golden hashes across platforms; ZSTD does not.
+    schema = "region_id VARCHAR, population INTEGER"
+    (path,) = write_world(tmp_path, {"regions": schema}, {"regions": [("UK_NORTH", 7)]})
+    row_group = pq.read_metadata(path).row_group(0)
+    codecs = {row_group.column(i).compression for i in range(row_group.num_columns)}
+    assert codecs == {"ZSTD"}

@@ -3,6 +3,11 @@
 Rows are converted to columnar Arrow tables (DuckDB's native interchange)
 and exported with COPY; row-by-row INSERT is orders of magnitude slower.
 Arrow types are derived from the declared DDL so stored types stay exact.
+
+The codec is pinned to ZSTD at a fixed level so the written bytes are the
+same on every platform. DuckDB's default, Snappy, compresses the same pages
+to different bytes on macOS and on Linux (the rows read back identical), so
+the golden hashes of a world depended on the machine that wrote it.
 """
 
 from __future__ import annotations
@@ -16,6 +21,10 @@ import duckdb
 import pyarrow as pa
 
 from app.datasets.util import split_columns
+
+# ZSTD output depends only on the input, the level and the library version,
+# which the lockfile pins through DuckDB. Level 3 is ZSTD's own default.
+PARQUET_COPY_OPTIONS = "FORMAT PARQUET, COMPRESSION ZSTD, COMPRESSION_LEVEL 3"
 
 _BASE_TYPES: dict[str, pa.DataType] = {
     "VARCHAR": pa.string(),
@@ -70,7 +79,7 @@ def write_world(
             target = (output_dir / f"{name}.parquet").as_posix()
             connection.register(f"_src_{name}", _arrow_table(ddl, tables[name]))
             try:
-                connection.execute(f"COPY _src_{name} TO '{target}' (FORMAT PARQUET)")
+                connection.execute(f"COPY _src_{name} TO '{target}' ({PARQUET_COPY_OPTIONS})")
             finally:
                 connection.unregister(f"_src_{name}")
             written.append(Path(target))

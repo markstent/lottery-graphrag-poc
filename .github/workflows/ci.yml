@@ -106,6 +106,10 @@ jobs:
           pnpm exec playwright install --with-deps chromium
       - name: Run smoke tests
         working-directory: frontend
+        env:
+          # A hosted runner lays the 200-node graph out in about 1.8 s against
+          # about 0.7 s on the presentation Mac (graph-canvas-200.spec.ts).
+          GRAPH_LAYOUT_BUDGET_MS: "3000"
         run: |
           pnpm build
           pnpm e2e

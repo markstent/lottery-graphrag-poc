@@ -8,7 +8,8 @@
  *   cap      visible-node cap (default the model's cap)
  *   focus    1 for focus mode
  *   present  1 for presentation mode
- *   mount    click to draw the canvas only when "Show graph" is pressed
+ *   mount    click to draw the canvas only when "Show graph" is pressed, and
+ *            to offer "Hide graph", which takes it off the page again
  *   mode     replay (default) or live
  *   evidence 1 to open the evidence drawer on the node opened from the canvas
  *   shell    1 to draw the page inside the application shell
@@ -71,7 +72,8 @@ function Harness({ run, query }: { run: FixtureRun; query?: string }) {
   )
   const [focus, setFocus] = useState(params.get('focus') === '1')
   const [opened, setOpened] = useState<string | null>(null)
-  const [shown, setShown] = useState(params.get('mount') !== 'click')
+  const mountOnClick = params.get('mount') === 'click'
+  const [shown, setShown] = useState(!mountOnClick)
   const presentation = params.get('present') === '1'
   const cap = Number(params.get('cap') ?? DEFAULT_VISIBLE_NODE_CAP)
 
@@ -107,6 +109,15 @@ function Harness({ run, query }: { run: FixtureRun; query?: string }) {
         >
           Show graph
         </button>
+        {mountOnClick && (
+          <button
+            type="button"
+            className="rounded-chip border border-border bg-surface px-3 py-1"
+            onClick={() => setShown(false)}
+          >
+            Hide graph
+          </button>
+        )}
         <button
           type="button"
           aria-pressed={focus}
