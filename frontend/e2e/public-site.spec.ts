@@ -65,6 +65,9 @@ test('Live Lab greys out the live controls and replays a recorded run', async ({
   await page.getByRole('button', { name: h1.question }).click()
   await page.getByRole('button', { name: 'Run', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Timeline' })).toBeVisible()
+  // Pause before seeking, as live-lab.spec.ts does: seeking while the replay
+  // plays races its playback loop on a slow machine.
+  await page.getByRole('button', { name: 'Pause' }).click()
   await page
     .getByRole('slider', { name: 'Position' })
     .fill(String(Math.ceil(h1.events.at(-1)!.t_ms - h1.events[0].t_ms)))
