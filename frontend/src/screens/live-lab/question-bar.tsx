@@ -260,7 +260,11 @@ export function QuestionBar({
         >
           {question}
         </p>
-        <p role="status" className="min-w-0 flex-1 text-sm text-text-secondary">
+        {/* A floor on its width: when the question leaves less room, the status drops to its own row instead of being squeezed. */}
+        <p
+          role="status"
+          className="min-w-64 max-w-full flex-1 text-sm text-text-secondary"
+        >
           {runStatus}
         </p>
         <p className="text-sm text-text-secondary">

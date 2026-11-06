@@ -7,6 +7,7 @@ import {
   listRecordedQuestions,
   live,
   plainAnswers,
+  QUESTIONS,
   RECORDED_RUNS,
   runTyped,
   serveLiveRun,
@@ -672,4 +673,27 @@ test.describe('at phone width', () => {
         .toBeGreaterThan(0)
     }
   })
+})
+
+test('keeps the status line at two lines or fewer beside the longest tested question', async ({
+  page,
+}) => {
+  const longest = QUESTIONS.reduce((a, b) =>
+    b.text.length > a.text.length ? b : a,
+  )
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto(`/#/live-lab?question=${longest.instance_id}`)
+  const status = page
+    .getByRole('region', { name: 'Question' })
+    .getByRole('status')
+  await expect(status).toBeVisible()
+  // The width the question leaves the status moves with the window; none may squeeze it.
+  for (const width of [1440, 1400, 1360, 1320, 1280, 1920]) {
+    await page.setViewportSize({ width, height: 900 })
+    const lines = await status.evaluate((el) => {
+      const { height } = el.getBoundingClientRect()
+      return Math.round(height / parseFloat(getComputedStyle(el).lineHeight))
+    })
+    expect(lines, `status lines at ${width}px`).toBeLessThanOrEqual(2)
+  }
 })
