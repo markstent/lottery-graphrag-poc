@@ -584,7 +584,7 @@ Browser storage holds only per-reader preferences: the collapsed sidebar, reduce
 
 - A new screen needs an entry in the destination table with its purpose sentence, and a spec in this page.
 - A new status or evidence state needs a shape, an icon and a token pair, and a contrast test.
-- A new string needs to fit the copy budget, which has little margin left outside Help (4,095 of 4,100 words after D-117, a cap pending the owner's confirmation).
+- A new string needs to fit the copy budget, which has little margin left outside Help (4,095 of 4,100 words after D-117, a cap the owner confirmed on 2026-11-06).
 - Changing a layout, a hierarchy or an interaction pattern of an approved screen changes the visual contract and needs the owner's approval.
 
 ## Failure modes
