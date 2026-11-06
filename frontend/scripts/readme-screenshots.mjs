@@ -17,7 +17,8 @@ mkdirSync(OUT, { recursive: true })
 const browser = await chromium.launch()
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 
-async function shoot(name, hash, ready) {
+async function shoot(name, hash, ready, size = { width: 1440, height: 900 }) {
+  await page.setViewportSize(size)
   await page.goto(`${BASE}/#/${hash}`)
   await ready?.()
   await page.waitForTimeout(SETTLE_MS)
@@ -29,16 +30,24 @@ await shoot('overview', 'overview', () =>
   page.getByRole('heading', { level: 1 }).first().waitFor(),
 )
 
-await shoot('live-lab', 'live-lab', async () => {
-  await page.getByRole('button', { name: QUESTION }).click()
-  await page.getByRole('button', { name: 'Recorded run', exact: true }).click()
-  await page.getByRole('button', { name: 'Run', exact: true }).click()
-  await page.getByText('The run is complete.').waitFor({ timeout: 120_000 })
-  await page.getByRole('button', { name: 'Fit to the evidence' }).click()
-  await page
-    .getByRole('button', { name: "Show C's path" })
-    .evaluate((button) => button.scrollIntoView())
-})
+await shoot(
+  'live-lab',
+  'live-lab',
+  async () => {
+    await page.getByRole('button', { name: QUESTION }).click()
+    await page
+      .getByRole('button', { name: 'Recorded run', exact: true })
+      .click()
+    await page.getByRole('button', { name: 'Run', exact: true }).click()
+    await page.getByText('The run is complete.').waitFor({ timeout: 120_000 })
+    await page.getByRole('button', { name: 'Presentation mode' }).click()
+    await page.getByRole('button', { name: 'Fit to the evidence' }).click()
+    await page
+      .getByRole('button', { name: 'Change question' })
+      .evaluate((button) => button.scrollIntoView())
+  },
+  { width: 1920, height: 1400 },
+)
 
 await shoot('data-model', 'data-model', () =>
   page.getByRole('heading', { level: 1 }).first().waitFor(),
