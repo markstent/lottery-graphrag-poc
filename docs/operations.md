@@ -345,6 +345,7 @@ A key shown commented in that file must stay unset, not empty, to get its defaul
 | Graph | `GRAPH_DEPTH`, `GRAPH_MAX_NODES_PER_HOP`, `GRAPH_MAX_EDGES_PER_NODE_TYPE`, `GRAPH_MAX_TOTAL_NODES`, `GRAPH_REFERENCE_DATE` | 2, 100, 4, 200, end of the dataset window |
 | API | `CORS_ORIGINS`, `BENCHMARK_DIR`, `APP_DB_PATH`, `RUN_RETENTION`, `SSE_HEARTBEAT_S`, `LOG_LEVEL`, `PUBLIC_MODE` | the two `localhost:5173` and `127.0.0.1:5173` origins, `data/evaluation/runs`, `data/app.db`, 500, 15, `INFO`, off (`1` makes the public read-only site, D-117) |
 | Test flags | `GRAPH_E2E`, `VECTOR_E2E`, `LIVE_WORLD_E2E` | unset. `make test` runs pytest with `GRAPH_E2E` unset even when `.env` sets it, so the live graph tests, which wipe Neo4j, run only through `make test-graph`. |
+| Frontend test budget | `GRAPH_LAYOUT_BUDGET_MS` | 1000 (CI sets 3000); the layout budget of `frontend/e2e/graph-canvas-200.spec.ts`, see Performance below |
 
 The API settings in the last two groups are read once when the app is created, and a change needs a restart.
 `.env.example` sets `RERANK_PROVIDER=cross_encoder` explicitly, although its own comment says an unset value means the lexical judge under the hashing embedder.
@@ -430,7 +431,11 @@ Failure-mode tests (`test_failure_modes.py`) check that a gateway, embedder or v
 
 ### Performance
 
-No automated gate fails a build on latency, because timing assertions are unreliable in shared CI.
+One automated gate fails a build on latency: `frontend/e2e/graph-canvas-200.spec.ts` times the graph canvas laying out and drawing the 200-node fixture, with elk already loaded.
+Nearly all of that time is elk's layout in its web worker, so it runs at the speed of the machine's CPU: about 0.7 s on the presentation Mac and about 1.8 s on a GitHub-hosted Linux runner (November 2026).
+The budget is therefore set per machine with `GRAPH_LAYOUT_BUDGET_MS`: 1000 ms by default, the presentation target, and 3000 ms in CI, the measured runner time with room for runner variance.
+On either machine a layout twice as slow fails.
+No other timing is asserted, because timing assertions are unreliable in shared CI.
 Latency and context tokens are recorded for every benchmark repeat and reported separately from quality.
 Demo-profile generation was timed once, in October 2026, at about 100 seconds with the first generator version.
 There is no memory or throughput measurement on file.
